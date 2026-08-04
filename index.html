@@ -177,6 +177,16 @@
   .body-pair{display:flex;justify-content:center;gap:6px;}
   .body-pair svg{width:44%;height:auto;}
   .body-pair.big svg{width:46%;}
+  .body-part{
+    cursor:pointer;
+    transform-box:fill-box;transform-origin:center;
+    transition:transform .15s ease, opacity .15s ease;
+  }
+  .body-part:hover{opacity:0.85;transform:scale(1.05);}
+  .body-part[data-status="Focusing"],.body-part[data-status="Excess"]{animation:auraPulse 2.2s ease-in-out infinite;}
+  @keyframes auraPulse{0%,100%{opacity:1;}50%{opacity:0.72;}}
+  .muscle-detail-row.flash{background:var(--brass-dim);border-radius:6px;}
+  .muscle-detail-row{transition:background .4s ease;}
   .toggle-row{display:flex;gap:8px;margin-bottom:14px;}
   .toggle-row button{flex:1;padding:9px;font-size:12.5px;border-radius:20px;}
   .toggle-row button.active{border-color:var(--brass);color:var(--brass);}
@@ -954,39 +964,62 @@ function muscleStatusPlanned() {
   }
   return result;
 }
-function bodySvg(view, stats, big) {
+function bodySvg(view, stats) {
   const c = m => STATUS_COLOR[stats[m]?.status || 'Stalled'];
+  const st = m => stats[m]?.status || 'Stalled';
+  const part = (m, d) => `<path class="body-part" data-m="${m}" data-status="${st(m)}" style="fill:${c(m)};filter:drop-shadow(0 0 5px ${c(m)})" d="${d}"/>`;
+  const group = (m, inner) => `<g class="body-part" data-m="${m}" data-status="${st(m)}" style="fill:${c(m)};filter:drop-shadow(0 0 5px ${c(m)})">${inner}</g>`;
+  const scanBg = `
+    <g class="scan-bg" stroke="rgba(61,165,255,0.10)" fill="none">
+      <circle cx="100" cy="190" r="150"/><circle cx="100" cy="190" r="110"/><circle cx="100" cy="190" r="70"/>
+      <line x1="100" y1="10" x2="100" y2="370"/>
+    </g>`;
+  const head = `<ellipse cx="100" cy="24" rx="15" ry="18" fill="var(--card-2)"/>
+      <path d="M 90 40 C 90 46 90 50 92 54 L 108 54 C 110 50 110 46 110 40 Z" fill="var(--card-2)"/>`;
+  const feet = `<ellipse cx="72" cy="335" rx="13" ry="7" fill="var(--card-2)"/><ellipse cx="128" cy="335" rx="13" ry="7" fill="var(--card-2)"/>`;
+
   if (view === 'front') return `
-    <svg viewBox="0 0 200 360" xmlns="http://www.w3.org/2000/svg">
-      <ellipse cx="100" cy="26" rx="17" ry="19" fill="var(--card-2)"/>
-      <rect x="86" y="42" width="28" height="16" rx="6" fill="${c('Traps')}" class="body-part" data-m="Traps"/>
-      <rect x="68" y="58" width="64" height="46" rx="14" fill="${c('Chest')}" class="body-part" data-m="Chest"/>
-      <ellipse cx="58" cy="66" rx="16" ry="16" fill="${c('Shoulders')}" class="body-part" data-m="Shoulders"/>
-      <ellipse cx="142" cy="66" rx="16" ry="16" fill="${c('Shoulders')}" class="body-part" data-m="Shoulders"/>
-      <rect x="42" y="80" width="20" height="52" rx="9" fill="${c('Biceps')}" class="body-part" data-m="Biceps"/>
-      <rect x="138" y="80" width="20" height="52" rx="9" fill="${c('Biceps')}" class="body-part" data-m="Biceps"/>
-      <rect x="40" y="134" width="20" height="50" rx="9" fill="${c('Forearms')}" class="body-part" data-m="Forearms"/>
-      <rect x="140" y="134" width="20" height="50" rx="9" fill="${c('Forearms')}" class="body-part" data-m="Forearms"/>
-      <rect x="74" y="100" width="52" height="66" rx="12" fill="${c('Abs')}" class="body-part" data-m="Abs"/>
-      <rect x="62" y="168" width="34" height="86" rx="12" fill="${c('Quads')}" class="body-part" data-m="Quads"/>
-      <rect x="104" y="168" width="34" height="86" rx="12" fill="${c('Quads')}" class="body-part" data-m="Quads"/>
-      <rect x="64" y="258" width="30" height="66" rx="10" fill="${c('Calves')}" class="body-part" data-m="Calves"/>
-      <rect x="106" y="258" width="30" height="66" rx="10" fill="${c('Calves')}" class="body-part" data-m="Calves"/>
+    <svg viewBox="0 0 200 400" xmlns="http://www.w3.org/2000/svg">
+      ${scanBg}${head}
+      ${part('Traps', 'M 82 52 C 88 58 94 60 100 60 C 106 60 112 58 118 52 L 112 68 C 106 72 94 72 88 68 Z')}
+      ${part('Shoulders', 'M 82 54 C 68 54 54 62 48 78 C 45 87 47 96 53 100 C 60 92 62 78 72 68 C 78 62 82 58 82 54 Z')}
+      ${part('Shoulders', 'M 118 54 C 132 54 146 62 152 78 C 155 87 153 96 147 100 C 140 92 138 78 128 68 C 122 62 118 58 118 54 Z')}
+      ${part('Chest', 'M 71 62 C 63 68 60 78 61 88 C 62 97 68 103 78 104 C 88 105 97 101 98 92 L 98 60 C 89 58 78 58 71 62 Z')}
+      ${part('Chest', 'M 129 62 C 137 68 140 78 139 88 C 138 97 132 103 122 104 C 112 105 103 101 102 92 L 102 60 C 111 58 122 58 129 62 Z')}
+      ${part('Biceps', 'M 50 84 C 44 84 40 92 40 104 C 40 116 42 126 46 134 C 49 139 58 139 60 132 C 62 122 60 108 58 96 C 57 90 55 84 50 84 Z')}
+      ${part('Biceps', 'M 150 84 C 156 84 160 92 160 104 C 160 116 158 126 154 134 C 151 139 142 139 140 132 C 138 122 140 108 142 96 C 143 90 145 84 150 84 Z')}
+      ${part('Forearms', 'M 44 138 C 40 138 38 146 39 156 C 40 168 42 180 46 190 C 48 194 55 194 56 188 C 58 176 57 160 55 148 C 54 142 49 138 44 138 Z')}
+      ${part('Forearms', 'M 156 138 C 160 138 162 146 161 156 C 160 168 158 180 154 190 C 152 194 145 194 144 188 C 142 176 143 160 145 148 C 146 142 151 138 156 138 Z')}
+      ${group('Abs', `
+        <rect x="80" y="108" width="17" height="16" rx="5"/><rect x="103" y="108" width="17" height="16" rx="5"/>
+        <rect x="80" y="128" width="17" height="16" rx="5"/><rect x="103" y="128" width="17" height="16" rx="5"/>
+        <rect x="81" y="148" width="16" height="15" rx="5"/><rect x="103" y="148" width="16" height="15" rx="5"/>
+        <path d="M 72 106 C 68 118 68 148 74 164 L 80 164 L 80 108 Z" opacity="0.7"/>
+        <path d="M 128 106 C 132 118 132 148 126 164 L 120 164 L 120 108 Z" opacity="0.7"/>`)}
+      ${part('Quads', 'M 66 168 C 58 168 55 190 57 215 C 59 240 63 255 70 258 C 78 261 92 258 94 240 C 96 220 95 190 88 172 C 84 166 74 166 66 168 Z')}
+      ${part('Quads', 'M 134 168 C 142 168 145 190 143 215 C 141 240 137 255 130 258 C 122 261 108 258 106 240 C 104 220 105 190 112 172 C 116 166 126 166 134 168 Z')}
+      ${part('Calves', 'M 68 264 C 62 264 60 278 62 292 C 64 306 68 318 74 320 C 82 322 90 312 90 296 C 90 280 86 266 80 262 Z')}
+      ${part('Calves', 'M 132 264 C 138 264 140 278 138 292 C 136 306 132 318 126 320 C 118 322 110 312 110 296 C 110 280 114 266 120 262 Z')}
+      ${feet}
     </svg>`;
   return `
-    <svg viewBox="0 0 200 360" xmlns="http://www.w3.org/2000/svg">
-      <ellipse cx="100" cy="26" rx="17" ry="19" fill="var(--card-2)"/>
-      <rect x="80" y="42" width="40" height="24" rx="8" fill="${c('Traps')}" class="body-part" data-m="Traps"/>
-      <rect x="64" y="62" width="72" height="84" rx="16" fill="${c('Back')}" class="body-part" data-m="Back"/>
-      <rect x="42" y="80" width="20" height="52" rx="9" fill="${c('Triceps')}" class="body-part" data-m="Triceps"/>
-      <rect x="138" y="80" width="20" height="52" rx="9" fill="${c('Triceps')}" class="body-part" data-m="Triceps"/>
-      <rect x="40" y="134" width="20" height="50" rx="9" fill="${c('Forearms')}" class="body-part" data-m="Forearms"/>
-      <rect x="140" y="134" width="20" height="50" rx="9" fill="${c('Forearms')}" class="body-part" data-m="Forearms"/>
-      <rect x="64" y="168" width="72" height="46" rx="12" fill="${c('Glutes')}" class="body-part" data-m="Glutes"/>
-      <rect x="62" y="216" width="34" height="70" rx="12" fill="${c('Hamstrings')}" class="body-part" data-m="Hamstrings"/>
-      <rect x="104" y="216" width="34" height="70" rx="12" fill="${c('Hamstrings')}" class="body-part" data-m="Hamstrings"/>
-      <rect x="64" y="258" width="30" height="66" rx="10" fill="${c('Calves')}" class="body-part" data-m="Calves"/>
-      <rect x="106" y="258" width="30" height="66" rx="10" fill="${c('Calves')}" class="body-part" data-m="Calves"/>
+    <svg viewBox="0 0 200 400" xmlns="http://www.w3.org/2000/svg">
+      ${scanBg}${head}
+      ${part('Traps', 'M 100 50 L 126 66 C 122 82 112 92 100 96 C 88 92 78 82 74 66 Z')}
+      ${part('Back', 'M 74 64 C 60 62 50 66 46 78 C 42 92 44 112 52 130 C 58 143 68 150 80 150 C 88 150 92 140 92 128 C 92 108 88 84 80 68 Z')}
+      ${part('Back', 'M 126 64 C 140 62 150 66 154 78 C 158 92 156 112 148 130 C 142 143 132 150 120 150 C 112 150 108 140 108 128 C 108 108 112 84 120 68 Z')}
+      ${part('Back', 'M 94 96 L 106 96 L 106 162 L 94 162 Z')}
+      ${part('Triceps', 'M 50 84 C 44 84 40 92 40 104 C 40 116 42 126 46 134 C 49 139 58 139 60 132 C 62 122 60 108 58 96 C 57 90 55 84 50 84 Z')}
+      ${part('Triceps', 'M 150 84 C 156 84 160 92 160 104 C 160 116 158 126 154 134 C 151 139 142 139 140 132 C 138 122 140 108 142 96 C 143 90 145 84 150 84 Z')}
+      ${part('Forearms', 'M 44 138 C 40 138 38 146 39 156 C 40 168 42 180 46 190 C 48 194 55 194 56 188 C 58 176 57 160 55 148 C 54 142 49 138 44 138 Z')}
+      ${part('Forearms', 'M 156 138 C 160 138 162 146 161 156 C 160 168 158 180 154 190 C 152 194 145 194 144 188 C 142 176 143 160 145 148 C 146 142 151 138 156 138 Z')}
+      ${part('Glutes', 'M 100 152 C 82 150 66 156 62 172 C 59 186 65 200 80 203 C 92 205 99 198 100 186 Z')}
+      ${part('Glutes', 'M 100 152 C 118 150 134 156 138 172 C 141 186 135 200 120 203 C 108 205 101 198 100 186 Z')}
+      ${part('Hamstrings', 'M 66 205 C 59 205 56 222 58 242 C 60 256 64 262 71 262 C 79 262 84 254 84 240 C 84 222 80 208 74 204 Z')}
+      ${part('Hamstrings', 'M 134 205 C 141 205 144 222 142 242 C 140 256 136 262 129 262 C 121 262 116 254 116 240 C 116 222 120 208 126 204 Z')}
+      ${part('Calves', 'M 68 264 C 62 264 60 278 62 292 C 64 306 68 318 74 320 C 82 322 90 312 90 296 C 90 280 86 266 80 262 Z')}
+      ${part('Calves', 'M 132 264 C 138 264 140 278 138 292 C 136 306 132 318 126 320 C 118 322 110 312 110 296 C 110 280 114 266 120 262 Z')}
+      ${feet}
     </svg>`;
 }
 function statusCounts(stats) {
@@ -1187,7 +1220,7 @@ function renderMuscleDetail() {
       <div class="muscle-detail-list">
         ${sorted.map(m => {
           const s = stats[m]; const maxW = Math.max(...s.weeks, 1);
-          return `<div class="muscle-detail-row">
+          return `<div class="muscle-detail-row" data-m="${m}">
             <div class="muscle-detail-row-top">
               <div><div class="m-name">${m}</div><div class="m-vol">${s.volume.toLocaleString()} ${muscleDetailMode==='Past'?'vol this week':'planned emphasis'}</div></div>
               <span class="status-badge" style="background:${STATUS_COLOR[s.status]}22;color:${STATUS_COLOR[s.status]};">${s.status}</span>
@@ -1197,6 +1230,12 @@ function renderMuscleDetail() {
         }).join('')}
       </div>
     </div>`;
+  document.querySelectorAll('#trends-muscle-detail .body-part').forEach(p => {
+    p.addEventListener('click', () => {
+      const row = document.querySelector(`.muscle-detail-row[data-m="${p.dataset.m}"]`);
+      if (row) { row.scrollIntoView({ behavior: 'smooth', block: 'center' }); row.classList.add('flash'); setTimeout(() => row.classList.remove('flash'), 900); }
+    });
+  });
   document.getElementById('back-to-dashboard').addEventListener('click', () => { trendsView = 'dashboard'; renderTrends(); });
   document.getElementById('mode-past').addEventListener('click', () => { muscleDetailMode = 'Past'; renderMuscleDetail(); });
   document.getElementById('mode-planned').addEventListener('click', () => { muscleDetailMode = 'Planned'; renderMuscleDetail(); });
