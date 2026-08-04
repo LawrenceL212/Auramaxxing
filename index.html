@@ -396,17 +396,17 @@ import {
    Firebase console → Project settings → General → Your apps → SDK config.
    ========================================================================= */
 const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_PROJECT.firebaseapp.com",
-  projectId: "YOUR_PROJECT_ID",
-  storageBucket: "YOUR_PROJECT.appspot.com",
-  messagingSenderId: "YOUR_SENDER_ID",
-  appId: "YOUR_APP_ID"
+  apiKey: "AIzaSyCmS8AsUKTqSZmeRjZkAnQDpgVmf168ZGY",
+  authDomain: "auramaxxing-3d4bb.firebaseapp.com",
+  projectId: "auramaxxing-3d4bb",
+  storageBucket: "auramaxxing-3d4bb.firebasestorage.app",
+  messagingSenderId: "634364008045",
+  appId: "1:634364008045:web:6e982579ecb217750e5164",
+  measurementId: "G-2Q07XYJPYY"
 };
 
 let app, auth, db, configOk = true;
 try {
-  if (firebaseConfig.apiKey === "YOUR_API_KEY") throw new Error("not configured");
   app = initializeApp(firebaseConfig);
   auth = getAuth(app);
   db = getFirestore(app);
