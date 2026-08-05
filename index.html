@@ -119,31 +119,56 @@
   /* ---------- Quest / program ---------- */
   .program-empty{text-align:center;padding:20px 8px;}
   .program-empty p{color:var(--text-dim);font-size:14px;margin:6px 0 16px;}
-  .day-nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;}
+  .day-nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
   .day-nav button{background:none;border:none;color:var(--text-dim);font-size:20px;cursor:pointer;padding:4px 10px;}
-  .day-nav .day-label{font-family:var(--font-mono);font-size:12px;color:var(--text-faint);}
+  .day-nav .day-label{font-family:var(--font-mono);font-size:11px;color:var(--text-faint);letter-spacing:0.05em;}
+  .day-dots{display:flex;gap:5px;justify-content:center;margin-bottom:14px;}
+  .day-dot{width:7px;height:7px;border-radius:50%;background:var(--card-2);border:1px solid var(--border);transition:all .2s ease;}
+  .day-dot.current{background:var(--brass);border-color:var(--brass);box-shadow:0 0 6px var(--brass);width:16px;border-radius:4px;}
+  .day-dot.done{background:var(--growing);border-color:var(--growing);}
   .tag{font-size:10.5px;padding:3px 8px;border-radius:3px;background:var(--brass-dim);color:var(--brass);text-transform:uppercase;letter-spacing:0.03em;border:1px solid var(--border);}
   .tag.tag-alt{background:var(--violet-dim);color:var(--violet);}
   .muscle-tags{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0;}
-  .day-title{font-family:var(--font-display);font-size:19px;margin:6px 0 10px;letter-spacing:0.02em;}
+  .day-title-row{display:flex;align-items:center;justify-content:space-between;margin:8px 0 10px;}
+  .day-title{font-family:var(--font-display);font-size:19px;letter-spacing:0.02em;margin:0;}
+  .day-complete-badge{font-size:10.5px;padding:4px 9px;border-radius:20px;background:rgba(139,107,255,0.15);color:var(--violet);border:1px solid var(--violet);white-space:nowrap;}
   .day-ex-preview{color:var(--text-dim);font-size:14px;line-height:1.9;margin-bottom:14px;}
   .day-footer{display:flex;align-items:center;justify-content:space-between;border-top:1px solid var(--border);padding-top:14px;}
   .day-footer .last{font-size:12px;color:var(--text-faint);}
-  .start-btn{background:var(--brass);color:#06111f;border:none;border-radius:20px;padding:11px 20px;font-weight:700;font-size:14px;cursor:pointer;display:flex;align-items:center;gap:6px;}
+  .start-btn{background:var(--brass);color:#06111f;border:none;border-radius:20px;padding:11px 22px;font-weight:700;font-size:14px;cursor:pointer;display:flex;align-items:center;gap:6px;box-shadow:0 0 14px rgba(61,165,255,0.35);}
 
-  .exercise-row-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;gap:10px;}
-  .exercise-row-head select{flex:1;padding:10px;background:var(--card-2);border:1px solid var(--border);border-radius:6px;color:var(--text);}
+  .exercise-row-head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px;gap:10px;}
+  .ex-picker-btn{flex:1;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:12px 14px;background:var(--card-2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:15px;font-weight:600;cursor:pointer;text-align:left;}
+  .ex-picker-btn.placeholder{color:var(--text-faint);font-weight:400;}
+  .ex-picker-btn .chev{color:var(--text-faint);font-size:13px;}
+  .ex-set-count{font-size:11px;color:var(--text-faint);font-family:var(--font-mono);white-space:nowrap;margin-top:14px;}
   .remove-x{background:none;border:none;color:var(--text-faint);font-size:18px;cursor:pointer;padding:0 4px;}
-  .sets-list{display:flex;flex-direction:column;gap:8px;}
-  .set-row{display:grid;grid-template-columns:24px 1fr 1fr auto;gap:8px;align-items:center;}
-  .set-row .set-idx{color:var(--text-faint);font-size:12px;font-family:var(--font-mono);}
-  .set-row input{padding:9px 10px;font-size:14px;background:var(--card-2);border:1px solid var(--border);border-radius:6px;color:var(--text);width:100%;}
-  .add-set-btn{margin-top:10px;font-size:12.5px;padding:8px 12px;}
+  .sets-list{display:flex;flex-direction:column;gap:6px;margin-top:12px;}
+  .set-table-head{display:grid;grid-template-columns:22px 1fr 1fr 26px;gap:8px;padding:0 2px;margin-bottom:2px;}
+  .set-table-head span{font-size:10px;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.05em;text-align:center;}
+  .set-table-head span:first-child{text-align:left;}
+  .set-row{display:grid;grid-template-columns:22px 1fr 1fr 26px;gap:8px;align-items:center;padding:6px 2px;border-radius:6px;transition:background .2s ease;}
+  .set-row.complete{background:var(--brass-dim);}
+  .set-row .set-idx{color:var(--text-faint);font-size:12px;font-family:var(--font-mono);text-align:center;}
+  .stepper{display:flex;align-items:center;background:var(--card-2);border:1px solid var(--border);border-radius:6px;overflow:hidden;}
+  .stepper button{background:none;border:none;color:var(--brass);font-size:16px;width:26px;height:32px;cursor:pointer;flex-shrink:0;}
+  .stepper button:active{background:var(--brass-dim);}
+  .stepper input{width:100%;min-width:0;text-align:center;background:none;border:none;color:var(--text);font-size:14px;padding:0;font-family:var(--font-mono);}
+  .stepper input::-webkit-outer-spin-button, .stepper input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0;}
+  .add-set-btn{margin-top:10px;font-size:12px;padding:7px 14px;border-radius:20px;}
   .add-exercise-btn{width:100%;border-style:dashed;color:var(--text-dim);}
   .date-row{display:flex;gap:10px;margin-bottom:16px;}
   .date-row .field{flex:1;margin-bottom:0;}
   .save-bar{position:sticky;bottom:76px;margin-top:20px;}
   .save-msg{font-size:12.5px;color:var(--growing);margin-top:8px;text-align:center;}
+  .picker-list{max-height:50vh;overflow-y:auto;margin-top:4px;}
+  .picker-item{display:flex;align-items:center;justify-content:space-between;padding:12px 8px;border-top:1px solid var(--border);cursor:pointer;}
+  .picker-item:first-child{border-top:none;}
+  .picker-item:active{background:var(--card-2);}
+  .picker-item .pi-name{font-size:14.5px;font-weight:600;}
+  .picker-item .pi-muscle{font-size:11.5px;color:var(--brass);margin-top:2px;}
+  .picker-item .pi-equip{font-size:10px;color:var(--text-faint);background:var(--card-2);padding:3px 8px;border-radius:4px;}
+
 
   /* program editor */
   .day-editor{border:1px dashed var(--border);border-radius:6px;padding:12px;margin-bottom:10px;}
@@ -729,6 +754,11 @@ function renderProgramCard() {
   day.exercises.forEach(n => { const m = (EXERCISES_ALL[n]||{}).muscles || {}; Object.keys(m).forEach(k => muscles.add(k)); });
   const preview = day.exercises.slice(0, 4);
   const more = day.exercises.length - preview.length;
+  const doneToday = day.lastDate === todayStr();
+  const dots = myProgram.days.map((d, i) => {
+    const cls = i === idx ? 'current' : (d.lastDate === todayStr() ? 'done' : '');
+    return `<span class="day-dot ${cls}"></span>`;
+  }).join('');
 
   wrap.innerHTML = `
     <div class="card">
@@ -737,11 +767,15 @@ function renderProgramCard() {
         <span class="day-label">DAY ${idx+1} / ${myProgram.days.length}</span>
         <button id="prog-next">›</button>
       </div>
+      <div class="day-dots">${dots}</div>
       <div style="display:flex;align-items:center;gap:8px;">
         ${day.tag ? `<span class="tag tag-alt">${escapeHtml(day.tag)}</span>` : ''}
         <button class="icon-btn" id="edit-program-btn" style="margin-left:auto;">✎ Edit</button>
       </div>
-      <p class="day-title">${escapeHtml(myProgram.name)} — ${escapeHtml(day.name)}</p>
+      <div class="day-title-row">
+        <p class="day-title">${escapeHtml(myProgram.name)} — ${escapeHtml(day.name)}</p>
+        ${doneToday ? '<span class="day-complete-badge">✓ Done today</span>' : ''}
+      </div>
       <div class="muscle-tags">${[...muscles].map(m => `<span class="tag">${m}</span>`).join('') || '<span class="tag">No exercises yet</span>'}</div>
       <div class="day-ex-preview">
         ${preview.map(n => '• ' + escapeHtml(n)).join('<br/>')}
@@ -826,35 +860,108 @@ async function saveProgram() {
 
 /* ---- ad-hoc exercise logger ---- */
 const exerciseRows = document.getElementById('exercise-rows');
+
+function openExercisePicker(onSelect) {
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.innerHTML = `
+    <div class="modal">
+      <h3>Choose an exercise</h3>
+      <input type="text" class="lib-search" id="picker-search" placeholder="Search exercises…" />
+      <div class="picker-list" id="picker-list"></div>
+    </div>`;
+  document.body.appendChild(overlay);
+  const searchEl = overlay.querySelector('#picker-search');
+  const listEl = overlay.querySelector('#picker-list');
+  function renderList() {
+    const q = searchEl.value.toLowerCase();
+    const names = Object.keys(EXERCISES_ALL).sort().filter(n => n.toLowerCase().includes(q));
+    listEl.innerHTML = names.map(n => {
+      const def = EXERCISES_ALL[n];
+      const primary = Object.keys(def.muscles || {})[0] || '';
+      return `<div class="picker-item" data-name="${escapeHtml(n)}">
+        <div><div class="pi-name">${escapeHtml(n)}</div><div class="pi-muscle">${primary}</div></div>
+        <span class="pi-equip">${def.equipment || ''}</span>
+      </div>`;
+    }).join('') || `<p class="empty-state" style="padding:20px 0;">No matches.</p>`;
+    listEl.querySelectorAll('.picker-item').forEach(item => item.addEventListener('click', () => {
+      onSelect(item.dataset.name);
+      overlay.remove();
+    }));
+  }
+  searchEl.addEventListener('input', renderList);
+  overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
+  renderList();
+  searchEl.focus();
+}
+
 function addExerciseRow(presetName) {
   const row = document.createElement('div');
   row.className = 'exercise-row';
+  row.dataset.exName = presetName || '';
   row.innerHTML = `
     <div class="exercise-row-head">
-      <select class="ex-select">${exerciseOptionsHtml(presetName||'')}</select>
+      <button type="button" class="ex-picker-btn ${presetName ? '' : 'placeholder'}">
+        <span class="ex-picker-label">${presetName ? escapeHtml(presetName) : 'Choose exercise…'}</span>
+        <span class="chev">▾</span>
+      </button>
       <button type="button" class="remove-x">×</button>
     </div>
     <div class="muscle-tags"></div>
+    <div class="set-table-head hidden"><span>#</span><span>Reps</span><span>Weight</span><span></span></div>
     <div class="sets-list"></div>
     <button type="button" class="btn add-set-btn">+ Add set</button>
   `;
-  const select = row.querySelector('.ex-select');
+  const pickerBtn = row.querySelector('.ex-picker-btn');
+  const pickerLabel = row.querySelector('.ex-picker-label');
+  const tableHead = row.querySelector('.set-table-head');
   const tagsEl = row.querySelector('.muscle-tags');
   const setsList = row.querySelector('.sets-list');
 
+  function stepper(cls, value, min, step) {
+    return `<div class="stepper">
+      <button type="button" class="step-down">−</button>
+      <input type="number" class="${cls}" value="${value ?? ''}" min="${min}" step="${step}" inputmode="decimal" />
+      <button type="button" class="step-up">+</button>
+    </div>`;
+  }
+  function checkComplete(setRow) {
+    const reps = Number(setRow.querySelector('.set-reps').value) || 0;
+    setRow.classList.toggle('complete', reps > 0);
+  }
   function addSetRow() {
     const idx = setsList.children.length + 1;
     const setRow = document.createElement('div');
     setRow.className = 'set-row';
-    setRow.innerHTML = `<span class="set-idx">${idx}</span><input type="number" placeholder="Reps" class="set-reps" min="0" /><input type="number" placeholder="Weight" class="set-weight" min="0" step="0.5" /><button type="button" class="remove-x set-remove">×</button>`;
+    setRow.innerHTML = `<span class="set-idx">${idx}</span>${stepper('set-reps', '', 0, 1)}${stepper('set-weight', '', 0, 2.5)}<button type="button" class="remove-x set-remove">×</button>`;
+    setRow.querySelector('.step-down').addEventListener('click', (e) => {
+      const input = e.target.parentElement.querySelector('input');
+      const step = Number(input.step) || 1;
+      input.value = Math.max(Number(input.min)||0, (Number(input.value)||0) - step);
+      checkComplete(setRow);
+    });
+    setRow.querySelector('.step-up').addEventListener('click', (e) => {
+      const input = e.target.parentElement.querySelector('input');
+      const step = Number(input.step) || 1;
+      input.value = (Number(input.value)||0) + step;
+      checkComplete(setRow);
+    });
+    setRow.querySelectorAll('input').forEach(inp => inp.addEventListener('input', () => checkComplete(setRow)));
     setRow.querySelector('.set-remove').addEventListener('click', () => { setRow.remove(); [...setsList.children].forEach((r,i) => r.querySelector('.set-idx').textContent = i+1); });
     setsList.appendChild(setRow);
+    tableHead.classList.remove('hidden');
   }
   function refreshTags() {
-    const map = (EXERCISES_ALL[select.value] || {}).muscles || {};
+    const map = (EXERCISES_ALL[row.dataset.exName] || {}).muscles || {};
     tagsEl.innerHTML = Object.keys(map).map(m => `<span class="tag">${m}</span>`).join('');
   }
-  select.addEventListener('change', refreshTags);
+  function selectExercise(name) {
+    row.dataset.exName = name;
+    pickerLabel.textContent = name;
+    pickerBtn.classList.remove('placeholder');
+    refreshTags();
+  }
+  pickerBtn.addEventListener('click', () => openExercisePicker(selectExercise));
   row.querySelector('.add-set-btn').addEventListener('click', addSetRow);
   row.querySelector('.remove-x').addEventListener('click', () => row.remove());
   addSetRow();
@@ -870,7 +977,7 @@ document.getElementById('save-workout-btn').addEventListener('click', async () =
   const time = document.getElementById('workout-time').value || nowTimeStr();
   const exercises = [];
   exerciseRows.querySelectorAll('.exercise-row').forEach(row => {
-    const name = row.querySelector('.ex-select').value;
+    const name = row.dataset.exName;
     if (!name) return;
     const sets = [...row.querySelectorAll('.set-row')].map(sr => ({
       reps: Number(sr.querySelector('.set-reps').value) || 0,
