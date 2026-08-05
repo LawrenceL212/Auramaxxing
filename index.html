@@ -776,30 +776,47 @@ let EXERCISES_ALL = { ...structuredCloneLite(BASE_EXERCISES) };
 function structuredCloneLite(o){ return JSON.parse(JSON.stringify(o)); }
 
 /* =========================================================================
-   ANATOMY ASSET — traced front+back muscle map (see anatomy.svg alongside
-   this file). Loaded once; bodySvg() clones it per render and recolors
-   whichever muscles match the current stats.
+   ANATOMY ASSETS — traced front+back muscle maps, one per body type the user
+   can pick in Settings. Both loaded once; bodySvg() clones whichever template
+   matches the user's preference and recolors muscles per the current stats.
    ========================================================================= */
-let ANATOMY_TEMPLATE = null;
-try {
-  const anatomyText = await fetch('./anatomy.svg').then(r => {
-    if (!r.ok) throw new Error('anatomy.svg not found (' + r.status + ')');
-    return r.text();
-  });
-  ANATOMY_TEMPLATE = new DOMParser().parseFromString(anatomyText, 'image/svg+xml').documentElement;
-  // Figma's vectorizer left a big opaque white "canvas backdrop" rect inside the
-  // Background group (from the original image's white background) — strip it so
-  // our own dark card background shows through instead of a white box.
-  const bg = ANATOMY_TEMPLATE.querySelector('#Background');
-  if (bg) {
-    [...bg.children].forEach(child => {
-      const fill = (child.getAttribute('fill') || '').toLowerCase();
-      if (fill === 'white' || fill === '#fff' || fill === '#ffffff') child.remove();
+const ANATOMY_TEMPLATES = { male: null, female: null };
+// Each file's front/back split point and canvas size differ — measured directly
+// against each exported file, never assumed to match between body types.
+const ANATOMY_CROP = {
+  male:   { front: { viewBox: '0 0 544 1080', w: 544, h: 1080 }, back: { viewBox: '544 0 536 1080', w: 536, h: 1080 } },
+  female: { front: { viewBox: '0 0 553 1080', w: 553, h: 1080 }, back: { viewBox: '553 0 527 1080', w: 527, h: 1080 } },
+};
+async function loadAnatomyTemplate(bodyType) {
+  if (ANATOMY_TEMPLATES[bodyType]) return ANATOMY_TEMPLATES[bodyType];
+  const file = bodyType === 'female' ? './anatomy-female.svg' : './anatomy.svg';
+  try {
+    const anatomyText = await fetch(file).then(r => {
+      if (!r.ok) throw new Error(file + ' not found (' + r.status + ')');
+      return r.text();
     });
+    const template = new DOMParser().parseFromString(anatomyText, 'image/svg+xml').documentElement;
+    // Figma's vectorizer left a big opaque white "canvas backdrop" rect inside the
+    // Background group (from the original image's white background) — strip it so
+    // our own dark card background shows through instead of a white box.
+    const bg = template.querySelector('#Background');
+    if (bg) {
+      [...bg.children].forEach(child => {
+        const fill = (child.getAttribute('fill') || '').toLowerCase();
+        if (fill === 'white' || fill === '#fff' || fill === '#ffffff') child.remove();
+      });
+    }
+    ANATOMY_TEMPLATES[bodyType] = template;
+    return template;
+  } catch (e) {
+    console.warn(`Could not load ${file} — muscle map will show a loading placeholder.`, e);
+    return null;
   }
-} catch (e) {
-  console.warn('Could not load anatomy.svg — muscle map will show a loading placeholder.', e);
 }
+// Preload the default (male) template immediately; the other loads lazily the
+// first time someone actually switches to it, so we're not fetching a file
+// most users may never need.
+await loadAnatomyTemplate('male');
 
 /* =========================================================================
    STATE
@@ -930,6 +947,14 @@ function openSettingsModal() {
         <input id="settings-goal" type="number" min="1" max="14" value="${profile.weeklyGoal || 3}" />
         <p style="font-size:11.5px;color:var(--text-faint);margin:6px 0 0;">Used by the Streaks widget on Trends.</p>
       </div>
+      <div class="field">
+        <label>Muscle map body type</label>
+        <div class="weekday-chips">
+          <button type="button" class="weekday-chip body-type-chip ${(profile.bodyType||'male')==='male'?'on':''}" data-type="male" style="flex:1;">Male</button>
+          <button type="button" class="weekday-chip body-type-chip ${profile.bodyType==='female'?'on':''}" data-type="female" style="flex:1;">Female</button>
+        </div>
+        <p style="font-size:11.5px;color:var(--text-faint);margin:6px 0 0;">Changes the body shape on your Muscle Activation chart in Trends. Purely visual — doesn't affect your tracked data.</p>
+      </div>
       <div style="display:flex;gap:10px;margin-top:6px;">
         <button class="btn" id="cancel-settings" style="flex:1;">Cancel</button>
         <button class="btn btn-primary" id="save-settings" style="flex:2;">Save</button>
@@ -937,6 +962,11 @@ function openSettingsModal() {
       <p class="auth-error" id="settings-error" style="margin-top:10px;"></p>
     </div>`;
   document.body.appendChild(overlay);
+  let selectedBodyType = profile.bodyType || 'male';
+  overlay.querySelectorAll('.body-type-chip').forEach(chip => chip.addEventListener('click', () => {
+    selectedBodyType = chip.dataset.type;
+    overlay.querySelectorAll('.body-type-chip').forEach(c => c.classList.toggle('on', c.dataset.type === selectedBodyType));
+  }));
   overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
   overlay.querySelector('#cancel-settings').addEventListener('click', () => overlay.remove());
   overlay.querySelector('#save-settings').addEventListener('click', async () => {
@@ -947,10 +977,12 @@ function openSettingsModal() {
     const saveBtn = overlay.querySelector('#save-settings');
     saveBtn.disabled = true; saveBtn.textContent = 'Saving…';
     try {
-      await setDoc(doc(db, 'users', currentUser.uid), { displayName: newName, weeklyGoal: newGoal }, { merge: true });
+      await setDoc(doc(db, 'users', currentUser.uid), { displayName: newName, weeklyGoal: newGoal, bodyType: selectedBodyType }, { merge: true });
       await updateProfile(currentUser, { displayName: newName });
       profile.displayName = newName;
       profile.weeklyGoal = newGoal;
+      profile.bodyType = selectedBodyType;
+      await loadAnatomyTemplate(selectedBodyType); // make sure the chosen body's art is ready before we re-render
       document.getElementById('user-avatar').textContent = initials(newName);
       overlay.remove();
       await loadAllData();
@@ -970,6 +1002,7 @@ if (configOk) {
       document.getElementById('user-avatar').textContent = initials(profile.displayName);
       document.getElementById('auth-screen').style.display = 'none';
       document.getElementById('app').style.display = 'flex';
+      await loadAnatomyTemplate(profile.bodyType === 'female' ? 'female' : 'male');
       await loadAllData();
     } else {
       currentUser = null;
@@ -1530,15 +1563,17 @@ function muscleStatusPlanned() {
   }
   return result;
 }
-/* ANATOMY_TEMPLATE is loaded once near the top of this script */
+/* ANATOMY_TEMPLATES is loaded once near the top of this script, one per body type */
 function muscleFromId(id) {
   if (!id) return null;
   const stripped = id.replace(/_\d+$/, ''); // Figma dedupes repeated names as "Name_2", "Name_3"...
   return MUSCLES.includes(stripped) ? stripped : null;
 }
 function bodySvg(view, stats) {
-  if (!ANATOMY_TEMPLATE) return '<div class="empty-state" style="padding:20px;">Loading anatomy…</div>';
-  const clone = ANATOMY_TEMPLATE.cloneNode(true);
+  const bodyType = (profile && profile.bodyType === 'female') ? 'female' : 'male';
+  const template = ANATOMY_TEMPLATES[bodyType];
+  if (!template) return '<div class="empty-state" style="padding:20px;">Loading anatomy…</div>';
+  const clone = template.cloneNode(true);
   clone.querySelectorAll('[id]').forEach(el => {
     const m = muscleFromId(el.id);
     if (!m) return;
@@ -1580,16 +1615,12 @@ function bodySvg(view, stats) {
       shape.style.fill = 'var(--stalled)';
     });
   }
-  // front figure sits at x 0–544, back figure at x 544–1080 in the source file
-  if (view === 'front') {
-    clone.setAttribute('viewBox', '0 0 544 1080');
-    clone.setAttribute('width', '544');
-    clone.setAttribute('height', '1080');
-  } else {
-    clone.setAttribute('viewBox', '544 0 536 1080');
-    clone.setAttribute('width', '536');
-    clone.setAttribute('height', '1080');
-  }
+  // Each body type's source file has its own measured front/back split point —
+  // never assumed to match between male and female files.
+  const crop = ANATOMY_CROP[bodyType][view];
+  clone.setAttribute('viewBox', crop.viewBox);
+  clone.setAttribute('width', String(crop.w));
+  clone.setAttribute('height', String(crop.h));
   // the source file's <mask>/<clipPath> ids aren't unique once both views render
   // side by side on the same page — suffix them per view (whatever Figma happened to
   // auto-generate this export) so neither view steals the other's mask/clip definition.
