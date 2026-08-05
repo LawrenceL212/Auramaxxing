@@ -1389,6 +1389,19 @@ function bodySvg(view, stats) {
       shape.style.fill = color;
     });
   });
+  // Head, hands/feet ("misc"), and the groin covering aren't tracked muscles — they're
+  // just skin-toned filler shapes from the original artwork. Recolor them to a muted
+  // slate tone so the figure reads as a monochrome holographic silhouette rather than
+  // clashing warm skin tones sitting next to the neon status colors.
+  ['Head', 'misc', 'Groin'].forEach(nonMuscleId => {
+    const group = clone.querySelector('#' + CSS.escape(nonMuscleId));
+    if (!group) return;
+    [group, ...group.querySelectorAll('*')].forEach(shape => {
+      if (shape.getAttribute('fill') === 'none') return;
+      shape.setAttribute('fill', 'var(--text-dim)');
+      shape.style.fill = 'var(--text-dim)';
+    });
+  });
   // front figure sits at x 0–544, back figure at x 544–1080 in the source file
   if (view === 'front') {
     clone.setAttribute('viewBox', '0 0 544 1080');
