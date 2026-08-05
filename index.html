@@ -169,6 +169,62 @@
   .picker-item .pi-muscle{font-size:11.5px;color:var(--brass);margin-top:2px;}
   .picker-item .pi-equip{font-size:10px;color:var(--text-faint);background:var(--card-2);padding:3px 8px;border-radius:4px;}
 
+  /* ---------- Quest feed (Solo Leveling style quest cards) ---------- */
+  .quest-feed-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
+  .quest-feed-title{font-family:var(--font-display);font-size:15px;letter-spacing:0.04em;color:var(--text-dim);text-transform:uppercase;}
+
+  .quest-card{
+    position:relative;background:
+      radial-gradient(ellipse 300px 200px at 15% -10%, rgba(61,165,255,0.14), transparent 60%),
+      linear-gradient(180deg, rgba(61,165,255,0.06), transparent 30%), var(--card);
+    border:1px solid var(--brass);border-radius:2px;padding:22px 20px;margin-bottom:16px;
+    box-shadow:0 0 0 1px rgba(61,165,255,0.15), 0 0 30px -8px rgba(61,165,255,0.45), inset 0 0 40px -20px rgba(61,165,255,0.4);
+  }
+  .quest-card::before,.quest-card::after{content:"";position:absolute;width:14px;height:14px;border-color:var(--brass);pointer-events:none;}
+  .quest-card::before{top:-1px;left:-1px;border-top:2px solid;border-left:2px solid;}
+  .quest-card::after{bottom:-1px;right:-1px;border-bottom:2px solid;border-right:2px solid;}
+  .quest-card.quest-complete{border-color:var(--violet);box-shadow:0 0 0 1px rgba(139,107,255,0.15), 0 0 30px -8px rgba(139,107,255,0.5);}
+  .quest-card.quest-complete::before,.quest-card.quest-complete::after{border-color:var(--violet);}
+  .quest-eyebrow{font-family:var(--font-mono);font-size:11px;letter-spacing:0.3em;color:var(--brass);text-align:center;margin-bottom:14px;}
+  .quest-flavor{text-align:center;font-size:14.5px;color:var(--text-dim);margin:0 0 18px;line-height:1.6;}
+  .quest-flavor b{color:var(--text);}
+  .quest-goal-label{text-align:center;font-family:var(--font-display);font-size:13px;letter-spacing:0.15em;color:var(--text-faint);margin-bottom:12px;position:relative;}
+  .quest-goal-label::before,.quest-goal-label::after{content:"";position:absolute;top:50%;width:26%;height:1px;background:var(--border);}
+  .quest-goal-label::before{left:0;}
+  .quest-goal-label::after{right:0;}
+  .quest-checklist{margin-bottom:18px;}
+  .quest-check-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 4px;border-bottom:1px solid var(--border);}
+  .quest-check-row:last-child{border-bottom:none;}
+  .quest-check-row .qc-name{font-size:14px;flex:1;}
+  .quest-check-row .qc-progress{font-size:11.5px;font-family:var(--font-mono);color:var(--text-faint);white-space:nowrap;}
+  .quest-check-row .qc-box{font-size:16px;color:var(--text-faint);width:20px;text-align:center;}
+  .quest-check-row.complete .qc-name{color:var(--growing);}
+  .quest-check-row.complete .qc-box{color:var(--growing);text-shadow:0 0 6px var(--growing);}
+  .quest-warning{text-align:center;font-size:12px;color:var(--excess);line-height:1.6;margin:0 0 18px;padding:0 6px;}
+  .quest-card.quest-complete .quest-warning{color:var(--violet);}
+  .quest-complete-btn{
+    display:block;width:100%;padding:13px;border-radius:4px;font-weight:700;font-size:14px;letter-spacing:0.05em;text-transform:uppercase;
+    background:var(--brass);color:#06111f;border:none;cursor:pointer;box-shadow:0 0 16px rgba(61,165,255,0.4);
+  }
+  .quest-card.quest-complete .quest-complete-btn{background:var(--violet);box-shadow:0 0 16px rgba(139,107,255,0.4);cursor:default;}
+
+  .rest-card{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:24px 20px;margin-bottom:16px;text-align:center;}
+  .rest-title{font-family:var(--font-display);font-size:17px;color:var(--maintaining);margin:0 0 8px;letter-spacing:0.04em;}
+  .rest-sub{font-size:13.5px;color:var(--text-dim);line-height:1.6;margin:0;}
+
+  .preview-label{font-size:11px;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.08em;margin:4px 0 10px;}
+  .preview-feed{display:flex;flex-direction:column;gap:10px;}
+  .preview-card{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:14px 16px;opacity:0.82;}
+  .preview-card-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;}
+  .preview-name{font-size:14.5px;font-weight:600;}
+  .preview-sub{font-size:12px;color:var(--text-faint);margin:0 0 10px;}
+
+  .weekday-chips{display:flex;gap:6px;flex-wrap:wrap;}
+  .weekday-chip{padding:8px 12px;border-radius:20px;background:var(--card-2);border:1px solid var(--border);color:var(--text-dim);font-size:12.5px;cursor:pointer;}
+  .weekday-chip.on{background:var(--brass-dim);border-color:var(--brass);color:var(--brass);font-weight:700;}
+  .ex-chip-sets,.ex-chip-reps{background:none;border:none;border-bottom:1px solid var(--border);color:var(--brass);font-size:12px;text-align:center;padding:0;font-family:var(--font-mono);}
+  .ex-chip-x{color:var(--text-faint);font-size:11px;}
+
 
   /* program editor */
   .day-editor{border:1px dashed var(--border);border-radius:6px;padding:12px;margin-bottom:10px;}
@@ -562,7 +618,7 @@ try {
    ========================================================================= */
 let currentUser = null, profile = null, authMode = "login";
 let allUsers = [], myWorkouts = [], allWorkouts = [], myWeights = [];
-let myProgram = null;       // { name, days:[{name,tag,exercises:[names],lastDate}], currentDayIndex }
+let myProgram = null;       // { name, schedule:['Mon',...], days:[{name,tag,exercises:[{name,sets,reps}],lastDate}], currentDayIndex }
 let customExercises = [];   // from Firestore
 let activeDayIndex = null;  // which program day is being logged right now
 let editingProgram = false;
@@ -577,6 +633,23 @@ let selectedHistoryDate = todayStr();
 function todayStr(d = new Date()) { const dt = new Date(d); dt.setMinutes(dt.getMinutes() - dt.getTimezoneOffset()); return dt.toISOString().slice(0, 10); }
 function nowTimeStr() { const d = new Date(); return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0'); }
 function daysAgo(n) { const d = new Date(); d.setDate(d.getDate() - n); return d; }
+const WEEKDAYS = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+function todayWeekday() { return WEEKDAYS[(new Date().getDay() + 6) % 7]; }
+function migrateProgram(prog) {
+  if (!prog) return prog;
+  if (!prog.schedule) prog.schedule = [...WEEKDAYS]; // legacy programs: train every day, unchanged behavior
+  (prog.days || []).forEach(day => {
+    day.exercises = (day.exercises || []).map(ex =>
+      typeof ex === 'string' ? { name: ex, sets: 3, reps: 10 } : ex);
+  });
+  return prog;
+}
+function setsLoggedToday(name) {
+  return myWorkouts.filter(w => w.date === todayStr())
+    .flatMap(w => w.exercises)
+    .filter(e => e.name === name)
+    .reduce((sum, e) => sum + e.sets.filter(s => s.reps > 0).length, 0);
+}
 function startOfWeek(d) { const dt = new Date(d); const day = dt.getDay(); const diff = (day === 0 ? -6 : 1) - day; dt.setDate(dt.getDate() + diff); dt.setHours(0,0,0,0); return dt; }
 function initials(name) { return (name || "?").trim().split(/\s+/).map(w => w[0]).slice(0,2).join("").toUpperCase(); }
 function escapeHtml(str) { return String(str || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
@@ -681,7 +754,7 @@ function switchView(name) {
   if (name === 'trends') { trendsView = 'dashboard'; renderTrends(); }
   if (name === 'exercises') renderExerciseLibrary();
   if (name === 'history') renderCalendar();
-  if (name === 'quest') renderProgramCard();
+  if (name === 'quest') renderQuestFeed();
 }
 
 /* =========================================================================
@@ -700,13 +773,13 @@ async function loadAllData() {
   rebuildExercisesAll();
 
   const progSnap = await getDoc(doc(db, 'programs', currentUser.uid));
-  myProgram = progSnap.exists() ? progSnap.data() : null;
+  myProgram = migrateProgram(progSnap.exists() ? progSnap.data() : null);
 
   const wtSnap = await getDocs(query(collection(db, 'bodyweight'), where('uid','==', currentUser.uid)));
   myWeights = wtSnap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a,b) => a.date.localeCompare(b.date));
 
   populateExerciseSelects();
-  renderProgramCard();
+  renderQuestFeed();
   renderBoard();
   renderTrends();
   renderExerciseLibrary();
@@ -727,7 +800,7 @@ function exerciseOptionsHtml(selected) {
 document.getElementById('workout-date').value = todayStr();
 document.getElementById('workout-time').value = nowTimeStr();
 
-function renderProgramCard() {
+function renderQuestFeed() {
   const wrap = document.getElementById('program-card-wrap');
   const editorWrap = document.getElementById('program-editor-wrap');
   if (editingProgram) {
@@ -740,57 +813,75 @@ function renderProgramCard() {
   if (!myProgram || !myProgram.days || !myProgram.days.length) {
     wrap.innerHTML = `
       <div class="card program-empty">
-        <p class="display" style="font-size:15px;color:var(--text-dim);">No active program</p>
-        <p>Build a split so the System knows what's next.</p>
-        <button class="btn btn-primary" id="build-program-btn" style="width:auto;padding:11px 20px;">+ Create program</button>
+        <p class="display" style="font-size:15px;color:var(--text-dim);">No active plan</p>
+        <p>Build one so the System knows what's next.</p>
+        <button class="btn btn-primary" id="build-program-btn" style="width:auto;padding:11px 20px;">+ Create plan</button>
       </div>`;
-    document.getElementById('build-program-btn').addEventListener('click', () => { editingProgram = true; renderProgramCard(); });
+    document.getElementById('build-program-btn').addEventListener('click', () => { editingProgram = true; renderQuestFeed(); });
     return;
   }
 
   const idx = myProgram.currentDayIndex % myProgram.days.length;
-  const day = myProgram.days[idx];
-  const muscles = new Set();
-  day.exercises.forEach(n => { const m = (EXERCISES_ALL[n]||{}).muscles || {}; Object.keys(m).forEach(k => muscles.add(k)); });
-  const preview = day.exercises.slice(0, 4);
-  const more = day.exercises.length - preview.length;
-  const doneToday = day.lastDate === todayStr();
-  const dots = myProgram.days.map((d, i) => {
-    const cls = i === idx ? 'current' : (d.lastDate === todayStr() ? 'done' : '');
-    return `<span class="day-dot ${cls}"></span>`;
+  const today = todayWeekday();
+  const isScheduledToday = myProgram.schedule.includes(today);
+  const cards = [];
+
+  if (isScheduledToday) {
+    const day = myProgram.days[idx];
+    const checklist = day.exercises.map(ex => {
+      const done = setsLoggedToday(ex.name);
+      const complete = done >= ex.sets;
+      return `<div class="quest-check-row ${complete ? 'complete' : ''}">
+        <span class="qc-name">${escapeHtml(ex.name)}</span>
+        <span class="qc-progress">[${Math.min(done, ex.sets)}/${ex.sets} sets · ${ex.reps} reps]</span>
+        <span class="qc-box">${complete ? '☑' : '☐'}</span>
+      </div>`;
+    }).join('');
+    const allComplete = day.exercises.length > 0 && day.exercises.every(ex => setsLoggedToday(ex.name) >= ex.sets);
+    cards.push(`
+      <div class="quest-card ${allComplete ? 'quest-complete' : ''}">
+        <div class="quest-eyebrow">⚠ QUEST INFO</div>
+        <p class="quest-flavor">[Daily Quest: <b>${escapeHtml(day.name)}</b> has arrived.]</p>
+        <div class="quest-goal-label">GOAL</div>
+        <div class="quest-checklist">${checklist}</div>
+        <p class="quest-warning">${allComplete ? 'Quest cleared. Your streak holds.' : 'WARNING: leaving this quest incomplete puts your streak at risk.'}</p>
+        <button class="quest-complete-btn" id="quest-begin-btn">${allComplete ? '✓ Quest Cleared' : 'Begin Quest'}</button>
+      </div>`);
+  } else {
+    cards.push(`
+      <div class="rest-card">
+        <p class="rest-title">Rest Day</p>
+        <p class="rest-sub">Not a scheduled training day. Recovery counts too — log an extra session below if you want to anyway.</p>
+      </div>`);
+  }
+
+  const rotationOrder = myProgram.days.map((_, offset) => (idx + offset) % myProgram.days.length);
+  const upcoming = isScheduledToday ? rotationOrder.filter(i => i !== idx) : rotationOrder;
+  const previewCards = upcoming.map(i => {
+    const d = myProgram.days[i];
+    return `<div class="preview-card" data-idx="${i}">
+      <div class="preview-card-head">
+        <span class="preview-name">${escapeHtml(d.name)}</span>
+        ${d.tag ? `<span class="tag tag-alt">${escapeHtml(d.tag)}</span>` : ''}
+      </div>
+      <p class="preview-sub">${d.exercises.length} exercises · Last: ${fmtDaysAgo(d.lastDate)}</p>
+      <button class="btn btn-sm preview-start-btn" data-idx="${i}">Do this instead</button>
+    </div>`;
   }).join('');
 
   wrap.innerHTML = `
-    <div class="card">
-      <div class="day-nav">
-        <button id="prog-prev">‹</button>
-        <span class="day-label">DAY ${idx+1} / ${myProgram.days.length}</span>
-        <button id="prog-next">›</button>
-      </div>
-      <div class="day-dots">${dots}</div>
-      <div style="display:flex;align-items:center;gap:8px;">
-        ${day.tag ? `<span class="tag tag-alt">${escapeHtml(day.tag)}</span>` : ''}
-        <button class="icon-btn" id="edit-program-btn" style="margin-left:auto;">✎ Edit</button>
-      </div>
-      <div class="day-title-row">
-        <p class="day-title">${escapeHtml(myProgram.name)} — ${escapeHtml(day.name)}</p>
-        ${doneToday ? '<span class="day-complete-badge">✓ Done today</span>' : ''}
-      </div>
-      <div class="muscle-tags">${[...muscles].map(m => `<span class="tag">${m}</span>`).join('') || '<span class="tag">No exercises yet</span>'}</div>
-      <div class="day-ex-preview">
-        ${preview.map(n => '• ' + escapeHtml(n)).join('<br/>')}
-        ${more > 0 ? `<br/>• and ${more} more` : ''}
-      </div>
-      <div class="day-footer">
-        <span class="last">Last: ${fmtDaysAgo(day.lastDate)}</span>
-        <button class="start-btn" id="start-day-btn">▶ Start</button>
-      </div>
-    </div>`;
+    <div class="quest-feed-head">
+      <span class="quest-feed-title">${escapeHtml(myProgram.name)}</span>
+      <button class="icon-btn" id="edit-program-btn">✎ Edit plan</button>
+    </div>
+    ${cards.join('')}
+    ${previewCards ? `<p class="preview-label">Up next in rotation</p><div class="preview-feed">${previewCards}</div>` : ''}
+  `;
 
-  document.getElementById('prog-prev').addEventListener('click', () => { myProgram.currentDayIndex = (idx - 1 + myProgram.days.length) % myProgram.days.length; renderProgramCard(); });
-  document.getElementById('prog-next').addEventListener('click', () => { myProgram.currentDayIndex = (idx + 1) % myProgram.days.length; renderProgramCard(); });
-  document.getElementById('edit-program-btn').addEventListener('click', () => { editingProgram = true; renderProgramCard(); });
-  document.getElementById('start-day-btn').addEventListener('click', () => startProgramDay(idx));
+  document.getElementById('edit-program-btn').addEventListener('click', () => { editingProgram = true; renderQuestFeed(); });
+  const beginBtn = document.getElementById('quest-begin-btn');
+  if (beginBtn) beginBtn.addEventListener('click', () => startProgramDay(idx));
+  wrap.querySelectorAll('.preview-start-btn').forEach(btn => btn.addEventListener('click', () => startProgramDay(Number(btn.dataset.idx))));
 }
 
 function startProgramDay(idx) {
@@ -799,26 +890,39 @@ function startProgramDay(idx) {
   document.getElementById('logger-title').textContent = `Logging: ${day.name}`;
   const rows = document.getElementById('exercise-rows');
   rows.innerHTML = '';
-  day.exercises.forEach(name => addExerciseRow(name));
+  day.exercises.forEach(ex => addExerciseRow(ex.name, ex.sets, ex.reps));
   document.querySelector('.view-area').scrollTo({ top: document.getElementById('logger-title').offsetTop - 20, behavior: 'smooth' });
 }
 
 function renderProgramEditor(wrap) {
-  if (!myProgram) myProgram = { name: '', days: [], currentDayIndex: 0 };
+  if (!myProgram) myProgram = { name: '', schedule: [], days: [], currentDayIndex: 0 };
+  if (!myProgram.schedule) myProgram.schedule = [];
   wrap.innerHTML = `
     <div class="card">
-      <div class="card-title"><h3>Build your program</h3></div>
-      <div class="field"><label>Program name</label><input id="prog-name-input" value="${escapeHtml(myProgram.name||'')}" placeholder="e.g. Lock In Gang" /></div>
+      <div class="card-title"><h3>Build your plan</h3></div>
+      <div class="field"><label>Plan name</label><input id="prog-name-input" value="${escapeHtml(myProgram.name||'')}" placeholder="e.g. Lock In Gang" /></div>
+      <div class="field">
+        <label>Training days</label>
+        <div class="weekday-chips" id="weekday-chips">
+          ${WEEKDAYS.map(d => `<button type="button" class="weekday-chip ${myProgram.schedule.includes(d)?'on':''}" data-day="${d}">${d}</button>`).join('')}
+        </div>
+      </div>
       <div id="prog-days-wrap"></div>
-      <button class="btn add-exercise-btn" id="add-day-btn">+ Add day</button>
+      <button class="btn add-exercise-btn" id="add-day-btn">+ Add workout day</button>
       <div style="display:flex;gap:10px;margin-top:16px;">
         <button class="btn" id="cancel-program-btn" style="flex:1;">Cancel</button>
-        <button class="btn btn-primary" id="save-program-btn" style="flex:2;">Save program</button>
+        <button class="btn btn-primary" id="save-program-btn" style="flex:2;">Save plan</button>
       </div>
     </div>`;
   renderDayEditors();
+  wrap.querySelectorAll('.weekday-chip').forEach(chip => chip.addEventListener('click', () => {
+    const d = chip.dataset.day;
+    const i = myProgram.schedule.indexOf(d);
+    if (i === -1) myProgram.schedule.push(d); else myProgram.schedule.splice(i, 1);
+    chip.classList.toggle('on');
+  }));
   document.getElementById('add-day-btn').addEventListener('click', () => { myProgram.days.push({ name: `Day ${myProgram.days.length+1}`, tag:'', exercises: [], lastDate: null }); renderDayEditors(); });
-  document.getElementById('cancel-program-btn').addEventListener('click', () => { editingProgram = false; renderProgramCard(); });
+  document.getElementById('cancel-program-btn').addEventListener('click', () => { editingProgram = false; renderQuestFeed(); });
   document.getElementById('save-program-btn').addEventListener('click', saveProgram);
 
   function renderDayEditors() {
@@ -831,31 +935,45 @@ function renderProgramEditor(wrap) {
           <button class="remove-x remove-day-btn">×</button>
         </div>
         <div class="ex-chip-row">
-          ${day.exercises.map((n,ei) => `<span class="ex-chip">${escapeHtml(n)}<button class="remove-ex-btn" data-ei="${ei}">×</button></span>`).join('')}
+          ${day.exercises.map((ex,ei) => `<span class="ex-chip">
+            ${escapeHtml(ex.name)}
+            <input type="number" class="ex-chip-sets" data-ei="${ei}" value="${ex.sets}" min="1" style="width:28px;" /><span class="ex-chip-x">×</span><input type="number" class="ex-chip-reps" data-ei="${ei}" value="${ex.reps}" min="1" style="width:28px;" />
+            <button class="remove-ex-btn" data-ei="${ei}">×</button>
+          </span>`).join('')}
         </div>
-        <select class="day-add-ex-select">${exerciseOptionsHtml('')}</select>
-      </div>`).join('') || '<p style="color:var(--text-faint);font-size:13px;">No days yet — add one to get started.</p>';
+        <button type="button" class="btn btn-sm day-add-ex-btn">+ Add exercise</button>
+      </div>`).join('') || '<p style="color:var(--text-faint);font-size:13px;">No workout days yet — add one to get started.</p>';
 
     daysWrap.querySelectorAll('.day-name-input').forEach((el,di) => el.addEventListener('input', () => myProgram.days[di].name = el.value));
     daysWrap.querySelectorAll('.day-tag-input').forEach((el,di) => el.addEventListener('input', () => myProgram.days[di].tag = el.value));
     daysWrap.querySelectorAll('.remove-day-btn').forEach((btn,di) => btn.addEventListener('click', () => { myProgram.days.splice(di,1); renderDayEditors(); }));
-    daysWrap.querySelectorAll('.day-add-ex-select').forEach((sel,di) => sel.addEventListener('change', () => {
-      if (sel.value) { myProgram.days[di].exercises.push(sel.value); renderDayEditors(); }
-    }));
     daysWrap.querySelectorAll('.day-editor').forEach(el => {
       const di = Number(el.dataset.di);
       el.querySelectorAll('.remove-ex-btn').forEach(btn => btn.addEventListener('click', () => {
         myProgram.days[di].exercises.splice(Number(btn.dataset.ei), 1); renderDayEditors();
       }));
+      el.querySelectorAll('.ex-chip-sets').forEach(inp => inp.addEventListener('change', () => {
+        myProgram.days[di].exercises[Number(inp.dataset.ei)].sets = Math.max(1, Number(inp.value) || 1);
+      }));
+      el.querySelectorAll('.ex-chip-reps').forEach(inp => inp.addEventListener('change', () => {
+        myProgram.days[di].exercises[Number(inp.dataset.ei)].reps = Math.max(1, Number(inp.value) || 1);
+      }));
+      el.querySelector('.day-add-ex-btn').addEventListener('click', () => {
+        openExercisePicker(name => {
+          myProgram.days[di].exercises.push({ name, sets: 3, reps: 10 });
+          renderDayEditors();
+        });
+      });
     });
   }
 }
 async function saveProgram() {
-  myProgram.name = document.getElementById('prog-name-input').value.trim() || 'My Program';
+  myProgram.name = document.getElementById('prog-name-input').value.trim() || 'My Plan';
   myProgram.currentDayIndex = myProgram.currentDayIndex || 0;
+  if (!myProgram.schedule.length) myProgram.schedule = [...WEEKDAYS];
   await setDoc(doc(db, 'programs', currentUser.uid), myProgram);
   editingProgram = false;
-  renderProgramCard();
+  renderQuestFeed();
 }
 
 /* ---- ad-hoc exercise logger ---- */
@@ -895,7 +1013,7 @@ function openExercisePicker(onSelect) {
   searchEl.focus();
 }
 
-function addExerciseRow(presetName) {
+function addExerciseRow(presetName, targetSets, targetReps) {
   const row = document.createElement('div');
   row.className = 'exercise-row';
   row.dataset.exName = presetName || '';
@@ -929,11 +1047,11 @@ function addExerciseRow(presetName) {
     const reps = Number(setRow.querySelector('.set-reps').value) || 0;
     setRow.classList.toggle('complete', reps > 0);
   }
-  function addSetRow() {
+  function addSetRow(prefillReps) {
     const idx = setsList.children.length + 1;
     const setRow = document.createElement('div');
     setRow.className = 'set-row';
-    setRow.innerHTML = `<span class="set-idx">${idx}</span>${stepper('set-reps', '', 0, 1)}${stepper('set-weight', '', 0, 2.5)}<button type="button" class="remove-x set-remove">×</button>`;
+    setRow.innerHTML = `<span class="set-idx">${idx}</span>${stepper('set-reps', prefillReps || '', 0, 1)}${stepper('set-weight', '', 0, 2.5)}<button type="button" class="remove-x set-remove">×</button>`;
     setRow.querySelector('.step-down').addEventListener('click', (e) => {
       const input = e.target.parentElement.querySelector('input');
       const step = Number(input.step) || 1;
@@ -962,9 +1080,13 @@ function addExerciseRow(presetName) {
     refreshTags();
   }
   pickerBtn.addEventListener('click', () => openExercisePicker(selectExercise));
-  row.querySelector('.add-set-btn').addEventListener('click', addSetRow);
+  row.querySelector('.add-set-btn').addEventListener('click', () => addSetRow());
   row.querySelector('.remove-x').addEventListener('click', () => row.remove());
-  addSetRow();
+  if (targetSets > 0) {
+    for (let i = 0; i < targetSets; i++) addSetRow(targetReps);
+  } else {
+    addSetRow();
+  }
   refreshTags();
   exerciseRows.appendChild(row);
 }
@@ -1085,8 +1207,8 @@ function muscleStatusPast() {
 function muscleStatusPlanned() {
   const planned = {}; MUSCLES.forEach(m => planned[m] = 0);
   if (myProgram && myProgram.days) {
-    for (const day of myProgram.days) for (const name of day.exercises) {
-      const map = (EXERCISES_ALL[name]||{}).muscles || {};
+    for (const day of myProgram.days) for (const ex of day.exercises) {
+      const map = (EXERCISES_ALL[ex.name]||{}).muscles || {};
       for (const [m, emph] of Object.entries(map)) planned[m] += emph;
     }
   }
