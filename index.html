@@ -562,18 +562,18 @@ const BASE_EXERCISES = {
   "Skull Crusher": { muscles: { "Triceps": 1 }, equipment: "Barbell" },
   "Overhead Tricep Extension": { muscles: { "Triceps": 1 }, equipment: "Dumbbell" },
   "Close Grip Bench Press": { muscles: { "Triceps": 1, "Middle Chest": 0.4 }, equipment: "Barbell" },
-  "Squat": { muscles: { "Quads": 1, "Glutes": 0.6, "Hamstrings": 0.3 }, equipment: "Barbell" },
-  "Front Squat": { muscles: { "Quads": 1, "Glutes": 0.4 }, equipment: "Barbell" },
+  "Squat": { muscles: { "Quads": 1, "Glutes": 0.6, "Hamstrings": 0.3, "Hip Flexors": 0.3 }, equipment: "Barbell" },
+  "Front Squat": { muscles: { "Quads": 1, "Glutes": 0.4, "Hip Flexors": 0.3 }, equipment: "Barbell" },
   "Leg Press": { muscles: { "Quads": 1, "Glutes": 0.4 }, equipment: "Machine" },
-  "Lunges": { muscles: { "Quads": 0.8, "Glutes": 0.6, "Hamstrings": 0.3 }, equipment: "Dumbbell" },
-  "Leg Extension": { muscles: { "Quads": 1 }, equipment: "Machine" },
+  "Lunges": { muscles: { "Quads": 0.8, "Glutes": 0.6, "Hamstrings": 0.3, "Hip Flexors": 0.3 }, equipment: "Dumbbell" },
+  "Leg Extension": { muscles: { "Quads": 1, "Hip Flexors": 0.2 }, equipment: "Machine" },
   "Leg Curl": { muscles: { "Hamstrings": 1 }, equipment: "Machine" },
   "Romanian Deadlift": { muscles: { "Hamstrings": 1, "Glutes": 0.6, "Lower Back": 0.3 }, equipment: "Barbell" },
   "Hip Thrust": { muscles: { "Glutes": 1, "Hamstrings": 0.3 }, equipment: "Barbell" },
   "Calf Raise": { muscles: { "Calves": 1 }, equipment: "Machine" },
   "Crunch": { muscles: { "Upper Abs": 1 }, equipment: "Bodyweight" },
   "Plank": { muscles: { "Upper Abs": 0.5, "Lower Abs": 0.5 }, equipment: "Bodyweight" },
-  "Hanging Leg Raise": { muscles: { "Lower Abs": 1, "Forearms": 0.2 }, equipment: "Bodyweight" },
+  "Hanging Leg Raise": { muscles: { "Lower Abs": 1, "Hip Flexors": 0.6, "Forearms": 0.2 }, equipment: "Bodyweight" },
   "Cable Crunch": { muscles: { "Upper Abs": 1 }, equipment: "Cable" },
   "Russian Twist": { muscles: { "Obliques": 1 }, equipment: "Bodyweight" },
   "Shrugs": { muscles: { "Traps": 1 }, equipment: "Barbell" },
@@ -650,29 +650,29 @@ const BASE_EXERCISES = {
   "Bicycle Crunch": { muscles: { "Obliques": 1, "Upper Abs": 0.4 }, equipment: "Bodyweight" },
   "Side Plank": { muscles: { "Obliques": 1 }, equipment: "Bodyweight" },
   "Hanging Knee Raise": { muscles: { "Lower Abs": 1 }, equipment: "Bodyweight" },
-  "Toes to Bar": { muscles: { "Lower Abs": 1, "Forearms": 0.3 }, equipment: "Bodyweight" },
+  "Toes to Bar": { muscles: { "Lower Abs": 1, "Hip Flexors": 0.6, "Forearms": 0.3 }, equipment: "Bodyweight" },
   "Cable Woodchopper": { muscles: { "Obliques": 1 }, equipment: "Cable" },
-  "V-Up": { muscles: { "Upper Abs": 0.7, "Lower Abs": 0.7 }, equipment: "Bodyweight" },
+  "V-Up": { muscles: { "Upper Abs": 0.7, "Lower Abs": 0.7, "Hip Flexors": 0.4 }, equipment: "Bodyweight" },
   "Mountain Climber": { muscles: { "Lower Abs": 1, "Front Shoulders": 0.2 }, equipment: "Bodyweight" },
   "Ab Wheel Rollout": { muscles: { "Upper Abs": 1, "Lower Back": 0.2 }, equipment: "Bodyweight" },
-  "Dragon Flag": { muscles: { "Lower Abs": 1, "Upper Abs": 0.4 }, equipment: "Bodyweight" },
+  "Dragon Flag": { muscles: { "Lower Abs": 1, "Upper Abs": 0.4, "Hip Flexors": 0.3 }, equipment: "Bodyweight" },
   "Sit Up": { muscles: { "Upper Abs": 1 }, equipment: "Bodyweight" },
   "Decline Sit Up": { muscles: { "Upper Abs": 1 }, equipment: "Bodyweight" },
   "Flutter Kicks": { muscles: { "Lower Abs": 1 }, equipment: "Bodyweight" },
-  "L-Sit": { muscles: { "Lower Abs": 1, "Triceps": 0.3 }, equipment: "Bodyweight" },
+  "L-Sit": { muscles: { "Lower Abs": 1, "Hip Flexors": 0.7, "Triceps": 0.3 }, equipment: "Bodyweight" },
   "Lying Leg Raise": { muscles: { "Lower Abs": 1 }, equipment: "Bodyweight" },
 
   /* ---- Legs, expanded ---- */
   "Hack Squat": { muscles: { "Quads": 1, "Glutes": 0.3 }, equipment: "Machine" },
-  "Bulgarian Split Squat": { muscles: { "Quads": 1, "Glutes": 0.5 }, equipment: "Dumbbell" },
+  "Bulgarian Split Squat": { muscles: { "Quads": 1, "Glutes": 0.5, "Hip Flexors": 0.3 }, equipment: "Dumbbell" },
   "Goblet Squat": { muscles: { "Quads": 1, "Glutes": 0.3 }, equipment: "Dumbbell" },
   "Pistol Squat": { muscles: { "Quads": 1, "Glutes": 0.4 }, equipment: "Bodyweight" },
   "Jump Squat": { muscles: { "Quads": 1, "Glutes": 0.3, "Calves": 0.3 }, equipment: "Bodyweight" },
   "Wall Sit": { muscles: { "Quads": 1 }, equipment: "Bodyweight" },
   "Bodyweight Squat": { muscles: { "Quads": 1, "Glutes": 0.4 }, equipment: "Bodyweight" },
   "Walking Lunge": { muscles: { "Quads": 0.8, "Glutes": 0.6, "Hamstrings": 0.3 }, equipment: "Dumbbell" },
-  "Reverse Lunge": { muscles: { "Quads": 0.8, "Glutes": 0.6 }, equipment: "Dumbbell" },
-  "Step Up": { muscles: { "Quads": 0.8, "Glutes": 0.6 }, equipment: "Dumbbell" },
+  "Reverse Lunge": { muscles: { "Quads": 0.8, "Glutes": 0.6, "Hip Flexors": 0.3 }, equipment: "Dumbbell" },
+  "Step Up": { muscles: { "Quads": 0.8, "Glutes": 0.6, "Hip Flexors": 0.4 }, equipment: "Dumbbell" },
   "Nordic Curl": { muscles: { "Hamstrings": 1 }, equipment: "Bodyweight" },
   "Glute Bridge": { muscles: { "Glutes": 1, "Hamstrings": 0.3 }, equipment: "Bodyweight" },
   "Cable Kickback": { muscles: { "Glutes": 1 }, equipment: "Cable" },
@@ -716,7 +716,7 @@ const BASE_EXERCISES = {
 };
 const MUSCLES = [
   "Upper Chest","Middle Chest","Lower Chest","Front Shoulders","Lateral Shoulders","Rear Shoulders",
-  "Biceps","Triceps","Forearms","Upper Abs","Middle Abs","Lower Abs","Obliques",
+  "Biceps","Triceps","Forearms","Upper Abs","Middle Abs","Lower Abs","Obliques","Hip Flexors",
   "Traps","Upper Back","Lats","Lower Back","Glutes","Hamstrings","Quads","Calves"
 ];
 const EQUIPMENT_TYPES = ["Barbell","Dumbbell","Cable","Machine","Bodyweight"];
@@ -1387,22 +1387,23 @@ function bodySvg(view, stats) {
       shape.style.fill = color;
     });
   });
-  // front figure sits at x 0–214, back figure at x 214–437 in the source file
+  // front figure sits at x 0–544, back figure at x 544–1080 in the source file
   if (view === 'front') {
-    clone.setAttribute('viewBox', '0 0 214 396');
-    clone.setAttribute('width', '214');
-    clone.setAttribute('height', '396');
+    clone.setAttribute('viewBox', '0 0 544 1080');
+    clone.setAttribute('width', '544');
+    clone.setAttribute('height', '1080');
   } else {
-    clone.setAttribute('viewBox', '214 0 223 396');
-    clone.setAttribute('width', '223');
-    clone.setAttribute('height', '396');
+    clone.setAttribute('viewBox', '544 0 536 1080');
+    clone.setAttribute('width', '536');
+    clone.setAttribute('height', '1080');
   }
   // the source file's <mask>/<clipPath> ids aren't unique once both views render
-  // side by side on the same page — suffix them per view so neither steals the other's mask.
-  ['mask0_0_1', 'clip0_0_1'].forEach(oldId => {
+  // side by side on the same page — suffix them per view (whatever Figma happened to
+  // auto-generate this export) so neither view steals the other's mask/clip definition.
+  clone.querySelectorAll('mask[id], clipPath[id]').forEach(def => {
+    const oldId = def.getAttribute('id');
     const newId = oldId + '-' + view;
-    const def = clone.querySelector('#' + oldId);
-    if (def) def.setAttribute('id', newId);
+    def.setAttribute('id', newId);
     clone.querySelectorAll(`[mask="url(#${oldId})"]`).forEach(el => el.setAttribute('mask', `url(#${newId})`));
     clone.querySelectorAll(`[clip-path="url(#${oldId})"]`).forEach(el => el.setAttribute('clip-path', `url(#${newId})`));
   });
