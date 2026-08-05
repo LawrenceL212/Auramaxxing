@@ -327,6 +327,27 @@
   .muscle-check{display:flex;align-items:center;gap:6px;background:var(--card-2);border:1px solid var(--border);border-radius:20px;padding:6px 12px;font-size:12.5px;cursor:pointer;}
   .muscle-check.on{border-color:var(--brass);color:var(--brass);}
 
+  /* ---------- Workout logging modal ---------- */
+  .workout-modal-overlay{position:fixed;inset:0;background:rgba(5,7,13,0.85);backdrop-filter:blur(4px);z-index:60;display:flex;flex-direction:column;}
+  .workout-modal{background:var(--bg);display:flex;flex-direction:column;height:100%;max-width:640px;margin:0 auto;width:100%;}
+  .workout-modal-header{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--border);flex-shrink:0;}
+  .workout-modal-header h3{margin:0;font-size:16px;}
+  .workout-modal-body{flex:1;overflow-y:auto;padding:16px 20px 100px;}
+  .rest-timer-bar{
+    display:flex;align-items:center;gap:8px;padding:10px 20px;border-bottom:1px solid var(--border);
+    background:var(--card-2);flex-shrink:0;flex-wrap:wrap;
+  }
+  .rest-timer-label{font-size:12px;color:var(--text-dim);font-weight:600;white-space:nowrap;}
+  .rest-timer-presets{display:flex;gap:5px;}
+  .rest-preset-btn{background:var(--card);border:1px solid var(--border);color:var(--text-dim);border-radius:14px;padding:5px 10px;font-size:11.5px;cursor:pointer;}
+  .rest-preset-btn:active{border-color:var(--brass);color:var(--brass);}
+  .rest-timer-display{
+    font-family:var(--font-mono);font-size:16px;color:var(--brass);margin-left:auto;min-width:40px;text-align:right;
+  }
+  .rest-timer-display.done{color:var(--growing);animation:restPulse 1s ease-in-out 3;}
+  @keyframes restPulse{0%,100%{opacity:1;}50%{opacity:0.35;}}
+  .rest-timer-stop{background:none;border:none;color:var(--excess);font-size:11.5px;cursor:pointer;text-decoration:underline;}
+
   /* ---------- History calendar ---------- */
   .cal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
   .cal-head button{background:none;border:none;color:var(--brass);font-size:20px;cursor:pointer;padding:4px 10px;}
@@ -403,26 +424,47 @@
       <div id="program-card-wrap"></div>
       <div id="program-editor-wrap"></div>
 
-      <div class="card">
-        <div class="card-title"><h3 id="logger-title">Log exercises</h3></div>
-        <div class="date-row">
-          <div class="field">
-            <label for="workout-date">Date</label>
-            <input type="date" id="workout-date" />
-          </div>
-          <div class="field">
-            <label for="workout-time">Time</label>
-            <input type="time" id="workout-time" />
-          </div>
+      <button class="btn btn-block" id="manual-log-btn" style="margin-top:4px;">+ Log a workout manually</button>
+    </section>
+
+    <!-- Full-screen workout logging modal — opened by Begin Quest or manual logging -->
+    <div class="workout-modal-overlay hidden" id="workout-modal-overlay">
+      <div class="workout-modal">
+        <div class="workout-modal-header">
+          <h3 id="logger-title">Log exercises</h3>
+          <button class="icon-btn" id="close-workout-modal" style="font-size:20px;">✕</button>
         </div>
-        <div id="exercise-rows"></div>
-        <button class="btn add-exercise-btn" id="add-exercise-btn">+ Add exercise</button>
-        <div class="save-bar">
-          <button class="btn btn-primary" id="save-workout-btn">Complete quest</button>
-          <p class="save-msg hidden" id="save-msg">Quest cleared — XP logged.</p>
+        <div class="rest-timer-bar">
+          <span class="rest-timer-label">⏱ Rest</span>
+          <div class="rest-timer-presets">
+            <button type="button" class="rest-preset-btn" data-secs="30">30s</button>
+            <button type="button" class="rest-preset-btn" data-secs="60">60s</button>
+            <button type="button" class="rest-preset-btn" data-secs="90">90s</button>
+            <button type="button" class="rest-preset-btn" data-secs="120">120s</button>
+          </div>
+          <div class="rest-timer-display" id="rest-timer-display">—</div>
+          <button type="button" class="rest-timer-stop hidden" id="rest-timer-stop">Stop</button>
+        </div>
+        <div class="workout-modal-body">
+          <div class="date-row">
+            <div class="field">
+              <label for="workout-date">Date</label>
+              <input type="date" id="workout-date" />
+            </div>
+            <div class="field">
+              <label for="workout-time">Time</label>
+              <input type="time" id="workout-time" />
+            </div>
+          </div>
+          <div id="exercise-rows"></div>
+          <button class="btn add-exercise-btn" id="add-exercise-btn">+ Add exercise</button>
+          <div class="save-bar">
+            <button class="btn btn-primary" id="save-workout-btn">Complete quest</button>
+            <p class="save-msg hidden" id="save-msg">Quest cleared — XP logged.</p>
+          </div>
         </div>
       </div>
-    </section>
+    </div>
 
     <!-- ---- RANK ---- -->
     <section class="view" id="view-board">
@@ -1097,8 +1139,65 @@ function startProgramDay(idx) {
   const rows = document.getElementById('exercise-rows');
   rows.innerHTML = '';
   day.exercises.forEach(ex => addExerciseRow(ex.name, ex.sets, ex.reps));
-  document.querySelector('.view-area').scrollTo({ top: document.getElementById('logger-title').offsetTop - 20, behavior: 'smooth' });
+  openWorkoutModal();
 }
+
+function openWorkoutModal() {
+  document.getElementById('workout-modal-overlay').classList.remove('hidden');
+  document.body.style.overflow = 'hidden';
+}
+function closeWorkoutModal() {
+  document.getElementById('workout-modal-overlay').classList.add('hidden');
+  document.body.style.overflow = '';
+  stopRestTimer();
+}
+document.getElementById('close-workout-modal').addEventListener('click', closeWorkoutModal);
+document.getElementById('manual-log-btn').addEventListener('click', () => {
+  activeDayIndex = null;
+  document.getElementById('logger-title').textContent = 'Log exercises';
+  const rows = document.getElementById('exercise-rows');
+  rows.innerHTML = '';
+  addExerciseRow();
+  openWorkoutModal();
+});
+
+/* ---- rest timer ---- */
+let restTimerInterval = null;
+function startRestTimer(totalSeconds) {
+  stopRestTimer();
+  let remaining = totalSeconds;
+  const display = document.getElementById('rest-timer-display');
+  const stopBtn = document.getElementById('rest-timer-stop');
+  display.classList.remove('done');
+  stopBtn.classList.remove('hidden');
+  const render = () => {
+    const m = Math.floor(remaining / 60), s = remaining % 60;
+    display.textContent = `${m}:${String(s).padStart(2,'0')}`;
+  };
+  render();
+  restTimerInterval = setInterval(() => {
+    remaining--;
+    if (remaining <= 0) {
+      clearInterval(restTimerInterval);
+      restTimerInterval = null;
+      display.textContent = "Rest's up!";
+      display.classList.add('done');
+      stopBtn.classList.add('hidden');
+      if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
+      return;
+    }
+    render();
+  }, 1000);
+}
+function stopRestTimer() {
+  if (restTimerInterval) { clearInterval(restTimerInterval); restTimerInterval = null; }
+  const display = document.getElementById('rest-timer-display');
+  if (display) { display.textContent = '—'; display.classList.remove('done'); }
+  const stopBtn = document.getElementById('rest-timer-stop');
+  if (stopBtn) stopBtn.classList.add('hidden');
+}
+document.querySelectorAll('.rest-preset-btn').forEach(btn => btn.addEventListener('click', () => startRestTimer(Number(btn.dataset.secs))));
+document.getElementById('rest-timer-stop').addEventListener('click', stopRestTimer);
 
 function renderProgramEditor(wrap) {
   if (!myProgram) myProgram = { name: '', schedule: [], days: [], currentDayIndex: 0 };
@@ -1332,6 +1431,7 @@ document.getElementById('save-workout-btn').addEventListener('click', async () =
     exerciseRows.innerHTML = '';
     addExerciseRow();
     await loadAllData();
+    setTimeout(() => closeWorkoutModal(), 900);
   } catch (err) {
     alert('Could not save: ' + err.message);
   } finally {
