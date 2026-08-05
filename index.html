@@ -1687,18 +1687,17 @@ function renderExerciseLibrary() {
     const primary = Object.keys(def.muscles||{})[0] || '';
     const custom = customByName.get(name);
     return `<div class="ex-card">
-      ${custom ? '<span class="ex-custom-dot" title="Custom exercise"></span>' : ''}
+      ${custom ? '<span class="ex-custom-dot" title="Customized from default"></span>' : ''}
       <p class="ex-name">${escapeHtml(name)}</p>
       <p class="ex-muscle">${primary}</p>
       <span class="ex-equip">${def.equipment || 'Other'}</span>
       <a class="ex-technique-link" href="${techniqueLink(name)}" target="_blank" rel="noopener">▶ Technique</a>
-      ${custom ? `<button type="button" class="ex-edit-link" data-id="${custom.id}">✎ Edit</button>` : ''}
+      <button type="button" class="ex-edit-link" data-name="${escapeHtml(name)}">✎ Edit</button>
     </div>`;
   }).join('') || `<p class="empty-state" style="grid-column:1/-1;">No exercises match.</p>`;
 
   document.getElementById('ex-grid').querySelectorAll('.ex-edit-link').forEach(btn => btn.addEventListener('click', () => {
-    const custom = customExercises.find(c => c.id === btn.dataset.id);
-    if (custom) openEditExerciseModal(custom);
+    openEditExerciseModal(btn.dataset.name);
   }));
 }
 
@@ -1740,29 +1739,33 @@ function openAddExerciseModal() {
   });
 }
 
-function openEditExerciseModal(custom) {
+function openEditExerciseModal(name) {
   const overlay = document.createElement('div');
   overlay.className = 'modal-overlay';
-  const currentMuscles = new Set(Object.keys(custom.muscles || {}));
+  const existingOverride = customExercises.find(c => c.name === name); // Firestore doc, if this exercise already has one
+  const isBaseExercise = Object.prototype.hasOwnProperty.call(BASE_EXERCISES, name); // ships with the app by default
+  const currentDef = EXERCISES_ALL[name] || { muscles: {}, equipment: 'Bodyweight' };
+  const currentMuscles = new Set(Object.keys(currentDef.muscles || {}));
   overlay.innerHTML = `
     <div class="modal">
-      <h3>Edit custom exercise</h3>
+      <h3>Edit exercise</h3>
+      ${isBaseExercise ? `<p style="font-size:12px;color:var(--text-dim);margin:-8px 0 14px;">This ships with the app by default — your changes are saved as a personal override and only affect your own tracking.</p>` : ''}
       <div class="field">
         <label>Name</label>
-        <input value="${escapeHtml(custom.name)}" disabled style="opacity:0.6;" />
-        <p style="font-size:11.5px;color:var(--text-faint);margin:6px 0 0;">Name can't be changed — it's how your logged workouts and program days reference this exercise. If you need a different name, add it as a new exercise instead.</p>
+        <input value="${escapeHtml(name)}" disabled style="opacity:0.6;" />
+        <p style="font-size:11.5px;color:var(--text-faint);margin:6px 0 0;">Name can't be changed — it's how your logged workouts and program days reference this exercise.</p>
       </div>
       <div class="field"><label>Muscles worked (tap to select)</label>
         <div class="muscle-checks" id="edit-ex-muscles">${MUSCLES.map(m => `<span class="muscle-check ${currentMuscles.has(m) ? 'on' : ''}" data-m="${m}">${m}</span>`).join('')}</div>
       </div>
       <div class="field"><label>Equipment</label>
-        <select id="edit-ex-equip">${EQUIPMENT_TYPES.map(e => `<option value="${e}" ${e===custom.equipment?'selected':''}>${e}</option>`).join('')}</select>
+        <select id="edit-ex-equip">${EQUIPMENT_TYPES.map(e => `<option value="${e}" ${e===currentDef.equipment?'selected':''}>${e}</option>`).join('')}</select>
       </div>
       <div style="display:flex;gap:10px;margin-top:6px;">
         <button class="btn" id="cancel-edit-ex" style="flex:1;">Cancel</button>
         <button class="btn btn-primary" id="save-edit-ex" style="flex:2;">Save changes</button>
       </div>
-      <button class="btn" id="delete-edit-ex" style="width:100%;margin-top:10px;color:var(--excess);border-color:var(--excess);">Delete this exercise</button>
+      ${existingOverride ? `<button class="btn" id="delete-edit-ex" style="width:100%;margin-top:10px;color:var(--excess);border-color:var(--excess);">${isBaseExercise ? 'Revert to default' : 'Delete this exercise'}</button>` : ''}
     </div>`;
   document.body.appendChild(overlay);
   const selected = new Set(currentMuscles);
@@ -1776,14 +1779,23 @@ function openEditExerciseModal(custom) {
     if (!selected.size) { alert('Pick at least one muscle.'); return; }
     const muscles = {}; selected.forEach(m => muscles[m] = 1);
     const equipment = document.getElementById('edit-ex-equip').value;
-    await updateDoc(doc(db, 'customExercises', custom.id), { muscles, equipment });
+    if (existingOverride) {
+      await updateDoc(doc(db, 'customExercises', existingOverride.id), { muscles, equipment });
+    } else {
+      // first time this exercise is being customized — create the override doc
+      await addDoc(collection(db, 'customExercises'), { name, muscles, equipment, addedBy: currentUser.uid, createdAt: serverTimestamp() });
+    }
     overlay.remove();
     await loadAllData();
     switchView('exercises');
   });
-  overlay.querySelector('#delete-edit-ex').addEventListener('click', async () => {
-    if (!confirm(`Delete "${custom.name}"? This can't be undone. Any program days or past logs referencing it will show it as an unrecognized exercise.`)) return;
-    await deleteDoc(doc(db, 'customExercises', custom.id));
+  const deleteBtn = overlay.querySelector('#delete-edit-ex');
+  if (deleteBtn) deleteBtn.addEventListener('click', async () => {
+    const msg = isBaseExercise
+      ? `Revert "${name}" back to its default muscle mapping? Your customization will be removed.`
+      : `Delete "${name}"? This can't be undone. Any program days or past logs referencing it will show it as an unrecognized exercise.`;
+    if (!confirm(msg)) return;
+    await deleteDoc(doc(db, 'customExercises', existingOverride.id));
     overlay.remove();
     await loadAllData();
     switchView('exercises');
