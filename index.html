@@ -310,6 +310,8 @@
   .ex-card .ex-muscle{font-size:12px;color:var(--brass);margin:0 0 6px;}
   .ex-card .ex-equip{font-size:10.5px;color:var(--text-faint);background:var(--card-2);display:inline-block;padding:3px 8px;border-radius:4px;}
   .ex-card .ex-custom-dot{position:absolute;top:10px;right:10px;width:6px;height:6px;border-radius:50%;background:var(--violet);}
+  .ex-card .ex-technique-link{display:block;margin-top:8px;font-size:11px;color:var(--brass);text-decoration:none;}
+  .ex-card .ex-technique-link:hover{text-decoration:underline;}
 
   .modal-overlay{position:fixed;inset:0;background:rgba(5,7,13,0.75);backdrop-filter:blur(3px);display:flex;align-items:flex-end;justify-content:center;z-index:50;}
   .modal{background:var(--card);border:1px solid var(--border);border-top-left-radius:16px;border-top-right-radius:16px;padding:20px;width:100%;max-width:640px;max-height:85vh;overflow-y:auto;}
@@ -1638,6 +1640,9 @@ document.getElementById('lib-search').addEventListener('input', renderExerciseLi
 document.getElementById('lib-muscle-filter').addEventListener('change', renderExerciseLibrary);
 document.getElementById('lib-equip-filter').addEventListener('change', renderExerciseLibrary);
 
+function techniqueLink(name) {
+  return `https://www.youtube.com/results?search_query=${encodeURIComponent(name + ' exercise proper form technique')}`;
+}
 function renderExerciseLibrary() {
   const q = (document.getElementById('lib-search').value || '').toLowerCase();
   const muscleFilter = document.getElementById('lib-muscle-filter').value;
@@ -1658,6 +1663,7 @@ function renderExerciseLibrary() {
       <p class="ex-name">${escapeHtml(name)}</p>
       <p class="ex-muscle">${primary}</p>
       <span class="ex-equip">${def.equipment || 'Other'}</span>
+      <a class="ex-technique-link" href="${techniqueLink(name)}" target="_blank" rel="noopener">▶ Technique</a>
     </div>`;
   }).join('') || `<p class="empty-state" style="grid-column:1/-1;">No exercises match.</p>`;
 }
