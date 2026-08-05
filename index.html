@@ -312,6 +312,8 @@
   .ex-card .ex-custom-dot{position:absolute;top:10px;right:10px;width:6px;height:6px;border-radius:50%;background:var(--violet);}
   .ex-card .ex-technique-link{display:block;margin-top:8px;font-size:11px;color:var(--brass);text-decoration:none;}
   .ex-card .ex-technique-link:hover{text-decoration:underline;}
+  .ex-card .ex-edit-link{display:block;margin-top:6px;font-size:11px;color:var(--violet);background:none;border:none;padding:0;cursor:pointer;text-align:left;}
+  .ex-card .ex-edit-link:hover{text-decoration:underline;}
 
   .modal-overlay{position:fixed;inset:0;background:rgba(5,7,13,0.75);backdrop-filter:blur(3px);display:flex;align-items:flex-end;justify-content:center;z-index:50;}
   .modal{background:var(--card);border:1px solid var(--border);border-top-left-radius:16px;border-top-right-radius:16px;padding:20px;width:100%;max-width:640px;max-height:85vh;overflow-y:auto;}
@@ -505,7 +507,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import {
   getFirestore, collection, doc, setDoc, addDoc, getDoc, getDocs,
-  query, where, orderBy, serverTimestamp
+  query, where, orderBy, serverTimestamp, updateDoc, deleteDoc
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 /* =========================================================================
@@ -1648,7 +1650,7 @@ function renderExerciseLibrary() {
   const q = (document.getElementById('lib-search').value || '').toLowerCase();
   const muscleFilter = document.getElementById('lib-muscle-filter').value;
   const equipFilter = document.getElementById('lib-equip-filter').value;
-  const customNames = new Set(customExercises.map(c => c.name));
+  const customByName = new Map(customExercises.map(c => [c.name, c]));
 
   const rows = Object.entries(EXERCISES_ALL).filter(([name, def]) => {
     if (q && !name.toLowerCase().includes(q)) return false;
@@ -1659,14 +1661,21 @@ function renderExerciseLibrary() {
 
   document.getElementById('ex-grid').innerHTML = rows.map(([name, def]) => {
     const primary = Object.keys(def.muscles||{})[0] || '';
+    const custom = customByName.get(name);
     return `<div class="ex-card">
-      ${customNames.has(name) ? '<span class="ex-custom-dot" title="Custom exercise"></span>' : ''}
+      ${custom ? '<span class="ex-custom-dot" title="Custom exercise"></span>' : ''}
       <p class="ex-name">${escapeHtml(name)}</p>
       <p class="ex-muscle">${primary}</p>
       <span class="ex-equip">${def.equipment || 'Other'}</span>
       <a class="ex-technique-link" href="${techniqueLink(name)}" target="_blank" rel="noopener">▶ Technique</a>
+      ${custom ? `<button type="button" class="ex-edit-link" data-id="${custom.id}">✎ Edit</button>` : ''}
     </div>`;
   }).join('') || `<p class="empty-state" style="grid-column:1/-1;">No exercises match.</p>`;
+
+  document.getElementById('ex-grid').querySelectorAll('.ex-edit-link').forEach(btn => btn.addEventListener('click', () => {
+    const custom = customExercises.find(c => c.id === btn.dataset.id);
+    if (custom) openEditExerciseModal(custom);
+  }));
 }
 
 document.getElementById('add-exercise-lib-btn').addEventListener('click', openAddExerciseModal);
@@ -1701,6 +1710,56 @@ function openAddExerciseModal() {
     const muscles = {}; selected.forEach(m => muscles[m] = 1);
     const equipment = document.getElementById('new-ex-equip').value;
     await addDoc(collection(db, 'customExercises'), { name, muscles, equipment, addedBy: currentUser.uid, createdAt: serverTimestamp() });
+    overlay.remove();
+    await loadAllData();
+    switchView('exercises');
+  });
+}
+
+function openEditExerciseModal(custom) {
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  const currentMuscles = new Set(Object.keys(custom.muscles || {}));
+  overlay.innerHTML = `
+    <div class="modal">
+      <h3>Edit custom exercise</h3>
+      <div class="field">
+        <label>Name</label>
+        <input value="${escapeHtml(custom.name)}" disabled style="opacity:0.6;" />
+        <p style="font-size:11.5px;color:var(--text-faint);margin:6px 0 0;">Name can't be changed — it's how your logged workouts and program days reference this exercise. If you need a different name, add it as a new exercise instead.</p>
+      </div>
+      <div class="field"><label>Muscles worked (tap to select)</label>
+        <div class="muscle-checks" id="edit-ex-muscles">${MUSCLES.map(m => `<span class="muscle-check ${currentMuscles.has(m) ? 'on' : ''}" data-m="${m}">${m}</span>`).join('')}</div>
+      </div>
+      <div class="field"><label>Equipment</label>
+        <select id="edit-ex-equip">${EQUIPMENT_TYPES.map(e => `<option value="${e}" ${e===custom.equipment?'selected':''}>${e}</option>`).join('')}</select>
+      </div>
+      <div style="display:flex;gap:10px;margin-top:6px;">
+        <button class="btn" id="cancel-edit-ex" style="flex:1;">Cancel</button>
+        <button class="btn btn-primary" id="save-edit-ex" style="flex:2;">Save changes</button>
+      </div>
+      <button class="btn" id="delete-edit-ex" style="width:100%;margin-top:10px;color:var(--excess);border-color:var(--excess);">Delete this exercise</button>
+    </div>`;
+  document.body.appendChild(overlay);
+  const selected = new Set(currentMuscles);
+  overlay.querySelectorAll('.muscle-check').forEach(chip => chip.addEventListener('click', () => {
+    const m = chip.dataset.m;
+    if (selected.has(m)) { selected.delete(m); chip.classList.remove('on'); } else { selected.add(m); chip.classList.add('on'); }
+  }));
+  overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
+  overlay.querySelector('#cancel-edit-ex').addEventListener('click', () => overlay.remove());
+  overlay.querySelector('#save-edit-ex').addEventListener('click', async () => {
+    if (!selected.size) { alert('Pick at least one muscle.'); return; }
+    const muscles = {}; selected.forEach(m => muscles[m] = 1);
+    const equipment = document.getElementById('edit-ex-equip').value;
+    await updateDoc(doc(db, 'customExercises', custom.id), { muscles, equipment });
+    overlay.remove();
+    await loadAllData();
+    switchView('exercises');
+  });
+  overlay.querySelector('#delete-edit-ex').addEventListener('click', async () => {
+    if (!confirm(`Delete "${custom.name}"? This can't be undone. Any program days or past logs referencing it will show it as an unrecognized exercise.`)) return;
+    await deleteDoc(doc(db, 'customExercises', custom.id));
     overlay.remove();
     await loadAllData();
     switchView('exercises');
