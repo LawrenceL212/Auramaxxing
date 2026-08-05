@@ -518,6 +518,16 @@ try {
     return r.text();
   });
   ANATOMY_TEMPLATE = new DOMParser().parseFromString(anatomyText, 'image/svg+xml').documentElement;
+  // Figma's vectorizer left a big opaque white "canvas backdrop" rect inside the
+  // Background group (from the original image's white background) — strip it so
+  // our own dark card background shows through instead of a white box.
+  const bg = ANATOMY_TEMPLATE.querySelector('#Background');
+  if (bg) {
+    [...bg.children].forEach(child => {
+      const fill = (child.getAttribute('fill') || '').toLowerCase();
+      if (fill === 'white' || fill === '#fff' || fill === '#ffffff') child.remove();
+    });
+  }
 } catch (e) {
   console.warn('Could not load anatomy.svg — muscle map will show a loading placeholder.', e);
 }
@@ -1001,8 +1011,14 @@ function bodySvg(view, stats) {
     el.classList.add('body-part');
     el.dataset.m = m;
     el.dataset.status = status;
-    el.style.fill = color;
     el.style.filter = `drop-shadow(0 0 5px ${color})`;
+    // Some muscles trace as a single <path>, others as a <g> wrapping several
+    // sub-paths (each with its own fill) — recolor the element itself AND
+    // every descendant shape, so a child's own color can't win over ours.
+    [el, ...el.querySelectorAll('*')].forEach(shape => {
+      shape.setAttribute('fill', color);
+      shape.style.fill = color;
+    });
   });
   // front figure sits at x 0–214, back figure at x 214–437 in the source file
   clone.setAttribute('viewBox', view === 'front' ? '0 0 214 396' : '214 0 223 396');
