@@ -1631,6 +1631,20 @@ function bodySvg(view, stats) {
     clone.querySelectorAll(`[mask="url(#${oldId})"]`).forEach(el => el.setAttribute('mask', `url(#${newId})`));
     clone.querySelectorAll(`[clip-path="url(#${oldId})"]`).forEach(el => el.setAttribute('clip-path', `url(#${newId})`));
   });
+  // Neither traced file has real outline strokes on individual shapes — the
+  // "outlines" seen up to now were only ever the edge between two differently
+  // colored fills. When two neighboring muscles happen to share the same
+  // status (very common — e.g. both "Stalled"), there's no boundary at all
+  // and they visually merge into one shape. Give every filled shape a
+  // consistent thin dark stroke so boundaries stay visible no matter what
+  // color sits on either side of them.
+  clone.querySelectorAll('path, circle, ellipse, polygon, rect').forEach(shape => {
+    if (shape.getAttribute('fill') === 'none') return;
+    shape.setAttribute('stroke', 'rgba(5,7,13,0.55)');
+    shape.setAttribute('stroke-width', '1.5');
+    shape.style.stroke = 'rgba(5,7,13,0.55)';
+    shape.style.strokeWidth = '1.5';
+  });
   return new XMLSerializer().serializeToString(clone);
 }
 function statusCounts(stats) {
