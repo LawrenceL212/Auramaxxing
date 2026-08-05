@@ -1389,11 +1389,11 @@ function bodySvg(view, stats) {
       shape.style.fill = color;
     });
   });
-  // Head, hands/feet ("misc"), and the groin covering aren't tracked muscles — they're
-  // just skin-toned filler shapes from the original artwork. Recolor them to a muted
-  // slate tone so the figure reads as a monochrome holographic silhouette rather than
-  // clashing warm skin tones sitting next to the neon status colors.
-  ['Head', 'misc', 'Groin'].forEach(nonMuscleId => {
+  // Head and hands/feet ("misc") aren't tracked muscles, but they ARE recognizable
+  // body landmarks worth seeing clearly — recolor them to a muted slate tone so the
+  // figure reads as a monochrome holographic silhouette instead of clashing warm
+  // skin tones sitting next to the neon status colors.
+  ['Head', 'misc'].forEach(nonMuscleId => {
     const group = clone.querySelector('#' + CSS.escape(nonMuscleId));
     if (!group) return;
     [group, ...group.querySelectorAll('*')].forEach(shape => {
@@ -1402,6 +1402,17 @@ function bodySvg(view, stats) {
       shape.style.fill = 'var(--text-dim)';
     });
   });
+  // The groin covering isn't a landmark anyone needs to actually see — recede it
+  // into the background instead, so it stops drawing the eye as its own shape.
+  const groin = clone.querySelector('#Groin');
+  if (groin) {
+    [groin, ...groin.querySelectorAll('*')].forEach(shape => {
+      if (shape.getAttribute('fill') === 'none') return;
+      shape.setAttribute('fill', 'var(--card)');
+      shape.style.fill = 'var(--card)';
+      shape.style.opacity = '0.6';
+    });
+  }
   // front figure sits at x 0–544, back figure at x 544–1080 in the source file
   if (view === 'front') {
     clone.setAttribute('viewBox', '0 0 544 1080');
