@@ -89,6 +89,7 @@
   .user-chip{display:flex;align-items:center;gap:10px;}
   .avatar{width:32px;height:32px;border-radius:50%;background:var(--brass-dim);color:var(--brass);display:flex;align-items:center;justify-content:center;font-family:var(--font-display);font-size:13px;font-weight:700;}
   .icon-btn{background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:13px;}
+  #settings-btn{font-size:18px;padding:4px 6px;}
   main.view-area{flex:1;padding:20px 20px 100px;max-width:640px;margin:0 auto;width:100%;}
   section.view{display:none;}
   section.view.active{display:block;animation:fade .25s ease;}
@@ -122,7 +123,7 @@
   .day-nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
   .day-nav button{background:none;border:none;color:var(--text-dim);font-size:20px;cursor:pointer;padding:4px 10px;}
   .day-nav .day-label{font-family:var(--font-mono);font-size:11px;color:var(--text-faint);letter-spacing:0.05em;}
-  .day-dots{display:flex;gap:5px;justify-content:center;margin-bottom:14px;}
+  .day-dots{display:flex;gap:5px;justify-content:center;margin:14px 0 4px;}
   .day-dot{width:7px;height:7px;border-radius:50%;background:var(--card-2);border:1px solid var(--border);transition:all .2s ease;}
   .day-dot.current{background:var(--brass);border-color:var(--brass);box-shadow:0 0 6px var(--brass);width:16px;border-radius:4px;}
   .day-dot.done{background:var(--growing);border-color:var(--growing);}
@@ -212,12 +213,16 @@
   .rest-title{font-family:var(--font-display);font-size:17px;color:var(--maintaining);margin:0 0 8px;letter-spacing:0.04em;}
   .rest-sub{font-size:13.5px;color:var(--text-dim);line-height:1.6;margin:0;}
 
-  .preview-label{font-size:11px;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.08em;margin:4px 0 10px;}
-  .preview-feed{display:flex;flex-direction:column;gap:10px;}
-  .preview-card{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:14px 16px;opacity:0.82;}
-  .preview-card-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;}
-  .preview-name{font-size:14.5px;font-weight:600;}
-  .preview-sub{font-size:12px;color:var(--text-faint);margin:0 0 10px;}
+  .rest-note{font-size:12.5px;color:var(--maintaining);text-align:center;margin:0 0 12px;}
+  .quest-carousel{display:flex;align-items:center;gap:8px;}
+  .quest-carousel-card{flex:1;min-width:0;animation:cardSwap .25s ease;}
+  @keyframes cardSwap{from{opacity:0;transform:scale(0.97);}to{opacity:1;transform:scale(1);}}
+  .carousel-arrow{
+    flex-shrink:0;width:36px;height:36px;border-radius:50%;background:var(--card-2);border:1px solid var(--brass);
+    color:var(--brass);font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center;
+    box-shadow:0 0 10px rgba(61,165,255,0.3);
+  }
+  .carousel-arrow:active{background:var(--brass-dim);transform:scale(0.94);}
 
   .weekday-chips{display:flex;gap:6px;flex-wrap:wrap;}
   .weekday-chip{padding:8px 12px;border-radius:20px;background:var(--card-2);border:1px solid var(--border);color:var(--text-dim);font-size:12.5px;cursor:pointer;}
@@ -310,6 +315,10 @@
   .ex-card .ex-muscle{font-size:12px;color:var(--brass);margin:0 0 6px;}
   .ex-card .ex-equip{font-size:10.5px;color:var(--text-faint);background:var(--card-2);display:inline-block;padding:3px 8px;border-radius:4px;}
   .ex-card .ex-custom-dot{position:absolute;top:10px;right:10px;width:6px;height:6px;border-radius:50%;background:var(--violet);}
+  .ex-card .ex-technique-link{display:block;margin-top:8px;font-size:11px;color:var(--brass);text-decoration:none;}
+  .ex-card .ex-technique-link:hover{text-decoration:underline;}
+  .ex-card .ex-edit-link{display:block;margin-top:6px;font-size:11px;color:var(--violet);background:none;border:none;padding:0;cursor:pointer;text-align:left;}
+  .ex-card .ex-edit-link:hover{text-decoration:underline;}
 
   .modal-overlay{position:fixed;inset:0;background:rgba(5,7,13,0.75);backdrop-filter:blur(3px);display:flex;align-items:flex-end;justify-content:center;z-index:50;}
   .modal{background:var(--card);border:1px solid var(--border);border-top-left-radius:16px;border-top-right-radius:16px;padding:20px;width:100%;max-width:640px;max-height:85vh;overflow-y:auto;}
@@ -317,6 +326,27 @@
   .muscle-checks{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;}
   .muscle-check{display:flex;align-items:center;gap:6px;background:var(--card-2);border:1px solid var(--border);border-radius:20px;padding:6px 12px;font-size:12.5px;cursor:pointer;}
   .muscle-check.on{border-color:var(--brass);color:var(--brass);}
+
+  /* ---------- Workout logging modal ---------- */
+  .workout-modal-overlay{position:fixed;inset:0;background:rgba(5,7,13,0.85);backdrop-filter:blur(4px);z-index:60;display:flex;flex-direction:column;}
+  .workout-modal{background:var(--bg);display:flex;flex-direction:column;height:100%;max-width:640px;margin:0 auto;width:100%;}
+  .workout-modal-header{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--border);flex-shrink:0;}
+  .workout-modal-header h3{margin:0;font-size:16px;}
+  .workout-modal-body{flex:1;overflow-y:auto;padding:16px 20px 100px;}
+  .rest-timer-bar{
+    display:flex;align-items:center;gap:8px;padding:10px 20px;border-bottom:1px solid var(--border);
+    background:var(--card-2);flex-shrink:0;flex-wrap:wrap;
+  }
+  .rest-timer-label{font-size:12px;color:var(--text-dim);font-weight:600;white-space:nowrap;}
+  .rest-timer-presets{display:flex;gap:5px;}
+  .rest-preset-btn{background:var(--card);border:1px solid var(--border);color:var(--text-dim);border-radius:14px;padding:5px 10px;font-size:11.5px;cursor:pointer;}
+  .rest-preset-btn:active{border-color:var(--brass);color:var(--brass);}
+  .rest-timer-display{
+    font-family:var(--font-mono);font-size:16px;color:var(--brass);margin-left:auto;min-width:40px;text-align:right;
+  }
+  .rest-timer-display.done{color:var(--growing);animation:restPulse 1s ease-in-out 3;}
+  @keyframes restPulse{0%,100%{opacity:1;}50%{opacity:0.35;}}
+  .rest-timer-stop{background:none;border:none;color:var(--excess);font-size:11.5px;cursor:pointer;text-decoration:underline;}
 
   /* ---------- History calendar ---------- */
   .cal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
@@ -378,6 +408,7 @@
   <header class="topbar">
     <p class="wordmark">AURA<span>MAXX</span></p>
     <div class="user-chip">
+      <button class="icon-btn" id="settings-btn" title="Settings">⚙</button>
       <div class="avatar" id="user-avatar">–</div>
       <button class="icon-btn" id="logout-btn">Log out</button>
     </div>
@@ -393,26 +424,47 @@
       <div id="program-card-wrap"></div>
       <div id="program-editor-wrap"></div>
 
-      <div class="card">
-        <div class="card-title"><h3 id="logger-title">Log exercises</h3></div>
-        <div class="date-row">
-          <div class="field">
-            <label for="workout-date">Date</label>
-            <input type="date" id="workout-date" />
-          </div>
-          <div class="field">
-            <label for="workout-time">Time</label>
-            <input type="time" id="workout-time" />
-          </div>
+      <button class="btn btn-block" id="manual-log-btn" style="margin-top:4px;">+ Log a workout manually</button>
+    </section>
+
+    <!-- Full-screen workout logging modal — opened by Begin Quest or manual logging -->
+    <div class="workout-modal-overlay hidden" id="workout-modal-overlay">
+      <div class="workout-modal">
+        <div class="workout-modal-header">
+          <h3 id="logger-title">Log exercises</h3>
+          <button class="icon-btn" id="close-workout-modal" style="font-size:20px;">✕</button>
         </div>
-        <div id="exercise-rows"></div>
-        <button class="btn add-exercise-btn" id="add-exercise-btn">+ Add exercise</button>
-        <div class="save-bar">
-          <button class="btn btn-primary" id="save-workout-btn">Complete quest</button>
-          <p class="save-msg hidden" id="save-msg">Quest cleared — XP logged.</p>
+        <div class="rest-timer-bar">
+          <span class="rest-timer-label">⏱ Rest</span>
+          <div class="rest-timer-presets">
+            <button type="button" class="rest-preset-btn" data-secs="30">30s</button>
+            <button type="button" class="rest-preset-btn" data-secs="60">60s</button>
+            <button type="button" class="rest-preset-btn" data-secs="90">90s</button>
+            <button type="button" class="rest-preset-btn" data-secs="120">120s</button>
+          </div>
+          <div class="rest-timer-display" id="rest-timer-display">—</div>
+          <button type="button" class="rest-timer-stop hidden" id="rest-timer-stop">Stop</button>
+        </div>
+        <div class="workout-modal-body">
+          <div class="date-row">
+            <div class="field">
+              <label for="workout-date">Date</label>
+              <input type="date" id="workout-date" />
+            </div>
+            <div class="field">
+              <label for="workout-time">Time</label>
+              <input type="time" id="workout-time" />
+            </div>
+          </div>
+          <div id="exercise-rows"></div>
+          <button class="btn add-exercise-btn" id="add-exercise-btn">+ Add exercise</button>
+          <div class="save-bar">
+            <button class="btn btn-primary" id="save-workout-btn">Complete quest</button>
+            <p class="save-msg hidden" id="save-msg">Quest cleared — XP logged.</p>
+          </div>
         </div>
       </div>
-    </section>
+    </div>
 
     <!-- ---- RANK ---- -->
     <section class="view" id="view-board">
@@ -503,7 +555,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import {
   getFirestore, collection, doc, setDoc, addDoc, getDoc, getDocs,
-  query, where, orderBy, serverTimestamp
+  query, where, orderBy, serverTimestamp, updateDoc, deleteDoc
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 /* =========================================================================
@@ -560,18 +612,18 @@ const BASE_EXERCISES = {
   "Skull Crusher": { muscles: { "Triceps": 1 }, equipment: "Barbell" },
   "Overhead Tricep Extension": { muscles: { "Triceps": 1 }, equipment: "Dumbbell" },
   "Close Grip Bench Press": { muscles: { "Triceps": 1, "Middle Chest": 0.4 }, equipment: "Barbell" },
-  "Squat": { muscles: { "Quads": 1, "Glutes": 0.6, "Hamstrings": 0.3 }, equipment: "Barbell" },
-  "Front Squat": { muscles: { "Quads": 1, "Glutes": 0.4 }, equipment: "Barbell" },
+  "Squat": { muscles: { "Quads": 1, "Glutes": 0.6, "Hamstrings": 0.3, "Hip Flexors": 0.3 }, equipment: "Barbell" },
+  "Front Squat": { muscles: { "Quads": 1, "Glutes": 0.4, "Hip Flexors": 0.3 }, equipment: "Barbell" },
   "Leg Press": { muscles: { "Quads": 1, "Glutes": 0.4 }, equipment: "Machine" },
-  "Lunges": { muscles: { "Quads": 0.8, "Glutes": 0.6, "Hamstrings": 0.3 }, equipment: "Dumbbell" },
-  "Leg Extension": { muscles: { "Quads": 1 }, equipment: "Machine" },
+  "Lunges": { muscles: { "Quads": 0.8, "Glutes": 0.6, "Hamstrings": 0.3, "Hip Flexors": 0.3 }, equipment: "Dumbbell" },
+  "Leg Extension": { muscles: { "Quads": 1, "Hip Flexors": 0.2 }, equipment: "Machine" },
   "Leg Curl": { muscles: { "Hamstrings": 1 }, equipment: "Machine" },
   "Romanian Deadlift": { muscles: { "Hamstrings": 1, "Glutes": 0.6, "Lower Back": 0.3 }, equipment: "Barbell" },
   "Hip Thrust": { muscles: { "Glutes": 1, "Hamstrings": 0.3 }, equipment: "Barbell" },
   "Calf Raise": { muscles: { "Calves": 1 }, equipment: "Machine" },
   "Crunch": { muscles: { "Upper Abs": 1 }, equipment: "Bodyweight" },
   "Plank": { muscles: { "Upper Abs": 0.5, "Lower Abs": 0.5 }, equipment: "Bodyweight" },
-  "Hanging Leg Raise": { muscles: { "Lower Abs": 1, "Forearms": 0.2 }, equipment: "Bodyweight" },
+  "Hanging Leg Raise": { muscles: { "Lower Abs": 1, "Hip Flexors": 0.6, "Forearms": 0.2 }, equipment: "Bodyweight" },
   "Cable Crunch": { muscles: { "Upper Abs": 1 }, equipment: "Cable" },
   "Russian Twist": { muscles: { "Obliques": 1 }, equipment: "Bodyweight" },
   "Shrugs": { muscles: { "Traps": 1 }, equipment: "Barbell" },
@@ -648,29 +700,29 @@ const BASE_EXERCISES = {
   "Bicycle Crunch": { muscles: { "Obliques": 1, "Upper Abs": 0.4 }, equipment: "Bodyweight" },
   "Side Plank": { muscles: { "Obliques": 1 }, equipment: "Bodyweight" },
   "Hanging Knee Raise": { muscles: { "Lower Abs": 1 }, equipment: "Bodyweight" },
-  "Toes to Bar": { muscles: { "Lower Abs": 1, "Forearms": 0.3 }, equipment: "Bodyweight" },
+  "Toes to Bar": { muscles: { "Lower Abs": 1, "Hip Flexors": 0.6, "Forearms": 0.3 }, equipment: "Bodyweight" },
   "Cable Woodchopper": { muscles: { "Obliques": 1 }, equipment: "Cable" },
-  "V-Up": { muscles: { "Upper Abs": 0.7, "Lower Abs": 0.7 }, equipment: "Bodyweight" },
+  "V-Up": { muscles: { "Upper Abs": 0.7, "Lower Abs": 0.7, "Hip Flexors": 0.4 }, equipment: "Bodyweight" },
   "Mountain Climber": { muscles: { "Lower Abs": 1, "Front Shoulders": 0.2 }, equipment: "Bodyweight" },
   "Ab Wheel Rollout": { muscles: { "Upper Abs": 1, "Lower Back": 0.2 }, equipment: "Bodyweight" },
-  "Dragon Flag": { muscles: { "Lower Abs": 1, "Upper Abs": 0.4 }, equipment: "Bodyweight" },
+  "Dragon Flag": { muscles: { "Lower Abs": 1, "Upper Abs": 0.4, "Hip Flexors": 0.3 }, equipment: "Bodyweight" },
   "Sit Up": { muscles: { "Upper Abs": 1 }, equipment: "Bodyweight" },
   "Decline Sit Up": { muscles: { "Upper Abs": 1 }, equipment: "Bodyweight" },
   "Flutter Kicks": { muscles: { "Lower Abs": 1 }, equipment: "Bodyweight" },
-  "L-Sit": { muscles: { "Lower Abs": 1, "Triceps": 0.3 }, equipment: "Bodyweight" },
+  "L-Sit": { muscles: { "Lower Abs": 1, "Hip Flexors": 0.7, "Triceps": 0.3 }, equipment: "Bodyweight" },
   "Lying Leg Raise": { muscles: { "Lower Abs": 1 }, equipment: "Bodyweight" },
 
   /* ---- Legs, expanded ---- */
   "Hack Squat": { muscles: { "Quads": 1, "Glutes": 0.3 }, equipment: "Machine" },
-  "Bulgarian Split Squat": { muscles: { "Quads": 1, "Glutes": 0.5 }, equipment: "Dumbbell" },
+  "Bulgarian Split Squat": { muscles: { "Quads": 1, "Glutes": 0.5, "Hip Flexors": 0.3 }, equipment: "Dumbbell" },
   "Goblet Squat": { muscles: { "Quads": 1, "Glutes": 0.3 }, equipment: "Dumbbell" },
   "Pistol Squat": { muscles: { "Quads": 1, "Glutes": 0.4 }, equipment: "Bodyweight" },
   "Jump Squat": { muscles: { "Quads": 1, "Glutes": 0.3, "Calves": 0.3 }, equipment: "Bodyweight" },
   "Wall Sit": { muscles: { "Quads": 1 }, equipment: "Bodyweight" },
   "Bodyweight Squat": { muscles: { "Quads": 1, "Glutes": 0.4 }, equipment: "Bodyweight" },
   "Walking Lunge": { muscles: { "Quads": 0.8, "Glutes": 0.6, "Hamstrings": 0.3 }, equipment: "Dumbbell" },
-  "Reverse Lunge": { muscles: { "Quads": 0.8, "Glutes": 0.6 }, equipment: "Dumbbell" },
-  "Step Up": { muscles: { "Quads": 0.8, "Glutes": 0.6 }, equipment: "Dumbbell" },
+  "Reverse Lunge": { muscles: { "Quads": 0.8, "Glutes": 0.6, "Hip Flexors": 0.3 }, equipment: "Dumbbell" },
+  "Step Up": { muscles: { "Quads": 0.8, "Glutes": 0.6, "Hip Flexors": 0.4 }, equipment: "Dumbbell" },
   "Nordic Curl": { muscles: { "Hamstrings": 1 }, equipment: "Bodyweight" },
   "Glute Bridge": { muscles: { "Glutes": 1, "Hamstrings": 0.3 }, equipment: "Bodyweight" },
   "Cable Kickback": { muscles: { "Glutes": 1 }, equipment: "Cable" },
@@ -714,7 +766,7 @@ const BASE_EXERCISES = {
 };
 const MUSCLES = [
   "Upper Chest","Middle Chest","Lower Chest","Front Shoulders","Lateral Shoulders","Rear Shoulders",
-  "Biceps","Triceps","Forearms","Upper Abs","Middle Abs","Lower Abs","Obliques",
+  "Biceps","Triceps","Forearms","Upper Abs","Middle Abs","Lower Abs","Obliques","Hip Flexors",
   "Traps","Upper Back","Lats","Lower Back","Glutes","Hamstrings","Quads","Calves"
 ];
 const EQUIPMENT_TYPES = ["Barbell","Dumbbell","Cable","Machine","Bodyweight"];
@@ -724,30 +776,47 @@ let EXERCISES_ALL = { ...structuredCloneLite(BASE_EXERCISES) };
 function structuredCloneLite(o){ return JSON.parse(JSON.stringify(o)); }
 
 /* =========================================================================
-   ANATOMY ASSET — traced front+back muscle map (see anatomy.svg alongside
-   this file). Loaded once; bodySvg() clones it per render and recolors
-   whichever muscles match the current stats.
+   ANATOMY ASSETS — traced front+back muscle maps, one per body type the user
+   can pick in Settings. Both loaded once; bodySvg() clones whichever template
+   matches the user's preference and recolors muscles per the current stats.
    ========================================================================= */
-let ANATOMY_TEMPLATE = null;
-try {
-  const anatomyText = await fetch('./anatomy.svg').then(r => {
-    if (!r.ok) throw new Error('anatomy.svg not found (' + r.status + ')');
-    return r.text();
-  });
-  ANATOMY_TEMPLATE = new DOMParser().parseFromString(anatomyText, 'image/svg+xml').documentElement;
-  // Figma's vectorizer left a big opaque white "canvas backdrop" rect inside the
-  // Background group (from the original image's white background) — strip it so
-  // our own dark card background shows through instead of a white box.
-  const bg = ANATOMY_TEMPLATE.querySelector('#Background');
-  if (bg) {
-    [...bg.children].forEach(child => {
-      const fill = (child.getAttribute('fill') || '').toLowerCase();
-      if (fill === 'white' || fill === '#fff' || fill === '#ffffff') child.remove();
+const ANATOMY_TEMPLATES = { male: null, female: null };
+// Each file's front/back split point and canvas size differ — measured directly
+// against each exported file, never assumed to match between body types.
+const ANATOMY_CROP = {
+  male:   { front: { viewBox: '0 0 544 1080', w: 544, h: 1080 }, back: { viewBox: '544 0 536 1080', w: 536, h: 1080 } },
+  female: { front: { viewBox: '0 0 553 1080', w: 553, h: 1080 }, back: { viewBox: '553 0 527 1080', w: 527, h: 1080 } },
+};
+async function loadAnatomyTemplate(bodyType) {
+  if (ANATOMY_TEMPLATES[bodyType]) return ANATOMY_TEMPLATES[bodyType];
+  const file = bodyType === 'female' ? './anatomy-female.svg' : './anatomy.svg';
+  try {
+    const anatomyText = await fetch(file).then(r => {
+      if (!r.ok) throw new Error(file + ' not found (' + r.status + ')');
+      return r.text();
     });
+    const template = new DOMParser().parseFromString(anatomyText, 'image/svg+xml').documentElement;
+    // Figma's vectorizer left a big opaque white "canvas backdrop" rect inside the
+    // Background group (from the original image's white background) — strip it so
+    // our own dark card background shows through instead of a white box.
+    const bg = template.querySelector('#Background');
+    if (bg) {
+      [...bg.children].forEach(child => {
+        const fill = (child.getAttribute('fill') || '').toLowerCase();
+        if (fill === 'white' || fill === '#fff' || fill === '#ffffff') child.remove();
+      });
+    }
+    ANATOMY_TEMPLATES[bodyType] = template;
+    return template;
+  } catch (e) {
+    console.warn(`Could not load ${file} — muscle map will show a loading placeholder.`, e);
+    return null;
   }
-} catch (e) {
-  console.warn('Could not load anatomy.svg — muscle map will show a loading placeholder.', e);
 }
+// Preload the default (male) template immediately; the other loads lazily the
+// first time someone actually switches to it, so we're not fetching a file
+// most users may never need.
+await loadAnatomyTemplate('male');
 
 /* =========================================================================
    STATE
@@ -758,6 +827,7 @@ let myProgram = null;       // { name, schedule:['Mon',...], days:[{name,tag,exe
 let customExercises = [];   // from Firestore
 let activeDayIndex = null;  // which program day is being logged right now
 let editingProgram = false;
+let questCarouselIndex = 0; // which day the Quest carousel is currently showing
 let trendsView = 'dashboard'; // 'dashboard' | 'muscle-detail'
 let muscleDetailMode = 'Past'; // 'Past' | 'Planned'
 let calCursor = new Date(); calCursor.setDate(1);
@@ -859,6 +929,69 @@ function friendlyAuthError(err) {
   return err.message || 'Something went wrong.';
 }
 document.getElementById('logout-btn').addEventListener('click', () => signOut(auth));
+document.getElementById('settings-btn').addEventListener('click', () => openSettingsModal());
+
+function openSettingsModal() {
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.innerHTML = `
+    <div class="modal">
+      <h3>Settings</h3>
+      <div class="field">
+        <label>Hunter name</label>
+        <input id="settings-name" value="${escapeHtml(profile.displayName || '')}" placeholder="What your party calls you" />
+        <p style="font-size:11.5px;color:var(--text-faint);margin:6px 0 0;">This is what shows up on the leaderboard and in Today's check-ins for everyone else.</p>
+      </div>
+      <div class="field">
+        <label>Weekly goal (workouts)</label>
+        <input id="settings-goal" type="number" min="1" max="14" value="${profile.weeklyGoal || 3}" />
+        <p style="font-size:11.5px;color:var(--text-faint);margin:6px 0 0;">Used by the Streaks widget on Trends.</p>
+      </div>
+      <div class="field">
+        <label>Muscle map body type</label>
+        <div class="weekday-chips">
+          <button type="button" class="weekday-chip body-type-chip ${(profile.bodyType||'male')==='male'?'on':''}" data-type="male" style="flex:1;">Male</button>
+          <button type="button" class="weekday-chip body-type-chip ${profile.bodyType==='female'?'on':''}" data-type="female" style="flex:1;">Female</button>
+        </div>
+        <p style="font-size:11.5px;color:var(--text-faint);margin:6px 0 0;">Changes the body shape on your Muscle Activation chart in Trends. Purely visual — doesn't affect your tracked data.</p>
+      </div>
+      <div style="display:flex;gap:10px;margin-top:6px;">
+        <button class="btn" id="cancel-settings" style="flex:1;">Cancel</button>
+        <button class="btn btn-primary" id="save-settings" style="flex:2;">Save</button>
+      </div>
+      <p class="auth-error" id="settings-error" style="margin-top:10px;"></p>
+    </div>`;
+  document.body.appendChild(overlay);
+  let selectedBodyType = profile.bodyType || 'male';
+  overlay.querySelectorAll('.body-type-chip').forEach(chip => chip.addEventListener('click', () => {
+    selectedBodyType = chip.dataset.type;
+    overlay.querySelectorAll('.body-type-chip').forEach(c => c.classList.toggle('on', c.dataset.type === selectedBodyType));
+  }));
+  overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
+  overlay.querySelector('#cancel-settings').addEventListener('click', () => overlay.remove());
+  overlay.querySelector('#save-settings').addEventListener('click', async () => {
+    const newName = document.getElementById('settings-name').value.trim();
+    const newGoal = Math.max(1, Number(document.getElementById('settings-goal').value) || 3);
+    const errEl = document.getElementById('settings-error');
+    if (!newName) { errEl.textContent = 'Hunter name can\'t be empty.'; return; }
+    const saveBtn = overlay.querySelector('#save-settings');
+    saveBtn.disabled = true; saveBtn.textContent = 'Saving…';
+    try {
+      await setDoc(doc(db, 'users', currentUser.uid), { displayName: newName, weeklyGoal: newGoal, bodyType: selectedBodyType }, { merge: true });
+      await updateProfile(currentUser, { displayName: newName });
+      profile.displayName = newName;
+      profile.weeklyGoal = newGoal;
+      profile.bodyType = selectedBodyType;
+      await loadAnatomyTemplate(selectedBodyType); // make sure the chosen body's art is ready before we re-render
+      document.getElementById('user-avatar').textContent = initials(newName);
+      overlay.remove();
+      await loadAllData();
+    } catch (err) {
+      errEl.textContent = err.message || 'Could not save — try again.';
+      saveBtn.disabled = false; saveBtn.textContent = 'Save';
+    }
+  });
+}
 
 if (configOk) {
   onAuthStateChanged(auth, async (user) => {
@@ -869,6 +1002,7 @@ if (configOk) {
       document.getElementById('user-avatar').textContent = initials(profile.displayName);
       document.getElementById('auth-screen').style.display = 'none';
       document.getElementById('app').style.display = 'flex';
+      await loadAnatomyTemplate(profile.bodyType === 'female' ? 'female' : 'male');
       await loadAllData();
     } else {
       currentUser = null;
@@ -890,7 +1024,10 @@ function switchView(name) {
   if (name === 'trends') { trendsView = 'dashboard'; renderTrends(); }
   if (name === 'exercises') renderExerciseLibrary();
   if (name === 'history') renderCalendar();
-  if (name === 'quest') renderQuestFeed();
+  if (name === 'quest') {
+    if (myProgram && myProgram.days && myProgram.days.length) questCarouselIndex = myProgram.currentDayIndex % myProgram.days.length;
+    renderQuestFeed();
+  }
 }
 
 /* =========================================================================
@@ -957,67 +1094,75 @@ function renderQuestFeed() {
     return;
   }
 
-  const idx = myProgram.currentDayIndex % myProgram.days.length;
+  const rotationIdx = myProgram.currentDayIndex % myProgram.days.length;
   const today = todayWeekday();
   const isScheduledToday = myProgram.schedule.includes(today);
-  const cards = [];
+  if (questCarouselIndex >= myProgram.days.length) questCarouselIndex = 0;
+  const viewingIdx = questCarouselIndex;
+  const day = myProgram.days[viewingIdx];
+  const isActiveDay = viewingIdx === rotationIdx;
 
-  if (isScheduledToday) {
-    const day = myProgram.days[idx];
-    const checklist = day.exercises.map(ex => {
-      const done = setsLoggedToday(ex.name);
-      const complete = done >= ex.sets;
-      return `<div class="quest-check-row ${complete ? 'complete' : ''}">
-        <span class="qc-name">${escapeHtml(ex.name)}</span>
-        <span class="qc-progress">[${Math.min(done, ex.sets)}/${ex.sets} sets · ${ex.reps} reps]</span>
-        <span class="qc-box">${complete ? '☑' : '☐'}</span>
-      </div>`;
-    }).join('');
-    const allComplete = day.exercises.length > 0 && day.exercises.every(ex => setsLoggedToday(ex.name) >= ex.sets);
-    cards.push(`
-      <div class="quest-card ${allComplete ? 'quest-complete' : ''}">
-        <div class="quest-eyebrow">⚠ QUEST INFO</div>
-        <p class="quest-flavor">[Daily Quest: <b>${escapeHtml(day.name)}</b> has arrived.]</p>
-        <div class="quest-goal-label">GOAL</div>
-        <div class="quest-checklist">${checklist}</div>
-        <p class="quest-warning">${allComplete ? 'Quest cleared. Your streak holds.' : 'WARNING: leaving this quest incomplete puts your streak at risk.'}</p>
-        <button class="quest-complete-btn" id="quest-begin-btn">${allComplete ? '✓ Quest Cleared' : 'Begin Quest'}</button>
-      </div>`);
-  } else {
-    cards.push(`
-      <div class="rest-card">
-        <p class="rest-title">Rest Day</p>
-        <p class="rest-sub">Not a scheduled training day. Recovery counts too — log an extra session below if you want to anyway.</p>
-      </div>`);
-  }
-
-  const rotationOrder = myProgram.days.map((_, offset) => (idx + offset) % myProgram.days.length);
-  const upcoming = isScheduledToday ? rotationOrder.filter(i => i !== idx) : rotationOrder;
-  const previewCards = upcoming.map(i => {
-    const d = myProgram.days[i];
-    return `<div class="preview-card" data-idx="${i}">
-      <div class="preview-card-head">
-        <span class="preview-name">${escapeHtml(d.name)}</span>
-        ${d.tag ? `<span class="tag tag-alt">${escapeHtml(d.tag)}</span>` : ''}
-      </div>
-      <p class="preview-sub">${d.exercises.length} exercises · Last: ${fmtDaysAgo(d.lastDate)}</p>
-      <button class="btn btn-sm preview-start-btn" data-idx="${i}">Do this instead</button>
+  const checklist = day.exercises.map(ex => {
+    const done = setsLoggedToday(ex.name);
+    const complete = done >= ex.sets;
+    return `<div class="quest-check-row ${complete ? 'complete' : ''}">
+      <span class="qc-name">${escapeHtml(ex.name)}</span>
+      <span class="qc-progress">[${Math.min(done, ex.sets)}/${ex.sets} sets · ${ex.reps} reps]</span>
+      <span class="qc-box">${complete ? '☑' : '☐'}</span>
     </div>`;
   }).join('');
+  const allComplete = day.exercises.length > 0 && day.exercises.every(ex => setsLoggedToday(ex.name) >= ex.sets);
+  const flavor = isActiveDay
+    ? `[Daily Quest: <b>${escapeHtml(day.name)}</b> has arrived.]`
+    : `[Viewing: <b>${escapeHtml(day.name)}</b> — Day ${viewingIdx+1} of ${myProgram.days.length} in rotation.]`;
+  const warning = allComplete
+    ? 'Quest cleared. Your streak holds.'
+    : (isActiveDay ? 'WARNING: leaving this quest incomplete puts your streak at risk.' : `Last done: ${fmtDaysAgo(day.lastDate)}`);
+
+  const dots = myProgram.days.map((_, i) => `<span class="day-dot ${i===viewingIdx?'current':''} ${i===rotationIdx && i!==viewingIdx?'done':''}"></span>`).join('');
 
   wrap.innerHTML = `
     <div class="quest-feed-head">
       <span class="quest-feed-title">${escapeHtml(myProgram.name)}</span>
       <button class="icon-btn" id="edit-program-btn">✎ Edit plan</button>
     </div>
-    ${cards.join('')}
-    ${previewCards ? `<p class="preview-label">Up next in rotation</p><div class="preview-feed">${previewCards}</div>` : ''}
+    ${!isScheduledToday ? '<p class="rest-note">Not a scheduled training day — browse or log anyway below.</p>' : ''}
+    <div class="quest-carousel">
+      <button class="carousel-arrow" id="carousel-prev" aria-label="Previous day">‹</button>
+      <div class="quest-carousel-card">
+        <div class="quest-card ${allComplete ? 'quest-complete' : ''}">
+          <div class="quest-eyebrow">⚠ QUEST INFO</div>
+          <p class="quest-flavor">${flavor}</p>
+          <div class="quest-goal-label">GOAL</div>
+          <div class="quest-checklist">${checklist}</div>
+          <p class="quest-warning">${warning}</p>
+          <button class="quest-complete-btn" id="quest-begin-btn">${allComplete ? '✓ Quest Cleared' : (isActiveDay ? 'Begin Quest' : 'Log this instead')}</button>
+        </div>
+      </div>
+      <button class="carousel-arrow" id="carousel-next" aria-label="Next day">›</button>
+    </div>
+    <div class="day-dots">${dots}</div>
   `;
 
   document.getElementById('edit-program-btn').addEventListener('click', () => { editingProgram = true; renderQuestFeed(); });
-  const beginBtn = document.getElementById('quest-begin-btn');
-  if (beginBtn) beginBtn.addEventListener('click', () => startProgramDay(idx));
-  wrap.querySelectorAll('.preview-start-btn').forEach(btn => btn.addEventListener('click', () => startProgramDay(Number(btn.dataset.idx))));
+  document.getElementById('quest-begin-btn').addEventListener('click', () => startProgramDay(viewingIdx));
+  document.getElementById('carousel-prev').addEventListener('click', () => { questCarouselIndex = (viewingIdx - 1 + myProgram.days.length) % myProgram.days.length; renderQuestFeed(); });
+  document.getElementById('carousel-next').addEventListener('click', () => { questCarouselIndex = (viewingIdx + 1) % myProgram.days.length; renderQuestFeed(); });
+  attachSwipeHandlers(wrap.querySelector('.quest-carousel-card'),
+    () => { questCarouselIndex = (viewingIdx + 1) % myProgram.days.length; renderQuestFeed(); },
+    () => { questCarouselIndex = (viewingIdx - 1 + myProgram.days.length) % myProgram.days.length; renderQuestFeed(); }
+  );
+}
+
+function attachSwipeHandlers(el, onSwipeLeft, onSwipeRight) {
+  if (!el) return;
+  let startX = 0;
+  el.addEventListener('touchstart', (e) => { startX = e.touches[0].clientX; }, { passive: true });
+  el.addEventListener('touchend', (e) => {
+    const delta = e.changedTouches[0].clientX - startX;
+    if (Math.abs(delta) < 40) return;
+    if (delta < 0) onSwipeLeft(); else onSwipeRight();
+  }, { passive: true });
 }
 
 function startProgramDay(idx) {
@@ -1027,8 +1172,65 @@ function startProgramDay(idx) {
   const rows = document.getElementById('exercise-rows');
   rows.innerHTML = '';
   day.exercises.forEach(ex => addExerciseRow(ex.name, ex.sets, ex.reps));
-  document.querySelector('.view-area').scrollTo({ top: document.getElementById('logger-title').offsetTop - 20, behavior: 'smooth' });
+  openWorkoutModal();
 }
+
+function openWorkoutModal() {
+  document.getElementById('workout-modal-overlay').classList.remove('hidden');
+  document.body.style.overflow = 'hidden';
+}
+function closeWorkoutModal() {
+  document.getElementById('workout-modal-overlay').classList.add('hidden');
+  document.body.style.overflow = '';
+  stopRestTimer();
+}
+document.getElementById('close-workout-modal').addEventListener('click', closeWorkoutModal);
+document.getElementById('manual-log-btn').addEventListener('click', () => {
+  activeDayIndex = null;
+  document.getElementById('logger-title').textContent = 'Log exercises';
+  const rows = document.getElementById('exercise-rows');
+  rows.innerHTML = '';
+  addExerciseRow();
+  openWorkoutModal();
+});
+
+/* ---- rest timer ---- */
+let restTimerInterval = null;
+function startRestTimer(totalSeconds) {
+  stopRestTimer();
+  let remaining = totalSeconds;
+  const display = document.getElementById('rest-timer-display');
+  const stopBtn = document.getElementById('rest-timer-stop');
+  display.classList.remove('done');
+  stopBtn.classList.remove('hidden');
+  const render = () => {
+    const m = Math.floor(remaining / 60), s = remaining % 60;
+    display.textContent = `${m}:${String(s).padStart(2,'0')}`;
+  };
+  render();
+  restTimerInterval = setInterval(() => {
+    remaining--;
+    if (remaining <= 0) {
+      clearInterval(restTimerInterval);
+      restTimerInterval = null;
+      display.textContent = "Rest's up!";
+      display.classList.add('done');
+      stopBtn.classList.add('hidden');
+      if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
+      return;
+    }
+    render();
+  }, 1000);
+}
+function stopRestTimer() {
+  if (restTimerInterval) { clearInterval(restTimerInterval); restTimerInterval = null; }
+  const display = document.getElementById('rest-timer-display');
+  if (display) { display.textContent = '—'; display.classList.remove('done'); }
+  const stopBtn = document.getElementById('rest-timer-stop');
+  if (stopBtn) stopBtn.classList.add('hidden');
+}
+document.querySelectorAll('.rest-preset-btn').forEach(btn => btn.addEventListener('click', () => startRestTimer(Number(btn.dataset.secs))));
+document.getElementById('rest-timer-stop').addEventListener('click', stopRestTimer);
 
 function renderProgramEditor(wrap) {
   if (!myProgram) myProgram = { name: '', schedule: [], days: [], currentDayIndex: 0 };
@@ -1252,6 +1454,7 @@ document.getElementById('save-workout-btn').addEventListener('click', async () =
     if (activeDayIndex !== null && myProgram) {
       myProgram.days[activeDayIndex].lastDate = date;
       myProgram.currentDayIndex = (activeDayIndex + 1) % myProgram.days.length;
+      questCarouselIndex = myProgram.currentDayIndex;
       await setDoc(doc(db, 'programs', currentUser.uid), myProgram);
       activeDayIndex = null;
       document.getElementById('logger-title').textContent = 'Log exercises';
@@ -1261,6 +1464,7 @@ document.getElementById('save-workout-btn').addEventListener('click', async () =
     exerciseRows.innerHTML = '';
     addExerciseRow();
     await loadAllData();
+    setTimeout(() => closeWorkoutModal(), 900);
   } catch (err) {
     alert('Could not save: ' + err.message);
   } finally {
@@ -1359,15 +1563,17 @@ function muscleStatusPlanned() {
   }
   return result;
 }
-/* ANATOMY_TEMPLATE is loaded once near the top of this script */
+/* ANATOMY_TEMPLATES is loaded once near the top of this script, one per body type */
 function muscleFromId(id) {
   if (!id) return null;
   const stripped = id.replace(/_\d+$/, ''); // Figma dedupes repeated names as "Name_2", "Name_3"...
   return MUSCLES.includes(stripped) ? stripped : null;
 }
 function bodySvg(view, stats) {
-  if (!ANATOMY_TEMPLATE) return '<div class="empty-state" style="padding:20px;">Loading anatomy…</div>';
-  const clone = ANATOMY_TEMPLATE.cloneNode(true);
+  const bodyType = (profile && profile.bodyType === 'female') ? 'female' : 'male';
+  const template = ANATOMY_TEMPLATES[bodyType];
+  if (!template) return '<div class="empty-state" style="padding:20px;">Loading anatomy…</div>';
+  const clone = template.cloneNode(true);
   clone.querySelectorAll('[id]').forEach(el => {
     const m = muscleFromId(el.id);
     if (!m) return;
@@ -1385,24 +1591,59 @@ function bodySvg(view, stats) {
       shape.style.fill = color;
     });
   });
-  // front figure sits at x 0–214, back figure at x 214–437 in the source file
-  if (view === 'front') {
-    clone.setAttribute('viewBox', '0 0 214 396');
-    clone.setAttribute('width', '214');
-    clone.setAttribute('height', '396');
-  } else {
-    clone.setAttribute('viewBox', '214 0 223 396');
-    clone.setAttribute('width', '223');
-    clone.setAttribute('height', '396');
+  // Head and hands/feet ("misc") aren't tracked muscles, but they ARE recognizable
+  // body landmarks worth seeing clearly — recolor them to a muted slate tone so the
+  // figure reads as a monochrome holographic silhouette instead of clashing warm
+  // skin tones sitting next to the neon status colors.
+  ['Head', 'misc'].forEach(nonMuscleId => {
+    const group = clone.querySelector('#' + CSS.escape(nonMuscleId));
+    if (!group) return;
+    [group, ...group.querySelectorAll('*')].forEach(shape => {
+      if (shape.getAttribute('fill') === 'none') return;
+      shape.setAttribute('fill', 'var(--text-dim)');
+      shape.style.fill = 'var(--text-dim)';
+    });
+  });
+  // The groin covering isn't a tracked muscle — give it the same "Stalled" gray
+  // any untracked/no-data muscle shows, so it reads as "not tracked" rather than
+  // a distinct shape or a black void.
+  const groin = clone.querySelector('#Groin');
+  if (groin) {
+    [groin, ...groin.querySelectorAll('*')].forEach(shape => {
+      if (shape.getAttribute('fill') === 'none') return;
+      shape.setAttribute('fill', 'var(--stalled)');
+      shape.style.fill = 'var(--stalled)';
+    });
   }
+  // Each body type's source file has its own measured front/back split point —
+  // never assumed to match between male and female files.
+  const crop = ANATOMY_CROP[bodyType][view];
+  clone.setAttribute('viewBox', crop.viewBox);
+  clone.setAttribute('width', String(crop.w));
+  clone.setAttribute('height', String(crop.h));
   // the source file's <mask>/<clipPath> ids aren't unique once both views render
-  // side by side on the same page — suffix them per view so neither steals the other's mask.
-  ['mask0_0_1', 'clip0_0_1'].forEach(oldId => {
+  // side by side on the same page — suffix them per view (whatever Figma happened to
+  // auto-generate this export) so neither view steals the other's mask/clip definition.
+  clone.querySelectorAll('mask[id], clipPath[id]').forEach(def => {
+    const oldId = def.getAttribute('id');
     const newId = oldId + '-' + view;
-    const def = clone.querySelector('#' + oldId);
-    if (def) def.setAttribute('id', newId);
+    def.setAttribute('id', newId);
     clone.querySelectorAll(`[mask="url(#${oldId})"]`).forEach(el => el.setAttribute('mask', `url(#${newId})`));
     clone.querySelectorAll(`[clip-path="url(#${oldId})"]`).forEach(el => el.setAttribute('clip-path', `url(#${newId})`));
+  });
+  // Neither traced file has real outline strokes on individual shapes — the
+  // "outlines" seen up to now were only ever the edge between two differently
+  // colored fills. When two neighboring muscles happen to share the same
+  // status (very common — e.g. both "Stalled"), there's no boundary at all
+  // and they visually merge into one shape. Give every filled shape a
+  // consistent thin dark stroke so boundaries stay visible no matter what
+  // color sits on either side of them.
+  clone.querySelectorAll('path, circle, ellipse, polygon, rect').forEach(shape => {
+    if (shape.getAttribute('fill') === 'none') return;
+    shape.setAttribute('stroke', 'rgba(5,7,13,0.55)');
+    shape.setAttribute('stroke-width', '1.5');
+    shape.style.stroke = 'rgba(5,7,13,0.55)';
+    shape.style.strokeWidth = '1.5';
   });
   return new XMLSerializer().serializeToString(clone);
 }
@@ -1638,11 +1879,14 @@ document.getElementById('lib-search').addEventListener('input', renderExerciseLi
 document.getElementById('lib-muscle-filter').addEventListener('change', renderExerciseLibrary);
 document.getElementById('lib-equip-filter').addEventListener('change', renderExerciseLibrary);
 
+function techniqueLink(name) {
+  return `https://www.youtube.com/results?search_query=${encodeURIComponent(name + ' exercise proper form technique')}`;
+}
 function renderExerciseLibrary() {
   const q = (document.getElementById('lib-search').value || '').toLowerCase();
   const muscleFilter = document.getElementById('lib-muscle-filter').value;
   const equipFilter = document.getElementById('lib-equip-filter').value;
-  const customNames = new Set(customExercises.map(c => c.name));
+  const customByName = new Map(customExercises.map(c => [c.name, c]));
 
   const rows = Object.entries(EXERCISES_ALL).filter(([name, def]) => {
     if (q && !name.toLowerCase().includes(q)) return false;
@@ -1653,13 +1897,20 @@ function renderExerciseLibrary() {
 
   document.getElementById('ex-grid').innerHTML = rows.map(([name, def]) => {
     const primary = Object.keys(def.muscles||{})[0] || '';
+    const custom = customByName.get(name);
     return `<div class="ex-card">
-      ${customNames.has(name) ? '<span class="ex-custom-dot" title="Custom exercise"></span>' : ''}
+      ${custom ? '<span class="ex-custom-dot" title="Customized from default"></span>' : ''}
       <p class="ex-name">${escapeHtml(name)}</p>
       <p class="ex-muscle">${primary}</p>
       <span class="ex-equip">${def.equipment || 'Other'}</span>
+      <a class="ex-technique-link" href="${techniqueLink(name)}" target="_blank" rel="noopener">▶ Technique</a>
+      <button type="button" class="ex-edit-link" data-name="${escapeHtml(name)}">✎ Edit</button>
     </div>`;
   }).join('') || `<p class="empty-state" style="grid-column:1/-1;">No exercises match.</p>`;
+
+  document.getElementById('ex-grid').querySelectorAll('.ex-edit-link').forEach(btn => btn.addEventListener('click', () => {
+    openEditExerciseModal(btn.dataset.name);
+  }));
 }
 
 document.getElementById('add-exercise-lib-btn').addEventListener('click', openAddExerciseModal);
@@ -1694,6 +1945,69 @@ function openAddExerciseModal() {
     const muscles = {}; selected.forEach(m => muscles[m] = 1);
     const equipment = document.getElementById('new-ex-equip').value;
     await addDoc(collection(db, 'customExercises'), { name, muscles, equipment, addedBy: currentUser.uid, createdAt: serverTimestamp() });
+    overlay.remove();
+    await loadAllData();
+    switchView('exercises');
+  });
+}
+
+function openEditExerciseModal(name) {
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  const existingOverride = customExercises.find(c => c.name === name); // Firestore doc, if this exercise already has one
+  const isBaseExercise = Object.prototype.hasOwnProperty.call(BASE_EXERCISES, name); // ships with the app by default
+  const currentDef = EXERCISES_ALL[name] || { muscles: {}, equipment: 'Bodyweight' };
+  const currentMuscles = new Set(Object.keys(currentDef.muscles || {}));
+  overlay.innerHTML = `
+    <div class="modal">
+      <h3>Edit exercise</h3>
+      ${isBaseExercise ? `<p style="font-size:12px;color:var(--text-dim);margin:-8px 0 14px;">This ships with the app by default — your changes are saved as a personal override and only affect your own tracking.</p>` : ''}
+      <div class="field">
+        <label>Name</label>
+        <input value="${escapeHtml(name)}" disabled style="opacity:0.6;" />
+        <p style="font-size:11.5px;color:var(--text-faint);margin:6px 0 0;">Name can't be changed — it's how your logged workouts and program days reference this exercise.</p>
+      </div>
+      <div class="field"><label>Muscles worked (tap to select)</label>
+        <div class="muscle-checks" id="edit-ex-muscles">${MUSCLES.map(m => `<span class="muscle-check ${currentMuscles.has(m) ? 'on' : ''}" data-m="${m}">${m}</span>`).join('')}</div>
+      </div>
+      <div class="field"><label>Equipment</label>
+        <select id="edit-ex-equip">${EQUIPMENT_TYPES.map(e => `<option value="${e}" ${e===currentDef.equipment?'selected':''}>${e}</option>`).join('')}</select>
+      </div>
+      <div style="display:flex;gap:10px;margin-top:6px;">
+        <button class="btn" id="cancel-edit-ex" style="flex:1;">Cancel</button>
+        <button class="btn btn-primary" id="save-edit-ex" style="flex:2;">Save changes</button>
+      </div>
+      ${existingOverride ? `<button class="btn" id="delete-edit-ex" style="width:100%;margin-top:10px;color:var(--excess);border-color:var(--excess);">${isBaseExercise ? 'Revert to default' : 'Delete this exercise'}</button>` : ''}
+    </div>`;
+  document.body.appendChild(overlay);
+  const selected = new Set(currentMuscles);
+  overlay.querySelectorAll('.muscle-check').forEach(chip => chip.addEventListener('click', () => {
+    const m = chip.dataset.m;
+    if (selected.has(m)) { selected.delete(m); chip.classList.remove('on'); } else { selected.add(m); chip.classList.add('on'); }
+  }));
+  overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
+  overlay.querySelector('#cancel-edit-ex').addEventListener('click', () => overlay.remove());
+  overlay.querySelector('#save-edit-ex').addEventListener('click', async () => {
+    if (!selected.size) { alert('Pick at least one muscle.'); return; }
+    const muscles = {}; selected.forEach(m => muscles[m] = 1);
+    const equipment = document.getElementById('edit-ex-equip').value;
+    if (existingOverride) {
+      await updateDoc(doc(db, 'customExercises', existingOverride.id), { muscles, equipment });
+    } else {
+      // first time this exercise is being customized — create the override doc
+      await addDoc(collection(db, 'customExercises'), { name, muscles, equipment, addedBy: currentUser.uid, createdAt: serverTimestamp() });
+    }
+    overlay.remove();
+    await loadAllData();
+    switchView('exercises');
+  });
+  const deleteBtn = overlay.querySelector('#delete-edit-ex');
+  if (deleteBtn) deleteBtn.addEventListener('click', async () => {
+    const msg = isBaseExercise
+      ? `Revert "${name}" back to its default muscle mapping? Your customization will be removed.`
+      : `Delete "${name}"? This can't be undone. Any program days or past logs referencing it will show it as an unrecognized exercise.`;
+    if (!confirm(msg)) return;
+    await deleteDoc(doc(db, 'customExercises', existingOverride.id));
     overlay.remove();
     await loadAllData();
     switchView('exercises');
