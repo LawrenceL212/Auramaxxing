@@ -1021,7 +1021,15 @@ function bodySvg(view, stats) {
     });
   });
   // front figure sits at x 0–214, back figure at x 214–437 in the source file
-  clone.setAttribute('viewBox', view === 'front' ? '0 0 214 396' : '214 0 223 396');
+  if (view === 'front') {
+    clone.setAttribute('viewBox', '0 0 214 396');
+    clone.setAttribute('width', '214');
+    clone.setAttribute('height', '396');
+  } else {
+    clone.setAttribute('viewBox', '214 0 223 396');
+    clone.setAttribute('width', '223');
+    clone.setAttribute('height', '396');
+  }
   // the source file's <mask>/<clipPath> ids aren't unique once both views render
   // side by side on the same page — suffix them per view so neither steals the other's mask.
   ['mask0_0_1', 'clip0_0_1'].forEach(oldId => {
