@@ -42,6 +42,23 @@ service cloud.firestore {
       allow create: if request.auth != null && request.resource.data.uid == request.auth.uid;
       allow update, delete: if request.auth != null && resource.data.uid == request.auth.uid;
     }
+
+    match /programs/{userId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    match /customExercises/{exerciseId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null && request.resource.data.addedBy == request.auth.uid;
+      allow update, delete: if request.auth != null && resource.data.addedBy == request.auth.uid;
+    }
+
+    match /bodyweight/{entryId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null && request.resource.data.uid == request.auth.uid;
+      allow update, delete: if request.auth != null && resource.data.uid == request.auth.uid;
+    }
   }
 }
 ```
@@ -76,8 +93,32 @@ For each muscle, this week's volume is compared to the average of your prior 3 w
 
 Tweak the thresholds or add exercises directly in the `EXERCISES` object — everything else (heatmap, breakdown list) reads from it automatically.
 
-## Ideas for what you mentioned building next
-- Weekly workout templates / a planner view
-- Rest-day tracking so streaks don't punish planned rest
-- Comments or reactions on teammates' logged workouts
+## The muscle map now needs one more file
+`anatomy.svg` must sit right next to `index.html` (same folder, both at the root of what you deploy). It's your traced front/back muscle illustration — the app fetches it at load time and recolors each named shape based on training status.
+
+Two things that follow from that:
+- **It won't load if you just double-click `index.html` and open it as a local file** — browsers block `fetch()` of local files from `file://` pages for security reasons. To test locally, run a tiny local server from that folder instead, e.g. `python3 -m http.server 8000` then visit `http://localhost:8000`. Once deployed to GitHub Pages / Firebase Hosting (real `https://`), this isn't an issue at all.
+- If the fetch fails for any reason (missing file, wrong path), the Muscle Activation card just shows a "Loading anatomy…" placeholder instead of crashing the rest of the app.
+
+The muscle taxonomy is now 21 regions instead of the original 12 (Upper/Middle/Lower Chest, Front/Lateral/Rear Shoulders, Traps, Lats, Upper/Lower Back, Biceps, Triceps, Forearms, Upper/Middle/Lower Abs, Obliques, Glutes, Hamstrings, Quads, Calves) — matching the shapes traced in `anatomy.svg`. If you add more custom exercises, target these exact names in the muscle picker.
+
+## Data model
+Five collections now back the app:
+- `users/{uid}` — profile + `weeklyGoal` (used by the Streaks widget)
+- `workouts/{autoId}` — one doc per logged session (`uid`, `date`, `time`, `exercises`)
+- `programs/{uid}` — one active split per user: `{ name, days: [{ name, tag, exercises, lastDate }], currentDayIndex }`
+- `customExercises/{autoId}` — exercises added from the Exercises tab, merged into everyone's move list
+- `bodyweight/{autoId}` — bodyweight log entries for the Trends weight widget
+
+## What's in the app now
+- **Quest tab** — build a multi-day program, rotate through it day by day, "Start" pre-fills the logger with that day's exercises, or just log an ad-hoc session any time
+- **Rank tab** — today's check-ins, hunter rank (E–S) by streak, full guild leaderboard
+- **Trends tab** — Muscle Activation (Past vs. Planned, front/back body map, per-muscle breakdown with a 4-week spark bar), Streaks, a 12-week Consistency grid, Volume vs. 4-week average, Training Days, Training Months, Bodyweight tracking, and Training Hours
+- **Moves tab (Exercises)** — search, filter by muscle or equipment, and add your own custom exercises with their own muscle map
+- **Log tab (History)** — a real calendar with dots on days you trained, tap any date to see who logged what
+
+## Ideas for what's still missing
+- Reordering/hiding Trends widgets ("Edit Widgets")
+- Supersets / rest timers inside the logger
 - Personal-record tracking per exercise
+- Comments or reactions on teammates' logged workouts
