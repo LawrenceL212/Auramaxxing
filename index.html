@@ -900,7 +900,7 @@ function openSettingsModal() {
     const saveBtn = overlay.querySelector('#save-settings');
     saveBtn.disabled = true; saveBtn.textContent = 'Saving…';
     try {
-      await updateDoc(doc(db, 'users', currentUser.uid), { displayName: newName, weeklyGoal: newGoal });
+      await setDoc(doc(db, 'users', currentUser.uid), { displayName: newName, weeklyGoal: newGoal }, { merge: true });
       await updateProfile(currentUser, { displayName: newName });
       profile.displayName = newName;
       profile.weeklyGoal = newGoal;
