@@ -1081,15 +1081,15 @@ const BASE_EXERCISES = {
   "Bench Dip": { muscles: { "Triceps": 1, "Lower Chest": 0.3, "Front Shoulders": 0.3 }, equipment: "Bodyweight" },
   "Wrist Curl": { muscles: { "Forearms": 1 }, equipment: "Dumbbell" },
   "Reverse Wrist Curl": { muscles: { "Forearms": 1 }, equipment: "Dumbbell" },
-  "Dead Hang": { muscles: { "Forearms": 1, "Lats": 0.3 }, equipment: "Bodyweight" },
+  "Dead Hang": { timed: true, muscles: { "Forearms": 1, "Lats": 0.3 }, equipment: "Bodyweight" },
   "Crunch": { muscles: { "Upper Abs": 1 }, equipment: "Bodyweight" },
-  "Plank": { muscles: { "Upper Abs": 0.6, "Lower Abs": 0.6, "Obliques": 0.3, "Front Shoulders": 0.2 }, equipment: "Bodyweight" },
+  "Plank": { timed: true, muscles: { "Upper Abs": 0.6, "Lower Abs": 0.6, "Obliques": 0.3, "Front Shoulders": 0.2 }, equipment: "Bodyweight" },
   "Hanging Leg Raise": { muscles: { "Lower Abs": 1, "Hip Flexors": 0.6, "Forearms": 0.2 }, equipment: "Bodyweight" },
   "Cable Crunch": { muscles: { "Upper Abs": 1, "Middle Abs": 0.3 }, equipment: "Cable" },
   "Russian Twist": { muscles: { "Obliques": 1, "Upper Abs": 0.3 }, equipment: "Bodyweight" },
   "Reverse Crunch": { muscles: { "Lower Abs": 1, "Hip Flexors": 0.3 }, equipment: "Bodyweight" },
   "Bicycle Crunch": { muscles: { "Obliques": 1, "Upper Abs": 0.6 }, equipment: "Bodyweight" },
-  "Side Plank": { muscles: { "Obliques": 1, "Lateral Shoulders": 0.2 }, equipment: "Bodyweight" },
+  "Side Plank": { timed: true, muscles: { "Obliques": 1, "Lateral Shoulders": 0.2 }, equipment: "Bodyweight" },
   "Hanging Knee Raise": { muscles: { "Lower Abs": 1, "Hip Flexors": 0.6, "Forearms": 0.2 }, equipment: "Bodyweight" },
   "Toes to Bar": { muscles: { "Lower Abs": 1, "Hip Flexors": 0.6, "Forearms": 0.3 }, equipment: "Bodyweight" },
   "Cable Woodchopper": { muscles: { "Obliques": 1, "Upper Abs": 0.3, "Lats": 0.2 }, equipment: "Cable" },
@@ -1100,7 +1100,7 @@ const BASE_EXERCISES = {
   "Sit Up": { muscles: { "Upper Abs": 1, "Hip Flexors": 0.6, "Middle Abs": 0.3 }, equipment: "Bodyweight" },
   "Decline Sit Up": { muscles: { "Upper Abs": 1, "Hip Flexors": 0.6, "Middle Abs": 0.3 }, equipment: "Bodyweight" },
   "Flutter Kicks": { muscles: { "Lower Abs": 1, "Hip Flexors": 0.6 }, equipment: "Bodyweight" },
-  "L-Sit": { muscles: { "Lower Abs": 1, "Hip Flexors": 1, "Triceps": 0.3, "Front Shoulders": 0.2 }, equipment: "Bodyweight" },
+  "L-Sit": { timed: true, muscles: { "Lower Abs": 1, "Hip Flexors": 1, "Triceps": 0.3, "Front Shoulders": 0.2 }, equipment: "Bodyweight" },
   "Lying Leg Raise": { muscles: { "Lower Abs": 1, "Hip Flexors": 0.6 }, equipment: "Bodyweight" },
   "Squat": { muscles: { "Quads": 1, "Glutes": 1, "Hamstrings": 0.3, "Lower Back": 0.2, "Hip Flexors": 0.2 }, equipment: "Barbell" },
   "Front Squat": { muscles: { "Quads": 1, "Glutes": 0.6, "Hip Flexors": 0.2, "Upper Back": 0.2 }, equipment: "Barbell" },
@@ -1116,7 +1116,7 @@ const BASE_EXERCISES = {
   "Goblet Squat": { muscles: { "Quads": 1, "Glutes": 0.6, "Upper Back": 0.2 }, equipment: "Dumbbell" },
   "Pistol Squat": { muscles: { "Quads": 1, "Glutes": 0.6, "Hip Flexors": 0.3 }, equipment: "Bodyweight" },
   "Jump Squat": { muscles: { "Quads": 1, "Glutes": 1, "Calves": 0.6 }, equipment: "Bodyweight" },
-  "Wall Sit": { muscles: { "Quads": 1, "Glutes": 0.3 }, equipment: "Bodyweight" },
+  "Wall Sit": { timed: true, muscles: { "Quads": 1, "Glutes": 0.3 }, equipment: "Bodyweight" },
   "Bodyweight Squat": { muscles: { "Quads": 1, "Glutes": 0.6 }, equipment: "Bodyweight" },
   "Walking Lunge": { muscles: { "Quads": 1, "Glutes": 1, "Hamstrings": 0.3, "Calves": 0.2 }, equipment: "Dumbbell" },
   "Reverse Lunge": { muscles: { "Quads": 1, "Glutes": 1, "Hip Flexors": 0.2 }, equipment: "Dumbbell" },
@@ -1140,27 +1140,27 @@ const BASE_EXERCISES = {
   "Treadmill Run": { muscles: { "Quads": 0.6, "Hamstrings": 0.6, "Glutes": 0.6, "Calves": 1, "Hip Flexors": 0.3 }, equipment: "Machine" },
   "Stair Climb": { muscles: { "Quads": 1, "Glutes": 1, "Calves": 0.6, "Hamstrings": 0.3 }, equipment: "Machine" },
   "Jump Rope": { muscles: { "Calves": 1, "Quads": 0.3, "Front Shoulders": 0.2 }, equipment: "Bodyweight" },
-  "Tuck Front Lever": { muscles: { "Lats": 1, "Upper Abs": 0.6, "Biceps": 0.3, "Forearms": 0.3 }, equipment: "Bodyweight" },
-  "Advanced Tuck Front Lever": { muscles: { "Lats": 1, "Upper Abs": 0.6, "Lower Abs": 0.3, "Biceps": 0.3, "Forearms": 0.3 }, equipment: "Bodyweight" },
-  "Single Leg Front Lever": { muscles: { "Lats": 1, "Lower Abs": 0.6, "Upper Abs": 0.6, "Biceps": 0.3, "Forearms": 0.3 }, equipment: "Bodyweight" },
-  "Straddle Front Lever": { muscles: { "Lats": 1, "Lower Abs": 0.6, "Upper Abs": 0.6, "Biceps": 0.3, "Forearms": 0.3 }, equipment: "Bodyweight" },
-  "Front Lever": { muscles: { "Lats": 1, "Lower Abs": 1, "Upper Abs": 0.6, "Biceps": 0.3, "Forearms": 0.6 }, equipment: "Bodyweight" },
+  "Tuck Front Lever": { timed: true, muscles: { "Lats": 1, "Upper Abs": 0.6, "Biceps": 0.3, "Forearms": 0.3 }, equipment: "Bodyweight" },
+  "Advanced Tuck Front Lever": { timed: true, muscles: { "Lats": 1, "Upper Abs": 0.6, "Lower Abs": 0.3, "Biceps": 0.3, "Forearms": 0.3 }, equipment: "Bodyweight" },
+  "Single Leg Front Lever": { timed: true, muscles: { "Lats": 1, "Lower Abs": 0.6, "Upper Abs": 0.6, "Biceps": 0.3, "Forearms": 0.3 }, equipment: "Bodyweight" },
+  "Straddle Front Lever": { timed: true, muscles: { "Lats": 1, "Lower Abs": 0.6, "Upper Abs": 0.6, "Biceps": 0.3, "Forearms": 0.3 }, equipment: "Bodyweight" },
+  "Front Lever": { timed: true, muscles: { "Lats": 1, "Lower Abs": 1, "Upper Abs": 0.6, "Biceps": 0.3, "Forearms": 0.6 }, equipment: "Bodyweight" },
   "Front Lever Row": { muscles: { "Lats": 1, "Upper Back": 0.6, "Biceps": 0.6 }, equipment: "Bodyweight" },
   "Front Lever Raise": { muscles: { "Lats": 1, "Lower Abs": 0.6, "Upper Abs": 0.6 }, equipment: "Bodyweight" },
   "Ice Cream Makers": { muscles: { "Lats": 1, "Upper Abs": 0.6, "Triceps": 0.3 }, equipment: "Bodyweight" },
-  "Skin The Cat": { muscles: { "Lats": 0.6, "Front Shoulders": 0.6, "Upper Abs": 0.3, "Biceps": 0.3 }, equipment: "Bodyweight" },
-  "Wall Handstand Hold": { muscles: { "Front Shoulders": 1, "Lateral Shoulders": 0.6, "Triceps": 0.2, "Upper Abs": 0.3, "Forearms": 0.2 }, equipment: "Bodyweight" },
-  "Freestanding Handstand Hold": { muscles: { "Front Shoulders": 1, "Lateral Shoulders": 0.6, "Upper Abs": 0.6, "Forearms": 0.3 }, equipment: "Bodyweight" },
-  "Chest-to-Wall Handstand Hold": { muscles: { "Front Shoulders": 1, "Lateral Shoulders": 0.3, "Upper Abs": 0.6, "Lower Back": 0.2 }, equipment: "Bodyweight" },
-  "Handstand Shoulder Taps": { muscles: { "Front Shoulders": 1, "Lateral Shoulders": 0.6, "Upper Abs": 0.6, "Obliques": 0.3 }, equipment: "Bodyweight" },
+  "Skin The Cat": { timed: true, muscles: { "Lats": 0.6, "Front Shoulders": 0.6, "Upper Abs": 0.3, "Biceps": 0.3 }, equipment: "Bodyweight" },
+  "Wall Handstand Hold": { timed: true, muscles: { "Front Shoulders": 1, "Lateral Shoulders": 0.6, "Triceps": 0.2, "Upper Abs": 0.3, "Forearms": 0.2 }, equipment: "Bodyweight" },
+  "Freestanding Handstand Hold": { timed: true, muscles: { "Front Shoulders": 1, "Lateral Shoulders": 0.6, "Upper Abs": 0.6, "Forearms": 0.3 }, equipment: "Bodyweight" },
+  "Chest-to-Wall Handstand Hold": { timed: true, muscles: { "Front Shoulders": 1, "Lateral Shoulders": 0.3, "Upper Abs": 0.6, "Lower Back": 0.2 }, equipment: "Bodyweight" },
+  "Handstand Shoulder Taps": { timed: true, muscles: { "Front Shoulders": 1, "Lateral Shoulders": 0.6, "Upper Abs": 0.6, "Obliques": 0.3 }, equipment: "Bodyweight" },
   "Deficit Handstand Push Up": { muscles: { "Front Shoulders": 1, "Lateral Shoulders": 0.6, "Triceps": 1 }, equipment: "Bodyweight" },
   "Handstand Push Up Negative": { muscles: { "Front Shoulders": 1, "Lateral Shoulders": 0.6, "Triceps": 0.6 }, equipment: "Bodyweight" },
-  "Frog Stand": { muscles: { "Front Shoulders": 1, "Upper Abs": 0.6, "Forearms": 0.3, "Triceps": 0.3 }, equipment: "Bodyweight" },
-  "Tuck Planche": { muscles: { "Front Shoulders": 1, "Lower Abs": 0.6, "Middle Chest": 0.3, "Triceps": 0.6, "Forearms": 0.3 }, equipment: "Bodyweight" },
-  "Advanced Tuck Planche": { muscles: { "Front Shoulders": 1, "Lower Abs": 0.6, "Middle Chest": 0.3, "Triceps": 0.6, "Forearms": 0.3 }, equipment: "Bodyweight" },
-  "Straddle Planche": { muscles: { "Front Shoulders": 1, "Lower Abs": 0.6, "Middle Chest": 0.6, "Triceps": 0.6, "Forearms": 0.6 }, equipment: "Bodyweight" },
-  "Full Planche": { muscles: { "Front Shoulders": 1, "Lower Abs": 0.6, "Middle Chest": 0.6, "Triceps": 0.6, "Forearms": 0.6 }, equipment: "Bodyweight" },
-  "Planche Lean": { muscles: { "Front Shoulders": 1, "Middle Chest": 0.6, "Forearms": 0.6, "Lower Abs": 0.3 }, equipment: "Bodyweight" },
+  "Frog Stand": { timed: true, muscles: { "Front Shoulders": 1, "Upper Abs": 0.6, "Forearms": 0.3, "Triceps": 0.3 }, equipment: "Bodyweight" },
+  "Tuck Planche": { timed: true, muscles: { "Front Shoulders": 1, "Lower Abs": 0.6, "Middle Chest": 0.3, "Triceps": 0.6, "Forearms": 0.3 }, equipment: "Bodyweight" },
+  "Advanced Tuck Planche": { timed: true, muscles: { "Front Shoulders": 1, "Lower Abs": 0.6, "Middle Chest": 0.3, "Triceps": 0.6, "Forearms": 0.3 }, equipment: "Bodyweight" },
+  "Straddle Planche": { timed: true, muscles: { "Front Shoulders": 1, "Lower Abs": 0.6, "Middle Chest": 0.6, "Triceps": 0.6, "Forearms": 0.6 }, equipment: "Bodyweight" },
+  "Full Planche": { timed: true, muscles: { "Front Shoulders": 1, "Lower Abs": 0.6, "Middle Chest": 0.6, "Triceps": 0.6, "Forearms": 0.6 }, equipment: "Bodyweight" },
+  "Planche Lean": { timed: true, muscles: { "Front Shoulders": 1, "Middle Chest": 0.6, "Forearms": 0.6, "Lower Abs": 0.3 }, equipment: "Bodyweight" },
   "Planche Push Up": { muscles: { "Front Shoulders": 1, "Middle Chest": 0.6, "Triceps": 0.6 }, equipment: "Bodyweight" },
 };
 const MUSCLES = [
@@ -1239,10 +1239,10 @@ function openNumpad(input) {
   numpadTarget = input;
   numpadRaw = input.value !== '' ? String(input.value) : '';
   const isWeight = input.dataset.isWeight === '1';
-  document.getElementById('numpad-context').textContent = isWeight ? 'Weight (kg)' : 'Reps';
+  const label = input.dataset.label || (isWeight ? 'Weight (kg)' : 'Reps');
+  document.getElementById('numpad-context').textContent = label;
   document.getElementById('numpad-display').textContent = numpadRaw || '—';
   document.getElementById('numpad-overlay').classList.remove('hidden');
-  // dot key only relevant for weight
   document.querySelector('.numpad-dot').style.visibility = isWeight ? 'visible' : 'hidden';
 }
 
@@ -1253,6 +1253,13 @@ function closeNumpad(confirm = true) {
     if (!isNaN(val) && val >= min) {
       numpadTarget.value = val;
       numpadTarget.dispatchEvent(new Event('input'));
+      // trigger set completion check on the parent set-row
+      const setRow = numpadTarget.closest('.set-row');
+      if (setRow) {
+        const reps = Number(setRow.querySelector('.set-reps')?.value) || 0;
+        setRow.classList.toggle('complete', reps > 0);
+        refreshCompleteButton();
+      }
     }
   }
   numpadTarget = null;
@@ -1892,6 +1899,7 @@ function startProgramDay(idx) {
     const prefillSets = progressiveOverloadSuggestion(ex.name, ex.reps);
     addExerciseRow(ex.name, ex.sets, ex.reps, prefillSets);
   });
+  refreshCompleteButton();
   openWorkoutModal();
 }
 
@@ -1933,10 +1941,14 @@ function refreshCompleteButton() {
   if (!btn) return;
   const rows = document.querySelectorAll('#exercise-rows .exercise-row');
   if (!rows.length) { btn.classList.add('hidden'); return; }
-  // show Complete Quest once every exercise has at least one set with reps logged
   let allHaveAtLeastOneSet = true;
   rows.forEach(row => {
-    const hasAnyComplete = row.querySelectorAll('.set-row.complete').length > 0;
+    const setRows = row.querySelectorAll('.set-row');
+    // a set is complete if reps > 0 (weight can be 0 for bodyweight/time-based)
+    const hasAnyComplete = [...setRows].some(sr => {
+      const reps = Number(sr.querySelector('.set-reps')?.value) || 0;
+      return reps > 0;
+    });
     if (!hasAnyComplete) allHaveAtLeastOneSet = false;
   });
   btn.classList.toggle('hidden', !allHaveAtLeastOneSet);
@@ -2200,7 +2212,7 @@ function addExerciseRow(presetName, targetSets, targetReps, prefillSets) {
       <button type="button" class="remove-x">×</button>
     </div>
     <div class="muscle-tags"></div>
-    <div class="set-table-head hidden"><span>#</span><span>Reps</span><span>Weight (kg)</span><span></span></div>
+    <div class="set-table-head hidden" id="set-table-head-${Date.now()}"><span>#</span><span class="reps-header">Reps</span><span>Weight (kg)</span><span></span></div>
     <div class="sets-list"></div>
     <button type="button" class="btn add-set-btn">+ Add set</button>
   `;
@@ -2210,10 +2222,10 @@ function addExerciseRow(presetName, targetSets, targetReps, prefillSets) {
   const tagsEl = row.querySelector('.muscle-tags');
   const setsList = row.querySelector('.sets-list');
 
-  function stepper(cls, value, min, step) {
+  function stepper(cls, value, min, step, label) {
     return `<div class="stepper">
       <button type="button" class="step-down">−</button>
-      <input type="text" inputmode="none" readonly class="${cls}" value="${value ?? ''}" data-min="${min}" data-step="${step}" data-is-weight="${cls==='set-weight'?'1':'0'}" />
+      <input type="text" inputmode="none" readonly class="${cls}" value="${value ?? ''}" data-min="${min}" data-step="${step}" data-is-weight="${cls==='set-weight'?'1':'0'}" data-label="${label||''}" />
       <button type="button" class="step-up">+</button>
     </div>`;
   }
@@ -2224,6 +2236,7 @@ function addExerciseRow(presetName, targetSets, targetReps, prefillSets) {
   }
   function checkComplete(setRow) {
     const reps = Number(setRow.querySelector('.set-reps').value) || 0;
+    // complete if reps > 0 regardless of weight (covers bodyweight + time-based)
     setRow.classList.toggle('complete', reps > 0);
     refreshCompleteButton();
   }
@@ -2231,11 +2244,14 @@ function addExerciseRow(presetName, targetSets, targetReps, prefillSets) {
     const idx = setsList.children.length + 1;
     const setRow = document.createElement('div');
     setRow.className = 'set-row';
+    const timed = isTimed();
+    const repsStep = timed ? 5 : 1;
+    const repsLabel = timed ? 'Secs' : 'Reps';
     const suggTag = suggestion ? `<span class="suggest-badge">${suggestion}</span>` : '';
     setRow.innerHTML = `
       <span class="set-idx">${idx}</span>
-      ${stepper('set-reps', prefillReps || '', 0, 1)}
-      ${stepper('set-weight', prefillWeight || '', 0, 2.5)}
+      ${stepper('set-reps', prefillReps || '', 0, repsStep, repsLabel)}
+      ${timed ? '<div class="stepper" style="opacity:0.25;pointer-events:none;"><button>−</button><input type="text" value="BW" readonly style="color:var(--text-faint);font-size:12px;"/><button>+</button></div>' : stepper('set-weight', prefillWeight || '', 0, 2.5, 'kg')}
       <button type="button" class="remove-x set-remove">×</button>
       ${suggTag}
       <div class="set-row-rir">
@@ -2266,10 +2282,21 @@ function addExerciseRow(presetName, targetSets, targetReps, prefillSets) {
     setRow.querySelector('.set-remove').addEventListener('click', () => { setRow.remove(); [...setsList.children].forEach((r,i) => r.querySelector('.set-idx').textContent = i+1); });
     setsList.appendChild(setRow);
     tableHead.classList.remove('hidden');
+    // immediately check if prefilled values make this set complete
+    if (prefillReps) checkComplete(setRow);
+  }
+  function isTimed() {
+    return !!(EXERCISES_ALL[row.dataset.exName] || {}).timed;
   }
   function refreshTags() {
-    const map = (EXERCISES_ALL[row.dataset.exName] || {}).muscles || {};
+    const def = EXERCISES_ALL[row.dataset.exName] || {};
+    const map = def.muscles || {};
     tagsEl.innerHTML = Object.keys(map).map(m => `<span class="tag">${m}</span>`).join('');
+    // update table header if sets already exist
+    const head = row.querySelector('.set-table-head');
+    if (head && !head.classList.contains('hidden')) {
+      head.querySelector('span:nth-child(2)').textContent = isTimed() ? 'Secs' : 'Reps';
+    }
   }
   function selectExercise(name) {
     row.dataset.exName = name;
