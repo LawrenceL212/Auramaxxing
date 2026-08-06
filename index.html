@@ -254,6 +254,49 @@
   table.board td:nth-child(2){max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
   table.board td.rank{color:var(--text-faint);font-family:var(--font-mono);width:24px;}
   table.board tr.me td{color:var(--brass);}
+
+  /* ---------- Character / Aura Points System ---------- */
+  .char-card{background:radial-gradient(ellipse 400px 200px at 0% 0%, rgba(61,165,255,0.12), transparent 60%), var(--card);border-color:var(--brass);}
+  .char-header{display:flex;align-items:center;gap:14px;margin-bottom:18px;}
+  .char-rank-badge{
+    width:56px;height:56px;border-radius:6px;display:flex;align-items:center;justify-content:center;
+    font-family:var(--font-display);font-size:28px;font-weight:900;letter-spacing:0.05em;flex-shrink:0;
+    border:2px solid var(--brass);color:var(--brass);box-shadow:0 0 16px rgba(61,165,255,0.4);
+  }
+  .char-rank-badge.rank-s{border-color:#FFD700;color:#FFD700;box-shadow:0 0 24px rgba(255,215,0,0.6);animation:sRankGlow 3s ease-in-out infinite;}
+  .char-rank-badge.rank-a{border-color:#FF3D5A;color:#FF3D5A;box-shadow:0 0 20px rgba(255,61,90,0.5);}
+  .char-rank-badge.rank-b{border-color:#8B6BFF;color:#8B6BFF;box-shadow:0 0 16px rgba(139,107,255,0.4);}
+  .char-rank-badge.rank-c{border-color:#2FB8C6;color:#2FB8C6;}
+  .char-rank-badge.rank-d{border-color:#3DA5FF;color:#3DA5FF;}
+  @keyframes sRankGlow{0%,100%{box-shadow:0 0 24px rgba(255,215,0,0.6);}50%{box-shadow:0 0 40px rgba(255,215,0,1);}}
+  .char-info{flex:1;min-width:0;}
+  .char-name{font-family:var(--font-display);font-size:17px;margin:0 0 3px;letter-spacing:0.02em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .char-title{font-size:11.5px;color:var(--brass);text-transform:uppercase;letter-spacing:0.06em;margin:0;}
+  .char-ap{display:flex;flex-direction:column;align-items:center;flex-shrink:0;}
+  .ap-amount{font-family:var(--font-mono);font-size:22px;color:var(--brass);line-height:1;}
+  .ap-label{font-size:9px;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.1em;}
+  .char-stats{display:flex;flex-direction:column;gap:10px;}
+  .stat-row{display:flex;align-items:center;gap:10px;}
+  .stat-label{font-size:11px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.05em;width:74px;flex-shrink:0;}
+  .stat-bar-wrap{flex:1;height:6px;background:var(--card-2);border-radius:3px;overflow:visible;position:relative;}
+  .stat-bar{height:100%;border-radius:3px;transition:width 0.6s ease;}
+  .stat-tiers{display:flex;gap:2px;position:absolute;top:0;left:0;right:0;height:100%;}
+  .stat-tier-seg{flex:1;border-right:1px solid rgba(5,7,13,0.6);height:100%;}
+  .stat-tier-seg:last-child{border-right:none;}
+  .stat-rank{font-family:var(--font-mono);font-size:11px;width:14px;text-align:center;flex-shrink:0;}
+  .stat-rank.rank-s{color:#FFD700;}
+  .stat-rank.rank-a{color:#FF3D5A;}
+  .stat-rank.rank-b{color:#8B6BFF;}
+  .stat-rank.rank-c{color:#2FB8C6;}
+  .stat-rank.rank-d{color:#3DA5FF;}
+  .stat-rank.rank-e{color:var(--text-faint);}
+  .stat-upgrade-btn{
+    font-size:10px;padding:3px 8px;border-radius:10px;background:none;border:1px solid var(--border);
+    color:var(--text-dim);cursor:pointer;white-space:nowrap;flex-shrink:0;
+  }
+  .stat-upgrade-btn.can-upgrade{border-color:var(--brass);color:var(--brass);background:var(--brass-dim);}
+  .stat-upgrade-btn.maxed{border-color:var(--text-faint);color:var(--text-faint);cursor:default;opacity:0.5;}
+  .char-rank-hint{font-size:12px;color:var(--text-faint);margin:12px 0 0;text-align:center;line-height:1.6;}
   .streak-pill{font-family:var(--font-mono);font-size:13px;background:var(--card-2);padding:3px 9px;border-radius:20px;}
   .rank-badge{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;font-family:var(--font-display);font-weight:800;font-size:13px;border:1.5px solid;border-radius:4px;background:var(--card-2);}
 
@@ -471,6 +514,24 @@
     <section class="view" id="view-board">
       <h2>Rankings</h2>
       <p class="sub">Hunter rank rises with your streak, then workouts this week.</p>
+
+      <!-- Character card -->
+      <div class="card char-card" id="char-card">
+        <div class="char-header">
+          <div class="char-rank-badge" id="char-rank-badge">E</div>
+          <div class="char-info">
+            <p class="char-name" id="char-name">—</p>
+            <p class="char-title" id="char-title">Unranked Hunter</p>
+          </div>
+          <div class="char-ap">
+            <span class="ap-amount" id="ap-amount">0</span>
+            <span class="ap-label">AURA</span>
+          </div>
+        </div>
+        <div class="char-stats" id="char-stats"></div>
+        <p class="char-rank-hint" id="char-rank-hint"></p>
+      </div>
+
       <div class="card">
         <div class="card-title"><h3>Party status — today</h3></div>
         <div class="today-list" id="today-list"></div>
@@ -979,6 +1040,8 @@ if (configOk) {
       currentUser = user;
       const snap = await getDoc(doc(db, 'users', user.uid));
       profile = snap.exists() ? snap.data() : { displayName: user.displayName || 'You', weeklyGoal: 3 };
+      if (!profile.stats) profile.stats = defaultStats();
+      if (profile.auraPoints === undefined) profile.auraPoints = 0;
       document.getElementById('user-avatar').textContent = initials(profile.displayName);
       document.getElementById('auth-screen').style.display = 'none';
       document.getElementById('app').style.display = 'flex';
@@ -1000,7 +1063,7 @@ function switchView(name) {
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
   document.getElementById('view-' + name).classList.add('active');
   document.querySelectorAll('.bottom-nav button').forEach(b => b.classList.toggle('active', b.dataset.view === name));
-  if (name === 'board') renderBoard();
+  if (name === 'board') { renderBoard(); renderCharCard(); }
   if (name === 'trends') { trendsView = 'dashboard'; renderTrends(); }
   if (name === 'exercises') renderExerciseLibrary();
   if (name === 'history') renderCalendar();
@@ -1444,7 +1507,14 @@ document.getElementById('save-workout-btn').addEventListener('click', async () =
     exerciseRows.innerHTML = '';
     addExerciseRow();
     await loadAllData();
-    setTimeout(() => closeWorkoutModal(), 900);
+    // try to award AP for today — anti-cheat inside tryAwardAp ensures once-per-day
+    const earned = await tryAwardAp();
+    if (earned) {
+      const msg = document.getElementById('save-msg');
+      msg.textContent = `Quest cleared — +${earned} Aura Points earned!`;
+      msg.classList.remove('hidden');
+    }
+    setTimeout(() => closeWorkoutModal(), 1400);
   } catch (err) {
     alert('Could not save: ' + err.message);
   } finally {
@@ -1463,13 +1533,159 @@ function computeStreak(uid) {
   return streak;
 }
 function countSince(uid, sinceDate) { return allWorkouts.filter(w => w.uid === uid && new Date(w.date) >= sinceDate).length; }
-const RANK_TIERS = [
+const HUNTER_RANK_TIERS = [
   { min: 60, rank: 'S', color: 'var(--violet)' }, { min: 30, rank: 'A', color: 'var(--brass)' },
   { min: 14, rank: 'B', color: 'var(--maintaining)' }, { min: 7, rank: 'C', color: 'var(--growing)' },
   { min: 3, rank: 'D', color: 'var(--text-dim)' }, { min: 0, rank: 'E', color: 'var(--text-faint)' },
 ];
-function hunterRank(streak) { return RANK_TIERS.find(t => streak >= t.min); }
+function hunterRank(streak) { return HUNTER_RANK_TIERS.find(t => streak >= t.min); }
 function rankBadge(tier) { return `<span class="rank-badge" style="color:${tier.color};border-color:${tier.color};">${tier.rank}</span>`; }
+
+/* =========================================================================
+   AURA POINTS & CHARACTER STATS SYSTEM
+   ========================================================================= */
+const RANK_TIERS = ['E','D','C','B','A','S'];
+const RANK_COLORS = { E:'var(--text-faint)', D:'var(--brass)', C:'var(--maintaining)', B:'var(--violet)', A:'var(--excess)', S:'#FFD700' };
+const RANK_TITLES = {
+  E:'Unranked Hunter', D:'Novice Hunter', C:'Seasoned Hunter',
+  B:'Elite Hunter', A:'Shadow Monarch', S:'Absolute Being'
+};
+// AP cost to upgrade TO the next tier (cost indexed by current tier index)
+const UPGRADE_COSTS = { E:50, D:150, C:400, B:1000, A:2500 };
+const STAT_DEFS = [
+  { id:'strength',   label:'Strength',   desc:'Chest, Back & Shoulder volume' },
+  { id:'endurance',  label:'Endurance',  desc:'Workout frequency consistency' },
+  { id:'agility',    label:'Agility',    desc:'Leg training volume' },
+  { id:'flexibility',label:'Flexibility',desc:'Core & Hip Flexor activity' },
+  { id:'recovery',   label:'Recovery',   desc:'Hitting your weekly goal' },
+  { id:'focus',      label:'Focus',      desc:'Overall training streak' },
+];
+
+function defaultStats() {
+  const s = {};
+  STAT_DEFS.forEach(d => s[d.id] = 'E');
+  return s;
+}
+
+function charRankFromStats(stats) {
+  // Character rank = lowest individual stat rank
+  const vals = STAT_DEFS.map(d => RANK_TIERS.indexOf(stats[d.id] || 'E'));
+  const minVal = Math.min(...vals);
+  return RANK_TIERS[minVal];
+}
+
+function apCostToUpgrade(currentRank) {
+  return UPGRADE_COSTS[currentRank] ?? null;
+}
+
+// Aura Points: 10 base per day, +5 if weekly goal hit, streak multiplier
+// Anti-cheat: only awarded once per real calendar day (checked via lastApDate stored in Firestore)
+function computeApEarned() {
+  const streak = computeStreak(currentUser.uid);
+  let base = 10;
+  let bonus = 0;
+  // streak multiplier (stacks naturally with multiple days)
+  const mult = streak >= 60 ? 3 : streak >= 30 ? 2 : streak >= 7 ? 1.5 : 1;
+  base = Math.round(base * mult);
+  // weekly goal bonus
+  const weekStart = startOfWeek(new Date());
+  const weekCount = countSince(currentUser.uid, weekStart);
+  if (weekCount >= (profile.weeklyGoal || 3)) bonus = 5;
+  return base + bonus;
+}
+
+async function tryAwardAp() {
+  if (!currentUser || !profile) return;
+  const today = todayStr();
+  if (profile.lastApDate === today) return; // already awarded today — anti-cheat
+
+  // extra anti-cheat: the workout being logged must have today's actual date
+  const todayWorkouts = myWorkouts.filter(w => w.date === today);
+  if (!todayWorkouts.length) return; // no workout actually logged today
+
+  const earned = computeApEarned();
+  const newAp = (profile.auraPoints || 0) + earned;
+  await setDoc(doc(db, 'users', currentUser.uid), {
+    auraPoints: newAp,
+    lastApDate: today,
+  }, { merge: true });
+  profile.auraPoints = newAp;
+  profile.lastApDate = today;
+  return earned;
+}
+
+async function upgradeStatWithAp(statId) {
+  if (!profile) return;
+  const currentRank = (profile.stats || {})[statId] || 'E';
+  if (currentRank === 'S') return;
+  const cost = apCostToUpgrade(currentRank);
+  if ((profile.auraPoints || 0) < cost) {
+    alert(`Not enough Aura Points. Need ${cost} AP, have ${profile.auraPoints || 0}.`);
+    return;
+  }
+  const newRank = RANK_TIERS[RANK_TIERS.indexOf(currentRank) + 1];
+  const newStats = { ...(profile.stats || defaultStats()), [statId]: newRank };
+  const newAp = (profile.auraPoints || 0) - cost;
+  await setDoc(doc(db, 'users', currentUser.uid), {
+    auraPoints: newAp,
+    stats: newStats,
+  }, { merge: true });
+  profile.auraPoints = newAp;
+  profile.stats = newStats;
+  renderBoard();
+}
+
+function renderCharCard() {
+  const stats = profile.stats || defaultStats();
+  const ap = profile.auraPoints || 0;
+  const charRank = charRankFromStats(stats);
+  const rankIdx = RANK_TIERS.indexOf(charRank);
+  const rankClass = 'rank-' + charRank.toLowerCase();
+
+  document.getElementById('char-name').textContent = profile.displayName || 'Hunter';
+  document.getElementById('char-title').textContent = RANK_TITLES[charRank];
+  document.getElementById('ap-amount').textContent = ap.toLocaleString();
+  const badge = document.getElementById('char-rank-badge');
+  badge.textContent = charRank;
+  badge.className = 'char-rank-badge ' + rankClass;
+
+  // stat bars
+  const statsEl = document.getElementById('char-stats');
+  statsEl.innerHTML = STAT_DEFS.map(def => {
+    const cur = stats[def.id] || 'E';
+    const curIdx = RANK_TIERS.indexOf(cur);
+    const pct = (curIdx / 5) * 100;
+    const barColor = RANK_COLORS[cur];
+    const cost = apCostToUpgrade(cur);
+    const canUpgrade = cur !== 'S' && ap >= cost;
+    const isMaxed = cur === 'S';
+    const rankCls = 'rank-' + cur.toLowerCase();
+    const btnCls = isMaxed ? 'stat-upgrade-btn maxed' : canUpgrade ? 'stat-upgrade-btn can-upgrade' : 'stat-upgrade-btn';
+    const btnLabel = isMaxed ? 'MAX' : `${cost} AP`;
+    return `<div class="stat-row">
+      <span class="stat-label" title="${def.desc}">${def.label}</span>
+      <div class="stat-bar-wrap">
+        <div class="stat-bar" style="width:${pct}%;background:${barColor};"></div>
+        <div class="stat-tiers">${RANK_TIERS.map(()=>'<div class="stat-tier-seg"></div>').join('')}</div>
+      </div>
+      <span class="stat-rank ${rankCls}">${cur}</span>
+      <button class="stat-upgrade-btn ${canUpgrade?'can-upgrade':''} ${isMaxed?'maxed':''}" data-stat="${def.id}" ${isMaxed?'disabled':''}>${btnLabel}</button>
+    </div>`;
+  }).join('');
+
+  statsEl.querySelectorAll('.stat-upgrade-btn:not([disabled])').forEach(btn =>
+    btn.addEventListener('click', () => upgradeStatWithAp(btn.dataset.stat)));
+
+  // hint about next rank requirement
+  const hint = document.getElementById('char-rank-hint');
+  if (charRank === 'S') {
+    hint.textContent = '◆ Absolute Being — you have reached the pinnacle.';
+  } else {
+    const nextRank = RANK_TIERS[rankIdx + 1];
+    const limiting = STAT_DEFS.filter(d => (stats[d.id] || 'E') === charRank);
+    hint.textContent = `To reach ${nextRank} Rank: upgrade ${limiting.map(d=>d.label).join(', ')} past ${charRank}.`;
+  }
+}
 
 function renderBoard() {
   const today = todayStr();
