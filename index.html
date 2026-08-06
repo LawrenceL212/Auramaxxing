@@ -1341,11 +1341,20 @@ function migrateProgram(prog) {
   });
   return prog;
 }
-function setsLoggedToday(name) {
-  return myWorkouts.filter(w => w.date === todayStr())
+function setsLoggedToday(name, dayIndex) {
+  return myWorkouts
+    .filter(w => {
+      if (w.date !== todayStr()) return false;
+      if (w.uid !== currentUser.uid) return false;
+      // if dayIndex provided, only count from that specific session
+      if (dayIndex !== undefined && dayIndex !== null) {
+        return w.programDayIndex === dayIndex;
+      }
+      return true;
+    })
     .flatMap(w => w.exercises)
     .filter(e => e.name === name)
-    .reduce((sum, e) => sum + e.sets.filter(s => s.reps > 0).length, 0);
+    .reduce((sum, e) => sum + (e.sets||[]).filter(s => s.reps > 0).length, 0);
 }
 function startOfWeek(d) { const dt = new Date(d); const day = dt.getDay(); const diff = (day === 0 ? -6 : 1) - day; dt.setDate(dt.getDate() + diff); dt.setHours(0,0,0,0); return dt; }
 function initials(name) { return (name || "?").trim().split(/\s+/).map(w => w[0]).slice(0,2).join("").toUpperCase(); }
@@ -1674,7 +1683,7 @@ function renderQuestFeed() {
 
 function isQuestComplete(idx) {
   const day = myProgram.days[idx];
-  return day.exercises.length > 0 && day.exercises.every(ex => setsLoggedToday(ex.name) >= ex.sets);
+  return day.exercises.length > 0 && day.exercises.every(ex => setsLoggedToday(ex.name, idx) >= ex.sets);
 }
 
 function buildQuestCardHTML(idx) {
@@ -1683,7 +1692,7 @@ function buildQuestCardHTML(idx) {
   const isActiveDay = idx === rotationIdx;
   const allComplete = isQuestComplete(idx);
   const checklist = day.exercises.map(ex => {
-    const done = setsLoggedToday(ex.name);
+    const done = setsLoggedToday(ex.name, idx);
     const complete = done >= ex.sets;
     return `<div class="quest-check-row ${complete ? 'complete' : ''}">
       <span class="qc-name">${escapeHtml(ex.name)}</span>
@@ -2349,7 +2358,7 @@ document.getElementById('save-workout-btn').addEventListener('click', async () =
   const btn = document.getElementById('save-workout-btn');
   btn.disabled = true; btn.textContent = 'Saving…';
   try {
-    await addDoc(collection(db, 'workouts'), { uid: currentUser.uid, displayName: profile.displayName, date, time, exercises, createdAt: serverTimestamp() });
+    await addDoc(collection(db, 'workouts'), { uid: currentUser.uid, displayName: profile.displayName, date, time, exercises, programDayIndex: activeDayIndex ?? null, createdAt: serverTimestamp() });
     if (activeDayIndex !== null && myProgram) {
       myProgram.days[activeDayIndex].lastDate = date;
       myProgram.currentDayIndex = (activeDayIndex + 1) % myProgram.days.length;
