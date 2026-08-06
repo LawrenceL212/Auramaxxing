@@ -765,7 +765,7 @@ const ANATOMY_TEMPLATES = { male: null, female: null };
 // against each exported file, never assumed to match between body types.
 const ANATOMY_CROP = {
   male:   { front: { viewBox: '0 0 544 1080', w: 544, h: 1080 }, back: { viewBox: '544 0 536 1080', w: 536, h: 1080 } },
-  female: { front: { viewBox: '0 0 540 1080', w: 540, h: 1080 }, back: { viewBox: '540 0 540 1080', w: 540, h: 1080 } },
+  female: { front: { viewBox: '147 95 580 906', w: 580, h: 906 }, back: { viewBox: '488 89 450 913', w: 450, h: 913 } },
 };
 async function loadAnatomyTemplate(bodyType) {
   if (ANATOMY_TEMPLATES[bodyType]) return ANATOMY_TEMPLATES[bodyType];
@@ -1601,6 +1601,22 @@ function bodySvg(view, stats) {
   clone.setAttribute('viewBox', crop.viewBox);
   clone.setAttribute('width', String(crop.w));
   clone.setAttribute('height', String(crop.h));
+  // For the female file (and any future file where both figures share one canvas),
+  // inject a tight clipPath that exactly matches the viewBox so the opposite figure
+  // doesn't bleed in at the edge. The viewBox alone zooms in but doesn't clip.
+  const svgNs = 'http://www.w3.org/2000/svg';
+  const [vx, vy, vw, vh] = crop.viewBox.split(' ').map(Number);
+  const tightClipId = 'tight-crop-' + view;
+  const defs = clone.querySelector('defs') || clone.insertBefore(document.createElementNS(svgNs, 'defs'), clone.firstChild);
+  const clipEl = document.createElementNS(svgNs, 'clipPath');
+  clipEl.setAttribute('id', tightClipId);
+  const clipRect = document.createElementNS(svgNs, 'rect');
+  clipRect.setAttribute('x', String(vx)); clipRect.setAttribute('y', String(vy));
+  clipRect.setAttribute('width', String(vw)); clipRect.setAttribute('height', String(vh));
+  clipEl.appendChild(clipRect); defs.appendChild(clipEl);
+  // wrap the whole content in a clipping group
+  const topGroup = clone.querySelector('g');
+  if (topGroup) topGroup.setAttribute('clip-path', `url(#${tightClipId})`);
   // the source file's <mask>/<clipPath> ids aren't unique once both views render
   // side by side on the same page — suffix them per view (whatever Figma happened to
   // auto-generate this export) so neither view steals the other's mask/clip definition.
