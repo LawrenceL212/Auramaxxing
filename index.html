@@ -327,6 +327,92 @@
   .pr-tier.tier-Unranked{background:var(--card);color:var(--text-faint);border:1px solid var(--border);}
   .pr-xp{font-family:var(--font-mono);font-size:11px;color:var(--brass);white-space:nowrap;}
 
+  /* ========== Party Intel & Superlatives ========== */
+  .superlatives-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+  .superlative-card{background:var(--card-2);border:1px solid var(--border);border-radius:8px;padding:12px;}
+  .superlative-icon{font-size:20px;margin-bottom:4px;}
+  .superlative-label{font-size:10px;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px;}
+  .superlative-name{font-size:14px;font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .superlative-detail{font-size:11px;color:var(--text-dim);margin-top:2px;}
+
+  .party-dash-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+  .party-tile{background:var(--card-2);border:1px solid var(--border);border-radius:8px;padding:12px;text-align:center;}
+  .party-tile-label{font-size:10px;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:6px;}
+  .party-tile-value{font-family:var(--font-mono);font-size:20px;color:var(--brass);}
+  .party-tile-name{font-size:11px;color:var(--text-dim);margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+
+  /* ========== Hunter Profile Modal ========== */
+  .hunter-modal{position:fixed;inset:0;z-index:100;background:rgba(5,7,13,0.9);backdrop-filter:blur(6px);overflow-y:auto;}
+  .hunter-modal.hidden{display:none;}
+  .hunter-modal-inner{max-width:520px;margin:0 auto;padding:20px 16px 80px;}
+  .hunter-modal-header{display:flex;align-items:center;gap:12px;margin-bottom:20px;}
+  .hunter-back-btn{background:none;border:none;color:var(--brass);font-size:14px;cursor:pointer;padding:0;}
+  .hunter-section{margin-bottom:16px;}
+  .hunter-section-title{font-size:11px;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px;}
+
+  /* Head-to-head comparison */
+  .h2h-row{display:grid;grid-template-columns:1fr auto 1fr;gap:8px;align-items:center;margin-bottom:8px;}
+  .h2h-bar-you{height:8px;border-radius:4px;background:var(--brass);transition:width .5s ease;}
+  .h2h-bar-them{height:8px;border-radius:4px;background:var(--violet);transition:width .5s ease;}
+  .h2h-label{font-size:11px;color:var(--text-faint);text-align:center;white-space:nowrap;}
+  .h2h-you-rank{font-size:12px;color:var(--brass);font-weight:700;text-align:right;}
+  .h2h-them-rank{font-size:12px;color:var(--violet);font-weight:700;}
+  .h2h-legend{display:flex;gap:16px;justify-content:center;margin-bottom:12px;}
+  .h2h-legend span{font-size:11px;color:var(--text-dim);display:flex;align-items:center;gap:4px;}
+  .h2h-dot{width:8px;height:8px;border-radius:50%;display:inline-block;}
+
+  /* Board row tap target */
+  table.board tbody tr{cursor:pointer;}
+  table.board tbody tr:hover td{background:rgba(61,165,255,0.06);}
+  .power-level{font-family:var(--font-mono);font-size:12px;color:var(--violet);}
+
+  /* ========== WEEKLY SUPERLATIVES ========== */
+  .superlatives-grid{display:flex;flex-direction:column;gap:8px;}
+  .superlative-row{display:flex;align-items:center;gap:12px;padding:10px 12px;background:var(--card-2);border-radius:8px;border:1px solid var(--border);}
+  .sup-icon{font-size:20px;flex-shrink:0;width:28px;text-align:center;}
+  .sup-label{font-size:11px;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.05em;}
+  .sup-name{font-size:14px;font-weight:600;}
+  .sup-detail{font-size:11.5px;color:var(--brass);margin-left:auto;white-space:nowrap;font-family:var(--font-mono);}
+
+  /* ========== PARTY DASHBOARD ========== */
+  .party-dash-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  .party-stat-tile{background:var(--card-2);border:1px solid var(--border);border-radius:8px;padding:12px;text-align:center;}
+  .party-stat-value{font-family:var(--font-display);font-size:22px;color:var(--brass);margin:0;}
+  .party-stat-label{font-size:11px;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.05em;margin:4px 0 0;}
+  .weakest-link{border-color:var(--excess);opacity:0.8;}
+  .weakest-link .party-stat-value{color:var(--excess);}
+
+  /* ========== HUNTER PROFILE MODAL ========== */
+  .hunter-modal{position:fixed;inset:0;z-index:100;background:rgba(5,7,13,0.88);backdrop-filter:blur(6px);display:flex;align-items:flex-end;justify-content:center;}
+  .hunter-modal.hidden{display:none;}
+  .hunter-modal-inner{
+    background:var(--bg);width:100%;max-width:640px;max-height:90vh;overflow-y:auto;
+    border-radius:14px 14px 0 0;padding:20px;
+    animation:slideUp .3s cubic-bezier(0.16,1,0.3,1);
+  }
+  @keyframes slideUp{from{transform:translateY(100%);}to{transform:translateY(0);}}
+  .hunter-modal-header{display:flex;align-items:center;gap:14px;margin-bottom:20px;}
+  .hunter-modal-close{background:none;border:none;color:var(--text-faint);font-size:22px;cursor:pointer;margin-left:auto;padding:4px;}
+  .heatmap-pair{display:flex;gap:6px;justify-content:center;margin:14px 0;}
+  .heatmap-pair .body-pair-slot{flex:1;overflow:hidden;}
+  .heatmap-pair .body-pair-slot svg{width:100%;height:auto;display:block;}
+  .h2h-grid{display:flex;flex-direction:column;gap:8px;margin-top:12px;}
+  .h2h-row{display:grid;grid-template-columns:1fr 60px 1fr;gap:6px;align-items:center;}
+  .h2h-bar-wrap{height:6px;border-radius:3px;background:var(--card-2);overflow:hidden;}
+  .h2h-bar-you{height:100%;background:var(--brass);border-radius:3px;float:right;}
+  .h2h-bar-them{height:100%;background:var(--violet);border-radius:3px;}
+  .h2h-label{font-size:10px;text-align:center;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.04em;}
+  .h2h-you-rank{font-size:11px;text-align:right;font-family:var(--font-mono);}
+  .h2h-them-rank{font-size:11px;text-align:left;font-family:var(--font-mono);}
+  .h2h-you-rank.winning{color:var(--brass);}
+  .h2h-them-rank.winning{color:var(--violet);}
+  .hunter-pr-list{display:flex;flex-direction:column;gap:6px;margin-top:10px;}
+  .hunter-pr-row{display:flex;justify-content:space-between;align-items:center;padding:7px 10px;background:var(--card-2);border-radius:6px;font-size:13px;}
+  .hunter-pr-name{font-weight:600;}
+  .hunter-pr-right{display:flex;gap:8px;align-items:center;}
+  table.board td.power{font-family:var(--font-mono);font-size:12px;color:var(--brass);}
+  .board-tap-hint{font-size:11px;color:var(--text-faint);text-align:center;margin:6px 0 -4px;}
+
   /* ========== SYSTEM MODALS (Solo Leveling aesthetic) ========== */
   .system-overlay{
     position:fixed;inset:0;z-index:200;display:flex;align-items:center;justify-content:center;
@@ -607,15 +693,27 @@
       <!-- PR Records panel -->
       <div id="pr-panel"></div>
 
+      <!-- Weekly Superlatives -->
+      <div id="weekly-superlatives"></div>
+
+      <!-- Party Stats Dashboard -->
+      <div id="party-dashboard"></div>
+
       <div class="card">
+        <div class="card-title"><h3>Party status — today</h3></div>
         <div class="today-list" id="today-list"></div>
       </div>
       <div class="card">
         <div class="card-title"><h3>Guild rankings</h3></div>
         <table class="board">
-          <thead><tr><th></th><th>Name</th><th>Rank</th><th>Streak</th><th>This wk</th><th>Total</th></tr></thead>
+          <thead><tr><th></th><th>Name</th><th>Power</th><th>Rank</th><th>Streak</th><th>Total</th></tr></thead>
           <tbody id="board-body"></tbody>
         </table>
+      </div>
+
+      <!-- Hunter profile modal (tap any member to view) -->
+      <div class="hunter-modal hidden" id="hunter-modal">
+        <div class="hunter-modal-inner" id="hunter-modal-inner"></div>
       </div>
     </section>
 
@@ -909,7 +1007,7 @@ const ANATOMY_TEMPLATES = { male: null, female: null };
 // against each exported file, never assumed to match between body types.
 const ANATOMY_CROP = {
   male:   { front: { viewBox: '0 0 544 1080', w: 544, h: 1080 }, back: { viewBox: '544 0 536 1080', w: 536, h: 1080 } },
-  female: { front: { viewBox: '147 95 580 906', w: 580, h: 906 }, back: { viewBox: '488 89 450 913', w: 450, h: 913 } },
+  female: { front: { viewBox: '143 100 401 903', w: 401, h: 903 }, back: { viewBox: '538 89 403 914', w: 403, h: 914 } },
 };
 async function loadAnatomyTemplate(bodyType) {
   if (ANATOMY_TEMPLATES[bodyType]) return ANATOMY_TEMPLATES[bodyType];
@@ -2209,6 +2307,235 @@ async function runSystemChecks() {
   checkPendingRankUps();
 }
 
+/* =========================================================================
+   POWER LEVEL + PARTY INTEL SYSTEM
+   ========================================================================= */
+const TIER_VALUES = { E:0, D:1, C:3, B:6, A:10, S:15 };
+
+function calcPowerLevel(stats) {
+  if (!stats) return 0;
+  return STAT_DEFS.reduce((sum, d) => sum + (TIER_VALUES[stats[d.id] || 'E'] || 0), 0) * 100;
+}
+
+function getUserPowerLevel(user) {
+  return calcPowerLevel(user.stats);
+}
+
+function getUserCharRank(user) {
+  if (!user.stats) return 'E';
+  return charRankFromStats(user.stats);
+}
+
+function getUserClass(user) {
+  const stats = user.stats || {};
+  const s = id => RANK_TIERS.indexOf(stats[id] || 'E');
+  if (STAT_DEFS.every(d => (stats[d.id]||'E') === 'S')) return '👑 Shadow Monarch';
+  if (STAT_DEFS.every(d => s(d.id) >= 4)) return '⚖️ Sovereign';
+  if (s('strength') >= 4 && s('agility') >= 4) return '🗡️ Berserker';
+  if (s('strength') >= 4 && s('recovery') >= 4) return '🛡️ Iron Wall';
+  if (s('agility') >= 4 && s('endurance') >= 4) return '⚡ Shadow Runner';
+  if (s('focus') >= 4 && s('flexibility') >= 4) return '🧠 Tactician';
+  const ranks = STAT_DEFS.map(d => s(d.id));
+  if (Math.max(...ranks) - Math.min(...ranks) <= 1 && Math.min(...ranks) >= 3) return '⚖️ Balanced Fighter';
+  return null;
+}
+
+function getUserTitle(uid) {
+  const user = allUsers.find(u => u.uid === uid);
+  if (!user) return '';
+  const streak = computeStreak(uid);
+  const total = allWorkouts.filter(w => w.uid === uid).length;
+  const weekStart = startOfWeek(new Date());
+  const thisWeek = countSince(uid, weekStart);
+  if (STAT_DEFS.every(d => (user.stats||{})[d.id] === 'S')) return '[Shadow Monarch]';
+  if (streak >= 30) return '[The Unyielding]';
+  if (thisWeek === Math.max(...allUsers.map(u => countSince(u.uid, weekStart)))) return '[Raid Boss]';
+  if (total <= 5) return '[The Weakest Hunter]';
+  return '';
+}
+
+function renderWeeklySuperlatives() {
+  const el = document.getElementById('weekly-superlatives');
+  if (!el || !allUsers.length) return;
+  const weekStart = startOfWeek(new Date());
+  const lastWeekStart = new Date(weekStart); lastWeekStart.setDate(lastWeekStart.getDate() - 7);
+
+  const byUid = uid => allWorkouts.filter(w => w.uid === uid);
+  const thisWeekCount = uid => countSince(uid, weekStart);
+  const powerOf = u => getUserPowerLevel(u);
+
+  // find superlative winners
+  const mostWorkouts = [...allUsers].sort((a,b) => thisWeekCount(b.uid) - thisWeekCount(a.uid))[0];
+  const longestStreak = [...allUsers].sort((a,b) => computeStreak(b.uid) - computeStreak(a.uid))[0];
+  const highestPower = [...allUsers].sort((a,b) => powerOf(b) - powerOf(a))[0];
+  const mostConsistent = [...allUsers].sort((a,b) => {
+    const weeks = w => w.filter(x => new Date(x.date) >= lastWeekStart).length >= (b.weeklyGoal||3) ? 1 : 0;
+    return weeks(byUid(b.uid)) - weeks(byUid(a.uid));
+  })[0];
+  const leastActive = [...allUsers].sort((a,b) => thisWeekCount(a.uid) - thisWeekCount(b.uid))[0];
+
+  const cards = [
+    { icon:'⚔️', label:'Raid MVP', user: mostWorkouts, detail:`${thisWeekCount(mostWorkouts?.uid)} workouts this week` },
+    { icon:'🔥', label:'Iron Will', user: longestStreak, detail:`${computeStreak(longestStreak?.uid)} day streak` },
+    { icon:'⚡', label:'Highest Power', user: highestPower, detail:`Power Level ${powerOf(highestPower).toLocaleString()}` },
+    { icon:'📈', label:'Most Consistent', user: mostConsistent, detail:'Hit weekly goal' },
+    { icon:'👻', label:'Ghost', user: leastActive, detail:`${thisWeekCount(leastActive?.uid)} workouts this week` },
+  ].filter(c => c.user);
+
+  el.innerHTML = `<div class="card">
+    <div class="card-title"><h3>Weekly Superlatives</h3></div>
+    <div class="superlatives-grid">
+      ${cards.map(c => `<div class="superlative-card">
+        <div class="superlative-icon">${c.icon}</div>
+        <div class="superlative-label">${c.label}</div>
+        <div class="superlative-name">${escapeHtml(c.user.displayName || 'Hunter')}</div>
+        <div class="superlative-detail">${c.detail}</div>
+      </div>`).join('')}
+    </div>
+  </div>`;
+}
+
+function renderPartyDashboard() {
+  const el = document.getElementById('party-dashboard');
+  if (!el || !allUsers.length) return;
+  const weekStart = startOfWeek(new Date());
+
+  const highest = [...allUsers].sort((a,b) => getUserPowerLevel(b) - getUserPowerLevel(a))[0];
+  const mostPRsThisWeek = [...allUsers].map(u => {
+    const ws = weekStart.toISOString().slice(0,10);
+    const userWorkouts = allWorkouts.filter(w => w.uid === u.uid && w.date >= ws);
+    const prCount = userWorkouts.reduce((n, w) => n + (w.exercises||[]).reduce((m, ex) => m + (ex.sets||[]).filter(s => s.reps && s.weight).length, 0), 0);
+    return { u, prCount };
+  }).sort((a,b) => b.prCount - a.prCount)[0];
+  const topStreak = [...allUsers].sort((a,b) => computeStreak(b.uid) - computeStreak(a.uid))[0];
+  const weakest = [...allUsers].sort((a,b) => getUserPowerLevel(a) - getUserPowerLevel(b))[0];
+
+  el.innerHTML = `<div class="card">
+    <div class="card-title"><h3>Party Stats</h3></div>
+    <div class="party-dash-grid">
+      <div class="party-tile">
+        <div class="party-tile-label">⚡ Highest Power</div>
+        <div class="party-tile-value">${getUserPowerLevel(highest).toLocaleString()}</div>
+        <div class="party-tile-name">${escapeHtml(highest.displayName||'Hunter')}</div>
+      </div>
+      <div class="party-tile">
+        <div class="party-tile-label">🔥 Top Streak</div>
+        <div class="party-tile-value">${computeStreak(topStreak.uid)}</div>
+        <div class="party-tile-name">${escapeHtml(topStreak.displayName||'Hunter')}</div>
+      </div>
+      <div class="party-tile">
+        <div class="party-tile-label">📊 Total Party Workouts</div>
+        <div class="party-tile-value">${allWorkouts.length}</div>
+        <div class="party-tile-name">All time combined</div>
+      </div>
+      <div class="party-tile">
+        <div class="party-tile-label">👻 Needs Support</div>
+        <div class="party-tile-value" style="font-size:14px;">${getUserPowerLevel(weakest).toLocaleString()}</div>
+        <div class="party-tile-name">${escapeHtml(weakest.displayName||'Hunter')}</div>
+      </div>
+    </div>
+  </div>`;
+}
+
+function openHunterProfile(targetUid) {
+  const modal = document.getElementById('hunter-modal');
+  const inner = document.getElementById('hunter-modal-inner');
+  const target = allUsers.find(u => u.uid === targetUid);
+  if (!target) return;
+  modal.classList.remove('hidden');
+
+  const isMe = targetUid === currentUser.uid;
+  const targetPower = getUserPowerLevel(target);
+  const targetRank = getUserCharRank(target);
+  const targetClass = getUserClass(target) || 'Hunter';
+  const targetTitle = getUserTitle(targetUid);
+  const targetStreak = computeStreak(targetUid);
+  const myStats = profile.stats || defaultStats();
+  const theirStats = target.stats || defaultStats();
+
+  // head-to-head stat comparison
+  const h2hRows = STAT_DEFS.map(def => {
+    const myTierIdx = RANK_TIERS.indexOf(myStats[def.id] || 'E');
+    const theirTierIdx = RANK_TIERS.indexOf(theirStats[def.id] || 'E');
+    const max = Math.max(myTierIdx, theirTierIdx, 1);
+    const myPct = Math.round((myTierIdx / 5) * 100);
+    const theirPct = Math.round((theirTierIdx / 5) * 100);
+    const youAhead = myTierIdx > theirTierIdx;
+    const tied = myTierIdx === theirTierIdx;
+    return `<div class="h2h-row">
+      <div style="display:flex;align-items:center;gap:4px;justify-content:flex-end;">
+        <span style="font-size:11px;color:${youAhead?'var(--brass)':tied?'var(--text-dim)':'var(--excess)'}">${RANK_TIERS[myTierIdx]}</span>
+        <div style="width:${myPct}%;max-width:80px;height:8px;border-radius:4px;background:var(--brass);min-width:${myTierIdx?4:0}px;"></div>
+      </div>
+      <span class="h2h-label">${def.label}</span>
+      <div style="display:flex;align-items:center;gap:4px;">
+        <div style="width:${theirPct}%;max-width:80px;height:8px;border-radius:4px;background:var(--violet);min-width:${theirTierIdx?4:0}px;"></div>
+        <span style="font-size:11px;color:${!youAhead&&!tied?'var(--violet)':tied?'var(--text-dim)':'var(--excess)'}">${RANK_TIERS[theirTierIdx]}</span>
+      </div>
+    </div>`;
+  }).join('');
+
+  const rankBadgeCls = 'rank-' + targetRank.toLowerCase();
+  inner.innerHTML = `
+    <div class="hunter-modal-header">
+      <button class="hunter-back-btn" id="hunter-back">← Back</button>
+    </div>
+    <div class="card char-card" style="margin-bottom:12px;">
+      <div class="char-header">
+        <div class="char-rank-badge ${rankBadgeCls}">${targetRank}</div>
+        <div class="char-info">
+          <p class="char-name">${escapeHtml(target.displayName||'Hunter')}</p>
+          <p class="char-title">${targetClass}${targetTitle ? ' ' + targetTitle : ''}</p>
+        </div>
+        <div class="char-ap">
+          <span class="ap-amount" style="font-size:16px;">${targetPower.toLocaleString()}</span>
+          <span class="ap-label">POWER</span>
+        </div>
+      </div>
+      <div style="display:flex;gap:12px;margin-top:8px;font-size:12px;color:var(--text-dim);">
+        <span>🔥 ${targetStreak} day streak</span>
+        <span>🏋️ ${allWorkouts.filter(w=>w.uid===targetUid).length} total workouts</span>
+      </div>
+    </div>
+
+    ${!isMe ? `<div class="card hunter-section">
+      <div class="hunter-section-title">Head-to-Head</div>
+      <div class="h2h-legend">
+        <span><span class="h2h-dot" style="background:var(--brass)"></span>You</span>
+        <span><span class="h2h-dot" style="background:var(--violet)"></span>${escapeHtml(target.displayName||'Hunter')}</span>
+      </div>
+      ${h2hRows}
+    </div>` : ''}
+
+    <div class="card hunter-section">
+      <div class="hunter-section-title">Muscle Activation</div>
+      <div class="body-pair">${bodySvg('front', buildMuscleStats(targetUid))}${bodySvg('back', buildMuscleStats(targetUid))}</div>
+    </div>
+  `;
+  document.getElementById('hunter-back').addEventListener('click', () => modal.classList.add('hidden'));
+}
+
+function buildMuscleStats(uid) {
+  const sevenDaysAgo = new Date(); sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+  const recentWorkouts = allWorkouts.filter(w => w.uid === uid && new Date(w.date) >= sevenDaysAgo);
+  const setCounts = {};
+  recentWorkouts.forEach(w => (w.exercises||[]).forEach(ex => {
+    const def = EXERCISES_ALL[ex.name];
+    if (!def) return;
+    Object.entries(def.muscles||{}).forEach(([muscle, emphasis]) => {
+      setCounts[muscle] = (setCounts[muscle]||0) + (ex.sets||[]).length * emphasis;
+    });
+  }));
+  const max = Math.max(...Object.values(setCounts), 1);
+  const stats = {};
+  MUSCLES.forEach(m => {
+    const v = setCounts[m] || 0;
+    const ratio = v / max;
+    stats[m] = { status: ratio === 0 ? 'Stalled' : ratio < 0.25 ? 'Maintaining' : ratio < 0.6 ? 'Growing' : ratio < 0.9 ? 'Focusing' : 'Excess' };
+  });
+  return stats;
+}
+
 function renderPRPanel() {
   const el = document.getElementById('pr-panel');
   if (!el) return;
@@ -2252,18 +2579,42 @@ function renderBoard() {
   const today = todayStr();
   document.getElementById('today-list').innerHTML = allUsers.map(u => {
     const done = allWorkouts.some(w => w.uid === u.uid && w.date === today);
-    return `<div class="today-row"><span class="status-dot ${done ? 'done' : 'pending'}"></span><span class="name">${escapeHtml(u.displayName || 'Hunter')}</span><span class="status-text">${done ? 'Completed' : 'Not yet'}</span></div>`;
+    return `<div class="today-row" style="cursor:pointer;" data-uid="${u.uid}">
+      <span class="status-dot ${done ? 'done' : 'pending'}"></span>
+      <span class="name">${escapeHtml(u.displayName || 'Hunter')}</span>
+      <span class="status-text">${done ? 'Completed' : 'Not yet'}</span>
+    </div>`;
   }).join('') || `<p class="empty-state" style="padding:10px 0;">No crew members yet.</p>`;
+  document.querySelectorAll('.today-row[data-uid]').forEach(row =>
+    row.addEventListener('click', () => openHunterProfile(row.dataset.uid)));
 
   const weekStart = startOfWeek(new Date());
-  const rows = allUsers.map(u => ({ uid: u.uid, name: u.displayName || 'Hunter', streak: computeStreak(u.uid), week: countSince(u.uid, weekStart), total: allWorkouts.filter(w => w.uid === u.uid).length }))
-    .sort((a,b) => b.streak - a.streak || b.week - a.week || b.total - a.total);
+  const rows = allUsers.map(u => ({
+    uid: u.uid,
+    name: u.displayName || 'Hunter',
+    power: getUserPowerLevel(u),
+    rank: getUserCharRank(u),
+    streak: computeStreak(u.uid),
+    total: allWorkouts.filter(w => w.uid === u.uid).length,
+  })).sort((a,b) => b.power - a.power || b.streak - a.streak);
 
-  document.getElementById('board-body').innerHTML = rows.map((r, i) => `
-    <tr class="${r.uid === currentUser.uid ? 'me' : ''}">
-      <td class="rank">${i+1}</td><td>${escapeHtml(r.name)}</td><td>${rankBadge(hunterRank(r.streak))}</td>
-      <td><span class="streak-pill">${r.streak}d</span></td><td>${r.week}</td><td>${r.total}</td>
-    </tr>`).join('') || '';
+  document.getElementById('board-body').innerHTML = rows.map((r, i) => {
+    const rankCls = 'rank-' + r.rank.toLowerCase();
+    return `<tr class="${r.uid === currentUser.uid ? 'me' : ''}" data-uid="${r.uid}" style="cursor:pointer;">
+      <td class="rank">${i+1}</td>
+      <td>${escapeHtml(r.name)}</td>
+      <td class="power-level">${r.power.toLocaleString()}</td>
+      <td><span class="char-rank-badge ${rankCls}" style="width:26px;height:26px;font-size:13px;box-shadow:none;">${r.rank}</span></td>
+      <td><span class="streak-pill">${r.streak}d</span></td>
+      <td>${r.total}</td>
+    </tr>`;
+  }).join('') || '';
+
+  document.querySelectorAll('#board-body tr[data-uid]').forEach(row =>
+    row.addEventListener('click', () => openHunterProfile(row.dataset.uid)));
+
+  renderWeeklySuperlatives();
+  renderPartyDashboard();
 }
 
 /* =========================================================================
