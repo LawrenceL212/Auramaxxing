@@ -2437,12 +2437,16 @@ function renderPartyDashboard() {
   </div>`;
 }
 
-function openHunterProfile(targetUid) {
+async function openHunterProfile(targetUid) {
   const modal = document.getElementById('hunter-modal');
   const inner = document.getElementById('hunter-modal-inner');
   const target = allUsers.find(u => u.uid === targetUid);
   if (!target) return;
   modal.classList.remove('hidden');
+  inner.innerHTML = `<div style="padding:40px;text-align:center;color:var(--text-faint);">Loading hunter data…</div>`;
+  // ensure their body type's template is loaded before rendering
+  const targetBodyType = target.bodyType || 'male';
+  await loadAnatomyTemplate(targetBodyType);
 
   const isMe = targetUid === currentUser.uid;
   const targetPower = getUserPowerLevel(target);
@@ -2509,7 +2513,7 @@ function openHunterProfile(targetUid) {
 
     <div class="card hunter-section">
       <div class="hunter-section-title">Muscle Activation</div>
-      <div class="body-pair">${bodySvg('front', buildMuscleStats(targetUid))}${bodySvg('back', buildMuscleStats(targetUid))}</div>
+      <div class="body-pair">${bodySvg('front', buildMuscleStats(targetUid), target.bodyType || 'male')}${bodySvg('back', buildMuscleStats(targetUid), target.bodyType || 'male')}</div>
     </div>
   `;
   document.getElementById('hunter-back').addEventListener('click', () => modal.classList.add('hidden'));
@@ -2677,8 +2681,8 @@ function muscleFromId(id) {
   const stripped = id.replace(/_\d+$/, ''); // Figma dedupes repeated names as "Name_2", "Name_3"...
   return MUSCLES.includes(stripped) ? stripped : null;
 }
-function bodySvg(view, stats) {
-  const bodyType = (profile && profile.bodyType === 'female') ? 'female' : 'male';
+function bodySvg(view, stats, overrideBodyType) {
+  const bodyType = overrideBodyType || ((profile && profile.bodyType === 'female') ? 'female' : 'male');
   const template = ANATOMY_TEMPLATES[bodyType];
   if (!template) return '<div class="empty-state" style="padding:20px;">Loading anatomy…</div>';
   const clone = template.cloneNode(true);
