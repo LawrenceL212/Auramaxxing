@@ -453,7 +453,216 @@
   .pr-tier.tier-Novice{background:rgba(47,184,198,0.15);color:var(--maintaining);border:1px solid var(--maintaining);}
   .pr-tier.tier-Beginner{background:var(--card);color:var(--text-faint);border:1px solid var(--border);}
   .pr-tier.tier-Unranked{background:var(--card);color:var(--text-faint);border:1px solid var(--border);}
+  /* ========== CHARACTER SCREEN — cinematic rank tab ========== */
+  .char-screen{
+    position:relative;border-radius:6px;overflow:hidden;
+    border:1px solid rgba(93,157,255,0.2);
+    margin-bottom:16px;
+    background:linear-gradient(135deg, rgba(5,7,13,0.98) 0%, rgba(14,17,32,0.98) 100%);
+  }
+  .char-screen-bg{
+    position:absolute;inset:0;pointer-events:none;
+    background:
+      radial-gradient(ellipse 300px 200px at 0% 0%, rgba(61,165,255,0.12), transparent 60%),
+      radial-gradient(ellipse 200px 300px at 100% 100%, rgba(139,107,255,0.08), transparent 60%);
+    animation:charBgPulse 4s ease-in-out infinite;
+  }
+  @keyframes charBgPulse{0%,100%{opacity:0.7;}50%{opacity:1;}}
+  .char-screen-inner{position:relative;z-index:1;padding:20px 18px 16px;}
+  .char-top-row{display:flex;align-items:flex-start;gap:14px;margin-bottom:16px;}
+
+  /* Rank Orb */
+  .char-rank-orb{
+    position:relative;width:68px;height:68px;flex-shrink:0;
+    display:flex;align-items:center;justify-content:center;
+  }
+  .char-rank-orb-ring{
+    position:absolute;inset:0;border-radius:50%;
+    border:1.5px solid var(--brass);opacity:0.5;
+    animation:orbRotate 8s linear infinite;
+  }
+  .char-rank-orb-ring.r2{
+    inset:6px;border-color:var(--violet);opacity:0.3;
+    animation:orbRotate 5s linear infinite reverse;
+  }
+  @keyframes orbRotate{from{transform:rotate(0deg);}to{transform:rotate(360deg);}}
+  .char-rank-letter{
+    font-family:var(--font-display);font-size:32px;font-weight:900;
+    color:var(--brass);text-shadow:0 0 20px currentColor;position:relative;z-index:1;
+    animation:rankLetterPulse 3s ease-in-out infinite;
+  }
+  @keyframes rankLetterPulse{0%,100%{text-shadow:0 0 20px currentColor;}50%{text-shadow:0 0 40px currentColor,0 0 60px currentColor;}}
+
+  /* rank-specific orb colors */
+  .char-rank-orb.rank-d .char-rank-letter{color:var(--brass);}
+  .char-rank-orb.rank-c .char-rank-letter,.char-rank-orb.rank-c .char-rank-orb-ring{color:var(--maintaining);border-color:var(--maintaining);}
+  .char-rank-orb.rank-b .char-rank-letter,.char-rank-orb.rank-b .char-rank-orb-ring{color:var(--violet);border-color:var(--violet);}
+  .char-rank-orb.rank-a .char-rank-letter,.char-rank-orb.rank-a .char-rank-orb-ring{color:var(--excess);border-color:var(--excess);}
+  .char-rank-orb.rank-s .char-rank-letter{color:#FFD700;}
+  .char-rank-orb.rank-s .char-rank-orb-ring{border-color:#FFD700;}
+  .char-rank-orb.rank-s{animation:sovereignOrb 2s ease-in-out infinite;}
+  @keyframes sovereignOrb{0%,100%{filter:drop-shadow(0 0 8px rgba(255,215,0,0.6));}50%{filter:drop-shadow(0 0 20px rgba(255,215,0,1));}}
+
+  /* Identity */
+  .char-identity{flex:1;min-width:0;}
+  .char-eyebrow{font-family:var(--font-mono);font-size:8px;letter-spacing:0.3em;color:var(--text-faint);text-transform:uppercase;margin-bottom:4px;}
+  .char-name{font-family:var(--font-display);font-size:17px;font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-bottom:3px;}
+  .char-title{font-size:11px;color:var(--brass);font-family:var(--font-mono);letter-spacing:0.06em;}
+
+  /* Power col */
+  .char-power-col{text-align:right;flex-shrink:0;}
+  .char-power-value{font-family:var(--font-display);font-size:22px;font-weight:900;color:var(--text);line-height:1;}
+  .char-power-label{font-family:var(--font-mono);font-size:8px;letter-spacing:0.3em;color:var(--text-faint);margin-bottom:6px;}
+  .char-ap-row{display:flex;align-items:baseline;gap:3px;justify-content:flex-end;}
+  .char-ap-value{font-family:var(--font-display);font-size:15px;color:var(--brass);}
+  .char-ap-label{font-family:var(--font-mono);font-size:8px;color:var(--text-faint);letter-spacing:0.2em;}
+
+  /* Divider */
+  .char-divider{height:1px;background:linear-gradient(90deg,transparent,rgba(93,157,255,0.3),transparent);margin:0 0 14px;}
+
+  /* Stats — redesigned */
+  .stat-row{display:grid;grid-template-columns:72px 1fr auto auto;gap:8px;align-items:start;padding:8px 0;border-bottom:1px solid rgba(93,157,255,0.06);}
+  .stat-row:last-child{border-bottom:none;}
+  .stat-row.gate-ready{background:linear-gradient(90deg,rgba(255,215,0,0.04),transparent);border-radius:4px;padding:8px 6px;margin:0 -6px;}
+  .stat-label{font-family:var(--font-mono);font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.06em;padding-top:5px;}
+  .stat-bar-wrap{position:relative;height:4px;background:rgba(93,157,255,0.1);border-radius:2px;margin-top:7px;}
+  .stat-bar{height:100%;border-radius:2px;transition:width 0.8s cubic-bezier(0.16,1,0.3,1);box-shadow:0 0 6px currentColor;}
+  .stat-tiers{position:absolute;inset:0;display:flex;}
+  .stat-tier-seg{flex:1;border-right:1px solid rgba(5,7,13,0.8);}
+  .stat-tier-seg:last-child{border-right:none;}
+  .stat-rank{font-family:var(--font-display);font-size:14px;font-weight:700;padding-top:2px;min-width:18px;text-align:center;}
+  .stat-upgrade-btn{
+    font-family:var(--font-mono);font-size:9px;padding:4px 8px;border-radius:3px;
+    border:1px solid var(--border);background:none;color:var(--text-dim);
+    cursor:pointer;white-space:nowrap;letter-spacing:0.04em;touch-action:manipulation;
+  }
+  .stat-upgrade-btn.can-upgrade{border-color:var(--brass);color:var(--brass);}
+  .stat-upgrade-btn.awakening{
+    border-color:#FFD700;color:#FFD700;
+    animation:awakePulse 1.5s ease-in-out infinite;
+    font-weight:700;letter-spacing:0.08em;
+  }
+  @keyframes awakePulse{0%,100%{box-shadow:0 0 4px rgba(255,215,0,0.3);}50%{box-shadow:0 0 12px rgba(255,215,0,0.8);}}
+  .stat-upgrade-btn.maxed{border-color:rgba(93,157,255,0.15);color:var(--text-faint);cursor:default;opacity:0.5;}
+  .stat-xp-bonus{font-size:9px;color:var(--growing);font-family:var(--font-mono);white-space:nowrap;}
+  .stat-gates{display:flex;gap:5px;margin-top:5px;flex-wrap:wrap;}
+  .stat-gates span{font-size:8.5px;font-family:var(--font-mono);white-space:nowrap;padding:1px 4px;border-radius:2px;background:rgba(5,7,13,0.4);}
+  .char-rank-hint{font-family:var(--font-mono);font-size:10px;color:var(--text-faint);margin:12px 0 0;letter-spacing:0.04em;text-align:center;}
+
+  /* Section headers */
+  .sl-section-head{
+    font-family:var(--font-mono);font-size:10px;letter-spacing:0.3em;
+    color:var(--text-faint);text-transform:uppercase;text-align:center;
+    padding:16px 0 10px;display:flex;align-items:center;gap:12px;
+  }
+  .sl-section-head::before,.sl-section-head::after{content:"";flex:1;height:1px;background:linear-gradient(90deg,transparent,rgba(93,157,255,0.2),transparent);}
+
+  /* Board */
+  .sl-board{width:100%;border-collapse:collapse;font-size:13px;margin-bottom:16px;}
+  .sl-board thead th{font-family:var(--font-mono);font-size:9px;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-faint);padding:6px 8px;border-bottom:1px solid rgba(93,157,255,0.15);text-align:left;}
+  .sl-board tbody tr{border-bottom:1px solid rgba(93,157,255,0.06);cursor:pointer;transition:background 0.15s;}
+  .sl-board tbody tr:hover td{background:rgba(61,165,255,0.05);}
+  .sl-board tbody tr.me td{background:rgba(61,165,255,0.06);}
+  .sl-board td{padding:10px 8px;}
+
+  /* Today list */
+  .today-list{display:flex;flex-direction:column;gap:6px;margin-bottom:4px;}
+  .today-row{display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--card-2);border:1px solid rgba(93,157,255,0.1);border-radius:8px;cursor:pointer;transition:border-color 0.2s;}
+  .today-row:hover{border-color:var(--brass);}
+  .today-row.me{border-color:rgba(61,165,255,0.3);}
+
+  /* Streak pill states */
+  .streak-pill{font-family:var(--font-mono);font-size:11px;padding:3px 8px;border-radius:10px;background:var(--card-2);border:1px solid var(--border);color:var(--text-dim);white-space:nowrap;}
+  .streak-pill.at-risk{background:rgba(255,61,90,0.1);border-color:var(--excess);color:var(--excess);animation:timerPulse 1.5s ease-in-out infinite;}
+  .streak-pill.safe{background:rgba(139,107,255,0.1);border-color:var(--growing);color:var(--growing);}
+
+  /* ── Raid Boss ── */
+  .raid-boss-card{
+    background:linear-gradient(135deg,rgba(255,61,90,0.06),rgba(5,7,13,0.98));
+    border:1px solid rgba(255,61,90,0.25);border-radius:8px;padding:16px;
+    margin-bottom:16px;position:relative;overflow:hidden;
+  }
+  .raid-boss-card::before{
+    content:"";position:absolute;top:0;left:0;right:0;height:1px;
+    background:linear-gradient(90deg,transparent,rgba(255,61,90,0.6),transparent);
+  }
+  .raid-boss-card.cleared{
+    background:linear-gradient(135deg,rgba(139,107,255,0.08),rgba(5,7,13,0.98));
+    border-color:rgba(139,107,255,0.3);
+  }
+  .raid-boss-card.cleared::before{background:linear-gradient(90deg,transparent,rgba(139,107,255,0.6),transparent);}
+  .raid-boss-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px;}
+  .raid-eyebrow{font-family:var(--font-mono);font-size:9px;letter-spacing:0.3em;color:var(--excess);margin-bottom:6px;}
+  .raid-boss-name{font-family:var(--font-display);font-size:18px;letter-spacing:0.06em;color:var(--text);margin-bottom:4px;}
+  .raid-phase{font-family:var(--font-mono);font-size:11px;}
+  .raid-hp-col{text-align:right;}
+  .raid-hp-value{font-family:var(--font-display);font-size:22px;font-weight:900;}
+  .raid-hp-label{font-family:var(--font-mono);font-size:9px;color:var(--text-faint);letter-spacing:0.2em;}
+  .raid-hp-bar-wrap{height:8px;background:rgba(255,61,90,0.1);border-radius:4px;overflow:hidden;margin-bottom:14px;position:relative;}
+  .raid-hp-bar{height:100%;border-radius:4px;transition:width 1s ease;box-shadow:0 0 8px currentColor;}
+  .raid-hp-bar-stripes{
+    position:absolute;inset:0;
+    background:repeating-linear-gradient(90deg,rgba(255,255,255,0.03) 0,rgba(255,255,255,0.03) 4px,transparent 4px,transparent 8px);
+  }
+  .raid-contributors{display:flex;flex-direction:column;gap:6px;margin-bottom:12px;}
+  .raid-contrib{display:grid;grid-template-columns:90px 1fr 52px;gap:8px;align-items:center;}
+  .raid-contrib.me .raid-contrib-name{color:var(--brass);}
+  .raid-contrib-name{font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text-dim);}
+  .raid-contrib-bar-wrap{height:4px;background:rgba(93,157,255,0.1);border-radius:2px;overflow:hidden;}
+  .raid-contrib-bar{height:100%;background:var(--violet);border-radius:2px;transition:width .8s ease;}
+  .raid-contrib.me .raid-contrib-bar{background:var(--brass);}
+  .raid-contrib-count{font-family:var(--font-mono);font-size:10px;color:var(--text-faint);text-align:right;white-space:nowrap;}
+  .raid-warning{font-size:11px;color:var(--excess);margin:0;font-family:var(--font-mono);opacity:0.8;}
+  .raid-cleared-msg{font-size:11px;color:var(--growing);margin:0;font-family:var(--font-mono);}
+
+  /* Today row */
+  .today-row.me{border-color:rgba(61,165,255,0.3);}
+
+  /* Superlatives */
+  .superlatives-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+  .superlative-card{background:var(--card-2);border:1px solid rgba(93,157,255,0.15);border-radius:8px;padding:12px;position:relative;overflow:hidden;}
+  .superlative-card::before{content:"";position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(61,165,255,0.3),transparent);}
+  .superlative-icon{font-size:22px;margin-bottom:6px;}
+  .superlative-label{font-family:var(--font-mono);font-size:9px;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:4px;}
+  .superlative-name{font-size:13px;font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .superlative-detail{font-size:10px;color:var(--text-dim);margin-top:2px;}
+
+  /* Party tiles */
+  .party-dash-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+  .party-tile{background:var(--card-2);border:1px solid rgba(93,157,255,0.12);border-radius:8px;padding:14px 12px;text-align:center;position:relative;overflow:hidden;}
+  .party-tile::after{content:"";position:absolute;bottom:0;left:20%;right:20%;height:1px;background:linear-gradient(90deg,transparent,rgba(61,165,255,0.3),transparent);}
+  .party-tile-label{font-family:var(--font-mono);font-size:9px;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px;}
+  .party-tile-value{font-family:var(--font-display);font-size:22px;color:var(--brass);}
+  .party-tile-name{font-size:11px;color:var(--text-dim);margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+
+  /* Strength rankings */
+  .strength-rank-list{display:flex;flex-direction:column;gap:6px;}
+  .strength-rank-row{display:flex;align-items:center;gap:12px;padding:10px 14px;background:var(--card-2);border:1px solid rgba(93,157,255,0.1);border-radius:8px;cursor:pointer;transition:all 0.2s;position:relative;overflow:hidden;}
+  .strength-rank-row::before{content:"";position:absolute;left:0;top:0;bottom:0;width:2px;background:var(--brass);opacity:0;transition:opacity 0.2s;}
+  .strength-rank-row:hover::before{opacity:1;}
+  .strength-rank-row.me{border-color:rgba(61,165,255,0.3);}
+  .strength-rank-row.me::before{opacity:1;}
+  .strength-rank-pos{font-family:var(--font-mono);font-size:12px;color:var(--text-faint);width:18px;text-align:center;flex-shrink:0;}
+  .strength-rank-info{flex:1;min-width:0;}
+  .strength-rank-name{font-size:14px;font-weight:600;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .strength-rank-title{font-size:10px;display:block;margin-top:2px;font-family:var(--font-mono);}
+  .strength-rank-score{display:flex;flex-direction:column;align-items:flex-end;flex-shrink:0;}
+  .strength-top-badge{font-size:9px;color:var(--brass);font-weight:400;margin-left:6px;font-family:var(--font-mono);}
+
+  /* PR Panel */
+  .pr-panel-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}
+  .pr-item{display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid rgba(93,157,255,0.07);}
+  .pr-item:last-child{border-bottom:none;}
+  .pr-name{font-size:13px;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
   .pr-xp{font-family:var(--font-mono);font-size:11px;color:var(--brass);white-space:nowrap;}
+
+  /* Today debrief */
+  .today-debrief-card{background:linear-gradient(135deg,rgba(61,165,255,0.08),transparent 60%),var(--card);border:1px solid rgba(61,165,255,0.3);border-radius:8px;padding:16px;margin-bottom:12px;}
+  .today-debrief-row{display:flex;gap:8px;margin-bottom:8px;}
+  .today-stat-pill{flex:1;background:var(--card-2);border:1px solid rgba(93,157,255,0.12);border-radius:8px;padding:10px 8px;text-align:center;}
+  .today-stat-val{font-family:var(--font-display);font-size:18px;color:var(--brass);}
+  .today-stat-lbl{font-size:9px;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.05em;margin-top:2px;font-family:var(--font-mono);}
+  .today-no-workout{font-size:13px;color:var(--text-dim);text-align:center;padding:12px 0;}
 
   /* ========== Strength Rankings ========== */
   .strength-rank-list{display:flex;flex-direction:column;gap:8px;}
@@ -979,31 +1188,45 @@
 
     <!-- ---- RANK ---- -->
     <section class="view" id="view-board">
-      <h2>Rankings</h2>
-      <p class="sub">Hunter rank rises with your streak, then workouts this week.</p>
 
       <!-- Today's session card -->
       <div id="today-debrief-card-slot"></div>
 
-      <!-- Character card -->
-      <div class="card char-card" id="char-card">
-        <div class="char-header">
-          <div class="char-rank-badge" id="char-rank-badge">E</div>
-          <div class="char-info">
-            <p class="char-name" id="char-name">—</p>
-            <p class="char-title" id="char-title">Unranked Hunter</p>
+      <!-- WEEKLY RAID BOSS -->
+      <div id="raid-boss-slot"></div>
+
+      <!-- CHARACTER SCREEN -->
+      <div class="char-screen" id="char-card">
+        <div class="char-screen-bg" id="char-screen-bg"></div>
+        <div class="char-screen-inner">
+          <div class="char-top-row">
+            <div class="char-rank-orb" id="char-rank-badge">
+              <div class="char-rank-orb-ring"></div>
+              <div class="char-rank-orb-ring r2"></div>
+              <span class="char-rank-letter">E</span>
+            </div>
+            <div class="char-identity">
+              <div class="char-eyebrow">HUNTER PROFILE</div>
+              <div class="char-name" id="char-name">—</div>
+              <div class="char-title" id="char-title">Unranked Hunter</div>
+            </div>
+            <div class="char-power-col">
+              <div class="char-power-value" id="char-power-value">0</div>
+              <div class="char-power-label">POWER</div>
+              <div class="char-ap-row"><span class="char-ap-value" id="ap-amount">0</span><span class="char-ap-label">AP</span></div>
+            </div>
           </div>
-          <div class="char-ap">
-            <span class="ap-amount" id="ap-amount">0</span>
-            <span class="ap-label">AURA</span>
-          </div>
+          <div class="char-divider"></div>
+          <div class="char-stats" id="char-stats"></div>
+          <p class="char-rank-hint" id="char-rank-hint"></p>
         </div>
-        <div class="char-stats" id="char-stats"></div>
-        <p class="char-rank-hint" id="char-rank-hint"></p>
       </div>
 
       <!-- PR Records panel -->
       <div id="pr-panel"></div>
+
+      <!-- Strength Rankings -->
+      <div id="strength-rankings"></div>
 
       <!-- Weekly Superlatives -->
       <div id="weekly-superlatives"></div>
@@ -1011,22 +1234,16 @@
       <!-- Party Stats Dashboard -->
       <div id="party-dashboard"></div>
 
-      <!-- Strength Rankings -->
-      <div id="strength-rankings"></div>
+      <div class="sl-section-head">Party Status — Today</div>
+      <div class="today-list" id="today-list"></div>
 
-      <div class="card">
-        <div class="card-title"><h3>Party status — today</h3></div>
-        <div class="today-list" id="today-list"></div>
-      </div>
-      <div class="card">
-        <div class="card-title"><h3>Guild rankings</h3></div>
-        <table class="board">
-          <thead><tr><th></th><th>Name</th><th>Power</th><th>Rank</th><th>Streak</th><th>Total</th></tr></thead>
-          <tbody id="board-body"></tbody>
-        </table>
-      </div>
+      <div class="sl-section-head">Guild Rankings</div>
+      <table class="board sl-board">
+        <thead><tr><th></th><th>Hunter</th><th>Power</th><th>Rank</th><th>Streak</th><th>Total</th></tr></thead>
+        <tbody id="board-body"></tbody>
+      </table>
 
-      <!-- Hunter profile modal (tap any member to view) -->
+      <!-- Hunter profile modal -->
       <div class="hunter-modal hidden" id="hunter-modal">
         <div class="hunter-modal-inner" id="hunter-modal-inner"></div>
       </div>
@@ -3251,15 +3468,32 @@ function renderCharCard() {
   const charRank = charRankFromStats(stats);
   const rankIdx = RANK_TIERS.indexOf(charRank);
   const rankClass = 'rank-' + charRank.toLowerCase();
+  const power = calcPowerLevel(stats);
 
+  // update identity
   document.getElementById('char-name').textContent = profile.displayName || 'Hunter';
   const style = analyseTrainingStyle(currentUser.uid);
   const styleTag = style ? ` · ${style.emoji} ${style.style}` : '';
   document.getElementById('char-title').textContent = RANK_TITLES[charRank] + styleTag;
   document.getElementById('ap-amount').textContent = ap.toLocaleString();
+  if (document.getElementById('char-power-value')) {
+    document.getElementById('char-power-value').textContent = power.toLocaleString();
+  }
+
+  // rank orb
   const badge = document.getElementById('char-rank-badge');
-  badge.textContent = charRank;
-  badge.className = 'char-rank-badge ' + rankClass;
+  badge.className = `char-rank-orb ${rankClass}`;
+  const letter = badge.querySelector('.char-rank-letter') || badge;
+  letter.textContent = charRank;
+  letter.style.color = RANK_COLORS[charRank];
+  letter.style.textShadow = `0 0 20px ${RANK_COLORS[charRank]}`;
+
+  // char screen bg glow by rank
+  const bg = document.getElementById('char-screen-bg');
+  if (bg) {
+    const col = RANK_COLORS[charRank];
+    bg.style.background = `radial-gradient(ellipse 300px 200px at 0% 0%, ${col}18, transparent 60%), radial-gradient(ellipse 200px 300px at 100% 100%, rgba(139,107,255,0.08), transparent 60%)`;
+  }
 
   // stat bars
   const statsEl = document.getElementById('char-stats');
@@ -4200,21 +4434,59 @@ function renderPRPanel() {
 }
 
 function renderBoard() {
-  // load other users' PRs async then render strength rankings
   loadAllUserPRs().then(() => renderStrengthRankings());
-  const today = todayStr();
-  document.getElementById('today-list').innerHTML = allUsers.map(u => {
-    const done = allWorkouts.some(w => w.uid === u.uid && w.date === today);
-    return `<div class="today-row" style="cursor:pointer;" data-uid="${u.uid}">
-      <span class="status-dot ${done ? 'done' : 'pending'}"></span>
-      <span class="name">${escapeHtml(u.displayName || 'Hunter')}</span>
-      <span class="status-text">${done ? 'Completed' : 'Not yet'}</span>
-    </div>`;
-  }).join('') || `<p class="empty-state" style="padding:10px 0;">No crew members yet.</p>`;
-  document.querySelectorAll('.today-row[data-uid]').forEach(row =>
-    row.addEventListener('click', async () => { await openHunterProfile(row.dataset.uid); }));
+  renderPartyStatus();
+  renderCompetitionBoard();
+  renderWeeklySuperlatives();
+  renderPartyDashboard();
+  renderRaidBoss();
+}
 
+/* ── Party Status Today ── */
+function renderPartyStatus() {
+  const today = todayStr();
+  const el = document.getElementById('today-list');
+  if (!el) return;
+  const sorted = [...allUsers].sort((a,b) => {
+    const ad = allWorkouts.some(w=>w.uid===a.uid&&w.date===today)?1:0;
+    const bd = allWorkouts.some(w=>w.uid===b.uid&&w.date===today)?1:0;
+    return bd - ad;
+  });
+  el.innerHTML = sorted.map(u => {
+    const done = allWorkouts.some(w => w.uid === u.uid && w.date === today);
+    const streak = computeStreak(u.uid);
+    const streakAtRisk = !done && streak > 0;
+    const isMe = u.uid === currentUser.uid;
+    return `<div class="today-row ${isMe?'me':''}" data-uid="${u.uid}">
+      <span class="status-dot ${done?'done':'pending'}"></span>
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:14px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(u.displayName||'Hunter')}</div>
+        <div style="font-size:11px;color:${streakAtRisk?'var(--excess)':done?'var(--growing)':'var(--text-faint)'};">
+          ${done ? '✓ Quest cleared today' : streakAtRisk ? `⚠ ${streak}d streak at risk` : 'Not yet logged'}
+        </div>
+      </div>
+      <div style="text-align:right;flex-shrink:0;">
+        <div class="streak-pill ${streakAtRisk?'at-risk':done?'safe':''}">${streak}d</div>
+      </div>
+    </div>`;
+  }).join('') || '<p class="empty-state">No hunters yet.</p>';
+  el.querySelectorAll('.today-row[data-uid]').forEach(row =>
+    row.addEventListener('click', async () => { await openHunterProfile(row.dataset.uid); }));
+}
+
+/* ── Competition Board with Power Gap & Weekly Delta ── */
+function renderCompetitionBoard() {
+  const el = document.getElementById('board-body');
+  if (!el) return;
+  const today = todayStr();
   const weekStart = startOfWeek(new Date());
+  const lastWeekStart = new Date(weekStart); lastWeekStart.setDate(lastWeekStart.getDate()-7);
+
+  // compute weekly power delta — approximated by counting AP earned this week vs last
+  const weeklyAP = uid => myWorkouts
+    .filter(w => w.uid === uid && new Date(w.date) >= weekStart)
+    .length * 10;
+
   const rows = allUsers.map(u => ({
     uid: u.uid,
     name: u.displayName || 'Hunter',
@@ -4222,26 +4494,106 @@ function renderBoard() {
     rank: getUserCharRank(u),
     streak: computeStreak(u.uid),
     total: allWorkouts.filter(w => w.uid === u.uid).length,
+    weeklyGain: weeklyAP(u.uid),
+    trainedToday: allWorkouts.some(w => w.uid === u.uid && w.date === today),
   })).sort((a,b) => b.power - a.power || b.streak - a.streak);
 
-  document.getElementById('board-body').innerHTML = rows.map((r, i) => {
+  const myPower = rows.find(r=>r.uid===currentUser.uid)?.power || 0;
+
+  el.innerHTML = rows.map((r, i) => {
     const rankCls = 'rank-' + r.rank.toLowerCase();
-    return `<tr class="${r.uid === currentUser.uid ? 'me' : ''}" data-uid="${r.uid}" style="cursor:pointer;">
-      <td class="rank">${i+1}</td>
-      <td>${escapeHtml(r.name)}</td>
-      <td class="power-level">${r.power.toLocaleString()}</td>
-      <td><span class="char-rank-badge ${rankCls}" style="width:26px;height:26px;font-size:13px;box-shadow:none;">${r.rank}</span></td>
-      <td><span class="streak-pill">${r.streak}d</span></td>
-      <td>${r.total}</td>
+    const isMe = r.uid === currentUser.uid;
+    const gap = r.power - myPower;
+    const gapStr = isMe ? '' : gap > 0 ? `+${gap.toLocaleString()} ahead` : gap < 0 ? `${gap.toLocaleString()} behind` : 'Tied';
+    const gapColor = isMe ? '' : gap > 0 ? 'var(--excess)' : gap < 0 ? 'var(--growing)' : 'var(--text-faint)';
+    const deltaStr = r.weeklyGain > 0 ? `+${r.weeklyGain}` : '—';
+    const rankColor = RANK_COLORS[r.rank];
+    return `<tr class="${isMe?'me':''}" data-uid="${r.uid}">
+      <td style="font-family:var(--font-mono);font-size:12px;color:var(--text-faint);text-align:center;">${i+1}</td>
+      <td>
+        <div style="font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100px;">${escapeHtml(r.name)}</div>
+        ${!isMe && gapStr ? `<div style="font-size:9px;color:${gapColor};font-family:var(--font-mono);">${gapStr}</div>` : ''}
+      </td>
+      <td>
+        <div style="font-family:var(--font-display);font-size:13px;color:${rankColor};">${r.power.toLocaleString()}</div>
+        <div style="font-size:9px;color:var(--growing);font-family:var(--font-mono);">${deltaStr} this wk</div>
+      </td>
+      <td><div style="font-family:var(--font-display);font-size:14px;color:${rankColor};text-shadow:0 0 10px ${rankColor};">${r.rank}</div></td>
+      <td><span class="streak-pill ${!r.trainedToday&&r.streak>0?'at-risk':r.trainedToday?'safe':''}">${r.streak}d</span></td>
+      <td style="font-size:12px;color:var(--text-dim);">${r.total}</td>
     </tr>`;
   }).join('') || '';
 
-  document.querySelectorAll('#board-body tr[data-uid]').forEach(row =>
+  el.querySelectorAll('tr[data-uid]').forEach(row =>
     row.addEventListener('click', async () => { await openHunterProfile(row.dataset.uid); }));
-
-  renderWeeklySuperlatives();
-  renderPartyDashboard();
 }
+
+/* ── Weekly Raid Boss ── */
+async function renderRaidBoss() {
+  const el = document.getElementById('raid-boss-slot');
+  if (!el) return;
+
+  // boss spawns Monday, expires Sunday
+  const now = new Date();
+  const weekStart = startOfWeek(now);
+  const weekEnd = new Date(weekStart); weekEnd.setDate(weekEnd.getDate()+7);
+  const bossKey = weekStart.toISOString().slice(0,10);
+
+  // count total workouts this week across all party members
+  const weekWorkouts = allWorkouts.filter(w => {
+    const d = new Date(w.date);
+    return d >= weekStart && d < weekEnd;
+  });
+  const totalSets = weekWorkouts.reduce((n,w) =>
+    n + (w.exercises||[]).reduce((m,ex) => m + (ex.sets||[]).filter(s=>s.reps>0).length, 0), 0);
+
+  // boss HP = 10 sets per party member per day × 7 days (scaled)
+  const partySize = allUsers.length || 1;
+  const bossMaxHP = partySize * 7 * 8; // 8 sets/member/day target
+  const bossHP = Math.max(0, bossMaxHP - totalSets);
+  const bossHPpct = Math.max(0, (bossHP / bossMaxHP) * 100);
+  const cleared = bossHP === 0;
+  const daysLeft = Math.ceil((weekEnd - now) / 86400000);
+  const contributors = allUsers.map(u => {
+    const wCount = weekWorkouts.filter(w=>w.uid===u.uid).length;
+    return { name: u.displayName||'Hunter', wCount, uid: u.uid };
+  }).sort((a,b)=>b.wCount-a.wCount);
+
+  const bossPhase = bossHPpct > 60 ? 'Unchallenged' : bossHPpct > 30 ? 'Weakening' : bossHPpct > 0 ? 'Critical' : 'Defeated';
+  const bossColor = bossHPpct > 60 ? 'var(--excess)' : bossHPpct > 30 ? '#FF9500' : bossHPpct > 0 ? 'var(--violet)' : 'var(--growing)';
+
+  el.innerHTML = `
+    <div class="raid-boss-card ${cleared?'cleared':''}">
+      <div class="raid-boss-header">
+        <div>
+          <div class="raid-eyebrow">⚔ WEEKLY RAID</div>
+          <div class="raid-boss-name">${cleared ? '★ BOSS DEFEATED ★' : 'Shadow Beast'}</div>
+          <div class="raid-phase" style="color:${bossColor};">[${bossPhase}]${!cleared?` · ${daysLeft}d remaining`:''}</div>
+        </div>
+        <div class="raid-hp-col">
+          <div class="raid-hp-value" style="color:${bossColor};">${cleared?'0':bossHP.toLocaleString()}</div>
+          <div class="raid-hp-label">HP LEFT</div>
+        </div>
+      </div>
+      <div class="raid-hp-bar-wrap">
+        <div class="raid-hp-bar" style="width:${bossHPpct.toFixed(1)}%;background:${bossColor};"></div>
+        ${!cleared?`<div class="raid-hp-bar-stripes"></div>`:''}
+      </div>
+      <div class="raid-contributors">
+        ${contributors.map(c => `
+          <div class="raid-contrib ${c.uid===currentUser.uid?'me':''}">
+            <span class="raid-contrib-name">${escapeHtml(c.name)}</span>
+            <div class="raid-contrib-bar-wrap">
+              <div class="raid-contrib-bar" style="width:${Math.min(100,(c.wCount/7)*100).toFixed(0)}%;"></div>
+            </div>
+            <span class="raid-contrib-count">${c.wCount} ${c.wCount===1?'raid':'raids'}</span>
+          </div>`).join('')}
+      </div>
+      ${!cleared?`<p class="raid-warning">Miss this and the boss wins — all hunters lose <strong>50 AP</strong>.</p>`
+        :`<p class="raid-cleared-msg">Party cleared the gate. Bonus AP awarded on Sunday.</p>`}
+    </div>`;
+}
+
 
 /* =========================================================================
    TRENDS
