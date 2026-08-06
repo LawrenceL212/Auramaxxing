@@ -2084,6 +2084,12 @@ document.getElementById('workout-pill-open').addEventListener('click', () => {
   openWorkoutModal();
 });
 document.getElementById('manual-log-btn').addEventListener('click', () => {
+  document.getElementById('workout-date').value = todayStr();
+  document.getElementById('workout-time').value = nowTimeStr();
+  activeDayIndex = null;
+  document.getElementById('logger-title').textContent = 'Log exercises';
+  openWorkoutModal();
+});
 
 /* ── Run Logger ── */
 document.getElementById('log-run-btn').addEventListener('click', () => {
@@ -2182,13 +2188,6 @@ document.getElementById('save-run-btn').addEventListener('click', async () => {
     showToast('Could not save: ' + err.message, 'error');
   }
   btn.disabled = false; btn.textContent = 'Save Run';
-});
-  activeDayIndex = null;
-  document.getElementById('logger-title').textContent = 'Log exercises';
-  const rows = document.getElementById('exercise-rows');
-  rows.innerHTML = '';
-  addExerciseRow();
-  openWorkoutModal();
 });
 
 /* ---- rest timer ---- */
