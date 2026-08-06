@@ -88,7 +88,7 @@
   header.topbar .wordmark{font-size:18px;margin:0;text-align:left;text-shadow:none;}
   .user-chip{display:flex;align-items:center;gap:10px;}
   .avatar{width:32px;height:32px;border-radius:50%;background:var(--brass-dim);color:var(--brass);display:flex;align-items:center;justify-content:center;font-family:var(--font-display);font-size:13px;font-weight:700;}
-  .icon-btn{background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:13px;}
+  .icon-btn{background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:13px;min-width:44px;min-height:44px;display:inline-flex;align-items:center;justify-content:center;touch-action:manipulation;}
   #settings-btn{font-size:18px;padding:4px 6px;}
 
   /* ---------- Daily quest timer ---------- */
@@ -98,7 +98,7 @@
   .daily-timer-time.urgent{color:var(--excess);animation:timerPulse 1s ease-in-out infinite;}
   .daily-timer-time.safe{color:var(--growing);}
   @keyframes timerPulse{0%,100%{opacity:1;}50%{opacity:0.4;}}
-  main.view-area{flex:1;padding:20px 20px 100px;max-width:640px;margin:0 auto;width:100%;}
+  main.view-area{flex:1;padding:20px 20px 100px;max-width:640px;margin:0 auto;width:100%;-webkit-overflow-scrolling:touch;}
   section.view{display:none;}
   section.view.active{display:block;animation:fade .25s ease;}
   @keyframes fade{from{opacity:0;transform:translateY(4px);}to{opacity:1;transform:translateY(0);}}
@@ -182,7 +182,21 @@
   .add-exercise-btn{width:100%;border-style:dashed;color:var(--text-dim);}
   .date-row{display:flex;gap:10px;margin-bottom:16px;}
   .date-row .field{flex:1;margin-bottom:0;}
-  .save-bar{position:sticky;bottom:76px;margin-top:20px;}
+  .save-bar{position:sticky;bottom:0;margin-top:20px;padding-bottom:env(safe-area-inset-bottom, 0);}
+
+  /* Toast notifications — replaces alert() on mobile */
+  .toast{
+    position:fixed;bottom:90px;left:50%;transform:translateX(-50%);
+    background:var(--card-2);border:1px solid var(--border);border-radius:10px;
+    padding:12px 18px;font-size:13px;color:var(--text);white-space:nowrap;
+    z-index:300;box-shadow:0 4px 20px rgba(0,0,0,0.4);
+    animation:toastIn .25s ease,toastOut .3s ease 2.7s forwards;
+    max-width:90vw;white-space:normal;text-align:center;
+  }
+  .toast.error{border-color:var(--excess);color:var(--excess);}
+  .toast.success{border-color:var(--growing);color:var(--growing);}
+  @keyframes toastIn{from{opacity:0;transform:translateX(-50%) translateY(10px);}to{opacity:1;transform:translateX(-50%) translateY(0);}}
+  @keyframes toastOut{from{opacity:1;}to{opacity:0;}}
   .save-msg{font-size:12.5px;color:var(--growing);margin-top:8px;text-align:center;}
   .picker-list{max-height:50vh;overflow-y:auto;margin-top:4px;}
   .picker-item{display:flex;align-items:center;justify-content:space-between;padding:12px 8px;border-top:1px solid var(--border);cursor:pointer;}
@@ -558,7 +572,7 @@
   .workout-modal{background:var(--bg);display:flex;flex-direction:column;height:100%;max-width:640px;margin:0 auto;width:100%;}
   .workout-modal-header{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--border);flex-shrink:0;}
   .workout-modal-header h3{margin:0;font-size:16px;}
-  .workout-modal-body{flex:1;overflow-y:auto;padding:16px 20px 100px;}
+  .workout-modal-body{flex:1;overflow-y:auto;padding:16px 20px calc(100px + env(safe-area-inset-bottom, 0));-webkit-overflow-scrolling:touch;}
   .rest-timer-bar{
     display:flex;align-items:center;gap:8px;padding:10px 20px;border-bottom:1px solid var(--border);
     background:var(--card-2);flex-shrink:0;flex-wrap:wrap;
@@ -615,7 +629,7 @@
       <form id="auth-form">
         <div class="field hidden" id="name-field">
           <label for="displayName">Hunter name</label>
-          <input id="displayName" type="text" placeholder="What your party calls you" autocomplete="name" maxlength="24" />
+          <input id="displayName" type="text" placeholder="What your party calls you" autocomplete="name" maxlength="24" inputmode="text" />
         </div>
         <div class="field">
           <label for="email">Email</label>
@@ -1085,6 +1099,15 @@ await loadAnatomyTemplate('male');
    STATE
    ========================================================================= */
 let currentUser = null, profile = null, authMode = "login";
+
+function showToast(msg, type = 'info') {
+  document.querySelectorAll('.toast').forEach(t => t.remove());
+  const t = document.createElement('div');
+  t.className = `toast ${type}`;
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 3100);
+}
 let allUsers = [], myWorkouts = [], allWorkouts = [], myWeights = [], myPRs = {};
 // myPRs: { "Bench Press": { e1rm: 120.5, date: "2026-08-01", xpTier: "Intermediate" }, ... }
 let myProgram = null;       // { name, schedule:['Mon',...], days:[{name,tag,exercises:[{name,sets,reps}],lastDate}], currentDayIndex }
@@ -1236,7 +1259,7 @@ function openSettingsModal() {
       <h3>Settings</h3>
       <div class="field">
         <label>Hunter name</label>
-        <input id="settings-name" value="${escapeHtml(profile.displayName || '')}" placeholder="What your party calls you" maxlength="24" />
+        <input id="settings-name" value="${escapeHtml(profile.displayName || '')}" placeholder="What your party calls you" maxlength="24" inputmode="text" />
         <p style="font-size:11.5px;color:var(--text-faint);margin:6px 0 0;">This is what shows up on the leaderboard and in Today's check-ins for everyone else.</p>
       </div>
       <div class="field">
@@ -1458,7 +1481,7 @@ function renderQuestFeed() {
 
   document.getElementById('edit-program-btn').addEventListener('click', () => { editingProgram = true; renderQuestFeed(); });
   document.getElementById('new-program-btn').addEventListener('click', () => {
-    if (!confirm('Start a new plan? Your current plan will be replaced.')) return;
+    if (!window.confirm('Start a new plan?\n\nYour current plan will be replaced.')) return;
     myProgram = null;
     editingProgram = true;
     renderQuestFeed();
@@ -1624,7 +1647,7 @@ function refreshCompleteButton() {
   btn.classList.toggle('hidden', !allHaveAtLeastOneSet);
 }
 document.getElementById('end-workout-modal').addEventListener('click', () => {
-  if (!confirm('End this workout? All your logged sets will be lost.')) return;
+  if (!window.confirm('End this workout?\n\nAll your logged sets will be lost.')) return;
   closeWorkoutModal(true); // true = discard
 });
 document.getElementById('minimise-workout-modal').addEventListener('click', () => {
@@ -1919,7 +1942,7 @@ document.getElementById('save-workout-btn').addEventListener('click', async () =
     }).filter(s => s.reps > 0);
     if (sets.length) exercises.push({ name, sets });
   });
-  if (!exercises.length) { alert('Add at least one exercise with a completed set before saving.'); return; }
+  if (!exercises.length) { showToast('Add at least one exercise with a completed set first.', 'error'); return; return; }
 
   const btn = document.getElementById('save-workout-btn');
   btn.disabled = true; btn.textContent = 'Saving…';
@@ -2183,7 +2206,7 @@ async function upgradeStatWithAp(statId) {
   if (currentRank === 'S') return;
   const cost = apCostToUpgrade(currentRank);
   if ((profile.auraPoints || 0) < cost) {
-    alert(`Not enough Aura Points. Need ${cost} AP, have ${profile.auraPoints || 0}.`);
+    showToast(`Not enough Aura Points — need ${cost} AP, you have ${profile.auraPoints || 0}.`, 'error'); return;
     return;
   }
   const newRank = RANK_TIERS[RANK_TIERS.indexOf(currentRank) + 1];
@@ -2375,16 +2398,31 @@ async function checkPenalty() {
   const yesterday = new Date(); yesterday.setDate(yesterday.getDate() - 1);
   const yStr = todayStr(yesterday);
   const yDow = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][yesterday.getDay()];
-  const wasScheduled = myProgram.schedule.includes(['Mon','Tue','Wed','Thu','Fri','Sat','Sun'][['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].indexOf(yDow)]);
+  const wasScheduled = myProgram.schedule.includes(yDow.slice(0,3));
   if (!wasScheduled) return null;
   const lastPenaltyCheck = profile.lastPenaltyCheck;
   if (lastPenaltyCheck === todayStr()) return null;
+
+  // don't penalise if the user already logged today — they're clearly still active
+  const loggedToday = myWorkouts.some(w => w.date === todayStr());
+  if (loggedToday) {
+    await setDoc(doc(db, 'users', currentUser.uid), { lastPenaltyCheck: todayStr() }, { merge: true });
+    profile.lastPenaltyCheck = todayStr();
+    return null;
+  }
+
   const loggedYesterday = myWorkouts.some(w => w.date === yStr);
   if (loggedYesterday) {
     await setDoc(doc(db, 'users', currentUser.uid), { lastPenaltyCheck: todayStr() }, { merge: true });
     profile.lastPenaltyCheck = todayStr();
     return null;
   }
+
+  // only penalise after 6am — gives early risers a chance to open the app
+  // before their workout without immediately getting hit
+  const hour = new Date().getHours();
+  if (hour < 6) return null;
+
   const apLost = Math.max(5, Math.round((profile.auraPoints || 0) * 0.05));
   const newAp = Math.max(0, (profile.auraPoints || 0) - apLost);
   await setDoc(doc(db, 'users', currentUser.uid), { auraPoints: newAp, lastPenaltyCheck: todayStr() }, { merge: true });
@@ -2728,7 +2766,7 @@ function renderBoard() {
     </div>`;
   }).join('') || `<p class="empty-state" style="padding:10px 0;">No crew members yet.</p>`;
   document.querySelectorAll('.today-row[data-uid]').forEach(row =>
-    row.addEventListener('click', () => openHunterProfile(row.dataset.uid)));
+    row.addEventListener('click', async () => { await openHunterProfile(row.dataset.uid); }));
 
   const weekStart = startOfWeek(new Date());
   const rows = allUsers.map(u => ({
@@ -2753,7 +2791,7 @@ function renderBoard() {
   }).join('') || '';
 
   document.querySelectorAll('#board-body tr[data-uid]').forEach(row =>
-    row.addEventListener('click', () => openHunterProfile(row.dataset.uid)));
+    row.addEventListener('click', async () => { await openHunterProfile(row.dataset.uid); }));
 
   renderWeeklySuperlatives();
   renderPartyDashboard();
@@ -3150,7 +3188,7 @@ function renderTrends() {
       <div class="card-title"><h3>◐ Weight</h3></div>
       ${weightLineChart(myWeights)}
       <div class="weight-input-row">
-        <input type="number" step="0.1" id="weight-input" placeholder="Log today's weight (kg)" />
+        <input type="number" step="0.1" id="weight-input" placeholder="Log today's weight (kg)" inputmode="decimal" />
         <button class="btn btn-sm" id="weight-save-btn">Save</button>
       </div>
     </div>
@@ -3288,7 +3326,7 @@ function openAddExerciseModal() {
   overlay.querySelector('#cancel-add-ex').addEventListener('click', () => overlay.remove());
   overlay.querySelector('#save-add-ex').addEventListener('click', async () => {
     const name = document.getElementById('new-ex-name').value.trim();
-    if (!name || !selected.size) { alert('Give it a name and pick at least one muscle.'); return; }
+    if (!name || !selected.size) { showToast('Give it a name and pick at least one muscle.', 'error'); return; }
     const muscles = {}; selected.forEach(m => muscles[m] = 1);
     const equipment = document.getElementById('new-ex-equip').value;
     await addDoc(collection(db, 'customExercises'), { name, muscles, equipment, addedBy: currentUser.uid, createdAt: serverTimestamp() });
@@ -3335,7 +3373,7 @@ function openEditExerciseModal(name) {
   overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
   overlay.querySelector('#cancel-edit-ex').addEventListener('click', () => overlay.remove());
   overlay.querySelector('#save-edit-ex').addEventListener('click', async () => {
-    if (!selected.size) { alert('Pick at least one muscle.'); return; }
+    if (!selected.size) { showToast('Pick at least one muscle.', 'error'); return; return; }
     const muscles = {}; selected.forEach(m => muscles[m] = 1);
     const equipment = document.getElementById('edit-ex-equip').value;
     if (existingOverride) {
@@ -3454,19 +3492,104 @@ function openWorkoutDetail(workoutId) {
         <button class="icon-btn" id="detail-close" style="font-size:20px;flex-shrink:0;">✕</button>
       </div>
       <div style="margin:16px 0;">${exerciseRows || '<p class="sub">No exercises logged.</p>'}</div>
-      <button class="btn" id="detail-delete" style="width:100%;color:var(--excess);border-color:var(--excess);">🗑 Delete this workout</button>
-      <p style="font-size:11px;color:var(--text-faint);text-align:center;margin-top:8px;">This can't be undone. Your AP and PRs from this session are not reversed.</p>
+
+      <div class="delete-warning-box" id="delete-warning-box" style="display:none;background:rgba(255,61,90,0.08);border:1px solid var(--excess);border-radius:8px;padding:12px 14px;margin-bottom:12px;">
+        <p style="font-size:12.5px;color:var(--excess);font-weight:700;margin:0 0 6px;">⚠ Deleting this workout will:</p>
+        <ul id="delete-consequences" style="font-size:12px;color:var(--text-dim);margin:0;padding-left:16px;line-height:1.8;"></ul>
+      </div>
+
+      <button class="btn" id="detail-delete-warn" style="width:100%;color:var(--excess);border-color:var(--excess);">🗑 Delete this workout</button>
+      <button class="btn" id="detail-delete-confirm" style="width:100%;background:var(--excess);color:#fff;display:none;margin-top:8px;">Confirm — delete and reverse AP</button>
     </div>`;
 
   document.body.appendChild(overlay);
   overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
   overlay.querySelector('#detail-close').addEventListener('click', () => overlay.remove());
-  overlay.querySelector('#detail-delete').addEventListener('click', async () => {
-    if (!confirm(`Delete this workout from ${dateStr}? This cannot be undone.`)) return;
-    const btn = overlay.querySelector('#detail-delete');
+
+  // Step 1 — show consequences before confirming
+  overlay.querySelector('#detail-delete-warn').addEventListener('click', () => {
+    // calculate what will be reversed
+    const consequences = [];
+
+    // check if this was the only workout on that date (AP was awarded for that day)
+    const workoutsOnDate = myWorkouts.filter(x => x.date === w.date);
+    const wasOnlyWorkout = workoutsOnDate.length === 1 && workoutsOnDate[0].id === workoutId;
+    let apToReverse = 0;
+
+    if (wasOnlyWorkout && profile.lastApDate === w.date) {
+      // AP was awarded for this day — calculate what was earned
+      const streak = computeStreak(currentUser.uid);
+      const mult = streak >= 60 ? 3 : streak >= 30 ? 2 : streak >= 7 ? 1.5 : 1;
+      apToReverse = Math.round(10 * mult);
+      const weekStart = startOfWeek(new Date(w.date));
+      const weekCount = myWorkouts.filter(x => x.uid === currentUser.uid && new Date(x.date) >= weekStart && x.id !== workoutId).length;
+      if (weekCount >= (profile.weeklyGoal || 3)) apToReverse += 5;
+      consequences.push(`−${apToReverse} Aura Points (daily workout reward)`);
+    }
+
+    // check PRs set in this workout
+    const prsFromThis = [];
+    (w.exercises || []).forEach(ex => {
+      const pr = myPRs[ex.name];
+      if (!pr || pr.date !== w.date) return;
+      // check if this workout is the one that set this PR
+      const e1rm = Math.max(...(ex.sets || []).filter(s => s.reps && s.weight).map(s => epley1RM(s.weight, s.reps)), 0);
+      if (Math.abs(e1rm - pr.e1rm) < 0.5) {
+        prsFromThis.push({ name: ex.name, xp: pr.xp || FLAT_PR_XP, tier: pr.tier });
+        apToReverse += pr.xp || FLAT_PR_XP;
+      }
+    });
+    if (prsFromThis.length) {
+      prsFromThis.forEach(p => consequences.push(`−${p.xp} AP + PR removed: ${p.name} [${p.tier || 'Unranked'}]`));
+    }
+
+    if (!consequences.length) {
+      consequences.push('Remove this workout from your history');
+      consequences.push('No AP or PRs were linked to this session');
+    }
+
+    const list = overlay.querySelector('#delete-consequences');
+    list.innerHTML = consequences.map(c => `<li>${c}</li>`).join('');
+    overlay.querySelector('#delete-warning-box').style.display = 'block';
+    overlay.querySelector('#detail-delete-warn').style.display = 'none';
+    overlay.querySelector('#detail-delete-confirm').style.display = 'block';
+    overlay.querySelector('#detail-delete-confirm').dataset.apReverse = apToReverse;
+    overlay.querySelector('#detail-delete-confirm').dataset.prs = JSON.stringify(prsFromThis.map(p => p.name));
+    overlay.querySelector('#detail-delete-confirm').dataset.wasOnlyWorkout = wasOnlyWorkout ? '1' : '0';
+  });
+
+  // Step 2 — actually delete and reverse
+  overlay.querySelector('#detail-delete-confirm').addEventListener('click', async () => {
+    const btn = overlay.querySelector('#detail-delete-confirm');
+    const apToReverse = Number(btn.dataset.apReverse) || 0;
+    const prsToRemove = JSON.parse(btn.dataset.prs || '[]');
+    const wasOnlyWorkout = btn.dataset.wasOnlyWorkout === '1';
     btn.disabled = true; btn.textContent = 'Deleting…';
     try {
+      // 1. delete the workout
       await deleteDoc(doc(db, 'workouts', workoutId));
+
+      // 2. reverse AP
+      if (apToReverse > 0) {
+        const newAp = Math.max(0, (profile.auraPoints || 0) - apToReverse);
+        await setDoc(doc(db, 'users', currentUser.uid), { auraPoints: newAp }, { merge: true });
+        profile.auraPoints = newAp;
+      }
+
+      // 3. clear lastApDate if this was the only workout on that day
+      if (wasOnlyWorkout && profile.lastApDate === w.date) {
+        await setDoc(doc(db, 'users', currentUser.uid), { lastApDate: null }, { merge: true });
+        profile.lastApDate = null;
+      }
+
+      // 4. remove PRs set in this workout
+      if (prsToRemove.length) {
+        const newPRs = { ...myPRs };
+        prsToRemove.forEach(name => delete newPRs[name]);
+        await setDoc(doc(db, 'prs', currentUser.uid), newPRs);
+        myPRs = newPRs;
+      }
+
       overlay.remove();
       await loadAllData();
       renderCalendar();
@@ -3474,7 +3597,7 @@ function openWorkoutDetail(workoutId) {
       startDailyTimer();
     } catch (err) {
       alert('Could not delete: ' + err.message);
-      btn.disabled = false; btn.textContent = '🗑 Delete this workout';
+      btn.disabled = false; btn.textContent = 'Confirm — delete and reverse AP';
     }
   });
 }
