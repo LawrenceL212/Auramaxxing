@@ -1745,6 +1745,17 @@ function renderQuestFeed() {
   const rotationIdx = myProgram.currentDayIndex % myProgram.days.length;
   const today = todayWeekday();
   const isScheduledToday = myProgram.schedule.includes(today);
+
+  // in fixed mode, sort days chronologically by weekday before rendering
+  if (myProgram.scheduleMode === 'fixed') {
+    const dayOrder = { Mon:0, Tue:1, Wed:2, Thu:3, Fri:4, Sat:5, Sun:6 };
+    myProgram.days.sort((a, b) => {
+      const aDay = (a.assignedDays||[])[0];
+      const bDay = (b.assignedDays||[])[0];
+      return (dayOrder[aDay] ?? 99) - (dayOrder[bDay] ?? 99);
+    });
+  }
+
   if (questCarouselIndex >= myProgram.days.length) questCarouselIndex = 0;
 
   // in fixed mode, auto-jump carousel to today's assigned day
@@ -1803,9 +1814,13 @@ function buildQuestCardHTML(idx) {
   const checklist = day.exercises.map(ex => {
     const done = setsLoggedToday(ex.name, idx);
     const complete = done >= ex.sets;
+    const exDef = EXERCISES_ALL[ex.name] || {};
+    const timed = exDef.timed;
+    const unit = exDef.timedUnit || 'secs';
+    const repsLabel = timed ? (unit === 'mins' ? `${ex.reps} mins` : `${ex.reps} secs`) : `${ex.reps} reps`;
     return `<div class="quest-check-row ${complete ? 'complete' : ''}">
       <span class="qc-name">${escapeHtml(ex.name)}</span>
-      <span class="qc-progress">[${Math.min(done, ex.sets)}/${ex.sets} sets · ${ex.reps} reps]</span>
+      <span class="qc-progress">[${Math.min(done, ex.sets)}/${ex.sets} sets · ${repsLabel}]</span>
       <span class="qc-box">${complete ? '☑' : '☐'}</span>
     </div>`;
   }).join('');
