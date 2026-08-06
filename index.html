@@ -246,11 +246,12 @@
   .status-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0;}
   .status-dot.done{background:var(--growing);}
   .status-dot.pending{background:var(--card-2);border:1.5px solid var(--text-faint);}
-  .today-row .name{flex:1;font-size:14px;}
+  .today-row .name{flex:1;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;}
   .today-row .status-text{font-size:11.5px;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.03em;}
   table.board{width:100%;border-collapse:collapse;}
   table.board th{text-align:left;font-size:11px;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.04em;padding:0 8px 10px 0;font-weight:600;}
   table.board td{padding:10px 8px 10px 0;border-top:1px solid var(--border);font-size:14px;}
+  table.board td:nth-child(2){max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
   table.board td.rank{color:var(--text-faint);font-family:var(--font-mono);width:24px;}
   table.board tr.me td{color:var(--brass);}
   .streak-pill{font-family:var(--font-mono);font-size:13px;background:var(--card-2);padding:3px 9px;border-radius:20px;}
@@ -382,7 +383,7 @@
       <form id="auth-form">
         <div class="field hidden" id="name-field">
           <label for="displayName">Hunter name</label>
-          <input id="displayName" type="text" placeholder="What your party calls you" autocomplete="name" />
+          <input id="displayName" type="text" placeholder="What your party calls you" autocomplete="name" maxlength="24" />
         </div>
         <div class="field">
           <label for="email">Email</label>
@@ -785,7 +786,7 @@ const ANATOMY_TEMPLATES = { male: null, female: null };
 // against each exported file, never assumed to match between body types.
 const ANATOMY_CROP = {
   male:   { front: { viewBox: '0 0 544 1080', w: 544, h: 1080 }, back: { viewBox: '544 0 536 1080', w: 536, h: 1080 } },
-  female: { front: { viewBox: '0 0 553 1080', w: 553, h: 1080 }, back: { viewBox: '553 0 527 1080', w: 527, h: 1080 } },
+  female: { front: { viewBox: '0 0 540 1080', w: 540, h: 1080 }, back: { viewBox: '540 0 540 1080', w: 540, h: 1080 } },
 };
 async function loadAnatomyTemplate(bodyType) {
   if (ANATOMY_TEMPLATES[bodyType]) return ANATOMY_TEMPLATES[bodyType];
@@ -939,7 +940,7 @@ function openSettingsModal() {
       <h3>Settings</h3>
       <div class="field">
         <label>Hunter name</label>
-        <input id="settings-name" value="${escapeHtml(profile.displayName || '')}" placeholder="What your party calls you" />
+        <input id="settings-name" value="${escapeHtml(profile.displayName || '')}" placeholder="What your party calls you" maxlength="24" />
         <p style="font-size:11.5px;color:var(--text-faint);margin:6px 0 0;">This is what shows up on the leaderboard and in Today's check-ins for everyone else.</p>
       </div>
       <div class="field">
@@ -1495,11 +1496,11 @@ function renderBoard() {
   const today = todayStr();
   document.getElementById('today-list').innerHTML = allUsers.map(u => {
     const done = allWorkouts.some(w => w.uid === u.uid && w.date === today);
-    return `<div class="today-row"><span class="status-dot ${done ? 'done' : 'pending'}"></span><span class="name">${escapeHtml(u.displayName)}</span><span class="status-text">${done ? 'Completed' : 'Not yet'}</span></div>`;
+    return `<div class="today-row"><span class="status-dot ${done ? 'done' : 'pending'}"></span><span class="name">${escapeHtml(u.displayName || 'Hunter')}</span><span class="status-text">${done ? 'Completed' : 'Not yet'}</span></div>`;
   }).join('') || `<p class="empty-state" style="padding:10px 0;">No crew members yet.</p>`;
 
   const weekStart = startOfWeek(new Date());
-  const rows = allUsers.map(u => ({ uid: u.uid, name: u.displayName, streak: computeStreak(u.uid), week: countSince(u.uid, weekStart), total: allWorkouts.filter(w => w.uid === u.uid).length }))
+  const rows = allUsers.map(u => ({ uid: u.uid, name: u.displayName || 'Hunter', streak: computeStreak(u.uid), week: countSince(u.uid, weekStart), total: allWorkouts.filter(w => w.uid === u.uid).length }))
     .sort((a,b) => b.streak - a.streak || b.week - a.week || b.total - a.total);
 
   document.getElementById('board-body').innerHTML = rows.map((r, i) => `
