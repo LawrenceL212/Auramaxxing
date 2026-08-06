@@ -392,7 +392,51 @@
   }
   .stat-upgrade-btn.can-upgrade{border-color:var(--brass);color:var(--brass);background:var(--brass-dim);}
   .stat-upgrade-btn.maxed{border-color:var(--text-faint);color:var(--text-faint);cursor:default;opacity:0.5;}
+  .stat-upgrade-btn.awakening{border-color:#FFD700;color:#FFD700;background:rgba(255,215,0,0.1);animation:awakePulse 1.5s ease-in-out infinite;}
+  @keyframes awakePulse{0%,100%{box-shadow:0 0 6px rgba(255,215,0,0.4);}50%{box-shadow:0 0 16px rgba(255,215,0,0.9);}}
   .stat-xp-bonus{font-size:9px;color:var(--growing);font-family:var(--font-mono);white-space:nowrap;}
+  .stat-gates{display:flex;gap:6px;margin-top:4px;flex-wrap:wrap;}
+  .stat-gates span{font-size:9px;font-family:var(--font-mono);white-space:nowrap;}
+  .stat-row.gate-ready{background:rgba(255,215,0,0.04);border-radius:8px;padding:6px 4px;}
+
+  /* ── Awakening Modal ── */
+  .awakening-overlay{position:fixed;inset:0;z-index:500;background:#000;display:flex;align-items:center;justify-content:center;animation:awakenFadeIn .5s ease;}
+  @keyframes awakenFadeIn{from{opacity:0;}to{opacity:1;}}
+  .awakening-particles{position:absolute;inset:0;overflow:hidden;pointer-events:none;}
+  .awk-particle{position:absolute;width:4px;height:4px;border-radius:50%;animation:awkFloat linear infinite;opacity:0;}
+  @keyframes awkFloat{0%{transform:translateY(100vh) scale(0);opacity:0;}20%{opacity:1;}80%{opacity:1;}100%{transform:translateY(-20vh) scale(1.5);opacity:0;}}
+  .awakening-window{
+    position:relative;z-index:1;background:rgba(8,10,20,0.98);
+    border-radius:6px;padding:40px 32px;max-width:400px;width:90%;text-align:center;
+    animation:awkWindowIn .6s cubic-bezier(0.16,1,0.3,1) .3s both;
+  }
+  @keyframes awkWindowIn{from{opacity:0;transform:scale(0.8) translateY(40px);}to{opacity:1;transform:scale(1) translateY(0);}}
+  .awakening-window.rank-d{border:2px solid var(--brass);box-shadow:0 0 60px rgba(61,165,255,0.4);}
+  .awakening-window.rank-c{border:2px solid var(--maintaining);box-shadow:0 0 60px rgba(47,184,198,0.5);}
+  .awakening-window.rank-b{border:2px solid var(--violet);box-shadow:0 0 80px rgba(139,107,255,0.6);}
+  .awakening-window.rank-a{border:2px solid var(--excess);box-shadow:0 0 80px rgba(255,61,90,0.6);animation:awkWindowIn .6s cubic-bezier(0.16,1,0.3,1) .3s both,aRankGlow 2s ease-in-out 1s infinite;}
+  @keyframes aRankGlow{0%,100%{box-shadow:0 0 80px rgba(255,61,90,0.6);}50%{box-shadow:0 0 120px rgba(255,61,90,1);}}
+  .awakening-window.rank-s{border:2px solid #FFD700;box-shadow:0 0 100px rgba(255,215,0,0.8);animation:awkWindowIn .6s cubic-bezier(0.16,1,0.3,1) .3s both,sRankGlow 1.5s ease-in-out 1s infinite;}
+  @keyframes sRankGlow{0%,100%{box-shadow:0 0 100px rgba(255,215,0,0.8);}50%{box-shadow:0 0 160px rgba(255,215,0,1),0 0 30px rgba(255,215,0,0.8) inset;}}
+  .awakening-eyebrow{font-family:var(--font-mono);font-size:10px;letter-spacing:.5em;color:var(--text-faint);text-transform:uppercase;margin-bottom:20px;}
+  .awakening-icon{font-size:56px;margin-bottom:12px;animation:awkIcon .8s cubic-bezier(0.16,1,0.3,1) .8s both;}
+  @keyframes awkIcon{from{transform:scale(0) rotate(-180deg);}to{transform:scale(1) rotate(0deg);}}
+  .awakening-label{font-family:var(--font-display);font-size:13px;letter-spacing:.2em;text-transform:uppercase;color:var(--text-faint);margin-bottom:16px;}
+  .awakening-ranks{display:flex;align-items:center;justify-content:center;gap:20px;margin-bottom:20px;}
+  .awk-old{font-family:var(--font-display);font-size:36px;opacity:0.4;}
+  .awk-arrow{font-size:24px;color:var(--text-faint);}
+  .awk-new{font-family:var(--font-display);font-size:56px;font-weight:900;animation:awkNewRank 1s cubic-bezier(0.16,1,0.3,1) .6s both;}
+  @keyframes awkNewRank{from{transform:scale(0);opacity:0;}to{transform:scale(1);opacity:1;}}
+  .awk-new.rank-d{color:var(--brass);text-shadow:0 0 30px var(--brass);}
+  .awk-new.rank-c{color:var(--maintaining);text-shadow:0 0 30px var(--maintaining);}
+  .awk-new.rank-b{color:var(--violet);text-shadow:0 0 40px var(--violet);}
+  .awk-new.rank-a{color:var(--excess);text-shadow:0 0 50px var(--excess);}
+  .awk-new.rank-s{color:#FFD700;text-shadow:0 0 60px #FFD700,0 0 100px #FFD700;}
+  .awakening-flavour{font-size:13px;color:var(--text-dim);font-style:italic;line-height:1.6;margin-bottom:24px;animation:awakeFadeIn 1s ease 1.2s both;}
+  @keyframes awakeFadeIn{from{opacity:0;}to{opacity:1;}}
+  .awakening-sovereign{font-family:var(--font-display);font-size:11px;letter-spacing:.3em;color:#FFD700;margin-bottom:16px;animation:awakeFadeIn 1s ease 1.5s both;}
+  .awakening-btn{background:none;border:1px solid var(--text-faint);color:var(--text);padding:12px 40px;border-radius:4px;font-family:var(--font-display);font-size:12px;letter-spacing:.1em;cursor:pointer;margin-top:4px;touch-action:manipulation;animation:awakeFadeIn 1s ease 1.4s both;}
+  .awakening-btn:hover{border-color:var(--brass);color:var(--brass);}
   .char-rank-hint{font-size:12px;color:var(--text-faint);margin:12px 0 0;text-align:center;line-height:1.6;}
 
   /* ---------- PR Panel ---------- */
@@ -1467,8 +1511,17 @@ function computeWorkoutVolume(exercises) {
   const out = {};
   for (const ex of exercises) {
     const map = (EXERCISES_ALL[ex.name] || {}).muscles || {};
-    const setVol = ex.sets.reduce((s, st) => s + (Number(st.reps)||0) * (Number(st.weight)||0), 0);
-    for (const [muscle, emph] of Object.entries(map)) out[muscle] = (out[muscle] || 0) + setVol * emph;
+    const completedSets = (ex.sets||[]).filter(s => (Number(s.reps)||0) > 0);
+    if (!completedSets.length) continue;
+    // use weighted set count — reps*weight for loaded exercises, just set count for bodyweight
+    // this ensures bodyweight/cardio exercises still register on the heatmap
+    const hasWeight = completedSets.some(s => (Number(s.weight)||0) > 0);
+    const vol = hasWeight
+      ? completedSets.reduce((s, st) => s + (Number(st.reps)||0) * (Number(st.weight)||0), 0)
+      : completedSets.length * 10; // 10 per bodyweight set as a neutral baseline
+    for (const [muscle, emph] of Object.entries(map)) {
+      out[muscle] = (out[muscle] || 0) + vol * emph;
+    }
   }
   return out;
 }
@@ -1649,6 +1702,7 @@ if (configOk) {
       await loadAllData();
       // run system checks on every login — penalties, rank-up alerts etc.
       setTimeout(() => runSystemChecks(), 800);
+      setTimeout(() => ensureStatBaselines(), 1200);
     } else {
       currentUser = null;
       document.getElementById('auth-screen').style.display = 'flex';
@@ -2888,16 +2942,56 @@ const RANK_TITLES = {
   E:'Unranked Hunter', D:'Novice Hunter', C:'Seasoned Hunter',
   B:'Elite Hunter', A:'Shadow Monarch', S:'Absolute Being'
 };
-// AP cost to upgrade TO the next tier (cost indexed by current tier index)
 const UPGRADE_COSTS = { E:50, D:150, C:400, B:1000, A:2500 };
 const STAT_DEFS = [
-  { id:'strength',   label:'Strength',   desc:'Chest, Back & Shoulder volume' },
-  { id:'endurance',  label:'Endurance',  desc:'Workout frequency consistency' },
-  { id:'agility',    label:'Agility',    desc:'Leg training volume' },
-  { id:'flexibility',label:'Flexibility',desc:'Core & Hip Flexor activity' },
-  { id:'recovery',   label:'Recovery',   desc:'Hitting your weekly goal' },
-  { id:'focus',      label:'Focus',      desc:'Overall training streak' },
+  { id:'strength',    label:'Strength',    desc:'Personal lift improvement from your baseline' },
+  { id:'endurance',   label:'Endurance',   desc:'Running pace & distance improvement' },
+  { id:'agility',     label:'Agility',     desc:'Explosive & sprint performance improvement' },
+  { id:'flexibility', label:'Flexibility', desc:'Core & mobility consistency' },
+  { id:'recovery',    label:'Recovery',    desc:'Weekly goal hit rate over rolling weeks' },
+  { id:'focus',       label:'Focus',       desc:'Streak length & session quality' },
 ];
+
+// Time gates: minimum weeks at current rank before you CAN upgrade
+// stored as profile.statTimeAtRank[statId] = { rank, sinceDate }
+const TIME_GATES = { E:2, D:4, C:8, B:12, A:20 }; // weeks
+
+// Improvement gates: % improvement from YOUR personal baseline
+const IMPROVEMENT_GATES = {
+  strength:    { E:0, D:10, C:25, B:40, A:60 }, // % e1RM improvement
+  endurance:   { E:0, D:10, C:20, B:35, A:50 }, // % pace improvement (faster)
+  agility:     { E:0, D:10, C:20, B:35, A:50 }, // % explosive PR improvement
+  flexibility: { E:0, D:5,  C:15, B:25, A:40 }, // % core set increase
+  recovery:    { E:0, D:70, C:80, B:85, A:95 }, // % weekly goal hit rate
+  focus:       { E:0, D:14, C:30, B:60, A:120 }, // consecutive streak days
+};
+
+const RANK_FLAVOUR = {
+  strength: {
+    D: "The weight begins to move.", C: "Your body remembers strength.", B: "Limits shatter beneath your hands.",
+    A: "Iron bends to your will.", S: "You have transcended human strength."
+  },
+  endurance: {
+    D: "Your lungs learn to endure.", C: "Distance is no longer your enemy.", B: "You run where others collapse.",
+    A: "The road fears you now.", S: "You are the storm that never stops."
+  },
+  agility: {
+    D: "Your body quickens.", C: "Speed is becoming instinct.", B: "You move before they see you.",
+    A: "Your reflexes defy logic.", S: "Shadow-speed achieved."
+  },
+  flexibility: {
+    D: "Your body opens.", C: "Movement flows with less resistance.", B: "Your range expands beyond limits.",
+    A: "You move like water through cracks.", S: "Perfect fluidity. No resistance."
+  },
+  recovery: {
+    D: "Consistency takes root.", C: "Your body knows the schedule.", B: "You show up. Every time.",
+    A: "The dungeon cannot break your rhythm.", S: "Unbreakable. Undeniable."
+  },
+  focus: {
+    D: "The streak begins.", C: "Your mind holds the path.", B: "Discipline is your weapon.",
+    A: "The monarch's eye never wavers.", S: "You are the system."
+  },
+};
 
 function defaultStats() {
   const s = {};
@@ -2906,14 +3000,179 @@ function defaultStats() {
 }
 
 function charRankFromStats(stats) {
-  // Character rank = lowest individual stat rank
   const vals = STAT_DEFS.map(d => RANK_TIERS.indexOf(stats[d.id] || 'E'));
-  const minVal = Math.min(...vals);
-  return RANK_TIERS[minVal];
+  return RANK_TIERS[Math.min(...vals)];
 }
 
 function apCostToUpgrade(currentRank) {
   return UPGRADE_COSTS[currentRank] ?? null;
+}
+
+// ── Gate checking ──────────────────────────────────────────────────────────
+
+function getStatBaseline(statId) {
+  return (profile.statBaselines || {})[statId] || null;
+}
+
+function weeksAtCurrentRank(statId) {
+  const info = (profile.statTimeAtRank || {})[statId];
+  if (!info || !info.sinceDate) return 999; // no record = treat as always been there
+  const weeks = (new Date() - new Date(info.sinceDate)) / (7 * 86400000);
+  return Math.floor(weeks);
+}
+
+function getStrengthImprovement() {
+  // average e1RM improvement % across all tracked lifts from baseline
+  const baselines = profile.statBaselines?.strengthLifts || {};
+  if (!Object.keys(baselines).length) return 0;
+  const improvements = Object.entries(baselines).map(([ex, baseE1rm]) => {
+    const pr = myPRs[ex];
+    if (!pr || !pr.e1rm || !baseE1rm) return 0;
+    return ((pr.e1rm - baseE1rm) / baseE1rm) * 100;
+  }).filter(v => v > 0);
+  return improvements.length ? improvements.reduce((a,b)=>a+b,0) / improvements.length : 0;
+}
+
+function getEnduranceImprovement() {
+  const base = profile.statBaselines?.endurancePace;
+  if (!base) return 0;
+  const runWorkouts = myWorkouts.filter(w =>
+    (w.exercises||[]).some(e => ['Easy Run','Long Run','Treadmill Run','Running','Tempo Run'].includes(e.name))
+    && w.runSummary?.pace
+  );
+  if (!runWorkouts.length) return 0;
+  // pace is stored as "MM:SS /km" — lower = better
+  const parsePace = p => { const [m,s] = (p||'').replace(' /km','').split(':').map(Number); return m*60+(s||0); };
+  const basePaceSecs = parsePace(base);
+  const bestPace = Math.min(...runWorkouts.map(w => parsePace(w.runSummary.pace)));
+  if (!basePaceSecs || !bestPace) return 0;
+  return ((basePaceSecs - bestPace) / basePaceSecs) * 100; // positive = faster
+}
+
+function getAgilityImprovement() {
+  const baselines = profile.statBaselines?.agilityLifts || {};
+  if (!Object.keys(baselines).length) return 0;
+  const improvements = Object.entries(baselines).map(([ex, baseE1rm]) => {
+    const pr = myPRs[ex];
+    if (!pr || !pr.e1rm || !baseE1rm) return 0;
+    return ((pr.e1rm - baseE1rm) / baseE1rm) * 100;
+  }).filter(v => v > 0);
+  return improvements.length ? improvements.reduce((a,b)=>a+b,0) / improvements.length : 0;
+}
+
+function getRecoveryRate() {
+  // % of weeks in the last 8 where weekly goal was hit
+  const weeks = 8;
+  let hit = 0;
+  for (let i = 0; i < weeks; i++) {
+    const start = startOfWeek(daysAgo(i*7));
+    const end = new Date(start); end.setDate(end.getDate()+7);
+    const count = myWorkouts.filter(w => w.uid === currentUser.uid && new Date(w.date) >= start && new Date(w.date) < end).length;
+    if (count >= (profile.weeklyGoal||3)) hit++;
+  }
+  return (hit / weeks) * 100;
+}
+
+function getFocusStreak() {
+  return computeStreak(currentUser.uid);
+}
+
+function getFlexibilityScore() {
+  // sets of core/flexibility exercises per week average over last 4 weeks
+  const flexExercises = new Set(['Plank','Side Plank','Dead Hang','L-Sit','Ab Wheel Rollout',
+    'Dragon Flag','Hanging Leg Raise','Hanging Knee Raise','Toes to Bar','Flutter Kicks',
+    'V-Up','Mountain Climber','Hollow Body Hold','Skin The Cat']);
+  let totalSets = 0;
+  for (let i = 0; i < 4; i++) {
+    const start = startOfWeek(daysAgo(i*7));
+    const end = new Date(start); end.setDate(end.getDate()+7);
+    myWorkouts.filter(w => w.uid === currentUser.uid && new Date(w.date) >= start && new Date(w.date) < end)
+      .forEach(w => (w.exercises||[]).forEach(ex => {
+        if (flexExercises.has(ex.name)) totalSets += (ex.sets||[]).filter(s=>s.reps>0).length;
+      }));
+  }
+  return totalSets / 4; // avg sets per week
+}
+
+function getStatImprovement(statId) {
+  switch(statId) {
+    case 'strength': return getStrengthImprovement();
+    case 'endurance': return getEnduranceImprovement();
+    case 'agility': return getAgilityImprovement();
+    case 'recovery': return getRecoveryRate();
+    case 'focus': return getFocusStreak();
+    case 'flexibility': return getFlexibilityScore();
+  }
+  return 0;
+}
+
+function checkUpgradeGates(statId) {
+  const currentRank = (profile.stats || {})[statId] || 'E';
+  if (currentRank === 'S') return { ready: false, reason: 'Maxed' };
+  const nextRank = RANK_TIERS[RANK_TIERS.indexOf(currentRank)+1];
+  const apCost = UPGRADE_COSTS[currentRank];
+  const ap = profile.auraPoints || 0;
+
+  // time gate
+  const weeksNeeded = TIME_GATES[currentRank] || 0;
+  const weeksDone = weeksAtCurrentRank(statId);
+  const timeOk = weeksDone >= weeksNeeded;
+
+  // improvement gate
+  const improvNeeded = IMPROVEMENT_GATES[statId]?.[currentRank] || 0;
+  const improvDone = getStatImprovement(statId);
+  const improvOk = improvDone >= improvNeeded;
+
+  // ap gate
+  const apOk = ap >= apCost;
+
+  const ready = timeOk && improvOk && apOk;
+  return { ready, timeOk, improvOk, apOk, weeksDone, weeksNeeded, improvDone: Math.round(improvDone*10)/10, improvNeeded, ap, apCost, nextRank };
+}
+
+// Record baseline when a stat is first measured
+async function ensureStatBaselines() {
+  if (!profile || !currentUser) return;
+  const baselines = profile.statBaselines || {};
+  let changed = false;
+
+  // strength baseline — first PRs ever logged
+  if (!baselines.strengthLifts) {
+    const strengthExes = Object.keys(STRENGTH_STANDARDS);
+    const found = {};
+    strengthExes.forEach(ex => { if (myPRs[ex]) found[ex] = myPRs[ex].e1rm; });
+    if (Object.keys(found).length) { baselines.strengthLifts = found; changed = true; }
+  }
+
+  // agility baseline
+  if (!baselines.agilityLifts) {
+    const agilityExes = ['Hill Sprints','Interval Running','Box Jump','Jump Squat'];
+    const found = {};
+    agilityExes.forEach(ex => { if (myPRs[ex]) found[ex] = myPRs[ex].e1rm; });
+    if (Object.keys(found).length) { baselines.agilityLifts = found; changed = true; }
+  }
+
+  // endurance baseline — first run pace
+  if (!baselines.endurancePace) {
+    const firstRun = myWorkouts.filter(w => w.runSummary?.pace)
+      .sort((a,b) => a.date.localeCompare(b.date))[0];
+    if (firstRun) { baselines.endurancePace = firstRun.runSummary.pace; changed = true; }
+  }
+
+  // initialize statTimeAtRank if not set
+  const statTimeAtRank = profile.statTimeAtRank || {};
+  STAT_DEFS.forEach(def => {
+    if (!statTimeAtRank[def.id]) {
+      statTimeAtRank[def.id] = { rank: 'E', sinceDate: profile.createdAt?.toDate?.()?.toISOString?.()?.slice(0,10) || todayStr() };
+      changed = true;
+    }
+  });
+
+  if (changed) {
+    await setDoc(doc(db, 'users', currentUser.uid), { statBaselines: baselines, statTimeAtRank }, { merge: true });
+    profile.statBaselines = baselines;
+    profile.statTimeAtRank = statTimeAtRank;
+  }
 }
 
 // Aura Points: 10 base per day, +5 if weekly goal hit, streak multiplier
@@ -2954,27 +3213,35 @@ async function tryAwardAp() {
 
 async function upgradeStatWithAp(statId) {
   if (!profile) return;
-  const currentRank = (profile.stats || {})[statId] || 'E';
-  if (currentRank === 'S') return;
-  const cost = apCostToUpgrade(currentRank);
-  if ((profile.auraPoints || 0) < cost) {
-    showToast(`Not enough Aura Points — need ${cost} AP, you have ${profile.auraPoints || 0}.`, 'error'); return;
-    return;
+  const gates = checkUpgradeGates(statId);
+  if (!gates.ready) {
+    const reasons = [];
+    if (!gates.timeOk) reasons.push(`${gates.weeksNeeded - gates.weeksDone} more week${gates.weeksNeeded - gates.weeksDone !== 1 ? 's' : ''} needed`);
+    if (!gates.improvOk) reasons.push(`${gates.improvNeeded - gates.improvDone}% more improvement needed`);
+    if (!gates.apOk) reasons.push(`${gates.apCost - gates.ap} more AP needed`);
+    showToast(`Not ready: ${reasons.join(' · ')}`, 'error'); return;
   }
-  const newRank = RANK_TIERS[RANK_TIERS.indexOf(currentRank) + 1];
+  const currentRank = (profile.stats || {})[statId] || 'E';
+  const newRank = gates.nextRank;
   const newStats = { ...(profile.stats || defaultStats()), [statId]: newRank };
-  const newAp = (profile.auraPoints || 0) - cost;
+  const newAp = (profile.auraPoints || 0) - gates.apCost;
+
+  // record when this rank was achieved for future time gate
+  const statTimeAtRank = { ...(profile.statTimeAtRank || {}) };
+  statTimeAtRank[statId] = { rank: newRank, sinceDate: todayStr() };
+
   const pending = [...(profile.pendingRankUpModals || []), { stat: statId, oldRank: currentRank, newRank }];
   await setDoc(doc(db, 'users', currentUser.uid), {
-    auraPoints: newAp,
-    stats: newStats,
-    pendingRankUpModals: pending,
+    auraPoints: newAp, stats: newStats,
+    statTimeAtRank, pendingRankUpModals: pending,
   }, { merge: true });
   profile.auraPoints = newAp;
   profile.stats = newStats;
+  profile.statTimeAtRank = statTimeAtRank;
   profile.pendingRankUpModals = pending;
+
   const def = STAT_DEFS.find(d => d.id === statId);
-  showRankUpModal(def ? def.label : statId, currentRank, newRank, profile.displayName);
+  showAwakeningModal(def?.label || statId, currentRank, newRank, profile.displayName);
   renderCharCard();
 }
 
@@ -3001,26 +3268,49 @@ function renderCharCard() {
     const curIdx = RANK_TIERS.indexOf(cur);
     const pct = (curIdx / 5) * 100;
     const barColor = RANK_COLORS[cur];
-    const cost = apCostToUpgrade(cur);
-    const canUpgrade = cur !== 'S' && ap >= cost;
     const isMaxed = cur === 'S';
     const rankCls = 'rank-' + cur.toLowerCase();
-    const btnLabel = isMaxed ? 'MAX' : `${cost} AP`;
-    // stat XP bonus indicator
+    const gates = isMaxed ? null : checkUpgradeGates(def.id);
+    const allReady = gates?.ready;
+
+    // gate progress indicators
+    let gateHtml = '';
+    if (!isMaxed && gates) {
+      const timeIcon = gates.timeOk ? '✓' : '○';
+      const improvIcon = gates.improvOk ? '✓' : '○';
+      const apIcon = gates.apOk ? '✓' : '○';
+      const timeColor = gates.timeOk ? 'var(--growing)' : 'var(--text-faint)';
+      const improvColor = gates.improvOk ? 'var(--growing)' : 'var(--text-faint)';
+      const apColor = gates.apOk ? 'var(--growing)' : 'var(--text-faint)';
+      // format improvement label
+      const improvLabel = def.id === 'focus' ? `${Math.round(gates.improvDone)}d streak`
+        : def.id === 'recovery' ? `${Math.round(gates.improvDone)}%`
+        : def.id === 'flexibility' ? `${Math.round(gates.improvDone)} sets/wk`
+        : `${Math.round(gates.improvDone)}%`;
+      gateHtml = `<div class="stat-gates">
+        <span style="color:${timeColor};">${timeIcon} ${gates.weeksDone}/${gates.weeksNeeded}wk</span>
+        <span style="color:${improvColor};">${improvIcon} ${improvLabel}/${gates.improvNeeded}${def.id==='focus'?'d':def.id==='flexibility'?' sets':def.id==='recovery'?'%':'%'}</span>
+        <span style="color:${apColor};">${apIcon} ${Math.min(ap,gates.apCost)}/${gates.apCost}AP</span>
+      </div>`;
+    }
+
+    const btnLabel = isMaxed ? 'MAX' : allReady ? '⚡ AWAKEN' : `${gates?.apCost||0} AP`;
+    const btnCls = isMaxed ? 'stat-upgrade-btn maxed' : allReady ? 'stat-upgrade-btn can-upgrade awakening' : 'stat-upgrade-btn';
     const statXP = (profile.statXP || {})[def.id] || 0;
-    const xpNeeded = 10; // 10 bonus XP = 1 free AP toward this stat
-    const xpPct = Math.min(100, (statXP % xpNeeded) / xpNeeded * 100);
-    const bonusAp = Math.floor(statXP / xpNeeded);
-    const xpTag = statXP > 0 ? `<span class="stat-xp-bonus" title="${statXP} bonus XP from PRs">+${bonusAp} AP</span>` : '';
-    return `<div class="stat-row">
+    const xpTag = statXP > 0 ? `<span class="stat-xp-bonus">+${Math.floor(statXP/10)} AP from PRs</span>` : '';
+
+    return `<div class="stat-row ${allReady?'gate-ready':''}">
       <span class="stat-label" title="${def.desc}">${def.label}</span>
-      <div class="stat-bar-wrap">
-        <div class="stat-bar" style="width:${pct}%;background:${barColor};"></div>
-        <div class="stat-tiers">${RANK_TIERS.map(()=>'<div class="stat-tier-seg"></div>').join('')}</div>
+      <div style="flex:1;min-width:0;">
+        <div class="stat-bar-wrap">
+          <div class="stat-bar" style="width:${pct}%;background:${barColor};"></div>
+          <div class="stat-tiers">${RANK_TIERS.map(()=>'<div class="stat-tier-seg"></div>').join('')}</div>
+        </div>
+        ${gateHtml}
       </div>
       <span class="stat-rank ${rankCls}">${cur}</span>
       <div style="display:flex;flex-direction:column;align-items:flex-end;gap:2px;">
-        <button class="stat-upgrade-btn ${canUpgrade?'can-upgrade':''} ${isMaxed?'maxed':''}" data-stat="${def.id}" ${isMaxed?'disabled':''}>${btnLabel}</button>
+        <button class="${btnCls}" data-stat="${def.id}" ${isMaxed?'disabled':''}>${btnLabel}</button>
         ${xpTag}
       </div>
     </div>`;
@@ -3029,7 +3319,7 @@ function renderCharCard() {
   statsEl.querySelectorAll('.stat-upgrade-btn:not([disabled])').forEach(btn =>
     btn.addEventListener('click', () => upgradeStatWithAp(btn.dataset.stat)));
 
-  // hint about next rank requirement
+  // hint
   const hint = document.getElementById('char-rank-hint');
   if (charRank === 'S') {
     hint.textContent = '◆ Absolute Being — you have reached the pinnacle.';
@@ -3053,6 +3343,38 @@ function showSystemModal(html, onClose) {
   if (btn) btn.addEventListener('click', () => { overlay.remove(); if (onClose) onClose(); });
   overlay.addEventListener('click', e => { if (e.target === overlay) { overlay.remove(); if (onClose) onClose(); } });
   return overlay;
+}
+
+function showAwakeningModal(statLabel, oldRank, newRank, hunterName) {
+  const isAllS = STAT_DEFS.every(d => (profile.stats||{})[d.id] === 'S');
+  const flavour = RANK_FLAVOUR[STAT_DEFS.find(d=>d.label===statLabel)?.id]?.[newRank] || 'A new limit has been shattered.';
+  const overlay = document.createElement('div');
+  overlay.className = 'awakening-overlay';
+  overlay.innerHTML = `
+    <div class="awakening-particles" id="awakening-particles"></div>
+    <div class="awakening-window rank-${newRank.toLowerCase()}">
+      <div class="awakening-eyebrow">System Alert</div>
+      <div class="awakening-icon">${newRank === 'S' ? '👑' : '⚡'}</div>
+      <div class="awakening-label">${escapeHtml(statLabel)} Limit Broken</div>
+      <div class="awakening-ranks">
+        <span class="awk-old rank-${oldRank.toLowerCase()}">${oldRank}</span>
+        <span class="awk-arrow">→</span>
+        <span class="awk-new rank-${newRank.toLowerCase()}">${newRank}</span>
+      </div>
+      <div class="awakening-flavour">"${flavour}"</div>
+      ${isAllS ? '<div class="awakening-sovereign">ABSOLUTE BEING ACHIEVED</div>' : ''}
+      <button class="awakening-btn">Rise</button>
+    </div>`;
+  document.body.appendChild(overlay);
+  // spawn particles
+  const container = overlay.querySelector('#awakening-particles');
+  for (let i = 0; i < 30; i++) {
+    const p = document.createElement('div');
+    p.className = 'awk-particle';
+    p.style.cssText = `left:${Math.random()*100}%;top:${Math.random()*100}%;animation-delay:${Math.random()*1.5}s;animation-duration:${1+Math.random()*2}s;background:${RANK_COLORS[newRank]};`;
+    container.appendChild(p);
+  }
+  overlay.querySelector('.awakening-btn').addEventListener('click', () => overlay.remove());
 }
 
 function showPenaltyModal(missedDays, apLost) {
@@ -3658,8 +3980,14 @@ function buildMuscleStats(uid) {
   recentWorkouts.forEach(w => (w.exercises||[]).forEach(ex => {
     const def = EXERCISES_ALL[ex.name];
     if (!def) return;
+    const completedSets = (ex.sets||[]).filter(s => (Number(s.reps)||0) > 0);
+    if (!completedSets.length) return;
+    const hasWeight = completedSets.some(s => (Number(s.weight)||0) > 0);
+    const vol = hasWeight
+      ? completedSets.reduce((s, st) => s + (Number(st.reps)||0) * (Number(st.weight)||0), 0)
+      : completedSets.length * 10;
     Object.entries(def.muscles||{}).forEach(([muscle, emphasis]) => {
-      setCounts[muscle] = (setCounts[muscle]||0) + (ex.sets||[]).length * emphasis;
+      setCounts[muscle] = (setCounts[muscle]||0) + vol * emphasis;
     });
   }));
   const max = Math.max(...Object.values(setCounts), 1);
