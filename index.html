@@ -1274,7 +1274,7 @@ function openSettingsModal() {
     const saveBtn = overlay.querySelector('#save-settings');
     saveBtn.disabled = true; saveBtn.textContent = 'Saving…';
     try {
-      await setDoc(doc(db, 'users', currentUser.uid), { displayName: newName, weeklyGoal: newGoal, bodyType: selectedBodyType }, { merge: true });
+      await setDoc(doc(db, 'users', currentUser.uid), { displayName: newName, weeklyGoal: newGoal, bodyType: selectedBodyType, email: currentUser.email || '' }, { merge: true });
       await updateProfile(currentUser, { displayName: newName });
       profile.displayName = newName;
       profile.weeklyGoal = newGoal;
@@ -1298,6 +1298,10 @@ if (configOk) {
       profile = snap.exists() ? snap.data() : { displayName: user.displayName || 'You', weeklyGoal: 3 };
       if (!profile.stats) profile.stats = defaultStats();
       if (profile.auraPoints === undefined) profile.auraPoints = 0;
+      if (!profile.email && currentUser.email) {
+        await setDoc(doc(db, 'users', currentUser.uid), { email: currentUser.email }, { merge: true });
+        profile.email = currentUser.email;
+      }
       document.getElementById('user-avatar').textContent = initials(profile.displayName);
       document.getElementById('auth-screen').style.display = 'none';
       document.getElementById('app').style.display = 'flex';
@@ -1429,7 +1433,10 @@ function renderQuestFeed() {
   wrap.innerHTML = `
     <div class="quest-feed-head">
       <span class="quest-feed-title">${escapeHtml(myProgram.name)}</span>
-      <button class="icon-btn" id="edit-program-btn">✎ Edit plan</button>
+      <div style="display:flex;gap:8px;">
+        <button class="icon-btn" id="new-program-btn" style="font-size:12px;color:var(--text-dim);">+ New plan</button>
+        <button class="icon-btn" id="edit-program-btn">✎ Edit plan</button>
+      </div>
     </div>
     ${!isScheduledToday ? '<p class="rest-note">Not a scheduled training day — browse or log anyway below.</p>' : ''}
     <div class="quest-carousel">
@@ -1450,6 +1457,12 @@ function renderQuestFeed() {
   `;
 
   document.getElementById('edit-program-btn').addEventListener('click', () => { editingProgram = true; renderQuestFeed(); });
+  document.getElementById('new-program-btn').addEventListener('click', () => {
+    if (!confirm('Start a new plan? Your current plan will be replaced.')) return;
+    myProgram = null;
+    editingProgram = true;
+    renderQuestFeed();
+  });
   document.getElementById('quest-begin-btn').addEventListener('click', () => startProgramDay(viewingIdx));
   document.getElementById('carousel-prev').addEventListener('click', () => { questCarouselIndex = (viewingIdx - 1 + myProgram.days.length) % myProgram.days.length; renderQuestFeed(); });
   document.getElementById('carousel-next').addEventListener('click', () => { questCarouselIndex = (viewingIdx + 1) % myProgram.days.length; renderQuestFeed(); });
