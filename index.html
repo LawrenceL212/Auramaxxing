@@ -145,11 +145,24 @@
   .ex-set-count{font-size:11px;color:var(--text-faint);font-family:var(--font-mono);white-space:nowrap;margin-top:14px;}
   .remove-x{background:none;border:none;color:var(--text-faint);font-size:18px;cursor:pointer;padding:0 4px;}
   .sets-list{display:flex;flex-direction:column;gap:6px;margin-top:12px;}
-  .set-table-head{display:grid;grid-template-columns:22px 1fr 1fr 26px;gap:8px;padding:0 2px;margin-bottom:2px;}
+  .set-table-head{display:grid;grid-template-columns:22px 1fr 1fr auto 26px;gap:8px;padding:0 2px;margin-bottom:2px;}
   .set-table-head span{font-size:10px;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.05em;text-align:center;}
   .set-table-head span:first-child{text-align:left;}
-  .set-row{display:grid;grid-template-columns:22px 1fr 1fr 26px;gap:8px;align-items:center;padding:6px 2px;border-radius:6px;transition:background .2s ease;}
+  .set-row{display:grid;grid-template-columns:22px 1fr 1fr auto 26px;gap:8px;align-items:center;padding:6px 2px;border-radius:6px;transition:background .2s ease;}
   .set-row.complete{background:var(--brass-dim);}
+  .rir-chips{display:flex;gap:3px;align-items:center;flex-shrink:0;}
+  .rir-chip{
+    width:22px;height:22px;border-radius:4px;border:1px solid var(--border);
+    background:var(--card-2);color:var(--text-faint);font-size:10px;cursor:pointer;
+    display:flex;align-items:center;justify-content:center;font-family:var(--font-mono);
+  }
+  .rir-chip.selected{background:var(--brass-dim);border-color:var(--brass);color:var(--brass);font-weight:700;}
+  .suggest-badge{
+    font-size:10px;color:var(--growing);background:rgba(139,107,255,0.12);
+    border:1px solid var(--growing);border-radius:4px;padding:2px 6px;white-space:nowrap;flex-shrink:0;
+  }
+  .set-table-head span:nth-child(3){text-align:left;}
+  .rir-label{font-size:10px;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.05em;}
   .set-row .set-idx{color:var(--text-faint);font-size:12px;font-family:var(--font-mono);text-align:center;}
   .stepper{display:flex;align-items:center;background:var(--card-2);border:1px solid var(--border);border-radius:6px;overflow:hidden;}
   .stepper button{background:none;border:none;color:var(--brass);font-size:16px;width:26px;height:32px;cursor:pointer;flex-shrink:0;}
@@ -246,13 +259,73 @@
   .status-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0;}
   .status-dot.done{background:var(--growing);}
   .status-dot.pending{background:var(--card-2);border:1.5px solid var(--text-faint);}
-  .today-row .name{flex:1;font-size:14px;}
+  .today-row .name{flex:1;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;}
   .today-row .status-text{font-size:11.5px;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.03em;}
   table.board{width:100%;border-collapse:collapse;}
   table.board th{text-align:left;font-size:11px;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.04em;padding:0 8px 10px 0;font-weight:600;}
   table.board td{padding:10px 8px 10px 0;border-top:1px solid var(--border);font-size:14px;}
+  table.board td:nth-child(2){max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
   table.board td.rank{color:var(--text-faint);font-family:var(--font-mono);width:24px;}
   table.board tr.me td{color:var(--brass);}
+
+  /* ---------- Character / Aura Points System ---------- */
+  .char-card{background:radial-gradient(ellipse 400px 200px at 0% 0%, rgba(61,165,255,0.12), transparent 60%), var(--card);border-color:var(--brass);}
+  .char-header{display:flex;align-items:center;gap:14px;margin-bottom:18px;}
+  .char-rank-badge{
+    width:56px;height:56px;border-radius:6px;display:flex;align-items:center;justify-content:center;
+    font-family:var(--font-display);font-size:28px;font-weight:900;letter-spacing:0.05em;flex-shrink:0;
+    border:2px solid var(--brass);color:var(--brass);box-shadow:0 0 16px rgba(61,165,255,0.4);
+  }
+  .char-rank-badge.rank-s{border-color:#FFD700;color:#FFD700;box-shadow:0 0 24px rgba(255,215,0,0.6);animation:sRankGlow 3s ease-in-out infinite;}
+  .char-rank-badge.rank-a{border-color:#FF3D5A;color:#FF3D5A;box-shadow:0 0 20px rgba(255,61,90,0.5);}
+  .char-rank-badge.rank-b{border-color:#8B6BFF;color:#8B6BFF;box-shadow:0 0 16px rgba(139,107,255,0.4);}
+  .char-rank-badge.rank-c{border-color:#2FB8C6;color:#2FB8C6;}
+  .char-rank-badge.rank-d{border-color:#3DA5FF;color:#3DA5FF;}
+  @keyframes sRankGlow{0%,100%{box-shadow:0 0 24px rgba(255,215,0,0.6);}50%{box-shadow:0 0 40px rgba(255,215,0,1);}}
+  .char-info{flex:1;min-width:0;}
+  .char-name{font-family:var(--font-display);font-size:17px;margin:0 0 3px;letter-spacing:0.02em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .char-title{font-size:11.5px;color:var(--brass);text-transform:uppercase;letter-spacing:0.06em;margin:0;}
+  .char-ap{display:flex;flex-direction:column;align-items:center;flex-shrink:0;}
+  .ap-amount{font-family:var(--font-mono);font-size:22px;color:var(--brass);line-height:1;}
+  .ap-label{font-size:9px;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.1em;}
+  .char-stats{display:flex;flex-direction:column;gap:10px;}
+  .stat-row{display:flex;align-items:center;gap:10px;}
+  .stat-label{font-size:11px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.05em;width:74px;flex-shrink:0;}
+  .stat-bar-wrap{flex:1;height:6px;background:var(--card-2);border-radius:3px;overflow:visible;position:relative;}
+  .stat-bar{height:100%;border-radius:3px;transition:width 0.6s ease;}
+  .stat-tiers{display:flex;gap:2px;position:absolute;top:0;left:0;right:0;height:100%;}
+  .stat-tier-seg{flex:1;border-right:1px solid rgba(5,7,13,0.6);height:100%;}
+  .stat-tier-seg:last-child{border-right:none;}
+  .stat-rank{font-family:var(--font-mono);font-size:11px;width:14px;text-align:center;flex-shrink:0;}
+  .stat-rank.rank-s{color:#FFD700;}
+  .stat-rank.rank-a{color:#FF3D5A;}
+  .stat-rank.rank-b{color:#8B6BFF;}
+  .stat-rank.rank-c{color:#2FB8C6;}
+  .stat-rank.rank-d{color:#3DA5FF;}
+  .stat-rank.rank-e{color:var(--text-faint);}
+  .stat-upgrade-btn{
+    font-size:10px;padding:3px 8px;border-radius:10px;background:none;border:1px solid var(--border);
+    color:var(--text-dim);cursor:pointer;white-space:nowrap;flex-shrink:0;
+  }
+  .stat-upgrade-btn.can-upgrade{border-color:var(--brass);color:var(--brass);background:var(--brass-dim);}
+  .stat-upgrade-btn.maxed{border-color:var(--text-faint);color:var(--text-faint);cursor:default;opacity:0.5;}
+  .char-rank-hint{font-size:12px;color:var(--text-faint);margin:12px 0 0;text-align:center;line-height:1.6;}
+
+  /* ---------- PR Panel ---------- */
+  .pr-panel-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
+  .pr-locked{font-size:13px;color:var(--text-faint);text-align:center;padding:14px 0;}
+  .pr-grid{display:flex;flex-direction:column;gap:8px;}
+  .pr-row{display:flex;align-items:center;gap:10px;padding:8px 10px;background:var(--card-2);border-radius:7px;border:1px solid var(--border);}
+  .pr-name{flex:1;font-size:13.5px;font-weight:600;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .pr-e1rm{font-family:var(--font-mono);font-size:12px;color:var(--text-dim);white-space:nowrap;}
+  .pr-tier{font-size:10.5px;padding:3px 7px;border-radius:10px;white-space:nowrap;font-weight:700;}
+  .pr-tier.tier-Elite{background:rgba(255,215,0,0.15);color:#FFD700;border:1px solid #FFD700;}
+  .pr-tier.tier-Advanced{background:rgba(255,61,90,0.15);color:var(--excess);border:1px solid var(--excess);}
+  .pr-tier.tier-Intermediate{background:rgba(139,107,255,0.15);color:var(--violet);border:1px solid var(--violet);}
+  .pr-tier.tier-Novice{background:rgba(47,184,198,0.15);color:var(--maintaining);border:1px solid var(--maintaining);}
+  .pr-tier.tier-Beginner{background:var(--card);color:var(--text-faint);border:1px solid var(--border);}
+  .pr-tier.tier-Unranked{background:var(--card);color:var(--text-faint);border:1px solid var(--border);}
+  .pr-xp{font-family:var(--font-mono);font-size:11px;color:var(--brass);white-space:nowrap;}
   .streak-pill{font-family:var(--font-mono);font-size:13px;background:var(--card-2);padding:3px 9px;border-radius:20px;}
   .rank-badge{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;font-family:var(--font-display);font-weight:800;font-size:13px;border:1.5px solid;border-radius:4px;background:var(--card-2);}
 
@@ -261,8 +334,8 @@
   .status-count-row{display:flex;flex-wrap:wrap;gap:8px 10px;margin:10px 0 4px;}
   .status-pill{font-size:11px;padding:4px 10px;border-radius:20px;display:flex;align-items:center;gap:6px;border:1px solid;}
   .body-pair{display:flex;justify-content:center;gap:6px;}
-  .body-pair svg{width:44%;height:auto;}
-  .body-pair.big svg{width:46%;}
+  .body-pair svg{width:44%;height:auto;overflow:hidden;}
+  .body-pair.big svg{width:46%;overflow:hidden;}
   .body-part{
     cursor:pointer;
     transform-box:fill-box;transform-origin:center;
@@ -382,7 +455,7 @@
       <form id="auth-form">
         <div class="field hidden" id="name-field">
           <label for="displayName">Hunter name</label>
-          <input id="displayName" type="text" placeholder="What your party calls you" autocomplete="name" />
+          <input id="displayName" type="text" placeholder="What your party calls you" autocomplete="name" maxlength="24" />
         </div>
         <div class="field">
           <label for="email">Email</label>
@@ -470,8 +543,28 @@
     <section class="view" id="view-board">
       <h2>Rankings</h2>
       <p class="sub">Hunter rank rises with your streak, then workouts this week.</p>
+
+      <!-- Character card -->
+      <div class="card char-card" id="char-card">
+        <div class="char-header">
+          <div class="char-rank-badge" id="char-rank-badge">E</div>
+          <div class="char-info">
+            <p class="char-name" id="char-name">—</p>
+            <p class="char-title" id="char-title">Unranked Hunter</p>
+          </div>
+          <div class="char-ap">
+            <span class="ap-amount" id="ap-amount">0</span>
+            <span class="ap-label">AURA</span>
+          </div>
+        </div>
+        <div class="char-stats" id="char-stats"></div>
+        <p class="char-rank-hint" id="char-rank-hint"></p>
+      </div>
+
+      <!-- PR Records panel -->
+      <div id="pr-panel"></div>
+
       <div class="card">
-        <div class="card-title"><h3>Party status — today</h3></div>
         <div class="today-list" id="today-list"></div>
       </div>
       <div class="card">
@@ -585,183 +678,171 @@ try {
    EXERCISE DATABASE
    ========================================================================= */
 const BASE_EXERCISES = {
-  "Bench Press": { muscles: { "Middle Chest": 1, "Triceps": 0.4, "Front Shoulders": 0.2 }, equipment: "Barbell" },
-  "Incline Bench Press": { muscles: { "Upper Chest": 1, "Front Shoulders": 0.4, "Triceps": 0.3 }, equipment: "Barbell" },
-  "Incline Dumbbell Press": { muscles: { "Upper Chest": 1, "Front Shoulders": 0.3, "Triceps": 0.3 }, equipment: "Dumbbell" },
-  "Dumbbell Fly": { muscles: { "Middle Chest": 1 }, equipment: "Dumbbell" },
-  "Push Up": { muscles: { "Middle Chest": 0.8, "Triceps": 0.4, "Front Shoulders": 0.2 }, equipment: "Bodyweight" },
-  "Dips": { muscles: { "Lower Chest": 0.6, "Triceps": 1, "Front Shoulders": 0.2 }, equipment: "Bodyweight" },
-  "Deadlift": { muscles: { "Lats": 0.4, "Lower Back": 0.6, "Traps": 0.4, "Hamstrings": 0.6, "Glutes": 0.6, "Forearms": 0.3 }, equipment: "Barbell" },
-  "Pull Up": { muscles: { "Lats": 1, "Biceps": 0.5, "Forearms": 0.3, "Upper Back": 0.3 }, equipment: "Bodyweight" },
-  "Lat Pulldown": { muscles: { "Lats": 1, "Biceps": 0.4, "Upper Back": 0.2 }, equipment: "Cable" },
-  "Barbell Row": { muscles: { "Upper Back": 0.6, "Lats": 0.6, "Biceps": 0.3, "Traps": 0.3 }, equipment: "Barbell" },
-  "Seated Cable Row": { muscles: { "Upper Back": 0.6, "Lats": 0.5, "Biceps": 0.3 }, equipment: "Cable" },
-  "T-Bar Row": { muscles: { "Upper Back": 0.6, "Lats": 0.6, "Biceps": 0.3 }, equipment: "Machine" },
-  "One-Arm Dumbbell Row": { muscles: { "Lats": 0.7, "Upper Back": 0.5, "Biceps": 0.3 }, equipment: "Dumbbell" },
-  "Overhead Press": { muscles: { "Front Shoulders": 1, "Lateral Shoulders": 0.4, "Triceps": 0.4 }, equipment: "Barbell" },
-  "Lateral Raise": { muscles: { "Lateral Shoulders": 1 }, equipment: "Dumbbell" },
-  "Front Raise": { muscles: { "Front Shoulders": 1 }, equipment: "Dumbbell" },
-  "Rear Delt Fly": { muscles: { "Rear Shoulders": 1, "Upper Back": 0.3 }, equipment: "Dumbbell" },
-  "Arnold Press": { muscles: { "Front Shoulders": 1, "Lateral Shoulders": 0.4, "Triceps": 0.3 }, equipment: "Dumbbell" },
+  "Bench Press": { muscles: { "Middle Chest": 1, "Triceps": 0.6, "Front Shoulders": 0.3 }, equipment: "Barbell" },
+  "Incline Bench Press": { muscles: { "Upper Chest": 1, "Front Shoulders": 0.6, "Triceps": 0.3 }, equipment: "Barbell" },
+  "Incline Dumbbell Press": { muscles: { "Upper Chest": 1, "Front Shoulders": 0.6, "Triceps": 0.3 }, equipment: "Dumbbell" },
+  "Dumbbell Fly": { muscles: { "Middle Chest": 1, "Front Shoulders": 0.2 }, equipment: "Dumbbell" },
+  "Push Up": { muscles: { "Middle Chest": 1, "Triceps": 0.6, "Front Shoulders": 0.3 }, equipment: "Bodyweight" },
+  "Dips": { muscles: { "Lower Chest": 1, "Triceps": 0.6, "Front Shoulders": 0.3 }, equipment: "Bodyweight" },
+  "Decline Bench Press": { muscles: { "Lower Chest": 1, "Triceps": 0.6, "Front Shoulders": 0.2 }, equipment: "Barbell" },
+  "Decline Dumbbell Press": { muscles: { "Lower Chest": 1, "Triceps": 0.6, "Front Shoulders": 0.2 }, equipment: "Dumbbell" },
+  "Incline Dumbbell Fly": { muscles: { "Upper Chest": 1, "Front Shoulders": 0.3 }, equipment: "Dumbbell" },
+  "Decline Dumbbell Fly": { muscles: { "Lower Chest": 1, "Front Shoulders": 0.2 }, equipment: "Dumbbell" },
+  "Cable Crossover": { muscles: { "Middle Chest": 1, "Front Shoulders": 0.2 }, equipment: "Cable" },
+  "Cable Fly Low-to-High": { muscles: { "Upper Chest": 1, "Front Shoulders": 0.3 }, equipment: "Cable" },
+  "Cable Fly High-to-Low": { muscles: { "Lower Chest": 1, "Front Shoulders": 0.2 }, equipment: "Cable" },
+  "Pec Deck Machine": { muscles: { "Middle Chest": 1 }, equipment: "Machine" },
+  "Svend Press": { muscles: { "Middle Chest": 1, "Front Shoulders": 0.2 }, equipment: "Dumbbell" },
+  "Dumbbell Pullover": { muscles: { "Lats": 1, "Middle Chest": 0.3, "Triceps": 0.2 }, equipment: "Dumbbell" },
+  "Incline Push Up": { muscles: { "Lower Chest": 1, "Triceps": 0.3, "Front Shoulders": 0.2 }, equipment: "Bodyweight" },
+  "Decline Push Up": { muscles: { "Upper Chest": 1, "Front Shoulders": 0.6, "Triceps": 0.3 }, equipment: "Bodyweight" },
+  "Diamond Push Up": { muscles: { "Triceps": 1, "Middle Chest": 0.6, "Front Shoulders": 0.3 }, equipment: "Bodyweight" },
+  "Wide Push Up": { muscles: { "Middle Chest": 1, "Front Shoulders": 0.3 }, equipment: "Bodyweight" },
+  "Archer Push Up": { muscles: { "Middle Chest": 1, "Triceps": 0.6, "Front Shoulders": 0.3 }, equipment: "Bodyweight" },
+  "Ring Dips": { muscles: { "Lower Chest": 1, "Triceps": 0.6, "Front Shoulders": 0.3 }, equipment: "Bodyweight" },
+  "Overhead Press": { muscles: { "Front Shoulders": 1, "Lateral Shoulders": 0.6, "Triceps": 0.6, "Upper Abs": 0.2 }, equipment: "Barbell" },
+  "Lateral Raise": { muscles: { "Lateral Shoulders": 1, "Traps": 0.2 }, equipment: "Dumbbell" },
+  "Front Raise": { muscles: { "Front Shoulders": 1, "Upper Chest": 0.2 }, equipment: "Dumbbell" },
+  "Rear Delt Fly": { muscles: { "Rear Shoulders": 1, "Upper Back": 0.6, "Traps": 0.2 }, equipment: "Dumbbell" },
+  "Arnold Press": { muscles: { "Front Shoulders": 1, "Lateral Shoulders": 0.6, "Triceps": 0.3 }, equipment: "Dumbbell" },
+  "Dumbbell Shoulder Press": { muscles: { "Front Shoulders": 1, "Lateral Shoulders": 0.6, "Triceps": 0.6 }, equipment: "Dumbbell" },
+  "Machine Shoulder Press": { muscles: { "Front Shoulders": 1, "Lateral Shoulders": 0.3, "Triceps": 0.6 }, equipment: "Machine" },
+  "Push Press": { muscles: { "Front Shoulders": 1, "Lateral Shoulders": 0.6, "Triceps": 0.6, "Quads": 0.3, "Hip Flexors": 0.2 }, equipment: "Barbell" },
+  "Cable Lateral Raise": { muscles: { "Lateral Shoulders": 1, "Traps": 0.2 }, equipment: "Cable" },
+  "Plate Front Raise": { muscles: { "Front Shoulders": 1, "Upper Chest": 0.2, "Lateral Shoulders": 0.2 }, equipment: "Barbell" },
+  "Upright Row": { muscles: { "Lateral Shoulders": 1, "Traps": 0.6, "Biceps": 0.2 }, equipment: "Barbell" },
+  "Cuban Press": { muscles: { "Lateral Shoulders": 0.7, "Rear Shoulders": 0.7, "Front Shoulders": 0.4, "Traps": 0.2 }, equipment: "Dumbbell" },
+  "Cable Rear Delt Fly": { muscles: { "Rear Shoulders": 1, "Upper Back": 0.3 }, equipment: "Cable" },
+  "Face Pull": { muscles: { "Rear Shoulders": 1, "Upper Back": 0.6, "Traps": 0.3 }, equipment: "Cable" },
+  "Reverse Pec Deck": { muscles: { "Rear Shoulders": 1, "Upper Back": 0.3 }, equipment: "Machine" },
+  "Pike Push Up": { muscles: { "Front Shoulders": 1, "Lateral Shoulders": 0.3, "Triceps": 0.6 }, equipment: "Bodyweight" },
+  "Handstand Push Up": { muscles: { "Front Shoulders": 1, "Lateral Shoulders": 0.6, "Triceps": 0.6 }, equipment: "Bodyweight" },
+  "Wall Walk": { muscles: { "Front Shoulders": 1, "Upper Abs": 0.6, "Lats": 0.2 }, equipment: "Bodyweight" },
+  "Deadlift": { muscles: { "Lower Back": 1, "Glutes": 1, "Hamstrings": 0.6, "Lats": 0.6, "Traps": 0.6, "Quads": 0.3, "Forearms": 0.3 }, equipment: "Barbell" },
+  "Pull Up": { muscles: { "Lats": 1, "Upper Back": 0.6, "Biceps": 0.6, "Forearms": 0.3 }, equipment: "Bodyweight" },
+  "Lat Pulldown": { muscles: { "Lats": 1, "Upper Back": 0.3, "Biceps": 0.6 }, equipment: "Cable" },
+  "Barbell Row": { muscles: { "Upper Back": 1, "Lats": 0.6, "Biceps": 0.6, "Traps": 0.3, "Lower Back": 0.2 }, equipment: "Barbell" },
+  "Seated Cable Row": { muscles: { "Upper Back": 1, "Lats": 0.6, "Biceps": 0.6 }, equipment: "Cable" },
+  "T-Bar Row": { muscles: { "Upper Back": 1, "Lats": 0.6, "Biceps": 0.6, "Lower Back": 0.2 }, equipment: "Machine" },
+  "One-Arm Dumbbell Row": { muscles: { "Lats": 1, "Upper Back": 0.6, "Biceps": 0.6 }, equipment: "Dumbbell" },
+  "Sumo Deadlift": { muscles: { "Glutes": 1, "Quads": 0.6, "Hamstrings": 0.6, "Lower Back": 0.4, "Traps": 0.3 }, equipment: "Barbell" },
+  "Stiff-Leg Deadlift": { muscles: { "Hamstrings": 1, "Lower Back": 0.6, "Glutes": 0.3 }, equipment: "Barbell" },
+  "Rack Pull": { muscles: { "Traps": 1, "Upper Back": 0.6, "Lower Back": 0.6, "Forearms": 0.3 }, equipment: "Barbell" },
+  "Chin Up": { muscles: { "Lats": 1, "Biceps": 1, "Upper Back": 0.3, "Forearms": 0.2 }, equipment: "Bodyweight" },
+  "Wide Grip Pull Up": { muscles: { "Lats": 1, "Upper Back": 0.6, "Biceps": 0.3 }, equipment: "Bodyweight" },
+  "Neutral Grip Pull Up": { muscles: { "Lats": 1, "Biceps": 0.6, "Upper Back": 0.3, "Forearms": 0.2 }, equipment: "Bodyweight" },
+  "Commando Pull Up": { muscles: { "Lats": 1, "Biceps": 0.6, "Upper Back": 0.3, "Obliques": 0.2 }, equipment: "Bodyweight" },
+  "Muscle Up": { muscles: { "Lats": 1, "Triceps": 1, "Upper Back": 0.6, "Biceps": 0.6, "Middle Chest": 0.3 }, equipment: "Bodyweight" },
+  "Inverted Row": { muscles: { "Upper Back": 1, "Lats": 0.6, "Biceps": 0.6, "Rear Shoulders": 0.3 }, equipment: "Bodyweight" },
+  "Close Grip Lat Pulldown": { muscles: { "Lats": 1, "Biceps": 0.6, "Upper Back": 0.3 }, equipment: "Cable" },
+  "Straight Arm Pulldown": { muscles: { "Lats": 1, "Triceps": 0.3 }, equipment: "Cable" },
+  "Pendlay Row": { muscles: { "Upper Back": 1, "Lats": 0.6, "Biceps": 0.6, "Lower Back": 0.2 }, equipment: "Barbell" },
+  "Chest Supported Row": { muscles: { "Upper Back": 1, "Lats": 0.3, "Biceps": 0.6, "Rear Shoulders": 0.3 }, equipment: "Machine" },
+  "Meadows Row": { muscles: { "Lats": 1, "Upper Back": 0.6, "Biceps": 0.6 }, equipment: "Barbell" },
+  "Good Morning": { muscles: { "Hamstrings": 1, "Lower Back": 1, "Glutes": 0.6 }, equipment: "Barbell" },
+  "Back Extension": { muscles: { "Lower Back": 1, "Glutes": 0.6, "Hamstrings": 0.6 }, equipment: "Bodyweight" },
+  "Superman": { muscles: { "Lower Back": 1, "Glutes": 0.6, "Rear Shoulders": 0.2 }, equipment: "Bodyweight" },
+  "Dumbbell Shrugs": { muscles: { "Traps": 1, "Forearms": 0.2 }, equipment: "Dumbbell" },
+  "Farmers Carry": { muscles: { "Traps": 1, "Forearms": 1 }, equipment: "Dumbbell" },
   "Barbell Curl": { muscles: { "Biceps": 1, "Forearms": 0.3 }, equipment: "Barbell" },
   "Dumbbell Curl": { muscles: { "Biceps": 1, "Forearms": 0.3 }, equipment: "Dumbbell" },
   "Alternate Incline Dumbbell Curl": { muscles: { "Biceps": 1, "Forearms": 0.2 }, equipment: "Dumbbell" },
-  "Hammer Curl": { muscles: { "Biceps": 0.8, "Forearms": 0.5 }, equipment: "Dumbbell" },
+  "Hammer Curl": { muscles: { "Biceps": 0.6, "Forearms": 1 }, equipment: "Dumbbell" },
   "Preacher Curl": { muscles: { "Biceps": 1 }, equipment: "Barbell" },
+  "EZ Bar Curl": { muscles: { "Biceps": 1, "Forearms": 0.3 }, equipment: "Barbell" },
+  "Cable Curl": { muscles: { "Biceps": 1, "Forearms": 0.2 }, equipment: "Cable" },
+  "Concentration Curl": { muscles: { "Biceps": 1 }, equipment: "Dumbbell" },
+  "Spider Curl": { muscles: { "Biceps": 1 }, equipment: "Barbell" },
+  "Zottman Curl": { muscles: { "Biceps": 0.6, "Forearms": 1 }, equipment: "Dumbbell" },
   "Tricep Pushdown": { muscles: { "Triceps": 1 }, equipment: "Cable" },
   "Skull Crusher": { muscles: { "Triceps": 1 }, equipment: "Barbell" },
   "Overhead Tricep Extension": { muscles: { "Triceps": 1 }, equipment: "Dumbbell" },
-  "Close Grip Bench Press": { muscles: { "Triceps": 1, "Middle Chest": 0.4 }, equipment: "Barbell" },
-  "Squat": { muscles: { "Quads": 1, "Glutes": 0.6, "Hamstrings": 0.3, "Hip Flexors": 0.3 }, equipment: "Barbell" },
-  "Front Squat": { muscles: { "Quads": 1, "Glutes": 0.4, "Hip Flexors": 0.3 }, equipment: "Barbell" },
-  "Leg Press": { muscles: { "Quads": 1, "Glutes": 0.4 }, equipment: "Machine" },
-  "Lunges": { muscles: { "Quads": 0.8, "Glutes": 0.6, "Hamstrings": 0.3, "Hip Flexors": 0.3 }, equipment: "Dumbbell" },
-  "Leg Extension": { muscles: { "Quads": 1, "Hip Flexors": 0.2 }, equipment: "Machine" },
-  "Leg Curl": { muscles: { "Hamstrings": 1 }, equipment: "Machine" },
-  "Romanian Deadlift": { muscles: { "Hamstrings": 1, "Glutes": 0.6, "Lower Back": 0.3 }, equipment: "Barbell" },
-  "Hip Thrust": { muscles: { "Glutes": 1, "Hamstrings": 0.3 }, equipment: "Barbell" },
-  "Calf Raise": { muscles: { "Calves": 1 }, equipment: "Machine" },
-  "Crunch": { muscles: { "Upper Abs": 1 }, equipment: "Bodyweight" },
-  "Plank": { muscles: { "Upper Abs": 0.5, "Lower Abs": 0.5 }, equipment: "Bodyweight" },
-  "Hanging Leg Raise": { muscles: { "Lower Abs": 1, "Hip Flexors": 0.6, "Forearms": 0.2 }, equipment: "Bodyweight" },
-  "Cable Crunch": { muscles: { "Upper Abs": 1 }, equipment: "Cable" },
-  "Russian Twist": { muscles: { "Obliques": 1 }, equipment: "Bodyweight" },
-  "Shrugs": { muscles: { "Traps": 1 }, equipment: "Barbell" },
-
-  /* ---- Chest, expanded ---- */
-  "Decline Bench Press": { muscles: { "Lower Chest": 1, "Triceps": 0.4 }, equipment: "Barbell" },
-  "Decline Dumbbell Press": { muscles: { "Lower Chest": 1, "Triceps": 0.3 }, equipment: "Dumbbell" },
-  "Incline Dumbbell Fly": { muscles: { "Upper Chest": 1 }, equipment: "Dumbbell" },
-  "Decline Dumbbell Fly": { muscles: { "Lower Chest": 1 }, equipment: "Dumbbell" },
-  "Cable Crossover": { muscles: { "Middle Chest": 1 }, equipment: "Cable" },
-  "Cable Fly Low-to-High": { muscles: { "Upper Chest": 1 }, equipment: "Cable" },
-  "Cable Fly High-to-Low": { muscles: { "Lower Chest": 1 }, equipment: "Cable" },
-  "Pec Deck Machine": { muscles: { "Middle Chest": 1 }, equipment: "Machine" },
-  "Svend Press": { muscles: { "Middle Chest": 1 }, equipment: "Dumbbell" },
-  "Dumbbell Pullover": { muscles: { "Lats": 0.6, "Middle Chest": 0.5 }, equipment: "Dumbbell" },
-  "Incline Push Up": { muscles: { "Lower Chest": 0.7, "Triceps": 0.3 }, equipment: "Bodyweight" },
-  "Decline Push Up": { muscles: { "Upper Chest": 0.8, "Front Shoulders": 0.3, "Triceps": 0.3 }, equipment: "Bodyweight" },
-  "Diamond Push Up": { muscles: { "Triceps": 1, "Middle Chest": 0.5 }, equipment: "Bodyweight" },
-  "Wide Push Up": { muscles: { "Middle Chest": 1, "Front Shoulders": 0.2 }, equipment: "Bodyweight" },
-  "Archer Push Up": { muscles: { "Middle Chest": 1, "Triceps": 0.4 }, equipment: "Bodyweight" },
-  "Ring Dips": { muscles: { "Lower Chest": 0.7, "Triceps": 1, "Front Shoulders": 0.2 }, equipment: "Bodyweight" },
-
-  /* ---- Shoulders, expanded ---- */
-  "Dumbbell Shoulder Press": { muscles: { "Front Shoulders": 1, "Lateral Shoulders": 0.3, "Triceps": 0.3 }, equipment: "Dumbbell" },
-  "Machine Shoulder Press": { muscles: { "Front Shoulders": 1, "Triceps": 0.3 }, equipment: "Machine" },
-  "Push Press": { muscles: { "Front Shoulders": 1, "Triceps": 0.4, "Quads": 0.2 }, equipment: "Barbell" },
-  "Cable Lateral Raise": { muscles: { "Lateral Shoulders": 1 }, equipment: "Cable" },
-  "Plate Front Raise": { muscles: { "Front Shoulders": 1 }, equipment: "Barbell" },
-  "Upright Row": { muscles: { "Lateral Shoulders": 1, "Traps": 0.4 }, equipment: "Barbell" },
-  "Cuban Press": { muscles: { "Lateral Shoulders": 0.7, "Rear Shoulders": 0.7, "Front Shoulders": 0.4 }, equipment: "Dumbbell" },
-  "Cable Rear Delt Fly": { muscles: { "Rear Shoulders": 1, "Upper Back": 0.2 }, equipment: "Cable" },
-  "Face Pull": { muscles: { "Rear Shoulders": 1, "Upper Back": 0.4, "Traps": 0.2 }, equipment: "Cable" },
-  "Reverse Pec Deck": { muscles: { "Rear Shoulders": 1 }, equipment: "Machine" },
-  "Pike Push Up": { muscles: { "Front Shoulders": 1, "Triceps": 0.4 }, equipment: "Bodyweight" },
-  "Handstand Push Up": { muscles: { "Front Shoulders": 1, "Lateral Shoulders": 0.3, "Triceps": 0.5 }, equipment: "Bodyweight" },
-  "Wall Walk": { muscles: { "Front Shoulders": 0.8, "Upper Abs": 0.3 }, equipment: "Bodyweight" },
-
-  /* ---- Back, expanded ---- */
-  "Sumo Deadlift": { muscles: { "Glutes": 0.7, "Hamstrings": 0.6, "Quads": 0.4, "Lower Back": 0.5, "Traps": 0.3 }, equipment: "Barbell" },
-  "Stiff-Leg Deadlift": { muscles: { "Hamstrings": 1, "Lower Back": 0.4, "Glutes": 0.3 }, equipment: "Barbell" },
-  "Rack Pull": { muscles: { "Traps": 0.6, "Upper Back": 0.5, "Lower Back": 0.5, "Forearms": 0.3 }, equipment: "Barbell" },
-  "Chin Up": { muscles: { "Lats": 1, "Biceps": 0.6, "Forearms": 0.2 }, equipment: "Bodyweight" },
-  "Wide Grip Pull Up": { muscles: { "Lats": 1, "Upper Back": 0.3 }, equipment: "Bodyweight" },
-  "Neutral Grip Pull Up": { muscles: { "Lats": 1, "Biceps": 0.4 }, equipment: "Bodyweight" },
-  "Commando Pull Up": { muscles: { "Lats": 1, "Biceps": 0.5 }, equipment: "Bodyweight" },
-  "Muscle Up": { muscles: { "Lats": 1, "Triceps": 0.5, "Middle Chest": 0.3 }, equipment: "Bodyweight" },
-  "Inverted Row": { muscles: { "Upper Back": 1, "Lats": 0.4, "Biceps": 0.3 }, equipment: "Bodyweight" },
-  "Close Grip Lat Pulldown": { muscles: { "Lats": 1, "Biceps": 0.4 }, equipment: "Cable" },
-  "Straight Arm Pulldown": { muscles: { "Lats": 1 }, equipment: "Cable" },
-  "Pendlay Row": { muscles: { "Upper Back": 0.7, "Lats": 0.6, "Biceps": 0.3 }, equipment: "Barbell" },
-  "Chest Supported Row": { muscles: { "Upper Back": 1, "Lats": 0.3, "Biceps": 0.3 }, equipment: "Machine" },
-  "Meadows Row": { muscles: { "Upper Back": 0.7, "Lats": 0.6, "Biceps": 0.3 }, equipment: "Barbell" },
-  "Good Morning": { muscles: { "Lower Back": 0.8, "Hamstrings": 0.7, "Glutes": 0.3 }, equipment: "Barbell" },
-  "Back Extension": { muscles: { "Lower Back": 1, "Glutes": 0.4, "Hamstrings": 0.3 }, equipment: "Bodyweight" },
-  "Superman": { muscles: { "Lower Back": 1, "Glutes": 0.2 }, equipment: "Bodyweight" },
-  "Dumbbell Shrugs": { muscles: { "Traps": 1 }, equipment: "Dumbbell" },
-  "Farmers Carry": { muscles: { "Traps": 0.6, "Forearms": 1 }, equipment: "Dumbbell" },
-
-  /* ---- Arms, expanded ---- */
-  "EZ Bar Curl": { muscles: { "Biceps": 1, "Forearms": 0.2 }, equipment: "Barbell" },
-  "Cable Curl": { muscles: { "Biceps": 1 }, equipment: "Cable" },
-  "Concentration Curl": { muscles: { "Biceps": 1 }, equipment: "Dumbbell" },
-  "Spider Curl": { muscles: { "Biceps": 1 }, equipment: "Barbell" },
-  "Zottman Curl": { muscles: { "Biceps": 0.8, "Forearms": 0.7 }, equipment: "Dumbbell" },
+  "Close Grip Bench Press": { muscles: { "Triceps": 1, "Middle Chest": 0.6, "Front Shoulders": 0.3 }, equipment: "Barbell" },
   "Tricep Kickback": { muscles: { "Triceps": 1 }, equipment: "Dumbbell" },
-  "JM Press": { muscles: { "Triceps": 1, "Middle Chest": 0.2 }, equipment: "Barbell" },
-  "Bench Dip": { muscles: { "Triceps": 1, "Lower Chest": 0.2 }, equipment: "Bodyweight" },
+  "JM Press": { muscles: { "Triceps": 1, "Middle Chest": 0.3 }, equipment: "Barbell" },
+  "Bench Dip": { muscles: { "Triceps": 1, "Lower Chest": 0.3, "Front Shoulders": 0.3 }, equipment: "Bodyweight" },
   "Wrist Curl": { muscles: { "Forearms": 1 }, equipment: "Dumbbell" },
   "Reverse Wrist Curl": { muscles: { "Forearms": 1 }, equipment: "Dumbbell" },
   "Dead Hang": { muscles: { "Forearms": 1, "Lats": 0.3 }, equipment: "Bodyweight" },
-
-  /* ---- Abs & obliques, expanded ---- */
-  "Reverse Crunch": { muscles: { "Lower Abs": 1 }, equipment: "Bodyweight" },
-  "Bicycle Crunch": { muscles: { "Obliques": 1, "Upper Abs": 0.4 }, equipment: "Bodyweight" },
-  "Side Plank": { muscles: { "Obliques": 1 }, equipment: "Bodyweight" },
-  "Hanging Knee Raise": { muscles: { "Lower Abs": 1 }, equipment: "Bodyweight" },
+  "Crunch": { muscles: { "Upper Abs": 1 }, equipment: "Bodyweight" },
+  "Plank": { muscles: { "Upper Abs": 0.6, "Lower Abs": 0.6, "Obliques": 0.3, "Front Shoulders": 0.2 }, equipment: "Bodyweight" },
+  "Hanging Leg Raise": { muscles: { "Lower Abs": 1, "Hip Flexors": 0.6, "Forearms": 0.2 }, equipment: "Bodyweight" },
+  "Cable Crunch": { muscles: { "Upper Abs": 1, "Middle Abs": 0.3 }, equipment: "Cable" },
+  "Russian Twist": { muscles: { "Obliques": 1, "Upper Abs": 0.3 }, equipment: "Bodyweight" },
+  "Reverse Crunch": { muscles: { "Lower Abs": 1, "Hip Flexors": 0.3 }, equipment: "Bodyweight" },
+  "Bicycle Crunch": { muscles: { "Obliques": 1, "Upper Abs": 0.6 }, equipment: "Bodyweight" },
+  "Side Plank": { muscles: { "Obliques": 1, "Lateral Shoulders": 0.2 }, equipment: "Bodyweight" },
+  "Hanging Knee Raise": { muscles: { "Lower Abs": 1, "Hip Flexors": 0.6, "Forearms": 0.2 }, equipment: "Bodyweight" },
   "Toes to Bar": { muscles: { "Lower Abs": 1, "Hip Flexors": 0.6, "Forearms": 0.3 }, equipment: "Bodyweight" },
-  "Cable Woodchopper": { muscles: { "Obliques": 1 }, equipment: "Cable" },
-  "V-Up": { muscles: { "Upper Abs": 0.7, "Lower Abs": 0.7, "Hip Flexors": 0.4 }, equipment: "Bodyweight" },
-  "Mountain Climber": { muscles: { "Lower Abs": 1, "Front Shoulders": 0.2 }, equipment: "Bodyweight" },
-  "Ab Wheel Rollout": { muscles: { "Upper Abs": 1, "Lower Back": 0.2 }, equipment: "Bodyweight" },
-  "Dragon Flag": { muscles: { "Lower Abs": 1, "Upper Abs": 0.4, "Hip Flexors": 0.3 }, equipment: "Bodyweight" },
-  "Sit Up": { muscles: { "Upper Abs": 1 }, equipment: "Bodyweight" },
-  "Decline Sit Up": { muscles: { "Upper Abs": 1 }, equipment: "Bodyweight" },
-  "Flutter Kicks": { muscles: { "Lower Abs": 1 }, equipment: "Bodyweight" },
-  "L-Sit": { muscles: { "Lower Abs": 1, "Hip Flexors": 0.7, "Triceps": 0.3 }, equipment: "Bodyweight" },
-  "Lying Leg Raise": { muscles: { "Lower Abs": 1 }, equipment: "Bodyweight" },
-
-  /* ---- Legs, expanded ---- */
-  "Hack Squat": { muscles: { "Quads": 1, "Glutes": 0.3 }, equipment: "Machine" },
-  "Bulgarian Split Squat": { muscles: { "Quads": 1, "Glutes": 0.5, "Hip Flexors": 0.3 }, equipment: "Dumbbell" },
-  "Goblet Squat": { muscles: { "Quads": 1, "Glutes": 0.3 }, equipment: "Dumbbell" },
-  "Pistol Squat": { muscles: { "Quads": 1, "Glutes": 0.4 }, equipment: "Bodyweight" },
-  "Jump Squat": { muscles: { "Quads": 1, "Glutes": 0.3, "Calves": 0.3 }, equipment: "Bodyweight" },
-  "Wall Sit": { muscles: { "Quads": 1 }, equipment: "Bodyweight" },
-  "Bodyweight Squat": { muscles: { "Quads": 1, "Glutes": 0.4 }, equipment: "Bodyweight" },
-  "Walking Lunge": { muscles: { "Quads": 0.8, "Glutes": 0.6, "Hamstrings": 0.3 }, equipment: "Dumbbell" },
-  "Reverse Lunge": { muscles: { "Quads": 0.8, "Glutes": 0.6, "Hip Flexors": 0.3 }, equipment: "Dumbbell" },
-  "Step Up": { muscles: { "Quads": 0.8, "Glutes": 0.6, "Hip Flexors": 0.4 }, equipment: "Dumbbell" },
-  "Nordic Curl": { muscles: { "Hamstrings": 1 }, equipment: "Bodyweight" },
-  "Glute Bridge": { muscles: { "Glutes": 1, "Hamstrings": 0.3 }, equipment: "Bodyweight" },
-  "Cable Kickback": { muscles: { "Glutes": 1 }, equipment: "Cable" },
+  "Cable Woodchopper": { muscles: { "Obliques": 1, "Upper Abs": 0.3, "Lats": 0.2 }, equipment: "Cable" },
+  "V-Up": { muscles: { "Upper Abs": 1, "Lower Abs": 1, "Hip Flexors": 0.6 }, equipment: "Bodyweight" },
+  "Mountain Climber": { muscles: { "Lower Abs": 1, "Hip Flexors": 0.6, "Front Shoulders": 0.3 }, equipment: "Bodyweight" },
+  "Ab Wheel Rollout": { muscles: { "Upper Abs": 1, "Lower Abs": 0.6, "Lats": 0.3, "Triceps": 0.2 }, equipment: "Bodyweight" },
+  "Dragon Flag": { muscles: { "Lower Abs": 1, "Upper Abs": 0.6, "Hip Flexors": 0.3, "Lats": 0.2 }, equipment: "Bodyweight" },
+  "Sit Up": { muscles: { "Upper Abs": 1, "Hip Flexors": 0.6, "Middle Abs": 0.3 }, equipment: "Bodyweight" },
+  "Decline Sit Up": { muscles: { "Upper Abs": 1, "Hip Flexors": 0.6, "Middle Abs": 0.3 }, equipment: "Bodyweight" },
+  "Flutter Kicks": { muscles: { "Lower Abs": 1, "Hip Flexors": 0.6 }, equipment: "Bodyweight" },
+  "L-Sit": { muscles: { "Lower Abs": 1, "Hip Flexors": 1, "Triceps": 0.3, "Front Shoulders": 0.2 }, equipment: "Bodyweight" },
+  "Lying Leg Raise": { muscles: { "Lower Abs": 1, "Hip Flexors": 0.6 }, equipment: "Bodyweight" },
+  "Squat": { muscles: { "Quads": 1, "Glutes": 1, "Hamstrings": 0.3, "Lower Back": 0.2, "Hip Flexors": 0.2 }, equipment: "Barbell" },
+  "Front Squat": { muscles: { "Quads": 1, "Glutes": 0.6, "Hip Flexors": 0.2, "Upper Back": 0.2 }, equipment: "Barbell" },
+  "Leg Press": { muscles: { "Quads": 1, "Glutes": 0.6, "Hamstrings": 0.2 }, equipment: "Machine" },
+  "Lunges": { muscles: { "Quads": 1, "Glutes": 1, "Hamstrings": 0.3, "Hip Flexors": 0.2 }, equipment: "Dumbbell" },
+  "Leg Extension": { muscles: { "Quads": 1 }, equipment: "Machine" },
+  "Leg Curl": { muscles: { "Hamstrings": 1 }, equipment: "Machine" },
+  "Romanian Deadlift": { muscles: { "Hamstrings": 1, "Glutes": 0.6, "Lower Back": 0.6 }, equipment: "Barbell" },
+  "Hip Thrust": { muscles: { "Glutes": 1, "Hamstrings": 0.6 }, equipment: "Barbell" },
+  "Calf Raise": { muscles: { "Calves": 1 }, equipment: "Machine" },
+  "Hack Squat": { muscles: { "Quads": 1, "Glutes": 0.6, "Hamstrings": 0.2 }, equipment: "Machine" },
+  "Bulgarian Split Squat": { muscles: { "Quads": 1, "Glutes": 1, "Hamstrings": 0.3, "Hip Flexors": 0.2 }, equipment: "Dumbbell" },
+  "Goblet Squat": { muscles: { "Quads": 1, "Glutes": 0.6, "Upper Back": 0.2 }, equipment: "Dumbbell" },
+  "Pistol Squat": { muscles: { "Quads": 1, "Glutes": 0.6, "Hip Flexors": 0.3 }, equipment: "Bodyweight" },
+  "Jump Squat": { muscles: { "Quads": 1, "Glutes": 1, "Calves": 0.6 }, equipment: "Bodyweight" },
+  "Wall Sit": { muscles: { "Quads": 1, "Glutes": 0.3 }, equipment: "Bodyweight" },
+  "Bodyweight Squat": { muscles: { "Quads": 1, "Glutes": 0.6 }, equipment: "Bodyweight" },
+  "Walking Lunge": { muscles: { "Quads": 1, "Glutes": 1, "Hamstrings": 0.3, "Calves": 0.2 }, equipment: "Dumbbell" },
+  "Reverse Lunge": { muscles: { "Quads": 1, "Glutes": 1, "Hip Flexors": 0.2 }, equipment: "Dumbbell" },
+  "Step Up": { muscles: { "Quads": 1, "Glutes": 1, "Hamstrings": 0.2, "Hip Flexors": 0.2 }, equipment: "Dumbbell" },
+  "Nordic Curl": { muscles: { "Hamstrings": 1, "Lower Back": 0.3, "Glutes": 0.2 }, equipment: "Bodyweight" },
+  "Glute Bridge": { muscles: { "Glutes": 1, "Hamstrings": 0.6 }, equipment: "Bodyweight" },
+  "Cable Kickback": { muscles: { "Glutes": 1, "Hamstrings": 0.3 }, equipment: "Cable" },
   "Seated Calf Raise": { muscles: { "Calves": 1 }, equipment: "Machine" },
   "Standing Calf Raise": { muscles: { "Calves": 1 }, equipment: "Machine" },
   "Donkey Calf Raise": { muscles: { "Calves": 1 }, equipment: "Machine" },
   "Single Leg Calf Raise": { muscles: { "Calves": 1 }, equipment: "Bodyweight" },
+  "Burpee": { muscles: { "Quads": 0.6, "Glutes": 0.6, "Front Shoulders": 0.6, "Triceps": 0.3, "Upper Abs": 0.3 }, equipment: "Bodyweight" },
+  "Bear Crawl": { muscles: { "Front Shoulders": 0.6, "Upper Abs": 0.6, "Triceps": 0.3, "Hip Flexors": 0.3 }, equipment: "Bodyweight" },
+  "Box Jump": { muscles: { "Quads": 1, "Glutes": 1, "Calves": 0.6 }, equipment: "Bodyweight" },
 
-  /* ---- Full-body / conditioning ---- */
-  "Burpee": { muscles: { "Upper Abs": 0.5, "Quads": 0.5, "Front Shoulders": 0.3 }, equipment: "Bodyweight" },
-  "Bear Crawl": { muscles: { "Upper Abs": 0.5, "Front Shoulders": 0.4 }, equipment: "Bodyweight" },
-  "Box Jump": { muscles: { "Quads": 1, "Glutes": 0.3, "Calves": 0.3 }, equipment: "Bodyweight" },
-
-  /* ---- Front lever progressions ---- */
-  "Tuck Front Lever": { muscles: { "Lats": 1, "Upper Abs": 0.5, "Biceps": 0.3, "Forearms": 0.3 }, equipment: "Bodyweight" },
-  "Advanced Tuck Front Lever": { muscles: { "Lats": 1, "Upper Abs": 0.6, "Biceps": 0.3, "Forearms": 0.3 }, equipment: "Bodyweight" },
-  "Single Leg Front Lever": { muscles: { "Lats": 1, "Lower Abs": 0.5, "Upper Abs": 0.4, "Biceps": 0.3 }, equipment: "Bodyweight" },
-  "Straddle Front Lever": { muscles: { "Lats": 1, "Lower Abs": 0.6, "Upper Abs": 0.5, "Biceps": 0.3 }, equipment: "Bodyweight" },
-  "Front Lever": { muscles: { "Lats": 1, "Lower Abs": 0.7, "Upper Abs": 0.6, "Biceps": 0.4, "Forearms": 0.4 }, equipment: "Bodyweight" },
-  "Front Lever Row": { muscles: { "Lats": 1, "Upper Back": 0.5, "Biceps": 0.5 }, equipment: "Bodyweight" },
-  "Front Lever Raise": { muscles: { "Lats": 1, "Upper Abs": 0.5, "Lower Abs": 0.5 }, equipment: "Bodyweight" },
-  "Ice Cream Makers": { muscles: { "Lats": 0.8, "Upper Abs": 0.5, "Triceps": 0.3 }, equipment: "Bodyweight" },
-  "Skin The Cat": { muscles: { "Lats": 0.7, "Upper Abs": 0.4, "Front Shoulders": 0.3 }, equipment: "Bodyweight" },
-
-  /* ---- Handstand progressions ---- */
-  "Wall Handstand Hold": { muscles: { "Front Shoulders": 1, "Lateral Shoulders": 0.4, "Upper Abs": 0.3, "Forearms": 0.2 }, equipment: "Bodyweight" },
-  "Freestanding Handstand Hold": { muscles: { "Front Shoulders": 1, "Lateral Shoulders": 0.5, "Upper Abs": 0.5, "Forearms": 0.3 }, equipment: "Bodyweight" },
-  "Chest-to-Wall Handstand Hold": { muscles: { "Front Shoulders": 1, "Upper Abs": 0.4 }, equipment: "Bodyweight" },
-  "Handstand Shoulder Taps": { muscles: { "Front Shoulders": 1, "Upper Abs": 0.5 }, equipment: "Bodyweight" },
-  "Deficit Handstand Push Up": { muscles: { "Front Shoulders": 1, "Triceps": 0.6, "Lateral Shoulders": 0.3 }, equipment: "Bodyweight" },
-  "Handstand Push Up Negative": { muscles: { "Front Shoulders": 1, "Triceps": 0.5 }, equipment: "Bodyweight" },
-
-  /* ---- Planche progressions ---- */
-  "Frog Stand": { muscles: { "Front Shoulders": 0.6, "Upper Abs": 0.4, "Forearms": 0.3 }, equipment: "Bodyweight" },
-  "Tuck Planche": { muscles: { "Front Shoulders": 1, "Lower Abs": 0.4, "Middle Chest": 0.3, "Triceps": 0.3, "Forearms": 0.3 }, equipment: "Bodyweight" },
-  "Advanced Tuck Planche": { muscles: { "Front Shoulders": 1, "Lower Abs": 0.5, "Middle Chest": 0.4, "Triceps": 0.4, "Forearms": 0.3 }, equipment: "Bodyweight" },
-  "Straddle Planche": { muscles: { "Front Shoulders": 1, "Lower Abs": 0.6, "Middle Chest": 0.4, "Triceps": 0.4, "Forearms": 0.4 }, equipment: "Bodyweight" },
-  "Full Planche": { muscles: { "Front Shoulders": 1, "Lower Abs": 0.7, "Middle Chest": 0.5, "Triceps": 0.5, "Forearms": 0.4 }, equipment: "Bodyweight" },
-  "Planche Lean": { muscles: { "Front Shoulders": 1, "Middle Chest": 0.3, "Forearms": 0.4 }, equipment: "Bodyweight" },
+  /* ---- Running & cardio ---- */
+  "Running": { muscles: { "Quads": 0.6, "Hamstrings": 0.6, "Glutes": 0.6, "Calves": 1, "Hip Flexors": 0.3 }, equipment: "Bodyweight" },
+  "Sprinting": { muscles: { "Quads": 1, "Hamstrings": 1, "Glutes": 1, "Calves": 0.6, "Hip Flexors": 0.6 }, equipment: "Bodyweight" },
+  "Interval Running": { muscles: { "Quads": 0.6, "Hamstrings": 0.6, "Glutes": 0.6, "Calves": 1, "Hip Flexors": 0.3 }, equipment: "Bodyweight" },
+  "Hill Sprints": { muscles: { "Quads": 1, "Glutes": 1, "Hamstrings": 0.6, "Calves": 0.6, "Hip Flexors": 0.6 }, equipment: "Bodyweight" },
+  "Treadmill Run": { muscles: { "Quads": 0.6, "Hamstrings": 0.6, "Glutes": 0.6, "Calves": 1, "Hip Flexors": 0.3 }, equipment: "Machine" },
+  "Stair Climb": { muscles: { "Quads": 1, "Glutes": 1, "Calves": 0.6, "Hamstrings": 0.3 }, equipment: "Machine" },
+  "Jump Rope": { muscles: { "Calves": 1, "Quads": 0.3, "Front Shoulders": 0.2 }, equipment: "Bodyweight" },
+  "Tuck Front Lever": { muscles: { "Lats": 1, "Upper Abs": 0.6, "Biceps": 0.3, "Forearms": 0.3 }, equipment: "Bodyweight" },
+  "Advanced Tuck Front Lever": { muscles: { "Lats": 1, "Upper Abs": 0.6, "Lower Abs": 0.3, "Biceps": 0.3, "Forearms": 0.3 }, equipment: "Bodyweight" },
+  "Single Leg Front Lever": { muscles: { "Lats": 1, "Lower Abs": 0.6, "Upper Abs": 0.6, "Biceps": 0.3, "Forearms": 0.3 }, equipment: "Bodyweight" },
+  "Straddle Front Lever": { muscles: { "Lats": 1, "Lower Abs": 0.6, "Upper Abs": 0.6, "Biceps": 0.3, "Forearms": 0.3 }, equipment: "Bodyweight" },
+  "Front Lever": { muscles: { "Lats": 1, "Lower Abs": 1, "Upper Abs": 0.6, "Biceps": 0.3, "Forearms": 0.6 }, equipment: "Bodyweight" },
+  "Front Lever Row": { muscles: { "Lats": 1, "Upper Back": 0.6, "Biceps": 0.6 }, equipment: "Bodyweight" },
+  "Front Lever Raise": { muscles: { "Lats": 1, "Lower Abs": 0.6, "Upper Abs": 0.6 }, equipment: "Bodyweight" },
+  "Ice Cream Makers": { muscles: { "Lats": 1, "Upper Abs": 0.6, "Triceps": 0.3 }, equipment: "Bodyweight" },
+  "Skin The Cat": { muscles: { "Lats": 0.6, "Front Shoulders": 0.6, "Upper Abs": 0.3, "Biceps": 0.3 }, equipment: "Bodyweight" },
+  "Wall Handstand Hold": { muscles: { "Front Shoulders": 1, "Lateral Shoulders": 0.6, "Triceps": 0.2, "Upper Abs": 0.3, "Forearms": 0.2 }, equipment: "Bodyweight" },
+  "Freestanding Handstand Hold": { muscles: { "Front Shoulders": 1, "Lateral Shoulders": 0.6, "Upper Abs": 0.6, "Forearms": 0.3 }, equipment: "Bodyweight" },
+  "Chest-to-Wall Handstand Hold": { muscles: { "Front Shoulders": 1, "Lateral Shoulders": 0.3, "Upper Abs": 0.6, "Lower Back": 0.2 }, equipment: "Bodyweight" },
+  "Handstand Shoulder Taps": { muscles: { "Front Shoulders": 1, "Lateral Shoulders": 0.6, "Upper Abs": 0.6, "Obliques": 0.3 }, equipment: "Bodyweight" },
+  "Deficit Handstand Push Up": { muscles: { "Front Shoulders": 1, "Lateral Shoulders": 0.6, "Triceps": 1 }, equipment: "Bodyweight" },
+  "Handstand Push Up Negative": { muscles: { "Front Shoulders": 1, "Lateral Shoulders": 0.6, "Triceps": 0.6 }, equipment: "Bodyweight" },
+  "Frog Stand": { muscles: { "Front Shoulders": 1, "Upper Abs": 0.6, "Forearms": 0.3, "Triceps": 0.3 }, equipment: "Bodyweight" },
+  "Tuck Planche": { muscles: { "Front Shoulders": 1, "Lower Abs": 0.6, "Middle Chest": 0.3, "Triceps": 0.6, "Forearms": 0.3 }, equipment: "Bodyweight" },
+  "Advanced Tuck Planche": { muscles: { "Front Shoulders": 1, "Lower Abs": 0.6, "Middle Chest": 0.3, "Triceps": 0.6, "Forearms": 0.3 }, equipment: "Bodyweight" },
+  "Straddle Planche": { muscles: { "Front Shoulders": 1, "Lower Abs": 0.6, "Middle Chest": 0.6, "Triceps": 0.6, "Forearms": 0.6 }, equipment: "Bodyweight" },
+  "Full Planche": { muscles: { "Front Shoulders": 1, "Lower Abs": 0.6, "Middle Chest": 0.6, "Triceps": 0.6, "Forearms": 0.6 }, equipment: "Bodyweight" },
+  "Planche Lean": { muscles: { "Front Shoulders": 1, "Middle Chest": 0.6, "Forearms": 0.6, "Lower Abs": 0.3 }, equipment: "Bodyweight" },
   "Planche Push Up": { muscles: { "Front Shoulders": 1, "Middle Chest": 0.6, "Triceps": 0.6 }, equipment: "Bodyweight" },
 };
 const MUSCLES = [
@@ -785,7 +866,7 @@ const ANATOMY_TEMPLATES = { male: null, female: null };
 // against each exported file, never assumed to match between body types.
 const ANATOMY_CROP = {
   male:   { front: { viewBox: '0 0 544 1080', w: 544, h: 1080 }, back: { viewBox: '544 0 536 1080', w: 536, h: 1080 } },
-  female: { front: { viewBox: '0 0 553 1080', w: 553, h: 1080 }, back: { viewBox: '553 0 527 1080', w: 527, h: 1080 } },
+  female: { front: { viewBox: '147 95 580 906', w: 580, h: 906 }, back: { viewBox: '488 89 450 913', w: 450, h: 913 } },
 };
 async function loadAnatomyTemplate(bodyType) {
   if (ANATOMY_TEMPLATES[bodyType]) return ANATOMY_TEMPLATES[bodyType];
@@ -822,7 +903,8 @@ await loadAnatomyTemplate('male');
    STATE
    ========================================================================= */
 let currentUser = null, profile = null, authMode = "login";
-let allUsers = [], myWorkouts = [], allWorkouts = [], myWeights = [];
+let allUsers = [], myWorkouts = [], allWorkouts = [], myWeights = [], myPRs = {};
+// myPRs: { "Bench Press": { e1rm: 120.5, date: "2026-08-01", xpTier: "Intermediate" }, ... }
 let myProgram = null;       // { name, schedule:['Mon',...], days:[{name,tag,exercises:[{name,sets,reps}],lastDate}], currentDayIndex }
 let customExercises = [];   // from Firestore
 let activeDayIndex = null;  // which program day is being logged right now
@@ -939,7 +1021,7 @@ function openSettingsModal() {
       <h3>Settings</h3>
       <div class="field">
         <label>Hunter name</label>
-        <input id="settings-name" value="${escapeHtml(profile.displayName || '')}" placeholder="What your party calls you" />
+        <input id="settings-name" value="${escapeHtml(profile.displayName || '')}" placeholder="What your party calls you" maxlength="24" />
         <p style="font-size:11.5px;color:var(--text-faint);margin:6px 0 0;">This is what shows up on the leaderboard and in Today's check-ins for everyone else.</p>
       </div>
       <div class="field">
@@ -999,6 +1081,8 @@ if (configOk) {
       currentUser = user;
       const snap = await getDoc(doc(db, 'users', user.uid));
       profile = snap.exists() ? snap.data() : { displayName: user.displayName || 'You', weeklyGoal: 3 };
+      if (!profile.stats) profile.stats = defaultStats();
+      if (profile.auraPoints === undefined) profile.auraPoints = 0;
       document.getElementById('user-avatar').textContent = initials(profile.displayName);
       document.getElementById('auth-screen').style.display = 'none';
       document.getElementById('app').style.display = 'flex';
@@ -1020,7 +1104,7 @@ function switchView(name) {
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
   document.getElementById('view-' + name).classList.add('active');
   document.querySelectorAll('.bottom-nav button').forEach(b => b.classList.toggle('active', b.dataset.view === name));
-  if (name === 'board') renderBoard();
+  if (name === 'board') { renderBoard(); renderCharCard(); renderPRPanel(); }
   if (name === 'trends') { trendsView = 'dashboard'; renderTrends(); }
   if (name === 'exercises') renderExerciseLibrary();
   if (name === 'history') renderCalendar();
@@ -1050,6 +1134,9 @@ async function loadAllData() {
 
   const wtSnap = await getDocs(query(collection(db, 'bodyweight'), where('uid','==', currentUser.uid)));
   myWeights = wtSnap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a,b) => a.date.localeCompare(b.date));
+
+  const prSnap = await getDoc(doc(db, 'prs', currentUser.uid));
+  myPRs = prSnap.exists() ? prSnap.data() : {};
 
   populateExerciseSelects();
   renderQuestFeed();
@@ -1165,13 +1252,97 @@ function attachSwipeHandlers(el, onSwipeLeft, onSwipeRight) {
   }, { passive: true });
 }
 
+/* =========================================================================
+   PROGRESSIVE OVERLOAD ENGINE
+   Looks at RIR trend across the last 3 sessions of each exercise.
+   Only suggests progression once adaptation is confirmed — not on a timer.
+   ========================================================================= */
+const LOWER_BODY_MUSCLES = new Set(['Quads','Hamstrings','Glutes','Calves','Hip Flexors']);
+
+function isLowerBodyExercise(name) {
+  const muscles = (EXERCISES_ALL[name] || {}).muscles || {};
+  const primary = Object.entries(muscles).sort((a,b)=>b[1]-a[1])[0];
+  return primary ? LOWER_BODY_MUSCLES.has(primary[0]) : false;
+}
+
+function progressiveOverloadSuggestion(exerciseName, targetReps) {
+  // gather last 3 sessions that include this exercise, oldest-first
+  const sessions = myWorkouts
+    .filter(w => w.exercises && w.exercises.some(e => e.name === exerciseName))
+    .sort((a,b) => a.date.localeCompare(b.date))
+    .slice(-3)
+    .map(w => w.exercises.find(e => e.name === exerciseName));
+
+  if (!sessions.length) return null; // no history yet
+
+  const last = sessions[sessions.length - 1];
+  if (!last || !last.sets || !last.sets.length) return null;
+
+  // compute per-set suggestions based on RIR trend
+  const weightStep = isLowerBodyExercise(exerciseName) ? 2.5 : 1.25;
+  const prevTwoRIRs = sessions.slice(0, -1).map(s => {
+    const rirs = s.sets.map(set => set.rir).filter(r => r != null);
+    return rirs.length ? rirs.reduce((a,b)=>a+b,0)/rirs.length : null;
+  }).filter(r => r != null);
+
+  return last.sets.map(set => {
+    const prefillWeight = set.weight;
+    const prefillReps = set.reps;
+    const rir = set.rir;
+    let suggestion = null;
+    let newReps = prefillReps;
+    let newWeight = prefillWeight;
+
+    if (rir == null) {
+      // no RIR recorded — just replay last session as-is
+      return { reps: prefillReps, weight: prefillWeight, rir: null, suggestion: null };
+    }
+
+    // check if RIR has been creeping up across sessions (adaptation signal)
+    const avgPrevRIR = prevTwoRIRs.length
+      ? prevTwoRIRs.reduce((a,b)=>a+b,0)/prevTwoRIRs.length
+      : null;
+
+    if (rir <= 1) {
+      // still hard — keep exact same weight and reps, no change
+      suggestion = null;
+    } else if (rir >= 4) {
+      // very easy — add reps aggressively this session
+      newReps = prefillReps + 2;
+      suggestion = `↑ +2 reps (RIR ${rir} last time)`;
+    } else if (rir >= 2 && rir <= 3) {
+      // getting easier — check the trend
+      if (avgPrevRIR != null && avgPrevRIR >= 2) {
+        // RIR has been ≥2 for multiple sessions — genuinely adapted
+        // add reps first; if already at or above target, bump weight instead
+        if (prefillReps < targetReps) {
+          newReps = prefillReps + 1;
+          suggestion = `↑ +1 rep (adapted)`;
+        } else {
+          newWeight = prefillWeight + weightStep;
+          newReps = targetReps; // reset back to target reps at new weight
+          suggestion = `↑ +${weightStep}kg (adapted)`;
+        }
+      } else {
+        // only one comfortable session — too early to call it adaptation, hold
+        suggestion = null;
+      }
+    }
+
+    return { reps: newReps, weight: newWeight, rir: rir, suggestion };
+  });
+}
+
 function startProgramDay(idx) {
   activeDayIndex = idx;
   const day = myProgram.days[idx];
   document.getElementById('logger-title').textContent = `Logging: ${day.name}`;
   const rows = document.getElementById('exercise-rows');
   rows.innerHTML = '';
-  day.exercises.forEach(ex => addExerciseRow(ex.name, ex.sets, ex.reps));
+  day.exercises.forEach(ex => {
+    const prefillSets = progressiveOverloadSuggestion(ex.name, ex.reps);
+    addExerciseRow(ex.name, ex.sets, ex.reps, prefillSets);
+  });
   openWorkoutModal();
 }
 
@@ -1351,7 +1522,8 @@ function openExercisePicker(onSelect) {
   searchEl.focus();
 }
 
-function addExerciseRow(presetName, targetSets, targetReps) {
+function addExerciseRow(presetName, targetSets, targetReps, prefillSets) {
+  // prefillSets: array of { reps, weight, rir, suggestion } from progressive overload calc
   const row = document.createElement('div');
   row.className = 'exercise-row';
   row.dataset.exName = presetName || '';
@@ -1364,7 +1536,7 @@ function addExerciseRow(presetName, targetSets, targetReps) {
       <button type="button" class="remove-x">×</button>
     </div>
     <div class="muscle-tags"></div>
-    <div class="set-table-head hidden"><span>#</span><span>Reps</span><span>Weight</span><span></span></div>
+    <div class="set-table-head hidden"><span>#</span><span>Reps</span><span>Weight</span><span class="rir-label">RIR</span><span></span></div>
     <div class="sets-list"></div>
     <button type="button" class="btn add-set-btn">+ Add set</button>
   `;
@@ -1381,28 +1553,44 @@ function addExerciseRow(presetName, targetSets, targetReps) {
       <button type="button" class="step-up">+</button>
     </div>`;
   }
+  function rirChips(prefillRir) {
+    return `<div class="rir-chips" title="Reps In Reserve">${[0,1,2,3,4,5].map(n =>
+      `<button type="button" class="rir-chip ${n === prefillRir ? 'selected' : ''}" data-rir="${n}">${n}</button>`
+    ).join('')}</div>`;
+  }
   function checkComplete(setRow) {
     const reps = Number(setRow.querySelector('.set-reps').value) || 0;
     setRow.classList.toggle('complete', reps > 0);
   }
-  function addSetRow(prefillReps) {
+  function addSetRow(prefillReps, prefillWeight, prefillRir, suggestion) {
     const idx = setsList.children.length + 1;
     const setRow = document.createElement('div');
     setRow.className = 'set-row';
-    setRow.innerHTML = `<span class="set-idx">${idx}</span>${stepper('set-reps', prefillReps || '', 0, 1)}${stepper('set-weight', '', 0, 2.5)}<button type="button" class="remove-x set-remove">×</button>`;
-    setRow.querySelector('.step-down').addEventListener('click', (e) => {
+    const suggTag = suggestion ? `<span class="suggest-badge">${suggestion}</span>` : '';
+    setRow.innerHTML = `
+      <span class="set-idx">${idx}</span>
+      ${stepper('set-reps', prefillReps || '', 0, 1)}
+      ${stepper('set-weight', prefillWeight || '', 0, 2.5)}
+      ${rirChips(prefillRir ?? null)}
+      <button type="button" class="remove-x set-remove">×</button>
+      ${suggTag}`;
+    setRow.querySelectorAll('.step-down').forEach(btn => btn.addEventListener('click', (e) => {
       const input = e.target.parentElement.querySelector('input');
       const step = Number(input.step) || 1;
       input.value = Math.max(Number(input.min)||0, (Number(input.value)||0) - step);
       checkComplete(setRow);
-    });
-    setRow.querySelector('.step-up').addEventListener('click', (e) => {
+    }));
+    setRow.querySelectorAll('.step-up').forEach(btn => btn.addEventListener('click', (e) => {
       const input = e.target.parentElement.querySelector('input');
       const step = Number(input.step) || 1;
       input.value = (Number(input.value)||0) + step;
       checkComplete(setRow);
-    });
+    }));
     setRow.querySelectorAll('input').forEach(inp => inp.addEventListener('input', () => checkComplete(setRow)));
+    setRow.querySelectorAll('.rir-chip').forEach(chip => chip.addEventListener('click', () => {
+      setRow.querySelectorAll('.rir-chip').forEach(c => c.classList.remove('selected'));
+      chip.classList.add('selected');
+    }));
     setRow.querySelector('.set-remove').addEventListener('click', () => { setRow.remove(); [...setsList.children].forEach((r,i) => r.querySelector('.set-idx').textContent = i+1); });
     setsList.appendChild(setRow);
     tableHead.classList.remove('hidden');
@@ -1420,7 +1608,9 @@ function addExerciseRow(presetName, targetSets, targetReps) {
   pickerBtn.addEventListener('click', () => openExercisePicker(selectExercise));
   row.querySelector('.add-set-btn').addEventListener('click', () => addSetRow());
   row.querySelector('.remove-x').addEventListener('click', () => row.remove());
-  if (targetSets > 0) {
+  if (prefillSets && prefillSets.length) {
+    prefillSets.forEach(s => addSetRow(s.reps, s.weight, s.rir, s.suggestion));
+  } else if (targetSets > 0) {
     for (let i = 0; i < targetSets; i++) addSetRow(targetReps);
   } else {
     addSetRow();
@@ -1439,10 +1629,14 @@ document.getElementById('save-workout-btn').addEventListener('click', async () =
   exerciseRows.querySelectorAll('.exercise-row').forEach(row => {
     const name = row.dataset.exName;
     if (!name) return;
-    const sets = [...row.querySelectorAll('.set-row')].map(sr => ({
-      reps: Number(sr.querySelector('.set-reps').value) || 0,
-      weight: Number(sr.querySelector('.set-weight').value) || 0,
-    })).filter(s => s.reps > 0);
+    const sets = [...row.querySelectorAll('.set-row')].map(sr => {
+      const selectedRir = sr.querySelector('.rir-chip.selected');
+      return {
+        reps: Number(sr.querySelector('.set-reps').value) || 0,
+        weight: Number(sr.querySelector('.set-weight').value) || 0,
+        rir: selectedRir ? Number(selectedRir.dataset.rir) : null,
+      };
+    }).filter(s => s.reps > 0);
     if (sets.length) exercises.push({ name, sets });
   });
   if (!exercises.length) { alert('Add at least one exercise with a completed set before saving.'); return; }
@@ -1464,7 +1658,22 @@ document.getElementById('save-workout-btn').addEventListener('click', async () =
     exerciseRows.innerHTML = '';
     addExerciseRow();
     await loadAllData();
-    setTimeout(() => closeWorkoutModal(), 900);
+    // try to award AP for today — anti-cheat inside tryAwardAp ensures once-per-day
+    const earned = await tryAwardAp();
+    // check PRs and award XP for any personal records beaten
+    const prs = await checkAndAwardPRs(exercises, date);
+    const totalPrXP = prs.reduce((s,p) => s + p.xp, 0);
+    const msg = document.getElementById('save-msg');
+    if (prs.length && earned) {
+      msg.textContent = `Quest cleared — +${earned} AP & ${prs.length} new PR${prs.length>1?'s':''} (+${totalPrXP} AP)!`;
+    } else if (prs.length) {
+      const best = prs.sort((a,b)=>b.xp-a.xp)[0];
+      msg.textContent = `New PR: ${best.exercise} at ${best.tier||''}! +${totalPrXP} Aura Points earned.`;
+    } else if (earned) {
+      msg.textContent = `Quest cleared — +${earned} Aura Points earned!`;
+    }
+    if (earned || prs.length) msg.classList.remove('hidden');
+    setTimeout(() => closeWorkoutModal(), 1400);
   } catch (err) {
     alert('Could not save: ' + err.message);
   } finally {
@@ -1483,23 +1692,324 @@ function computeStreak(uid) {
   return streak;
 }
 function countSince(uid, sinceDate) { return allWorkouts.filter(w => w.uid === uid && new Date(w.date) >= sinceDate).length; }
-const RANK_TIERS = [
+/* =========================================================================
+   PERSONAL RECORD (PR) SYSTEM
+   — Tracks estimated 1RM per exercise, compares to world strength standards,
+     awards Aura Points when a PR is beaten. Only active after 14 days.
+   ========================================================================= */
+
+// Epley formula: e1RM = weight × (1 + reps / 30)
+function epley1RM(weight, reps) {
+  if (reps <= 0 || weight <= 0) return 0;
+  if (reps === 1) return weight;
+  return Math.round(weight * (1 + reps / 30) * 10) / 10;
+}
+
+// Latest bodyweight from the tracker (kg). Returns null if unavailable.
+function latestBodyweightKg() {
+  if (!myWeights.length) return null;
+  const last = myWeights[myWeights.length - 1];
+  // stored in whatever unit — we need to standardise
+  // bodyweight is stored as { weight, unit } or just { weight } (assumed kg)
+  const bw = Number(last.weight);
+  if (!bw) return null;
+  return bw; // assumed kg throughout the app
+}
+
+// Two-week gate: true once the user's first workout is 14+ days ago
+function prSystemUnlocked() {
+  if (!myWorkouts.length) return false;
+  const first = myWorkouts.reduce((a,b) => a.date < b.date ? a : b);
+  const daysSince = (new Date() - new Date(first.date)) / 86400000;
+  return daysSince >= 14;
+}
+
+// World strength standards expressed as lift/bodyweight ratios
+// Source: StrengthLevel / ExRx / Symmetric Strength aggregated data
+// Five tiers: Beginner, Novice, Intermediate, Advanced, Elite
+// Male ratios; female = male × 0.75 for upper body, × 0.80 for lower body
+const STRENGTH_STANDARDS = {
+  // [ Beginner, Novice, Intermediate, Advanced, Elite ] — ratios (lift/BW)
+  "Bench Press":           { male: [0.5, 0.75, 1.0, 1.25, 1.5],  female: [0.35, 0.5, 0.75, 0.9, 1.1] },
+  "Incline Bench Press":   { male: [0.4, 0.65, 0.85, 1.1, 1.35], female: [0.3, 0.45, 0.65, 0.82, 1.0] },
+  "Overhead Press":        { male: [0.35, 0.5, 0.65, 0.85, 1.0], female: [0.2, 0.3, 0.45, 0.6, 0.75] },
+  "Close Grip Bench Press":{ male: [0.4, 0.65, 0.9, 1.15, 1.4],  female: [0.3, 0.45, 0.65, 0.85, 1.0] },
+  "Squat":                 { male: [0.75, 1.25, 1.5, 2.0, 2.5],  female: [0.5, 0.85, 1.1, 1.5, 1.9] },
+  "Front Squat":           { male: [0.6, 1.0, 1.25, 1.65, 2.0],  female: [0.4, 0.7, 0.95, 1.25, 1.55] },
+  "Hack Squat":            { male: [0.6, 1.0, 1.3, 1.7, 2.1],    female: [0.4, 0.7, 0.95, 1.25, 1.6] },
+  "Deadlift":              { male: [1.0, 1.5, 2.0, 2.5, 3.0],    female: [0.7, 1.0, 1.4, 1.8, 2.2] },
+  "Romanian Deadlift":     { male: [0.75, 1.15, 1.5, 1.9, 2.3],  female: [0.5, 0.8, 1.1, 1.4, 1.75] },
+  "Sumo Deadlift":         { male: [0.9, 1.4, 1.9, 2.4, 2.9],    female: [0.65, 1.0, 1.35, 1.75, 2.15] },
+  "Stiff-Leg Deadlift":    { male: [0.7, 1.1, 1.45, 1.85, 2.25], female: [0.5, 0.75, 1.05, 1.35, 1.7] },
+  "Barbell Row":           { male: [0.5, 0.75, 1.0, 1.3, 1.6],   female: [0.35, 0.5, 0.7, 0.95, 1.2] },
+  "Pendlay Row":           { male: [0.5, 0.75, 1.0, 1.3, 1.6],   female: [0.35, 0.5, 0.7, 0.95, 1.2] },
+  "Hip Thrust":            { male: [0.75, 1.25, 1.75, 2.25, 2.75],female: [0.6, 1.0, 1.5, 2.0, 2.5] },
+  "Lunges":                { male: [0.35, 0.6, 0.85, 1.1, 1.4],  female: [0.25, 0.45, 0.65, 0.85, 1.1] },
+  "Bulgarian Split Squat": { male: [0.4, 0.65, 0.9, 1.2, 1.5],   female: [0.3, 0.5, 0.7, 0.95, 1.2] },
+  "Leg Press":             { male: [1.0, 1.5, 2.0, 2.5, 3.5],    female: [0.7, 1.1, 1.5, 2.0, 2.8] },
+  "Barbell Curl":          { male: [0.3, 0.4, 0.55, 0.7, 0.85],  female: [0.2, 0.28, 0.38, 0.5, 0.62] },
+  "Dumbbell Curl":         { male: [0.15, 0.22, 0.3, 0.38, 0.47],female: [0.1, 0.15, 0.22, 0.28, 0.36] },
+  "Skull Crusher":         { male: [0.3, 0.45, 0.6, 0.8, 1.0],   female: [0.2, 0.3, 0.42, 0.56, 0.72] },
+};
+
+const STANDARD_TIERS = ['Beginner','Novice','Intermediate','Advanced','Elite'];
+const TIER_XP = { Beginner: 5, Novice: 15, Intermediate: 40, Advanced: 100, Elite: 250 };
+const FLAT_PR_XP = 10; // for exercises without world standards
+
+function getStrengthTier(exerciseName, e1rm, bodyweightKg, gender = 'male') {
+  const std = STRENGTH_STANDARDS[exerciseName];
+  if (!std || !bodyweightKg) return null;
+  const thresholds = std[gender] || std.male;
+  const ratio = e1rm / bodyweightKg;
+  let tier = 'Beginner';
+  for (let i = 0; i < thresholds.length; i++) {
+    if (ratio >= thresholds[i]) tier = STANDARD_TIERS[i];
+  }
+  return tier;
+}
+
+// Call after every workout save. Checks each logged set for a new PR.
+// Awards AP for beats, updates the 'prs' Firestore doc.
+async function checkAndAwardPRs(exercises, workoutDate) {
+  if (!prSystemUnlocked()) return [];
+  const bw = latestBodyweightKg();
+  const gender = profile.gender || 'male'; // settable later
+  const updates = {};
+  const awarded = [];
+
+  for (const ex of exercises) {
+    for (const set of ex.sets) {
+      if (!set.reps || !set.weight || set.reps <= 0 || set.weight <= 0) continue;
+      const e1rm = epley1RM(set.weight, set.reps);
+      const existing = myPRs[ex.name];
+      if (existing && existing.e1rm >= e1rm) continue; // not a PR
+
+      // it's a PR — calculate tier and XP
+      const tier = getStrengthTier(ex.name, e1rm, bw, gender);
+      const xp = tier ? TIER_XP[tier] : FLAT_PR_XP;
+
+      updates[ex.name] = { e1rm, date: workoutDate, tier: tier || 'Unranked', xp };
+      awarded.push({ exercise: ex.name, e1rm, tier, xp });
+    }
+  }
+
+  if (!Object.keys(updates).length) return [];
+
+  // merge updates into myPRs
+  const newPRs = { ...myPRs, ...updates };
+  const totalNewXP = awarded.reduce((s, a) => s + a.xp, 0);
+  const newAP = (profile.auraPoints || 0) + totalNewXP;
+
+  await setDoc(doc(db, 'prs', currentUser.uid), newPRs);
+  await setDoc(doc(db, 'users', currentUser.uid), { auraPoints: newAP }, { merge: true });
+  myPRs = newPRs;
+  profile.auraPoints = newAP;
+
+  return awarded;
+}
+
+const HUNTER_RANK_TIERS = [
   { min: 60, rank: 'S', color: 'var(--violet)' }, { min: 30, rank: 'A', color: 'var(--brass)' },
   { min: 14, rank: 'B', color: 'var(--maintaining)' }, { min: 7, rank: 'C', color: 'var(--growing)' },
   { min: 3, rank: 'D', color: 'var(--text-dim)' }, { min: 0, rank: 'E', color: 'var(--text-faint)' },
 ];
-function hunterRank(streak) { return RANK_TIERS.find(t => streak >= t.min); }
+function hunterRank(streak) { return HUNTER_RANK_TIERS.find(t => streak >= t.min); }
 function rankBadge(tier) { return `<span class="rank-badge" style="color:${tier.color};border-color:${tier.color};">${tier.rank}</span>`; }
+
+/* =========================================================================
+   AURA POINTS & CHARACTER STATS SYSTEM
+   ========================================================================= */
+const RANK_TIERS = ['E','D','C','B','A','S'];
+const RANK_COLORS = { E:'var(--text-faint)', D:'var(--brass)', C:'var(--maintaining)', B:'var(--violet)', A:'var(--excess)', S:'#FFD700' };
+const RANK_TITLES = {
+  E:'Unranked Hunter', D:'Novice Hunter', C:'Seasoned Hunter',
+  B:'Elite Hunter', A:'Shadow Monarch', S:'Absolute Being'
+};
+// AP cost to upgrade TO the next tier (cost indexed by current tier index)
+const UPGRADE_COSTS = { E:50, D:150, C:400, B:1000, A:2500 };
+const STAT_DEFS = [
+  { id:'strength',   label:'Strength',   desc:'Chest, Back & Shoulder volume' },
+  { id:'endurance',  label:'Endurance',  desc:'Workout frequency consistency' },
+  { id:'agility',    label:'Agility',    desc:'Leg training volume' },
+  { id:'flexibility',label:'Flexibility',desc:'Core & Hip Flexor activity' },
+  { id:'recovery',   label:'Recovery',   desc:'Hitting your weekly goal' },
+  { id:'focus',      label:'Focus',      desc:'Overall training streak' },
+];
+
+function defaultStats() {
+  const s = {};
+  STAT_DEFS.forEach(d => s[d.id] = 'E');
+  return s;
+}
+
+function charRankFromStats(stats) {
+  // Character rank = lowest individual stat rank
+  const vals = STAT_DEFS.map(d => RANK_TIERS.indexOf(stats[d.id] || 'E'));
+  const minVal = Math.min(...vals);
+  return RANK_TIERS[minVal];
+}
+
+function apCostToUpgrade(currentRank) {
+  return UPGRADE_COSTS[currentRank] ?? null;
+}
+
+// Aura Points: 10 base per day, +5 if weekly goal hit, streak multiplier
+// Anti-cheat: only awarded once per real calendar day (checked via lastApDate stored in Firestore)
+function computeApEarned() {
+  const streak = computeStreak(currentUser.uid);
+  let base = 10;
+  let bonus = 0;
+  // streak multiplier (stacks naturally with multiple days)
+  const mult = streak >= 60 ? 3 : streak >= 30 ? 2 : streak >= 7 ? 1.5 : 1;
+  base = Math.round(base * mult);
+  // weekly goal bonus
+  const weekStart = startOfWeek(new Date());
+  const weekCount = countSince(currentUser.uid, weekStart);
+  if (weekCount >= (profile.weeklyGoal || 3)) bonus = 5;
+  return base + bonus;
+}
+
+async function tryAwardAp() {
+  if (!currentUser || !profile) return;
+  const today = todayStr();
+  if (profile.lastApDate === today) return; // already awarded today — anti-cheat
+
+  // extra anti-cheat: the workout being logged must have today's actual date
+  const todayWorkouts = myWorkouts.filter(w => w.date === today);
+  if (!todayWorkouts.length) return; // no workout actually logged today
+
+  const earned = computeApEarned();
+  const newAp = (profile.auraPoints || 0) + earned;
+  await setDoc(doc(db, 'users', currentUser.uid), {
+    auraPoints: newAp,
+    lastApDate: today,
+  }, { merge: true });
+  profile.auraPoints = newAp;
+  profile.lastApDate = today;
+  return earned;
+}
+
+async function upgradeStatWithAp(statId) {
+  if (!profile) return;
+  const currentRank = (profile.stats || {})[statId] || 'E';
+  if (currentRank === 'S') return;
+  const cost = apCostToUpgrade(currentRank);
+  if ((profile.auraPoints || 0) < cost) {
+    alert(`Not enough Aura Points. Need ${cost} AP, have ${profile.auraPoints || 0}.`);
+    return;
+  }
+  const newRank = RANK_TIERS[RANK_TIERS.indexOf(currentRank) + 1];
+  const newStats = { ...(profile.stats || defaultStats()), [statId]: newRank };
+  const newAp = (profile.auraPoints || 0) - cost;
+  await setDoc(doc(db, 'users', currentUser.uid), {
+    auraPoints: newAp,
+    stats: newStats,
+  }, { merge: true });
+  profile.auraPoints = newAp;
+  profile.stats = newStats;
+  renderBoard();
+}
+
+function renderCharCard() {
+  const stats = profile.stats || defaultStats();
+  const ap = profile.auraPoints || 0;
+  const charRank = charRankFromStats(stats);
+  const rankIdx = RANK_TIERS.indexOf(charRank);
+  const rankClass = 'rank-' + charRank.toLowerCase();
+
+  document.getElementById('char-name').textContent = profile.displayName || 'Hunter';
+  document.getElementById('char-title').textContent = RANK_TITLES[charRank];
+  document.getElementById('ap-amount').textContent = ap.toLocaleString();
+  const badge = document.getElementById('char-rank-badge');
+  badge.textContent = charRank;
+  badge.className = 'char-rank-badge ' + rankClass;
+
+  // stat bars
+  const statsEl = document.getElementById('char-stats');
+  statsEl.innerHTML = STAT_DEFS.map(def => {
+    const cur = stats[def.id] || 'E';
+    const curIdx = RANK_TIERS.indexOf(cur);
+    const pct = (curIdx / 5) * 100;
+    const barColor = RANK_COLORS[cur];
+    const cost = apCostToUpgrade(cur);
+    const canUpgrade = cur !== 'S' && ap >= cost;
+    const isMaxed = cur === 'S';
+    const rankCls = 'rank-' + cur.toLowerCase();
+    const btnCls = isMaxed ? 'stat-upgrade-btn maxed' : canUpgrade ? 'stat-upgrade-btn can-upgrade' : 'stat-upgrade-btn';
+    const btnLabel = isMaxed ? 'MAX' : `${cost} AP`;
+    return `<div class="stat-row">
+      <span class="stat-label" title="${def.desc}">${def.label}</span>
+      <div class="stat-bar-wrap">
+        <div class="stat-bar" style="width:${pct}%;background:${barColor};"></div>
+        <div class="stat-tiers">${RANK_TIERS.map(()=>'<div class="stat-tier-seg"></div>').join('')}</div>
+      </div>
+      <span class="stat-rank ${rankCls}">${cur}</span>
+      <button class="stat-upgrade-btn ${canUpgrade?'can-upgrade':''} ${isMaxed?'maxed':''}" data-stat="${def.id}" ${isMaxed?'disabled':''}>${btnLabel}</button>
+    </div>`;
+  }).join('');
+
+  statsEl.querySelectorAll('.stat-upgrade-btn:not([disabled])').forEach(btn =>
+    btn.addEventListener('click', () => upgradeStatWithAp(btn.dataset.stat)));
+
+  // hint about next rank requirement
+  const hint = document.getElementById('char-rank-hint');
+  if (charRank === 'S') {
+    hint.textContent = '◆ Absolute Being — you have reached the pinnacle.';
+  } else {
+    const nextRank = RANK_TIERS[rankIdx + 1];
+    const limiting = STAT_DEFS.filter(d => (stats[d.id] || 'E') === charRank);
+    hint.textContent = `To reach ${nextRank} Rank: upgrade ${limiting.map(d=>d.label).join(', ')} past ${charRank}.`;
+  }
+}
+
+function renderPRPanel() {
+  const el = document.getElementById('pr-panel');
+  if (!el) return;
+  const bw = latestBodyweightKg();
+  const gender = profile.gender || 'male';
+  const prEntries = Object.entries(myPRs).sort((a,b) => (b[1].xp||0) - (a[1].xp||0));
+
+  if (!prSystemUnlocked()) {
+    el.innerHTML = `<div class="card"><div class="card-title"><h3>Personal Records</h3></div>
+      <p class="pr-locked">🔒 PR tracking unlocks after 14 days of consistent training. Keep going!</p></div>`;
+    return;
+  }
+
+  if (!prEntries.length) {
+    el.innerHTML = `<div class="card"><div class="card-title"><h3>Personal Records</h3></div>
+      <p class="pr-locked">No PRs logged yet — log your first workout with real weights to start tracking.</p></div>`;
+    return;
+  }
+
+  const rows = prEntries.map(([name, pr]) => {
+    const tier = pr.tier || 'Unranked';
+    const tierCls = 'pr-tier tier-' + tier.replace(/\s/g,'');
+    return `<div class="pr-row">
+      <span class="pr-name">${escapeHtml(name)}</span>
+      <span class="pr-e1rm">${pr.e1rm.toFixed(1)} kg e1RM</span>
+      <span class="${tierCls}">${tier}</span>
+      <span class="pr-xp">+${pr.xp||FLAT_PR_XP} AP</span>
+    </div>`;
+  }).join('');
+
+  el.innerHTML = `<div class="card">
+    <div class="pr-panel-header">
+      <h3 style="margin:0;">Personal Records</h3>
+      ${!bw ? '<span style="font-size:11px;color:var(--excess);">⚠ Log bodyweight in Trends for world tier</span>' : ''}
+    </div>
+    <div class="pr-grid">${rows}</div>
+  </div>`;
+}
 
 function renderBoard() {
   const today = todayStr();
   document.getElementById('today-list').innerHTML = allUsers.map(u => {
     const done = allWorkouts.some(w => w.uid === u.uid && w.date === today);
-    return `<div class="today-row"><span class="status-dot ${done ? 'done' : 'pending'}"></span><span class="name">${escapeHtml(u.displayName)}</span><span class="status-text">${done ? 'Completed' : 'Not yet'}</span></div>`;
+    return `<div class="today-row"><span class="status-dot ${done ? 'done' : 'pending'}"></span><span class="name">${escapeHtml(u.displayName || 'Hunter')}</span><span class="status-text">${done ? 'Completed' : 'Not yet'}</span></div>`;
   }).join('') || `<p class="empty-state" style="padding:10px 0;">No crew members yet.</p>`;
 
   const weekStart = startOfWeek(new Date());
-  const rows = allUsers.map(u => ({ uid: u.uid, name: u.displayName, streak: computeStreak(u.uid), week: countSince(u.uid, weekStart), total: allWorkouts.filter(w => w.uid === u.uid).length }))
+  const rows = allUsers.map(u => ({ uid: u.uid, name: u.displayName || 'Hunter', streak: computeStreak(u.uid), week: countSince(u.uid, weekStart), total: allWorkouts.filter(w => w.uid === u.uid).length }))
     .sort((a,b) => b.streak - a.streak || b.week - a.week || b.total - a.total);
 
   document.getElementById('board-body').innerHTML = rows.map((r, i) => `
@@ -1592,6 +2102,12 @@ function bodySvg(view, stats) {
     });
   });
   // Head and hands/feet ("misc") aren't tracked muscles, but they ARE recognizable
+  // Remove the large full-canvas background rectangle (fill="#1F1F1F" or similar)
+  // that sits behind everything — it bleeds into the opposite figure's space.
+  clone.querySelectorAll('path[id="Vector"]').forEach(el => {
+    const fill = (el.getAttribute('fill') || '').toLowerCase();
+    if (fill === '#1f1f1f' || fill === '#1e1e1e' || fill === 'black' || fill === '#000000') el.remove();
+  });
   // body landmarks worth seeing clearly — recolor them to a muted slate tone so the
   // figure reads as a monochrome holographic silhouette instead of clashing warm
   // skin tones sitting next to the neon status colors.
@@ -1621,6 +2137,11 @@ function bodySvg(view, stats) {
   clone.setAttribute('viewBox', crop.viewBox);
   clone.setAttribute('width', String(crop.w));
   clone.setAttribute('height', String(crop.h));
+  // overflow:hidden on the SVG itself is the simplest, most browser-compatible
+  // way to clip the opposite figure from bleeding into this view's frame.
+  // The viewBox zooms in; overflow:hidden clips anything outside that box.
+  clone.style.overflow = 'hidden';
+  clone.setAttribute('overflow', 'hidden');
   // the source file's <mask>/<clipPath> ids aren't unique once both views render
   // side by side on the same page — suffix them per view (whatever Figma happened to
   // auto-generate this export) so neither view steals the other's mask/clip definition.
