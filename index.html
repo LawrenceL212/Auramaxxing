@@ -160,9 +160,10 @@
   .set-row.complete{background:var(--brass-dim);}
   .rir-chips{display:flex;gap:3px;align-items:center;flex-shrink:0;}
   .rir-chip{
-    width:22px;height:22px;border-radius:4px;border:1px solid var(--border);
-    background:var(--card-2);color:var(--text-faint);font-size:10px;cursor:pointer;
+    width:28px;height:28px;border-radius:4px;border:1px solid var(--border);
+    background:var(--card-2);color:var(--text-faint);font-size:11px;cursor:pointer;
     display:flex;align-items:center;justify-content:center;font-family:var(--font-mono);
+    touch-action:manipulation;
   }
   .rir-chip.selected{background:var(--brass-dim);border-color:var(--brass);color:var(--brass);font-weight:700;}
   .suggest-badge{
@@ -173,9 +174,9 @@
   .rir-label{font-size:10px;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.05em;}
   .set-row .set-idx{color:var(--text-faint);font-size:12px;font-family:var(--font-mono);text-align:center;}
   .stepper{display:flex;align-items:center;background:var(--card-2);border:1px solid var(--border);border-radius:6px;overflow:hidden;}
-  .stepper button{background:none;border:none;color:var(--brass);font-size:16px;width:26px;height:32px;cursor:pointer;flex-shrink:0;}
+  .stepper button{background:none;border:none;color:var(--brass);font-size:18px;min-width:36px;height:38px;cursor:pointer;flex-shrink:0;touch-action:manipulation;}
   .stepper button:active{background:var(--brass-dim);}
-  .stepper input{width:100%;min-width:0;text-align:center;background:none;border:none;color:var(--text);font-size:14px;padding:0;font-family:var(--font-mono);}
+  .stepper input{width:100%;min-width:0;text-align:center;background:none;border:none;color:var(--text);font-size:15px;padding:0 2px;font-family:var(--font-mono);height:38px;}
   .stepper input::-webkit-outer-spin-button, .stepper input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0;}
   .add-set-btn{margin-top:10px;font-size:12px;padding:7px 14px;border-radius:20px;}
   .add-exercise-btn{width:100%;border-style:dashed;color:var(--text-dim);}
@@ -585,6 +586,13 @@
   .cal-cell .dot{position:absolute;bottom:2px;width:4px;height:4px;border-radius:50%;background:var(--brass);}
   .history-day{margin-bottom:20px;}
   .history-date{font-size:12px;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:8px;}
+  .history-card-header{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;}
+  .history-detail-btn{background:none;border:none;color:var(--brass);font-size:13px;cursor:pointer;padding:4px 0;white-space:nowrap;flex-shrink:0;}
+  .detail-exercise{margin-bottom:16px;}
+  .detail-ex-name{font-size:14px;font-weight:700;margin:0 0 6px;color:var(--text);}
+  .detail-sets-head{display:grid;grid-template-columns:22px 1fr 1fr 1fr;gap:8px;padding:0 2px 4px;font-size:10px;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.05em;}
+  .detail-set-row{display:grid;grid-template-columns:22px 1fr 1fr 1fr;gap:8px;padding:6px 2px;border-top:1px solid var(--border);font-size:13px;font-family:var(--font-mono);}
+  .detail-set-row .set-idx{color:var(--text-faint);}
   .history-card .who{font-size:13.5px;color:var(--text-dim);margin-bottom:4px;}
   .history-card .exlist{font-size:13px;color:var(--text-dim);line-height:1.6;}
   .empty-state{text-align:center;padding:40px 20px;color:var(--text-faint);}
@@ -1591,15 +1599,16 @@ function closeWorkoutModal(discard = false) {
 // Show/hide Complete Quest button based on whether all target sets are done
 function refreshCompleteButton() {
   const btn = document.getElementById('save-workout-btn');
+  if (!btn) return;
   const rows = document.querySelectorAll('#exercise-rows .exercise-row');
   if (!rows.length) { btn.classList.add('hidden'); return; }
-  let allDone = true;
+  // show Complete Quest once every exercise has at least one set with reps logged
+  let allHaveAtLeastOneSet = true;
   rows.forEach(row => {
-    const completedSets = [...row.querySelectorAll('.set-row.complete')].length;
-    const totalSets = row.querySelectorAll('.set-row').length;
-    if (completedSets < totalSets || totalSets === 0) allDone = false;
+    const hasAnyComplete = row.querySelectorAll('.set-row.complete').length > 0;
+    if (!hasAnyComplete) allHaveAtLeastOneSet = false;
   });
-  btn.classList.toggle('hidden', !allDone);
+  btn.classList.toggle('hidden', !allHaveAtLeastOneSet);
 }
 document.getElementById('end-workout-modal').addEventListener('click', () => {
   if (!confirm('End this workout? All your logged sets will be lost.')) return;
@@ -1830,16 +1839,18 @@ function addExerciseRow(presetName, targetSets, targetReps, prefillSets) {
       ${rirChips(prefillRir ?? null)}
       <button type="button" class="remove-x set-remove">×</button>
       ${suggTag}`;
-    setRow.querySelectorAll('.step-down').forEach(btn => btn.addEventListener('click', (e) => {
-      const input = e.target.parentElement.querySelector('input');
+    setRow.querySelectorAll('.step-down').forEach(btn => btn.addEventListener('click', () => {
+      const input = btn.parentElement.querySelector('input');
       const step = Number(input.step) || 1;
       input.value = Math.max(Number(input.min)||0, (Number(input.value)||0) - step);
+      input.dispatchEvent(new Event('input'));
       checkComplete(setRow);
     }));
-    setRow.querySelectorAll('.step-up').forEach(btn => btn.addEventListener('click', (e) => {
-      const input = e.target.parentElement.querySelector('input');
+    setRow.querySelectorAll('.step-up').forEach(btn => btn.addEventListener('click', () => {
+      const input = btn.parentElement.querySelector('input');
       const step = Number(input.step) || 1;
       input.value = (Number(input.value)||0) + step;
+      input.dispatchEvent(new Event('input'));
       checkComplete(setRow);
     }));
     setRow.querySelectorAll('input').forEach(inp => inp.addEventListener('input', () => checkComplete(setRow)));
@@ -1874,7 +1885,7 @@ function addExerciseRow(presetName, targetSets, targetReps, prefillSets) {
   refreshTags();
   exerciseRows.appendChild(row);
 }
-document.getElementById('add-exercise-btn').addEventListener('click', () => addExerciseRow());
+document.getElementById('add-exercise-btn').addEventListener('click', () => { addExerciseRow(); refreshCompleteButton(); });
 addExerciseRow();
 
 document.getElementById('save-workout-btn').addEventListener('click', async () => {
@@ -3375,12 +3386,84 @@ function renderHistoryList() {
   el.innerHTML = `
     <div class="history-day">
       <div class="history-date">${new Date(selectedHistoryDate).toLocaleDateString(undefined,{weekday:'long', month:'short', day:'numeric'})}</div>
-      ${dayWorkouts.map(w => `
-        <div class="card history-card">
-          <div class="who">${escapeHtml(w.displayName)}${w.time?` · ${w.time}`:''}</div>
-          <div class="exlist">${w.exercises.map(e => `${e.name} · ${e.sets.length} sets`).join('<br/>')}</div>
-        </div>`).join('')}
+      ${dayWorkouts.map(w => {
+        const isMe = w.uid === currentUser.uid;
+        return `<div class="card history-card" style="cursor:${isMe?'pointer':'default'}" data-wid="${w.id}">
+          <div class="history-card-header">
+            <div>
+              <div class="who">${escapeHtml(w.displayName)}${w.time?` · ${w.time}`:''}</div>
+              <div class="exlist">${(w.exercises||[]).map(e => `${escapeHtml(e.name)} · ${e.sets.length} sets`).join('<br/>')}</div>
+            </div>
+            ${isMe ? `<button type="button" class="history-detail-btn" data-wid="${w.id}">View ›</button>` : ''}
+          </div>
+        </div>`;
+      }).join('')}
     </div>`;
+
+  el.querySelectorAll('.history-detail-btn').forEach(btn => {
+    btn.addEventListener('click', e => {
+      e.stopPropagation();
+      openWorkoutDetail(btn.dataset.wid);
+    });
+  });
+}
+
+function openWorkoutDetail(workoutId) {
+  const w = allWorkouts.find(x => x.id === workoutId);
+  if (!w || w.uid !== currentUser.uid) return;
+
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  const dateStr = new Date(w.date).toLocaleDateString(undefined, { weekday:'long', month:'long', day:'numeric' });
+  const exerciseRows = (w.exercises||[]).map(ex => {
+    const sets = (ex.sets||[]).map((s,i) =>
+      `<div class="detail-set-row">
+        <span class="set-idx">${i+1}</span>
+        <span>${s.reps} reps</span>
+        <span>${s.weight ? s.weight+'kg' : '—'}</span>
+        ${s.rir != null ? `<span style="color:var(--text-faint);font-size:11px;">RIR ${s.rir}</span>` : '<span></span>'}
+      </div>`
+    ).join('');
+    return `<div class="detail-exercise">
+      <p class="detail-ex-name">${escapeHtml(ex.name)}</p>
+      <div class="detail-sets-head"><span>#</span><span>Reps</span><span>Weight</span><span></span></div>
+      ${sets}
+    </div>`;
+  }).join('');
+
+  overlay.innerHTML = `
+    <div class="modal" style="max-height:80vh;overflow-y:auto;">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px;">
+        <div>
+          <h3 style="margin:0 0 2px;">${dateStr}</h3>
+          <p style="font-size:12px;color:var(--text-faint);margin:0;">${w.time || ''}</p>
+        </div>
+        <button class="icon-btn" id="detail-close" style="font-size:20px;flex-shrink:0;">✕</button>
+      </div>
+      <div style="margin:16px 0;">${exerciseRows || '<p class="sub">No exercises logged.</p>'}</div>
+      <button class="btn" id="detail-delete" style="width:100%;color:var(--excess);border-color:var(--excess);">🗑 Delete this workout</button>
+      <p style="font-size:11px;color:var(--text-faint);text-align:center;margin-top:8px;">This can't be undone. Your AP and PRs from this session are not reversed.</p>
+    </div>`;
+
+  document.body.appendChild(overlay);
+  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+  overlay.querySelector('#detail-close').addEventListener('click', () => overlay.remove());
+  overlay.querySelector('#detail-delete').addEventListener('click', async () => {
+    if (!confirm(`Delete this workout from ${dateStr}? This cannot be undone.`)) return;
+    const btn = overlay.querySelector('#detail-delete');
+    btn.disabled = true; btn.textContent = 'Deleting…';
+    try {
+      await deleteDoc(doc(db, 'workouts', workoutId));
+      overlay.remove();
+      await loadAllData();
+      renderCalendar();
+      renderHistoryList();
+      startDailyTimer();
+    } catch (err) {
+      alert('Could not delete: ' + err.message);
+      btn.disabled = false; btn.textContent = '🗑 Delete this workout';
+    }
+  });
 }
 </script>
 </body>
