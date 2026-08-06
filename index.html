@@ -392,6 +392,7 @@
   }
   .stat-upgrade-btn.can-upgrade{border-color:var(--brass);color:var(--brass);background:var(--brass-dim);}
   .stat-upgrade-btn.maxed{border-color:var(--text-faint);color:var(--text-faint);cursor:default;opacity:0.5;}
+  .stat-xp-bonus{font-size:9px;color:var(--growing);font-family:var(--font-mono);white-space:nowrap;}
   .char-rank-hint{font-size:12px;color:var(--text-faint);margin:12px 0 0;text-align:center;line-height:1.6;}
 
   /* ---------- PR Panel ---------- */
@@ -1093,8 +1094,8 @@ const BASE_EXERCISES = {
   "Incline Bench Press": { muscles: { "Upper Chest": 1, "Front Shoulders": 0.6, "Triceps": 0.3 }, equipment: "Barbell" },
   "Incline Dumbbell Press": { muscles: { "Upper Chest": 1, "Front Shoulders": 0.6, "Triceps": 0.3 }, equipment: "Dumbbell" },
   "Dumbbell Fly": { muscles: { "Middle Chest": 1, "Front Shoulders": 0.2 }, equipment: "Dumbbell" },
-  "Push Up": { muscles: { "Middle Chest": 1, "Triceps": 0.6, "Front Shoulders": 0.3 }, equipment: "Bodyweight" },
-  "Dips": { muscles: { "Lower Chest": 1, "Triceps": 0.6, "Front Shoulders": 0.3 }, equipment: "Bodyweight" },
+  "Push Up": { bwPercent: 0.67, muscles: { "Middle Chest": 1, "Triceps": 0.6, "Front Shoulders": 0.3 }, equipment: "Bodyweight" },
+  "Dips": { bwPercent: 0.85, muscles: { "Lower Chest": 1, "Triceps": 0.6, "Front Shoulders": 0.3 }, equipment: "Bodyweight" },
   "Decline Bench Press": { muscles: { "Lower Chest": 1, "Triceps": 0.6, "Front Shoulders": 0.2 }, equipment: "Barbell" },
   "Decline Dumbbell Press": { muscles: { "Lower Chest": 1, "Triceps": 0.6, "Front Shoulders": 0.2 }, equipment: "Dumbbell" },
   "Incline Dumbbell Fly": { muscles: { "Upper Chest": 1, "Front Shoulders": 0.3 }, equipment: "Dumbbell" },
@@ -1105,12 +1106,12 @@ const BASE_EXERCISES = {
   "Pec Deck Machine": { muscles: { "Middle Chest": 1 }, equipment: "Machine" },
   "Svend Press": { muscles: { "Middle Chest": 1, "Front Shoulders": 0.2 }, equipment: "Dumbbell" },
   "Dumbbell Pullover": { muscles: { "Lats": 1, "Middle Chest": 0.3, "Triceps": 0.2 }, equipment: "Dumbbell" },
-  "Incline Push Up": { muscles: { "Lower Chest": 1, "Triceps": 0.3, "Front Shoulders": 0.2 }, equipment: "Bodyweight" },
-  "Decline Push Up": { muscles: { "Upper Chest": 1, "Front Shoulders": 0.6, "Triceps": 0.3 }, equipment: "Bodyweight" },
-  "Diamond Push Up": { muscles: { "Triceps": 1, "Middle Chest": 0.6, "Front Shoulders": 0.3 }, equipment: "Bodyweight" },
-  "Wide Push Up": { muscles: { "Middle Chest": 1, "Front Shoulders": 0.3 }, equipment: "Bodyweight" },
-  "Archer Push Up": { muscles: { "Middle Chest": 1, "Triceps": 0.6, "Front Shoulders": 0.3 }, equipment: "Bodyweight" },
-  "Ring Dips": { muscles: { "Lower Chest": 1, "Triceps": 0.6, "Front Shoulders": 0.3 }, equipment: "Bodyweight" },
+  "Incline Push Up": { bwPercent: 0.55, muscles: { "Lower Chest": 1, "Triceps": 0.3, "Front Shoulders": 0.2 }, equipment: "Bodyweight" },
+  "Decline Push Up": { bwPercent: 0.75, muscles: { "Upper Chest": 1, "Front Shoulders": 0.6, "Triceps": 0.3 }, equipment: "Bodyweight" },
+  "Diamond Push Up": { bwPercent: 0.75, muscles: { "Triceps": 1, "Middle Chest": 0.6, "Front Shoulders": 0.3 }, equipment: "Bodyweight" },
+  "Wide Push Up": { bwPercent: 0.67, muscles: { "Middle Chest": 1, "Front Shoulders": 0.3 }, equipment: "Bodyweight" },
+  "Archer Push Up": { bwPercent: 0.67, muscles: { "Middle Chest": 1, "Triceps": 0.6, "Front Shoulders": 0.3 }, equipment: "Bodyweight" },
+  "Ring Dips": { bwPercent: 0.85, muscles: { "Lower Chest": 1, "Triceps": 0.6, "Front Shoulders": 0.3 }, equipment: "Bodyweight" },
   "Overhead Press": { muscles: { "Front Shoulders": 1, "Lateral Shoulders": 0.6, "Triceps": 0.6, "Upper Abs": 0.2 }, equipment: "Barbell" },
   "Lateral Raise": { muscles: { "Lateral Shoulders": 1, "Traps": 0.2 }, equipment: "Dumbbell" },
   "Front Raise": { muscles: { "Front Shoulders": 1, "Upper Chest": 0.2 }, equipment: "Dumbbell" },
@@ -1126,11 +1127,11 @@ const BASE_EXERCISES = {
   "Cable Rear Delt Fly": { muscles: { "Rear Shoulders": 1, "Upper Back": 0.3 }, equipment: "Cable" },
   "Face Pull": { muscles: { "Rear Shoulders": 1, "Upper Back": 0.6, "Traps": 0.3 }, equipment: "Cable" },
   "Reverse Pec Deck": { muscles: { "Rear Shoulders": 1, "Upper Back": 0.3 }, equipment: "Machine" },
-  "Pike Push Up": { muscles: { "Front Shoulders": 1, "Lateral Shoulders": 0.3, "Triceps": 0.6 }, equipment: "Bodyweight" },
-  "Handstand Push Up": { muscles: { "Front Shoulders": 1, "Lateral Shoulders": 0.6, "Triceps": 0.6 }, equipment: "Bodyweight" },
+  "Pike Push Up": { bwPercent: 0.7, muscles: { "Front Shoulders": 1, "Lateral Shoulders": 0.3, "Triceps": 0.6 }, equipment: "Bodyweight" },
+  "Handstand Push Up": { bwPercent: 1.0, muscles: { "Front Shoulders": 1, "Lateral Shoulders": 0.6, "Triceps": 0.6 }, equipment: "Bodyweight" },
   "Wall Walk": { muscles: { "Front Shoulders": 1, "Upper Abs": 0.6, "Lats": 0.2 }, equipment: "Bodyweight" },
   "Deadlift": { muscles: { "Lower Back": 1, "Glutes": 1, "Hamstrings": 0.6, "Lats": 0.6, "Traps": 0.6, "Quads": 0.3, "Forearms": 0.3 }, equipment: "Barbell" },
-  "Pull Up": { muscles: { "Lats": 1, "Upper Back": 0.6, "Biceps": 0.6, "Forearms": 0.3 }, equipment: "Bodyweight" },
+  "Pull Up": { bwPercent: 1.0, muscles: { "Lats": 1, "Upper Back": 0.6, "Biceps": 0.6, "Forearms": 0.3 }, equipment: "Bodyweight" },
   "Lat Pulldown": { muscles: { "Lats": 1, "Upper Back": 0.3, "Biceps": 0.6 }, equipment: "Cable" },
   "Barbell Row": { muscles: { "Upper Back": 1, "Lats": 0.6, "Biceps": 0.6, "Traps": 0.3, "Lower Back": 0.2 }, equipment: "Barbell" },
   "Seated Cable Row": { muscles: { "Upper Back": 1, "Lats": 0.6, "Biceps": 0.6 }, equipment: "Cable" },
@@ -1139,12 +1140,12 @@ const BASE_EXERCISES = {
   "Sumo Deadlift": { muscles: { "Glutes": 1, "Quads": 0.6, "Hamstrings": 0.6, "Lower Back": 0.4, "Traps": 0.3 }, equipment: "Barbell" },
   "Stiff-Leg Deadlift": { muscles: { "Hamstrings": 1, "Lower Back": 0.6, "Glutes": 0.3 }, equipment: "Barbell" },
   "Rack Pull": { muscles: { "Traps": 1, "Upper Back": 0.6, "Lower Back": 0.6, "Forearms": 0.3 }, equipment: "Barbell" },
-  "Chin Up": { muscles: { "Lats": 1, "Biceps": 1, "Upper Back": 0.3, "Forearms": 0.2 }, equipment: "Bodyweight" },
-  "Wide Grip Pull Up": { muscles: { "Lats": 1, "Upper Back": 0.6, "Biceps": 0.3 }, equipment: "Bodyweight" },
-  "Neutral Grip Pull Up": { muscles: { "Lats": 1, "Biceps": 0.6, "Upper Back": 0.3, "Forearms": 0.2 }, equipment: "Bodyweight" },
-  "Commando Pull Up": { muscles: { "Lats": 1, "Biceps": 0.6, "Upper Back": 0.3, "Obliques": 0.2 }, equipment: "Bodyweight" },
-  "Muscle Up": { muscles: { "Lats": 1, "Triceps": 1, "Upper Back": 0.6, "Biceps": 0.6, "Middle Chest": 0.3 }, equipment: "Bodyweight" },
-  "Inverted Row": { muscles: { "Upper Back": 1, "Lats": 0.6, "Biceps": 0.6, "Rear Shoulders": 0.3 }, equipment: "Bodyweight" },
+  "Chin Up": { bwPercent: 1.0, muscles: { "Lats": 1, "Biceps": 1, "Upper Back": 0.3, "Forearms": 0.2 }, equipment: "Bodyweight" },
+  "Wide Grip Pull Up": { bwPercent: 1.0, muscles: { "Lats": 1, "Upper Back": 0.6, "Biceps": 0.3 }, equipment: "Bodyweight" },
+  "Neutral Grip Pull Up": { bwPercent: 1.0, muscles: { "Lats": 1, "Biceps": 0.6, "Upper Back": 0.3, "Forearms": 0.2 }, equipment: "Bodyweight" },
+  "Commando Pull Up": { bwPercent: 1.0, muscles: { "Lats": 1, "Biceps": 0.6, "Upper Back": 0.3, "Obliques": 0.2 }, equipment: "Bodyweight" },
+  "Muscle Up": { bwPercent: 1.0, muscles: { "Lats": 1, "Triceps": 1, "Upper Back": 0.6, "Biceps": 0.6, "Middle Chest": 0.3 }, equipment: "Bodyweight" },
+  "Inverted Row": { bwPercent: 0.7, muscles: { "Upper Back": 1, "Lats": 0.6, "Biceps": 0.6, "Rear Shoulders": 0.3 }, equipment: "Bodyweight" },
   "Close Grip Lat Pulldown": { muscles: { "Lats": 1, "Biceps": 0.6, "Upper Back": 0.3 }, equipment: "Cable" },
   "Straight Arm Pulldown": { muscles: { "Lats": 1, "Triceps": 0.3 }, equipment: "Cable" },
   "Pendlay Row": { muscles: { "Upper Back": 1, "Lats": 0.6, "Biceps": 0.6, "Lower Back": 0.2 }, equipment: "Barbell" },
@@ -1171,7 +1172,7 @@ const BASE_EXERCISES = {
   "Close Grip Bench Press": { muscles: { "Triceps": 1, "Middle Chest": 0.6, "Front Shoulders": 0.3 }, equipment: "Barbell" },
   "Tricep Kickback": { muscles: { "Triceps": 1 }, equipment: "Dumbbell" },
   "JM Press": { muscles: { "Triceps": 1, "Middle Chest": 0.3 }, equipment: "Barbell" },
-  "Bench Dip": { muscles: { "Triceps": 1, "Lower Chest": 0.3, "Front Shoulders": 0.3 }, equipment: "Bodyweight" },
+  "Bench Dip": { bwPercent: 0.75, muscles: { "Triceps": 1, "Lower Chest": 0.3, "Front Shoulders": 0.3 }, equipment: "Bodyweight" },
   "Wrist Curl": { muscles: { "Forearms": 1 }, equipment: "Dumbbell" },
   "Reverse Wrist Curl": { muscles: { "Forearms": 1 }, equipment: "Dumbbell" },
   "Dead Hang": { timed: true, muscles: { "Forearms": 1, "Lats": 0.3 }, equipment: "Bodyweight" },
@@ -1198,7 +1199,7 @@ const BASE_EXERCISES = {
   "Squat": { muscles: { "Quads": 1, "Glutes": 1, "Hamstrings": 0.3, "Lower Back": 0.2, "Hip Flexors": 0.2 }, equipment: "Barbell" },
   "Front Squat": { muscles: { "Quads": 1, "Glutes": 0.6, "Hip Flexors": 0.2, "Upper Back": 0.2 }, equipment: "Barbell" },
   "Leg Press": { muscles: { "Quads": 1, "Glutes": 0.6, "Hamstrings": 0.2 }, equipment: "Machine" },
-  "Lunges": { muscles: { "Quads": 1, "Glutes": 1, "Hamstrings": 0.3, "Hip Flexors": 0.2 }, equipment: "Dumbbell" },
+  "Lunges": { bwPercent: 0.5, muscles: { "Quads": 1, "Glutes": 1, "Hamstrings": 0.3, "Hip Flexors": 0.2 }, equipment: "Dumbbell" },
   "Leg Extension": { muscles: { "Quads": 1 }, equipment: "Machine" },
   "Leg Curl": { muscles: { "Hamstrings": 1 }, equipment: "Machine" },
   "Romanian Deadlift": { muscles: { "Hamstrings": 1, "Glutes": 0.6, "Lower Back": 0.6 }, equipment: "Barbell" },
@@ -1207,15 +1208,15 @@ const BASE_EXERCISES = {
   "Hack Squat": { muscles: { "Quads": 1, "Glutes": 0.6, "Hamstrings": 0.2 }, equipment: "Machine" },
   "Bulgarian Split Squat": { muscles: { "Quads": 1, "Glutes": 1, "Hamstrings": 0.3, "Hip Flexors": 0.2 }, equipment: "Dumbbell" },
   "Goblet Squat": { muscles: { "Quads": 1, "Glutes": 0.6, "Upper Back": 0.2 }, equipment: "Dumbbell" },
-  "Pistol Squat": { muscles: { "Quads": 1, "Glutes": 0.6, "Hip Flexors": 0.3 }, equipment: "Bodyweight" },
-  "Jump Squat": { muscles: { "Quads": 1, "Glutes": 1, "Calves": 0.6 }, equipment: "Bodyweight" },
+  "Pistol Squat": { bwPercent: 0.72, muscles: { "Quads": 1, "Glutes": 0.6, "Hip Flexors": 0.3 }, equipment: "Bodyweight" },
+  "Jump Squat": { bwPercent: 0.56, muscles: { "Quads": 1, "Glutes": 1, "Calves": 0.6 }, equipment: "Bodyweight" },
   "Wall Sit": { timed: true, muscles: { "Quads": 1, "Glutes": 0.3 }, equipment: "Bodyweight" },
-  "Bodyweight Squat": { muscles: { "Quads": 1, "Glutes": 0.6 }, equipment: "Bodyweight" },
-  "Walking Lunge": { muscles: { "Quads": 1, "Glutes": 1, "Hamstrings": 0.3, "Calves": 0.2 }, equipment: "Dumbbell" },
-  "Reverse Lunge": { muscles: { "Quads": 1, "Glutes": 1, "Hip Flexors": 0.2 }, equipment: "Dumbbell" },
-  "Step Up": { muscles: { "Quads": 1, "Glutes": 1, "Hamstrings": 0.2, "Hip Flexors": 0.2 }, equipment: "Dumbbell" },
-  "Nordic Curl": { muscles: { "Hamstrings": 1, "Lower Back": 0.3, "Glutes": 0.2 }, equipment: "Bodyweight" },
-  "Glute Bridge": { muscles: { "Glutes": 1, "Hamstrings": 0.6 }, equipment: "Bodyweight" },
+  "Bodyweight Squat": { bwPercent: 0.56, muscles: { "Quads": 1, "Glutes": 0.6 }, equipment: "Bodyweight" },
+  "Walking Lunge": { bwPercent: 0.5, muscles: { "Quads": 1, "Glutes": 1, "Hamstrings": 0.3, "Calves": 0.2 }, equipment: "Dumbbell" },
+  "Reverse Lunge": { bwPercent: 0.5, muscles: { "Quads": 1, "Glutes": 1, "Hip Flexors": 0.2 }, equipment: "Dumbbell" },
+  "Step Up": { bwPercent: 0.8, muscles: { "Quads": 1, "Glutes": 1, "Hamstrings": 0.2, "Hip Flexors": 0.2 }, equipment: "Dumbbell" },
+  "Nordic Curl": { bwPercent: 0.8, muscles: { "Hamstrings": 1, "Lower Back": 0.3, "Glutes": 0.2 }, equipment: "Bodyweight" },
+  "Glute Bridge": { bwPercent: 0.5, muscles: { "Glutes": 1, "Hamstrings": 0.6 }, equipment: "Bodyweight" },
   "Cable Kickback": { muscles: { "Glutes": 1, "Hamstrings": 0.3 }, equipment: "Cable" },
   "Seated Calf Raise": { muscles: { "Calves": 1 }, equipment: "Machine" },
   "Standing Calf Raise": { muscles: { "Calves": 1 }, equipment: "Machine" },
@@ -1237,11 +1238,11 @@ const BASE_EXERCISES = {
   "Treadmill Run": { timed: true, timedUnit: "mins", muscles: { "Quads": 0.6, "Hamstrings": 0.6, "Glutes": 0.6, "Calves": 1, "Hip Flexors": 0.3 }, equipment: "Machine" },
   "Stair Climb": { timed: true, timedUnit: "mins", muscles: { "Quads": 1, "Glutes": 1, "Calves": 0.6, "Hamstrings": 0.3 }, equipment: "Machine" },
   "Jump Rope": { timed: true, timedUnit: "mins", muscles: { "Calves": 1, "Quads": 0.3, "Front Shoulders": 0.2 }, equipment: "Bodyweight" },
-  "Tuck Front Lever": { timed: true, muscles: { "Lats": 1, "Upper Abs": 0.6, "Biceps": 0.3, "Forearms": 0.3 }, equipment: "Bodyweight" },
-  "Advanced Tuck Front Lever": { timed: true, muscles: { "Lats": 1, "Upper Abs": 0.6, "Lower Abs": 0.3, "Biceps": 0.3, "Forearms": 0.3 }, equipment: "Bodyweight" },
-  "Single Leg Front Lever": { timed: true, muscles: { "Lats": 1, "Lower Abs": 0.6, "Upper Abs": 0.6, "Biceps": 0.3, "Forearms": 0.3 }, equipment: "Bodyweight" },
-  "Straddle Front Lever": { timed: true, muscles: { "Lats": 1, "Lower Abs": 0.6, "Upper Abs": 0.6, "Biceps": 0.3, "Forearms": 0.3 }, equipment: "Bodyweight" },
-  "Front Lever": { timed: true, muscles: { "Lats": 1, "Lower Abs": 1, "Upper Abs": 0.6, "Biceps": 0.3, "Forearms": 0.6 }, equipment: "Bodyweight" },
+  "Tuck Front Lever": { timed: true, bwPercent: 1.00, muscles: { "Lats": 1, "Upper Abs": 0.6, "Biceps": 0.3, "Forearms": 0.3 }, equipment: "Bodyweight" },
+  "Advanced Tuck Front Lever": { timed: true, bwPercent: 1.00, muscles: { "Lats": 1, "Upper Abs": 0.6, "Lower Abs": 0.3, "Biceps": 0.3, "Forearms": 0.3 }, equipment: "Bodyweight" },
+  "Single Leg Front Lever": { timed: true, bwPercent: 1.00, muscles: { "Lats": 1, "Lower Abs": 0.6, "Upper Abs": 0.6, "Biceps": 0.3, "Forearms": 0.3 }, equipment: "Bodyweight" },
+  "Straddle Front Lever": { timed: true, bwPercent: 1.00, muscles: { "Lats": 1, "Lower Abs": 0.6, "Upper Abs": 0.6, "Biceps": 0.3, "Forearms": 0.3 }, equipment: "Bodyweight" },
+  "Front Lever": { timed: true, bwPercent: 1.00, muscles: { "Lats": 1, "Lower Abs": 1, "Upper Abs": 0.6, "Biceps": 0.3, "Forearms": 0.6 }, equipment: "Bodyweight" },
   "Front Lever Row": { muscles: { "Lats": 1, "Upper Back": 0.6, "Biceps": 0.6 }, equipment: "Bodyweight" },
   "Front Lever Raise": { muscles: { "Lats": 1, "Lower Abs": 0.6, "Upper Abs": 0.6 }, equipment: "Bodyweight" },
   "Ice Cream Makers": { muscles: { "Lats": 1, "Upper Abs": 0.6, "Triceps": 0.3 }, equipment: "Bodyweight" },
@@ -1250,14 +1251,14 @@ const BASE_EXERCISES = {
   "Freestanding Handstand Hold": { timed: true, muscles: { "Front Shoulders": 1, "Lateral Shoulders": 0.6, "Upper Abs": 0.6, "Forearms": 0.3 }, equipment: "Bodyweight" },
   "Chest-to-Wall Handstand Hold": { timed: true, muscles: { "Front Shoulders": 1, "Lateral Shoulders": 0.3, "Upper Abs": 0.6, "Lower Back": 0.2 }, equipment: "Bodyweight" },
   "Handstand Shoulder Taps": { timed: true, muscles: { "Front Shoulders": 1, "Lateral Shoulders": 0.6, "Upper Abs": 0.6, "Obliques": 0.3 }, equipment: "Bodyweight" },
-  "Deficit Handstand Push Up": { muscles: { "Front Shoulders": 1, "Lateral Shoulders": 0.6, "Triceps": 1 }, equipment: "Bodyweight" },
-  "Handstand Push Up Negative": { muscles: { "Front Shoulders": 1, "Lateral Shoulders": 0.6, "Triceps": 0.6 }, equipment: "Bodyweight" },
+  "Deficit Handstand Push Up": { bwPercent: 1.0, muscles: { "Front Shoulders": 1, "Lateral Shoulders": 0.6, "Triceps": 1 }, equipment: "Bodyweight" },
+  "Handstand Push Up Negative": { bwPercent: 1.0, muscles: { "Front Shoulders": 1, "Lateral Shoulders": 0.6, "Triceps": 0.6 }, equipment: "Bodyweight" },
   "Frog Stand": { timed: true, muscles: { "Front Shoulders": 1, "Upper Abs": 0.6, "Forearms": 0.3, "Triceps": 0.3 }, equipment: "Bodyweight" },
-  "Tuck Planche": { timed: true, muscles: { "Front Shoulders": 1, "Lower Abs": 0.6, "Middle Chest": 0.3, "Triceps": 0.6, "Forearms": 0.3 }, equipment: "Bodyweight" },
-  "Advanced Tuck Planche": { timed: true, muscles: { "Front Shoulders": 1, "Lower Abs": 0.6, "Middle Chest": 0.3, "Triceps": 0.6, "Forearms": 0.3 }, equipment: "Bodyweight" },
-  "Straddle Planche": { timed: true, muscles: { "Front Shoulders": 1, "Lower Abs": 0.6, "Middle Chest": 0.6, "Triceps": 0.6, "Forearms": 0.6 }, equipment: "Bodyweight" },
-  "Full Planche": { timed: true, muscles: { "Front Shoulders": 1, "Lower Abs": 0.6, "Middle Chest": 0.6, "Triceps": 0.6, "Forearms": 0.6 }, equipment: "Bodyweight" },
-  "Planche Lean": { timed: true, muscles: { "Front Shoulders": 1, "Middle Chest": 0.6, "Forearms": 0.6, "Lower Abs": 0.3 }, equipment: "Bodyweight" },
+  "Tuck Planche": { timed: true, bwPercent: 1.00, muscles: { "Front Shoulders": 1, "Lower Abs": 0.6, "Middle Chest": 0.3, "Triceps": 0.6, "Forearms": 0.3 }, equipment: "Bodyweight" },
+  "Advanced Tuck Planche": { timed: true, bwPercent: 1.00, muscles: { "Front Shoulders": 1, "Lower Abs": 0.6, "Middle Chest": 0.3, "Triceps": 0.6, "Forearms": 0.3 }, equipment: "Bodyweight" },
+  "Straddle Planche": { timed: true, bwPercent: 1.00, muscles: { "Front Shoulders": 1, "Lower Abs": 0.6, "Middle Chest": 0.6, "Triceps": 0.6, "Forearms": 0.6 }, equipment: "Bodyweight" },
+  "Full Planche": { timed: true, bwPercent: 1.00, muscles: { "Front Shoulders": 1, "Lower Abs": 0.6, "Middle Chest": 0.6, "Triceps": 0.6, "Forearms": 0.6 }, equipment: "Bodyweight" },
+  "Planche Lean": { timed: true, bwPercent: 1.00, muscles: { "Front Shoulders": 1, "Middle Chest": 0.6, "Forearms": 0.6, "Lower Abs": 0.3 }, equipment: "Bodyweight" },
   "Planche Push Up": { muscles: { "Front Shoulders": 1, "Middle Chest": 0.6, "Triceps": 0.6 }, equipment: "Bodyweight" },
 };
 const MUSCLES = [
@@ -1957,6 +1958,10 @@ function isLowerBodyExercise(name) {
 }
 
 function progressiveOverloadSuggestion(exerciseName, targetReps) {
+  const exDef = EXERCISES_ALL[exerciseName] || {};
+  const bwPct = exDef.bwPercent;
+  const userBW = latestBodyweightKg();
+
   // gather last 3 sessions that include this exercise, oldest-first
   const sessions = myWorkouts
     .filter(w => w.exercises && w.exercises.some(e => e.name === exerciseName))
@@ -1964,7 +1969,17 @@ function progressiveOverloadSuggestion(exerciseName, targetReps) {
     .slice(-3)
     .map(w => w.exercises.find(e => e.name === exerciseName));
 
-  if (!sessions.length) return null; // no history yet
+  // no history — if it's a BW exercise, autofill with BW percentage
+  if (!sessions.length) {
+    if (bwPct && userBW) {
+      const bwWeight = Math.round(userBW * bwPct * 10) / 10;
+      return Array(3).fill(null).map(() => ({
+        reps: targetReps, weight: bwWeight, rir: null,
+        suggestion: `~${bwPct*100}% BW (${bwWeight}kg est.)`,
+      }));
+    }
+    return null;
+  }
 
   const last = sessions[sessions.length - 1];
   if (!last || !last.sets || !last.sets.length) return null;
@@ -2714,6 +2729,58 @@ function prSystemUnlocked() {
 // Source: StrengthLevel / ExRx / Symmetric Strength aggregated data
 // Five tiers: Beginner, Novice, Intermediate, Advanced, Elite
 // Male ratios; female = male × 0.75 for upper body, × 0.80 for lower body
+/* =========================================================================
+   STAT BONUS MAPPINGS — PRs contribute toward specific stats
+   ========================================================================= */
+const STAT_BONUS_MAP = {
+  // Strength — 1RM PRs on compound/strength lifts
+  strength: new Set([
+    'Bench Press','Incline Bench Press','Decline Bench Press','Close Grip Bench Press',
+    'Overhead Press','Push Press','Barbell Row','Pendlay Row','Meadows Row',
+    'Squat','Front Squat','Deadlift','Sumo Deadlift','Stiff-Leg Deadlift',
+    'Romanian Deadlift','Rack Pull','Hip Thrust','Leg Press','Hack Squat',
+    'Pull Up','Chin Up','Dips','Muscle Up','Weighted Dip','Weighted Pull Up',
+  ]),
+  // Endurance — distance/time PRs on cardio
+  endurance: new Set([
+    'Running','Easy Run','Long Run','Treadmill Run','Stair Climb',
+  ]),
+  // Agility — speed/interval PRs
+  agility: new Set([
+    'Hill Sprints','Interval Running','Tempo Run','Sprinting','Jump Rope',
+    'Box Jump','Jump Squat','Burpee',
+  ]),
+  // Focus — skill holds (planche, front lever, handstand)
+  focus: new Set([
+    'Tuck Planche','Advanced Tuck Planche','Straddle Planche','Full Planche',
+    'Tuck Front Lever','Advanced Tuck Front Lever','Single Leg Front Lever',
+    'Straddle Front Lever','Front Lever','Wall Handstand Hold',
+    'Freestanding Handstand Hold','Chest-to-Wall Handstand Hold','L-Sit',
+    'Planche Lean','Dead Hang',
+  ]),
+};
+
+// Small stat XP bonus per PR tier — doesn't rank up, just contributes
+const STAT_BONUS_XP = { Elite: 3, Advanced: 2, Intermediate: 1, Novice: 0, Beginner: 0 };
+
+async function applyStatBonus(statId, tier) {
+  if (!profile || !statId) return;
+  const bonus = STAT_BONUS_XP[tier] || 0;
+  if (!bonus) return;
+  // store accumulated stat XP in profile.statXP
+  const statXP = { ...(profile.statXP || {}) };
+  statXP[statId] = (statXP[statId] || 0) + bonus;
+  await setDoc(doc(db, 'users', currentUser.uid), { statXP }, { merge: true });
+  profile.statXP = statXP;
+}
+
+function getStatForExercise(exerciseName) {
+  for (const [stat, exercises] of Object.entries(STAT_BONUS_MAP)) {
+    if (exercises.has(exerciseName)) return stat;
+  }
+  return null;
+}
+
 const STRENGTH_STANDARDS = {
   // [ Beginner, Novice, Intermediate, Advanced, Elite ] — ratios (lift/BW)
   "Bench Press":           { male: [0.5, 0.75, 1.0, 1.25, 1.5],  female: [0.35, 0.5, 0.75, 0.9, 1.1] },
@@ -2776,6 +2843,9 @@ async function checkAndAwardPRs(exercises, workoutDate) {
 
       updates[ex.name] = { e1rm, date: workoutDate, tier: tier || 'Unranked', xp };
       awarded.push({ exercise: ex.name, e1rm, tier, xp });
+      // apply stat bonus based on exercise category
+      const statId = getStatForExercise(ex.name);
+      if (statId && tier) await applyStatBonus(statId, tier);
     }
   }
 
@@ -2935,8 +3005,13 @@ function renderCharCard() {
     const canUpgrade = cur !== 'S' && ap >= cost;
     const isMaxed = cur === 'S';
     const rankCls = 'rank-' + cur.toLowerCase();
-    const btnCls = isMaxed ? 'stat-upgrade-btn maxed' : canUpgrade ? 'stat-upgrade-btn can-upgrade' : 'stat-upgrade-btn';
     const btnLabel = isMaxed ? 'MAX' : `${cost} AP`;
+    // stat XP bonus indicator
+    const statXP = (profile.statXP || {})[def.id] || 0;
+    const xpNeeded = 10; // 10 bonus XP = 1 free AP toward this stat
+    const xpPct = Math.min(100, (statXP % xpNeeded) / xpNeeded * 100);
+    const bonusAp = Math.floor(statXP / xpNeeded);
+    const xpTag = statXP > 0 ? `<span class="stat-xp-bonus" title="${statXP} bonus XP from PRs">+${bonusAp} AP</span>` : '';
     return `<div class="stat-row">
       <span class="stat-label" title="${def.desc}">${def.label}</span>
       <div class="stat-bar-wrap">
@@ -2944,7 +3019,10 @@ function renderCharCard() {
         <div class="stat-tiers">${RANK_TIERS.map(()=>'<div class="stat-tier-seg"></div>').join('')}</div>
       </div>
       <span class="stat-rank ${rankCls}">${cur}</span>
-      <button class="stat-upgrade-btn ${canUpgrade?'can-upgrade':''} ${isMaxed?'maxed':''}" data-stat="${def.id}" ${isMaxed?'disabled':''}>${btnLabel}</button>
+      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:2px;">
+        <button class="stat-upgrade-btn ${canUpgrade?'can-upgrade':''} ${isMaxed?'maxed':''}" data-stat="${def.id}" ${isMaxed?'disabled':''}>${btnLabel}</button>
+        ${xpTag}
+      </div>
     </div>`;
   }).join('');
 
