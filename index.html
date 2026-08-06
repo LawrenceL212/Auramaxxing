@@ -410,6 +410,29 @@
   .pr-tier.tier-Unranked{background:var(--card);color:var(--text-faint);border:1px solid var(--border);}
   .pr-xp{font-family:var(--font-mono);font-size:11px;color:var(--brass);white-space:nowrap;}
 
+  /* ========== Strength Rankings ========== */
+  .strength-rank-list{display:flex;flex-direction:column;gap:8px;}
+  .strength-rank-row{display:flex;align-items:center;gap:12px;padding:10px 12px;background:var(--card-2);border:1px solid var(--border);border-radius:8px;cursor:pointer;transition:border-color .2s;}
+  .strength-rank-row:hover{border-color:var(--brass);}
+  .strength-rank-row.me{border-color:rgba(61,165,255,0.4);}
+  .strength-rank-pos{font-family:var(--font-mono);font-size:13px;color:var(--text-faint);width:18px;text-align:center;flex-shrink:0;}
+  .strength-rank-info{flex:1;min-width:0;}
+  .strength-rank-name{font-size:14px;font-weight:600;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .strength-rank-title{font-size:11px;display:block;margin-top:2px;}
+  .strength-rank-score{display:flex;flex-direction:column;align-items:flex-end;flex-shrink:0;}
+  .strength-top-badge{font-size:10px;color:var(--brass);font-weight:400;margin-left:6px;}
+
+  /* ── Training Style Tag ── */
+  .training-style-tag{display:inline-block;font-size:10px;background:rgba(47,184,198,0.12);border:1px solid var(--maintaining);border-radius:10px;padding:2px 8px;color:var(--maintaining);margin-left:6px;vertical-align:middle;}
+
+  /* ── Run Logger ── */
+  .run-type-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px;}
+  .run-type-chip{padding:6px 14px;border-radius:16px;border:1px solid var(--border);background:var(--card-2);color:var(--text-dim);font-size:13px;cursor:pointer;touch-action:manipulation;}
+  .run-type-chip.selected{background:rgba(47,184,198,0.15);border-color:var(--maintaining);color:var(--maintaining);font-weight:700;}
+  .run-unit-toggle{display:flex;border:1px solid var(--border);border-radius:6px;overflow:hidden;flex-shrink:0;}
+  .run-unit-btn{padding:6px 10px;background:var(--card-2);border:none;color:var(--text-dim);font-size:12px;cursor:pointer;touch-action:manipulation;}
+  .run-unit-btn.selected{background:var(--maintaining);color:#fff;font-weight:700;}
+
   /* ========== Post-Workout Debrief ========== */
   .debrief-overlay{position:fixed;inset:0;z-index:200;background:rgba(5,7,13,0.95);backdrop-filter:blur(8px);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;animation:sysOverlayIn .3s ease;overflow-y:auto;}
   .debrief-window{background:linear-gradient(160deg,rgba(14,17,32,1),rgba(22,26,48,1));border:1px solid var(--brass);border-radius:6px;padding:28px 24px;width:100%;max-width:420px;box-shadow:0 0 60px -10px rgba(61,165,255,0.4);position:relative;}
@@ -763,6 +786,7 @@
       <div id="program-editor-wrap"></div>
 
       <button class="btn btn-block" id="manual-log-btn" style="margin-top:4px;">+ Log a workout manually</button>
+      <button class="btn btn-block" id="log-run-btn" style="margin-top:8px;background:var(--maintaining);color:#fff;">🏃 Log a run</button>
     </section>
 
     <!-- Full-screen workout logging modal — opened by Begin Quest or manual logging -->
@@ -811,6 +835,60 @@
     <div class="workout-pill hidden" id="workout-pill">
       <span class="workout-pill-label" id="workout-pill-label">Workout in progress</span>
       <button class="workout-pill-btn" id="workout-pill-open">Resume →</button>
+    </div>
+
+    <!-- Run Logger Modal -->
+    <div class="modal-overlay hidden" id="run-modal-overlay">
+      <div class="modal" style="max-height:85vh;overflow-y:auto;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+          <h3 style="margin:0;">🏃 Log a Run</h3>
+          <button class="icon-btn" id="close-run-modal" style="font-size:20px;">✕</button>
+        </div>
+        <div class="field">
+          <label>Run type</label>
+          <div class="run-type-chips" id="run-type-chips">
+            <button type="button" class="run-type-chip selected" data-type="Easy Run">Easy</button>
+            <button type="button" class="run-type-chip" data-type="Tempo Run">Tempo</button>
+            <button type="button" class="run-type-chip" data-type="Interval Running">Intervals</button>
+            <button type="button" class="run-type-chip" data-type="Long Run">Long Run</button>
+            <button type="button" class="run-type-chip" data-type="Hill Sprints">Hills</button>
+            <button type="button" class="run-type-chip" data-type="Race">Race</button>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+          <div class="field">
+            <label>Distance</label>
+            <div style="display:flex;align-items:center;gap:6px;">
+              <input type="number" id="run-distance" step="0.01" min="0" placeholder="0.00" inputmode="decimal" style="flex:1;" />
+              <div class="run-unit-toggle">
+                <button type="button" class="run-unit-btn selected" data-unit="km">km</button>
+                <button type="button" class="run-unit-btn" data-unit="mi">mi</button>
+              </div>
+            </div>
+          </div>
+          <div class="field">
+            <label>Duration</label>
+            <div style="display:flex;align-items:center;gap:4px;">
+              <input type="number" id="run-mins" min="0" max="999" placeholder="00" inputmode="numeric" style="width:52px;text-align:center;" />
+              <span style="color:var(--text-dim);">m</span>
+              <input type="number" id="run-secs" min="0" max="59" placeholder="00" inputmode="numeric" style="width:44px;text-align:center;" />
+              <span style="color:var(--text-dim);">s</span>
+            </div>
+          </div>
+        </div>
+        <div class="field">
+          <label>Pace <span id="run-pace-display" style="color:var(--brass);font-family:var(--font-mono);"></span></label>
+        </div>
+        <div class="field">
+          <label>Notes (optional)</label>
+          <input type="text" id="run-notes" placeholder="How did it feel?" inputmode="text" maxlength="100" />
+        </div>
+        <div class="field">
+          <label>Date</label>
+          <input type="date" id="run-date" />
+        </div>
+        <button class="btn btn-primary" id="save-run-btn" style="width:100%;">Save Run</button>
+      </div>
     </div>
 
     <!-- Custom in-app numpad — replaces system keyboard for reps/weight -->
@@ -875,6 +953,9 @@
 
       <!-- Party Stats Dashboard -->
       <div id="party-dashboard"></div>
+
+      <!-- Strength Rankings -->
+      <div id="strength-rankings"></div>
 
       <div class="card">
         <div class="card-title"><h3>Party status — today</h3></div>
@@ -1134,6 +1215,10 @@ const BASE_EXERCISES = {
 
   /* ---- Running & cardio ---- */
   "Running": { timed: true, timedUnit: "mins", muscles: { "Quads": 0.6, "Hamstrings": 0.6, "Glutes": 0.6, "Calves": 1, "Hip Flexors": 0.3 }, equipment: "Bodyweight" },
+  "Easy Run": { timed: true, timedUnit: "mins", muscles: { "Quads": 0.6, "Hamstrings": 0.6, "Glutes": 0.6, "Calves": 1, "Hip Flexors": 0.3 }, equipment: "Bodyweight" },
+  "Tempo Run": { timed: true, timedUnit: "mins", muscles: { "Quads": 0.6, "Hamstrings": 0.6, "Glutes": 0.6, "Calves": 1, "Hip Flexors": 0.3 }, equipment: "Bodyweight" },
+  "Long Run": { timed: true, timedUnit: "mins", muscles: { "Quads": 0.6, "Hamstrings": 0.6, "Glutes": 0.6, "Calves": 1, "Hip Flexors": 0.3 }, equipment: "Bodyweight" },
+  "Race": { timed: true, timedUnit: "mins", muscles: { "Quads": 0.6, "Hamstrings": 0.6, "Glutes": 0.6, "Calves": 1, "Hip Flexors": 0.3 }, equipment: "Bodyweight" },
   "Sprinting": { muscles: { "Quads": 1, "Hamstrings": 1, "Glutes": 1, "Calves": 0.6, "Hip Flexors": 0.6 }, equipment: "Bodyweight" },
   "Interval Running": { timed: true, timedUnit: "mins", muscles: { "Quads": 0.6, "Hamstrings": 0.6, "Glutes": 0.6, "Calves": 1, "Hip Flexors": 0.3 }, equipment: "Bodyweight" },
   "Hill Sprints": { timed: true, timedUnit: "mins", muscles: { "Quads": 1, "Glutes": 1, "Hamstrings": 0.6, "Calves": 0.6, "Hip Flexors": 0.6 }, equipment: "Bodyweight" },
@@ -1979,6 +2064,105 @@ document.getElementById('workout-pill-open').addEventListener('click', () => {
   openWorkoutModal();
 });
 document.getElementById('manual-log-btn').addEventListener('click', () => {
+
+/* ── Run Logger ── */
+document.getElementById('log-run-btn').addEventListener('click', () => {
+  document.getElementById('run-date').value = todayStr();
+  document.getElementById('run-modal-overlay').classList.remove('hidden');
+  document.body.style.overflow = 'hidden';
+});
+document.getElementById('close-run-modal').addEventListener('click', () => {
+  document.getElementById('run-modal-overlay').classList.add('hidden');
+  document.body.style.overflow = '';
+});
+document.getElementById('run-modal-overlay').addEventListener('click', e => {
+  if (e.target === document.getElementById('run-modal-overlay')) {
+    document.getElementById('run-modal-overlay').classList.add('hidden');
+    document.body.style.overflow = '';
+  }
+});
+
+// run type chips
+let selectedRunType = 'Easy Run';
+document.getElementById('run-type-chips').querySelectorAll('.run-type-chip').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.run-type-chip').forEach(b => b.classList.remove('selected'));
+    btn.classList.add('selected');
+    selectedRunType = btn.dataset.type;
+  });
+});
+
+// unit toggle
+let runUnit = 'km';
+document.querySelectorAll('.run-unit-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.run-unit-btn').forEach(b => b.classList.remove('selected'));
+    btn.classList.add('selected');
+    runUnit = btn.dataset.unit;
+    updateRunPace();
+  });
+});
+
+function updateRunPace() {
+  const dist = parseFloat(document.getElementById('run-distance').value) || 0;
+  const mins = parseInt(document.getElementById('run-mins').value) || 0;
+  const secs = parseInt(document.getElementById('run-secs').value) || 0;
+  const totalMins = mins + secs / 60;
+  if (!dist || !totalMins) { document.getElementById('run-pace-display').textContent = ''; return; }
+  const distKm = runUnit === 'mi' ? dist * 1.60934 : dist;
+  const paceMinPerKm = totalMins / distKm;
+  const pm = Math.floor(paceMinPerKm);
+  const ps = Math.round((paceMinPerKm - pm) * 60);
+  document.getElementById('run-pace-display').textContent = `${pm}:${String(ps).padStart(2,'0')} /km`;
+}
+['run-distance','run-mins','run-secs'].forEach(id =>
+  document.getElementById(id).addEventListener('input', updateRunPace));
+
+document.getElementById('save-run-btn').addEventListener('click', async () => {
+  const dist = parseFloat(document.getElementById('run-distance').value) || 0;
+  const mins = parseInt(document.getElementById('run-mins').value) || 0;
+  const secs = parseInt(document.getElementById('run-secs').value) || 0;
+  const notes = document.getElementById('run-notes').value.trim();
+  const date = document.getElementById('run-date').value || todayStr();
+  if (!dist && !(mins || secs)) { showToast('Enter distance or duration.', 'error'); return; }
+
+  const distKm = runUnit === 'mi' ? dist * 1.60934 : dist;
+  const totalMins = mins + secs / 60;
+  const paceStr = distKm && totalMins ? (() => {
+    const p = totalMins / distKm;
+    return `${Math.floor(p)}:${String(Math.round((p%1)*60)).padStart(2,'0')} /km`;
+  })() : '';
+
+  const btn = document.getElementById('save-run-btn');
+  btn.disabled = true; btn.textContent = 'Saving…';
+  try {
+    // save as a workout with one exercise — the run type
+    const sets = [{ reps: Math.round(totalMins) || 1, weight: 0, distKm: Math.round(distKm*100)/100, pace: paceStr, notes }];
+    await addDoc(collection(db, 'workouts'), {
+      uid: currentUser.uid,
+      displayName: profile.displayName,
+      date,
+      time: nowTimeStr(),
+      isRun: true,
+      runSummary: { distKm: Math.round(distKm*100)/100, durationMins: Math.round(totalMins*10)/10, pace: paceStr, type: selectedRunType, unit: runUnit },
+      exercises: [{ name: selectedRunType, sets }],
+      programDayIndex: null,
+      createdAt: serverTimestamp(),
+    });
+    await loadAllData();
+    const earned = await tryAwardAp();
+    document.getElementById('run-modal-overlay').classList.add('hidden');
+    document.body.style.overflow = '';
+    startDailyTimer();
+    showToast(`Run logged — ${distKm ? distKm.toFixed(2)+'km' : ''} ${paceStr}${earned ? ' · +'+earned+' AP' : ''}`, 'success');
+    // reset form
+    ['run-distance','run-mins','run-secs','run-notes'].forEach(id => { document.getElementById(id).value = ''; });
+    document.getElementById('run-pace-display').textContent = '';
+  } catch(err) {
+    showToast('Could not save: ' + err.message, 'error');
+  }
+  btn.disabled = false; btn.textContent = 'Save Run';
+});
   activeDayIndex = null;
   document.getElementById('logger-title').textContent = 'Log exercises';
   const rows = document.getElementById('exercise-rows');
@@ -2641,7 +2825,9 @@ function renderCharCard() {
   const rankClass = 'rank-' + charRank.toLowerCase();
 
   document.getElementById('char-name').textContent = profile.displayName || 'Hunter';
-  document.getElementById('char-title').textContent = RANK_TITLES[charRank];
+  const style = analyseTrainingStyle(currentUser.uid);
+  const styleTag = style ? ` · ${style.emoji} ${style.style}` : '';
+  document.getElementById('char-title').textContent = RANK_TITLES[charRank] + styleTag;
   document.getElementById('ap-amount').textContent = ap.toLocaleString();
   const badge = document.getElementById('char-rank-badge');
   badge.textContent = charRank;
@@ -2930,6 +3116,179 @@ function getUserClass(user) {
   return null;
 }
 
+/* =========================================================================
+   STRENGTH RANKING SYSTEM
+   Based on StrengthLevel percentile methodology:
+   Beginner=5th, Novice=20th, Intermediate=50th, Advanced=80th, Elite=95th
+   Score = average percentile across all PRs with world standards
+   ========================================================================= */
+const TIER_PERCENTILE = { Beginner: 5, Novice: 20, Intermediate: 50, Advanced: 80, Elite: 95 };
+
+function getUserStrengthScore(uid) {
+  // get this user's PRs
+  // for the current user we have myPRs, for others we need their prs doc
+  // this function works with a pre-loaded prs object
+  const userPRs = uid === currentUser?.uid ? myPRs : (allUserPRs[uid] || {});
+  const user = allUsers.find(u => u.uid === uid);
+  if (!user || !Object.keys(userPRs).length) return null;
+
+  const bw = getUserBodyweight(uid);
+  const gender = user.bodyType === 'female' ? 'female' : 'male';
+
+  const scores = [];
+  for (const [exName, pr] of Object.entries(userPRs)) {
+    const std = STRENGTH_STANDARDS[exName];
+    if (!std || !bw) {
+      // no standard — use stored tier if available
+      if (pr.tier && TIER_PERCENTILE[pr.tier]) scores.push(TIER_PERCENTILE[pr.tier]);
+      continue;
+    }
+    const tier = getStrengthTier(exName, pr.e1rm, bw, gender);
+    if (tier) scores.push(TIER_PERCENTILE[tier]);
+  }
+  if (!scores.length) return null;
+  return Math.round(scores.reduce((a,b)=>a+b,0) / scores.length);
+}
+
+function getUserBodyweight(uid) {
+  if (uid === currentUser?.uid) {
+    if (!myWeights.length) return null;
+    return Number(myWeights[myWeights.length-1].weight) || null;
+  }
+  // for others use stored bodyweight in their profile
+  const user = allUsers.find(u => u.uid === uid);
+  return user?.bodyweightKg || null;
+}
+
+function strengthScoreToTitle(score) {
+  if (score === null) return null;
+  if (score >= 90) return '⚔️ [The Elite]';
+  if (score >= 70) return '💀 [Advanced Hunter]';
+  if (score >= 45) return '🗡️ [Intermediate Hunter]';
+  if (score >= 15) return '🛡️ [Novice Hunter]';
+  return '👤 [Beginner Hunter]';
+}
+
+function strengthScoreToLabel(score) {
+  if (score === null) return 'Unranked';
+  if (score >= 90) return 'Elite';
+  if (score >= 70) return 'Advanced';
+  if (score >= 45) return 'Intermediate';
+  if (score >= 15) return 'Novice';
+  return 'Beginner';
+}
+
+function strengthScoreColor(score) {
+  if (score === null) return 'var(--text-faint)';
+  if (score >= 90) return '#FFD700';
+  if (score >= 70) return 'var(--excess)';
+  if (score >= 45) return 'var(--violet)';
+  if (score >= 15) return 'var(--maintaining)';
+  return 'var(--text-dim)';
+}
+
+// cache of other users' PR docs — loaded once on board render
+let allUserPRs = {};
+async function loadAllUserPRs() {
+  const uids = allUsers.map(u => u.uid).filter(uid => uid !== currentUser?.uid);
+  await Promise.all(uids.map(async uid => {
+    try {
+      const snap = await getDoc(doc(db, 'prs', uid));
+      allUserPRs[uid] = snap.exists() ? snap.data() : {};
+    } catch { allUserPRs[uid] = {}; }
+  }));
+}
+
+function renderStrengthRankings() {
+  const el = document.getElementById('strength-rankings');
+  if (!el) return;
+
+  // compute scores for everyone
+  const scored = allUsers.map(u => {
+    const score = getUserStrengthScore(u.uid);
+    return { u, score };
+  }).sort((a,b) => (b.score??-1) - (a.score??-1));
+
+  const topScorer = scored[0];
+  const rows = scored.map(({ u, score }, i) => {
+    const isMe = u.uid === currentUser?.uid;
+    const label = strengthScoreToLabel(score);
+    const color = strengthScoreColor(score);
+    const isTop = i === 0 && score !== null;
+    const pct = score !== null ? `${score}th percentile` : 'No PRs yet';
+    return `<div class="strength-rank-row ${isMe ? 'me' : ''}" data-uid="${u.uid}">
+      <span class="strength-rank-pos">${i+1}</span>
+      <div class="strength-rank-info">
+        <span class="strength-rank-name">${escapeHtml(u.displayName||'Hunter')} ${isTop ? '<span class="strength-top-badge">👑 Party\'s Strongest</span>' : ''}</span>
+        <span class="strength-rank-title" style="color:${color};">${strengthScoreToTitle(score)||'No strength data yet'}</span>
+      </div>
+      <div class="strength-rank-score">
+        <span style="font-family:var(--font-mono);font-size:14px;color:${color};">${score !== null ? score : '—'}</span>
+        <span style="font-size:10px;color:var(--text-faint);">${pct}</span>
+      </div>
+    </div>`;
+  }).join('');
+
+  el.innerHTML = `<div class="card">
+    <div class="card-title"><h3>💪 Strength Rankings</h3></div>
+    <p style="font-size:11px;color:var(--text-faint);margin:0 0 12px;">Based on your PRs vs world standards. Score = average percentile across all ranked lifts.</p>
+    <div class="strength-rank-list">${rows}</div>
+  </div>`;
+
+  el.querySelectorAll('.strength-rank-row[data-uid]').forEach(row =>
+    row.addEventListener('click', async () => { await openHunterProfile(row.dataset.uid); }));
+}
+
+/* =========================================================================
+   TRAINING STYLE ANALYSIS + DYNAMIC TITLES
+   ========================================================================= */
+const EXERCISE_CATEGORIES = {
+  powerlifting: new Set(['Squat','Deadlift','Bench Press','Sumo Deadlift','Front Squat','Romanian Deadlift','Stiff-Leg Deadlift','Rack Pull','Good Morning','Overhead Press','Push Press']),
+  bodybuilding: new Set(['Incline Bench Press','Incline Dumbbell Press','Dumbbell Fly','Cable Crossover','Lat Pulldown','Seated Cable Row','Leg Press','Leg Extension','Leg Curl','Lateral Raise','Rear Delt Fly','Hammer Curl','Barbell Curl','Skull Crusher','Tricep Pushdown','Pec Deck Machine','Hack Squat','Hip Thrust','Bulgarian Split Squat']),
+  calisthenics: new Set(['Pull Up','Chin Up','Dips','Push Up','Ring Dips','Muscle Up','Tuck Planche','Advanced Tuck Planche','Straddle Planche','Full Planche','Tuck Front Lever','Front Lever','Wall Handstand Hold','Freestanding Handstand Hold','Handstand Push Up','L-Sit','Dragon Flag','Archer Push Up','Commando Pull Up','Inverted Row','Dead Hang']),
+  cardio: new Set(['Running','Treadmill Run','Interval Running','Hill Sprints','Stair Climb','Jump Rope','Bear Crawl','Burpee','Box Jump','Mountain Climber','Flutter Kicks','Easy Run','Tempo Run','Long Run','Race']),
+};
+
+function analyseTrainingStyle(uid) {
+  const cutoff = new Date(); cutoff.setDate(cutoff.getDate() - 30);
+  const recent = allWorkouts.filter(w => w.uid === uid && new Date(w.date) >= cutoff);
+  if (!recent.length) return null;
+
+  const counts = { powerlifting: 0, bodybuilding: 0, calisthenics: 0, cardio: 0, other: 0 };
+  let totalSets = 0;
+
+  recent.forEach(w => {
+    (w.exercises||[]).forEach(ex => {
+      const sets = (ex.sets||[]).filter(s => s.reps > 0).length || 1;
+      totalSets += sets;
+      if (EXERCISE_CATEGORIES.powerlifting.has(ex.name)) counts.powerlifting += sets;
+      else if (EXERCISE_CATEGORIES.calisthenics.has(ex.name)) counts.calisthenics += sets;
+      else if (EXERCISE_CATEGORIES.cardio.has(ex.name)) counts.cardio += sets;
+      else if (EXERCISE_CATEGORIES.bodybuilding.has(ex.name)) counts.bodybuilding += sets;
+      else counts.other += sets;
+    });
+  });
+
+  if (!totalSets) return null;
+  const pct = k => counts[k] / totalSets;
+
+  const isHybrid = pct('cardio') >= 0.2 && (pct('powerlifting') + pct('bodybuilding') + pct('calisthenics')) >= 0.3;
+  const isPureCardio = pct('cardio') >= 0.7;
+  const isCali = pct('calisthenics') >= 0.45;
+  const isPower = pct('powerlifting') >= 0.45;
+  const isBB = pct('bodybuilding') >= 0.4;
+  const isBalanced = Object.values(counts).every(v => v / totalSets < 0.5) && totalSets > 20;
+
+  if (isPureCardio) return { style: 'Endurance Wraith', emoji: '🌪️', desc: 'Pure cardio hunter' };
+  if (isHybrid) return { style: 'Hybrid Hunter', emoji: '⚡', desc: 'Gym + road combined' };
+  if (isCali) return { style: 'Shadow Athlete', emoji: '🐉', desc: 'Master of bodyweight' };
+  if (isPower) return { style: 'Powerlifter', emoji: '⚔️', desc: 'Forged from iron' };
+  if (isBB) return { style: 'Bodybuilder', emoji: '💪', desc: 'Sculpting the vessel' };
+  if (isBalanced) return { style: 'Sovereign', emoji: '⚖️', desc: 'Balance is power' };
+  if (pct('other') + pct('bodybuilding') >= 0.5) return { style: 'Street Fighter', emoji: '👊', desc: 'Functional warrior' };
+  return null;
+}
+
 function getUserTitle(uid) {
   const user = allUsers.find(u => u.uid === uid);
   if (!user) return '';
@@ -2940,8 +3299,16 @@ function getUserTitle(uid) {
   if (STAT_DEFS.every(d => (user.stats||{})[d.id] === 'S')) return '[Shadow Monarch]';
   if (streak >= 30) return '[The Unyielding]';
   if (thisWeek === Math.max(...allUsers.map(u => countSince(u.uid, weekStart)))) return '[Raid Boss]';
+  const score = getUserStrengthScore(uid);
+  if (score !== null) return strengthScoreToTitle(score);
   if (total <= 5) return '[The Weakest Hunter]';
   return '';
+}
+
+function getTrainingStyleTag(uid) {
+  const style = analyseTrainingStyle(uid);
+  if (!style) return '';
+  return `<span class="training-style-tag">${style.emoji} ${style.style}</span>`;
 }
 
 function renderWeeklySuperlatives() {
@@ -3336,6 +3703,8 @@ function renderPRPanel() {
 }
 
 function renderBoard() {
+  // load other users' PRs async then render strength rankings
+  loadAllUserPRs().then(() => renderStrengthRankings());
   const today = todayStr();
   document.getElementById('today-list').innerHTML = allUsers.map(u => {
     const done = allWorkouts.some(w => w.uid === u.uid && w.date === today);
@@ -3785,6 +4154,9 @@ function renderTrends() {
     const val = Number(document.getElementById('weight-input').value);
     if (!val) return;
     await addDoc(collection(db, 'bodyweight'), { uid: currentUser.uid, date: todayStr(), weight: val, createdAt: serverTimestamp() });
+    // store latest bodyweight on user profile so strength comparisons work for other party members
+    await setDoc(doc(db, 'users', currentUser.uid), { bodyweightKg: val }, { merge: true });
+    profile.bodyweightKg = val;
     await loadAllData(); trendsView='dashboard'; renderTrends();
   });
 }
