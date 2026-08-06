@@ -425,6 +425,18 @@
   /* ── Training Style Tag ── */
   .training-style-tag{display:inline-block;font-size:10px;background:rgba(47,184,198,0.12);border:1px solid var(--maintaining);border-radius:10px;padding:2px 8px;color:var(--maintaining);margin-left:6px;vertical-align:middle;}
 
+  /* ── Schedule mode selector ── */
+  .sched-mode-wrap{display:flex;flex-direction:column;gap:8px;margin-top:6px;}
+  .sched-mode-btn{
+    background:var(--card-2);border:1px solid var(--border);border-radius:8px;
+    padding:10px 14px;text-align:left;cursor:pointer;color:var(--text-dim);
+    font-size:13px;display:flex;flex-direction:column;gap:2px;touch-action:manipulation;
+  }
+  .sched-mode-btn.selected{border-color:var(--brass);color:var(--brass);background:var(--brass-dim);}
+  .sched-mode-desc{font-size:11px;color:var(--text-faint);font-weight:400;}
+  .sched-mode-btn.selected .sched-mode-desc{color:var(--text-dim);}
+  .day-weekday-chips{margin-top:4px;}
+
   /* ── Run Logger ── */
   .run-type-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px;}
   .run-type-chip{padding:6px 14px;border-radius:16px;border:1px solid var(--border);background:var(--card-2);color:var(--text-dim);font-size:13px;cursor:pointer;touch-action:manipulation;}
@@ -1735,6 +1747,12 @@ function renderQuestFeed() {
   const isScheduledToday = myProgram.schedule.includes(today);
   if (questCarouselIndex >= myProgram.days.length) questCarouselIndex = 0;
 
+  // in fixed mode, auto-jump carousel to today's assigned day
+  if (myProgram.scheduleMode === 'fixed') {
+    const todayDayIdx = myProgram.days.findIndex(d => (d.assignedDays||[]).includes(today));
+    if (todayDayIdx >= 0) questCarouselIndex = todayDayIdx;
+  }
+
   const dots = myProgram.days.map((_, i) => `<span class="day-dot ${i===questCarouselIndex?'current':''} ${i===rotationIdx && i!==questCarouselIndex?'done':''}"></span>`).join('');
 
   wrap.innerHTML = `
@@ -1793,7 +1811,9 @@ function buildQuestCardHTML(idx) {
   }).join('');
   const flavor = isActiveDay
     ? `[Daily Quest: <b>${escapeHtml(day.name)}</b> has arrived.]`
-    : `[Viewing: <b>${escapeHtml(day.name)}</b> — Day ${idx+1} of ${myProgram.days.length} in rotation.]`;
+    : myProgram.scheduleMode === 'fixed' && day.assignedDays?.length
+      ? `[Viewing: <b>${escapeHtml(day.name)}</b> — scheduled on ${day.assignedDays.join(', ')}.]`
+      : `[Viewing: <b>${escapeHtml(day.name)}</b> — Day ${idx+1} of ${myProgram.days.length} in rotation.]`;
   const warning = allComplete ? 'Quest cleared. Your streak holds.'
     : (isActiveDay ? 'WARNING: leaving this quest incomplete puts your streak at risk.' : `Last done: ${fmtDaysAgo(day.lastDate)}`);
   return `
@@ -2210,18 +2230,34 @@ document.querySelectorAll('.rest-preset-btn').forEach(btn => btn.addEventListene
 document.getElementById('rest-timer-stop').addEventListener('click', stopRestTimer);
 
 function renderProgramEditor(wrap) {
-  if (!myProgram) myProgram = { name: '', schedule: [], days: [], currentDayIndex: 0 };
+  if (!myProgram) myProgram = { name: '', schedule: [], days: [], currentDayIndex: 0, scheduleMode: 'rotation' };
   if (!myProgram.schedule) myProgram.schedule = [];
+  if (!myProgram.scheduleMode) myProgram.scheduleMode = 'rotation';
+
   wrap.innerHTML = `
     <div class="card">
       <div class="card-title"><h3>Build your plan</h3></div>
       <div class="field"><label>Plan name</label><input id="prog-name-input" value="${escapeHtml(myProgram.name||'')}" placeholder="e.g. Lock In Gang" /></div>
+
       <div class="field">
-        <label>Training days</label>
+        <label>Schedule mode</label>
+        <div class="sched-mode-wrap">
+          <button type="button" class="sched-mode-btn ${myProgram.scheduleMode==='rotation'?'selected':''}" data-mode="rotation">
+            🔄 Rotation<span class="sched-mode-desc">Days cycle in order regardless of weekday</span>
+          </button>
+          <button type="button" class="sched-mode-btn ${myProgram.scheduleMode==='fixed'?'selected':''}" data-mode="fixed">
+            📅 Fixed days<span class="sched-mode-desc">Pin each workout to specific days of the week</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="field" id="rotation-schedule-field" style="${myProgram.scheduleMode==='fixed'?'display:none':''}">
+        <label>Training days (rotation runs on these days)</label>
         <div class="weekday-chips" id="weekday-chips">
           ${WEEKDAYS.map(d => `<button type="button" class="weekday-chip ${myProgram.schedule.includes(d)?'on':''}" data-day="${d}">${d}</button>`).join('')}
         </div>
       </div>
+
       <div id="prog-days-wrap"></div>
       <button class="btn add-exercise-btn" id="add-day-btn">+ Add workout day</button>
       <div style="display:flex;gap:10px;margin-top:16px;">
@@ -2229,26 +2265,47 @@ function renderProgramEditor(wrap) {
         <button class="btn btn-primary" id="save-program-btn" style="flex:2;">Save plan</button>
       </div>
     </div>`;
+
   renderDayEditors();
+
+  // mode toggle
+  wrap.querySelectorAll('.sched-mode-btn').forEach(btn => btn.addEventListener('click', () => {
+    wrap.querySelectorAll('.sched-mode-btn').forEach(b => b.classList.remove('selected'));
+    btn.classList.add('selected');
+    myProgram.scheduleMode = btn.dataset.mode;
+    document.getElementById('rotation-schedule-field').style.display = myProgram.scheduleMode === 'fixed' ? 'none' : '';
+    renderDayEditors();
+  }));
+
   wrap.querySelectorAll('.weekday-chip').forEach(chip => chip.addEventListener('click', () => {
     const d = chip.dataset.day;
     const i = myProgram.schedule.indexOf(d);
     if (i === -1) myProgram.schedule.push(d); else myProgram.schedule.splice(i, 1);
     chip.classList.toggle('on');
   }));
-  document.getElementById('add-day-btn').addEventListener('click', () => { myProgram.days.push({ name: `Day ${myProgram.days.length+1}`, tag:'', exercises: [], lastDate: null }); renderDayEditors(); });
+  document.getElementById('add-day-btn').addEventListener('click', () => {
+    myProgram.days.push({ name: `Day ${myProgram.days.length+1}`, tag:'', exercises: [], lastDate: null, assignedDays: [] });
+    renderDayEditors();
+  });
   document.getElementById('cancel-program-btn').addEventListener('click', () => { editingProgram = false; renderQuestFeed(); });
   document.getElementById('save-program-btn').addEventListener('click', saveProgram);
 
   function renderDayEditors() {
     const daysWrap = document.getElementById('prog-days-wrap');
+    const isFixed = myProgram.scheduleMode === 'fixed';
     daysWrap.innerHTML = myProgram.days.map((day, di) => `
       <div class="day-editor" data-di="${di}">
         <div class="day-editor-head">
           <input class="day-name-input" value="${escapeHtml(day.name)}" placeholder="Day name" />
-          <input class="day-tag-input" value="${escapeHtml(day.tag||'')}" placeholder="Tag (optional)" style="max-width:120px;" />
+          <input class="day-tag-input" value="${escapeHtml(day.tag||'')}" placeholder="Tag" style="max-width:100px;" />
           <button class="remove-x remove-day-btn">×</button>
         </div>
+        ${isFixed ? `<div class="field" style="margin:6px 0 4px;">
+          <label style="font-size:11px;">Runs on</label>
+          <div class="weekday-chips day-weekday-chips" data-di="${di}">
+            ${WEEKDAYS.map(d => `<button type="button" class="weekday-chip ${(day.assignedDays||[]).includes(d)?'on':''}" data-day="${d}">${d}</button>`).join('')}
+          </div>
+        </div>` : ''}
         <div class="ex-chip-row">
           ${day.exercises.map((ex,ei) => `<span class="ex-chip">
             ${escapeHtml(ex.name)}
@@ -2257,7 +2314,24 @@ function renderProgramEditor(wrap) {
           </span>`).join('')}
         </div>
         <button type="button" class="btn btn-sm day-add-ex-btn">+ Add exercise</button>
-      </div>`).join('') || '<p style="color:var(--text-faint);font-size:13px;">No workout days yet — add one to get started.</p>';
+      </div>`).join('') || '<p style="color:var(--text-faint);font-size:13px;">No workout days yet — add one.</p>';
+
+    // day weekday assignment (fixed mode)
+    daysWrap.querySelectorAll('.day-weekday-chips').forEach(chips => {
+      const di = Number(chips.dataset.di);
+      chips.querySelectorAll('.weekday-chip').forEach(chip => {
+        chip.addEventListener('click', () => {
+          const d = chip.dataset.day;
+          if (!myProgram.days[di].assignedDays) myProgram.days[di].assignedDays = [];
+          const idx = myProgram.days[di].assignedDays.indexOf(d);
+          if (idx === -1) myProgram.days[di].assignedDays.push(d);
+          else myProgram.days[di].assignedDays.splice(idx, 1);
+          chip.classList.toggle('on');
+          // rebuild schedule from all assigned days
+          myProgram.schedule = [...new Set(myProgram.days.flatMap(day => day.assignedDays||[]))];
+        });
+      });
+    });
 
     daysWrap.querySelectorAll('.day-name-input').forEach((el,di) => el.addEventListener('input', () => myProgram.days[di].name = el.value));
     daysWrap.querySelectorAll('.day-tag-input').forEach((el,di) => el.addEventListener('input', () => myProgram.days[di].tag = el.value));
@@ -2551,7 +2625,10 @@ document.getElementById('save-workout-btn').addEventListener('click', async () =
     await addDoc(collection(db, 'workouts'), { uid: currentUser.uid, displayName: profile.displayName, date, time, exercises, programDayIndex: activeDayIndex ?? null, createdAt: serverTimestamp() });
     if (activeDayIndex !== null && myProgram) {
       myProgram.days[activeDayIndex].lastDate = date;
-      myProgram.currentDayIndex = (activeDayIndex + 1) % myProgram.days.length;
+      // only advance rotation in rotation mode — fixed mode doesn't use currentDayIndex
+      if (myProgram.scheduleMode !== 'fixed') {
+        myProgram.currentDayIndex = (activeDayIndex + 1) % myProgram.days.length;
+      }
       questCarouselIndex = myProgram.currentDayIndex;
       await setDoc(doc(db, 'programs', currentUser.uid), myProgram);
       activeDayIndex = null;
