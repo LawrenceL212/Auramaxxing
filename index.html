@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
 <title>Auramaxxing — Level Up Your Training</title>
 <meta name="theme-color" content="#05070D" />
 <link rel="manifest" href="manifest.json" />
@@ -153,31 +153,83 @@
   .ex-set-count{font-size:11px;color:var(--text-faint);font-family:var(--font-mono);white-space:nowrap;margin-top:14px;}
   .remove-x{background:none;border:none;color:var(--text-faint);font-size:18px;cursor:pointer;padding:0 4px;}
   .sets-list{display:flex;flex-direction:column;gap:6px;margin-top:12px;}
-  .set-table-head{display:grid;grid-template-columns:22px 1fr 1fr auto 26px;gap:8px;padding:0 2px;margin-bottom:2px;}
+  .set-table-head{display:grid;grid-template-columns:22px 1fr 1fr 26px;gap:8px;padding:0 2px;margin-bottom:2px;}
   .set-table-head span{font-size:10px;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.05em;text-align:center;}
   .set-table-head span:first-child{text-align:left;}
-  .set-row{display:grid;grid-template-columns:22px 1fr 1fr auto 26px;gap:8px;align-items:center;padding:6px 2px;border-radius:6px;transition:background .2s ease;}
+  .set-row{display:grid;grid-template-columns:22px 1fr 1fr 26px;gap:8px;align-items:start;padding:8px 2px;border-radius:6px;transition:background .2s ease;}
   .set-row.complete{background:var(--brass-dim);}
-  .rir-chips{display:flex;gap:3px;align-items:center;flex-shrink:0;}
+  .set-row-main{display:contents;}
+  .set-row-rir{grid-column:2 / 4;display:flex;align-items:center;gap:6px;padding-top:4px;}
+  .set-row-rir-label{font-size:10px;color:var(--text-faint);white-space:nowrap;}
+  .rir-chips{display:flex;gap:4px;align-items:center;flex-shrink:0;}
   .rir-chip{
-    width:28px;height:28px;border-radius:4px;border:1px solid var(--border);
-    background:var(--card-2);color:var(--text-faint);font-size:11px;cursor:pointer;
+    width:34px;height:34px;border-radius:6px;border:1px solid var(--border);
+    background:var(--card-2);color:var(--text-faint);font-size:13px;cursor:pointer;
     display:flex;align-items:center;justify-content:center;font-family:var(--font-mono);
-    touch-action:manipulation;
+    touch-action:manipulation;flex-shrink:0;
   }
   .rir-chip.selected{background:var(--brass-dim);border-color:var(--brass);color:var(--brass);font-weight:700;}
   .suggest-badge{
-    font-size:10px;color:var(--growing);background:rgba(139,107,255,0.12);
-    border:1px solid var(--growing);border-radius:4px;padding:2px 6px;white-space:nowrap;flex-shrink:0;
+    grid-column:2/-1;font-size:10px;color:var(--growing);background:rgba(139,107,255,0.12);
+    border:1px solid var(--growing);border-radius:4px;padding:2px 6px;white-space:nowrap;
   }
-  .set-table-head span:nth-child(3){text-align:left;}
+  .set-table-head span:nth-child(3){text-align:center;}
   .rir-label{font-size:10px;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.05em;}
-  .set-row .set-idx{color:var(--text-faint);font-size:12px;font-family:var(--font-mono);text-align:center;}
-  .stepper{display:flex;align-items:center;background:var(--card-2);border:1px solid var(--border);border-radius:6px;overflow:hidden;}
-  .stepper button{background:none;border:none;color:var(--brass);font-size:18px;min-width:36px;height:38px;cursor:pointer;flex-shrink:0;touch-action:manipulation;}
+  .set-row .set-idx{color:var(--text-faint);font-size:12px;font-family:var(--font-mono);text-align:center;padding-top:10px;}
+  .set-row .remove-x.set-remove{padding-top:6px;}
+  .stepper{display:flex;align-items:center;background:var(--card-2);border:1px solid var(--border);border-radius:8px;overflow:hidden;}
+  .stepper button{background:none;border:none;color:var(--brass);font-size:20px;min-width:42px;height:44px;cursor:pointer;flex-shrink:0;touch-action:manipulation;}
   .stepper button:active{background:var(--brass-dim);}
-  .stepper input{width:100%;min-width:0;text-align:center;background:none;border:none;color:var(--text);font-size:15px;padding:0 2px;font-family:var(--font-mono);height:38px;}
+  .stepper input{width:100%;min-width:0;text-align:center;background:none;border:none;color:var(--text);font-size:16px;padding:0 2px;font-family:var(--font-mono);height:44px;cursor:pointer;caret-color:transparent;}
   .stepper input::-webkit-outer-spin-button, .stepper input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0;}
+  .stepper input:read-only{cursor:pointer;}
+
+  /* ── Custom in-app numpad ── */
+  .numpad-overlay{
+    position:fixed;inset:0;z-index:500;
+    background:rgba(5,7,13,0.5);
+    display:flex;flex-direction:column;justify-content:flex-end;
+  }
+  .numpad-overlay.hidden{display:none;}
+  .numpad-sheet{
+    background:var(--card-2);border-top:1px solid var(--border);
+    border-radius:16px 16px 0 0;
+    padding:0 0 env(safe-area-inset-bottom,0);
+    animation:numpadUp .25s cubic-bezier(0.16,1,0.3,1);
+    max-width:640px;width:100%;margin:0 auto;
+  }
+  @keyframes numpadUp{from{transform:translateY(100%);}to{transform:translateY(0);}}
+  .numpad-header{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:12px 16px 8px;border-bottom:1px solid var(--border);
+  }
+  .numpad-context{font-size:12px;color:var(--text-faint);text-transform:uppercase;letter-spacing:.06em;}
+  .numpad-display{font-family:var(--font-mono);font-size:32px;color:var(--brass);min-width:80px;text-align:center;}
+  .numpad-confirm{
+    background:var(--brass);color:#06111f;border:none;border-radius:8px;
+    padding:10px 20px;font-family:var(--font-display);font-size:13px;font-weight:700;
+    cursor:pointer;touch-action:manipulation;letter-spacing:.06em;
+  }
+  .numpad-grid{
+    display:grid;grid-template-columns:repeat(3,1fr);gap:1px;
+    background:var(--border);margin:8px 12px 12px;border-radius:10px;overflow:hidden;
+  }
+  .numpad-key{
+    background:var(--card);font-size:22px;font-family:var(--font-mono);
+    color:var(--text);border:none;padding:18px 0;cursor:pointer;
+    touch-action:manipulation;transition:background .1s;
+  }
+  .numpad-key:active{background:var(--card-2);}
+  .numpad-key.numpad-del{font-size:18px;color:var(--text-dim);}
+  .numpad-key.numpad-dot{color:var(--text-dim);}
+  .numpad-key.numpad-zero{grid-column:span 2;}
+  .numpad-stepper-row{display:flex;gap:8px;margin:0 12px 4px;}
+  .numpad-step-btn{
+    flex:1;background:var(--card);border:1px solid var(--border);border-radius:8px;
+    color:var(--brass);font-size:18px;padding:12px 0;cursor:pointer;
+    touch-action:manipulation;font-family:var(--font-mono);
+  }
+  .numpad-step-btn:active{background:var(--card-2);}
   .add-set-btn{margin-top:10px;font-size:12px;padding:7px 14px;border-radius:20px;}
   .add-exercise-btn{width:100%;border-style:dashed;color:var(--text-dim);}
   .date-row{display:flex;gap:10px;margin-bottom:16px;}
@@ -250,9 +302,17 @@
   .rest-sub{font-size:13.5px;color:var(--text-dim);line-height:1.6;margin:0;}
 
   .rest-note{font-size:12.5px;color:var(--maintaining);text-align:center;margin:0 0 12px;}
-  .quest-carousel{display:flex;align-items:center;gap:8px;}
-  .quest-carousel-card{flex:1;min-width:0;animation:cardSwap .25s ease;}
-  @keyframes cardSwap{from{opacity:0;transform:scale(0.97);}to{opacity:1;transform:scale(1);}}
+  .quest-carousel{display:flex;align-items:center;gap:8px;overflow:hidden;}
+  .quest-carousel-card{flex:1;min-width:0;position:relative;}
+  .quest-carousel-card .quest-card{will-change:transform,opacity;}
+  @keyframes slideInRight{from{transform:translateX(100%);opacity:0;}to{transform:translateX(0);opacity:1;}}
+  @keyframes slideInLeft{from{transform:translateX(-100%);opacity:0;}to{transform:translateX(0);opacity:1;}}
+  @keyframes slideOutLeft{from{transform:translateX(0);opacity:1;}to{transform:translateX(-100%);opacity:0;}}
+  @keyframes slideOutRight{from{transform:translateX(0);opacity:1;}to{transform:translateX(100%);opacity:0;}}
+  .slide-in-right{animation:slideInRight 0.32s cubic-bezier(0.25,0.46,0.45,0.94) forwards;}
+  .slide-in-left{animation:slideInLeft 0.32s cubic-bezier(0.25,0.46,0.45,0.94) forwards;}
+  .slide-out-left{animation:slideOutLeft 0.32s cubic-bezier(0.25,0.46,0.45,0.94) forwards;}
+  .slide-out-right{animation:slideOutRight 0.32s cubic-bezier(0.25,0.46,0.45,0.94) forwards;}
   .carousel-arrow{
     flex-shrink:0;width:36px;height:36px;border-radius:50%;background:var(--card-2);border:1px solid var(--brass);
     color:var(--brass);font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center;
@@ -349,6 +409,36 @@
   .pr-tier.tier-Beginner{background:var(--card);color:var(--text-faint);border:1px solid var(--border);}
   .pr-tier.tier-Unranked{background:var(--card);color:var(--text-faint);border:1px solid var(--border);}
   .pr-xp{font-family:var(--font-mono);font-size:11px;color:var(--brass);white-space:nowrap;}
+
+  /* ========== Post-Workout Debrief ========== */
+  .debrief-overlay{position:fixed;inset:0;z-index:200;background:rgba(5,7,13,0.95);backdrop-filter:blur(8px);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;animation:sysOverlayIn .3s ease;overflow-y:auto;}
+  .debrief-window{background:linear-gradient(160deg,rgba(14,17,32,1),rgba(22,26,48,1));border:1px solid var(--brass);border-radius:6px;padding:28px 24px;width:100%;max-width:420px;box-shadow:0 0 60px -10px rgba(61,165,255,0.4);position:relative;}
+  .debrief-window::before,.debrief-window::after{content:"";position:absolute;width:16px;height:16px;border-color:var(--brass);pointer-events:none;}
+  .debrief-window::before{top:-1px;left:-1px;border-top:2px solid;border-left:2px solid;}
+  .debrief-window::after{bottom:-1px;right:-1px;border-bottom:2px solid;border-right:2px solid;}
+  .debrief-eyebrow{font-family:var(--font-mono);font-size:10px;letter-spacing:.4em;color:var(--brass);text-transform:uppercase;margin-bottom:4px;}
+  .debrief-title{font-family:var(--font-display);font-size:22px;margin:0 0 20px;letter-spacing:.04em;}
+  .debrief-stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px;}
+  .debrief-stat{background:var(--card-2);border:1px solid var(--border);border-radius:8px;padding:12px;text-align:center;}
+  .debrief-stat-value{font-family:var(--font-mono);font-size:22px;color:var(--brass);line-height:1;}
+  .debrief-stat-label{font-size:10px;color:var(--text-faint);text-transform:uppercase;letter-spacing:.06em;margin-top:4px;}
+  .debrief-prs{margin-bottom:20px;}
+  .debrief-pr-row{display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);font-size:13px;}
+  .debrief-pr-row:last-child{border-bottom:none;}
+  .debrief-pr-name{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .debrief-xp-badge{font-family:var(--font-mono);font-size:12px;color:var(--brass);margin-left:8px;white-space:nowrap;}
+  .debrief-vol-bar{height:6px;background:var(--card-2);border-radius:3px;margin:6px 0 16px;overflow:hidden;}
+  .debrief-vol-fill{height:100%;background:var(--violet);border-radius:3px;transition:width .8s ease .2s;}
+  .debrief-close-btn{width:100%;padding:13px;background:var(--brass);color:#06111f;border:none;border-radius:4px;font-family:var(--font-display);font-size:13px;font-weight:700;letter-spacing:.08em;cursor:pointer;touch-action:manipulation;}
+  .rir-edit-row .rir-chips{gap:4px;}
+
+  /* ========== Today Card on Rank tab ========== */
+  .today-debrief-card{background:linear-gradient(135deg,rgba(61,165,255,0.08),transparent 60%),var(--card);border:1px solid rgba(61,165,255,0.3);border-radius:8px;padding:16px;margin-bottom:12px;}
+  .today-debrief-row{display:flex;gap:8px;margin-bottom:8px;}
+  .today-stat-pill{flex:1;background:var(--card-2);border:1px solid var(--border);border-radius:8px;padding:10px 8px;text-align:center;}
+  .today-stat-val{font-family:var(--font-mono);font-size:18px;color:var(--brass);}
+  .today-stat-lbl{font-size:10px;color:var(--text-faint);text-transform:uppercase;letter-spacing:.05em;margin-top:2px;}
+  .today-no-workout{font-size:13px;color:var(--text-dim);text-align:center;padding:12px 0;}
 
   /* ========== Party Intel & Superlatives ========== */
   .superlatives-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
@@ -723,10 +813,42 @@
       <button class="workout-pill-btn" id="workout-pill-open">Resume →</button>
     </div>
 
+    <!-- Custom in-app numpad — replaces system keyboard for reps/weight -->
+    <div class="numpad-overlay hidden" id="numpad-overlay">
+      <div class="numpad-sheet" id="numpad-sheet">
+        <div class="numpad-header">
+          <span class="numpad-context" id="numpad-context">Reps</span>
+          <span class="numpad-display" id="numpad-display">—</span>
+          <button class="numpad-confirm" id="numpad-confirm">✓ Done</button>
+        </div>
+        <div class="numpad-stepper-row">
+          <button class="numpad-step-btn" id="numpad-minus">−</button>
+          <button class="numpad-step-btn" id="numpad-plus">+</button>
+        </div>
+        <div class="numpad-grid">
+          <button class="numpad-key" data-key="1">1</button>
+          <button class="numpad-key" data-key="2">2</button>
+          <button class="numpad-key" data-key="3">3</button>
+          <button class="numpad-key" data-key="4">4</button>
+          <button class="numpad-key" data-key="5">5</button>
+          <button class="numpad-key" data-key="6">6</button>
+          <button class="numpad-key" data-key="7">7</button>
+          <button class="numpad-key" data-key="8">8</button>
+          <button class="numpad-key" data-key="9">9</button>
+          <button class="numpad-key numpad-dot" data-key=".">.</button>
+          <button class="numpad-key numpad-zero" data-key="0">0</button>
+          <button class="numpad-key numpad-del" data-key="del">⌫</button>
+        </div>
+      </div>
+    </div>
+
     <!-- ---- RANK ---- -->
     <section class="view" id="view-board">
       <h2>Rankings</h2>
       <p class="sub">Hunter rank rises with your streak, then workouts this week.</p>
+
+      <!-- Today's session card -->
+      <div id="today-debrief-card-slot"></div>
 
       <!-- Character card -->
       <div class="card char-card" id="char-card">
@@ -1108,6 +1230,81 @@ function showToast(msg, type = 'info') {
   document.body.appendChild(t);
   setTimeout(() => t.remove(), 3100);
 }
+
+/* ── Custom in-app numpad ── */
+let numpadTarget = null; // the input currently being edited
+let numpadRaw = '';      // current string being built
+
+function openNumpad(input) {
+  numpadTarget = input;
+  numpadRaw = input.value !== '' ? String(input.value) : '';
+  const isWeight = input.dataset.isWeight === '1';
+  document.getElementById('numpad-context').textContent = isWeight ? 'Weight (kg)' : 'Reps';
+  document.getElementById('numpad-display').textContent = numpadRaw || '—';
+  document.getElementById('numpad-overlay').classList.remove('hidden');
+  // dot key only relevant for weight
+  document.querySelector('.numpad-dot').style.visibility = isWeight ? 'visible' : 'hidden';
+}
+
+function closeNumpad(confirm = true) {
+  if (confirm && numpadTarget) {
+    const val = parseFloat(numpadRaw);
+    const min = parseFloat(numpadTarget.dataset.min) || 0;
+    if (!isNaN(val) && val >= min) {
+      numpadTarget.value = val;
+      numpadTarget.dispatchEvent(new Event('input'));
+    }
+  }
+  numpadTarget = null;
+  numpadRaw = '';
+  document.getElementById('numpad-overlay').classList.add('hidden');
+}
+
+function numpadKey(key) {
+  if (key === 'del') {
+    numpadRaw = numpadRaw.slice(0, -1);
+  } else if (key === '.') {
+    if (!numpadRaw.includes('.')) numpadRaw += '.';
+  } else {
+    // cap at reasonable lengths
+    if (numpadRaw.replace('.','').length >= 5) return;
+    numpadRaw += key;
+  }
+  document.getElementById('numpad-display').textContent = numpadRaw || '—';
+}
+
+document.getElementById('numpad-overlay').addEventListener('click', e => {
+  if (e.target === document.getElementById('numpad-overlay')) closeNumpad(false);
+});
+document.getElementById('numpad-confirm').addEventListener('click', () => closeNumpad(true));
+document.querySelectorAll('.numpad-key').forEach(btn => {
+  btn.addEventListener('click', () => numpadKey(btn.dataset.key));
+});
+document.getElementById('numpad-plus').addEventListener('click', () => {
+  if (!numpadTarget) return;
+  const step = parseFloat(numpadTarget.dataset.step) || 1;
+  const cur = parseFloat(numpadRaw) || 0;
+  numpadRaw = String(Math.round((cur + step) * 100) / 100);
+  document.getElementById('numpad-display').textContent = numpadRaw;
+});
+document.getElementById('numpad-minus').addEventListener('click', () => {
+  if (!numpadTarget) return;
+  const step = parseFloat(numpadTarget.dataset.step) || 1;
+  const min = parseFloat(numpadTarget.dataset.min) || 0;
+  const cur = parseFloat(numpadRaw) || 0;
+  const next = Math.max(min, Math.round((cur - step) * 100) / 100);
+  numpadRaw = String(next);
+  document.getElementById('numpad-display').textContent = numpadRaw;
+});
+
+// wire all stepper inputs to open numpad on tap (set up once via delegation)
+document.addEventListener('click', e => {
+  const input = e.target.closest('.stepper input');
+  if (input && (input.classList.contains('set-reps') || input.classList.contains('set-weight'))) {
+    e.preventDefault();
+    openNumpad(input);
+  }
+});
 let allUsers = [], myWorkouts = [], allWorkouts = [], myWeights = [], myPRs = {};
 // myPRs: { "Bench Press": { e1rm: 120.5, date: "2026-08-01", xpTier: "Intermediate" }, ... }
 let myProgram = null;       // { name, schedule:['Mon',...], days:[{name,tag,exercises:[{name,sets,reps}],lastDate}], currentDayIndex }
@@ -1348,7 +1545,7 @@ function switchView(name) {
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
   document.getElementById('view-' + name).classList.add('active');
   document.querySelectorAll('.bottom-nav button').forEach(b => b.classList.toggle('active', b.dataset.view === name));
-  if (name === 'board') { renderBoard(); renderCharCard(); renderPRPanel(); }
+  if (name === 'board') { renderBoard(); renderCharCard(); renderPRPanel(); renderTodayCard(); }
   if (name === 'trends') { trendsView = 'dashboard'; renderTrends(); }
   if (name === 'exercises') renderExerciseLibrary();
   if (name === 'history') renderCalendar();
@@ -1430,28 +1627,8 @@ function renderQuestFeed() {
   const today = todayWeekday();
   const isScheduledToday = myProgram.schedule.includes(today);
   if (questCarouselIndex >= myProgram.days.length) questCarouselIndex = 0;
-  const viewingIdx = questCarouselIndex;
-  const day = myProgram.days[viewingIdx];
-  const isActiveDay = viewingIdx === rotationIdx;
 
-  const checklist = day.exercises.map(ex => {
-    const done = setsLoggedToday(ex.name);
-    const complete = done >= ex.sets;
-    return `<div class="quest-check-row ${complete ? 'complete' : ''}">
-      <span class="qc-name">${escapeHtml(ex.name)}</span>
-      <span class="qc-progress">[${Math.min(done, ex.sets)}/${ex.sets} sets · ${ex.reps} reps]</span>
-      <span class="qc-box">${complete ? '☑' : '☐'}</span>
-    </div>`;
-  }).join('');
-  const allComplete = day.exercises.length > 0 && day.exercises.every(ex => setsLoggedToday(ex.name) >= ex.sets);
-  const flavor = isActiveDay
-    ? `[Daily Quest: <b>${escapeHtml(day.name)}</b> has arrived.]`
-    : `[Viewing: <b>${escapeHtml(day.name)}</b> — Day ${viewingIdx+1} of ${myProgram.days.length} in rotation.]`;
-  const warning = allComplete
-    ? 'Quest cleared. Your streak holds.'
-    : (isActiveDay ? 'WARNING: leaving this quest incomplete puts your streak at risk.' : `Last done: ${fmtDaysAgo(day.lastDate)}`);
-
-  const dots = myProgram.days.map((_, i) => `<span class="day-dot ${i===viewingIdx?'current':''} ${i===rotationIdx && i!==viewingIdx?'done':''}"></span>`).join('');
+  const dots = myProgram.days.map((_, i) => `<span class="day-dot ${i===questCarouselIndex?'current':''} ${i===rotationIdx && i!==questCarouselIndex?'done':''}"></span>`).join('');
 
   wrap.innerHTML = `
     <div class="quest-feed-head">
@@ -1465,13 +1642,8 @@ function renderQuestFeed() {
     <div class="quest-carousel">
       <button class="carousel-arrow" id="carousel-prev" aria-label="Previous day">‹</button>
       <div class="quest-carousel-card">
-        <div class="quest-card ${allComplete ? 'quest-complete' : ''}">
-          <div class="quest-eyebrow">⚠ QUEST INFO</div>
-          <p class="quest-flavor">${flavor}</p>
-          <div class="quest-goal-label">GOAL</div>
-          <div class="quest-checklist">${checklist}</div>
-          <p class="quest-warning">${warning}</p>
-          <button class="quest-complete-btn" id="quest-begin-btn">${allComplete ? '✓ Quest Cleared' : (isActiveDay ? 'Begin Quest' : 'Log this instead')}</button>
+        <div class="quest-card ${isQuestComplete(questCarouselIndex) ? 'quest-complete' : ''}">
+          ${buildQuestCardHTML(questCarouselIndex)}
         </div>
       </div>
       <button class="carousel-arrow" id="carousel-next" aria-label="Next day">›</button>
@@ -1482,27 +1654,150 @@ function renderQuestFeed() {
   document.getElementById('edit-program-btn').addEventListener('click', () => { editingProgram = true; renderQuestFeed(); });
   document.getElementById('new-program-btn').addEventListener('click', () => {
     if (!window.confirm('Start a new plan?\n\nYour current plan will be replaced.')) return;
-    myProgram = null;
-    editingProgram = true;
-    renderQuestFeed();
+    myProgram = null; editingProgram = true; renderQuestFeed();
   });
-  document.getElementById('quest-begin-btn').addEventListener('click', () => startProgramDay(viewingIdx));
-  document.getElementById('carousel-prev').addEventListener('click', () => { questCarouselIndex = (viewingIdx - 1 + myProgram.days.length) % myProgram.days.length; renderQuestFeed(); });
-  document.getElementById('carousel-next').addEventListener('click', () => { questCarouselIndex = (viewingIdx + 1) % myProgram.days.length; renderQuestFeed(); });
+  wireQuestCard(wrap.querySelector('.quest-card'), questCarouselIndex);
+  document.getElementById('carousel-prev').addEventListener('click', () => navigateCarousel('prev'));
+  document.getElementById('carousel-next').addEventListener('click', () => navigateCarousel('next'));
   attachSwipeHandlers(wrap.querySelector('.quest-carousel-card'),
-    () => { questCarouselIndex = (viewingIdx + 1) % myProgram.days.length; renderQuestFeed(); },
-    () => { questCarouselIndex = (viewingIdx - 1 + myProgram.days.length) % myProgram.days.length; renderQuestFeed(); }
+    () => navigateCarousel('next'),
+    () => navigateCarousel('prev')
   );
+}
+
+function isQuestComplete(idx) {
+  const day = myProgram.days[idx];
+  return day.exercises.length > 0 && day.exercises.every(ex => setsLoggedToday(ex.name) >= ex.sets);
+}
+
+function buildQuestCardHTML(idx) {
+  const rotationIdx = myProgram.currentDayIndex % myProgram.days.length;
+  const day = myProgram.days[idx];
+  const isActiveDay = idx === rotationIdx;
+  const allComplete = isQuestComplete(idx);
+  const checklist = day.exercises.map(ex => {
+    const done = setsLoggedToday(ex.name);
+    const complete = done >= ex.sets;
+    return `<div class="quest-check-row ${complete ? 'complete' : ''}">
+      <span class="qc-name">${escapeHtml(ex.name)}</span>
+      <span class="qc-progress">[${Math.min(done, ex.sets)}/${ex.sets} sets · ${ex.reps} reps]</span>
+      <span class="qc-box">${complete ? '☑' : '☐'}</span>
+    </div>`;
+  }).join('');
+  const flavor = isActiveDay
+    ? `[Daily Quest: <b>${escapeHtml(day.name)}</b> has arrived.]`
+    : `[Viewing: <b>${escapeHtml(day.name)}</b> — Day ${idx+1} of ${myProgram.days.length} in rotation.]`;
+  const warning = allComplete ? 'Quest cleared. Your streak holds.'
+    : (isActiveDay ? 'WARNING: leaving this quest incomplete puts your streak at risk.' : `Last done: ${fmtDaysAgo(day.lastDate)}`);
+  return `
+    <div class="quest-eyebrow">⚠ QUEST INFO</div>
+    <p class="quest-flavor">${flavor}</p>
+    <div class="quest-goal-label">GOAL</div>
+    <div class="quest-checklist">${checklist}</div>
+    <p class="quest-warning">${warning}</p>
+    <button class="quest-complete-btn quest-begin-btn">${allComplete ? '✓ Quest Cleared' : (isActiveDay ? 'Begin Quest' : 'Log this instead')}</button>`;
+}
+
+function wireQuestCard(cardEl, idx) {
+  if (!cardEl) return;
+  const btn = cardEl.querySelector('.quest-begin-btn');
+  if (btn) btn.addEventListener('click', () => startProgramDay(idx));
+}
+
+let carouselAnimating = false;
+function navigateCarousel(direction) {
+  if (carouselAnimating || !myProgram) return;
+  const total = myProgram.days.length;
+  const currentIdx = questCarouselIndex;
+  const newIdx = direction === 'next'
+    ? (currentIdx + 1) % total
+    : (currentIdx - 1 + total) % total;
+
+  const slot = document.querySelector('.quest-carousel-card');
+  const currentCard = slot ? slot.querySelector('.quest-card') : null;
+  if (!currentCard || !slot) {
+    questCarouselIndex = newIdx;
+    renderQuestFeed();
+    return;
+  }
+
+  carouselAnimating = true;
+  const W = slot.offsetWidth;
+
+  // freeze the slot height so it doesn't collapse while we position things
+  slot.style.height = slot.offsetHeight + 'px';
+  slot.style.overflow = 'hidden';
+  slot.style.position = 'relative';
+
+  // position current card absolutely so the new one can render alongside it
+  currentCard.style.position = 'absolute';
+  currentCard.style.top = '0';
+  currentCard.style.left = '0';
+  currentCard.style.width = '100%';
+
+  // build the new card content into a temp div, off-screen
+  questCarouselIndex = newIdx;
+  const temp = document.createElement('div');
+  temp.className = 'quest-card';
+  temp.innerHTML = buildQuestCardHTML(newIdx);
+  temp.style.position = 'absolute';
+  temp.style.top = '0';
+  temp.style.width = '100%';
+  const startOffset = direction === 'next' ? W : -W;
+  temp.style.left = startOffset + 'px';
+  slot.appendChild(temp);
+
+  // wire up interactions on the new card now
+  wireQuestCard(temp, newIdx);
+
+  const DURATION = 320;
+  const ease = t => t < 0.5 ? 2*t*t : -1+(4-2*t)*t; // easeInOut
+  const startTime = performance.now();
+  const exitTarget = direction === 'next' ? -W : W;
+
+  function frame(now) {
+    const elapsed = now - startTime;
+    const raw = Math.min(elapsed / DURATION, 1);
+    const t = ease(raw);
+    currentCard.style.left = (exitTarget * t) + 'px';
+    temp.style.left = (startOffset + (-startOffset) * t) + 'px';
+    if (raw < 1) {
+      requestAnimationFrame(frame);
+    } else {
+      // snap to final state and clean up
+      currentCard.remove();
+      temp.style.position = '';
+      temp.style.top = '';
+      temp.style.left = '';
+      temp.style.width = '';
+      slot.style.height = '';
+      slot.style.overflow = '';
+      slot.style.position = '';
+      // update dots
+      document.querySelectorAll('.day-dot').forEach((dot, i) => {
+        dot.className = 'day-dot' +
+          (i === newIdx ? ' current' : '') +
+          (i === myProgram.currentDayIndex % myProgram.days.length && i !== newIdx ? ' done' : '');
+      });
+      carouselAnimating = false;
+    }
+  }
+  requestAnimationFrame(frame);
 }
 
 function attachSwipeHandlers(el, onSwipeLeft, onSwipeRight) {
   if (!el) return;
-  let startX = 0;
-  el.addEventListener('touchstart', (e) => { startX = e.touches[0].clientX; }, { passive: true });
+  let startX = 0, startY = 0;
+  el.addEventListener('touchstart', (e) => {
+    startX = e.touches[0].clientX;
+    startY = e.touches[0].clientY;
+  }, { passive: true });
   el.addEventListener('touchend', (e) => {
-    const delta = e.changedTouches[0].clientX - startX;
-    if (Math.abs(delta) < 40) return;
-    if (delta < 0) onSwipeLeft(); else onSwipeRight();
+    const dx = e.changedTouches[0].clientX - startX;
+    const dy = e.changedTouches[0].clientY - startY;
+    // only trigger if more horizontal than vertical (not a scroll attempt)
+    if (Math.abs(dx) < 50 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
+    if (dx < 0) onSwipeLeft(); else onSwipeRight();
   }, { passive: true });
 }
 
@@ -1785,6 +2080,75 @@ async function saveProgram() {
   renderQuestFeed();
 }
 
+async function openAdminProgramEditor(targetUid, targetName) {
+  // load the target user's current program
+  const snap = await getDoc(doc(db, 'programs', targetUid));
+  const targetProgram = snap.exists() ? snap.data() : { name: 'New Plan', schedule: [], currentDayIndex: 0, days: [] };
+
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.innerHTML = `
+    <div class="modal" style="max-height:85vh;overflow-y:auto;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+        <h3 style="margin:0;">✎ Editing ${escapeHtml(targetName)}'s plan</h3>
+        <button class="icon-btn" id="admin-prog-close" style="font-size:20px;">✕</button>
+      </div>
+      <p style="font-size:12px;color:var(--text-faint);margin:0 0 14px;">Their today's workout is untouched — this only changes their program template going forward.</p>
+      <div class="field">
+        <label>Plan name</label>
+        <input id="admin-prog-name" value="${escapeHtml(targetProgram.name)}" />
+      </div>
+      <div id="admin-prog-days" style="margin:16px 0;"></div>
+      <div style="display:flex;gap:10px;">
+        <button class="btn" id="admin-prog-cancel" style="flex:1;">Cancel</button>
+        <button class="btn btn-primary" id="admin-prog-save" style="flex:2;">Save their plan</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+
+  // render a simple day summary (read-only exercise list, editable sets/reps)
+  const daysEl = overlay.querySelector('#admin-prog-days');
+  const renderAdminDays = () => {
+    daysEl.innerHTML = targetProgram.days.map((day, di) => `
+      <div class="card" style="margin-bottom:10px;">
+        <p style="font-size:13px;font-weight:700;margin:0 0 6px;">${escapeHtml(day.name)}</p>
+        ${day.exercises.map((ex,ei) => `
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;font-size:12px;">
+            <span style="flex:1;">${escapeHtml(ex.name)}</span>
+            <input type="number" value="${ex.sets}" min="1" style="width:36px;text-align:center;" class="admin-sets" data-di="${di}" data-ei="${ei}"/>
+            <span style="color:var(--text-faint);">×</span>
+            <input type="number" value="${ex.reps}" min="1" style="width:36px;text-align:center;" class="admin-reps" data-di="${di}" data-ei="${ei}"/>
+          </div>`).join('')}
+      </div>`).join('') || '<p class="sub">No days yet.</p>';
+
+    overlay.querySelectorAll('.admin-sets').forEach(inp => inp.addEventListener('change', () => {
+      targetProgram.days[inp.dataset.di].exercises[inp.dataset.ei].sets = Math.max(1, Number(inp.value)||1);
+    }));
+    overlay.querySelectorAll('.admin-reps').forEach(inp => inp.addEventListener('change', () => {
+      targetProgram.days[inp.dataset.di].exercises[inp.dataset.ei].reps = Math.max(1, Number(inp.value)||1);
+    }));
+  };
+  renderAdminDays();
+
+  overlay.querySelector('#admin-prog-close').addEventListener('click', () => overlay.remove());
+  overlay.querySelector('#admin-prog-cancel').addEventListener('click', () => overlay.remove());
+  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+  overlay.querySelector('#admin-prog-save').addEventListener('click', async () => {
+    const btn = overlay.querySelector('#admin-prog-save');
+    btn.disabled = true; btn.textContent = 'Saving…';
+    try {
+      targetProgram.name = overlay.querySelector('#admin-prog-name').value.trim() || targetProgram.name;
+      // preserve currentDayIndex — don't reset their rotation
+      await setDoc(doc(db, 'programs', targetUid), targetProgram);
+      overlay.remove();
+      showToast(`${targetName}'s plan updated — their rotation preserved.`, 'success');
+    } catch(err) {
+      showToast('Could not save: ' + err.message, 'error');
+      btn.disabled = false; btn.textContent = 'Save their plan';
+    }
+  });
+}
+
 /* ---- ad-hoc exercise logger ---- */
 const exerciseRows = document.getElementById('exercise-rows');
 
@@ -1836,7 +2200,7 @@ function addExerciseRow(presetName, targetSets, targetReps, prefillSets) {
       <button type="button" class="remove-x">×</button>
     </div>
     <div class="muscle-tags"></div>
-    <div class="set-table-head hidden"><span>#</span><span>Reps</span><span>Weight</span><span class="rir-label">RIR</span><span></span></div>
+    <div class="set-table-head hidden"><span>#</span><span>Reps</span><span>Weight (kg)</span><span></span></div>
     <div class="sets-list"></div>
     <button type="button" class="btn add-set-btn">+ Add set</button>
   `;
@@ -1849,7 +2213,7 @@ function addExerciseRow(presetName, targetSets, targetReps, prefillSets) {
   function stepper(cls, value, min, step) {
     return `<div class="stepper">
       <button type="button" class="step-down">−</button>
-      <input type="number" class="${cls}" value="${value ?? ''}" min="${min}" step="${step}" inputmode="decimal" />
+      <input type="text" inputmode="none" readonly class="${cls}" value="${value ?? ''}" data-min="${min}" data-step="${step}" data-is-weight="${cls==='set-weight'?'1':'0'}" />
       <button type="button" class="step-up">+</button>
     </div>`;
   }
@@ -1872,20 +2236,25 @@ function addExerciseRow(presetName, targetSets, targetReps, prefillSets) {
       <span class="set-idx">${idx}</span>
       ${stepper('set-reps', prefillReps || '', 0, 1)}
       ${stepper('set-weight', prefillWeight || '', 0, 2.5)}
-      ${rirChips(prefillRir ?? null)}
       <button type="button" class="remove-x set-remove">×</button>
-      ${suggTag}`;
+      ${suggTag}
+      <div class="set-row-rir">
+        <span class="set-row-rir-label">RIR</span>
+        ${rirChips(prefillRir ?? null)}
+      </div>`;
     setRow.querySelectorAll('.step-down').forEach(btn => btn.addEventListener('click', () => {
       const input = btn.parentElement.querySelector('input');
-      const step = Number(input.step) || 1;
-      input.value = Math.max(Number(input.min)||0, (Number(input.value)||0) - step);
+      const step = Number(input.dataset.step) || 1;
+      const cur = Number(input.value) || 0;
+      input.value = Math.max(Number(input.dataset.min)||0, Math.round((cur - step)*100)/100);
       input.dispatchEvent(new Event('input'));
       checkComplete(setRow);
     }));
     setRow.querySelectorAll('.step-up').forEach(btn => btn.addEventListener('click', () => {
       const input = btn.parentElement.querySelector('input');
-      const step = Number(input.step) || 1;
-      input.value = (Number(input.value)||0) + step;
+      const step = Number(input.dataset.step) || 1;
+      const cur = Number(input.value) || 0;
+      input.value = Math.round((cur + step)*100)/100;
       input.dispatchEvent(new Event('input'));
       checkComplete(setRow);
     }));
@@ -1939,8 +2308,7 @@ document.getElementById('save-workout-btn').addEventListener('click', async () =
         weight: Number(sr.querySelector('.set-weight').value) || 0,
         rir: selectedRir ? Number(selectedRir.dataset.rir) : null,
       };
-    }).filter(s => s.reps > 0);
-    if (sets.length) exercises.push({ name, sets });
+    }).filter(s => s.reps > 0);    if (sets.length) exercises.push({ name, sets });
   });
   if (!exercises.length) { showToast('Add at least one exercise with a completed set first.', 'error'); return; return; }
 
@@ -1961,23 +2329,13 @@ document.getElementById('save-workout-btn').addEventListener('click', async () =
     exerciseRows.innerHTML = '';
     addExerciseRow();
     await loadAllData();
-    // try to award AP for today — anti-cheat inside tryAwardAp ensures once-per-day
     const earned = await tryAwardAp();
-    // check PRs and award XP for any personal records beaten
     const prs = await checkAndAwardPRs(exercises, date);
-    const totalPrXP = prs.reduce((s,p) => s + p.xp, 0);
-    const msg = document.getElementById('save-msg');
-    if (prs.length && earned) {
-      msg.textContent = `Quest cleared — +${earned} AP & ${prs.length} new PR${prs.length>1?'s':''} (+${totalPrXP} AP)!`;
-    } else if (prs.length) {
-      const best = prs.sort((a,b)=>b.xp-a.xp)[0];
-      msg.textContent = `New PR: ${best.exercise} at ${best.tier||''}! +${totalPrXP} Aura Points earned.`;
-    } else if (earned) {
-      msg.textContent = `Quest cleared — +${earned} Aura Points earned!`;
-    }
-    if (earned || prs.length) msg.classList.remove('hidden');
-    startDailyTimer(); // immediately show CLEARED state in the topbar
-    setTimeout(() => closeWorkoutModal(false), 1400);
+    startDailyTimer();
+    setTimeout(() => {
+      closeWorkoutModal(false);
+      showDebriefModal(exercises, earned, prs);
+    }, 600);
   } catch (err) {
     alert('Could not save: ' + err.message);
   } finally {
@@ -2474,10 +2832,17 @@ async function checkWeeklyGate() {
 // Master function: runs all checks in order on login
 async function runSystemChecks() {
   await checkStatDecay();
+  // silently award AP if they already have a workout today but haven't been awarded yet
+  // covers users who logged before the AP system existed, or who log outside the modal
+  const silentAp = await tryAwardAp();
+  if (silentAp) {
+    showToast(`+${silentAp} Aura Points earned for today's workout!`, 'success');
+    renderCharCard();
+  }
   const penalty = await checkPenalty();
   if (penalty) {
     showPenaltyModal(1, penalty.apLost);
-    return; // show one thing at a time, don't stack
+    return;
   }
   await checkWeeklyGate();
   checkPendingRankUps();
@@ -2659,6 +3024,7 @@ async function openHunterProfile(targetUid) {
   inner.innerHTML = `
     <div class="hunter-modal-header">
       <button class="hunter-back-btn" id="hunter-back">← Back</button>
+      ${currentUser.uid === 'eUtGPwQBcCSO0x3xS3ZGYFGXNIT2' && !isMe ? `<button class="icon-btn" id="hunter-edit-program" style="font-size:12px;color:var(--brass);">✎ Edit their plan</button>` : ''}
     </div>
     <div class="card char-card" style="margin-bottom:12px;">
       <div class="char-header">
@@ -2693,6 +3059,11 @@ async function openHunterProfile(targetUid) {
     </div>
   `;
   document.getElementById('hunter-back').addEventListener('click', () => modal.classList.add('hidden'));
+  const editProgBtn = document.getElementById('hunter-edit-program');
+  if (editProgBtn) editProgBtn.addEventListener('click', async () => {
+    modal.classList.add('hidden');
+    await openAdminProgramEditor(targetUid, target.displayName || 'Hunter');
+  });
 }
 
 function buildMuscleStats(uid) {
@@ -2714,6 +3085,166 @@ function buildMuscleStats(uid) {
     stats[m] = { status: ratio === 0 ? 'Stalled' : ratio < 0.25 ? 'Maintaining' : ratio < 0.6 ? 'Growing' : ratio < 0.9 ? 'Focusing' : 'Excess' };
   });
   return stats;
+}
+
+function showDebriefModal(exercises, apEarned, prs) {
+  const totalSets = exercises.reduce((n, ex) => n + (ex.sets||[]).filter(s=>s.reps>0).length, 0);
+  const totalVol = exercises.reduce((n, ex) =>
+    n + (ex.sets||[]).filter(s=>s.reps>0 && s.weight>0).reduce((v,s) => v + s.reps * s.weight, 0), 0);
+  const totalPrXP = prs.reduce((s,p) => s+p.xp, 0);
+  const totalAP = (apEarned || 0) + totalPrXP;
+  const streak = computeStreak(currentUser.uid);
+  const mult = streak >= 60 ? 3 : streak >= 30 ? 2 : streak >= 7 ? 1.5 : 1;
+  const missingRIR = exercises.filter(ex => (ex.sets||[]).some(s => s.reps > 0 && s.rir == null));
+  const tierEmojis = { Elite:'👑', Advanced:'💀', Intermediate:'⚔️', Novice:'🗡️', Beginner:'🛡️' };
+  const prRows = prs.map(p => `
+    <div class="debrief-pr-row">
+      <span class="debrief-pr-name">${escapeHtml(p.exercise)}</span>
+      <span style="font-size:11px;color:var(--violet);">${p.tier ? `${tierEmojis[p.tier]||''} ${p.tier}` : ''}</span>
+      <span class="debrief-xp-badge">+${p.xp} AP</span>
+    </div>`).join('');
+
+  const el = document.createElement('div');
+  el.className = 'debrief-overlay';
+  el.innerHTML = `
+    <div class="debrief-window">
+      <p class="debrief-eyebrow">Quest Complete</p>
+      <h2 class="debrief-title">⚡ Session Debrief</h2>
+      <div class="debrief-stat-grid">
+        <div class="debrief-stat">
+          <div class="debrief-stat-value">+${totalAP}</div>
+          <div class="debrief-stat-label">Aura Points</div>
+        </div>
+        <div class="debrief-stat">
+          <div class="debrief-stat-value">${totalSets}</div>
+          <div class="debrief-stat-label">Sets Logged</div>
+        </div>
+        <div class="debrief-stat">
+          <div class="debrief-stat-value">${totalVol > 0 ? (totalVol >= 1000 ? (totalVol/1000).toFixed(1)+'t' : totalVol.toLocaleString()+'kg') : '—'}</div>
+          <div class="debrief-stat-label">Volume</div>
+        </div>
+        <div class="debrief-stat">
+          <div class="debrief-stat-value">${streak}<span style="font-size:13px;">d</span></div>
+          <div class="debrief-stat-label">Streak ${mult > 1 ? '×'+mult : ''}</div>
+        </div>
+      </div>
+      ${prs.length ? `
+        <p style="font-size:11px;color:var(--text-faint);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;">🏆 Personal Records</p>
+        <div class="debrief-prs">${prRows}</div>` : ''}
+      ${missingRIR.length ? `
+        <div style="background:rgba(255,61,90,0.08);border:1px solid rgba(255,61,90,0.3);border-radius:8px;padding:12px;margin-bottom:14px;">
+          <p style="font-size:12px;color:var(--excess);font-weight:700;margin:0 0 6px;">⚠ Missing RIR — add now for better progression</p>
+          <p style="font-size:11px;color:var(--text-dim);margin:0 0 10px;">How many reps did you have left? Used to auto-adjust your next session.</p>
+          <div id="rir-editor-rows">${missingRIR.map((ex,ei) => `
+            <div class="rir-edit-row" data-ex-name="${ex.name}" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;gap:8px;">
+              <span style="font-size:12px;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${ex.name}</span>
+              <div class="rir-chips">${[0,1,2,3,4,5].map(n => '<button type="button" class="rir-chip" data-rir="'+n+'" data-ei="'+ei+'">'+n+'</button>').join('')}</div>
+            </div>`).join('')}</div>
+          <button class="btn btn-sm" id="save-rir-btn" style="margin-top:8px;width:100%;">Save RIR</button>
+        </div>` : ''}
+      ${apEarned ? `
+        <p style="font-size:11px;color:var(--text-faint);margin:0 0 4px;">Daily AP breakdown</p>
+        <div style="font-size:12px;color:var(--text-dim);margin-bottom:12px;">
+          10 base${mult > 1 ? ` × ${mult} streak bonus` : ''} = ${Math.round(10*mult)} AP
+          ${apEarned > Math.round(10*mult) ? ` + 5 weekly goal bonus` : ''}
+        </div>` : ''}
+      <div style="font-size:12px;color:var(--text-faint);margin-bottom:12px;">Total AP: ${(profile.auraPoints||0).toLocaleString()}</div>
+      <button class="debrief-close-btn">Back to the Hunt</button>
+    </div>`;
+
+  document.body.appendChild(el);
+
+  const rirSelections = {};
+  el.querySelectorAll('.rir-chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      const row = chip.closest('.rir-edit-row');
+      row.querySelectorAll('.rir-chip').forEach(c => c.classList.remove('selected'));
+      chip.classList.add('selected');
+      rirSelections[row.dataset.exName] = Number(chip.dataset.rir);
+    });
+  });
+
+  const saveRirBtn = el.querySelector('#save-rir-btn');
+  if (saveRirBtn) saveRirBtn.addEventListener('click', async () => {
+    if (!Object.keys(rirSelections).length) { showToast('Tap a RIR value for each exercise first.','error'); return; }
+    saveRirBtn.disabled = true; saveRirBtn.textContent = 'Saving…';
+    try {
+      const today = todayStr();
+      const todayWorkout = myWorkouts.find(w => w.uid === currentUser.uid && w.date === today);
+      if (todayWorkout) {
+        const updatedExercises = (todayWorkout.exercises||[]).map(ex => {
+          if (!(ex.name in rirSelections)) return ex;
+          return { ...ex, sets: (ex.sets||[]).map(s => s.rir == null ? { ...s, rir: rirSelections[ex.name] } : s) };
+        });
+        await updateDoc(doc(db, 'workouts', todayWorkout.id), { exercises: updatedExercises });
+        await loadAllData();
+        showToast('RIR saved — progression will use this next session.', 'success');
+        el.querySelector('#rir-editor-rows').closest('div[style]').remove();
+      }
+    } catch(err) { showToast('Could not save: ' + err.message, 'error'); }
+    saveRirBtn.disabled = false; saveRirBtn.textContent = 'Save RIR';
+  });
+
+  el.querySelector('.debrief-close-btn').addEventListener('click', () => {
+    el.style.animation = 'toastOut .3s ease forwards';
+    setTimeout(() => el.remove(), 300);
+    if (document.getElementById('view-board').classList.contains('active')) {
+      renderTodayCard(); renderCharCard();
+    }
+  });
+}
+
+function renderTodayCard() {
+  const el = document.getElementById('today-debrief-card-slot');
+  if (!el) return;
+  const today = todayStr();
+  const todayWorkouts = myWorkouts.filter(w => w.uid === currentUser.uid && w.date === today);
+
+  if (!todayWorkouts.length) {
+    const streak = computeStreak(currentUser.uid);
+    el.innerHTML = `<div class="today-debrief-card">
+      <p style="font-size:11px;color:var(--brass);text-transform:uppercase;letter-spacing:.06em;margin:0 0 8px;">Today</p>
+      <p class="today-no-workout">No workout logged yet today.${streak > 0 ? `<br><span style="color:var(--excess);">🔥 ${streak} day streak at risk.</span>` : ''}</p>
+    </div>`;
+    return;
+  }
+
+  const totalSets = todayWorkouts.reduce((n, w) =>
+    n + (w.exercises||[]).reduce((m, ex) => m + (ex.sets||[]).filter(s=>s.reps>0).length, 0), 0);
+  const totalVol = todayWorkouts.reduce((n, w) =>
+    n + (w.exercises||[]).reduce((m, ex) =>
+      m + (ex.sets||[]).filter(s=>s.reps>0&&s.weight>0).reduce((v,s) => v+s.reps*s.weight, 0), 0), 0);
+  const streak = computeStreak(currentUser.uid);
+  const apToday = profile.lastApDate === today ? (() => {
+    const mult = streak >= 60 ? 3 : streak >= 30 ? 2 : streak >= 7 ? 1.5 : 1;
+    return Math.round(10*mult) + (profile.weeklyGoal && countSince(currentUser.uid, startOfWeek(new Date())) >= profile.weeklyGoal ? 5 : 0);
+  })() : 0;
+  const todayPRs = Object.values(myPRs).filter(p => p.date === today);
+  const prXP = todayPRs.reduce((s,p) => s+(p.xp||0), 0);
+
+  el.innerHTML = `<div class="today-debrief-card">
+    <p style="font-size:11px;color:var(--brass);text-transform:uppercase;letter-spacing:.06em;margin:0 0 10px;">⚡ Today's Session</p>
+    <div class="today-debrief-row">
+      <div class="today-stat-pill">
+        <div class="today-stat-val">+${apToday + prXP}</div>
+        <div class="today-stat-lbl">AP Earned</div>
+      </div>
+      <div class="today-stat-pill">
+        <div class="today-stat-val">${totalSets}</div>
+        <div class="today-stat-lbl">Sets</div>
+      </div>
+      <div class="today-stat-pill">
+        <div class="today-stat-val">${totalVol > 0 ? (totalVol >= 1000 ? (totalVol/1000).toFixed(1)+'t' : totalVol+'kg') : '—'}</div>
+        <div class="today-stat-lbl">Volume</div>
+      </div>
+      <div class="today-stat-pill">
+        <div class="today-stat-val">${streak}🔥</div>
+        <div class="today-stat-lbl">Streak</div>
+      </div>
+    </div>
+    ${todayPRs.length ? `<p style="font-size:12px;color:var(--violet);margin:4px 0 0;">🏆 ${todayPRs.length} PR${todayPRs.length>1?'s':''} beaten today · +${prXP} AP</p>` : ''}
+    <p style="font-size:11px;color:var(--text-faint);margin:6px 0 0;">Total Aura Points: ${(profile.auraPoints||0).toLocaleString()}</p>
+  </div>`;
 }
 
 function renderPRPanel() {
