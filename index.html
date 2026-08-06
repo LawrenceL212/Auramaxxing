@@ -2236,7 +2236,17 @@ function switchView(name) {
   if (name === 'exercises') renderExerciseLibrary();
   if (name === 'history') renderCalendar();
   if (name === 'quest') {
-    if (myProgram && myProgram.days && myProgram.days.length) questCarouselIndex = myProgram.currentDayIndex % myProgram.days.length;
+    if (myProgram && myProgram.days && myProgram.days.length) {
+      if (myProgram.scheduleMode === 'fixed') {
+        // fixed mode — jump to today's assigned day
+        const today = todayWeekday();
+        const todayIdx = myProgram.days.findIndex(d => (d.assignedDays||[]).includes(today));
+        questCarouselIndex = todayIdx >= 0 ? todayIdx : 0;
+      } else {
+        // rotation mode — show the next day in the rotation
+        questCarouselIndex = myProgram.currentDayIndex % myProgram.days.length;
+      }
+    }
     renderQuestFeed();
   }
 }
@@ -2376,7 +2386,10 @@ function isQuestComplete(idx) {
 function buildQuestCardHTML(idx) {
   const rotationIdx = myProgram.currentDayIndex % myProgram.days.length;
   const day = myProgram.days[idx];
-  const isActiveDay = idx === rotationIdx;
+  const today = todayWeekday();
+  const isActiveDay = myProgram.scheduleMode === 'fixed'
+    ? (day.assignedDays||[]).includes(today)
+    : idx === rotationIdx;
   const allComplete = isQuestComplete(idx);
   const checklist = day.exercises.map(ex => {
     const done = setsLoggedToday(ex.name, idx);
@@ -3229,8 +3242,13 @@ document.getElementById('save-workout-btn').addEventListener('click', async () =
       // only advance rotation in rotation mode — fixed mode doesn't use currentDayIndex
       if (myProgram.scheduleMode !== 'fixed') {
         myProgram.currentDayIndex = (activeDayIndex + 1) % myProgram.days.length;
+        questCarouselIndex = myProgram.currentDayIndex;
+      } else {
+        // fixed mode — after saving, stay on today's day
+        const today = todayWeekday();
+        const todayIdx = myProgram.days.findIndex(d => (d.assignedDays||[]).includes(today));
+        questCarouselIndex = todayIdx >= 0 ? todayIdx : activeDayIndex;
       }
-      questCarouselIndex = myProgram.currentDayIndex;
       await setDoc(doc(db, 'programs', currentUser.uid), myProgram);
       activeDayIndex = null;
       document.getElementById('logger-title').textContent = 'Log exercises';
