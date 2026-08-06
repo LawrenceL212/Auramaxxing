@@ -530,7 +530,20 @@
   .ex-card .ex-edit-link{display:block;margin-top:6px;font-size:11px;color:var(--violet);background:none;border:none;padding:0;cursor:pointer;text-align:left;}
   .ex-card .ex-edit-link:hover{text-decoration:underline;}
 
-  .modal-overlay{position:fixed;inset:0;background:rgba(5,7,13,0.75);backdrop-filter:blur(3px);display:flex;align-items:flex-end;justify-content:center;z-index:50;}
+  .modal-overlay{position:fixed;inset:0;background:rgba(5,7,13,0.75);backdrop-filter:blur(3px);display:flex;align-items:flex-end;justify-content:center;z-index:80;}
+
+  /* workout pill — minimised state */
+  .workout-pill{
+    position:fixed;bottom:80px;left:50%;transform:translateX(-50%);
+    background:var(--card-2);border:1px solid var(--brass);border-radius:24px;
+    display:flex;align-items:center;gap:12px;padding:10px 18px;
+    z-index:30;box-shadow:0 0 20px rgba(61,165,255,0.3);
+    animation:pillBounce .4s cubic-bezier(0.16,1,0.3,1);
+  }
+  .workout-pill.hidden{display:none;}
+  @keyframes pillBounce{from{opacity:0;transform:translateX(-50%) translateY(20px);}to{opacity:1;transform:translateX(-50%) translateY(0);}}
+  .workout-pill-label{font-size:13px;color:var(--text-dim);}
+  .workout-pill-btn{background:none;border:none;color:var(--brass);font-size:13px;font-weight:700;cursor:pointer;padding:0;}
   .modal{background:var(--card);border:1px solid var(--border);border-top-left-radius:16px;border-top-right-radius:16px;padding:20px;width:100%;max-width:640px;max-height:85vh;overflow-y:auto;}
   .modal h3{margin:0 0 16px;font-size:17px;}
   .muscle-checks{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;}
@@ -539,6 +552,8 @@
 
   /* ---------- Workout logging modal ---------- */
   .workout-modal-overlay{position:fixed;inset:0;background:rgba(5,7,13,0.85);backdrop-filter:blur(4px);z-index:60;display:flex;flex-direction:column;}
+  /* exercise picker must sit above the workout modal */
+  .workout-modal-overlay ~ .modal-overlay, .modal-overlay{z-index:80;}
   .workout-modal{background:var(--bg);display:flex;flex-direction:column;height:100%;max-width:640px;margin:0 auto;width:100%;}
   .workout-modal-header{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--border);flex-shrink:0;}
   .workout-modal-header h3{margin:0;font-size:16px;}
@@ -643,7 +658,10 @@
       <div class="workout-modal">
         <div class="workout-modal-header">
           <h3 id="logger-title">Log exercises</h3>
-          <button class="icon-btn" id="close-workout-modal" style="font-size:20px;">✕</button>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <button class="icon-btn" id="minimise-workout-modal" title="Continue in background" style="font-size:13px;color:var(--text-dim);">− Minimise</button>
+            <button class="icon-btn" id="end-workout-modal" title="End workout" style="font-size:13px;color:var(--excess);">✕ End</button>
+          </div>
         </div>
         <div class="rest-timer-bar">
           <span class="rest-timer-label">⏱ Rest</span>
@@ -670,11 +688,17 @@
           <div id="exercise-rows"></div>
           <button class="btn add-exercise-btn" id="add-exercise-btn">+ Add exercise</button>
           <div class="save-bar">
-            <button class="btn btn-primary" id="save-workout-btn">Complete quest</button>
+            <button class="btn btn-primary hidden" id="save-workout-btn">Complete quest</button>
             <p class="save-msg hidden" id="save-msg">Quest cleared — XP logged.</p>
           </div>
         </div>
       </div>
+    </div>
+
+    <!-- Minimised workout pill — shows when workout continues in background -->
+    <div class="workout-pill hidden" id="workout-pill">
+      <span class="workout-pill-label" id="workout-pill-label">Workout in progress</span>
+      <button class="workout-pill-btn" id="workout-pill-open">Resume →</button>
     </div>
 
     <!-- ---- RANK ---- -->
@@ -1164,24 +1188,22 @@ document.getElementById('logout-btn').addEventListener('click', () => signOut(au
 
 /* ---- Daily Quest Timer ---- */
 let dailyTimerInterval = null;
+// start immediately so the timer shows even before auth/data loads
+setTimeout(() => startDailyTimer(), 0);
 function startDailyTimer() {
   if (dailyTimerInterval) clearInterval(dailyTimerInterval);
   const render = () => {
     const el = document.getElementById('daily-timer');
-    if (!el || !currentUser) return;
+    if (!el) return;
     const today = todayStr();
-    const completedToday = myWorkouts.some(w => w.date === today);
-    const isScheduledToday = myProgram && myProgram.schedule &&
-      myProgram.schedule.includes(['Mon','Tue','Wed','Thu','Fri','Sat','Sun'][new Date().getDay() === 0 ? 6 : new Date().getDay() - 1]);
+    const completedToday = myWorkouts && myWorkouts.some(w => w.date === today);
 
     if (completedToday) {
       el.innerHTML = `<span class="daily-timer-label">Quest</span><span class="daily-timer-time safe">✓ CLEARED</span>`;
       return;
     }
-    if (!isScheduledToday) {
-      el.innerHTML = `<span class="daily-timer-label">Today</span><span class="daily-timer-time" style="font-size:11px;color:var(--text-dim);">Rest Day</span>`;
-      return;
-    }
+
+    // always show countdown — doesn't require a program
     const now = new Date();
     const midnight = new Date(now); midnight.setHours(24, 0, 0, 0);
     const secsLeft = Math.max(0, Math.floor((midnight - now) / 1000));
@@ -1190,7 +1212,7 @@ function startDailyTimer() {
     const s = secsLeft % 60;
     const pad = n => String(n).padStart(2, '0');
     const timeStr = `${pad(h)}:${pad(m)}:${pad(s)}`;
-    const urgent = secsLeft < 3600; // red in the last hour
+    const urgent = secsLeft < 3600;
     el.innerHTML = `<span class="daily-timer-label">Quest expires</span><span class="daily-timer-time ${urgent ? 'urgent' : ''}">${timeStr}</span>`;
   };
   render();
@@ -1536,14 +1558,59 @@ function startProgramDay(idx) {
 
 function openWorkoutModal() {
   document.getElementById('workout-modal-overlay').classList.remove('hidden');
+  document.getElementById('workout-pill').classList.add('hidden');
   document.body.style.overflow = 'hidden';
+  refreshCompleteButton();
 }
-function closeWorkoutModal() {
+function minimiseWorkoutModal() {
   document.getElementById('workout-modal-overlay').classList.add('hidden');
   document.body.style.overflow = '';
+  const pill = document.getElementById('workout-pill');
+  const label = document.getElementById('workout-pill-label');
+  const title = document.getElementById('logger-title').textContent;
+  label.textContent = title;
+  pill.classList.remove('hidden');
   stopRestTimer();
 }
-document.getElementById('close-workout-modal').addEventListener('click', closeWorkoutModal);
+function closeWorkoutModal(discard = false) {
+  document.getElementById('workout-modal-overlay').classList.add('hidden');
+  document.getElementById('workout-pill').classList.add('hidden');
+  document.body.style.overflow = '';
+  stopRestTimer();
+  if (discard) {
+    // reset logger state fully
+    activeDayIndex = null;
+    document.getElementById('logger-title').textContent = 'Log exercises';
+    document.getElementById('exercise-rows').innerHTML = '';
+    addExerciseRow();
+    document.getElementById('save-workout-btn').classList.add('hidden');
+    document.getElementById('save-msg').classList.add('hidden');
+  }
+}
+
+// Show/hide Complete Quest button based on whether all target sets are done
+function refreshCompleteButton() {
+  const btn = document.getElementById('save-workout-btn');
+  const rows = document.querySelectorAll('#exercise-rows .exercise-row');
+  if (!rows.length) { btn.classList.add('hidden'); return; }
+  let allDone = true;
+  rows.forEach(row => {
+    const completedSets = [...row.querySelectorAll('.set-row.complete')].length;
+    const totalSets = row.querySelectorAll('.set-row').length;
+    if (completedSets < totalSets || totalSets === 0) allDone = false;
+  });
+  btn.classList.toggle('hidden', !allDone);
+}
+document.getElementById('end-workout-modal').addEventListener('click', () => {
+  if (!confirm('End this workout? All your logged sets will be lost.')) return;
+  closeWorkoutModal(true); // true = discard
+});
+document.getElementById('minimise-workout-modal').addEventListener('click', () => {
+  minimiseWorkoutModal();
+});
+document.getElementById('workout-pill-open').addEventListener('click', () => {
+  openWorkoutModal();
+});
 document.getElementById('manual-log-btn').addEventListener('click', () => {
   activeDayIndex = null;
   document.getElementById('logger-title').textContent = 'Log exercises';
@@ -1749,6 +1816,7 @@ function addExerciseRow(presetName, targetSets, targetReps, prefillSets) {
   function checkComplete(setRow) {
     const reps = Number(setRow.querySelector('.set-reps').value) || 0;
     setRow.classList.toggle('complete', reps > 0);
+    refreshCompleteButton();
   }
   function addSetRow(prefillReps, prefillWeight, prefillRir, suggestion) {
     const idx = setsList.children.length + 1;
@@ -1862,7 +1930,7 @@ document.getElementById('save-workout-btn').addEventListener('click', async () =
     }
     if (earned || prs.length) msg.classList.remove('hidden');
     startDailyTimer(); // immediately show CLEARED state in the topbar
-    setTimeout(() => closeWorkoutModal(), 1400);
+    setTimeout(() => closeWorkoutModal(false), 1400);
   } catch (err) {
     alert('Could not save: ' + err.message);
   } finally {
@@ -2828,6 +2896,91 @@ function statusCountRow(stats) {
     `<span class="status-pill" style="border-color:${STATUS_COLOR[k]};color:${STATUS_COLOR[k]};">${k} ${v}</span>`).join('')}</div>`;
 }
 
+function weightLineChart(weights) {
+  if (!weights || weights.length === 0) {
+    return `<p class="sub" style="margin:0 0 12px;">No weight logged yet. Log your first entry below.</p>`;
+  }
+
+  const last = weights[weights.length - 1];
+  const first = weights[0];
+  const totalChange = last.weight - first.weight;
+  const changeStr = `${totalChange >= 0 ? '+' : ''}${totalChange.toFixed(1)}kg`;
+  const changeColor = totalChange > 0.5 ? 'var(--excess)' : totalChange < -0.5 ? 'var(--growing)' : 'var(--text-dim)';
+
+  // use last 30 entries max to keep chart readable
+  const pts = weights.slice(-30);
+  if (pts.length === 1) {
+    return `<div style="display:flex;align-items:baseline;gap:10px;margin-bottom:12px;">
+      <span class="bignum">${last.weight} <small>kg</small></span>
+      <span class="sub">${last.date}</span>
+    </div>`;
+  }
+
+  const W = 320, H = 90, PAD = { t:8, r:8, b:20, l:36 };
+  const gW = W - PAD.l - PAD.r;
+  const gH = H - PAD.t - PAD.b;
+
+  const vals = pts.map(p => Number(p.weight));
+  const minV = Math.min(...vals);
+  const maxV = Math.max(...vals);
+  const range = maxV - minV || 1;
+
+  const toX = i => PAD.l + (i / (pts.length - 1)) * gW;
+  const toY = v => PAD.t + gH - ((v - minV) / range) * gH;
+
+  // build polyline points
+  const linePoints = pts.map((p,i) => `${toX(i).toFixed(1)},${toY(Number(p.weight)).toFixed(1)}`).join(' ');
+
+  // fill area under the line
+  const firstX = toX(0).toFixed(1), lastX = toX(pts.length-1).toFixed(1);
+  const baseY = (PAD.t + gH).toFixed(1);
+  const areaPoints = `${firstX},${baseY} ${linePoints} ${lastX},${baseY}`;
+
+  // x-axis labels — show first, middle, last date
+  const labelIdxs = [0, Math.floor((pts.length-1)/2), pts.length-1];
+  const xLabels = labelIdxs.map(i => {
+    const d = pts[i].date.slice(5); // MM-DD
+    return `<text x="${toX(i).toFixed(1)}" y="${H}" text-anchor="middle" fill="var(--text-faint)" font-size="9">${d}</text>`;
+  }).join('');
+
+  // y-axis labels
+  const yLabels = [minV, (minV+maxV)/2, maxV].map((v,i) => {
+    const y = toY(v).toFixed(1);
+    return `<text x="${PAD.l - 4}" y="${parseFloat(y)+3}" text-anchor="end" fill="var(--text-faint)" font-size="9">${v.toFixed(1)}</text>`;
+  }).join('');
+
+  // dot on the latest point
+  const dotX = toX(pts.length-1).toFixed(1);
+  const dotY = toY(vals[vals.length-1]).toFixed(1);
+
+  return `
+    <div style="display:flex;align-items:baseline;gap:10px;margin-bottom:8px;">
+      <span class="bignum">${last.weight} <small>kg</small></span>
+      <span style="font-size:12px;color:${changeColor};">${changeStr} total</span>
+      <span class="sub" style="margin-left:auto;">${pts.length} entries</span>
+    </div>
+    <svg viewBox="0 0 ${W} ${H}" style="width:100%;overflow:visible;" xmlns="http://www.w3.org/2000/svg">
+      <!-- grid lines -->
+      <line x1="${PAD.l}" y1="${PAD.t}" x2="${PAD.l}" y2="${PAD.t+gH}" stroke="var(--border)" stroke-width="1"/>
+      <line x1="${PAD.l}" y1="${PAD.t+gH}" x2="${PAD.l+gW}" y2="${PAD.t+gH}" stroke="var(--border)" stroke-width="1"/>
+      <!-- area fill -->
+      <defs>
+        <linearGradient id="wt-grad" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="var(--brass)" stop-opacity="0.25"/>
+          <stop offset="100%" stop-color="var(--brass)" stop-opacity="0"/>
+        </linearGradient>
+      </defs>
+      <polygon points="${areaPoints}" fill="url(#wt-grad)"/>
+      <!-- line -->
+      <polyline points="${linePoints}" fill="none" stroke="var(--brass)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+      <!-- latest dot -->
+      <circle cx="${dotX}" cy="${dotY}" r="3.5" fill="var(--brass)" stroke="var(--card)" stroke-width="2"/>
+      <!-- labels -->
+      ${yLabels}
+      ${xLabels}
+    </svg>`;
+}
+
 function barChart(values, labels, opts) {
   opts = opts || {};
   const max = Math.max(...values, opts.minMax || 1);
@@ -2971,7 +3124,7 @@ function renderTrends() {
 
     <div class="card">
       <div class="card-title"><h3>◐ Weight</h3></div>
-      ${lastWeight ? `<div style="display:flex;align-items:baseline;gap:10px;"><span class="bignum">${lastWeight.weight} <small>kg</small></span><span class="trend-badge" style="background:rgba(139,107,255,0.15);color:var(--violet);">${weightTrend}</span></div><p class="sub">${lastWeight.date}${prevWeight?` · ${weightDiff>=0?'+':''}${weightDiff.toFixed(1)}kg since last`:''}</p>` : `<p class="sub">No weight logged yet.</p>`}
+      ${weightLineChart(myWeights)}
       <div class="weight-input-row">
         <input type="number" step="0.1" id="weight-input" placeholder="Log today's weight (kg)" />
         <button class="btn btn-sm" id="weight-save-btn">Save</button>
