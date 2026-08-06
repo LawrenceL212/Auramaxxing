@@ -1342,15 +1342,26 @@ function migrateProgram(prog) {
   return prog;
 }
 function setsLoggedToday(name, dayIndex) {
-  return myWorkouts
+  const todayWorkouts = myWorkouts.filter(w => w.date === todayStr() && w.uid === currentUser.uid);
+  return todayWorkouts
     .filter(w => {
-      if (w.date !== todayStr()) return false;
-      if (w.uid !== currentUser.uid) return false;
-      // if dayIndex provided, only count from that specific session
-      if (dayIndex !== undefined && dayIndex !== null) {
-        return w.programDayIndex === dayIndex;
+      // new workouts: match by stored programDayIndex
+      if (w.programDayIndex !== undefined && w.programDayIndex !== null) {
+        return dayIndex === undefined || dayIndex === null || w.programDayIndex === dayIndex;
       }
-      return true;
+      // old workouts without programDayIndex: match by checking if this workout's
+      // exercise list overlaps more with the target day than any other day
+      if (dayIndex === undefined || dayIndex === null || !myProgram) return true;
+      const targetDay = myProgram.days[dayIndex];
+      if (!targetDay) return true;
+      const wExNames = new Set((w.exercises||[]).map(e => e.name));
+      const targetOverlap = targetDay.exercises.filter(e => wExNames.has(e.name)).length;
+      // find which day this workout best matches
+      const bestMatch = myProgram.days.reduce((best, day, i) => {
+        const overlap = day.exercises.filter(e => wExNames.has(e.name)).length;
+        return overlap > best.overlap ? { i, overlap } : best;
+      }, { i: -1, overlap: -1 });
+      return bestMatch.i === dayIndex;
     })
     .flatMap(w => w.exercises)
     .filter(e => e.name === name)
