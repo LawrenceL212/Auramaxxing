@@ -145,11 +145,24 @@
   .ex-set-count{font-size:11px;color:var(--text-faint);font-family:var(--font-mono);white-space:nowrap;margin-top:14px;}
   .remove-x{background:none;border:none;color:var(--text-faint);font-size:18px;cursor:pointer;padding:0 4px;}
   .sets-list{display:flex;flex-direction:column;gap:6px;margin-top:12px;}
-  .set-table-head{display:grid;grid-template-columns:22px 1fr 1fr 26px;gap:8px;padding:0 2px;margin-bottom:2px;}
+  .set-table-head{display:grid;grid-template-columns:22px 1fr 1fr auto 26px;gap:8px;padding:0 2px;margin-bottom:2px;}
   .set-table-head span{font-size:10px;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.05em;text-align:center;}
   .set-table-head span:first-child{text-align:left;}
-  .set-row{display:grid;grid-template-columns:22px 1fr 1fr 26px;gap:8px;align-items:center;padding:6px 2px;border-radius:6px;transition:background .2s ease;}
+  .set-row{display:grid;grid-template-columns:22px 1fr 1fr auto 26px;gap:8px;align-items:center;padding:6px 2px;border-radius:6px;transition:background .2s ease;}
   .set-row.complete{background:var(--brass-dim);}
+  .rir-chips{display:flex;gap:3px;align-items:center;flex-shrink:0;}
+  .rir-chip{
+    width:22px;height:22px;border-radius:4px;border:1px solid var(--border);
+    background:var(--card-2);color:var(--text-faint);font-size:10px;cursor:pointer;
+    display:flex;align-items:center;justify-content:center;font-family:var(--font-mono);
+  }
+  .rir-chip.selected{background:var(--brass-dim);border-color:var(--brass);color:var(--brass);font-weight:700;}
+  .suggest-badge{
+    font-size:10px;color:var(--growing);background:rgba(139,107,255,0.12);
+    border:1px solid var(--growing);border-radius:4px;padding:2px 6px;white-space:nowrap;flex-shrink:0;
+  }
+  .set-table-head span:nth-child(3){text-align:left;}
+  .rir-label{font-size:10px;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.05em;}
   .set-row .set-idx{color:var(--text-faint);font-size:12px;font-family:var(--font-mono);text-align:center;}
   .stepper{display:flex;align-items:center;background:var(--card-2);border:1px solid var(--border);border-radius:6px;overflow:hidden;}
   .stepper button{background:none;border:none;color:var(--brass);font-size:16px;width:26px;height:32px;cursor:pointer;flex-shrink:0;}
@@ -297,6 +310,22 @@
   .stat-upgrade-btn.can-upgrade{border-color:var(--brass);color:var(--brass);background:var(--brass-dim);}
   .stat-upgrade-btn.maxed{border-color:var(--text-faint);color:var(--text-faint);cursor:default;opacity:0.5;}
   .char-rank-hint{font-size:12px;color:var(--text-faint);margin:12px 0 0;text-align:center;line-height:1.6;}
+
+  /* ---------- PR Panel ---------- */
+  .pr-panel-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
+  .pr-locked{font-size:13px;color:var(--text-faint);text-align:center;padding:14px 0;}
+  .pr-grid{display:flex;flex-direction:column;gap:8px;}
+  .pr-row{display:flex;align-items:center;gap:10px;padding:8px 10px;background:var(--card-2);border-radius:7px;border:1px solid var(--border);}
+  .pr-name{flex:1;font-size:13.5px;font-weight:600;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .pr-e1rm{font-family:var(--font-mono);font-size:12px;color:var(--text-dim);white-space:nowrap;}
+  .pr-tier{font-size:10.5px;padding:3px 7px;border-radius:10px;white-space:nowrap;font-weight:700;}
+  .pr-tier.tier-Elite{background:rgba(255,215,0,0.15);color:#FFD700;border:1px solid #FFD700;}
+  .pr-tier.tier-Advanced{background:rgba(255,61,90,0.15);color:var(--excess);border:1px solid var(--excess);}
+  .pr-tier.tier-Intermediate{background:rgba(139,107,255,0.15);color:var(--violet);border:1px solid var(--violet);}
+  .pr-tier.tier-Novice{background:rgba(47,184,198,0.15);color:var(--maintaining);border:1px solid var(--maintaining);}
+  .pr-tier.tier-Beginner{background:var(--card);color:var(--text-faint);border:1px solid var(--border);}
+  .pr-tier.tier-Unranked{background:var(--card);color:var(--text-faint);border:1px solid var(--border);}
+  .pr-xp{font-family:var(--font-mono);font-size:11px;color:var(--brass);white-space:nowrap;}
   .streak-pill{font-family:var(--font-mono);font-size:13px;background:var(--card-2);padding:3px 9px;border-radius:20px;}
   .rank-badge{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;font-family:var(--font-display);font-weight:800;font-size:13px;border:1.5px solid;border-radius:4px;background:var(--card-2);}
 
@@ -305,8 +334,8 @@
   .status-count-row{display:flex;flex-wrap:wrap;gap:8px 10px;margin:10px 0 4px;}
   .status-pill{font-size:11px;padding:4px 10px;border-radius:20px;display:flex;align-items:center;gap:6px;border:1px solid;}
   .body-pair{display:flex;justify-content:center;gap:6px;}
-  .body-pair svg{width:44%;height:auto;}
-  .body-pair.big svg{width:46%;}
+  .body-pair svg{width:44%;height:auto;overflow:hidden;}
+  .body-pair.big svg{width:46%;overflow:hidden;}
   .body-part{
     cursor:pointer;
     transform-box:fill-box;transform-origin:center;
@@ -532,8 +561,10 @@
         <p class="char-rank-hint" id="char-rank-hint"></p>
       </div>
 
+      <!-- PR Records panel -->
+      <div id="pr-panel"></div>
+
       <div class="card">
-        <div class="card-title"><h3>Party status — today</h3></div>
         <div class="today-list" id="today-list"></div>
       </div>
       <div class="card">
@@ -782,6 +813,15 @@ const BASE_EXERCISES = {
   "Burpee": { muscles: { "Quads": 0.6, "Glutes": 0.6, "Front Shoulders": 0.6, "Triceps": 0.3, "Upper Abs": 0.3 }, equipment: "Bodyweight" },
   "Bear Crawl": { muscles: { "Front Shoulders": 0.6, "Upper Abs": 0.6, "Triceps": 0.3, "Hip Flexors": 0.3 }, equipment: "Bodyweight" },
   "Box Jump": { muscles: { "Quads": 1, "Glutes": 1, "Calves": 0.6 }, equipment: "Bodyweight" },
+
+  /* ---- Running & cardio ---- */
+  "Running": { muscles: { "Quads": 0.6, "Hamstrings": 0.6, "Glutes": 0.6, "Calves": 1, "Hip Flexors": 0.3 }, equipment: "Bodyweight" },
+  "Sprinting": { muscles: { "Quads": 1, "Hamstrings": 1, "Glutes": 1, "Calves": 0.6, "Hip Flexors": 0.6 }, equipment: "Bodyweight" },
+  "Interval Running": { muscles: { "Quads": 0.6, "Hamstrings": 0.6, "Glutes": 0.6, "Calves": 1, "Hip Flexors": 0.3 }, equipment: "Bodyweight" },
+  "Hill Sprints": { muscles: { "Quads": 1, "Glutes": 1, "Hamstrings": 0.6, "Calves": 0.6, "Hip Flexors": 0.6 }, equipment: "Bodyweight" },
+  "Treadmill Run": { muscles: { "Quads": 0.6, "Hamstrings": 0.6, "Glutes": 0.6, "Calves": 1, "Hip Flexors": 0.3 }, equipment: "Machine" },
+  "Stair Climb": { muscles: { "Quads": 1, "Glutes": 1, "Calves": 0.6, "Hamstrings": 0.3 }, equipment: "Machine" },
+  "Jump Rope": { muscles: { "Calves": 1, "Quads": 0.3, "Front Shoulders": 0.2 }, equipment: "Bodyweight" },
   "Tuck Front Lever": { muscles: { "Lats": 1, "Upper Abs": 0.6, "Biceps": 0.3, "Forearms": 0.3 }, equipment: "Bodyweight" },
   "Advanced Tuck Front Lever": { muscles: { "Lats": 1, "Upper Abs": 0.6, "Lower Abs": 0.3, "Biceps": 0.3, "Forearms": 0.3 }, equipment: "Bodyweight" },
   "Single Leg Front Lever": { muscles: { "Lats": 1, "Lower Abs": 0.6, "Upper Abs": 0.6, "Biceps": 0.3, "Forearms": 0.3 }, equipment: "Bodyweight" },
@@ -863,7 +903,8 @@ await loadAnatomyTemplate('male');
    STATE
    ========================================================================= */
 let currentUser = null, profile = null, authMode = "login";
-let allUsers = [], myWorkouts = [], allWorkouts = [], myWeights = [];
+let allUsers = [], myWorkouts = [], allWorkouts = [], myWeights = [], myPRs = {};
+// myPRs: { "Bench Press": { e1rm: 120.5, date: "2026-08-01", xpTier: "Intermediate" }, ... }
 let myProgram = null;       // { name, schedule:['Mon',...], days:[{name,tag,exercises:[{name,sets,reps}],lastDate}], currentDayIndex }
 let customExercises = [];   // from Firestore
 let activeDayIndex = null;  // which program day is being logged right now
@@ -1063,7 +1104,7 @@ function switchView(name) {
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
   document.getElementById('view-' + name).classList.add('active');
   document.querySelectorAll('.bottom-nav button').forEach(b => b.classList.toggle('active', b.dataset.view === name));
-  if (name === 'board') { renderBoard(); renderCharCard(); }
+  if (name === 'board') { renderBoard(); renderCharCard(); renderPRPanel(); }
   if (name === 'trends') { trendsView = 'dashboard'; renderTrends(); }
   if (name === 'exercises') renderExerciseLibrary();
   if (name === 'history') renderCalendar();
@@ -1093,6 +1134,9 @@ async function loadAllData() {
 
   const wtSnap = await getDocs(query(collection(db, 'bodyweight'), where('uid','==', currentUser.uid)));
   myWeights = wtSnap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a,b) => a.date.localeCompare(b.date));
+
+  const prSnap = await getDoc(doc(db, 'prs', currentUser.uid));
+  myPRs = prSnap.exists() ? prSnap.data() : {};
 
   populateExerciseSelects();
   renderQuestFeed();
@@ -1208,13 +1252,97 @@ function attachSwipeHandlers(el, onSwipeLeft, onSwipeRight) {
   }, { passive: true });
 }
 
+/* =========================================================================
+   PROGRESSIVE OVERLOAD ENGINE
+   Looks at RIR trend across the last 3 sessions of each exercise.
+   Only suggests progression once adaptation is confirmed — not on a timer.
+   ========================================================================= */
+const LOWER_BODY_MUSCLES = new Set(['Quads','Hamstrings','Glutes','Calves','Hip Flexors']);
+
+function isLowerBodyExercise(name) {
+  const muscles = (EXERCISES_ALL[name] || {}).muscles || {};
+  const primary = Object.entries(muscles).sort((a,b)=>b[1]-a[1])[0];
+  return primary ? LOWER_BODY_MUSCLES.has(primary[0]) : false;
+}
+
+function progressiveOverloadSuggestion(exerciseName, targetReps) {
+  // gather last 3 sessions that include this exercise, oldest-first
+  const sessions = myWorkouts
+    .filter(w => w.exercises && w.exercises.some(e => e.name === exerciseName))
+    .sort((a,b) => a.date.localeCompare(b.date))
+    .slice(-3)
+    .map(w => w.exercises.find(e => e.name === exerciseName));
+
+  if (!sessions.length) return null; // no history yet
+
+  const last = sessions[sessions.length - 1];
+  if (!last || !last.sets || !last.sets.length) return null;
+
+  // compute per-set suggestions based on RIR trend
+  const weightStep = isLowerBodyExercise(exerciseName) ? 2.5 : 1.25;
+  const prevTwoRIRs = sessions.slice(0, -1).map(s => {
+    const rirs = s.sets.map(set => set.rir).filter(r => r != null);
+    return rirs.length ? rirs.reduce((a,b)=>a+b,0)/rirs.length : null;
+  }).filter(r => r != null);
+
+  return last.sets.map(set => {
+    const prefillWeight = set.weight;
+    const prefillReps = set.reps;
+    const rir = set.rir;
+    let suggestion = null;
+    let newReps = prefillReps;
+    let newWeight = prefillWeight;
+
+    if (rir == null) {
+      // no RIR recorded — just replay last session as-is
+      return { reps: prefillReps, weight: prefillWeight, rir: null, suggestion: null };
+    }
+
+    // check if RIR has been creeping up across sessions (adaptation signal)
+    const avgPrevRIR = prevTwoRIRs.length
+      ? prevTwoRIRs.reduce((a,b)=>a+b,0)/prevTwoRIRs.length
+      : null;
+
+    if (rir <= 1) {
+      // still hard — keep exact same weight and reps, no change
+      suggestion = null;
+    } else if (rir >= 4) {
+      // very easy — add reps aggressively this session
+      newReps = prefillReps + 2;
+      suggestion = `↑ +2 reps (RIR ${rir} last time)`;
+    } else if (rir >= 2 && rir <= 3) {
+      // getting easier — check the trend
+      if (avgPrevRIR != null && avgPrevRIR >= 2) {
+        // RIR has been ≥2 for multiple sessions — genuinely adapted
+        // add reps first; if already at or above target, bump weight instead
+        if (prefillReps < targetReps) {
+          newReps = prefillReps + 1;
+          suggestion = `↑ +1 rep (adapted)`;
+        } else {
+          newWeight = prefillWeight + weightStep;
+          newReps = targetReps; // reset back to target reps at new weight
+          suggestion = `↑ +${weightStep}kg (adapted)`;
+        }
+      } else {
+        // only one comfortable session — too early to call it adaptation, hold
+        suggestion = null;
+      }
+    }
+
+    return { reps: newReps, weight: newWeight, rir: rir, suggestion };
+  });
+}
+
 function startProgramDay(idx) {
   activeDayIndex = idx;
   const day = myProgram.days[idx];
   document.getElementById('logger-title').textContent = `Logging: ${day.name}`;
   const rows = document.getElementById('exercise-rows');
   rows.innerHTML = '';
-  day.exercises.forEach(ex => addExerciseRow(ex.name, ex.sets, ex.reps));
+  day.exercises.forEach(ex => {
+    const prefillSets = progressiveOverloadSuggestion(ex.name, ex.reps);
+    addExerciseRow(ex.name, ex.sets, ex.reps, prefillSets);
+  });
   openWorkoutModal();
 }
 
@@ -1394,7 +1522,8 @@ function openExercisePicker(onSelect) {
   searchEl.focus();
 }
 
-function addExerciseRow(presetName, targetSets, targetReps) {
+function addExerciseRow(presetName, targetSets, targetReps, prefillSets) {
+  // prefillSets: array of { reps, weight, rir, suggestion } from progressive overload calc
   const row = document.createElement('div');
   row.className = 'exercise-row';
   row.dataset.exName = presetName || '';
@@ -1407,7 +1536,7 @@ function addExerciseRow(presetName, targetSets, targetReps) {
       <button type="button" class="remove-x">×</button>
     </div>
     <div class="muscle-tags"></div>
-    <div class="set-table-head hidden"><span>#</span><span>Reps</span><span>Weight</span><span></span></div>
+    <div class="set-table-head hidden"><span>#</span><span>Reps</span><span>Weight</span><span class="rir-label">RIR</span><span></span></div>
     <div class="sets-list"></div>
     <button type="button" class="btn add-set-btn">+ Add set</button>
   `;
@@ -1424,28 +1553,44 @@ function addExerciseRow(presetName, targetSets, targetReps) {
       <button type="button" class="step-up">+</button>
     </div>`;
   }
+  function rirChips(prefillRir) {
+    return `<div class="rir-chips" title="Reps In Reserve">${[0,1,2,3,4,5].map(n =>
+      `<button type="button" class="rir-chip ${n === prefillRir ? 'selected' : ''}" data-rir="${n}">${n}</button>`
+    ).join('')}</div>`;
+  }
   function checkComplete(setRow) {
     const reps = Number(setRow.querySelector('.set-reps').value) || 0;
     setRow.classList.toggle('complete', reps > 0);
   }
-  function addSetRow(prefillReps) {
+  function addSetRow(prefillReps, prefillWeight, prefillRir, suggestion) {
     const idx = setsList.children.length + 1;
     const setRow = document.createElement('div');
     setRow.className = 'set-row';
-    setRow.innerHTML = `<span class="set-idx">${idx}</span>${stepper('set-reps', prefillReps || '', 0, 1)}${stepper('set-weight', '', 0, 2.5)}<button type="button" class="remove-x set-remove">×</button>`;
-    setRow.querySelector('.step-down').addEventListener('click', (e) => {
+    const suggTag = suggestion ? `<span class="suggest-badge">${suggestion}</span>` : '';
+    setRow.innerHTML = `
+      <span class="set-idx">${idx}</span>
+      ${stepper('set-reps', prefillReps || '', 0, 1)}
+      ${stepper('set-weight', prefillWeight || '', 0, 2.5)}
+      ${rirChips(prefillRir ?? null)}
+      <button type="button" class="remove-x set-remove">×</button>
+      ${suggTag}`;
+    setRow.querySelectorAll('.step-down').forEach(btn => btn.addEventListener('click', (e) => {
       const input = e.target.parentElement.querySelector('input');
       const step = Number(input.step) || 1;
       input.value = Math.max(Number(input.min)||0, (Number(input.value)||0) - step);
       checkComplete(setRow);
-    });
-    setRow.querySelector('.step-up').addEventListener('click', (e) => {
+    }));
+    setRow.querySelectorAll('.step-up').forEach(btn => btn.addEventListener('click', (e) => {
       const input = e.target.parentElement.querySelector('input');
       const step = Number(input.step) || 1;
       input.value = (Number(input.value)||0) + step;
       checkComplete(setRow);
-    });
+    }));
     setRow.querySelectorAll('input').forEach(inp => inp.addEventListener('input', () => checkComplete(setRow)));
+    setRow.querySelectorAll('.rir-chip').forEach(chip => chip.addEventListener('click', () => {
+      setRow.querySelectorAll('.rir-chip').forEach(c => c.classList.remove('selected'));
+      chip.classList.add('selected');
+    }));
     setRow.querySelector('.set-remove').addEventListener('click', () => { setRow.remove(); [...setsList.children].forEach((r,i) => r.querySelector('.set-idx').textContent = i+1); });
     setsList.appendChild(setRow);
     tableHead.classList.remove('hidden');
@@ -1463,7 +1608,9 @@ function addExerciseRow(presetName, targetSets, targetReps) {
   pickerBtn.addEventListener('click', () => openExercisePicker(selectExercise));
   row.querySelector('.add-set-btn').addEventListener('click', () => addSetRow());
   row.querySelector('.remove-x').addEventListener('click', () => row.remove());
-  if (targetSets > 0) {
+  if (prefillSets && prefillSets.length) {
+    prefillSets.forEach(s => addSetRow(s.reps, s.weight, s.rir, s.suggestion));
+  } else if (targetSets > 0) {
     for (let i = 0; i < targetSets; i++) addSetRow(targetReps);
   } else {
     addSetRow();
@@ -1482,10 +1629,14 @@ document.getElementById('save-workout-btn').addEventListener('click', async () =
   exerciseRows.querySelectorAll('.exercise-row').forEach(row => {
     const name = row.dataset.exName;
     if (!name) return;
-    const sets = [...row.querySelectorAll('.set-row')].map(sr => ({
-      reps: Number(sr.querySelector('.set-reps').value) || 0,
-      weight: Number(sr.querySelector('.set-weight').value) || 0,
-    })).filter(s => s.reps > 0);
+    const sets = [...row.querySelectorAll('.set-row')].map(sr => {
+      const selectedRir = sr.querySelector('.rir-chip.selected');
+      return {
+        reps: Number(sr.querySelector('.set-reps').value) || 0,
+        weight: Number(sr.querySelector('.set-weight').value) || 0,
+        rir: selectedRir ? Number(selectedRir.dataset.rir) : null,
+      };
+    }).filter(s => s.reps > 0);
     if (sets.length) exercises.push({ name, sets });
   });
   if (!exercises.length) { alert('Add at least one exercise with a completed set before saving.'); return; }
@@ -1509,11 +1660,19 @@ document.getElementById('save-workout-btn').addEventListener('click', async () =
     await loadAllData();
     // try to award AP for today — anti-cheat inside tryAwardAp ensures once-per-day
     const earned = await tryAwardAp();
-    if (earned) {
-      const msg = document.getElementById('save-msg');
+    // check PRs and award XP for any personal records beaten
+    const prs = await checkAndAwardPRs(exercises, date);
+    const totalPrXP = prs.reduce((s,p) => s + p.xp, 0);
+    const msg = document.getElementById('save-msg');
+    if (prs.length && earned) {
+      msg.textContent = `Quest cleared — +${earned} AP & ${prs.length} new PR${prs.length>1?'s':''} (+${totalPrXP} AP)!`;
+    } else if (prs.length) {
+      const best = prs.sort((a,b)=>b.xp-a.xp)[0];
+      msg.textContent = `New PR: ${best.exercise} at ${best.tier||''}! +${totalPrXP} Aura Points earned.`;
+    } else if (earned) {
       msg.textContent = `Quest cleared — +${earned} Aura Points earned!`;
-      msg.classList.remove('hidden');
     }
+    if (earned || prs.length) msg.classList.remove('hidden');
     setTimeout(() => closeWorkoutModal(), 1400);
   } catch (err) {
     alert('Could not save: ' + err.message);
@@ -1533,6 +1692,122 @@ function computeStreak(uid) {
   return streak;
 }
 function countSince(uid, sinceDate) { return allWorkouts.filter(w => w.uid === uid && new Date(w.date) >= sinceDate).length; }
+/* =========================================================================
+   PERSONAL RECORD (PR) SYSTEM
+   — Tracks estimated 1RM per exercise, compares to world strength standards,
+     awards Aura Points when a PR is beaten. Only active after 14 days.
+   ========================================================================= */
+
+// Epley formula: e1RM = weight × (1 + reps / 30)
+function epley1RM(weight, reps) {
+  if (reps <= 0 || weight <= 0) return 0;
+  if (reps === 1) return weight;
+  return Math.round(weight * (1 + reps / 30) * 10) / 10;
+}
+
+// Latest bodyweight from the tracker (kg). Returns null if unavailable.
+function latestBodyweightKg() {
+  if (!myWeights.length) return null;
+  const last = myWeights[myWeights.length - 1];
+  // stored in whatever unit — we need to standardise
+  // bodyweight is stored as { weight, unit } or just { weight } (assumed kg)
+  const bw = Number(last.weight);
+  if (!bw) return null;
+  return bw; // assumed kg throughout the app
+}
+
+// Two-week gate: true once the user's first workout is 14+ days ago
+function prSystemUnlocked() {
+  if (!myWorkouts.length) return false;
+  const first = myWorkouts.reduce((a,b) => a.date < b.date ? a : b);
+  const daysSince = (new Date() - new Date(first.date)) / 86400000;
+  return daysSince >= 14;
+}
+
+// World strength standards expressed as lift/bodyweight ratios
+// Source: StrengthLevel / ExRx / Symmetric Strength aggregated data
+// Five tiers: Beginner, Novice, Intermediate, Advanced, Elite
+// Male ratios; female = male × 0.75 for upper body, × 0.80 for lower body
+const STRENGTH_STANDARDS = {
+  // [ Beginner, Novice, Intermediate, Advanced, Elite ] — ratios (lift/BW)
+  "Bench Press":           { male: [0.5, 0.75, 1.0, 1.25, 1.5],  female: [0.35, 0.5, 0.75, 0.9, 1.1] },
+  "Incline Bench Press":   { male: [0.4, 0.65, 0.85, 1.1, 1.35], female: [0.3, 0.45, 0.65, 0.82, 1.0] },
+  "Overhead Press":        { male: [0.35, 0.5, 0.65, 0.85, 1.0], female: [0.2, 0.3, 0.45, 0.6, 0.75] },
+  "Close Grip Bench Press":{ male: [0.4, 0.65, 0.9, 1.15, 1.4],  female: [0.3, 0.45, 0.65, 0.85, 1.0] },
+  "Squat":                 { male: [0.75, 1.25, 1.5, 2.0, 2.5],  female: [0.5, 0.85, 1.1, 1.5, 1.9] },
+  "Front Squat":           { male: [0.6, 1.0, 1.25, 1.65, 2.0],  female: [0.4, 0.7, 0.95, 1.25, 1.55] },
+  "Hack Squat":            { male: [0.6, 1.0, 1.3, 1.7, 2.1],    female: [0.4, 0.7, 0.95, 1.25, 1.6] },
+  "Deadlift":              { male: [1.0, 1.5, 2.0, 2.5, 3.0],    female: [0.7, 1.0, 1.4, 1.8, 2.2] },
+  "Romanian Deadlift":     { male: [0.75, 1.15, 1.5, 1.9, 2.3],  female: [0.5, 0.8, 1.1, 1.4, 1.75] },
+  "Sumo Deadlift":         { male: [0.9, 1.4, 1.9, 2.4, 2.9],    female: [0.65, 1.0, 1.35, 1.75, 2.15] },
+  "Stiff-Leg Deadlift":    { male: [0.7, 1.1, 1.45, 1.85, 2.25], female: [0.5, 0.75, 1.05, 1.35, 1.7] },
+  "Barbell Row":           { male: [0.5, 0.75, 1.0, 1.3, 1.6],   female: [0.35, 0.5, 0.7, 0.95, 1.2] },
+  "Pendlay Row":           { male: [0.5, 0.75, 1.0, 1.3, 1.6],   female: [0.35, 0.5, 0.7, 0.95, 1.2] },
+  "Hip Thrust":            { male: [0.75, 1.25, 1.75, 2.25, 2.75],female: [0.6, 1.0, 1.5, 2.0, 2.5] },
+  "Lunges":                { male: [0.35, 0.6, 0.85, 1.1, 1.4],  female: [0.25, 0.45, 0.65, 0.85, 1.1] },
+  "Bulgarian Split Squat": { male: [0.4, 0.65, 0.9, 1.2, 1.5],   female: [0.3, 0.5, 0.7, 0.95, 1.2] },
+  "Leg Press":             { male: [1.0, 1.5, 2.0, 2.5, 3.5],    female: [0.7, 1.1, 1.5, 2.0, 2.8] },
+  "Barbell Curl":          { male: [0.3, 0.4, 0.55, 0.7, 0.85],  female: [0.2, 0.28, 0.38, 0.5, 0.62] },
+  "Dumbbell Curl":         { male: [0.15, 0.22, 0.3, 0.38, 0.47],female: [0.1, 0.15, 0.22, 0.28, 0.36] },
+  "Skull Crusher":         { male: [0.3, 0.45, 0.6, 0.8, 1.0],   female: [0.2, 0.3, 0.42, 0.56, 0.72] },
+};
+
+const STANDARD_TIERS = ['Beginner','Novice','Intermediate','Advanced','Elite'];
+const TIER_XP = { Beginner: 5, Novice: 15, Intermediate: 40, Advanced: 100, Elite: 250 };
+const FLAT_PR_XP = 10; // for exercises without world standards
+
+function getStrengthTier(exerciseName, e1rm, bodyweightKg, gender = 'male') {
+  const std = STRENGTH_STANDARDS[exerciseName];
+  if (!std || !bodyweightKg) return null;
+  const thresholds = std[gender] || std.male;
+  const ratio = e1rm / bodyweightKg;
+  let tier = 'Beginner';
+  for (let i = 0; i < thresholds.length; i++) {
+    if (ratio >= thresholds[i]) tier = STANDARD_TIERS[i];
+  }
+  return tier;
+}
+
+// Call after every workout save. Checks each logged set for a new PR.
+// Awards AP for beats, updates the 'prs' Firestore doc.
+async function checkAndAwardPRs(exercises, workoutDate) {
+  if (!prSystemUnlocked()) return [];
+  const bw = latestBodyweightKg();
+  const gender = profile.gender || 'male'; // settable later
+  const updates = {};
+  const awarded = [];
+
+  for (const ex of exercises) {
+    for (const set of ex.sets) {
+      if (!set.reps || !set.weight || set.reps <= 0 || set.weight <= 0) continue;
+      const e1rm = epley1RM(set.weight, set.reps);
+      const existing = myPRs[ex.name];
+      if (existing && existing.e1rm >= e1rm) continue; // not a PR
+
+      // it's a PR — calculate tier and XP
+      const tier = getStrengthTier(ex.name, e1rm, bw, gender);
+      const xp = tier ? TIER_XP[tier] : FLAT_PR_XP;
+
+      updates[ex.name] = { e1rm, date: workoutDate, tier: tier || 'Unranked', xp };
+      awarded.push({ exercise: ex.name, e1rm, tier, xp });
+    }
+  }
+
+  if (!Object.keys(updates).length) return [];
+
+  // merge updates into myPRs
+  const newPRs = { ...myPRs, ...updates };
+  const totalNewXP = awarded.reduce((s, a) => s + a.xp, 0);
+  const newAP = (profile.auraPoints || 0) + totalNewXP;
+
+  await setDoc(doc(db, 'prs', currentUser.uid), newPRs);
+  await setDoc(doc(db, 'users', currentUser.uid), { auraPoints: newAP }, { merge: true });
+  myPRs = newPRs;
+  profile.auraPoints = newAP;
+
+  return awarded;
+}
+
 const HUNTER_RANK_TIERS = [
   { min: 60, rank: 'S', color: 'var(--violet)' }, { min: 30, rank: 'A', color: 'var(--brass)' },
   { min: 14, rank: 'B', color: 'var(--maintaining)' }, { min: 7, rank: 'C', color: 'var(--growing)' },
@@ -1687,6 +1962,45 @@ function renderCharCard() {
   }
 }
 
+function renderPRPanel() {
+  const el = document.getElementById('pr-panel');
+  if (!el) return;
+  const bw = latestBodyweightKg();
+  const gender = profile.gender || 'male';
+  const prEntries = Object.entries(myPRs).sort((a,b) => (b[1].xp||0) - (a[1].xp||0));
+
+  if (!prSystemUnlocked()) {
+    el.innerHTML = `<div class="card"><div class="card-title"><h3>Personal Records</h3></div>
+      <p class="pr-locked">🔒 PR tracking unlocks after 14 days of consistent training. Keep going!</p></div>`;
+    return;
+  }
+
+  if (!prEntries.length) {
+    el.innerHTML = `<div class="card"><div class="card-title"><h3>Personal Records</h3></div>
+      <p class="pr-locked">No PRs logged yet — log your first workout with real weights to start tracking.</p></div>`;
+    return;
+  }
+
+  const rows = prEntries.map(([name, pr]) => {
+    const tier = pr.tier || 'Unranked';
+    const tierCls = 'pr-tier tier-' + tier.replace(/\s/g,'');
+    return `<div class="pr-row">
+      <span class="pr-name">${escapeHtml(name)}</span>
+      <span class="pr-e1rm">${pr.e1rm.toFixed(1)} kg e1RM</span>
+      <span class="${tierCls}">${tier}</span>
+      <span class="pr-xp">+${pr.xp||FLAT_PR_XP} AP</span>
+    </div>`;
+  }).join('');
+
+  el.innerHTML = `<div class="card">
+    <div class="pr-panel-header">
+      <h3 style="margin:0;">Personal Records</h3>
+      ${!bw ? '<span style="font-size:11px;color:var(--excess);">⚠ Log bodyweight in Trends for world tier</span>' : ''}
+    </div>
+    <div class="pr-grid">${rows}</div>
+  </div>`;
+}
+
 function renderBoard() {
   const today = todayStr();
   document.getElementById('today-list').innerHTML = allUsers.map(u => {
@@ -1788,6 +2102,12 @@ function bodySvg(view, stats) {
     });
   });
   // Head and hands/feet ("misc") aren't tracked muscles, but they ARE recognizable
+  // Remove the large full-canvas background rectangle (fill="#1F1F1F" or similar)
+  // that sits behind everything — it bleeds into the opposite figure's space.
+  clone.querySelectorAll('path[id="Vector"]').forEach(el => {
+    const fill = (el.getAttribute('fill') || '').toLowerCase();
+    if (fill === '#1f1f1f' || fill === '#1e1e1e' || fill === 'black' || fill === '#000000') el.remove();
+  });
   // body landmarks worth seeing clearly — recolor them to a muted slate tone so the
   // figure reads as a monochrome holographic silhouette instead of clashing warm
   // skin tones sitting next to the neon status colors.
@@ -1817,22 +2137,11 @@ function bodySvg(view, stats) {
   clone.setAttribute('viewBox', crop.viewBox);
   clone.setAttribute('width', String(crop.w));
   clone.setAttribute('height', String(crop.h));
-  // For the female file (and any future file where both figures share one canvas),
-  // inject a tight clipPath that exactly matches the viewBox so the opposite figure
-  // doesn't bleed in at the edge. The viewBox alone zooms in but doesn't clip.
-  const svgNs = 'http://www.w3.org/2000/svg';
-  const [vx, vy, vw, vh] = crop.viewBox.split(' ').map(Number);
-  const tightClipId = 'tight-crop-' + view;
-  const defs = clone.querySelector('defs') || clone.insertBefore(document.createElementNS(svgNs, 'defs'), clone.firstChild);
-  const clipEl = document.createElementNS(svgNs, 'clipPath');
-  clipEl.setAttribute('id', tightClipId);
-  const clipRect = document.createElementNS(svgNs, 'rect');
-  clipRect.setAttribute('x', String(vx)); clipRect.setAttribute('y', String(vy));
-  clipRect.setAttribute('width', String(vw)); clipRect.setAttribute('height', String(vh));
-  clipEl.appendChild(clipRect); defs.appendChild(clipEl);
-  // wrap the whole content in a clipping group
-  const topGroup = clone.querySelector('g');
-  if (topGroup) topGroup.setAttribute('clip-path', `url(#${tightClipId})`);
+  // overflow:hidden on the SVG itself is the simplest, most browser-compatible
+  // way to clip the opposite figure from bleeding into this view's frame.
+  // The viewBox zooms in; overflow:hidden clips anything outside that box.
+  clone.style.overflow = 'hidden';
+  clone.setAttribute('overflow', 'hidden');
   // the source file's <mask>/<clipPath> ids aren't unique once both views render
   // side by side on the same page — suffix them per view (whatever Figma happened to
   // auto-generate this export) so neither view steals the other's mask/clip definition.
