@@ -334,8 +334,9 @@
   .status-count-row{display:flex;flex-wrap:wrap;gap:8px 10px;margin:10px 0 4px;}
   .status-pill{font-size:11px;padding:4px 10px;border-radius:20px;display:flex;align-items:center;gap:6px;border:1px solid;}
   .body-pair{display:flex;justify-content:center;gap:6px;}
-  .body-pair svg{width:44%;height:auto;overflow:hidden;}
-  .body-pair.big svg{width:46%;overflow:hidden;}
+  .body-pair-slot{overflow:hidden;flex:1;}
+  .body-pair-slot svg{width:100%;height:auto;display:block;}
+  .body-pair.big .body-pair-slot svg{width:100%;}
   .body-part{
     cursor:pointer;
     transform-box:fill-box;transform-origin:center;
@@ -2166,7 +2167,8 @@ function bodySvg(view, stats) {
     shape.style.stroke = 'rgba(5,7,13,0.55)';
     shape.style.strokeWidth = '1.5';
   });
-  return new XMLSerializer().serializeToString(clone);
+  const svgStr = new XMLSerializer().serializeToString(clone);
+  return `<div class="body-pair-slot">${svgStr}</div>`;
 }
 function statusCounts(stats) {
   const counts = { Stalled:0, Maintaining:0, Growing:0, Focusing:0, Excess:0 };
