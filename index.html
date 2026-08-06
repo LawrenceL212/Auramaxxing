@@ -326,6 +326,48 @@
   .pr-tier.tier-Beginner{background:var(--card);color:var(--text-faint);border:1px solid var(--border);}
   .pr-tier.tier-Unranked{background:var(--card);color:var(--text-faint);border:1px solid var(--border);}
   .pr-xp{font-family:var(--font-mono);font-size:11px;color:var(--brass);white-space:nowrap;}
+
+  /* ========== SYSTEM MODALS (Solo Leveling aesthetic) ========== */
+  .system-overlay{
+    position:fixed;inset:0;z-index:200;display:flex;align-items:center;justify-content:center;
+    background:rgba(5,7,13,0.92);backdrop-filter:blur(8px);
+    animation:sysOverlayIn .3s ease;
+  }
+  @keyframes sysOverlayIn{from{opacity:0;}to{opacity:1;}}
+  .system-window{
+    background:linear-gradient(160deg, rgba(14,17,32,0.98), rgba(22,26,48,0.98));
+    border:1px solid var(--brass);border-radius:4px;
+    padding:32px 28px;max-width:440px;width:90%;
+    box-shadow:0 0 0 1px rgba(61,165,255,0.1), 0 0 60px -10px rgba(61,165,255,0.5);
+    position:relative;animation:sysWinIn .4s cubic-bezier(0.16,1,0.3,1);
+    text-align:center;
+  }
+  @keyframes sysWinIn{from{opacity:0;transform:scale(0.92) translateY(20px);}to{opacity:1;transform:scale(1) translateY(0);}}
+  .system-window::before,.system-window::after{content:"";position:absolute;width:16px;height:16px;border-color:var(--brass);pointer-events:none;}
+  .system-window::before{top:-1px;left:-1px;border-top:2px solid;border-left:2px solid;}
+  .system-window::after{bottom:-1px;right:-1px;border-bottom:2px solid;border-right:2px solid;}
+  .system-eyebrow{font-family:var(--font-mono);font-size:11px;letter-spacing:0.4em;color:var(--brass);margin-bottom:16px;text-transform:uppercase;}
+  .system-icon{font-size:48px;margin:0 0 14px;line-height:1;}
+  .system-title{font-family:var(--font-display);font-size:22px;letter-spacing:0.04em;margin:0 0 8px;}
+  .system-body{font-size:14px;color:var(--text-dim);line-height:1.7;margin:0 0 20px;}
+  .system-detail{font-family:var(--font-mono);font-size:13px;color:var(--brass);margin:0 0 24px;letter-spacing:0.02em;}
+  .system-btn{
+    display:block;width:100%;padding:13px;border-radius:4px;
+    font-family:var(--font-display);font-size:13px;letter-spacing:0.08em;text-transform:uppercase;
+    border:none;cursor:pointer;font-weight:700;
+  }
+  .system-btn.danger{background:var(--excess);color:#fff;box-shadow:0 0 20px rgba(255,61,90,0.4);}
+  .system-btn.success{background:var(--growing);color:#fff;box-shadow:0 0 20px rgba(139,107,255,0.4);}
+  .system-btn.primary{background:var(--brass);color:#06111f;box-shadow:0 0 20px rgba(61,165,255,0.4);}
+  .system-ap-loss{font-size:20px;color:var(--excess);font-family:var(--font-mono);font-weight:900;margin:10px 0;}
+  .system-rank-change{display:flex;align-items:center;justify-content:center;gap:16px;font-family:var(--font-display);font-size:28px;margin:14px 0;}
+  .system-rank-change .arrow{color:var(--brass);font-size:20px;}
+  .system-percentile{font-size:13px;color:var(--maintaining);margin-bottom:4px;}
+  .system-window.penalty{border-color:var(--excess);box-shadow:0 0 0 1px rgba(255,61,90,0.1), 0 0 60px -10px rgba(255,61,90,0.6);}
+  .system-window.penalty::before,.system-window.penalty::after{border-color:var(--excess);}
+  .system-window.penalty .system-eyebrow{color:var(--excess);}
+  .system-window.levelup{border-color:#FFD700;box-shadow:0 0 0 1px rgba(255,215,0,0.15), 0 0 80px -10px rgba(255,215,0,0.7);animation:sysWinIn .4s cubic-bezier(0.16,1,0.3,1), levelupPulse 2s ease-in-out 0.5s infinite;}
+  @keyframes levelupPulse{0%,100%{box-shadow:0 0 0 1px rgba(255,215,0,0.15), 0 0 80px -10px rgba(255,215,0,0.7);}50%{box-shadow:0 0 0 1px rgba(255,215,0,0.3), 0 0 100px -5px rgba(255,215,0,1);}}
   .streak-pill{font-family:var(--font-mono);font-size:13px;background:var(--card-2);padding:3px 9px;border-radius:20px;}
   .rank-badge{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;font-family:var(--font-display);font-weight:800;font-size:13px;border:1.5px solid;border-radius:4px;background:var(--card-2);}
 
@@ -1089,6 +1131,8 @@ if (configOk) {
       document.getElementById('app').style.display = 'flex';
       await loadAnatomyTemplate(profile.bodyType === 'female' ? 'female' : 'male');
       await loadAllData();
+      // run system checks on every login — penalties, rank-up alerts etc.
+      setTimeout(() => runSystemChecks(), 800);
     } else {
       currentUser = null;
       document.getElementById('auth-screen').style.display = 'flex';
@@ -1806,6 +1850,13 @@ async function checkAndAwardPRs(exercises, workoutDate) {
   myPRs = newPRs;
   profile.auraPoints = newAP;
 
+  // show Boss Defeated modal for the most impressive PR (highest XP)
+  if (awarded.length) {
+    const best = awarded.sort((a,b) => b.xp - a.xp)[0];
+    const percentileMap = { Elite:97, Advanced:90, Intermediate:70, Novice:40, Beginner:15 };
+    const pct = best.tier ? percentileMap[best.tier] : null;
+    setTimeout(() => showBossDefeatedModal(best.exercise, best.e1rm, best.tier||'Unranked', best.xp, pct), 400);
+  }
   return awarded;
 }
 
@@ -1902,13 +1953,18 @@ async function upgradeStatWithAp(statId) {
   const newRank = RANK_TIERS[RANK_TIERS.indexOf(currentRank) + 1];
   const newStats = { ...(profile.stats || defaultStats()), [statId]: newRank };
   const newAp = (profile.auraPoints || 0) - cost;
+  const pending = [...(profile.pendingRankUpModals || []), { stat: statId, oldRank: currentRank, newRank }];
   await setDoc(doc(db, 'users', currentUser.uid), {
     auraPoints: newAp,
     stats: newStats,
+    pendingRankUpModals: pending,
   }, { merge: true });
   profile.auraPoints = newAp;
   profile.stats = newStats;
-  renderBoard();
+  profile.pendingRankUpModals = pending;
+  const def = STAT_DEFS.find(d => d.id === statId);
+  showRankUpModal(def ? def.label : statId, currentRank, newRank, profile.displayName);
+  renderCharCard();
 }
 
 function renderCharCard() {
@@ -1961,6 +2017,196 @@ function renderCharCard() {
     const limiting = STAT_DEFS.filter(d => (stats[d.id] || 'E') === charRank);
     hint.textContent = `To reach ${nextRank} Rank: upgrade ${limiting.map(d=>d.label).join(', ')} past ${charRank}.`;
   }
+}
+
+/* =========================================================================
+   SYSTEM MODALS — Penalty Zone, Boss Defeated, Rank-Up Awakening
+   ========================================================================= */
+
+function showSystemModal(html, onClose) {
+  const overlay = document.createElement('div');
+  overlay.className = 'system-overlay';
+  overlay.innerHTML = html;
+  document.body.appendChild(overlay);
+  const btn = overlay.querySelector('.system-btn');
+  if (btn) btn.addEventListener('click', () => { overlay.remove(); if (onClose) onClose(); });
+  overlay.addEventListener('click', e => { if (e.target === overlay) { overlay.remove(); if (onClose) onClose(); } });
+  return overlay;
+}
+
+function showPenaltyModal(missedDays, apLost) {
+  return showSystemModal(`
+    <div class="system-window penalty">
+      <p class="system-eyebrow">⚠ System Alert</p>
+      <div class="system-icon">💀</div>
+      <h2 class="system-title">Penalty Zone</h2>
+      <p class="system-body">You have failed to complete your Daily Quest${missedDays > 1 ? ` for ${missedDays} consecutive days` : ''}.<br>The System does not forget.</p>
+      <p class="system-ap-loss">−${apLost} Aura Points</p>
+      <p class="system-detail">Consistent hunters are forged in the dungeon,<br>not outside it.</p>
+      <button class="system-btn danger">Acknowledge</button>
+    </div>`);
+}
+
+function showBossDefeatedModal(exerciseName, e1rm, tier, xp, percentile) {
+  const tierEmoji = { Elite:'👑', Advanced:'💀', Intermediate:'⚔️', Novice:'🗡️', Beginner:'🛡️' }[tier] || '🏆';
+  return showSystemModal(`
+    <div class="system-window">
+      <p class="system-eyebrow">Boss Defeated</p>
+      <div class="system-icon">${tierEmoji}</div>
+      <h2 class="system-title">${escapeHtml(exerciseName)}</h2>
+      <p class="system-body">A new personal record has been forged.<br>The dungeon boss has fallen.</p>
+      <p class="system-detail">${e1rm.toFixed(1)} kg estimated 1RM<br><span style="color:var(--violet)">[${tier} Level]</span></p>
+      ${percentile ? `<p class="system-percentile">You surpass ${percentile}% of all hunters</p>` : ''}
+      <p class="system-detail" style="color:var(--brass)">+${xp} Aura Points awarded</p>
+      <button class="system-btn primary">Claim Reward</button>
+    </div>`);
+}
+
+function showRankUpModal(statLabel, oldRank, newRank, hunterName) {
+  const isAllS = STAT_DEFS.every(d => (profile.stats||{})[d.id] === 'S');
+  const title = isAllS ? 'Shadow Monarch Achieved' : `${statLabel} Awakening`;
+  const msg = isAllS
+    ? 'All limits have been shattered. You stand beyond human comprehension.'
+    : `Hunter ${escapeHtml(hunterName || 'Unknown')} has exceeded human limits in ${statLabel}.`;
+  return showSystemModal(`
+    <div class="system-window levelup">
+      <p class="system-eyebrow">System Alert</p>
+      <div class="system-icon">⚡</div>
+      <h2 class="system-title">${title}</h2>
+      <div class="system-rank-change">
+        <span style="color:${RANK_COLORS[oldRank]}">${oldRank}</span>
+        <span class="arrow">→</span>
+        <span style="color:${RANK_COLORS[newRank]};font-size:36px;text-shadow:0 0 20px ${RANK_COLORS[newRank]}">${newRank}</span>
+      </div>
+      <p class="system-body">${msg}</p>
+      <p class="system-detail">The shadows grow stronger.</p>
+      <button class="system-btn success">Rise</button>
+    </div>`);
+}
+
+function showGateClearModal(cleared, weeklyGoal, completed) {
+  if (cleared) {
+    return showSystemModal(`
+      <div class="system-window levelup">
+        <p class="system-eyebrow">Gate Clear</p>
+        <div class="system-icon">🏆</div>
+        <h2 class="system-title">Gate Cleared</h2>
+        <p class="system-detail">${completed}/${weeklyGoal} quests completed</p>
+        <p class="system-body">The gate has been closed.<br>Hunter rank holding.</p>
+        <button class="system-btn success">Collect Reward</button>
+      </div>`);
+  } else {
+    return showSystemModal(`
+      <div class="system-window penalty">
+        <p class="system-eyebrow">Gate Failed</p>
+        <div class="system-icon">🚨</div>
+        <h2 class="system-title">Gate Breached</h2>
+        <p class="system-detail">${completed}/${weeklyGoal} quests completed</p>
+        <p class="system-body">The dungeon monsters have escaped.<br>You were not enough this week.</p>
+        <button class="system-btn danger">Acknowledge Failure</button>
+      </div>`);
+  }
+}
+
+// Stat decay: if missed ALL scheduled training days for 14+ straight days,
+// tick every stat back one tier. Only runs once per week (stored in profile).
+async function checkStatDecay() {
+  if (!myProgram || !myProgram.schedule || !myProgram.schedule.length) return;
+  if (!myWorkouts.length) return;
+  const lastWorkout = myWorkouts.reduce((a,b) => a.date > b.date ? a : b);
+  const daysSinceLastWorkout = (new Date() - new Date(lastWorkout.date)) / 86400000;
+  if (daysSinceLastWorkout < 14) return;
+  const lastDecayCheck = profile.lastDecayCheck;
+  const today = todayStr();
+  if (lastDecayCheck === today) return;
+  const stats = { ...(profile.stats || defaultStats()) };
+  let decayed = false;
+  STAT_DEFS.forEach(d => {
+    const cur = stats[d.id] || 'E';
+    if (cur === 'E') return;
+    stats[d.id] = RANK_TIERS[Math.max(0, RANK_TIERS.indexOf(cur) - 1)];
+    decayed = true;
+  });
+  if (!decayed) return;
+  await setDoc(doc(db, 'users', currentUser.uid), { stats, lastDecayCheck: today }, { merge: true });
+  profile.stats = stats;
+  profile.lastDecayCheck = today;
+}
+
+// Penalty Zone: dock AP for missed scheduled training days
+async function checkPenalty() {
+  if (!myProgram || !myProgram.schedule || !myProgram.schedule.length) return null;
+  const yesterday = new Date(); yesterday.setDate(yesterday.getDate() - 1);
+  const yStr = todayStr(yesterday);
+  const yDow = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][yesterday.getDay()];
+  const wasScheduled = myProgram.schedule.includes(['Mon','Tue','Wed','Thu','Fri','Sat','Sun'][['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].indexOf(yDow)]);
+  if (!wasScheduled) return null;
+  const lastPenaltyCheck = profile.lastPenaltyCheck;
+  if (lastPenaltyCheck === todayStr()) return null;
+  const loggedYesterday = myWorkouts.some(w => w.date === yStr);
+  if (loggedYesterday) {
+    await setDoc(doc(db, 'users', currentUser.uid), { lastPenaltyCheck: todayStr() }, { merge: true });
+    profile.lastPenaltyCheck = todayStr();
+    return null;
+  }
+  const apLost = Math.max(5, Math.round((profile.auraPoints || 0) * 0.05));
+  const newAp = Math.max(0, (profile.auraPoints || 0) - apLost);
+  await setDoc(doc(db, 'users', currentUser.uid), { auraPoints: newAp, lastPenaltyCheck: todayStr() }, { merge: true });
+  profile.auraPoints = newAp;
+  profile.lastPenaltyCheck = todayStr();
+  return { apLost };
+}
+
+// Check for pending rank-up modals (set when upgradeStatWithAp runs)
+function checkPendingRankUps() {
+  const pending = profile.pendingRankUpModals || [];
+  if (!pending.length) return;
+  let i = 0;
+  const showNext = () => {
+    if (i >= pending.length) {
+      setDoc(doc(db, 'users', currentUser.uid), { pendingRankUpModals: [] }, { merge: true });
+      profile.pendingRankUpModals = [];
+      renderCharCard();
+      return;
+    }
+    const { stat, oldRank, newRank } = pending[i++];
+    const def = STAT_DEFS.find(d => d.id === stat);
+    showRankUpModal(def ? def.label : stat, oldRank, newRank, profile.displayName);
+    setTimeout(showNext, 200);
+  };
+  showNext();
+}
+
+// Check weekly gate (runs Monday, checking previous week)
+async function checkWeeklyGate() {
+  const today = new Date();
+  if (today.getDay() !== 1) return; // only on Mondays
+  const lastGateCheck = profile.lastGateCheck;
+  const thisMonday = todayStr();
+  if (lastGateCheck === thisMonday) return;
+  const lastWeekStart = new Date(today); lastWeekStart.setDate(today.getDate() - 7);
+  const lastWeekEnd = new Date(today); lastWeekEnd.setDate(today.getDate() - 1);
+  const lastWeekWorkouts = myWorkouts.filter(w => {
+    const d = new Date(w.date);
+    return d >= lastWeekStart && d <= lastWeekEnd;
+  });
+  const goal = profile.weeklyGoal || 3;
+  const cleared = lastWeekWorkouts.length >= goal;
+  await setDoc(doc(db, 'users', currentUser.uid), { lastGateCheck: thisMonday }, { merge: true });
+  profile.lastGateCheck = thisMonday;
+  showGateClearModal(cleared, goal, lastWeekWorkouts.length);
+}
+
+// Master function: runs all checks in order on login
+async function runSystemChecks() {
+  await checkStatDecay();
+  const penalty = await checkPenalty();
+  if (penalty) {
+    showPenaltyModal(1, penalty.apLost);
+    return; // show one thing at a time, don't stack
+  }
+  await checkWeeklyGate();
+  checkPendingRankUps();
 }
 
 function renderPRPanel() {
