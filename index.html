@@ -1642,21 +1642,21 @@ function numpadKey(key) {
   document.getElementById('numpad-display').textContent = numpadRaw || '—';
 }
 
-document.getElementById('numpad-overlay').addEventListener('click', e => {
+document.getElementById('numpad-overlay')?.addEventListener('click', e => {
   if (e.target === document.getElementById('numpad-overlay')) closeNumpad(false);
 });
-document.getElementById('numpad-confirm').addEventListener('click', () => closeNumpad(true));
+document.getElementById('numpad-confirm')?.addEventListener('click', () => closeNumpad(true));
 document.querySelectorAll('.numpad-key').forEach(btn => {
   btn.addEventListener('click', () => numpadKey(btn.dataset.key));
 });
-document.getElementById('numpad-plus').addEventListener('click', () => {
+document.getElementById('numpad-plus')?.addEventListener('click', () => {
   if (!numpadTarget) return;
   const step = parseFloat(numpadTarget.dataset.step) || 1;
   const cur = parseFloat(numpadRaw) || 0;
   numpadRaw = String(Math.round((cur + step) * 100) / 100);
   document.getElementById('numpad-display').textContent = numpadRaw;
 });
-document.getElementById('numpad-minus').addEventListener('click', () => {
+document.getElementById('numpad-minus')?.addEventListener('click', () => {
   if (!numpadTarget) return;
   const step = parseFloat(numpadTarget.dataset.step) || 1;
   const min = parseFloat(numpadTarget.dataset.min) || 0;
@@ -1805,7 +1805,7 @@ function friendlyAuthError(err) {
   if (code.includes('invalid-email')) return 'That email address looks off.';
   return err.message || 'Something went wrong.';
 }
-document.getElementById('logout-btn').addEventListener('click', () => signOut(auth));
+document.getElementById('logout-btn')?.addEventListener('click', () => signOut(auth));
 
 /* ---- Daily Quest Timer ---- */
 let dailyTimerInterval = null;
@@ -1839,7 +1839,7 @@ function startDailyTimer() {
   render();
   dailyTimerInterval = setInterval(render, 1000);
 }
-document.getElementById('settings-btn').addEventListener('click', () => openSettingsModal());
+document.getElementById('settings-btn')?.addEventListener('click', () => openSettingsModal());
 
 function openSettingsModal() {
   const overlay = document.createElement('div');
@@ -1944,7 +1944,15 @@ function switchView(name) {
   if (name === 'exercises') renderExerciseLibrary();
   if (name === 'history') renderCalendar();
   if (name === 'quest') {
-    if (myProgram && myProgram.days && myProgram.days.length) questCarouselIndex = myProgram.currentDayIndex % myProgram.days.length;
+    if (myProgram && myProgram.days && myProgram.days.length) {
+      if (myProgram.scheduleMode === 'fixed') {
+        const today = todayWeekday();
+        const todayIdx = myProgram.days.findIndex(d => (d.assignedDays||[]).includes(today));
+        questCarouselIndex = todayIdx >= 0 ? todayIdx : 0;
+      } else {
+        questCarouselIndex = myProgram.currentDayIndex % myProgram.days.length;
+      }
+    }
     renderQuestFeed();
   }
 }
@@ -1975,10 +1983,10 @@ async function loadAllData() {
 
   populateExerciseSelects();
   renderQuestFeed();
-  renderBoard();
-  renderTrends();
-  renderExerciseLibrary();
-  renderCalendar();
+  setTimeout(() => { try { renderBoard(); } catch(e) { console.error(e); } }, 0);
+  setTimeout(() => { try { renderTrends(); } catch(e) {} }, 50);
+  setTimeout(() => { try { renderExerciseLibrary(); } catch(e) {} }, 100);
+  setTimeout(() => { try { renderCalendar(); } catch(e) {} }, 150);
   startDailyTimer();
 }
 function rebuildExercisesAll() {
@@ -2013,7 +2021,7 @@ function renderQuestFeed() {
         <p>Build one so the System knows what's next.</p>
         <button class="btn btn-primary" id="build-program-btn" style="width:auto;padding:11px 20px;">+ Create plan</button>
       </div>`;
-    document.getElementById('build-program-btn').addEventListener('click', () => { editingProgram = true; renderQuestFeed(); });
+    document.getElementById('build-program-btn')?.addEventListener('click', () => { editingProgram = true; renderQuestFeed(); });
     return;
   }
 
@@ -2062,14 +2070,14 @@ function renderQuestFeed() {
     <div class="day-dots">${dots}</div>
   `;
 
-  document.getElementById('edit-program-btn').addEventListener('click', () => { editingProgram = true; renderQuestFeed(); });
-  document.getElementById('new-program-btn').addEventListener('click', () => {
+  document.getElementById('edit-program-btn')?.addEventListener('click', () => { editingProgram = true; renderQuestFeed(); });
+  document.getElementById('new-program-btn')?.addEventListener('click', () => {
     if (!window.confirm('Start a new plan?\n\nYour current plan will be replaced.')) return;
     myProgram = null; editingProgram = true; renderQuestFeed();
   });
   wireQuestCard(wrap.querySelector('.quest-card'), questCarouselIndex);
-  document.getElementById('carousel-prev').addEventListener('click', () => navigateCarousel('prev'));
-  document.getElementById('carousel-next').addEventListener('click', () => navigateCarousel('next'));
+  document.getElementById('carousel-prev')?.addEventListener('click', () => navigateCarousel('prev'));
+  document.getElementById('carousel-next')?.addEventListener('click', () => navigateCarousel('next'));
   attachSwipeHandlers(wrap.querySelector('.quest-carousel-card'),
     () => navigateCarousel('next'),
     () => navigateCarousel('prev')
@@ -2084,7 +2092,10 @@ function isQuestComplete(idx) {
 function buildQuestCardHTML(idx) {
   const rotationIdx = myProgram.currentDayIndex % myProgram.days.length;
   const day = myProgram.days[idx];
-  const isActiveDay = idx === rotationIdx;
+  const today = todayWeekday();
+  const isActiveDay = myProgram.scheduleMode === 'fixed'
+    ? (day.assignedDays||[]).includes(today)
+    : idx === rotationIdx;
   const allComplete = isQuestComplete(idx);
   const checklist = day.exercises.map(ex => {
     const done = setsLoggedToday(ex.name, idx);
@@ -2380,17 +2391,17 @@ function refreshCompleteButton() {
   });
   btn.classList.toggle('hidden', !allHaveAtLeastOneSet);
 }
-document.getElementById('end-workout-modal').addEventListener('click', () => {
+document.getElementById('end-workout-modal')?.addEventListener('click', () => {
   if (!window.confirm('End this workout?\n\nAll your logged sets will be lost.')) return;
   closeWorkoutModal(true); // true = discard
 });
-document.getElementById('minimise-workout-modal').addEventListener('click', () => {
+document.getElementById('minimise-workout-modal')?.addEventListener('click', () => {
   minimiseWorkoutModal();
 });
-document.getElementById('workout-pill-open').addEventListener('click', () => {
+document.getElementById('workout-pill-open')?.addEventListener('click', () => {
   openWorkoutModal();
 });
-document.getElementById('manual-log-btn').addEventListener('click', () => {
+document.getElementById('manual-log-btn')?.addEventListener('click', () => {
   document.getElementById('workout-date').value = todayStr();
   document.getElementById('workout-time').value = nowTimeStr();
   activeDayIndex = null;
@@ -2399,16 +2410,16 @@ document.getElementById('manual-log-btn').addEventListener('click', () => {
 });
 
 /* ── Run Logger ── */
-document.getElementById('log-run-btn').addEventListener('click', () => {
+document.getElementById('log-run-btn')?.addEventListener('click', () => {
   document.getElementById('run-date').value = todayStr();
   document.getElementById('run-modal-overlay').classList.remove('hidden');
   document.body.style.overflow = 'hidden';
 });
-document.getElementById('close-run-modal').addEventListener('click', () => {
+document.getElementById('close-run-modal')?.addEventListener('click', () => {
   document.getElementById('run-modal-overlay').classList.add('hidden');
   document.body.style.overflow = '';
 });
-document.getElementById('run-modal-overlay').addEventListener('click', e => {
+document.getElementById('run-modal-overlay')?.addEventListener('click', e => {
   if (e.target === document.getElementById('run-modal-overlay')) {
     document.getElementById('run-modal-overlay').classList.add('hidden');
     document.body.style.overflow = '';
@@ -2449,9 +2460,9 @@ function updateRunPace() {
   document.getElementById('run-pace-display').textContent = `${pm}:${String(ps).padStart(2,'0')} /km`;
 }
 ['run-distance','run-mins','run-secs'].forEach(id =>
-  document.getElementById(id).addEventListener('input', updateRunPace));
+  document.getElementById(id)?.addEventListener('input', updateRunPace));
 
-document.getElementById('save-run-btn').addEventListener('click', async () => {
+document.getElementById('save-run-btn')?.addEventListener('click', async () => {
   const dist = parseFloat(document.getElementById('run-distance').value) || 0;
   const mins = parseInt(document.getElementById('run-mins').value) || 0;
   const secs = parseInt(document.getElementById('run-secs').value) || 0;
@@ -2533,7 +2544,7 @@ function stopRestTimer() {
   if (stopBtn) stopBtn.classList.add('hidden');
 }
 document.querySelectorAll('.rest-preset-btn').forEach(btn => btn.addEventListener('click', () => startRestTimer(Number(btn.dataset.secs))));
-document.getElementById('rest-timer-stop').addEventListener('click', stopRestTimer);
+document.getElementById('rest-timer-stop')?.addEventListener('click', stopRestTimer);
 
 function renderProgramEditor(wrap) {
   if (!myProgram) myProgram = { name: '', schedule: [], days: [], currentDayIndex: 0, scheduleMode: 'rotation' };
@@ -2589,12 +2600,12 @@ function renderProgramEditor(wrap) {
     if (i === -1) myProgram.schedule.push(d); else myProgram.schedule.splice(i, 1);
     chip.classList.toggle('on');
   }));
-  document.getElementById('add-day-btn').addEventListener('click', () => {
+  document.getElementById('add-day-btn')?.addEventListener('click', () => {
     myProgram.days.push({ name: `Day ${myProgram.days.length+1}`, tag:'', exercises: [], lastDate: null, assignedDays: [] });
     renderDayEditors();
   });
-  document.getElementById('cancel-program-btn').addEventListener('click', () => { editingProgram = false; renderQuestFeed(); });
-  document.getElementById('save-program-btn').addEventListener('click', saveProgram);
+  document.getElementById('cancel-program-btn')?.addEventListener('click', () => { editingProgram = false; renderQuestFeed(); });
+  document.getElementById('save-program-btn')?.addEventListener('click', saveProgram);
 
   function renderDayEditors() {
     const daysWrap = document.getElementById('prog-days-wrap');
@@ -2906,10 +2917,10 @@ function addExerciseRow(presetName, targetSets, targetReps, prefillSets) {
   refreshTags();
   exerciseRows.appendChild(row);
 }
-document.getElementById('add-exercise-btn').addEventListener('click', () => { addExerciseRow(); refreshCompleteButton(); });
+document.getElementById('add-exercise-btn')?.addEventListener('click', () => { addExerciseRow(); refreshCompleteButton(); });
 addExerciseRow();
 
-document.getElementById('save-workout-btn').addEventListener('click', async () => {
+document.getElementById('save-workout-btn')?.addEventListener('click', async () => {
   if (!currentUser) return;
   const date = document.getElementById('workout-date').value || todayStr();
   const time = document.getElementById('workout-time').value || nowTimeStr();
@@ -2950,6 +2961,7 @@ document.getElementById('save-workout-btn').addEventListener('click', async () =
     await loadAllData();
     const earned = await tryAwardAp();
     const prs = await checkAndAwardPRs(exercises, date);
+    await applyWorkoutStatXP(exercises);
     startDailyTimer();
     setTimeout(() => {
       closeWorkoutModal(false);
@@ -3059,6 +3071,24 @@ function getStatForExercise(exerciseName) {
     if (exercises.has(exerciseName)) return stat;
   }
   return null;
+}
+
+// Award stat XP based on exercises in a workout — called after every save
+async function applyWorkoutStatXP(exercises) {
+  if (!profile) return;
+  const statXP = { ...(profile.statXP || {}) };
+  let changed = false;
+  for (const ex of exercises) {
+    const statId = getStatForExercise(ex.name);
+    if (!statId) continue;
+    const completedSets = (ex.sets||[]).filter(s => (Number(s.reps)||0) > 0).length;
+    if (!completedSets) continue;
+    statXP[statId] = (statXP[statId] || 0) + completedSets;
+    changed = true;
+  }
+  if (!changed) return;
+  await setDoc(doc(db, 'users', currentUser.uid), { statXP }, { merge: true });
+  profile.statXP = statXP;
 }
 
 const STRENGTH_STANDARDS = {
@@ -4208,7 +4238,7 @@ async function openHunterProfile(targetUid) {
       <div class="body-pair">${bodySvg('front', buildMuscleStats(targetUid), target.bodyType || 'male')}${bodySvg('back', buildMuscleStats(targetUid), target.bodyType || 'male')}</div>
     </div>
   `;
-  document.getElementById('hunter-back').addEventListener('click', () => modal.classList.add('hidden'));
+  document.getElementById('hunter-back')?.addEventListener('click', () => modal.classList.add('hidden'));
   const editProgBtn = document.getElementById('hunter-edit-program');
   if (editProgBtn) editProgBtn.addEventListener('click', async () => {
     modal.classList.add('hidden');
@@ -4378,8 +4408,11 @@ function renderTodayCard() {
   const todayPRs = Object.values(myPRs).filter(p => p.date === today);
   const prXP = todayPRs.reduce((s,p) => s+(p.xp||0), 0);
 
-  el.innerHTML = `<div class="today-debrief-card">
-    <p style="font-size:11px;color:var(--brass);text-transform:uppercase;letter-spacing:.06em;margin:0 0 10px;">⚡ Today's Session</p>
+  el.innerHTML = `<div class="today-debrief-card" id="today-debrief-clickable" style="cursor:pointer;">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;">
+      <p style="font-size:11px;color:var(--brass);text-transform:uppercase;letter-spacing:.06em;margin:0;">⚡ Today's Session</p>
+      <span style="font-size:10px;color:var(--text-faint);font-family:var(--font-mono);">Tap to replay ›</span>
+    </div>
     <div class="today-debrief-row">
       <div class="today-stat-pill">
         <div class="today-stat-val">+${apToday + prXP}</div>
@@ -4401,6 +4434,13 @@ function renderTodayCard() {
     ${todayPRs.length ? `<p style="font-size:12px;color:var(--violet);margin:4px 0 0;">🏆 ${todayPRs.length} PR${todayPRs.length>1?'s':''} beaten today · +${prXP} AP</p>` : ''}
     <p style="font-size:11px;color:var(--text-faint);margin:6px 0 0;">Total Aura Points: ${(profile.auraPoints||0).toLocaleString()}</p>
   </div>`;
+  document.getElementById('today-debrief-clickable')?.addEventListener('click', () => {
+    const allExercises = todayWorkouts.flatMap(w => w.exercises||[]);
+    const todayPRList = Object.entries(myPRs)
+      .filter(([,pr]) => pr.date === today)
+      .map(([exercise, pr]) => ({ exercise, xp: pr.xp||0, tier: pr.tier, e1rm: pr.e1rm }));
+    showDebriefModal(allExercises, apToday, todayPRList);
+  });
 }
 
 function renderPRPanel() {
@@ -4443,12 +4483,12 @@ function renderPRPanel() {
 }
 
 function renderBoard() {
-  loadAllUserPRs().then(() => renderStrengthRankings());
   renderPartyStatus();
   renderCompetitionBoard();
-  renderWeeklySuperlatives();
-  renderPartyDashboard();
-  renderRaidBoss();
+  setTimeout(() => { try { renderWeeklySuperlatives(); } catch(e) {} }, 0);
+  setTimeout(() => { try { renderPartyDashboard(); } catch(e) {} }, 0);
+  setTimeout(() => { try { renderRaidBoss(); } catch(e) {} }, 0);
+  setTimeout(() => { try { loadAllUserPRs().then(() => renderStrengthRankings()); } catch(e) {} }, 100);
 }
 
 /* ── Party Status Today ── */
@@ -4541,65 +4581,77 @@ function renderCompetitionBoard() {
 async function renderRaidBoss() {
   const el = document.getElementById('raid-boss-slot');
   if (!el) return;
-
-  // boss spawns Monday, expires Sunday
   const now = new Date();
   const weekStart = startOfWeek(now);
   const weekEnd = new Date(weekStart); weekEnd.setDate(weekEnd.getDate()+7);
-  const bossKey = weekStart.toISOString().slice(0,10);
-
-  // count total workouts this week across all party members
-  const weekWorkouts = allWorkouts.filter(w => {
-    const d = new Date(w.date);
-    return d >= weekStart && d < weekEnd;
-  });
-  const totalSets = weekWorkouts.reduce((n,w) =>
-    n + (w.exercises||[]).reduce((m,ex) => m + (ex.sets||[]).filter(s=>s.reps>0).length, 0), 0);
-
-  // boss HP = 10 sets per party member per day × 7 days (scaled)
+  const weekWorkouts = allWorkouts.filter(w => { const d = new Date(w.date); return d >= weekStart && d < weekEnd; });
+  const allDates = allWorkouts.map(w => w.date).sort();
+  const partyStartDate = allDates.length ? new Date(allDates[0]) : now;
+  const weekDaysSinceStart = Math.min(7, Math.max(1, Math.ceil((now - Math.max(weekStart.getTime(), partyStartDate.getTime())) / 86400000)));
+  const isFirstWeek = partyStartDate >= weekStart;
+  const totalRaids = weekWorkouts.length;
+  const partyPower = allUsers.length ? Math.round(allUsers.reduce((s,u) => s + getUserPowerLevel(u), 0) / allUsers.length) : 0;
+  const bossTier = partyPower > 7500 ? 'S' : partyPower > 4500 ? 'A' : partyPower > 2100 ? 'B' : partyPower > 900 ? 'C' : partyPower > 300 ? 'D' : 'E';
+  const BOSS_DATA = {
+    E: { name:'Goblin Scout',       rank:'E-Rank Gate', desc:'A lone creature from the lowest dungeon. Weak — but a real test for new hunters.', color:'var(--text-dim)',      raidsPerMember:3 },
+    D: { name:'Stone Golem',        rank:'D-Rank Gate', desc:'An awakened construct. It will not fall without collective effort.',               color:'var(--brass)',        raidsPerMember:4 },
+    C: { name:'Iron Shadow',        rank:'C-Rank Gate', desc:'A shadow creature born from dungeon energy. It learns from weakness.',             color:'var(--maintaining)', raidsPerMember:5 },
+    B: { name:'Void Warden',        rank:'B-Rank Gate', desc:'A guardian of the deep. Your growing power has attracted something dangerous.',    color:'var(--violet)',      raidsPerMember:5 },
+    A: { name:"Monarch's Shadow",   rank:'A-Rank Gate', desc:"A fragment of the Shadow Monarch's army. Only hunters at their limits stand here.",color:'var(--excess)',      raidsPerMember:6 },
+    S: { name:'Antares the Sovereign Beast', rank:'S-Rank Gate', desc:'The dungeon has recognised your power. This is not a test — this is war.',color:'#FFD700',           raidsPerMember:7 },
+  };
+  const boss = BOSS_DATA[bossTier];
   const partySize = allUsers.length || 1;
-  const bossMaxHP = partySize * 7 * 8; // 8 sets/member/day target
-  const bossHP = Math.max(0, bossMaxHP - totalSets);
+  const targetDays = isFirstWeek ? weekDaysSinceStart : 7;
+  const bossMaxHP = partySize * targetDays * boss.raidsPerMember;
+  const bossHP = Math.max(0, bossMaxHP - totalRaids);
   const bossHPpct = Math.max(0, (bossHP / bossMaxHP) * 100);
   const cleared = bossHP === 0;
-  const daysLeft = Math.ceil((weekEnd - now) / 86400000);
-  const contributors = allUsers.map(u => {
-    const wCount = weekWorkouts.filter(w=>w.uid===u.uid).length;
-    return { name: u.displayName||'Hunter', wCount, uid: u.uid };
-  }).sort((a,b)=>b.wCount-a.wCount);
-
-  const bossPhase = bossHPpct > 60 ? 'Unchallenged' : bossHPpct > 30 ? 'Weakening' : bossHPpct > 0 ? 'Critical' : 'Defeated';
-  const bossColor = bossHPpct > 60 ? 'var(--excess)' : bossHPpct > 30 ? '#FF9500' : bossHPpct > 0 ? 'var(--violet)' : 'var(--growing)';
-
+  const daysLeft = Math.max(0, Math.ceil((weekEnd - now) / 86400000));
+  const nextBoss = BOSS_DATA[bossTier];
+  const nextMaxHP = partySize * 7 * nextBoss.raidsPerMember;
+  const bossPhase = cleared ? 'Defeated' : bossHPpct > 66 ? 'Unchallenged' : bossHPpct > 33 ? 'Weakening' : 'Critical — finish it';
+  const bossColor = cleared ? 'var(--growing)' : bossHPpct > 66 ? boss.color : bossHPpct > 33 ? '#FF9500' : 'var(--excess)';
+  const contributors = allUsers.map(u => ({ name: u.displayName||'Hunter', wCount: weekWorkouts.filter(w=>w.uid===u.uid).length, uid: u.uid })).sort((a,b)=>b.wCount-a.wCount);
   el.innerHTML = `
-    <div class="raid-boss-card ${cleared?'cleared':''}">
+    <div class="raid-boss-card ${cleared?'cleared':''}" style="border-color:${cleared?'rgba(139,107,255,0.3)':`${boss.color}44`};">
       <div class="raid-boss-header">
-        <div>
-          <div class="raid-eyebrow">⚔ WEEKLY RAID</div>
-          <div class="raid-boss-name">${cleared ? '★ BOSS DEFEATED ★' : 'Shadow Beast'}</div>
+        <div style="flex:1;min-width:0;">
+          <div class="raid-eyebrow" style="color:${boss.color};">⚔ ${boss.rank}${isFirstWeek?' · INITIATION WEEK':''}</div>
+          <div class="raid-boss-name" style="color:${cleared?'var(--growing)':boss.color};">${cleared?'★ ':''} ${boss.name}${cleared?' — Defeated':''}</div>
           <div class="raid-phase" style="color:${bossColor};">[${bossPhase}]${!cleared?` · ${daysLeft}d remaining`:''}</div>
+          <div style="font-size:10px;color:var(--text-faint);font-family:var(--font-mono);margin-top:5px;line-height:1.5;">${boss.desc}</div>
         </div>
-        <div class="raid-hp-col">
-          <div class="raid-hp-value" style="color:${bossColor};">${cleared?'0':bossHP.toLocaleString()}</div>
+        <div class="raid-hp-col" style="margin-left:12px;">
+          <div class="raid-hp-value" style="color:${bossColor};">${cleared?'0':bossHP}</div>
           <div class="raid-hp-label">HP LEFT</div>
+          <div style="font-size:9px;color:var(--text-faint);font-family:var(--font-mono);margin-top:4px;">${totalRaids}/${bossMaxHP} raids</div>
         </div>
       </div>
       <div class="raid-hp-bar-wrap">
         <div class="raid-hp-bar" style="width:${bossHPpct.toFixed(1)}%;background:${bossColor};"></div>
-        ${!cleared?`<div class="raid-hp-bar-stripes"></div>`:''}
+        ${!cleared?'<div class="raid-hp-bar-stripes"></div>':''}
       </div>
+      ${isFirstWeek?`<div style="font-family:var(--font-mono);font-size:9px;color:var(--text-faint);margin:6px 0;letter-spacing:0.04em;">⚠ Initiation week — HP scaled to ${weekDaysSinceStart} day${weekDaysSinceStart!==1?'s':''} elapsed.</div>`:''}
       <div class="raid-contributors">
-        ${contributors.map(c => `
+        ${contributors.map(c=>`
           <div class="raid-contrib ${c.uid===currentUser.uid?'me':''}">
             <span class="raid-contrib-name">${escapeHtml(c.name)}</span>
             <div class="raid-contrib-bar-wrap">
-              <div class="raid-contrib-bar" style="width:${Math.min(100,(c.wCount/7)*100).toFixed(0)}%;"></div>
+              <div class="raid-contrib-bar" style="width:${Math.min(100,(c.wCount/Math.max(targetDays,1))*100).toFixed(0)}%;background:${c.uid===currentUser.uid?'var(--brass)':'var(--violet)'};"></div>
             </div>
-            <span class="raid-contrib-count">${c.wCount} ${c.wCount===1?'raid':'raids'}</span>
+            <span class="raid-contrib-count">${c.wCount} raids</span>
           </div>`).join('')}
       </div>
-      ${!cleared?`<p class="raid-warning">Miss this and the boss wins — all hunters lose <strong>50 AP</strong>.</p>`
-        :`<p class="raid-cleared-msg">Party cleared the gate. Bonus AP awarded on Sunday.</p>`}
+      <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-top:10px;gap:12px;">
+        <p class="${cleared?'raid-cleared-msg':'raid-warning'}" style="margin:0;flex:1;">
+          ${cleared?'★ Gate cleared. The party grows stronger.':`Surrender the gate — all hunters lose <strong>50 AP</strong>.`}
+        </p>
+        <div style="font-family:var(--font-mono);font-size:9px;color:var(--text-faint);text-align:right;flex-shrink:0;">
+          Next week<br><span style="color:${nextBoss.color};">${nextBoss.name}</span><br>
+          <span>${nextMaxHP} HP req.</span>
+        </div>
+      </div>
     </div>`;
 }
 
@@ -5006,7 +5058,7 @@ function renderTrends() {
       ${barChart(hourCounts.filter((_,i)=>i%2===0), Array.from({length:12},(_,i)=>i*2+'h'), {color:'var(--maintaining)'})}
     </div>
   `;
-  document.getElementById('widget-muscle').addEventListener('click', () => { trendsView = 'muscle-detail'; renderTrends(); });
+  document.getElementById('widget-muscle')?.addEventListener('click', () => { trendsView = 'muscle-detail'; renderTrends(); });
   const wBtn = document.getElementById('weight-save-btn');
   if (wBtn) wBtn.addEventListener('click', async () => {
     const val = Number(document.getElementById('weight-input').value);
@@ -5056,9 +5108,9 @@ function renderMuscleDetail() {
       if (row) { row.scrollIntoView({ behavior: 'smooth', block: 'center' }); row.classList.add('flash'); setTimeout(() => row.classList.remove('flash'), 900); }
     });
   });
-  document.getElementById('back-to-dashboard').addEventListener('click', () => { trendsView = 'dashboard'; renderTrends(); });
-  document.getElementById('mode-past').addEventListener('click', () => { muscleDetailMode = 'Past'; renderMuscleDetail(); });
-  document.getElementById('mode-planned').addEventListener('click', () => { muscleDetailMode = 'Planned'; renderMuscleDetail(); });
+  document.getElementById('back-to-dashboard')?.addEventListener('click', () => { trendsView = 'dashboard'; renderTrends(); });
+  document.getElementById('mode-past')?.addEventListener('click', () => { muscleDetailMode = 'Past'; renderMuscleDetail(); });
+  document.getElementById('mode-planned')?.addEventListener('click', () => { muscleDetailMode = 'Planned'; renderMuscleDetail(); });
 }
 
 /* =========================================================================
@@ -5070,9 +5122,9 @@ function populateExerciseSelects() {
   muscleSel.innerHTML = '<option value="">All muscles</option>' + MUSCLES.map(m => `<option value="${m}">${m}</option>`).join('');
   equipSel.innerHTML = '<option value="">All equipment</option>' + EQUIPMENT_TYPES.map(e => `<option value="${e}">${e}</option>`).join('');
 }
-document.getElementById('lib-search').addEventListener('input', renderExerciseLibrary);
-document.getElementById('lib-muscle-filter').addEventListener('change', renderExerciseLibrary);
-document.getElementById('lib-equip-filter').addEventListener('change', renderExerciseLibrary);
+document.getElementById('lib-search')?.addEventListener('input', renderExerciseLibrary);
+document.getElementById('lib-muscle-filter')?.addEventListener('change', renderExerciseLibrary);
+document.getElementById('lib-equip-filter')?.addEventListener('change', renderExerciseLibrary);
 
 function techniqueLink(name) {
   return `https://www.youtube.com/results?search_query=${encodeURIComponent(name + ' exercise proper form technique')}`;
@@ -5108,7 +5160,7 @@ function renderExerciseLibrary() {
   }));
 }
 
-document.getElementById('add-exercise-lib-btn').addEventListener('click', openAddExerciseModal);
+document.getElementById('add-exercise-lib-btn')?.addEventListener('click', openAddExerciseModal);
 function openAddExerciseModal() {
   const overlay = document.createElement('div');
   overlay.className = 'modal-overlay';
@@ -5212,8 +5264,8 @@ function openEditExerciseModal(name) {
 /* =========================================================================
    HISTORY CALENDAR
    ========================================================================= */
-document.getElementById('cal-prev').addEventListener('click', () => { calCursor.setMonth(calCursor.getMonth()-1); renderCalendar(); });
-document.getElementById('cal-next').addEventListener('click', () => { calCursor.setMonth(calCursor.getMonth()+1); renderCalendar(); });
+document.getElementById('cal-prev')?.addEventListener('click', () => { calCursor.setMonth(calCursor.getMonth()-1); renderCalendar(); });
+document.getElementById('cal-next')?.addEventListener('click', () => { calCursor.setMonth(calCursor.getMonth()+1); renderCalendar(); });
 
 function renderCalendar() {
   document.getElementById('cal-title').textContent = calCursor.toLocaleDateString(undefined,{month:'long', year:'numeric'});
@@ -5301,7 +5353,8 @@ function openWorkoutDetail(workoutId) {
         </div>
         <button class="icon-btn" id="detail-close" style="font-size:20px;flex-shrink:0;">✕</button>
       </div>
-      <div style="margin:16px 0;">${exerciseRows || '<p class="sub">No exercises logged.</p>'}</div>
+      <button class="btn" id="detail-debrief-btn" style="width:100%;margin-bottom:12px;border-color:var(--brass);color:var(--brass);">⚡ View Session Debrief</button>
+      <div style="margin:0 0 16px;">${exerciseRows || '<p class="sub">No exercises logged.</p>'}</div>
 
       <div class="delete-warning-box" id="delete-warning-box" style="display:none;background:rgba(255,61,90,0.08);border:1px solid var(--excess);border-radius:8px;padding:12px 14px;margin-bottom:12px;">
         <p style="font-size:12.5px;color:var(--excess);font-weight:700;margin:0 0 6px;">⚠ Deleting this workout will:</p>
@@ -5315,6 +5368,16 @@ function openWorkoutDetail(workoutId) {
   document.body.appendChild(overlay);
   overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
   overlay.querySelector('#detail-close').addEventListener('click', () => overlay.remove());
+  overlay.querySelector('#detail-debrief-btn').addEventListener('click', () => {
+    overlay.remove();
+    const datePRs = Object.entries(myPRs)
+      .filter(([, pr]) => pr.date === w.date)
+      .map(([exercise, pr]) => ({ exercise, xp: pr.xp||0, tier: pr.tier, e1rm: pr.e1rm }));
+    const streak = computeStreak(currentUser.uid);
+    const mult = streak >= 60 ? 3 : streak >= 30 ? 2 : streak >= 7 ? 1.5 : 1;
+    const apEarned = profile.lastApDate === w.date ? Math.round(10*mult) : 0;
+    showDebriefModal(w.exercises||[], apEarned, datePRs);
+  });
 
   // Step 1 — show consequences before confirming
   overlay.querySelector('#detail-delete-warn').addEventListener('click', () => {
