@@ -3072,6 +3072,8 @@ function isLowerBodyExercise(name) {
 function progressiveOverloadSuggestion(exerciseName, targetReps) {
   const exDef = EXERCISES_ALL[exerciseName] || {};
   const bwPct = exDef.bwPercent;
+  const isTimed = !!exDef.timed;
+  const timedUnit = exDef.timedUnit || 'secs';
   const userBW = latestBodyweightKg();
 
   // gather last 3 sessions that include this exercise, oldest-first
@@ -3096,8 +3098,9 @@ function progressiveOverloadSuggestion(exerciseName, targetReps) {
   const last = sessions[sessions.length - 1];
   if (!last || !last.sets || !last.sets.length) return null;
 
-  // compute per-set suggestions based on RIR trend
   const weightStep = isLowerBodyExercise(exerciseName) ? 2.5 : 1.25;
+  const timeStep = timedUnit === 'mins' ? 1 : 15; // +1 min or +15 secs
+
   const prevTwoRIRs = sessions.slice(0, -1).map(s => {
     const rirs = s.sets.map(set => set.rir).filter(r => r != null);
     return rirs.length ? rirs.reduce((a,b)=>a+b,0)/rirs.length : null;
@@ -3112,38 +3115,51 @@ function progressiveOverloadSuggestion(exerciseName, targetReps) {
     let newWeight = prefillWeight;
 
     if (rir == null) {
-      // no RIR recorded — just replay last session as-is
       return { reps: prefillReps, weight: prefillWeight, rir: null, suggestion: null };
     }
 
-    // check if RIR has been creeping up across sessions (adaptation signal)
     const avgPrevRIR = prevTwoRIRs.length
       ? prevTwoRIRs.reduce((a,b)=>a+b,0)/prevTwoRIRs.length
       : null;
 
-    if (rir <= 1) {
-      // still hard — keep exact same weight and reps, no change
-      suggestion = null;
-    } else if (rir >= 4) {
-      // very easy — add reps aggressively this session
-      newReps = prefillReps + 2;
-      suggestion = `↑ +2 reps (RIR ${rir} last time)`;
-    } else if (rir >= 2 && rir <= 3) {
-      // getting easier — check the trend
-      if (avgPrevRIR != null && avgPrevRIR >= 2) {
-        // RIR has been ≥2 for multiple sessions — genuinely adapted
-        // add reps first; if already at or above target, bump weight instead
-        if (prefillReps < targetReps) {
-          newReps = prefillReps + 1;
-          suggestion = `↑ +1 rep (adapted)`;
+    if (isTimed) {
+      // RPE scale 6-10 (higher = harder, opposite of RIR)
+      // RPE 9-10 → at limit, keep same
+      // RPE 7-8 → getting easier, add time
+      // RPE 6 → too easy, add more time
+      if (rir >= 9) {
+        suggestion = null; // still hard, hold
+      } else if (rir === 6) {
+        newReps = prefillReps + timeStep * 2;
+        suggestion = `↑ +${timeStep*2}${timedUnit==='mins'?'min':'s'} (RPE ${rir} — felt easy)`;
+      } else if (rir <= 8) {
+        if (avgPrevRIR != null && avgPrevRIR <= 8) {
+          newReps = prefillReps + timeStep;
+          suggestion = `↑ +${timeStep}${timedUnit==='mins'?'min':'s'} (adapted)`;
         } else {
-          newWeight = prefillWeight + weightStep;
-          newReps = targetReps; // reset back to target reps at new weight
-          suggestion = `↑ +${weightStep}kg (adapted)`;
+          suggestion = null;
         }
-      } else {
-        // only one comfortable session — too early to call it adaptation, hold
+      }
+    } else {
+      // RIR scale 0-5 (lower = harder)
+      if (rir <= 1) {
         suggestion = null;
+      } else if (rir >= 4) {
+        newReps = prefillReps + 2;
+        suggestion = `↑ +2 reps (RIR ${rir} last time)`;
+      } else if (rir >= 2 && rir <= 3) {
+        if (avgPrevRIR != null && avgPrevRIR >= 2) {
+          if (prefillReps < targetReps) {
+            newReps = prefillReps + 1;
+            suggestion = `↑ +1 rep (adapted)`;
+          } else {
+            newWeight = prefillWeight + weightStep;
+            newReps = targetReps;
+            suggestion = `↑ +${weightStep}kg (adapted)`;
+          }
+        } else {
+          suggestion = null;
+        }
       }
     }
 
@@ -3680,6 +3696,12 @@ function addExerciseRow(presetName, targetSets, targetReps, prefillSets) {
       `<button type="button" class="rir-chip ${n === prefillRir ? 'selected' : ''}" data-rir="${n}">${n}</button>`
     ).join('')}</div>`;
   }
+
+  function rpeChips(prefillRpe) {
+    return `<div class="rir-chips" title="Rate of Perceived Exertion (1=easy, 10=max)">${[6,7,8,9,10].map(n =>
+      `<button type="button" class="rir-chip ${n === prefillRpe ? 'selected' : ''}" data-rir="${n}" style="${n>=9?'border-color:rgba(255,61,90,0.4);':n>=7?'border-color:rgba(212,160,23,0.4);':''}">${n}</button>`
+    ).join('')}</div>`;
+  }
   function checkComplete(setRow) {
     const repsInput = setRow.querySelector('.set-reps');
     const reps = Number(repsInput?.value) || 0;
@@ -3706,8 +3728,8 @@ function addExerciseRow(presetName, targetSets, targetReps, prefillSets) {
       <button type="button" class="remove-x set-remove">×</button>
       ${suggTag}
       <div class="set-row-rir">
-        <span class="set-row-rir-label">RIR</span>
-        ${rirChips(prefillRir ?? null)}
+        <span class="set-row-rir-label">${timed ? 'RPE' : 'RIR'}</span>
+        ${timed ? rpeChips(prefillRir ?? null) : rirChips(prefillRir ?? null)}
       </div>`;
     setRow.querySelectorAll('.step-down').forEach(btn => btn.addEventListener('click', () => {
       SFX.numpadKey();
@@ -5227,113 +5249,104 @@ function renderStrengthRankings() {
    ========================================================================= */
 const HUNTER_CLASSES = {
   Berserker: {
-    color: '#C0392B',
-    colorDim: 'rgba(192,57,43,0.15)',
-    label: 'Berserker',
+    color: '#C0392B', colorDim: 'rgba(192,57,43,0.15)', label: 'Berserker',
     tagline: 'Iron does not yield. Neither do you.',
     desc: 'High intensity, heavy compounds, relentless PR attempts. Your training forges raw strength through neural dominance.',
-    sigil: `<svg viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg" class="class-sigil">
-      <path d="M40 8 L52 30 L74 32 L58 48 L62 70 L40 58 L18 70 L22 48 L6 32 L28 30 Z" stroke="#C0392B" stroke-width="2.5" fill="none" stroke-linejoin="round"/>
-      <path d="M40 20 L47 34 L62 36 L51 46 L54 61 L40 54 L26 61 L29 46 L18 36 L33 34 Z" stroke="#C0392B" stroke-width="1.5" fill="rgba(192,57,43,0.1)" stroke-linejoin="round"/>
-      <circle cx="40" cy="40" r="4" fill="#C0392B"/>
-    </svg>`,
-    particleColor: '#C0392B',
-    particleShape: 'shard',
+    sigil: `<svg viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg" class="class-sigil"><path d="M40 8 L52 30 L74 32 L58 48 L62 70 L40 58 L18 70 L22 48 L6 32 L28 30 Z" stroke="#C0392B" stroke-width="2.5" fill="none" stroke-linejoin="round"/><path d="M40 20 L47 34 L62 36 L51 46 L54 61 L40 54 L26 61 L29 46 L18 36 L33 34 Z" stroke="#C0392B" stroke-width="1.5" fill="rgba(192,57,43,0.1)" stroke-linejoin="round"/><circle cx="40" cy="40" r="4" fill="#C0392B"/></svg>`,
+    particleColor: '#C0392B', particleShape: 'shard',
   },
   Assassin: {
-    color: '#F0D000',
-    colorDim: 'rgba(240,208,0,0.12)',
-    label: 'Assassin',
+    color: '#F0D000', colorDim: 'rgba(240,208,0,0.12)', label: 'Assassin',
     tagline: 'Speed is the only truth.',
     desc: 'Explosive, fast-tempo, agility-dominant. Your training rewires fast-twitch dominance and raw power output.',
-    sigil: `<svg viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg" class="class-sigil">
-      <path d="M40 6 L44 36 L72 32 L46 42 L60 72 L38 48 L16 72 L32 42 L8 32 L36 36 Z" stroke="#F0D000" stroke-width="2.5" fill="none" stroke-linejoin="round"/>
-      <path d="M40 18 L42 34 L56 32 L43 38 L50 58 L39 44 L28 58 L35 38 L24 32 L38 34 Z" stroke="#F0D000" stroke-width="1.5" fill="rgba(240,208,0,0.08)" stroke-linejoin="round"/>
-      <line x1="40" y1="10" x2="40" y2="70" stroke="#F0D000" stroke-width="1" stroke-dasharray="3 4" opacity="0.4"/>
-    </svg>`,
-    particleColor: '#F0D000',
-    particleShape: 'streak',
+    sigil: `<svg viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg" class="class-sigil"><path d="M40 6 L44 36 L72 32 L46 42 L60 72 L38 48 L16 72 L32 42 L8 32 L36 36 Z" stroke="#F0D000" stroke-width="2.5" fill="none" stroke-linejoin="round"/><path d="M40 18 L42 34 L56 32 L43 38 L50 58 L39 44 L28 58 L35 38 L24 32 L38 34 Z" stroke="#F0D000" stroke-width="1.5" fill="rgba(240,208,0,0.08)" stroke-linejoin="round"/><line x1="40" y1="10" x2="40" y2="70" stroke="#F0D000" stroke-width="1" stroke-dasharray="3 4" opacity="0.4"/></svg>`,
+    particleColor: '#F0D000', particleShape: 'streak',
   },
   Monk: {
-    color: '#A8D8EA',
-    colorDim: 'rgba(168,216,234,0.12)',
-    label: 'Monk',
+    color: '#A8D8EA', colorDim: 'rgba(168,216,234,0.12)', label: 'Monk',
     tagline: 'Stillness is its own kind of strength.',
     desc: 'Control, stability, high focus. Handstands, levers, slow eccentrics. Your training builds tendon strength and motor mastery.',
-    sigil: `<svg viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg" class="class-sigil">
-      <circle cx="40" cy="40" r="30" stroke="#A8D8EA" stroke-width="2" fill="none"/>
-      <circle cx="40" cy="40" r="20" stroke="#A8D8EA" stroke-width="1.5" fill="none" opacity="0.5"/>
-      <circle cx="40" cy="40" r="10" stroke="#A8D8EA" stroke-width="1" fill="rgba(168,216,234,0.1)"/>
-      <line x1="40" y1="10" x2="40" y2="70" stroke="#A8D8EA" stroke-width="1" opacity="0.3"/>
-      <line x1="10" y1="40" x2="70" y2="40" stroke="#A8D8EA" stroke-width="1" opacity="0.3"/>
-      <circle cx="40" cy="40" r="3" fill="#A8D8EA"/>
-    </svg>`,
-    particleColor: '#A8D8EA',
-    particleShape: 'orb',
+    sigil: `<svg viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg" class="class-sigil"><circle cx="40" cy="40" r="30" stroke="#A8D8EA" stroke-width="2" fill="none"/><circle cx="40" cy="40" r="20" stroke="#A8D8EA" stroke-width="1.5" fill="none" opacity="0.5"/><circle cx="40" cy="40" r="10" stroke="#A8D8EA" stroke-width="1" fill="rgba(168,216,234,0.1)"/><line x1="40" y1="10" x2="40" y2="70" stroke="#A8D8EA" stroke-width="1" opacity="0.3"/><line x1="10" y1="40" x2="70" y2="40" stroke="#A8D8EA" stroke-width="1" opacity="0.3"/><circle cx="40" cy="40" r="3" fill="#A8D8EA"/></svg>`,
+    particleColor: '#A8D8EA', particleShape: 'orb',
   },
   Warlord: {
-    color: '#D4A017',
-    colorDim: 'rgba(212,160,23,0.12)',
-    label: 'Warlord',
+    color: '#D4A017', colorDim: 'rgba(212,160,23,0.12)', label: 'Warlord',
     tagline: 'Volume is the language of dominance.',
     desc: 'High volume, hypertrophy-dominant, relentless sets. Your training maximises muscle adaptation through total accumulated work.',
-    sigil: `<svg viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg" class="class-sigil">
-      <rect x="12" y="12" width="56" height="56" rx="4" stroke="#D4A017" stroke-width="2.5" fill="none"/>
-      <rect x="22" y="22" width="36" height="36" rx="2" stroke="#D4A017" stroke-width="1.5" fill="rgba(212,160,23,0.08)"/>
-      <rect x="32" y="32" width="16" height="16" fill="#D4A017" opacity="0.6"/>
-      <line x1="12" y1="40" x2="22" y2="40" stroke="#D4A017" stroke-width="1.5"/>
-      <line x1="58" y1="40" x2="68" y2="40" stroke="#D4A017" stroke-width="1.5"/>
-      <line x1="40" y1="12" x2="40" y2="22" stroke="#D4A017" stroke-width="1.5"/>
-      <line x1="40" y1="58" x2="40" y2="68" stroke="#D4A017" stroke-width="1.5"/>
-    </svg>`,
-    particleColor: '#D4A017',
-    particleShape: 'square',
+    sigil: `<svg viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg" class="class-sigil"><rect x="12" y="12" width="56" height="56" rx="4" stroke="#D4A017" stroke-width="2.5" fill="none"/><rect x="22" y="22" width="36" height="36" rx="2" stroke="#D4A017" stroke-width="1.5" fill="rgba(212,160,23,0.08)"/><rect x="32" y="32" width="16" height="16" fill="#D4A017" opacity="0.6"/><line x1="12" y1="40" x2="22" y2="40" stroke="#D4A017" stroke-width="1.5"/><line x1="58" y1="40" x2="68" y2="40" stroke="#D4A017" stroke-width="1.5"/><line x1="40" y1="12" x2="40" y2="22" stroke="#D4A017" stroke-width="1.5"/><line x1="40" y1="58" x2="40" y2="68" stroke="#D4A017" stroke-width="1.5"/></svg>`,
+    particleColor: '#D4A017', particleShape: 'square',
   },
   Ranger: {
-    color: '#1ABC9C',
-    colorDim: 'rgba(26,188,156,0.12)',
-    label: 'Ranger',
+    color: '#1ABC9C', colorDim: 'rgba(26,188,156,0.12)', label: 'Ranger',
     tagline: 'The road and the iron. Both are yours.',
     desc: 'Hybrid endurance and strength. Runs and lifts combined. Your training builds VO2 max and work capacity simultaneously.',
-    sigil: `<svg viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg" class="class-sigil">
-      <path d="M40 8 L68 60 L12 60 Z" stroke="#1ABC9C" stroke-width="2.5" fill="none" stroke-linejoin="round"/>
-      <path d="M40 22 L58 56 L22 56 Z" stroke="#1ABC9C" stroke-width="1.5" fill="rgba(26,188,156,0.1)" stroke-linejoin="round"/>
-      <circle cx="40" cy="44" r="5" fill="#1ABC9C" opacity="0.8"/>
-      <line x1="40" y1="8" x2="40" y2="22" stroke="#1ABC9C" stroke-width="1.5"/>
-    </svg>`,
-    particleColor: '#1ABC9C',
-    particleShape: 'orb',
+    sigil: `<svg viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg" class="class-sigil"><path d="M40 8 L68 60 L12 60 Z" stroke="#1ABC9C" stroke-width="2.5" fill="none" stroke-linejoin="round"/><path d="M40 22 L58 56 L22 56 Z" stroke="#1ABC9C" stroke-width="1.5" fill="rgba(26,188,156,0.1)" stroke-linejoin="round"/><circle cx="40" cy="44" r="5" fill="#1ABC9C" opacity="0.8"/><line x1="40" y1="8" x2="40" y2="22" stroke="#1ABC9C" stroke-width="1.5"/></svg>`,
+    particleColor: '#1ABC9C', particleShape: 'orb',
   },
   Shadowblade: {
-    color: '#9B59B6',
-    colorDim: 'rgba(155,89,182,0.12)',
-    label: 'Shadowblade',
+    color: '#9B59B6', colorDim: 'rgba(155,89,182,0.12)', label: 'Shadowblade',
     tagline: 'Your body is the weapon.',
     desc: 'Calisthenics and strength combined. Pull-ups, dips, levers. Your training dominates the strength-to-weight ratio.',
-    sigil: `<svg viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg" class="class-sigil">
-      <path d="M40 6 L46 34 L74 40 L46 46 L40 74 L34 46 L6 40 L34 34 Z" stroke="#9B59B6" stroke-width="2.5" fill="none" stroke-linejoin="round"/>
-      <path d="M40 18 L44 36 L62 40 L44 44 L40 62 L36 44 L18 40 L36 36 Z" stroke="#9B59B6" stroke-width="1.5" fill="rgba(155,89,182,0.1)" stroke-linejoin="round"/>
-      <circle cx="40" cy="40" r="5" fill="#9B59B6"/>
-      <circle cx="40" cy="40" r="3" fill="rgba(155,89,182,0.3)"/>
-    </svg>`,
-    particleColor: '#9B59B6',
-    particleShape: 'wisp',
+    sigil: `<svg viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg" class="class-sigil"><path d="M40 6 L46 34 L74 40 L46 46 L40 74 L34 46 L6 40 L34 34 Z" stroke="#9B59B6" stroke-width="2.5" fill="none" stroke-linejoin="round"/><path d="M40 18 L44 36 L62 40 L44 44 L40 62 L36 44 L18 40 L36 36 Z" stroke="#9B59B6" stroke-width="1.5" fill="rgba(155,89,182,0.1)" stroke-linejoin="round"/><circle cx="40" cy="40" r="5" fill="#9B59B6"/></svg>`,
+    particleColor: '#9B59B6', particleShape: 'wisp',
   },
   Titan: {
-    color: '#FFD700',
-    colorDim: 'rgba(255,215,0,0.12)',
-    label: 'Titan',
+    color: '#FFD700', colorDim: 'rgba(255,215,0,0.12)', label: 'Titan',
     tagline: 'Consistency is the only cheat code.',
     desc: 'High frequency, disciplined progression, daily training. Your commitment to the process sets you apart from every other hunter.',
-    sigil: `<svg viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg" class="class-sigil">
-      <path d="M40 6 L50 30 L76 30 L56 46 L64 70 L40 56 L16 70 L24 46 L4 30 L30 30 Z" stroke="#FFD700" stroke-width="2.5" fill="none" stroke-linejoin="round"/>
-      <path d="M40 18 L47 34 L64 34 L50 44 L56 60 L40 50 L24 60 L30 44 L16 34 L33 34 Z" stroke="#FFD700" stroke-width="1.5" fill="rgba(255,215,0,0.12)" stroke-linejoin="round"/>
-      <path d="M40 28 L43 36 L52 36 L45 41 L48 50 L40 45 L32 50 L35 41 L28 36 L37 36 Z" fill="#FFD700" opacity="0.6"/>
-    </svg>`,
-    particleColor: '#FFD700',
-    particleShape: 'shard',
+    sigil: `<svg viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg" class="class-sigil"><path d="M40 6 L50 30 L76 30 L56 46 L64 70 L40 56 L16 70 L24 46 L4 30 L30 30 Z" stroke="#FFD700" stroke-width="2.5" fill="none" stroke-linejoin="round"/><path d="M40 18 L47 34 L64 34 L50 44 L56 60 L40 50 L24 60 L30 44 L16 34 L33 34 Z" stroke="#FFD700" stroke-width="1.5" fill="rgba(255,215,0,0.12)" stroke-linejoin="round"/><path d="M40 28 L43 36 L52 36 L45 41 L48 50 L40 45 L32 50 L35 41 L28 36 L37 36 Z" fill="#FFD700" opacity="0.6"/></svg>`,
+    particleColor: '#FFD700', particleShape: 'shard',
   },
-};
+  Striker: {
+    color: '#E74C3C', colorDim: 'rgba(231,76,60,0.12)', label: 'Striker',
+    tagline: 'Every strike is intent made physical.',
+    desc: 'Combat sports dominant. Boxing, bag work, sparring. Your training sharpens reflexes, explosive power, and mental resilience.',
+    sigil: `<svg viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg" class="class-sigil"><path d="M20 60 L40 10 L60 60" stroke="#E74C3C" stroke-width="2.5" fill="none" stroke-linejoin="round"/><path d="M26 44 L54 44" stroke="#E74C3C" stroke-width="2"/><circle cx="40" cy="10" r="4" fill="#E74C3C"/><path d="M32 60 L40 50 L48 60" stroke="#E74C3C" stroke-width="1.5" fill="none" stroke-linejoin="round"/></svg>`,
+    particleColor: '#E74C3C', particleShape: 'shard',
+  },
+  Ironclad: {
+    color: '#7F8C8D', colorDim: 'rgba(127,140,141,0.12)', label: 'Ironclad',
+    tagline: 'Built to last. Built for everything.',
+    desc: 'Endurance and strength in equal measure. Cycling and lifting. No weakness, no ceiling — your engine never stops.',
+    sigil: `<svg viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg" class="class-sigil"><rect x="10" y="10" width="60" height="60" rx="6" stroke="#7F8C8D" stroke-width="2.5" fill="none"/><path d="M10 40 L70 40" stroke="#7F8C8D" stroke-width="1.5" opacity="0.5"/><path d="M40 10 L40 70" stroke="#7F8C8D" stroke-width="1.5" opacity="0.5"/><circle cx="40" cy="40" r="12" stroke="#7F8C8D" stroke-width="2" fill="rgba(127,140,141,0.1)"/><circle cx="40" cy="40" r="4" fill="#7F8C8D"/></svg>`,
+    particleColor: '#7F8C8D', particleShape: 'square',
+  },
+  AquaHunter: {
+    color: '#2980B9', colorDim: 'rgba(41,128,185,0.12)', label: 'Aqua Hunter',
+    tagline: 'The water reveals what the gym cannot.',
+    desc: 'Swimming dominant. Every stroke builds full-body endurance and shoulder strength most athletes never develop.',
+    sigil: `<svg viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg" class="class-sigil"><path d="M10 50 Q20 35 30 50 Q40 65 50 50 Q60 35 70 50" stroke="#2980B9" stroke-width="2.5" fill="none"/><path d="M10 38 Q20 23 30 38 Q40 53 50 38 Q60 23 70 38" stroke="#2980B9" stroke-width="1.5" fill="none" opacity="0.6"/><circle cx="40" cy="28" r="8" stroke="#2980B9" stroke-width="2" fill="rgba(41,128,185,0.1)"/><circle cx="40" cy="28" r="3" fill="#2980B9"/></svg>`,
+    particleColor: '#2980B9', particleShape: 'orb',
+  },
+  CourtKing: {
+    color: '#F39C12', colorDim: 'rgba(243,156,18,0.12)', label: 'Court King',
+    tagline: 'The arena is your domain.',
+    desc: 'Court and field sports dominant. Basketball, tennis, football. Agility, court vision, and competitive instinct define your training.',
+    sigil: `<svg viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg" class="class-sigil"><circle cx="40" cy="40" r="28" stroke="#F39C12" stroke-width="2.5" fill="none"/><path d="M12 40 L68 40" stroke="#F39C12" stroke-width="1.5"/><path d="M40 12 L40 68" stroke="#F39C12" stroke-width="1.5"/><circle cx="40" cy="40" r="8" stroke="#F39C12" stroke-width="1.5" fill="rgba(243,156,18,0.08)"/></svg>`,
+    particleColor: '#F39C12', particleShape: 'streak',
+  },
+  Alpinist: {
+    color: '#27AE60', colorDim: 'rgba(39,174,96,0.12)', label: 'Alpinist',
+    tagline: 'The summit does not care about your excuses.',
+    desc: 'Rock climbing dominant. Bouldering, sport climbing, traditional routes. Grip strength, problem solving, and fearlessness.',
+    sigil: `<svg viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg" class="class-sigil"><path d="M40 8 L65 65 L15 65 Z" stroke="#27AE60" stroke-width="2.5" fill="none" stroke-linejoin="round"/><path d="M40 25 L55 62 L25 62 Z" stroke="#27AE60" stroke-width="1.5" fill="rgba(39,174,96,0.08)" stroke-linejoin="round"/><path d="M28 48 L40 25 L52 48" stroke="#27AE60" stroke-width="1.5" fill="none" opacity="0.5"/><circle cx="40" cy="8" r="3" fill="#27AE60"/></svg>`,
+    particleColor: '#27AE60', particleShape: 'orb',
+  },
+  Centurion: {
+    color: '#8E44AD', colorDim: 'rgba(142,68,173,0.12)', label: 'Centurion',
+    tagline: 'No discipline owns you. All of them serve you.',
+    desc: 'True all-round athlete. High volume across every domain — lifting, cardio, sports, calisthenics. The System cannot classify you into one category.',
+    sigil: `<svg viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg" class="class-sigil"><circle cx="40" cy="40" r="30" stroke="#8E44AD" stroke-width="2.5" fill="none"/><path d="M40 10 L40 70" stroke="#8E44AD" stroke-width="1" opacity="0.4"/><path d="M10 40 L70 40" stroke="#8E44AD" stroke-width="1" opacity="0.4"/><path d="M19 19 L61 61" stroke="#8E44AD" stroke-width="1" opacity="0.4"/><path d="M61 19 L19 61" stroke="#8E44AD" stroke-width="1" opacity="0.4"/><circle cx="40" cy="40" r="10" stroke="#8E44AD" stroke-width="2" fill="rgba(142,68,173,0.12)"/><circle cx="40" cy="40" r="4" fill="#8E44AD"/></svg>`,
+    particleColor: '#8E44AD', particleShape: 'wisp',
+  },
+  Phantom: {
+    color: '#1A1A2E', colorDim: 'rgba(155,89,182,0.08)', label: 'Phantom',
+    tagline: 'No weight. No rules. Just mastery.',
+    desc: 'Calisthenics and combat sports combined. Bodyweight skill work meets boxing intensity. You need nothing but your own body.',
+    sigil: `<svg viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg" class="class-sigil"><path d="M40 6 L46 34 L74 40 L46 46 L40 74 L34 46 L6 40 L34 34 Z" stroke="#9B59B6" stroke-width="2" fill="none" stroke-linejoin="round"/><path d="M40 6 L50 30 L76 30 L56 46 L64 70 L40 56 L16 70 L24 46 L4 30 L30 30 Z" stroke="#E74C3C" stroke-width="1" fill="none" stroke-linejoin="round" opacity="0.5"/><circle cx="40" cy="40" r="5" fill="#9B59B6"/></svg>`,
+    particleColor: '#9B59B6', particleShape: 'wisp',
+  },
+};;
 
 // CSS for class sigil draw-on animation
 const CLASS_CSS = `
@@ -5460,119 +5473,155 @@ function assignHunterClass(uid) {
   const cutoff = new Date(); cutoff.setDate(cutoff.getDate() - 30);
   const recent = allWorkouts.filter(w => w.uid === uid && new Date(w.date) >= cutoff);
   const allTime = allWorkouts.filter(w => w.uid === uid);
-  const user = allUsers.find(u => u.uid === uid);
-
-  // Need 14 days + 4 workouts minimum
   if (allTime.length < 4) return null;
   const firstDate = allTime.reduce((a,b) => a.date < b.date ? a : b).date;
   if ((new Date() - new Date(firstDate)) / 86400000 < 14) return null;
   if (!recent.length) return null;
 
-  // Score each class 0-100
-  const scores = { Berserker:0, Assassin:0, Monk:0, Warlord:0, Ranger:0, Shadowblade:0, Titan:0 };
+  const user = allUsers.find(u => u.uid === uid);
+  const scores = { Berserker:0, Assassin:0, Monk:0, Warlord:0, Ranger:0, Shadowblade:0, Titan:0, Striker:0, Ironclad:0, AquaHunter:0, CourtKing:0, Alpinist:0, Centurion:0, Phantom:0 };
 
-  // Build training profile
-  let totalSets = 0, compoundSets = 0, isolationSets = 0, calSets = 0, cardioSets = 0, explosiveSets = 0, skillSets = 0, coreSets = 0;
-  let lowRIRSets = 0, highRIRSets = 0, totalRIRSets = 0;
-  let totalPRsLast30 = 0;
+  const COMPOUND    = new Set(['Squat','Deadlift','Bench Press','Overhead Press','Barbell Row','Pull Up','Chin Up','Dips','Romanian Deadlift','Sumo Deadlift','Hip Thrust','Push Press','Pendlay Row','T-Bar Row','Front Squat']);
+  const ISOLATION   = new Set(['Lateral Raise','Bicep Curl','Barbell Curl','Dumbbell Curl','Tricep Pushdown','Skull Crusher','Leg Extension','Leg Curl','Calf Raise','Concentration Curl','Tricep Kickback','Cable Lateral Raise','Rear Delt Fly','Face Pull']);
+  const CALISTHENICS= new Set(['Pull Up','Chin Up','Dips','Push Up','Muscle Up','Tuck Planche','Advanced Tuck Planche','Straddle Planche','Full Planche','Tuck Front Lever','Front Lever','Handstand Push Up','L-Sit','Dragon Flag','Ring Dips','Archer Push Up','Dead Hang','Freestanding Handstand Hold']);
+  const CARDIO      = new Set(['Running','Easy Run','Long Run','Treadmill Run','Stair Climb','Jump Rope','Tempo Run','Interval Running','Freestyle Swimming','Breaststroke Swimming','Backstroke Swimming','Open Water Swimming','Cycling','Road Cycling','Stationary Bike','Spin Class','Football (Soccer)','Football Drills']);
+  const EXPLOSIVE   = new Set(['Hill Sprints','Sprinting','Box Jump','Jump Squat','Burpee','Interval Running','Tempo Run','HIIT Swimming','Bouldering']);
+  const SKILL       = new Set(['Tuck Planche','Advanced Tuck Planche','Straddle Planche','Full Planche','Tuck Front Lever','Front Lever','Wall Handstand Hold','Freestanding Handstand Hold','L-Sit','Dead Hang','Planche Lean','Handstand Push Up']);
+  const COMBAT      = new Set(['Boxing — Bag Work','Boxing — Sparring','Boxing — Pad Work','Boxing — Shadow Boxing']);
+  const SWIMMING    = new Set(['Freestyle Swimming','Breaststroke Swimming','Butterfly Swimming','Backstroke Swimming','Open Water Swimming','HIIT Swimming']);
+  const COURT       = new Set(['Tennis','Tennis Drills','Basketball','Basketball Drills','Football (Soccer)','Football Drills','American Football']);
+  const CLIMBING    = new Set(['Bouldering','Sport Climbing','Top Rope Climbing','Traditional Climbing']);
+  const CYCLING_SET = new Set(['Cycling','Road Cycling','Mountain Biking','Stationary Bike','Spin Class','Cycling Intervals']);
 
-  const COMPOUND = new Set(['Squat','Deadlift','Bench Press','Overhead Press','Barbell Row','Pull Up','Chin Up','Dips','Romanian Deadlift','Sumo Deadlift','Hip Thrust','Push Press','Pendlay Row','T-Bar Row','Front Squat']);
-  const ISOLATION = new Set(['Lateral Raise','Bicep Curl','Barbell Curl','Dumbbell Curl','Tricep Pushdown','Skull Crusher','Leg Extension','Leg Curl','Calf Raise','Concentration Curl','Tricep Kickback','Cable Lateral Raise','Rear Delt Fly','Face Pull']);
-  const CALISTHENICS = new Set(['Pull Up','Chin Up','Dips','Push Up','Muscle Up','Tuck Planche','Advanced Tuck Planche','Straddle Planche','Full Planche','Tuck Front Lever','Front Lever','Handstand Push Up','L-Sit','Dragon Flag','Ring Dips','Archer Push Up']);
-  const CARDIO = new Set(['Running','Easy Run','Long Run','Treadmill Run','Stair Climb','Jump Rope','Tempo Run','Interval Running','Freestyle Swimming','Breaststroke Swimming','Backstroke Swimming','Open Water Swimming','Sport Climbing','Traditional Climbing','Football (Soccer)','Football Drills','Basketball','Basketball Drills','Tennis','Tennis Drills','Cycling','Road Cycling','Stationary Bike','Spin Class','Mountain Biking','Cycling Intervals']);
-  const EXPLOSIVE = new Set(['Hill Sprints','Sprinting','Box Jump','Jump Squat','Burpee','Interval Running','Tempo Run','HIIT Swimming','Bouldering','Boxing — Bag Work','Boxing — Sparring','Boxing — Pad Work','Boxing — Shadow Boxing']);
-  const SKILL = new Set(['Tuck Planche','Advanced Tuck Planche','Straddle Planche','Full Planche','Tuck Front Lever','Front Lever','Wall Handstand Hold','Freestanding Handstand Hold','L-Sit','Dead Hang','Planche Lean']);
-  const CORE = new Set(['Plank','Side Plank','Hanging Leg Raise','Ab Wheel Rollout','Dragon Flag','L-Sit','Cable Crunch','Toes to Bar','V-Up','Hanging Knee Raise']);
+  let totalSets = 0;
+  const cats = { compound:0, isolation:0, calisthenics:0, cardio:0, explosive:0, skill:0, combat:0, swimming:0, court:0, climbing:0, cycling:0, other:0 };
+  let lowRIRSets = 0, totalRIRSets = 0, highRIRSets = 0, totalPRs30 = 0;
 
   recent.forEach(w => {
     (w.exercises||[]).forEach(ex => {
-      const sets = (ex.sets||[]).filter(s => s.reps > 0);
-      const n = sets.length || 1;
-      totalSets += n;
-      if (COMPOUND.has(ex.name)) compoundSets += n;
-      if (ISOLATION.has(ex.name)) isolationSets += n;
-      if (CALISTHENICS.has(ex.name)) calSets += n;
-      if (CARDIO.has(ex.name)) cardioSets += n;
-      if (EXPLOSIVE.has(ex.name)) explosiveSets += n;
-      if (SKILL.has(ex.name)) skillSets += n;
-      if (CORE.has(ex.name)) coreSets += n;
-      // RIR analysis
-      sets.forEach(s => {
-        if (s.rir != null) {
-          totalRIRSets++;
-          if (s.rir <= 1) lowRIRSets++;
-          if (s.rir >= 3) highRIRSets++;
-        }
+      const sets = (ex.sets||[]).filter(s=>s.reps>0).length || 1;
+      totalSets += sets;
+      if (COMPOUND.has(ex.name))     cats.compound    += sets;
+      if (ISOLATION.has(ex.name))    cats.isolation   += sets;
+      if (CALISTHENICS.has(ex.name)) cats.calisthenics+= sets;
+      if (CARDIO.has(ex.name))       cats.cardio      += sets;
+      if (EXPLOSIVE.has(ex.name))    cats.explosive   += sets;
+      if (SKILL.has(ex.name))        cats.skill       += sets;
+      if (COMBAT.has(ex.name))       cats.combat      += sets;
+      if (SWIMMING.has(ex.name))     cats.swimming    += sets;
+      if (COURT.has(ex.name))        cats.court       += sets;
+      if (CLIMBING.has(ex.name))     cats.climbing    += sets;
+      if (CYCLING_SET.has(ex.name))  cats.cycling     += sets;
+      (ex.sets||[]).forEach(s => {
+        if (s.rir != null) { totalRIRSets++; if (s.rir<=1) lowRIRSets++; if (s.rir>=3) highRIRSets++; }
       });
     });
   });
 
-  // PR frequency last 30 days
-  const recentPRDates = Object.values(myPRs || {}).filter(p => p.date >= cutoff.toISOString().slice(0,10));
-  totalPRsLast30 = recentPRDates.length;
+  const recentPRs = Object.values(myPRs||{}).filter(p=>p.date>=cutoff.toISOString().slice(0,10));
+  totalPRs30 = recentPRs.length;
 
-  // Weekly frequency
-  const weeks = 4;
   let weeklyWorkouts = [];
-  for (let i = 0; i < weeks; i++) {
-    const start = startOfWeek(new Date(Date.now() - i*7*86400000));
-    const end = new Date(start); end.setDate(end.getDate()+7);
-    weeklyWorkouts.push(recent.filter(w => new Date(w.date) >= start && new Date(w.date) < end).length);
+  for (let i=0;i<4;i++){
+    const s=startOfWeek(new Date(Date.now()-i*7*86400000));
+    const e=new Date(s);e.setDate(e.getDate()+7);
+    weeklyWorkouts.push(recent.filter(w=>new Date(w.date)>=s&&new Date(w.date)<e).length);
   }
-  const avgWeekly = weeklyWorkouts.reduce((a,b)=>a+b,0) / weeks;
-  const highFrequency = avgWeekly >= 5;
-  const veryHighFrequency = avgWeekly >= 6;
+  const avgWeekly = weeklyWorkouts.reduce((a,b)=>a+b,0)/4;
 
-  const pct = n => totalSets ? n/totalSets : 0;
-  const rirPct = n => totalRIRSets ? n/totalRIRSets : 0;
+  const pct = k => totalSets ? cats[k]/totalSets : 0;
+  const rirPct = k => totalRIRSets ? (k==='low'?lowRIRSets:highRIRSets)/totalRIRSets : 0;
 
-  // BERSERKER — heavy compounds, low RIR, PR attempts
-  scores.Berserker += pct(compoundSets) * 40;
-  scores.Berserker += rirPct(lowRIRSets) * 30;
-  scores.Berserker += Math.min(totalPRsLast30 * 3, 20);
-  scores.Berserker += pct(compoundSets) > 0.5 ? 10 : 0;
+  // count distinct active categories (>5% of sets)
+  const activeCats = Object.values(cats).filter(v => totalSets && v/totalSets > 0.05).length;
 
-  // ASSASSIN — explosive, speed work
-  scores.Assassin += pct(explosiveSets) * 50;
-  scores.Assassin += pct(cardioSets) * 20;
-  scores.Assassin += rirPct(lowRIRSets) * 15;
-  scores.Assassin += pct(explosiveSets) > 0.2 ? 15 : 0;
+  // ── Score each class ──
+  // BERSERKER — heavy compounds, low RIR, PRs
+  scores.Berserker += pct('compound') * 35;
+  scores.Berserker += rirPct('low') * 30;
+  scores.Berserker += Math.min(totalPRs30*3, 20);
+  scores.Berserker += pct('compound') > 0.5 ? 15 : 0;
 
-  // MONK — skill holds, core, high RIR (controlled)
-  scores.Monk += pct(skillSets) * 50;
-  scores.Monk += pct(coreSets) * 20;
-  scores.Monk += rirPct(highRIRSets) * 20;
-  scores.Monk += pct(skillSets) > 0.15 ? 10 : 0;
+  // ASSASSIN — explosive, agility
+  scores.Assassin += pct('explosive') * 50;
+  scores.Assassin += pct('cardio') * 15;
+  scores.Assassin += rirPct('low') * 15;
+  scores.Assassin += pct('explosive') > 0.2 ? 20 : 0;
 
-  // WARLORD — high isolation + bodybuilding volume
-  scores.Warlord += pct(isolationSets) * 40;
+  // MONK — skill holds, core, controlled
+  scores.Monk += pct('skill') * 50;
+  scores.Monk += rirPct('high') * 20;
+  scores.Monk += pct('skill') > 0.15 ? 20 : 0;
+  scores.Monk += pct('climbing') * 10;
+
+  // WARLORD — high isolation + compound volume
+  scores.Warlord += pct('isolation') * 40;
   scores.Warlord += totalSets > 80 ? 20 : totalSets > 50 ? 10 : 0;
-  scores.Warlord += pct(isolationSets + compoundSets) * 20;
   scores.Warlord += avgWeekly >= 4 ? 10 : 0;
-  scores.Warlord += rirPct(highRIRSets) * 10;
+  scores.Warlord += rirPct('high') * 10;
+  scores.Warlord += pct('combat') === 0 && pct('swimming') === 0 && pct('court') === 0 ? 10 : 0;
 
   // RANGER — cardio + strength hybrid
-  scores.Ranger += pct(cardioSets) * 35;
-  scores.Ranger += pct(cardioSets) > 0.15 && pct(compoundSets + isolationSets) > 0.2 ? 30 : 0;
-  scores.Ranger += pct(cardioSets) * 20;
+  scores.Ranger += pct('cardio') * 30;
+  scores.Ranger += (pct('cardio') > 0.15 && pct('compound') > 0.15) ? 30 : 0;
+  scores.Ranger += pct('cycling') * 15;
   scores.Ranger += avgWeekly >= 4 ? 10 : 0;
-  scores.Ranger -= pct(explosiveSets) * 15; // explosive cardio = Assassin not Ranger
+  scores.Ranger -= pct('explosive') * 10;
 
   // SHADOWBLADE — calisthenics dominant
-  scores.Shadowblade += pct(calSets) * 55;
-  scores.Shadowblade += pct(skillSets) * 20;
-  scores.Shadowblade += pct(calSets) > 0.4 ? 15 : 0;
-  scores.Shadowblade += totalPRsLast30 > 2 ? 10 : 0;
+  scores.Shadowblade += pct('calisthenics') * 55;
+  scores.Shadowblade += pct('skill') * 15;
+  scores.Shadowblade += pct('calisthenics') > 0.4 ? 20 : 0;
+  scores.Shadowblade += totalPRs30 > 2 ? 5 : 0;
 
-  // TITAN — high frequency, consistent PRs, all-round volume
-  scores.Titan += veryHighFrequency ? 35 : highFrequency ? 20 : 0;
-  scores.Titan += Math.min(totalPRsLast30 * 2, 20);
+  // TITAN — high frequency, consistent PRs, all-round gym
+  scores.Titan += (avgWeekly >= 6 ? 35 : avgWeekly >= 5 ? 20 : 0);
+  scores.Titan += Math.min(totalPRs30*2, 20);
   scores.Titan += totalSets > 100 ? 20 : totalSets > 70 ? 10 : 0;
-  scores.Titan += (pct(compoundSets) > 0.2 && pct(isolationSets) > 0.15) ? 15 : 0;
-  scores.Titan += avgWeekly >= 6 ? 10 : 0;
+  scores.Titan += (pct('compound') > 0.2 && pct('isolation') > 0.15) ? 15 : 0;
 
-  // Normalise and pick winner
-  const winner = Object.entries(scores).sort((a,b) => b[1]-a[1])[0][0];
+  // STRIKER — combat sports dominant
+  scores.Striker += pct('combat') * 60;
+  scores.Striker += pct('combat') > 0.3 ? 25 : 0;
+  scores.Striker += pct('explosive') * 10;
+  scores.Striker += rirPct('low') * 5;
+
+  // IRONCLAD — cycling + strength, endurance + iron
+  scores.Ironclad += pct('cycling') * 40;
+  scores.Ironclad += (pct('cycling') > 0.2 && pct('compound') > 0.15) ? 30 : 0;
+  scores.Ironclad += pct('cardio') * 10;
+  scores.Ironclad += pct('compound') * 10;
+  scores.Ironclad += avgWeekly >= 4 ? 10 : 0;
+
+  // AQUA HUNTER — swimming dominant
+  scores.AquaHunter += pct('swimming') * 65;
+  scores.AquaHunter += pct('swimming') > 0.3 ? 25 : 0;
+  scores.AquaHunter += pct('cardio') * 10;
+
+  // COURT KING — court/field sports dominant
+  scores.CourtKing += pct('court') * 65;
+  scores.CourtKing += pct('court') > 0.3 ? 25 : 0;
+  scores.CourtKing += pct('explosive') * 10;
+
+  // ALPINIST — climbing dominant
+  scores.Alpinist += pct('climbing') * 65;
+  scores.Alpinist += pct('climbing') > 0.3 ? 25 : 0;
+  scores.Alpinist += pct('skill') * 10;
+
+  // CENTURION — genuinely all-round, no dominant category
+  scores.Centurion += activeCats >= 4 ? 30 : activeCats >= 3 ? 15 : 0;
+  scores.Centurion += Object.values(cats).every(v => !totalSets || v/totalSets < 0.4) ? 30 : 0;
+  scores.Centurion += totalSets > 80 ? 20 : 0;
+  scores.Centurion += avgWeekly >= 5 ? 15 : 0;
+  scores.Centurion += activeCats >= 5 ? 15 : 0;
+
+  // PHANTOM — calisthenics + combat hybrid
+  scores.Phantom += pct('combat') * 30;
+  scores.Phantom += pct('calisthenics') * 30;
+  scores.Phantom += (pct('combat') > 0.15 && pct('calisthenics') > 0.2) ? 30 : 0;
+  scores.Phantom += pct('skill') * 10;
+
+  const winner = Object.entries(scores).sort((a,b)=>b[1]-a[1])[0][0];
   return winner;
 }
 
@@ -8052,7 +8101,7 @@ function openWorkoutDetail(workoutId) {
           <span class="set-idx">${i+1}</span>
           <span>${s.reps} ${repsLabel.toLowerCase()}</span>
           <span>${s.weight ? s.weight+'kg' : String.fromCharCode(8212)}</span>
-          ${s.rir != null ? `<span style="color:var(--text-faint);font-size:11px;">RIR ${s.rir}</span>` : '<span></span>'}
+          ${s.rir != null ? `<span style="color:var(--text-faint);font-size:11px;">${timed ? 'RPE' : 'RIR'} ${s.rir}</span>` : '<span></span>'}
         </div>`).join('');
       return `<div class="detail-exercise">
         <p class="detail-ex-name">${escapeHtml(ex.name)}</p>
