@@ -4574,6 +4574,7 @@ function renderPartyStatus() {
         <div style="font-size:14px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(u.displayName||'Hunter')}</div>
         <div style="font-size:11px;color:${streakAtRisk?'var(--excess)':done?'var(--growing)':'var(--text-faint)'};">
           ${done ? '✓ Quest cleared today' : streakAtRisk ? `⚠ ${streak}d streak at risk` : 'Not yet logged'}
+          ${getUserTitle(u.uid) ? `<span style="color:var(--text-faint);margin-left:4px;">${getUserTitle(u.uid)}</span>` : ''}
         </div>
       </div>
       <div style="text-align:right;flex-shrink:0;">
@@ -4624,6 +4625,7 @@ function renderCompetitionBoard() {
       <td>
         <div style="font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100px;">${escapeHtml(r.name)}</div>
         ${!isMe && gapStr ? `<div style="font-size:9px;color:${gapColor};font-family:var(--font-mono);">${gapStr}</div>` : ''}
+        ${getUserTitle(r.uid) ? `<div style="font-size:9px;color:var(--text-faint);font-family:var(--font-mono);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${getUserTitle(r.uid)}</div>` : ''}
       </td>
       <td>
         <div style="font-family:var(--font-display);font-size:13px;color:${rankColor};">${r.power.toLocaleString()}</div>
