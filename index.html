@@ -2179,7 +2179,6 @@ function buildQuestCardHTML(idx) {
     : isActiveDay
       ? 'WARNING: leaving this quest incomplete puts your streak at risk.'
       : `Last done: ${fmtDaysAgo(day.lastDate)}`;
-  // build rewards preview
   function buildRewardsPreview() {
     if (allComplete) return '';
     const streak = computeStreak(currentUser.uid);
@@ -2189,32 +2188,45 @@ function buildQuestCardHTML(idx) {
     const weekCount = myWorkouts.filter(w => w.uid === currentUser.uid && new Date(w.date) >= weekStart).length;
     const goalBonus = (weekCount + 1) >= (profile.weeklyGoal || 3) ? 5 : 0;
     const totalAP = baseAP + goalBonus;
-    // which stats get XP from this day's exercises
+
+    // stat XP — count total sets per stat across all exercises in this day
     const statGains = {};
     day.exercises.forEach(ex => {
       const statId = getStatForExercise(ex.name);
       if (statId) statGains[statId] = (statGains[statId] || 0) + ex.sets;
     });
-    const STAT_ICONS = { strength:'⚔️', endurance:'🔥', agility:'⚡', focus:'🎯', recovery:'🛡️', flexibility:'💫' };
+    const STAT_ICONS  = { strength:'⚔️', endurance:'🔥', agility:'⚡', focus:'🎯', recovery:'🛡️', flexibility:'💫' };
+    const STAT_COLORS = { strength:'var(--brass)', endurance:'#FF6B35', agility:'#FFD700', focus:'var(--maintaining)', recovery:'var(--violet)', flexibility:'var(--growing)' };
+
     const statRows = Object.entries(statGains).map(([id, sets]) =>
-      `<span style="font-size:11px;font-family:var(--font-mono);color:var(--text-dim);">${STAT_ICONS[id]||''} ${id} +${sets}xp</span>`
-    ).join('  ');
-    // PR potential — check if any exercise has a close PR
-    const prPotential = day.exercises.filter(ex => {
-      const pr = myPRs[ex.name];
-      return pr && pr.e1rm; // has a PR to beat
-    });
+      `<div style="display:flex;align-items:center;gap:6px;padding:5px 8px;background:var(--card-2);border-radius:6px;border-left:2px solid ${STAT_COLORS[id]};">
+        <span style="font-size:13px;">${STAT_ICONS[id]||''}</span>
+        <span style="font-family:var(--font-mono);font-size:10px;color:${STAT_COLORS[id]};text-transform:uppercase;letter-spacing:0.05em;">${id}</span>
+        <span style="font-family:var(--font-mono);font-size:10px;color:var(--text-faint);margin-left:auto;">+${sets} xp</span>
+      </div>`
+    ).join('');
+
+    // unmapped exercises — show them so user knows
+    const unmapped = day.exercises.filter(ex => !getStatForExercise(ex.name)).map(ex => ex.name);
+
+    // PR potential
+    const prPotential = day.exercises.filter(ex => myPRs[ex.name]?.e1rm);
+    const apBreakdown = `+${baseAP} base${mult > 1 ? ` (×${mult} streak)` : ''}${goalBonus ? ' +5 weekly goal' : ''}`;
+
     return `
       <div style="border-top:1px solid rgba(61,165,255,0.15);margin:14px 0 16px;padding-top:12px;">
-        <div style="font-family:var(--font-mono);font-size:9px;letter-spacing:0.25em;color:var(--text-faint);text-transform:uppercase;margin-bottom:8px;">◈ Quest Rewards Preview</div>
-        <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;">
-          <div style="display:flex;align-items:baseline;gap:4px;">
-            <span style="font-family:var(--font-display);font-size:20px;color:var(--brass);">+${totalAP}</span>
-            <span style="font-size:10px;color:var(--text-faint);font-family:var(--font-mono);">AP${mult>1?` ×${mult} streak`:''}${goalBonus?' +5 goal':''}</span>
-          </div>
-          ${statRows ? `<div style="display:flex;flex-wrap:wrap;gap:8px;">${statRows}</div>` : ''}
+        <div style="font-family:var(--font-mono);font-size:9px;letter-spacing:0.25em;color:var(--text-faint);text-transform:uppercase;margin-bottom:10px;">◈ Quest Rewards Preview</div>
+        <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:10px;">
+          <span style="font-family:var(--font-display);font-size:24px;color:var(--brass);">+${totalAP}</span>
+          <span style="font-size:11px;color:var(--text-dim);font-family:var(--font-mono);">Aura Points</span>
+          <span style="font-size:10px;color:var(--text-faint);margin-left:4px;">${apBreakdown}</span>
         </div>
-        ${prPotential.length ? `<div style="margin-top:6px;font-size:11px;color:var(--violet);font-family:var(--font-mono);">🏆 ${prPotential.length} PR${prPotential.length>1?'s':''} on the line — ${prPotential.slice(0,2).map(e=>e.name).join(', ')}${prPotential.length>2?'…':''}</div>` : ''}
+        ${statRows ? `
+          <div style="font-size:10px;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px;font-family:var(--font-mono);">Stat XP</div>
+          <div style="display:flex;flex-direction:column;gap:4px;margin-bottom:8px;">${statRows}</div>
+        ` : ''}
+        ${unmapped.length ? `<div style="font-size:10px;color:var(--text-faint);font-family:var(--font-mono);">+ volume XP: ${unmapped.slice(0,3).join(', ')}${unmapped.length>3?` +${unmapped.length-3} more`:''}</div>` : ''}
+        ${prPotential.length ? `<div style="margin-top:8px;padding:6px 10px;background:rgba(139,107,255,0.08);border:1px solid rgba(139,107,255,0.3);border-radius:6px;font-size:11px;color:var(--violet);font-family:var(--font-mono);">🏆 ${prPotential.length} PR${prPotential.length>1?'s':''} on the line → ${prPotential.slice(0,2).map(e=>e.name).join(', ')}${prPotential.length>2?`…`:''}</div>` : ''}
       </div>`;
   }
 
@@ -3152,30 +3164,60 @@ function prSystemUnlocked() {
    STAT BONUS MAPPINGS — PRs contribute toward specific stats
    ========================================================================= */
 const STAT_BONUS_MAP = {
-  // Strength — 1RM PRs on compound/strength lifts
+  // Strength — compound lifts and heavy pressing/pulling
   strength: new Set([
     'Bench Press','Incline Bench Press','Decline Bench Press','Close Grip Bench Press',
     'Overhead Press','Push Press','Barbell Row','Pendlay Row','Meadows Row',
     'Squat','Front Squat','Deadlift','Sumo Deadlift','Stiff-Leg Deadlift',
     'Romanian Deadlift','Rack Pull','Hip Thrust','Leg Press','Hack Squat',
     'Pull Up','Chin Up','Dips','Muscle Up','Weighted Dip','Weighted Pull Up',
+    'T-Bar Row','Seated Cable Row','One-Arm Dumbbell Row','Chest Supported Row',
+    'Dumbbell Shoulder Press','Arnold Press','Push Press','Bulgarian Split Squat',
+    'Nordic Curl','Good Morning','Back Extension','Lunges','Step Up',
   ]),
-  // Endurance — distance/time PRs on cardio
+  // Endurance — sustained cardio
   endurance: new Set([
     'Running','Easy Run','Long Run','Treadmill Run','Stair Climb',
+    'Jump Rope','Bear Crawl','Mountain Climber','Interval Running',
   ]),
-  // Agility — speed/interval PRs
+  // Agility — explosive and speed work
   agility: new Set([
-    'Hill Sprints','Interval Running','Tempo Run','Sprinting','Jump Rope',
-    'Box Jump','Jump Squat','Burpee',
+    'Hill Sprints','Tempo Run','Sprinting','Box Jump','Jump Squat','Burpee',
+    'Pistol Squat','Walking Lunge','Reverse Lunge',
   ]),
-  // Focus — skill holds (planche, front lever, handstand)
+  // Flexibility — core, mobility, stability work
+  flexibility: new Set([
+    'Plank','Side Plank','Ab Wheel Rollout','Dragon Flag','Hanging Leg Raise',
+    'Hanging Knee Raise','Toes to Bar','Flutter Kicks','V-Up','L-Sit',
+    'Hollow Body Hold','Skin The Cat','Cable Woodchopper','Russian Twist',
+    'Crunch','Sit Up','Decline Sit Up','Reverse Crunch','Bicycle Crunch',
+    'Lying Leg Raise','Cable Crunch','Hanging Leg Raise',
+  ]),
+  // Focus — skill, isolation, pump work that requires mind-muscle connection
   focus: new Set([
     'Tuck Planche','Advanced Tuck Planche','Straddle Planche','Full Planche',
     'Tuck Front Lever','Advanced Tuck Front Lever','Single Leg Front Lever',
     'Straddle Front Lever','Front Lever','Wall Handstand Hold',
-    'Freestanding Handstand Hold','Chest-to-Wall Handstand Hold','L-Sit',
-    'Planche Lean','Dead Hang',
+    'Freestanding Handstand Hold','Chest-to-Wall Handstand Hold',
+    'Planche Lean','Dead Hang','Handstand Push Up','Pike Push Up',
+    'Lateral Raise','Cable Lateral Raise','Front Raise','Rear Delt Fly',
+    'Cable Rear Delt Fly','Face Pull','Reverse Pec Deck',
+    'Dumbbell Curl','Barbell Curl','Hammer Curl','Concentration Curl',
+    'Preacher Curl','EZ Bar Curl','Spider Curl','Zottman Curl','Cable Curl',
+    'Tricep Pushdown','Skull Crusher','Overhead Tricep Extension','Tricep Kickback',
+    'Incline Dumbbell Press','Incline Dumbbell Fly','Dumbbell Fly','Cable Fly Low-to-High',
+    'Cable Fly High-to-Low','Cable Crossover','Single-Arm Cable Crossover',
+    'Pec Deck Machine','Svend Press','Dumbbell Pullover',
+    'Lateral Raise','Standing One-Arm Cable Lateral Raise',
+    'Alternate Incline Dumbbell Curl','Wrist Curl','Reverse Wrist Curl',
+    'Leg Extension','Leg Curl','Seated Calf Raise','Standing Calf Raise',
+    'Calf Raise','Donkey Calf Raise','Single Leg Calf Raise',
+    'Glute Bridge','Cable Kickback','Hip Thrust',
+  ]),
+  // Recovery — structured rest, low intensity, bodyweight basics
+  recovery: new Set([
+    'Wall Sit','Dead Hang','Farmers Carry','Superman','Back Extension',
+    'Glute Bridge','Single Leg Calf Raise',
   ]),
 };
 
@@ -5304,14 +5346,141 @@ function renderMuscleDetail() {
     </div>`;
   document.querySelectorAll('#trends-muscle-detail .body-part').forEach(p => {
     p.addEventListener('click', () => {
-      const row = document.querySelector(`.muscle-detail-row[data-m="${p.dataset.m}"]`);
-      if (row) { row.scrollIntoView({ behavior: 'smooth', block: 'center' }); row.classList.add('flash'); setTimeout(() => row.classList.remove('flash'), 900); }
+      openMusclePRPanel(p.dataset.m);
     });
+  });
+  // also make muscle-detail-rows tappable
+  document.querySelectorAll('.muscle-detail-row[data-m]').forEach(row => {
+    row.style.cursor = 'pointer';
+    row.addEventListener('click', () => openMusclePRPanel(row.dataset.m));
   });
   document.getElementById('back-to-dashboard')?.addEventListener('click', () => { trendsView = 'dashboard'; renderTrends(); });
   document.getElementById('mode-past')?.addEventListener('click', () => { muscleDetailMode = 'Past'; renderMuscleDetail(); });
   document.getElementById('mode-planned')?.addEventListener('click', () => { muscleDetailMode = 'Planned'; renderMuscleDetail(); });
   document.getElementById('mode-strength')?.addEventListener('click', () => { muscleDetailMode = 'Strength'; renderMuscleDetail(); });
+}
+
+/* =========================================================================
+   MUSCLE PR PANEL
+   ========================================================================= */
+function openMusclePRPanel(muscleName) {
+  if (!muscleName) return;
+  const unlocked = prSystemUnlocked();
+
+  // find all exercises that primarily hit this muscle (emphasis >= 0.5)
+  const relevantExercises = Object.entries(EXERCISES_ALL).filter(([name, def]) => {
+    const muscles = def.muscles || {};
+    return muscles[muscleName] >= 0.5;
+  }).map(([name]) => name).sort();
+
+  if (!relevantExercises.length) { showToast(`No tracked exercises for ${muscleName}`, 'info'); return; }
+
+  // build e1RM history per exercise from workouts
+  function getE1RMHistory(exName) {
+    const history = [];
+    [...myWorkouts].reverse().forEach(w => {
+      const ex = (w.exercises||[]).find(e => e.name === exName);
+      if (!ex) return;
+      const bestSet = (ex.sets||[]).reduce((best, s) => {
+        const e = epley1RM(s.weight, s.reps);
+        return e > best ? e : best;
+      }, 0);
+      if (bestSet > 0) history.push({ date: w.date, e1rm: bestSet });
+    });
+    return history;
+  }
+
+  function sparkLine(history, color) {
+    if (history.length < 2) return '<div style="font-size:10px;color:var(--text-faint);">Need more sessions</div>';
+    const W = 220, H = 50, PAD = { t:4, r:4, b:14, l:32 };
+    const gW = W - PAD.l - PAD.r, gH = H - PAD.t - PAD.b;
+    const vals = history.map(p => p.e1rm);
+    const minV = Math.min(...vals), maxV = Math.max(...vals);
+    const range = maxV - minV || 1;
+    const toX = i => PAD.l + (i / (history.length - 1)) * gW;
+    const toY = v => PAD.t + gH - ((v - minV) / range) * gH;
+    const linePoints = history.map((p,i) => `${toX(i).toFixed(1)},${toY(p.e1rm).toFixed(1)}`).join(' ');
+    const firstX = toX(0).toFixed(1), lastX = toX(history.length-1).toFixed(1);
+    const baseY = (PAD.t + gH).toFixed(1);
+    const areaPoints = `${firstX},${baseY} ${linePoints} ${lastX},${baseY}`;
+    const dotX = toX(history.length-1).toFixed(1), dotY = toY(vals[vals.length-1]).toFixed(1);
+    const trend = vals[vals.length-1] - vals[0];
+    const trendStr = trend >= 0 ? `+${trend.toFixed(1)}kg` : `${trend.toFixed(1)}kg`;
+    const trendColor = trend >= 0 ? 'var(--growing)' : 'var(--excess)';
+    return `<div>
+      <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px;">
+        <span style="font-family:var(--font-mono);font-size:11px;color:${color};">${vals[vals.length-1].toFixed(1)} kg e1RM</span>
+        <span style="font-family:var(--font-mono);font-size:10px;color:${trendColor};">${trendStr} all time</span>
+      </div>
+      <svg viewBox="0 0 ${W} ${H}" style="width:100%;overflow:visible;">
+        <defs>
+          <linearGradient id="spark-grad-${muscleName.replace(/\s/g,'')}" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="${color}" stop-opacity="0.3"/>
+            <stop offset="100%" stop-color="${color}" stop-opacity="0"/>
+          </linearGradient>
+        </defs>
+        <line x1="${PAD.l}" y1="${PAD.t}" x2="${PAD.l}" y2="${PAD.t+gH}" stroke="rgba(93,157,255,0.15)" stroke-width="1"/>
+        <line x1="${PAD.l}" y1="${PAD.t+gH}" x2="${PAD.l+gW}" y2="${PAD.t+gH}" stroke="rgba(93,157,255,0.15)" stroke-width="1"/>
+        <polygon points="${areaPoints}" fill="url(#spark-grad-${muscleName.replace(/\s/g,'')})"/>
+        <polyline points="${linePoints}" fill="none" stroke="${color}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+        <circle cx="${dotX}" cy="${dotY}" r="3" fill="${color}" stroke="var(--card)" stroke-width="2"/>
+        <text x="${PAD.l-2}" y="${toY(minV)+3}" text-anchor="end" fill="var(--text-faint)" font-size="8">${minV.toFixed(0)}</text>
+        <text x="${PAD.l-2}" y="${toY(maxV)+3}" text-anchor="end" fill="var(--text-faint)" font-size="8">${maxV.toFixed(0)}</text>
+        <text x="${toX(0)}" y="${H}" text-anchor="middle" fill="var(--text-faint)" font-size="8">${history[0].date.slice(5)}</text>
+        <text x="${lastX}" y="${H}" text-anchor="middle" fill="var(--text-faint)" font-size="8">${history[history.length-1].date.slice(5)}</text>
+      </svg>
+    </div>`;
+  }
+
+  // build exercise rows
+  const exerciseCards = relevantExercises.map(exName => {
+    const history = getE1RMHistory(exName);
+    if (!history.length) return ''; // never logged
+    const pr = myPRs[exName];
+    const tier = pr?.tier || null;
+    const TIER_COLORS = { Elite:'#FFD700', Advanced:'var(--excess)', Intermediate:'var(--violet)', Novice:'var(--maintaining)', Beginner:'var(--brass)' };
+    const tierColor = tier ? TIER_COLORS[tier] : 'var(--text-faint)';
+    const TIER_ICONS = { Elite:'👑', Advanced:'💀', Intermediate:'⚔️', Novice:'🗡️', Beginner:'🛡️' };
+    const emphasis = (EXERCISES_ALL[exName]?.muscles?.[muscleName] || 0);
+    const isPrimary = emphasis >= 0.9;
+    return `<div style="background:var(--card-2);border:1px solid ${unlocked && tier ? tierColor+'44' : 'var(--border)'};border-radius:8px;padding:14px;margin-bottom:10px;">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:10px;gap:8px;">
+        <div style="min-width:0;">
+          <div style="font-size:14px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(exName)}</div>
+          <div style="font-size:10px;color:var(--text-faint);font-family:var(--font-mono);margin-top:2px;">${isPrimary?'PRIMARY':'SECONDARY'} · ${history.length} session${history.length!==1?'s':''}</div>
+        </div>
+        ${unlocked && tier ? `<div style="display:flex;flex-direction:column;align-items:flex-end;gap:2px;flex-shrink:0;">
+          <span style="font-size:16px;">${TIER_ICONS[tier]||''}</span>
+          <span style="font-size:10px;color:${tierColor};font-family:var(--font-mono);font-weight:700;">${tier}</span>
+        </div>` : !unlocked ? `<span style="font-size:10px;color:var(--text-faint);font-family:var(--font-mono);">🔒 ${14 - Math.floor((new Date()-new Date(myWorkouts[myWorkouts.length-1]?.date||new Date()))/86400000)}d to unlock</span>` : ''}
+      </div>
+      ${sparkLine(history, unlocked && tier ? tierColor : 'var(--brass)')}
+      ${!unlocked ? `<div style="font-size:10px;color:var(--text-faint);margin-top:6px;font-family:var(--font-mono);">Tracking in progress — PRs unlock after 14 days so your body learns the movement first.</div>` : ''}
+    </div>`;
+  }).filter(Boolean).join('');
+
+  if (!exerciseCards) {
+    showToast(`No logged sessions for ${muscleName} exercises yet`, 'info');
+    return;
+  }
+
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.innerHTML = `
+    <div class="modal" style="max-height:85vh;overflow-y:auto;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+        <div>
+          <div style="font-family:var(--font-mono);font-size:9px;letter-spacing:0.3em;color:var(--text-faint);margin-bottom:4px;">MUSCLE GROUP</div>
+          <h3 style="margin:0;font-size:18px;">${muscleName}</h3>
+        </div>
+        <button class="icon-btn" id="muscle-panel-close" style="font-size:20px;">✕</button>
+      </div>
+      ${!unlocked ? `<div style="background:rgba(61,165,255,0.08);border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:14px;font-size:12px;color:var(--text-dim);font-family:var(--font-mono);">🔒 PR badges unlock after 14 days — tracking your numbers now so your baseline is ready.</div>` : ''}
+      ${exerciseCards}
+    </div>`;
+  document.body.appendChild(overlay);
+  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+  overlay.querySelector('#muscle-panel-close').addEventListener('click', () => overlay.remove());
 }
 
 /* =========================================================================
