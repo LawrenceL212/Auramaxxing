@@ -724,6 +724,109 @@
 
   /* ========== Post-Workout Debrief ========== */
   .debrief-overlay{position:fixed;inset:0;z-index:200;background:rgba(5,7,13,0.95);backdrop-filter:blur(8px);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;animation:sysOverlayIn .3s ease;overflow-y:auto;}
+
+  /* ── Quest Clear Banner ── */
+  .quest-clear-banner {
+    position: fixed;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%) translateY(-120%);
+    z-index: 999;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    pointer-events: none;
+    animation: questBannerDrop 3.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+  @keyframes questBannerDrop {
+    0%   { transform: translateX(-50%) translateY(-120%); opacity: 0; }
+    18%  { transform: translateX(-50%) translateY(0px);   opacity: 1; }
+    70%  { transform: translateX(-50%) translateY(0px);   opacity: 1; }
+    100% { transform: translateX(-50%) translateY(-140%); opacity: 0; }
+  }
+  .quest-clear-banner-inner {
+    position: relative;
+    background: linear-gradient(135deg, rgba(5,7,13,0.98), rgba(14,17,32,0.98));
+    border: 1px solid var(--violet);
+    border-radius: 0 0 8px 8px;
+    padding: 14px 32px 16px;
+    text-align: center;
+    box-shadow:
+      0 0 0 1px rgba(139,107,255,0.2),
+      0 0 40px -4px rgba(139,107,255,0.7),
+      0 8px 40px -8px rgba(139,107,255,0.5);
+  }
+  .quest-clear-banner-inner::before,
+  .quest-clear-banner-inner::after {
+    content: "";
+    position: absolute;
+    width: 14px; height: 14px;
+    border-color: var(--violet);
+  }
+  .quest-clear-banner-inner::before { bottom:-1px; left:-1px; border-bottom:2px solid; border-left:2px solid; }
+  .quest-clear-banner-inner::after  { bottom:-1px; right:-1px; border-bottom:2px solid; border-right:2px solid; }
+  .quest-clear-eyebrow {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    letter-spacing: 0.45em;
+    color: var(--violet);
+    text-transform: uppercase;
+    margin-bottom: 4px;
+    animation: questEyebrowPulse 0.8s ease 0.3s both;
+  }
+  .quest-clear-title {
+    font-family: var(--font-display);
+    font-size: 22px;
+    font-weight: 900;
+    letter-spacing: 0.08em;
+    color: var(--text);
+    text-transform: uppercase;
+    text-shadow: 0 0 30px rgba(139,107,255,0.8);
+    animation: questTitleIn 0.6s cubic-bezier(0.16,1,0.3,1) 0.2s both;
+  }
+  .quest-clear-ap {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--brass);
+    letter-spacing: 0.06em;
+    animation: questTitleIn 0.6s cubic-bezier(0.16,1,0.3,1) 0.35s both;
+  }
+  .quest-clear-particles {
+    position: absolute;
+    inset: 0;
+    overflow: visible;
+    pointer-events: none;
+  }
+  .quest-clear-particle {
+    position: absolute;
+    width: 3px; height: 3px;
+    border-radius: 50%;
+    background: var(--violet);
+    animation: questParticleBurst linear forwards;
+    opacity: 0;
+  }
+  @keyframes questTitleIn {
+    from { opacity:0; transform: scaleX(0.7); }
+    to   { opacity:1; transform: scaleX(1); }
+  }
+  @keyframes questParticleBurst {
+    0%   { opacity:1; transform: translate(0,0) scale(1); }
+    100% { opacity:0; transform: translate(var(--tx), var(--ty)) scale(0); }
+  }
+  /* top edge glow bar */
+  .quest-clear-topbar {
+    width: 100%;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--violet), var(--brass), var(--violet), transparent);
+    border-radius: 0;
+    animation: questBarExpand 0.4s ease 0.15s both;
+    transform-origin: center;
+  }
+  @keyframes questBarExpand {
+    from { transform: scaleX(0); opacity:0; }
+    to   { transform: scaleX(1); opacity:1; }
+  }
   .debrief-window{background:linear-gradient(160deg,rgba(14,17,32,1),rgba(22,26,48,1));border:1px solid var(--brass);border-radius:6px;padding:28px 24px;width:100%;max-width:420px;box-shadow:0 0 60px -10px rgba(61,165,255,0.4);position:relative;}
   .debrief-window::before,.debrief-window::after{content:"";position:absolute;width:16px;height:16px;border-color:var(--brass);pointer-events:none;}
   .debrief-window::before{top:-1px;left:-1px;border-top:2px solid;border-left:2px solid;}
@@ -1972,6 +2075,22 @@ function openSettingsModal() {
         </div>
         <p style="font-size:11.5px;color:var(--text-faint);margin:6px 0 0;">Changes the body shape on your Muscle Activation chart in Trends. Purely visual — doesn't affect your tracked data.</p>
       </div>
+      <div class="field">
+        <label>Sound effects</label>
+        <div class="weekday-chips">
+          <button type="button" class="weekday-chip sound-chip ${SFX.soundOn()?'on':''}" data-val="on" style="flex:1;">On</button>
+          <button type="button" class="weekday-chip sound-chip ${!SFX.soundOn()?'on':''}" data-val="off" style="flex:1;">Off</button>
+        </div>
+        <p style="font-size:11.5px;color:var(--text-faint);margin:6px 0 0;">Quest complete, PR, awakening, and penalty sounds.</p>
+      </div>
+      <div class="field">
+        <label>Haptic feedback</label>
+        <div class="weekday-chips">
+          <button type="button" class="weekday-chip haptic-chip ${SFX.hapticOn()?'on':''}" data-val="on" style="flex:1;">On</button>
+          <button type="button" class="weekday-chip haptic-chip ${!SFX.hapticOn()?'on':''}" data-val="off" style="flex:1;">Off</button>
+        </div>
+        <p style="font-size:11.5px;color:var(--text-faint);margin:6px 0 0;">Vibration on quest complete, PRs, and rest timer.</p>
+      </div>
       <div style="display:flex;gap:10px;margin-top:6px;">
         <button class="btn" id="cancel-settings" style="flex:1;">Cancel</button>
         <button class="btn btn-primary" id="save-settings" style="flex:2;">Save</button>
@@ -1983,6 +2102,16 @@ function openSettingsModal() {
   overlay.querySelectorAll('.body-type-chip').forEach(chip => chip.addEventListener('click', () => {
     selectedBodyType = chip.dataset.type;
     overlay.querySelectorAll('.body-type-chip').forEach(c => c.classList.toggle('on', c.dataset.type === selectedBodyType));
+  }));
+  overlay.querySelectorAll('.sound-chip').forEach(chip => chip.addEventListener('click', () => {
+    localStorage.setItem('aura_sound', chip.dataset.val);
+    overlay.querySelectorAll('.sound-chip').forEach(c => c.classList.toggle('on', c.dataset.val === chip.dataset.val));
+    if (chip.dataset.val === 'on') SFX.tap();
+  }));
+  overlay.querySelectorAll('.haptic-chip').forEach(chip => chip.addEventListener('click', () => {
+    localStorage.setItem('aura_haptic', chip.dataset.val);
+    overlay.querySelectorAll('.haptic-chip').forEach(c => c.classList.toggle('on', c.dataset.val === chip.dataset.val));
+    if (chip.dataset.val === 'on' && navigator.vibrate) navigator.vibrate([30]);
   }));
   overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
   overlay.querySelector('#cancel-settings').addEventListener('click', () => overlay.remove());
@@ -2009,6 +2138,124 @@ function openSettingsModal() {
     }
   });
 }
+
+/* =========================================================================
+   SOUND & HAPTIC SYSTEM
+   ========================================================================= */
+const SFX = {
+  // returns pref from localStorage (profile not loaded yet at init time)
+  soundOn: () => localStorage.getItem('aura_sound') !== 'off',
+  hapticOn: () => localStorage.getItem('aura_haptic') !== 'off',
+
+  // Web Audio API context — created lazily on first interaction
+  _ctx: null,
+  ctx() {
+    if (!this._ctx) this._ctx = new (window.AudioContext || window.webkitAudioContext)();
+    return this._ctx;
+  },
+
+  // Haptic wrapper
+  vibrate(pattern) {
+    if (!this.hapticOn()) return;
+    if (navigator.vibrate) navigator.vibrate(pattern);
+  },
+
+  // Core tone generator
+  _tone(freq, type, gainVal, duration, delay = 0) {
+    if (!this.soundOn()) return;
+    try {
+      const ctx = this.ctx();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.type = type;
+      osc.frequency.setValueAtTime(freq, ctx.currentTime + delay);
+      gain.gain.setValueAtTime(0, ctx.currentTime + delay);
+      gain.gain.linearRampToValueAtTime(gainVal, ctx.currentTime + delay + 0.01);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + delay + duration);
+      osc.start(ctx.currentTime + delay);
+      osc.stop(ctx.currentTime + delay + duration + 0.05);
+    } catch(e) {}
+  },
+
+  // ── Sound effects ──
+
+  // Quest Complete — ascending triumphant chord
+  questComplete() {
+    this._tone(440, 'sine', 0.18, 0.3, 0);
+    this._tone(554, 'sine', 0.14, 0.3, 0.08);
+    this._tone(659, 'sine', 0.12, 0.4, 0.16);
+    this._tone(880, 'sine', 0.10, 0.5, 0.28);
+    this.vibrate([40, 30, 80]);
+  },
+
+  // PR / Boss Defeated — dramatic power chord
+  bossDefeated() {
+    this._tone(220, 'sawtooth', 0.08, 0.6, 0);
+    this._tone(330, 'sine', 0.12, 0.5, 0.05);
+    this._tone(440, 'sine', 0.15, 0.6, 0.1);
+    this._tone(660, 'sine', 0.10, 0.8, 0.2);
+    this.vibrate([60, 40, 120, 40, 60]);
+  },
+
+  // Awakening / Rank up — ethereal rising sweep
+  awakening() {
+    for (let i = 0; i < 8; i++) {
+      const freq = 200 + i * 80;
+      this._tone(freq, 'sine', 0.06, 0.3, i * 0.1);
+    }
+    this._tone(880, 'sine', 0.15, 1.0, 0.7);
+    this.vibrate([30, 20, 30, 20, 200]);
+  },
+
+  // Achievement unlock — bright notification ding
+  achievement() {
+    this._tone(523, 'sine', 0.12, 0.15, 0);
+    this._tone(784, 'sine', 0.10, 0.25, 0.1);
+    this._tone(1047, 'sine', 0.08, 0.35, 0.18);
+    this.vibrate([20, 10, 40]);
+  },
+
+  // Gate clear — solemn confirmation
+  gateClear() {
+    this._tone(330, 'sine', 0.10, 0.4, 0);
+    this._tone(440, 'sine', 0.12, 0.5, 0.15);
+    this._tone(660, 'sine', 0.08, 0.6, 0.3);
+    this.vibrate([60, 30, 60]);
+  },
+
+  // Penalty / Gate failed — ominous descending
+  penalty() {
+    this._tone(330, 'sawtooth', 0.06, 0.3, 0);
+    this._tone(277, 'sawtooth', 0.08, 0.4, 0.15);
+    this._tone(220, 'sawtooth', 0.10, 0.6, 0.3);
+    this.vibrate([100, 50, 100, 50, 200]);
+  },
+
+  // Class assigned — mysterious reveal
+  classAssigned() {
+    this._tone(110, 'sine', 0.08, 0.8, 0);
+    this._tone(220, 'sine', 0.06, 0.6, 0.2);
+    this._tone(330, 'sine', 0.10, 0.5, 0.5);
+    this._tone(440, 'sine', 0.12, 0.8, 0.8);
+    this.vibrate([50, 30, 50, 30, 150]);
+  },
+
+  // UI tap — subtle click
+  tap() {
+    this._tone(800, 'sine', 0.04, 0.06, 0);
+    this.vibrate([8]);
+  },
+
+  // Rest timer done — three gentle chimes
+  restDone() {
+    this._tone(523, 'sine', 0.08, 0.2, 0);
+    this._tone(659, 'sine', 0.08, 0.2, 0.15);
+    this._tone(784, 'sine', 0.10, 0.3, 0.3);
+    this.vibrate([200, 100, 200]);
+  },
+};
 
 if (configOk) {
   onAuthStateChanged(auth, async (user) => {
@@ -2729,7 +2976,7 @@ function startRestTimer(totalSeconds) {
       display.textContent = "Rest's up!";
       display.classList.add('done');
       stopBtn.classList.add('hidden');
-      if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
+      SFX.restDone();
       return;
     }
     render();
@@ -3190,7 +3437,9 @@ document.getElementById('save-workout-btn')?.addEventListener('click', async () 
     startDailyTimer();
     setTimeout(() => {
       closeWorkoutModal(false);
-      showDebriefModal(exercises, earned, prs);
+      showQuestClearBanner(earned, prs.length);
+      SFX.questComplete();
+      setTimeout(() => showDebriefModal(exercises, earned, prs), 800);
     }, 600);
   } catch (err) {
     alert('Could not save: ' + err.message);
@@ -3432,6 +3681,7 @@ async function checkAndAwardPRs(exercises, workoutDate) {
     const percentileMap = { Elite:97, Advanced:90, Intermediate:70, Novice:40, Beginner:15 };
     const pct = best.tier ? percentileMap[best.tier] : null;
     setTimeout(() => showBossDefeatedModal(best.exercise, best.e1rm, best.tier||'Unranked', best.xp, pct), 400);
+    setTimeout(() => SFX.bossDefeated(), 450);
   }
   return awarded;
 }
@@ -3753,6 +4003,7 @@ async function upgradeStatWithAp(statId) {
 
   const def = STAT_DEFS.find(d => d.id === statId);
   showAwakeningModal(def?.label || statId, currentRank, newRank, profile.displayName);
+  SFX.awakening();
   renderCharCard();
 }
 
@@ -4373,6 +4624,7 @@ async function checkWeeklyGate() {
   await setDoc(doc(db, 'users', currentUser.uid), { lastGateCheck: thisMonday }, { merge: true });
   profile.lastGateCheck = thisMonday;
   showGateClearModal(cleared, goal, lastWeekWorkouts.length);
+  SFX.gateClear();
 }
 
 // Master function: runs all checks in order on login
@@ -4389,6 +4641,7 @@ async function runSystemChecks() {
   const penalty = await checkPenalty();
   if (penalty) {
     showPenaltyModal(1, penalty.apLost);
+    SFX.penalty();
     return;
   }
   await checkWeeklyGate();
@@ -4929,6 +5182,7 @@ async function evaluateAndSaveClass() {
   profile.classAssignedDate = todayStr();
   // fire the reveal modal
   showClassRevealModal(assigned, previous);
+  SFX.classAssigned();
 }
 
 function showClassRevealModal(className, previousClass) {
@@ -5226,6 +5480,55 @@ function buildMuscleStats(uid) {
     stats[m] = { status: ratio === 0 ? 'Stalled' : ratio < 0.25 ? 'Maintaining' : ratio < 0.6 ? 'Growing' : ratio < 0.9 ? 'Focusing' : 'Excess' };
   });
   return stats;
+}
+
+function showQuestClearBanner(apEarned, prCount) {
+  // remove any existing banner
+  document.querySelectorAll('.quest-clear-banner').forEach(b => b.remove());
+
+  const banner = document.createElement('div');
+  banner.className = 'quest-clear-banner';
+
+  const apText = apEarned ? `+${apEarned} AP` : '';
+  const prText = prCount ? ` · ${prCount} PR${prCount>1?'s':''}` : '';
+
+  banner.innerHTML = `
+    <div class="quest-clear-topbar"></div>
+    <div class="quest-clear-banner-inner">
+      <div class="quest-clear-particles" id="qcb-particles"></div>
+      <div class="quest-clear-eyebrow">◈ System Alert ◈</div>
+      <div class="quest-clear-title">Quest Complete</div>
+      ${apText ? `<div class="quest-clear-ap">${apText}${prText}</div>` : ''}
+    </div>`;
+
+  document.body.appendChild(banner);
+
+  // spawn particles after banner lands (~0.6s)
+  setTimeout(() => {
+    const container = banner.querySelector('#qcb-particles');
+    if (!container) return;
+    const colors = ['var(--violet)', 'var(--brass)', '#fff'];
+    for (let i = 0; i < 16; i++) {
+      const p = document.createElement('div');
+      p.className = 'quest-clear-particle';
+      const angle = (i / 16) * 360;
+      const dist = 40 + Math.random() * 60;
+      const tx = Math.round(Math.cos(angle * Math.PI/180) * dist);
+      const ty = Math.round(Math.sin(angle * Math.PI/180) * dist);
+      p.style.cssText = `
+        left:50%; top:50%;
+        background:${colors[i%colors.length]};
+        --tx:${tx}px; --ty:${ty}px;
+        animation-duration:${0.6+Math.random()*0.4}s;
+        animation-delay:${Math.random()*0.15}s;
+        box-shadow: 0 0 4px ${colors[i%colors.length]};
+      `;
+      container.appendChild(p);
+    }
+  }, 600);
+
+  // auto-remove after animation
+  setTimeout(() => banner.remove(), 3400);
 }
 
 function showDebriefModal(exercises, apEarned, prs) {
@@ -6852,6 +7155,7 @@ async function checkAndUnlockAchievements() {
   if (newlyUnlocked.length) {
     await setDoc(doc(db, 'users', currentUser.uid), { unlockedAchievements: unlocked }, { merge: true });
     profile.unlockedAchievements = unlocked;
+    SFX.achievement();
   }
   return newlyUnlocked;
 }
