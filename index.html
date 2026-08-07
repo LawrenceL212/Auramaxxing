@@ -3680,12 +3680,35 @@ function renderCharCard() {
 
   // update identity
   document.getElementById('char-name').textContent = profile.displayName || 'Hunter';
-  const style = analyseTrainingStyle(currentUser.uid);
-  const styleTag = style ? ` · ${style.emoji} ${style.style}` : '';
-  document.getElementById('char-title').textContent = RANK_TITLES[charRank] + styleTag;
+  const hunterClass = profile.hunterClass;
+  const cls = hunterClass ? HUNTER_CLASSES[hunterClass] : null;
+  document.getElementById('char-title').textContent = RANK_TITLES[charRank];
   document.getElementById('ap-amount').textContent = ap.toLocaleString();
   if (document.getElementById('char-power-value')) {
     document.getElementById('char-power-value').textContent = power.toLocaleString();
+  }
+
+  // class badge — inject after char-title
+  const existingBadge = document.getElementById('char-class-badge');
+  if (existingBadge) existingBadge.remove();
+  if (cls) {
+    const badge = document.createElement('div');
+    badge.id = 'char-class-badge';
+    badge.style.cssText = `margin-top:6px;`;
+    badge.innerHTML = `<span class="class-badge" style="--class-color:${cls.color};--class-color-dim:${cls.colorDim};">
+      <span style="width:8px;height:8px;border-radius:50%;background:${cls.color};display:inline-block;box-shadow:0 0 6px ${cls.color};flex-shrink:0;"></span>
+      ${cls.label}
+    </span>`;
+    document.getElementById('char-title').after(badge);
+  } else {
+    const days14 = allWorkouts.filter(w=>w.uid===currentUser.uid).length >= 4;
+    if (!days14) {
+      const hint = document.createElement('div');
+      hint.id = 'char-class-badge';
+      hint.style.cssText = 'margin-top:6px;font-family:var(--font-mono);font-size:9px;color:var(--text-faint);letter-spacing:0.1em;';
+      hint.textContent = '[UNCLASSIFIED] — keep training';
+      document.getElementById('char-title').after(hint);
+    }
   }
 
   // rank orb
@@ -4000,8 +4023,8 @@ async function checkWeeklyGate() {
 // Master function: runs all checks in order on login
 async function runSystemChecks() {
   await checkStatDecay();
+  await evaluateAndSaveClass();
   // silently award AP if they already have a workout today but haven't been awarded yet
-  // covers users who logged before the AP system existed, or who log outside the modal
   const silentAp = await tryAwardAp();
   if (silentAp) {
     showToast(`+${silentAp} Aura Points earned for today's workout!`, 'success');
@@ -4175,52 +4198,459 @@ function renderStrengthRankings() {
 /* =========================================================================
    TRAINING STYLE ANALYSIS + DYNAMIC TITLES
    ========================================================================= */
-const EXERCISE_CATEGORIES = {
-  powerlifting: new Set(['Squat','Deadlift','Bench Press','Sumo Deadlift','Front Squat','Romanian Deadlift','Stiff-Leg Deadlift','Rack Pull','Good Morning','Overhead Press','Push Press']),
-  bodybuilding: new Set(['Incline Bench Press','Incline Dumbbell Press','Dumbbell Fly','Cable Crossover','Lat Pulldown','Seated Cable Row','Leg Press','Leg Extension','Leg Curl','Lateral Raise','Rear Delt Fly','Hammer Curl','Barbell Curl','Skull Crusher','Tricep Pushdown','Pec Deck Machine','Hack Squat','Hip Thrust','Bulgarian Split Squat']),
-  calisthenics: new Set(['Pull Up','Chin Up','Dips','Push Up','Ring Dips','Muscle Up','Tuck Planche','Advanced Tuck Planche','Straddle Planche','Full Planche','Tuck Front Lever','Front Lever','Wall Handstand Hold','Freestanding Handstand Hold','Handstand Push Up','L-Sit','Dragon Flag','Archer Push Up','Commando Pull Up','Inverted Row','Dead Hang']),
-  cardio: new Set(['Running','Treadmill Run','Interval Running','Hill Sprints','Stair Climb','Jump Rope','Bear Crawl','Burpee','Box Jump','Mountain Climber','Flutter Kicks','Easy Run','Tempo Run','Long Run','Race']),
+/* =========================================================================
+   CLASS SYSTEM — 7 Hunter Classes with cinematic reveal
+   ========================================================================= */
+const HUNTER_CLASSES = {
+  Berserker: {
+    color: '#C0392B',
+    colorDim: 'rgba(192,57,43,0.15)',
+    label: 'Berserker',
+    tagline: 'Iron does not yield. Neither do you.',
+    desc: 'High intensity, heavy compounds, relentless PR attempts. Your training forges raw strength through neural dominance.',
+    sigil: `<svg viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg" class="class-sigil">
+      <path d="M40 8 L52 30 L74 32 L58 48 L62 70 L40 58 L18 70 L22 48 L6 32 L28 30 Z" stroke="#C0392B" stroke-width="2.5" fill="none" stroke-linejoin="round"/>
+      <path d="M40 20 L47 34 L62 36 L51 46 L54 61 L40 54 L26 61 L29 46 L18 36 L33 34 Z" stroke="#C0392B" stroke-width="1.5" fill="rgba(192,57,43,0.1)" stroke-linejoin="round"/>
+      <circle cx="40" cy="40" r="4" fill="#C0392B"/>
+    </svg>`,
+    particleColor: '#C0392B',
+    particleShape: 'shard',
+  },
+  Assassin: {
+    color: '#F0D000',
+    colorDim: 'rgba(240,208,0,0.12)',
+    label: 'Assassin',
+    tagline: 'Speed is the only truth.',
+    desc: 'Explosive, fast-tempo, agility-dominant. Your training rewires fast-twitch dominance and raw power output.',
+    sigil: `<svg viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg" class="class-sigil">
+      <path d="M40 6 L44 36 L72 32 L46 42 L60 72 L38 48 L16 72 L32 42 L8 32 L36 36 Z" stroke="#F0D000" stroke-width="2.5" fill="none" stroke-linejoin="round"/>
+      <path d="M40 18 L42 34 L56 32 L43 38 L50 58 L39 44 L28 58 L35 38 L24 32 L38 34 Z" stroke="#F0D000" stroke-width="1.5" fill="rgba(240,208,0,0.08)" stroke-linejoin="round"/>
+      <line x1="40" y1="10" x2="40" y2="70" stroke="#F0D000" stroke-width="1" stroke-dasharray="3 4" opacity="0.4"/>
+    </svg>`,
+    particleColor: '#F0D000',
+    particleShape: 'streak',
+  },
+  Monk: {
+    color: '#A8D8EA',
+    colorDim: 'rgba(168,216,234,0.12)',
+    label: 'Monk',
+    tagline: 'Stillness is its own kind of strength.',
+    desc: 'Control, stability, high focus. Handstands, levers, slow eccentrics. Your training builds tendon strength and motor mastery.',
+    sigil: `<svg viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg" class="class-sigil">
+      <circle cx="40" cy="40" r="30" stroke="#A8D8EA" stroke-width="2" fill="none"/>
+      <circle cx="40" cy="40" r="20" stroke="#A8D8EA" stroke-width="1.5" fill="none" opacity="0.5"/>
+      <circle cx="40" cy="40" r="10" stroke="#A8D8EA" stroke-width="1" fill="rgba(168,216,234,0.1)"/>
+      <line x1="40" y1="10" x2="40" y2="70" stroke="#A8D8EA" stroke-width="1" opacity="0.3"/>
+      <line x1="10" y1="40" x2="70" y2="40" stroke="#A8D8EA" stroke-width="1" opacity="0.3"/>
+      <circle cx="40" cy="40" r="3" fill="#A8D8EA"/>
+    </svg>`,
+    particleColor: '#A8D8EA',
+    particleShape: 'orb',
+  },
+  Warlord: {
+    color: '#D4A017',
+    colorDim: 'rgba(212,160,23,0.12)',
+    label: 'Warlord',
+    tagline: 'Volume is the language of dominance.',
+    desc: 'High volume, hypertrophy-dominant, relentless sets. Your training maximises muscle adaptation through total accumulated work.',
+    sigil: `<svg viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg" class="class-sigil">
+      <rect x="12" y="12" width="56" height="56" rx="4" stroke="#D4A017" stroke-width="2.5" fill="none"/>
+      <rect x="22" y="22" width="36" height="36" rx="2" stroke="#D4A017" stroke-width="1.5" fill="rgba(212,160,23,0.08)"/>
+      <rect x="32" y="32" width="16" height="16" fill="#D4A017" opacity="0.6"/>
+      <line x1="12" y1="40" x2="22" y2="40" stroke="#D4A017" stroke-width="1.5"/>
+      <line x1="58" y1="40" x2="68" y2="40" stroke="#D4A017" stroke-width="1.5"/>
+      <line x1="40" y1="12" x2="40" y2="22" stroke="#D4A017" stroke-width="1.5"/>
+      <line x1="40" y1="58" x2="40" y2="68" stroke="#D4A017" stroke-width="1.5"/>
+    </svg>`,
+    particleColor: '#D4A017',
+    particleShape: 'square',
+  },
+  Ranger: {
+    color: '#1ABC9C',
+    colorDim: 'rgba(26,188,156,0.12)',
+    label: 'Ranger',
+    tagline: 'The road and the iron. Both are yours.',
+    desc: 'Hybrid endurance and strength. Runs and lifts combined. Your training builds VO2 max and work capacity simultaneously.',
+    sigil: `<svg viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg" class="class-sigil">
+      <path d="M40 8 L68 60 L12 60 Z" stroke="#1ABC9C" stroke-width="2.5" fill="none" stroke-linejoin="round"/>
+      <path d="M40 22 L58 56 L22 56 Z" stroke="#1ABC9C" stroke-width="1.5" fill="rgba(26,188,156,0.1)" stroke-linejoin="round"/>
+      <circle cx="40" cy="44" r="5" fill="#1ABC9C" opacity="0.8"/>
+      <line x1="40" y1="8" x2="40" y2="22" stroke="#1ABC9C" stroke-width="1.5"/>
+    </svg>`,
+    particleColor: '#1ABC9C',
+    particleShape: 'orb',
+  },
+  Shadowblade: {
+    color: '#9B59B6',
+    colorDim: 'rgba(155,89,182,0.12)',
+    label: 'Shadowblade',
+    tagline: 'Your body is the weapon.',
+    desc: 'Calisthenics and strength combined. Pull-ups, dips, levers. Your training dominates the strength-to-weight ratio.',
+    sigil: `<svg viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg" class="class-sigil">
+      <path d="M40 6 L46 34 L74 40 L46 46 L40 74 L34 46 L6 40 L34 34 Z" stroke="#9B59B6" stroke-width="2.5" fill="none" stroke-linejoin="round"/>
+      <path d="M40 18 L44 36 L62 40 L44 44 L40 62 L36 44 L18 40 L36 36 Z" stroke="#9B59B6" stroke-width="1.5" fill="rgba(155,89,182,0.1)" stroke-linejoin="round"/>
+      <circle cx="40" cy="40" r="5" fill="#9B59B6"/>
+      <circle cx="40" cy="40" r="3" fill="rgba(155,89,182,0.3)"/>
+    </svg>`,
+    particleColor: '#9B59B6',
+    particleShape: 'wisp',
+  },
+  Titan: {
+    color: '#FFD700',
+    colorDim: 'rgba(255,215,0,0.12)',
+    label: 'Titan',
+    tagline: 'Consistency is the only cheat code.',
+    desc: 'High frequency, disciplined progression, daily training. Your commitment to the process sets you apart from every other hunter.',
+    sigil: `<svg viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg" class="class-sigil">
+      <path d="M40 6 L50 30 L76 30 L56 46 L64 70 L40 56 L16 70 L24 46 L4 30 L30 30 Z" stroke="#FFD700" stroke-width="2.5" fill="none" stroke-linejoin="round"/>
+      <path d="M40 18 L47 34 L64 34 L50 44 L56 60 L40 50 L24 60 L30 44 L16 34 L33 34 Z" stroke="#FFD700" stroke-width="1.5" fill="rgba(255,215,0,0.12)" stroke-linejoin="round"/>
+      <path d="M40 28 L43 36 L52 36 L45 41 L48 50 L40 45 L32 50 L35 41 L28 36 L37 36 Z" fill="#FFD700" opacity="0.6"/>
+    </svg>`,
+    particleColor: '#FFD700',
+    particleShape: 'shard',
+  },
 };
 
-function analyseTrainingStyle(uid) {
+// CSS for class sigil draw-on animation
+const CLASS_CSS = `
+  .class-sigil path, .class-sigil circle, .class-sigil rect, .class-sigil line, .class-sigil polygon {
+    stroke-dasharray: 300;
+    stroke-dashoffset: 300;
+    animation: sigilDraw 1.6s cubic-bezier(0.16,1,0.3,1) forwards;
+  }
+  .class-sigil path:nth-child(2) { animation-delay: 0.3s; }
+  .class-sigil path:nth-child(3), .class-sigil circle:nth-child(3) { animation-delay: 0.6s; }
+  .class-sigil line, .class-sigil circle:last-child { animation-delay: 0.8s; }
+  @keyframes sigilDraw {
+    to { stroke-dashoffset: 0; }
+  }
+  .class-reveal-overlay {
+    position: fixed; inset: 0; z-index: 600;
+    background: #000;
+    display: flex; align-items: center; justify-content: center;
+    animation: classRevealIn 0.6s ease forwards;
+  }
+  @keyframes classRevealIn { from { opacity:0; } to { opacity:1; } }
+  .class-reveal-inner {
+    position: relative; z-index: 1;
+    text-align: center; padding: 40px 32px;
+    max-width: 420px; width: 90%;
+    animation: classWindowIn 0.8s cubic-bezier(0.16,1,0.3,1) 0.3s both;
+  }
+  @keyframes classWindowIn {
+    from { opacity:0; transform: scale(0.85) translateY(30px); }
+    to { opacity:1; transform: scale(1) translateY(0); }
+  }
+  .class-particle {
+    position: absolute;
+    border-radius: 50%;
+    pointer-events: none;
+    animation: classParticleFloat linear infinite;
+    opacity: 0;
+  }
+  @keyframes classParticleFloat {
+    0% { transform: translateY(100vh) scale(0); opacity:0; }
+    15% { opacity: 0.8; }
+    85% { opacity: 0.6; }
+    100% { transform: translateY(-20vh) scale(1.5); opacity:0; }
+  }
+  .class-particles-wrap {
+    position: absolute; inset: 0; overflow: hidden; pointer-events: none;
+  }
+  .class-sigil-wrap {
+    width: 140px; height: 140px; margin: 0 auto 20px;
+    filter: drop-shadow(0 0 20px var(--class-color));
+    animation: sigilPulse 2s ease-in-out 2s infinite;
+  }
+  @keyframes sigilPulse {
+    0%,100% { filter: drop-shadow(0 0 20px var(--class-color)); }
+    50% { filter: drop-shadow(0 0 40px var(--class-color)); }
+  }
+  .class-eyebrow {
+    font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.5em;
+    color: var(--text-faint); text-transform: uppercase; margin-bottom: 20px;
+    animation: classFadeIn 0.8s ease 0.8s both;
+  }
+  .class-name {
+    font-family: var(--font-display); font-size: 42px; font-weight: 900;
+    letter-spacing: 0.06em; text-transform: uppercase;
+    color: var(--class-color); text-shadow: 0 0 40px var(--class-color);
+    margin: 0 0 10px;
+    animation: classFadeIn 0.8s ease 1s both;
+  }
+  .class-tagline {
+    font-family: var(--font-mono); font-size: 13px;
+    color: var(--text-dim); font-style: italic;
+    margin: 0 0 16px; line-height: 1.6;
+    animation: classFadeIn 0.8s ease 1.2s both;
+  }
+  .class-desc {
+    font-size: 13px; color: var(--text-faint); line-height: 1.7;
+    margin: 0 0 28px;
+    animation: classFadeIn 0.8s ease 1.4s both;
+  }
+  .class-confirm-btn {
+    background: none; border: 1px solid var(--class-color);
+    color: var(--class-color); padding: 12px 40px;
+    font-family: var(--font-display); font-size: 12px;
+    letter-spacing: 0.15em; cursor: pointer; border-radius: 2px;
+    animation: classFadeIn 0.8s ease 1.8s both;
+    transition: background 0.2s;
+  }
+  .class-confirm-btn:hover { background: var(--class-color-dim); }
+  .class-corner {
+    position: absolute; width: 20px; height: 20px;
+    border-color: var(--class-color); opacity: 0.8;
+    animation: classFadeIn 0.5s ease 0.5s both;
+  }
+  .class-corner.tl { top: -1px; left: -1px; border-top: 2px solid; border-left: 2px solid; }
+  .class-corner.tr { top: -1px; right: -1px; border-top: 2px solid; border-right: 2px solid; }
+  .class-corner.bl { bottom: -1px; left: -1px; border-bottom: 2px solid; border-left: 2px solid; }
+  .class-corner.br { bottom: -1px; right: -1px; border-bottom: 2px solid; border-right: 2px solid; }
+  @keyframes classFadeIn { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
+  .class-border-glow {
+    position: absolute; inset: 0; border-radius: 4px;
+    border: 1px solid var(--class-color);
+    box-shadow: 0 0 60px -10px var(--class-color), inset 0 0 60px -20px var(--class-color-dim);
+    animation: classFadeIn 0.5s ease 0.5s both;
+    pointer-events: none;
+  }
+  /* class badge on character screen */
+  .class-badge {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 6px 12px; border-radius: 4px;
+    border: 1px solid var(--class-color);
+    background: var(--class-color-dim);
+    font-family: var(--font-display); font-size: 11px;
+    letter-spacing: 0.1em; text-transform: uppercase;
+    color: var(--class-color);
+    animation: classPulseBadge 3s ease-in-out infinite;
+  }
+  @keyframes classPulseBadge {
+    0%,100% { box-shadow: 0 0 8px var(--class-color-dim); }
+    50% { box-shadow: 0 0 16px var(--class-color); }
+  }
+`;
+
+function assignHunterClass(uid) {
   const cutoff = new Date(); cutoff.setDate(cutoff.getDate() - 30);
   const recent = allWorkouts.filter(w => w.uid === uid && new Date(w.date) >= cutoff);
+  const allTime = allWorkouts.filter(w => w.uid === uid);
+  const user = allUsers.find(u => u.uid === uid);
+
+  // Need 14 days + 4 workouts minimum
+  if (allTime.length < 4) return null;
+  const firstDate = allTime.reduce((a,b) => a.date < b.date ? a : b).date;
+  if ((new Date() - new Date(firstDate)) / 86400000 < 14) return null;
   if (!recent.length) return null;
 
-  const counts = { powerlifting: 0, bodybuilding: 0, calisthenics: 0, cardio: 0, other: 0 };
-  let totalSets = 0;
+  // Score each class 0-100
+  const scores = { Berserker:0, Assassin:0, Monk:0, Warlord:0, Ranger:0, Shadowblade:0, Titan:0 };
+
+  // Build training profile
+  let totalSets = 0, compoundSets = 0, isolationSets = 0, calSets = 0, cardioSets = 0, explosiveSets = 0, skillSets = 0, coreSets = 0;
+  let lowRIRSets = 0, highRIRSets = 0, totalRIRSets = 0;
+  let totalPRsLast30 = 0;
+
+  const COMPOUND = new Set(['Squat','Deadlift','Bench Press','Overhead Press','Barbell Row','Pull Up','Chin Up','Dips','Romanian Deadlift','Sumo Deadlift','Hip Thrust','Push Press','Pendlay Row','T-Bar Row','Front Squat']);
+  const ISOLATION = new Set(['Lateral Raise','Bicep Curl','Barbell Curl','Dumbbell Curl','Tricep Pushdown','Skull Crusher','Leg Extension','Leg Curl','Calf Raise','Concentration Curl','Tricep Kickback','Cable Lateral Raise','Rear Delt Fly','Face Pull']);
+  const CALISTHENICS = new Set(['Pull Up','Chin Up','Dips','Push Up','Muscle Up','Tuck Planche','Advanced Tuck Planche','Straddle Planche','Full Planche','Tuck Front Lever','Front Lever','Handstand Push Up','L-Sit','Dragon Flag','Ring Dips','Archer Push Up']);
+  const CARDIO = new Set(['Running','Easy Run','Long Run','Treadmill Run','Stair Climb','Jump Rope','Tempo Run','Interval Running']);
+  const EXPLOSIVE = new Set(['Hill Sprints','Sprinting','Box Jump','Jump Squat','Burpee','Interval Running','Tempo Run']);
+  const SKILL = new Set(['Tuck Planche','Advanced Tuck Planche','Straddle Planche','Full Planche','Tuck Front Lever','Front Lever','Wall Handstand Hold','Freestanding Handstand Hold','L-Sit','Dead Hang','Planche Lean']);
+  const CORE = new Set(['Plank','Side Plank','Hanging Leg Raise','Ab Wheel Rollout','Dragon Flag','L-Sit','Cable Crunch','Toes to Bar','V-Up','Hanging Knee Raise']);
 
   recent.forEach(w => {
     (w.exercises||[]).forEach(ex => {
-      const sets = (ex.sets||[]).filter(s => s.reps > 0).length || 1;
-      totalSets += sets;
-      if (EXERCISE_CATEGORIES.powerlifting.has(ex.name)) counts.powerlifting += sets;
-      else if (EXERCISE_CATEGORIES.calisthenics.has(ex.name)) counts.calisthenics += sets;
-      else if (EXERCISE_CATEGORIES.cardio.has(ex.name)) counts.cardio += sets;
-      else if (EXERCISE_CATEGORIES.bodybuilding.has(ex.name)) counts.bodybuilding += sets;
-      else counts.other += sets;
+      const sets = (ex.sets||[]).filter(s => s.reps > 0);
+      const n = sets.length || 1;
+      totalSets += n;
+      if (COMPOUND.has(ex.name)) compoundSets += n;
+      if (ISOLATION.has(ex.name)) isolationSets += n;
+      if (CALISTHENICS.has(ex.name)) calSets += n;
+      if (CARDIO.has(ex.name)) cardioSets += n;
+      if (EXPLOSIVE.has(ex.name)) explosiveSets += n;
+      if (SKILL.has(ex.name)) skillSets += n;
+      if (CORE.has(ex.name)) coreSets += n;
+      // RIR analysis
+      sets.forEach(s => {
+        if (s.rir != null) {
+          totalRIRSets++;
+          if (s.rir <= 1) lowRIRSets++;
+          if (s.rir >= 3) highRIRSets++;
+        }
+      });
     });
   });
 
-  if (!totalSets) return null;
-  const pct = k => counts[k] / totalSets;
+  // PR frequency last 30 days
+  const recentPRDates = Object.values(myPRs || {}).filter(p => p.date >= cutoff.toISOString().slice(0,10));
+  totalPRsLast30 = recentPRDates.length;
 
-  const isHybrid = pct('cardio') >= 0.2 && (pct('powerlifting') + pct('bodybuilding') + pct('calisthenics')) >= 0.3;
-  const isPureCardio = pct('cardio') >= 0.7;
-  const isCali = pct('calisthenics') >= 0.45;
-  const isPower = pct('powerlifting') >= 0.45;
-  const isBB = pct('bodybuilding') >= 0.4;
-  const isBalanced = Object.values(counts).every(v => v / totalSets < 0.5) && totalSets > 20;
+  // Weekly frequency
+  const weeks = 4;
+  let weeklyWorkouts = [];
+  for (let i = 0; i < weeks; i++) {
+    const start = startOfWeek(new Date(Date.now() - i*7*86400000));
+    const end = new Date(start); end.setDate(end.getDate()+7);
+    weeklyWorkouts.push(recent.filter(w => new Date(w.date) >= start && new Date(w.date) < end).length);
+  }
+  const avgWeekly = weeklyWorkouts.reduce((a,b)=>a+b,0) / weeks;
+  const highFrequency = avgWeekly >= 5;
+  const veryHighFrequency = avgWeekly >= 6;
 
-  if (isPureCardio) return { style: 'Endurance Wraith', emoji: '🌪️', desc: 'Pure cardio hunter' };
-  if (isHybrid) return { style: 'Hybrid Hunter', emoji: '⚡', desc: 'Gym + road combined' };
-  if (isCali) return { style: 'Shadow Athlete', emoji: '🐉', desc: 'Master of bodyweight' };
-  if (isPower) return { style: 'Powerlifter', emoji: '⚔️', desc: 'Forged from iron' };
-  if (isBB) return { style: 'Bodybuilder', emoji: '💪', desc: 'Sculpting the vessel' };
-  if (isBalanced) return { style: 'Sovereign', emoji: '⚖️', desc: 'Balance is power' };
-  if (pct('other') + pct('bodybuilding') >= 0.5) return { style: 'Street Fighter', emoji: '👊', desc: 'Functional warrior' };
+  const pct = n => totalSets ? n/totalSets : 0;
+  const rirPct = n => totalRIRSets ? n/totalRIRSets : 0;
+
+  // BERSERKER — heavy compounds, low RIR, PR attempts
+  scores.Berserker += pct(compoundSets) * 40;
+  scores.Berserker += rirPct(lowRIRSets) * 30;
+  scores.Berserker += Math.min(totalPRsLast30 * 3, 20);
+  scores.Berserker += pct(compoundSets) > 0.5 ? 10 : 0;
+
+  // ASSASSIN — explosive, speed work
+  scores.Assassin += pct(explosiveSets) * 50;
+  scores.Assassin += pct(cardioSets) * 20;
+  scores.Assassin += rirPct(lowRIRSets) * 15;
+  scores.Assassin += pct(explosiveSets) > 0.2 ? 15 : 0;
+
+  // MONK — skill holds, core, high RIR (controlled)
+  scores.Monk += pct(skillSets) * 50;
+  scores.Monk += pct(coreSets) * 20;
+  scores.Monk += rirPct(highRIRSets) * 20;
+  scores.Monk += pct(skillSets) > 0.15 ? 10 : 0;
+
+  // WARLORD — high isolation + bodybuilding volume
+  scores.Warlord += pct(isolationSets) * 40;
+  scores.Warlord += totalSets > 80 ? 20 : totalSets > 50 ? 10 : 0;
+  scores.Warlord += pct(isolationSets + compoundSets) * 20;
+  scores.Warlord += avgWeekly >= 4 ? 10 : 0;
+  scores.Warlord += rirPct(highRIRSets) * 10;
+
+  // RANGER — cardio + strength hybrid
+  scores.Ranger += pct(cardioSets) * 35;
+  scores.Ranger += pct(cardioSets) > 0.15 && pct(compoundSets + isolationSets) > 0.2 ? 30 : 0;
+  scores.Ranger += pct(cardioSets) * 20;
+  scores.Ranger += avgWeekly >= 4 ? 10 : 0;
+  scores.Ranger -= pct(explosiveSets) * 15; // explosive cardio = Assassin not Ranger
+
+  // SHADOWBLADE — calisthenics dominant
+  scores.Shadowblade += pct(calSets) * 55;
+  scores.Shadowblade += pct(skillSets) * 20;
+  scores.Shadowblade += pct(calSets) > 0.4 ? 15 : 0;
+  scores.Shadowblade += totalPRsLast30 > 2 ? 10 : 0;
+
+  // TITAN — high frequency, consistent PRs, all-round volume
+  scores.Titan += veryHighFrequency ? 35 : highFrequency ? 20 : 0;
+  scores.Titan += Math.min(totalPRsLast30 * 2, 20);
+  scores.Titan += totalSets > 100 ? 20 : totalSets > 70 ? 10 : 0;
+  scores.Titan += (pct(compoundSets) > 0.2 && pct(isolationSets) > 0.15) ? 15 : 0;
+  scores.Titan += avgWeekly >= 6 ? 10 : 0;
+
+  // Normalise and pick winner
+  const winner = Object.entries(scores).sort((a,b) => b[1]-a[1])[0][0];
+  return winner;
+}
+
+function getHunterClass(uid) {
+  const user = allUsers.find(u => u.uid === uid);
+  if (!user) return null;
+  // use stored class if available (re-evaluated weekly)
+  if (user.hunterClass && uid !== currentUser.uid) return user.hunterClass;
+  if (uid === currentUser.uid) return profile.hunterClass || null;
   return null;
 }
+
+async function evaluateAndSaveClass() {
+  if (!currentUser || !profile) return;
+  const assigned = assignHunterClass(currentUser.uid);
+  if (!assigned) return;
+  const previous = profile.hunterClass;
+  if (previous === assigned) return; // no change
+  // save to Firestore
+  await setDoc(doc(db, 'users', currentUser.uid), { hunterClass: assigned, classAssignedDate: todayStr() }, { merge: true });
+  profile.hunterClass = assigned;
+  profile.classAssignedDate = todayStr();
+  // fire the reveal modal
+  showClassRevealModal(assigned, previous);
+}
+
+function showClassRevealModal(className, previousClass) {
+  const cls = HUNTER_CLASSES[className];
+  if (!cls) return;
+  const isFirst = !previousClass;
+  const isEvolution = !!previousClass;
+
+  // inject CSS if not already present
+  if (!document.getElementById('class-system-css')) {
+    const style = document.createElement('style');
+    style.id = 'class-system-css';
+    style.textContent = CLASS_CSS;
+    document.head.appendChild(style);
+  }
+
+  const overlay = document.createElement('div');
+  overlay.className = 'class-reveal-overlay';
+  overlay.style.setProperty('--class-color', cls.color);
+  overlay.style.setProperty('--class-color-dim', cls.colorDim);
+
+  overlay.innerHTML = `
+    <div class="class-particles-wrap" id="class-particles"></div>
+    <div class="class-reveal-inner">
+      <div class="class-border-glow"></div>
+      <div class="class-corner tl"></div>
+      <div class="class-corner tr"></div>
+      <div class="class-corner bl"></div>
+      <div class="class-corner br"></div>
+      <div class="class-eyebrow">${isEvolution ? '◈ Class Evolution ◈' : '◈ Class Assigned ◈'}</div>
+      <div class="class-sigil-wrap" style="--class-color:${cls.color};">
+        ${cls.sigil}
+      </div>
+      <div class="class-name">${cls.label}</div>
+      <div class="class-tagline">"${cls.tagline}"</div>
+      <div class="class-desc">${cls.desc}</div>
+      ${isEvolution ? `<div style="font-family:var(--font-mono);font-size:10px;color:var(--text-faint);margin-bottom:20px;animation:classFadeIn 0.8s ease 1.6s both;">${previousClass} → ${className}</div>` : ''}
+      <button class="class-confirm-btn" id="class-confirm">ACKNOWLEDGED</button>
+    </div>`;
+
+  document.body.appendChild(overlay);
+
+  // spawn particles
+  const container = overlay.querySelector('#class-particles');
+  for (let i = 0; i < 40; i++) {
+    const p = document.createElement('div');
+    p.className = 'class-particle';
+    const size = 2 + Math.random() * 5;
+    p.style.cssText = `
+      width:${size}px; height:${size}px;
+      left:${Math.random()*100}%;
+      background:${cls.color};
+      animation-delay:${Math.random()*3}s;
+      animation-duration:${2+Math.random()*3}s;
+      opacity:0;
+      ${cls.particleShape === 'shard' ? 'border-radius:2px;transform:rotate(45deg);' : ''}
+      ${cls.particleShape === 'streak' ? `width:${size}px;height:${size*4}px;border-radius:2px;` : ''}
+      ${cls.particleShape === 'square' ? 'border-radius:0;' : ''}
+      box-shadow: 0 0 ${size*2}px ${cls.color};
+    `;
+    container.appendChild(p);
+  }
+
+  overlay.querySelector('#class-confirm').addEventListener('click', () => {
+    overlay.style.animation = 'classRevealIn 0.4s ease reverse forwards';
+    setTimeout(() => { overlay.remove(); renderCharCard(); }, 400);
+  });
+}
+
+// Inject CSS on load
+(function() {
+  if (!document.getElementById('class-system-css')) {
+    const style = document.createElement('style');
+    style.id = 'class-system-css';
+    style.textContent = CLASS_CSS;
+    document.head.appendChild(style);
+  }
+})();
 
 function getUserTitle(uid) {
   const user = allUsers.find(u => u.uid === uid);
@@ -4680,7 +5110,11 @@ function renderPartyStatus() {
       <div style="flex:1;min-width:0;">
         <div style="font-size:14px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(u.displayName||'Hunter')}</div>
         <div style="font-size:11px;color:var(--brass);font-family:var(--font-mono);letter-spacing:0.03em;margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
-          ${RANK_TITLES[getUserCharRank(u)] || 'Unranked Hunter'}${(() => { const s = analyseTrainingStyle(u.uid); return s ? ` · ${s.emoji} ${s.style}` : ''; })()}
+          ${RANK_TITLES[getUserCharRank(u)] || 'Unranked Hunter'}${(() => {
+            const uc = u.hunterClass || (u.uid === currentUser.uid ? profile.hunterClass : null);
+            const ucls = uc ? HUNTER_CLASSES[uc] : null;
+            return ucls ? ` · <span style="color:${ucls.color};">${ucls.label}</span>` : '';
+          })()}
         </div>
         <div style="font-size:11px;color:${streakAtRisk?'var(--excess)':done?'var(--growing)':'var(--text-faint)'};margin-top:2px;">
           ${done ? '✓ Quest cleared today' : streakAtRisk ? `⚠ ${streak}d streak at risk` : 'Not yet logged'}
@@ -4735,6 +5169,7 @@ function renderCompetitionBoard() {
         <div style="font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100px;">${escapeHtml(r.name)}</div>
         ${!isMe && gapStr ? `<div style="font-size:9px;color:${gapColor};font-family:var(--font-mono);">${gapStr}</div>` : ''}
         ${getUserTitle(r.uid) ? `<div style="font-size:9px;color:var(--text-faint);font-family:var(--font-mono);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${getUserTitle(r.uid)}</div>` : ''}
+        ${(() => { const uc = r.uid === currentUser.uid ? profile.hunterClass : allUsers.find(u=>u.uid===r.uid)?.hunterClass; const ucls = uc ? HUNTER_CLASSES[uc] : null; return ucls ? `<div style="font-size:9px;font-family:var(--font-mono);color:${ucls.color};letter-spacing:0.04em;">${ucls.label}</div>` : ''; })()}
       </td>
       <td>
         <div style="font-family:var(--font-display);font-size:13px;color:${rankColor};">${r.power.toLocaleString()}</div>
