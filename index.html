@@ -2315,30 +2315,34 @@ setTimeout(() => startDailyTimer(), 0);
 
 /* ── SL Frame corners — inject into all cards dynamically ── */
 function addSlCorners(el) {
-  if (!el || el.dataset.slCorners) return;
+  if (!el || el.dataset.slCorners || !document.body.contains(el)) return;
+  // only apply to top-level semantic cards, not every div
+  const shouldFrame = el.classList.contains('card') || el.classList.contains('quest-card') ||
+    el.classList.contains('char-screen') || el.classList.contains('raid-boss-card') ||
+    el.classList.contains('awakening-window') || el.classList.contains('system-window') ||
+    el.classList.contains('debrief-window');
+  if (!shouldFrame) return;
   el.dataset.slCorners = '1';
   ['tl','tr','bl','br'].forEach(pos => {
     const c = document.createElement('div');
     c.className = `sl-corner ${pos}`;
+    c.setAttribute('aria-hidden','true');
     el.appendChild(c);
   });
 }
 
-// observe DOM mutations to add corners to new cards
-const slObserver = new MutationObserver(mutations => {
-  mutations.forEach(m => m.addedNodes.forEach(node => {
-    if (node.nodeType !== 1) return;
-    [node, ...node.querySelectorAll('.card,.quest-card,.char-screen,.raid-boss-card,.today-debrief-card,.awakening-window,.system-window,.debrief-window')]
+// throttled observer — only check cards, not every DOM change
+let slThrottle = null;
+const slObserver = new MutationObserver(() => {
+  if (slThrottle) return;
+  slThrottle = setTimeout(() => {
+    slThrottle = null;
+    document.querySelectorAll('.card:not([data-sl-corners]),.quest-card:not([data-sl-corners]),.char-screen:not([data-sl-corners]),.raid-boss-card:not([data-sl-corners]),.awakening-window:not([data-sl-corners]),.system-window:not([data-sl-corners]),.debrief-window:not([data-sl-corners])')
       .forEach(addSlCorners);
-  }));
+  }, 200);
 });
 slObserver.observe(document.body, { childList: true, subtree: true });
 
-// also run on existing elements at load
-document.addEventListener('DOMContentLoaded', () => {
-  document.querySelectorAll('.card,.quest-card,.char-screen,.raid-boss-card,.today-debrief-card,.system-window,.debrief-window')
-    .forEach(addSlCorners);
-});
 function startDailyTimer() {
   if (dailyTimerInterval) clearInterval(dailyTimerInterval);
   const render = () => {
