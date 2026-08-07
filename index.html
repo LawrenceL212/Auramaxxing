@@ -1926,21 +1926,21 @@ function numpadKey(key) {
   document.getElementById('numpad-display').textContent = numpadRaw || '—';
 }
 
-document.getElementById('numpad-overlay').addEventListener('click', e => {
+document.getElementById('numpad-overlay')?.addEventListener('click', e => {
   if (e.target === document.getElementById('numpad-overlay')) closeNumpad(false);
 });
-document.getElementById('numpad-confirm').addEventListener('click', () => closeNumpad(true));
+document.getElementById('numpad-confirm')?.addEventListener('click', () => closeNumpad(true));
 document.querySelectorAll('.numpad-key').forEach(btn => {
   btn.addEventListener('click', () => numpadKey(btn.dataset.key));
 });
-document.getElementById('numpad-plus').addEventListener('click', () => {
+document.getElementById('numpad-plus')?.addEventListener('click', () => {
   if (!numpadTarget) return;
   const step = parseFloat(numpadTarget.dataset.step) || 1;
   const cur = parseFloat(numpadRaw) || 0;
   numpadRaw = String(Math.round((cur + step) * 100) / 100);
   document.getElementById('numpad-display').textContent = numpadRaw;
 });
-document.getElementById('numpad-minus').addEventListener('click', () => {
+document.getElementById('numpad-minus')?.addEventListener('click', () => {
   if (!numpadTarget) return;
   const step = parseFloat(numpadTarget.dataset.step) || 1;
   const min = parseFloat(numpadTarget.dataset.min) || 0;
@@ -2121,7 +2121,7 @@ function friendlyAuthError(err) {
   if (code.includes('invalid-email')) return 'That email address looks off.';
   return err.message || 'Something went wrong.';
 }
-document.getElementById('logout-btn').addEventListener('click', () => signOut(auth));
+document.getElementById('logout-btn')?.addEventListener('click', () => signOut(auth));
 
 /* ---- Daily Quest Timer ---- */
 let dailyTimerInterval = null;
@@ -2179,7 +2179,7 @@ function startDailyTimer() {
   render();
   dailyTimerInterval = setInterval(render, 1000);
 }
-document.getElementById('settings-btn').addEventListener('click', () => openSettingsModal());
+document.getElementById('settings-btn')?.addEventListener('click', () => openSettingsModal());
 
 function openSettingsModal() {
   const overlay = document.createElement('div');
@@ -2244,12 +2244,6 @@ function openSettingsModal() {
 }
 
 if (configOk) {
-  // clear any cached service worker versions
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.getRegistrations().then(regs =>
-      regs.forEach(r => r.unregister())
-    );
-  }
   onAuthStateChanged(auth, async (user) => {
     if (user) {
       currentUser = user;
@@ -2414,7 +2408,7 @@ function renderQuestFeed() {
         <p>Build one so the System knows what's next.</p>
         <button class="btn btn-primary" id="build-program-btn" style="width:auto;padding:11px 20px;">+ Create plan</button>
       </div>`;
-    document.getElementById('build-program-btn').addEventListener('click', () => { editingProgram = true; renderQuestFeed(); });
+    document.getElementById('build-program-btn')?.addEventListener('click', () => { editingProgram = true; renderQuestFeed(); });
     return;
   }
 
@@ -2463,14 +2457,14 @@ function renderQuestFeed() {
     <div class="day-dots">${dots}</div>
   `;
 
-  document.getElementById('edit-program-btn').addEventListener('click', () => { editingProgram = true; renderQuestFeed(); });
-  document.getElementById('new-program-btn').addEventListener('click', () => {
+  document.getElementById('edit-program-btn')?.addEventListener('click', () => { editingProgram = true; renderQuestFeed(); });
+  document.getElementById('new-program-btn')?.addEventListener('click', () => {
     if (!window.confirm('Start a new plan?\n\nYour current plan will be replaced.')) return;
     myProgram = null; editingProgram = true; renderQuestFeed();
   });
   wireQuestCard(wrap.querySelector('.quest-card'), questCarouselIndex);
-  document.getElementById('carousel-prev').addEventListener('click', () => navigateCarousel('prev'));
-  document.getElementById('carousel-next').addEventListener('click', () => navigateCarousel('next'));
+  document.getElementById('carousel-prev')?.addEventListener('click', () => navigateCarousel('prev'));
+  document.getElementById('carousel-next')?.addEventListener('click', () => navigateCarousel('next'));
   attachSwipeHandlers(wrap.querySelector('.quest-carousel-card'),
     () => navigateCarousel('next'),
     () => navigateCarousel('prev')
@@ -2784,17 +2778,17 @@ function refreshCompleteButton() {
   });
   btn.classList.toggle('hidden', !allHaveAtLeastOneSet);
 }
-document.getElementById('end-workout-modal').addEventListener('click', () => {
+document.getElementById('end-workout-modal')?.addEventListener('click', () => {
   if (!window.confirm('End this workout?\n\nAll your logged sets will be lost.')) return;
   closeWorkoutModal(true); // true = discard
 });
-document.getElementById('minimise-workout-modal').addEventListener('click', () => {
+document.getElementById('minimise-workout-modal')?.addEventListener('click', () => {
   minimiseWorkoutModal();
 });
-document.getElementById('workout-pill-open').addEventListener('click', () => {
+document.getElementById('workout-pill-open')?.addEventListener('click', () => {
   openWorkoutModal();
 });
-document.getElementById('manual-log-btn').addEventListener('click', () => {
+document.getElementById('manual-log-btn')?.addEventListener('click', () => {
   document.getElementById('workout-date').value = todayStr();
   document.getElementById('workout-time').value = nowTimeStr();
   activeDayIndex = null;
@@ -2803,16 +2797,16 @@ document.getElementById('manual-log-btn').addEventListener('click', () => {
 });
 
 /* ── Run Logger ── */
-document.getElementById('log-run-btn').addEventListener('click', () => {
+document.getElementById('log-run-btn')?.addEventListener('click', () => {
   document.getElementById('run-date').value = todayStr();
   document.getElementById('run-modal-overlay').classList.remove('hidden');
   document.body.style.overflow = 'hidden';
 });
-document.getElementById('close-run-modal').addEventListener('click', () => {
+document.getElementById('close-run-modal')?.addEventListener('click', () => {
   document.getElementById('run-modal-overlay').classList.add('hidden');
   document.body.style.overflow = '';
 });
-document.getElementById('run-modal-overlay').addEventListener('click', e => {
+document.getElementById('run-modal-overlay')?.addEventListener('click', e => {
   if (e.target === document.getElementById('run-modal-overlay')) {
     document.getElementById('run-modal-overlay').classList.add('hidden');
     document.body.style.overflow = '';
@@ -2853,9 +2847,9 @@ function updateRunPace() {
   document.getElementById('run-pace-display').textContent = `${pm}:${String(ps).padStart(2,'0')} /km`;
 }
 ['run-distance','run-mins','run-secs'].forEach(id =>
-  document.getElementById(id).addEventListener('input', updateRunPace));
+  document.getElementById(id)?.addEventListener('input', updateRunPace));
 
-document.getElementById('save-run-btn').addEventListener('click', async () => {
+document.getElementById('save-run-btn')?.addEventListener('click', async () => {
   const dist = parseFloat(document.getElementById('run-distance').value) || 0;
   const mins = parseInt(document.getElementById('run-mins').value) || 0;
   const secs = parseInt(document.getElementById('run-secs').value) || 0;
@@ -2937,7 +2931,7 @@ function stopRestTimer() {
   if (stopBtn) stopBtn.classList.add('hidden');
 }
 document.querySelectorAll('.rest-preset-btn').forEach(btn => btn.addEventListener('click', () => startRestTimer(Number(btn.dataset.secs))));
-document.getElementById('rest-timer-stop').addEventListener('click', stopRestTimer);
+document.getElementById('rest-timer-stop')?.addEventListener('click', stopRestTimer);
 
 function renderProgramEditor(wrap) {
   if (!myProgram) myProgram = { name: '', schedule: [], days: [], currentDayIndex: 0, scheduleMode: 'rotation' };
@@ -2993,12 +2987,12 @@ function renderProgramEditor(wrap) {
     if (i === -1) myProgram.schedule.push(d); else myProgram.schedule.splice(i, 1);
     chip.classList.toggle('on');
   }));
-  document.getElementById('add-day-btn').addEventListener('click', () => {
+  document.getElementById('add-day-btn')?.addEventListener('click', () => {
     myProgram.days.push({ name: `Day ${myProgram.days.length+1}`, tag:'', exercises: [], lastDate: null, assignedDays: [] });
     renderDayEditors();
   });
-  document.getElementById('cancel-program-btn').addEventListener('click', () => { editingProgram = false; renderQuestFeed(); });
-  document.getElementById('save-program-btn').addEventListener('click', saveProgram);
+  document.getElementById('cancel-program-btn')?.addEventListener('click', () => { editingProgram = false; renderQuestFeed(); });
+  document.getElementById('save-program-btn')?.addEventListener('click', saveProgram);
 
   function renderDayEditors() {
     const daysWrap = document.getElementById('prog-days-wrap');
@@ -3310,10 +3304,10 @@ function addExerciseRow(presetName, targetSets, targetReps, prefillSets) {
   refreshTags();
   exerciseRows.appendChild(row);
 }
-document.getElementById('add-exercise-btn').addEventListener('click', () => { addExerciseRow(); refreshCompleteButton(); });
+document.getElementById('add-exercise-btn')?.addEventListener('click', () => { addExerciseRow(); refreshCompleteButton(); });
 addExerciseRow();
 
-document.getElementById('save-workout-btn').addEventListener('click', async () => {
+document.getElementById('save-workout-btn')?.addEventListener('click', async () => {
   if (!currentUser) return;
   const date = document.getElementById('workout-date').value || todayStr();
   const time = document.getElementById('workout-time').value || nowTimeStr();
@@ -4710,7 +4704,7 @@ async function openHunterProfile(targetUid) {
       <div class="body-pair">${bodySvg('front', buildMuscleStats(targetUid), target.bodyType || 'male')}${bodySvg('back', buildMuscleStats(targetUid), target.bodyType || 'male')}</div>
     </div>
   `;
-  document.getElementById('hunter-back').addEventListener('click', () => modal.classList.add('hidden'));
+  document.getElementById('hunter-back')?.addEventListener('click', () => modal.classList.add('hidden'));
   const editProgBtn = document.getElementById('hunter-edit-program');
   if (editProgBtn) editProgBtn.addEventListener('click', async () => {
     modal.classList.add('hidden');
@@ -5096,7 +5090,7 @@ function renderTrends() {
       </div>
     </div>`;
 
-  document.getElementById('widget-muscle').addEventListener('click', () => { trendsView='muscle-detail'; renderTrends(); });
+  document.getElementById('widget-muscle')?.addEventListener('click', () => { trendsView='muscle-detail'; renderTrends(); });
 
   const wBtn = document.getElementById('weight-save-btn');
   const wInp = document.getElementById('weight-input');
@@ -5153,9 +5147,9 @@ function renderMuscleDetail() {
         </div>`}).join('')}
       </div>
     </div>`;
-  document.getElementById('back-to-dashboard').addEventListener('click',()=>{trendsView='dashboard';dashboard.classList.remove('hidden');detailEl.classList.add('hidden');renderTrends();});
-  document.getElementById('mode-past').addEventListener('click',()=>{muscleDetailMode='Past';renderMuscleDetail();});
-  document.getElementById('mode-planned').addEventListener('click',()=>{muscleDetailMode='Planned';renderMuscleDetail();});
+  document.getElementById('back-to-dashboard')?.addEventListener('click',()=>{trendsView='dashboard';dashboard.classList.remove('hidden');detailEl.classList.add('hidden');renderTrends();});
+  document.getElementById('mode-past')?.addEventListener('click',()=>{muscleDetailMode='Past';renderMuscleDetail();});
+  document.getElementById('mode-planned')?.addEventListener('click',()=>{muscleDetailMode='Planned';renderMuscleDetail();});
 }
 
 function renderPRPanel() {
@@ -5421,9 +5415,9 @@ function populateExerciseSelects() {
   muscleSel.innerHTML = '<option value="">All muscles</option>' + MUSCLES.map(m => `<option value="${m}">${m}</option>`).join('');
   equipSel.innerHTML = '<option value="">All equipment</option>' + EQUIPMENT_TYPES.map(e => `<option value="${e}">${e}</option>`).join('');
 }
-document.getElementById('lib-search').addEventListener('input', renderExerciseLibrary);
-document.getElementById('lib-muscle-filter').addEventListener('change', renderExerciseLibrary);
-document.getElementById('lib-equip-filter').addEventListener('change', renderExerciseLibrary);
+document.getElementById('lib-search')?.addEventListener('input', renderExerciseLibrary);
+document.getElementById('lib-muscle-filter')?.addEventListener('change', renderExerciseLibrary);
+document.getElementById('lib-equip-filter')?.addEventListener('change', renderExerciseLibrary);
 
 function techniqueLink(name) {
   return `https://www.youtube.com/results?search_query=${encodeURIComponent(name + ' exercise proper form technique')}`;
@@ -5459,7 +5453,7 @@ function renderExerciseLibrary() {
   }));
 }
 
-document.getElementById('add-exercise-lib-btn').addEventListener('click', openAddExerciseModal);
+document.getElementById('add-exercise-lib-btn')?.addEventListener('click', openAddExerciseModal);
 function openAddExerciseModal() {
   const overlay = document.createElement('div');
   overlay.className = 'modal-overlay';
@@ -5563,8 +5557,8 @@ function openEditExerciseModal(name) {
 /* =========================================================================
    HISTORY CALENDAR
    ========================================================================= */
-document.getElementById('cal-prev').addEventListener('click', () => { calCursor.setMonth(calCursor.getMonth()-1); renderCalendar(); });
-document.getElementById('cal-next').addEventListener('click', () => { calCursor.setMonth(calCursor.getMonth()+1); renderCalendar(); });
+document.getElementById('cal-prev')?.addEventListener('click', () => { calCursor.setMonth(calCursor.getMonth()-1); renderCalendar(); });
+document.getElementById('cal-next')?.addEventListener('click', () => { calCursor.setMonth(calCursor.getMonth()+1); renderCalendar(); });
 
 function renderCalendar() {
   document.getElementById('cal-title').textContent = calCursor.toLocaleDateString(undefined,{month:'long', year:'numeric'});
