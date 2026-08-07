@@ -1705,7 +1705,7 @@ let activeDayIndex = null;  // which program day is being logged right now
 let editingProgram = false;
 let questCarouselIndex = 0; // which day the Quest carousel is currently showing
 let trendsView = 'dashboard'; // 'dashboard' | 'muscle-detail'
-let muscleDetailMode = 'Past'; // 'Past' | 'Planned'
+let muscleDetailMode = 'Past'; // 'Past' | 'Planned' | 'Strength'
 let calCursor = new Date(); calCursor.setDate(1);
 let selectedHistoryDate = todayStr();
 
@@ -4774,6 +4774,44 @@ function muscleStatusPlanned() {
   }
   return result;
 }
+
+// Maps each muscle to the best strength tier achieved across all PRs for exercises that hit it
+function muscleStatusStrength() {
+  const TIER_ORDER = ['Beginner','Novice','Intermediate','Advanced','Elite'];
+  const TIER_STATUS = {
+    'Elite':        'Excess',      // gold
+    'Advanced':     'Focusing',    // brass/blue
+    'Intermediate': 'Growing',     // violet
+    'Novice':       'Maintaining', // teal
+    'Beginner':     'Stalled',     // dim
+  };
+  const TIER_LABEL = {
+    'Elite': 'Elite', 'Advanced': 'Advanced',
+    'Intermediate': 'Intermediate', 'Novice': 'Novice', 'Beginner': 'Beginner',
+  };
+  // build muscle → best tier map from PRs
+  const muscleBestTier = {};
+  for (const [exName, pr] of Object.entries(myPRs)) {
+    if (!pr.tier || pr.tier === 'Unranked') continue;
+    const muscles = (EXERCISES_ALL[exName]||{}).muscles || {};
+    // only credit primary muscles (emphasis >= 0.6)
+    for (const [muscle, emph] of Object.entries(muscles)) {
+      if (emph < 0.6) continue;
+      const current = muscleBestTier[muscle];
+      if (!current || TIER_ORDER.indexOf(pr.tier) > TIER_ORDER.indexOf(current)) {
+        muscleBestTier[muscle] = pr.tier;
+      }
+    }
+  }
+  const result = {};
+  for (const m of MUSCLES) {
+    const tier = muscleBestTier[m] || null;
+    const status = tier ? TIER_STATUS[tier] : 'Stalled';
+    const label = tier ? TIER_LABEL[tier] : 'No data';
+    result[m] = { volume: 0, status, tier, label, weeks: [0,0,0,0] };
+  }
+  return result;
+}
 /* ANATOMY_TEMPLATES is loaded once near the top of this script, one per body type */
 function muscleFromId(id) {
   if (!id) return null;
@@ -5136,7 +5174,7 @@ function renderTrends() {
 }
 
 function renderMuscleDetail() {
-  const stats = muscleDetailMode === 'Past' ? muscleStatusPast() : muscleStatusPlanned();
+  const stats = muscleDetailMode === 'Past' ? muscleStatusPast() : muscleDetailMode === 'Planned' ? muscleStatusPlanned() : muscleStatusStrength();
   const el = document.getElementById('trends-muscle-detail');
   const sorted = [...MUSCLES].sort((a,b) => stats[b].volume - stats[a].volume);
   el.innerHTML = `
@@ -5145,11 +5183,16 @@ function renderMuscleDetail() {
     <div class="toggle-row">
       <button id="mode-past" class="${muscleDetailMode==='Past'?'active':''}">Past</button>
       <button id="mode-planned" class="${muscleDetailMode==='Planned'?'active':''}">Planned</button>
+      <button id="mode-strength" class="${muscleDetailMode==='Strength'?'active':''}">Strength</button>
     </div>
     <div class="card">
       <div class="body-pair big">${bodySvg('front', stats)}${bodySvg('back', stats)}</div>
       ${statusCountRow(stats)}
-      <p class="sub" style="margin:14px 0 0;">${muscleDetailMode === 'Past' ? 'Sets completed per muscle group — last 7 days' : `Planned emphasis from ${myProgram ? escapeHtml(myProgram.name) : 'your program'}`}</p>
+      <p class="sub" style="margin:14px 0 0;">${
+        muscleDetailMode === 'Past' ? 'Sets completed per muscle group — last 7 days'
+        : muscleDetailMode === 'Planned' ? `Planned emphasis from ${myProgram ? escapeHtml(myProgram.name) : 'your program'}`
+        : 'Best strength tier achieved per muscle group based on your PRs'
+      }</p>
     </div>
     <div class="card">
       <div class="card-title"><h3>High Volume</h3></div>
@@ -5158,7 +5201,11 @@ function renderMuscleDetail() {
           const s = stats[m]; const maxW = Math.max(...s.weeks, 1);
           return `<div class="muscle-detail-row" data-m="${m}">
             <div class="muscle-detail-row-top">
-              <div><div class="m-name">${m}</div><div class="m-vol">${s.volume.toLocaleString()} ${muscleDetailMode==='Past'?'vol this week':'planned emphasis'}</div></div>
+              <div><div class="m-name">${m}</div><div class="m-vol">${
+                muscleDetailMode === 'Strength'
+                  ? (s.label || 'No data')
+                  : `${s.volume.toLocaleString()} ${muscleDetailMode==='Past'?'vol this week':'planned emphasis'}`
+              }</div></div>
               <span class="status-badge" style="background:${STATUS_COLOR[s.status]}22;color:${STATUS_COLOR[s.status]};">${s.status}</span>
             </div>
             <div class="spark-row">${s.weeks.slice().reverse().map(v => `<div class="spark-bar" style="height:${Math.max(10,(v/maxW)*100)}%;background:${STATUS_COLOR[s.status]};opacity:${0.4};"></div>`).join('')}</div>
@@ -5175,6 +5222,7 @@ function renderMuscleDetail() {
   document.getElementById('back-to-dashboard')?.addEventListener('click', () => { trendsView = 'dashboard'; renderTrends(); });
   document.getElementById('mode-past')?.addEventListener('click', () => { muscleDetailMode = 'Past'; renderMuscleDetail(); });
   document.getElementById('mode-planned')?.addEventListener('click', () => { muscleDetailMode = 'Planned'; renderMuscleDetail(); });
+  document.getElementById('mode-strength')?.addEventListener('click', () => { muscleDetailMode = 'Strength'; renderMuscleDetail(); });
 }
 
 /* =========================================================================
