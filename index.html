@@ -1283,6 +1283,215 @@ nav.bottom-nav button.active svg { filter:drop-shadow(0 0 4px var(--brass)); }
 .status-dot.pending { box-shadow:none; }
 
 
+
+/* ================================================================
+   SOLO LEVELING SYSTEM FRAME ANIMATIONS
+   Applies to .card, .char-screen, .quest-card, .raid-boss-card
+   ================================================================ */
+
+/* Base card gets the frame treatment */
+.card, .char-screen, .quest-card, .exercise-row {
+  position: relative;
+  overflow: visible;
+}
+
+/* Remove old ::before/::after corner brackets — replace with new ones */
+.card::before, .card::after,
+.exercise-row::before, .exercise-row::after {
+  width: 14px !important;
+  height: 14px !important;
+  border-width: 2px !important;
+  opacity: 1 !important;
+  animation: cornerPulse 3s ease-in-out infinite;
+  transition: border-color 0.3s;
+}
+
+@keyframes cornerPulse {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; filter: drop-shadow(0 0 4px var(--brass)); }
+}
+
+/* Scan line — sweeps across card top */
+.card::before {
+  animation: cornerPulse 3s ease-in-out infinite, scanAppear 4s ease-in-out infinite;
+}
+
+@keyframes scanAppear {
+  0%, 90%, 100% { box-shadow: none; }
+  45% { box-shadow: 2px 0 8px rgba(61,165,255,0.8); }
+}
+
+/* SL frame wrapper — wraps card content with animated border effects */
+.sl-frame {
+  position: relative;
+}
+
+/* Top scan bar — the glowing horizontal line that sweeps */
+.sl-frame::before {
+  content: "";
+  position: absolute;
+  top: -1px;
+  left: 10%;
+  right: 10%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--brass), rgba(61,165,255,0.8), var(--brass), transparent);
+  animation: topScan 4s ease-in-out infinite;
+  box-shadow: 0 0 8px var(--brass), 0 0 20px rgba(61,165,255,0.4);
+  pointer-events: none;
+  z-index: 2;
+}
+
+@keyframes topScan {
+  0% { opacity: 0; transform: scaleX(0.3); }
+  20% { opacity: 1; transform: scaleX(1); }
+  80% { opacity: 1; transform: scaleX(1); }
+  100% { opacity: 0; transform: scaleX(0.3); }
+}
+
+/* Circuit trace — top right decorative element */
+.sl-frame::after {
+  content: "";
+  position: absolute;
+  top: -1px;
+  right: 18px;
+  width: 60px;
+  height: 1px;
+  background: var(--brass);
+  opacity: 0;
+  animation: circuitTrace 4s ease-in-out infinite 0.5s;
+  box-shadow: 0 0 6px var(--brass);
+  pointer-events: none;
+  z-index: 2;
+}
+
+@keyframes circuitTrace {
+  0%, 10% { opacity: 0; width: 0; }
+  30% { opacity: 0.8; width: 60px; }
+  70% { opacity: 0.8; width: 60px; }
+  90%, 100% { opacity: 0; width: 0; }
+}
+
+/* Character screen gets premium treatment */
+.char-screen .sl-frame::before {
+  background: linear-gradient(90deg, transparent, rgba(61,165,255,0.5), #fff, rgba(61,165,255,0.5), transparent);
+  box-shadow: 0 0 12px var(--brass), 0 0 30px rgba(61,165,255,0.6);
+}
+
+/* Corner bracket enhanced animation */
+.sl-corner {
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  pointer-events: none;
+  z-index: 3;
+}
+
+.sl-corner::before, .sl-corner::after {
+  content: "";
+  position: absolute;
+  background: var(--brass);
+  box-shadow: 0 0 6px var(--brass);
+  animation: bracketGlow 3s ease-in-out infinite;
+}
+
+@keyframes bracketGlow {
+  0%, 100% { box-shadow: 0 0 4px var(--brass); opacity: 0.7; }
+  50% { box-shadow: 0 0 10px var(--brass), 0 0 20px rgba(61,165,255,0.4); opacity: 1; }
+}
+
+/* Horizontal bracket bar */
+.sl-corner::before { width: 100%; height: 2px; top: 0; left: 0; }
+/* Vertical bracket bar */
+.sl-corner::after  { width: 2px; height: 100%; top: 0; left: 0; }
+
+/* Corner positions */
+.sl-corner.tl { top: -1px; left: -1px; }
+.sl-corner.tr { top: -1px; right: -1px; transform: scaleX(-1); }
+.sl-corner.bl { bottom: -1px; left: -1px; transform: scaleY(-1); }
+.sl-corner.br { bottom: -1px; right: -1px; transform: scale(-1); }
+
+/* Raid boss card gets red tint on corners */
+.raid-boss-card .sl-corner::before,
+.raid-boss-card .sl-corner::after {
+  background: var(--excess);
+  box-shadow: 0 0 6px var(--excess);
+  animation: bracketGlowRed 2.5s ease-in-out infinite;
+}
+
+@keyframes bracketGlowRed {
+  0%, 100% { box-shadow: 0 0 4px var(--excess); opacity: 0.7; }
+  50% { box-shadow: 0 0 12px var(--excess), 0 0 24px rgba(255,61,90,0.4); opacity: 1; }
+}
+
+/* Quest card cleared — green corners */
+.quest-card.quest-complete .sl-corner::before,
+.quest-card.quest-complete .sl-corner::after {
+  background: var(--growing);
+  box-shadow: 0 0 6px var(--growing);
+}
+
+/* Awakening window corners — gold */
+.awakening-window .sl-corner::before,
+.awakening-window .sl-corner::after {
+  background: #FFD700;
+  box-shadow: 0 0 8px #FFD700;
+  animation: bracketGlowGold 1.5s ease-in-out infinite;
+}
+
+@keyframes bracketGlowGold {
+  0%, 100% { box-shadow: 0 0 6px #FFD700; }
+  50% { box-shadow: 0 0 16px #FFD700, 0 0 32px rgba(255,215,0,0.6); }
+}
+
+/* Animated edge shimmer — thin line that travels along card edges */
+.card-shimmer {
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  pointer-events: none;
+  overflow: hidden;
+  z-index: 0;
+}
+
+.card-shimmer::before {
+  content: "";
+  position: absolute;
+  top: -100%;
+  left: -10%;
+  width: 120%;
+  height: 40%;
+  background: linear-gradient(180deg, transparent, rgba(61,165,255,0.06), transparent);
+  animation: shimmerSweep 6s ease-in-out infinite;
+}
+
+@keyframes shimmerSweep {
+  0% { top: -40%; opacity: 0; }
+  10% { opacity: 1; }
+  90% { opacity: 1; }
+  100% { top: 140%; opacity: 0; }
+}
+
+/* Today debrief card — teal corners */
+.today-debrief-card {
+  position: relative;
+}
+
+/* Inner glow pulse on cards — subtle breathing */
+@keyframes cardBreath {
+  0%, 100% { box-shadow: 0 0 0 1px rgba(61,165,255,0.04), 0 8px 32px -12px rgba(0,0,0,0.6), inset 0 1px 0 rgba(61,165,255,0.08); }
+  50% { box-shadow: 0 0 0 1px rgba(61,165,255,0.1), 0 8px 32px -8px rgba(61,165,255,0.15), inset 0 1px 0 rgba(61,165,255,0.15); }
+}
+
+.card {
+  animation: cardBreath 4s ease-in-out infinite;
+}
+
+/* Stagger card animations so they don't all pulse together */
+.card:nth-child(2) { animation-delay: 0.8s; }
+.card:nth-child(3) { animation-delay: 1.6s; }
+.card:nth-child(4) { animation-delay: 2.4s; }
+
+
 </style>
 </head>
 <body>
@@ -1490,7 +1699,7 @@ nav.bottom-nav button.active svg { filter:drop-shadow(0 0 4px var(--brass)); }
       <div id="raid-boss-slot"></div>
 
       <!-- CHARACTER SCREEN -->
-      <div class="char-screen" id="char-card">
+      <div class="char-screen sl-frame" id="char-card">
         <div class="char-screen-bg" id="char-screen-bg"></div>
         <div class="char-screen-inner">
           <div class="char-top-row">
@@ -2103,6 +2312,33 @@ document.getElementById('logout-btn').addEventListener('click', () => signOut(au
 let dailyTimerInterval = null;
 // start immediately so the timer shows even before auth/data loads
 setTimeout(() => startDailyTimer(), 0);
+
+/* ── SL Frame corners — inject into all cards dynamically ── */
+function addSlCorners(el) {
+  if (!el || el.dataset.slCorners) return;
+  el.dataset.slCorners = '1';
+  ['tl','tr','bl','br'].forEach(pos => {
+    const c = document.createElement('div');
+    c.className = `sl-corner ${pos}`;
+    el.appendChild(c);
+  });
+}
+
+// observe DOM mutations to add corners to new cards
+const slObserver = new MutationObserver(mutations => {
+  mutations.forEach(m => m.addedNodes.forEach(node => {
+    if (node.nodeType !== 1) return;
+    [node, ...node.querySelectorAll('.card,.quest-card,.char-screen,.raid-boss-card,.today-debrief-card,.awakening-window,.system-window,.debrief-window')]
+      .forEach(addSlCorners);
+  }));
+});
+slObserver.observe(document.body, { childList: true, subtree: true });
+
+// also run on existing elements at load
+document.addEventListener('DOMContentLoaded', () => {
+  document.querySelectorAll('.card,.quest-card,.char-screen,.raid-boss-card,.today-debrief-card,.system-window,.debrief-window')
+    .forEach(addSlCorners);
+});
 function startDailyTimer() {
   if (dailyTimerInterval) clearInterval(dailyTimerInterval);
   const render = () => {
@@ -3260,10 +3496,11 @@ document.getElementById('save-workout-btn').addEventListener('click', async () =
     await loadAllData();
     const earned = await tryAwardAp();
     const prs = await checkAndAwardPRs(exercises, date);
+    const statGains = await applyWorkoutStatXP(exercises);
     startDailyTimer();
     setTimeout(() => {
       closeWorkoutModal(false);
-      showDebriefModal(exercises, earned, prs);
+      showDebriefModal(exercises, earned, prs, statGains);
     }, 600);
   } catch (err) {
     alert('Could not save: ' + err.message);
@@ -3357,11 +3594,67 @@ async function applyStatBonus(statId, tier) {
   if (!profile || !statId) return;
   const bonus = STAT_BONUS_XP[tier] || 0;
   if (!bonus) return;
-  // store accumulated stat XP in profile.statXP
   const statXP = { ...(profile.statXP || {}) };
   statXP[statId] = (statXP[statId] || 0) + bonus;
   await setDoc(doc(db, 'users', currentUser.uid), { statXP }, { merge: true });
   profile.statXP = statXP;
+}
+
+// Award stat XP from workout content — called after every workout save
+async function applyWorkoutStatXP(exercises) {
+  if (!profile || !currentUser) return;
+  const statXP = { ...(profile.statXP || {}) };
+  const gains = {};
+  exercises.forEach(ex => {
+    const completedSets = (ex.sets||[]).filter(s => s.reps > 0).length;
+    if (!completedSets) return;
+    const stat = getStatForExercise(ex.name);
+    if (stat) gains[stat] = (gains[stat]||0) + completedSets;
+  });
+  // 1 XP per 3 sets, minimum 1 per exercise type
+  Object.entries(gains).forEach(([stat, sets]) => {
+    statXP[stat] = (statXP[stat]||0) + Math.max(1, Math.floor(sets/3));
+  });
+  // consistency bonus
+  const weekStart = startOfWeek(new Date());
+  const weekCount = myWorkouts.filter(w => w.uid === currentUser.uid && new Date(w.date) >= weekStart).length;
+  if (weekCount >= (profile.weeklyGoal||3)) statXP.recovery = (statXP.recovery||0) + 2;
+  await setDoc(doc(db, 'users', currentUser.uid), { statXP }, { merge: true });
+  profile.statXP = statXP;
+  return gains;
+}
+
+// Get user's dominant stat (highest statXP) for raid damage type
+function getDominantStat(uid) {
+  const u = uid === currentUser?.uid ? profile : allUsers.find(x=>x.uid===uid);
+  if (!u) return 'strength';
+  const statXP = u.statXP || {};
+  const stats = profile.stats || {};
+  // combine statXP earned + current rank as tiebreaker
+  const score = id => (statXP[id]||0) + RANK_TIERS.indexOf(stats[id]||'E')*10;
+  return STAT_DEFS.reduce((best, d) => score(d.id) > score(best) ? d.id : best, 'strength');
+}
+
+// Calculate raid damage for a workout
+function calcRaidDamage(uid, exercises) {
+  const dominantStat = getDominantStat(uid);
+  const u = allUsers.find(x=>x.uid===uid);
+  const stats = u?.stats || {};
+  const rankIdx = RANK_TIERS.indexOf(stats[dominantStat]||'E');
+  const rankMult = [1, 1.2, 1.5, 2, 2.5, 3][rankIdx] || 1;
+  const baseDmg = 10;
+  const damage = Math.round(baseDmg * rankMult);
+
+  const DAMAGE_TYPES = {
+    strength:    { label:'CRUSH',  icon:'⚔️', color:'var(--brass)',       desc:'Raw physical damage' },
+    endurance:   { label:'BURN',   icon:'🔥', color:'#FF6B35',            desc:'Stamina drain' },
+    agility:     { label:'CRIT',   icon:'⚡', color:'#FFD700',            desc:'Speed strike' },
+    focus:       { label:'PIERCE', icon:'🎯', color:'var(--maintaining)', desc:'Armor pierce' },
+    recovery:    { label:'SHIELD', icon:'🛡️', color:'var(--violet)',      desc:'Party shield' },
+    flexibility: { label:'WEAKEN', icon:'💫', color:'var(--growing)',     desc:'Debuff' },
+  };
+  const type = DAMAGE_TYPES[dominantStat] || DAMAGE_TYPES.strength;
+  return { damage, type, dominantStat, rankMult };
 }
 
 function getStatForExercise(exerciseName) {
@@ -3850,7 +4143,7 @@ function renderCharCard() {
     const btnLabel = isMaxed ? 'MAX' : allReady ? '⚡ AWAKEN' : `${gates?.apCost||0} AP`;
     const btnCls = isMaxed ? 'stat-upgrade-btn maxed' : allReady ? 'stat-upgrade-btn can-upgrade awakening' : 'stat-upgrade-btn';
     const statXP = (profile.statXP || {})[def.id] || 0;
-    const xpTag = statXP > 0 ? `<span class="stat-xp-bonus">+${Math.floor(statXP/10)} AP from PRs</span>` : '';
+    const xpTag = statXP > 0 ? `<span class="stat-xp-bonus">${statXP} XP · +${Math.floor(statXP/10)} AP</span>` : '';
 
     return `<div class="stat-row ${allReady?'gate-ready':''}">
       <span class="stat-label" title="${def.desc}">${def.label}</span>
@@ -4513,6 +4806,30 @@ async function openHunterProfile(targetUid) {
       ${h2hRows}
     </div>` : ''}
 
+    ${!isMe ? `<div class="card hunter-section">
+      <div class="hunter-section-title">Stat XP Comparison</div>
+      <p style="font-size:11px;color:var(--text-faint);font-family:var(--font-mono);margin:0 0 12px;">Accumulated XP from workouts — shows what each hunter trains most</p>
+      ${STAT_DEFS.map(def => {
+        const myXP = (profile.statXP||{})[def.id] || 0;
+        const theirXP = (target.statXP||{})[def.id] || 0;
+        const maxXP = Math.max(myXP, theirXP, 1);
+        const myPct = Math.round((myXP/maxXP)*100);
+        const theirPct = Math.round((theirXP/maxXP)*100);
+        const iAhead = myXP > theirXP;
+        return `<div style="margin-bottom:10px;">
+          <div style="display:flex;justify-content:space-between;font-family:var(--font-mono);font-size:10px;color:var(--text-faint);margin-bottom:4px;">
+            <span style="color:${iAhead?'var(--brass)':'var(--text-dim)'};">${myXP} XP</span>
+            <span style="color:var(--text-dim);">${def.label}</span>
+            <span style="color:${!iAhead&&myXP!==theirXP?'var(--violet)':'var(--text-dim)'};">${theirXP} XP</span>
+          </div>
+          <div style="position:relative;height:6px;background:rgba(93,157,255,0.08);border-radius:3px;overflow:hidden;">
+            <div style="position:absolute;left:0;top:0;height:100%;width:${myPct}%;background:var(--brass);border-radius:3px;opacity:0.8;"></div>
+            <div style="position:absolute;right:0;top:0;height:100%;width:${theirPct}%;background:var(--violet);border-radius:3px;opacity:0.5;transform:scaleX(-1);transform-origin:right;"></div>
+          </div>
+        </div>`;
+      }).join('')}
+    </div>` : ''}
+
     <div class="card hunter-section">
       <div class="hunter-section-title">Muscle Activation</div>
       <div class="body-pair">${bodySvg('front', buildMuscleStats(targetUid), target.bodyType || 'male')}${bodySvg('back', buildMuscleStats(targetUid), target.bodyType || 'male')}</div>
@@ -4553,7 +4870,7 @@ function buildMuscleStats(uid) {
   return stats;
 }
 
-function showDebriefModal(exercises, apEarned, prs) {
+function showDebriefModal(exercises, apEarned, prs, statGains) {
   const totalSets = exercises.reduce((n, ex) => n + (ex.sets||[]).filter(s=>s.reps>0).length, 0);
   const totalVol = exercises.reduce((n, ex) =>
     n + (ex.sets||[]).filter(s=>s.reps>0 && s.weight>0).reduce((v,s) => v + s.reps * s.weight, 0), 0);
@@ -4614,6 +4931,32 @@ function showDebriefModal(exercises, apEarned, prs) {
           10 base${mult > 1 ? ` × ${mult} streak bonus` : ''} = ${Math.round(10*mult)} AP
           ${apEarned > Math.round(10*mult) ? ` + 5 weekly goal bonus` : ''}
         </div>` : ''}
+      ${statGains && Object.keys(statGains).length ? `
+        <div style="background:rgba(61,165,255,0.05);border:1px solid rgba(93,157,255,0.2);border-radius:6px;padding:10px 12px;margin-bottom:12px;">
+          <p style="font-size:10px;color:var(--text-faint);font-family:var(--font-mono);letter-spacing:0.1em;margin:0 0 8px;">STAT XP EARNED</p>
+          ${Object.entries(statGains).map(([stat, sets]) => {
+            const xp = Math.max(1, Math.floor(sets/3));
+            const def = STAT_DEFS.find(d=>d.id===stat);
+            return `<div style="display:flex;justify-content:space-between;font-size:12px;font-family:var(--font-mono);margin-bottom:4px;">
+              <span style="color:var(--text-dim);">${def?.label||stat}</span>
+              <span style="color:var(--brass);">+${xp} XP</span>
+            </div>`;
+          }).join('')}
+        </div>` : ''}
+      ${(() => {
+        const { damage, type } = calcRaidDamage(currentUser.uid, exercises);
+        return `<div style="background:rgba(${type.color.includes('brass')?'61,165,255':type.color.includes('excess')?'255,61,90':'139,107,255'},0.06);border:1px solid ${type.color}44;border-radius:6px;padding:10px 12px;margin-bottom:12px;display:flex;align-items:center;gap:12px;">
+          <div style="font-size:28px;">${type.icon}</div>
+          <div style="flex:1;">
+            <div style="font-family:var(--font-display);font-size:11px;letter-spacing:0.1em;color:${type.color};">${type.label}</div>
+            <div style="font-size:10px;color:var(--text-faint);font-family:var(--font-mono);">${type.desc}</div>
+          </div>
+          <div style="text-align:right;">
+            <div style="font-family:var(--font-display);font-size:22px;color:${type.color};text-shadow:0 0 12px ${type.color};">${damage}</div>
+            <div style="font-size:9px;color:var(--text-faint);font-family:var(--font-mono);">RAID DMG</div>
+          </div>
+        </div>`;
+      })()}
       <div style="font-size:12px;color:var(--text-faint);margin-bottom:12px;">Total AP: ${(profile.auraPoints||0).toLocaleString()}</div>
       <button class="debrief-close-btn">Back to the Hunt</button>
     </div>`;
@@ -4670,7 +5013,7 @@ function renderTodayCard() {
     const streak = computeStreak(currentUser.uid);
     el.innerHTML = `<div class="today-debrief-card">
       <p style="font-size:11px;color:var(--brass);text-transform:uppercase;letter-spacing:.06em;margin:0 0 8px;">Today</p>
-      <p class="today-no-workout">No workout logged yet today.${streak > 0 ? `<br><span style="color:var(--excess);">🔥 ${streak} day streak at risk.</span>` : ''}</p>
+      <p class="today-no-workout">No workout logged yet today.${streak > 0 ? `<br><span style="color:var(--excess);">🔥 ${streak}d streak at risk.</span>` : ''}</p>
     </div>`;
     return;
   }
@@ -4687,9 +5030,13 @@ function renderTodayCard() {
   })() : 0;
   const todayPRs = Object.values(myPRs).filter(p => p.date === today);
   const prXP = todayPRs.reduce((s,p) => s+(p.xp||0), 0);
+  const { damage, type } = calcRaidDamage(currentUser.uid, todayWorkouts[0]?.exercises||[]);
 
-  el.innerHTML = `<div class="today-debrief-card">
-    <p style="font-size:11px;color:var(--brass);text-transform:uppercase;letter-spacing:.06em;margin:0 0 10px;">⚡ Today's Session</p>
+  el.innerHTML = `<div class="today-debrief-card" id="today-debrief-card-clickable" style="cursor:pointer;">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;">
+      <p style="font-size:11px;color:var(--brass);text-transform:uppercase;letter-spacing:.06em;margin:0;">⚡ Today's Session</p>
+      <span style="font-size:10px;color:var(--text-faint);font-family:var(--font-mono);">Tap to replay debrief ›</span>
+    </div>
     <div class="today-debrief-row">
       <div class="today-stat-pill">
         <div class="today-stat-val">+${apToday + prXP}</div>
@@ -4703,14 +5050,225 @@ function renderTodayCard() {
         <div class="today-stat-val">${totalVol > 0 ? (totalVol >= 1000 ? (totalVol/1000).toFixed(1)+'t' : totalVol+'kg') : '—'}</div>
         <div class="today-stat-lbl">Volume</div>
       </div>
-      <div class="today-stat-pill">
-        <div class="today-stat-val">${streak}🔥</div>
-        <div class="today-stat-lbl">Streak</div>
+      <div class="today-stat-pill" style="border-color:${type.color}44;">
+        <div class="today-stat-val" style="font-size:16px;">${type.icon}</div>
+        <div class="today-stat-lbl" style="color:${type.color};">${type.label} ${damage}</div>
       </div>
     </div>
-    ${todayPRs.length ? `<p style="font-size:12px;color:var(--violet);margin:4px 0 0;">🏆 ${todayPRs.length} PR${todayPRs.length>1?'s':''} beaten today · +${prXP} AP</p>` : ''}
-    <p style="font-size:11px;color:var(--text-faint);margin:6px 0 0;">Total Aura Points: ${(profile.auraPoints||0).toLocaleString()}</p>
+    ${todayPRs.length ? `<p style="font-size:12px;color:var(--violet);margin:4px 0 0;">🏆 ${todayPRs.length} PR${todayPRs.length>1?'s':''} beaten · +${prXP} AP</p>` : ''}
+    <p style="font-size:11px;color:var(--text-faint);margin:6px 0 0;">Total AP: ${(profile.auraPoints||0).toLocaleString()}</p>
   </div>`;
+
+  // tap to reopen debrief
+  document.getElementById('today-debrief-card-clickable')?.addEventListener('click', () => {
+    const allExercises = todayWorkouts.flatMap(w => w.exercises||[]);
+    showDebriefModal(allExercises, apToday, todayPRs.map(p => ({ exercise: Object.entries(myPRs).find(([,v])=>v===p)?.[0]||'', xp: p.xp||0, tier: p.tier, e1rm: p.e1rm })), null);
+  });
+}
+
+/* =========================================================================
+   TRENDS — muscle heatmap, weight chart, weekly volume
+   ========================================================================= */
+// STATUS_COLOR already defined above — using existing definition
+function weeklyMuscleVolumes() {
+  const weekStarts = [0,1,2,3].map(i => startOfWeek(daysAgo(i*7)));
+  const weekVolumes = [0,1,2,3].map(() => ({}));
+  for (const w of myWorkouts) {
+    const wd = new Date(w.date);
+    for (let i = 0; i < 4; i++) {
+      const start = weekStarts[i]; const end = new Date(start); end.setDate(end.getDate()+7);
+      if (wd >= start && wd < end) {
+        const vol = computeWorkoutVolume(w.exercises||[]);
+        for (const [m,v] of Object.entries(vol)) weekVolumes[i][m] = (weekVolumes[i][m]||0)+v;
+      }
+    }
+  }
+  return weekVolumes;
+}
+
+function muscleStatusPast() {
+  const weekVolumes = weeklyMuscleVolumes();
+  const result = {};
+  for (const m of MUSCLES) {
+    const thisWeek = weekVolumes[0][m]||0;
+    const prior = [weekVolumes[1][m]||0, weekVolumes[2][m]||0, weekVolumes[3][m]||0];
+    const priorAvg = prior.reduce((a,b)=>a+b,0)/3;
+    let status;
+    if (thisWeek === 0) status = 'Stalled';
+    else if (priorAvg === 0) status = 'Focusing';
+    else { const ratio = thisWeek/priorAvg;
+      if (ratio >= 1.4) status = 'Excess'; else if (ratio >= 1.15) status = 'Growing';
+      else if (ratio >= 0.85) status = 'Maintaining'; else status = 'Stalled'; }
+    result[m] = { volume: Math.round(thisWeek), status, weeks: [weekVolumes[0][m]||0, weekVolumes[1][m]||0, weekVolumes[2][m]||0, weekVolumes[3][m]||0] };
+  }
+  return result;
+}
+
+function muscleStatusPlanned() {
+  const planned = {}; MUSCLES.forEach(m => planned[m] = 0);
+  if (myProgram && myProgram.days) {
+    for (const day of myProgram.days) for (const ex of day.exercises) {
+      const map = (EXERCISES_ALL[ex.name]||{}).muscles||{};
+      for (const [m,emph] of Object.entries(map)) planned[m] += emph;
+    }
+  }
+  const max = Math.max(...Object.values(planned), 0.0001);
+  const result = {};
+  for (const m of MUSCLES) {
+    const v = planned[m]; const ratio = v/max;
+    let status;
+    if (v===0) status='Stalled'; else if (ratio<=0.25) status='Maintaining';
+    else if (ratio<=0.5) status='Growing'; else if (ratio<=0.75) status='Focusing'; else status='Excess';
+    result[m] = { volume: Math.round(v*10)/10, status, weeks:[v,v,v,v] };
+  }
+  return result;
+}
+
+function weightLineChart(weights) {
+  if (!weights || weights.length === 0) {
+    return `<p class="sub" style="margin:0 0 12px;">No weight logged yet. Log your first entry below.</p>`;
+  }
+  const last = weights[weights.length-1];
+  const first = weights[0];
+  const totalChange = last.weight - first.weight;
+  const changeStr = `${totalChange>=0?'+':''}${totalChange.toFixed(1)}kg`;
+  const changeColor = totalChange>0.5?'var(--excess)':totalChange<-0.5?'var(--growing)':'var(--text-dim)';
+  const pts = weights.slice(-30);
+  if (pts.length===1) return `<div style="display:flex;align-items:baseline;gap:10px;margin-bottom:12px;"><span class="bignum">${last.weight} <small>kg</small></span><span class="sub">${last.date}</span></div>`;
+  const W=320,H=90,PAD={t:8,r:8,b:20,l:36};
+  const gW=W-PAD.l-PAD.r, gH=H-PAD.t-PAD.b;
+  const vals=pts.map(p=>Number(p.weight));
+  const minV=Math.min(...vals), maxV=Math.max(...vals), range=maxV-minV||1;
+  const toX=i=>PAD.l+(i/(pts.length-1))*gW;
+  const toY=v=>PAD.t+gH-((v-minV)/range)*gH;
+  const linePoints=pts.map((p,i)=>`${toX(i).toFixed(1)},${toY(Number(p.weight)).toFixed(1)}`).join(' ');
+  const firstX=toX(0).toFixed(1),lastX=toX(pts.length-1).toFixed(1),baseY=(PAD.t+gH).toFixed(1);
+  const areaPoints=`${firstX},${baseY} ${linePoints} ${lastX},${baseY}`;
+  const labelIdxs=[0,Math.floor((pts.length-1)/2),pts.length-1];
+  const xLabels=labelIdxs.map(i=>`<text x="${toX(i).toFixed(1)}" y="${H}" text-anchor="middle" fill="var(--text-faint)" font-size="9">${pts[i].date.slice(5)}</text>`).join('');
+  const yLabels=[minV,(minV+maxV)/2,maxV].map(v=>`<text x="${PAD.l-4}" y="${parseFloat(toY(v).toFixed(1))+3}" text-anchor="end" fill="var(--text-faint)" font-size="9">${v.toFixed(1)}</text>`).join('');
+  const dotX=toX(pts.length-1).toFixed(1), dotY=toY(vals[vals.length-1]).toFixed(1);
+  return `<div style="display:flex;align-items:baseline;gap:10px;margin-bottom:8px;">
+    <span class="bignum">${last.weight} <small>kg</small></span>
+    <span style="font-size:12px;color:${changeColor};">${changeStr} total</span>
+    <span class="sub" style="margin-left:auto;">${pts.length} entries</span>
+  </div>
+  <svg viewBox="0 0 ${W} ${H}" style="width:100%;overflow:visible;" xmlns="http://www.w3.org/2000/svg">
+    <line x1="${PAD.l}" y1="${PAD.t}" x2="${PAD.l}" y2="${PAD.t+gH}" stroke="var(--border)" stroke-width="1"/>
+    <line x1="${PAD.l}" y1="${PAD.t+gH}" x2="${PAD.l+gW}" y2="${PAD.t+gH}" stroke="var(--border)" stroke-width="1"/>
+    <defs><linearGradient id="wt-grad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="var(--brass)" stop-opacity="0.25"/>
+      <stop offset="100%" stop-color="var(--brass)" stop-opacity="0"/>
+    </linearGradient></defs>
+    <polygon points="${areaPoints}" fill="url(#wt-grad)"/>
+    <polyline points="${linePoints}" fill="none" stroke="var(--brass)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+    <circle cx="${dotX}" cy="${dotY}" r="3.5" fill="var(--brass)" stroke="var(--card)" stroke-width="2"/>
+    ${yLabels}${xLabels}
+  </svg>`;
+}
+
+function renderTrends() {
+  const el = document.getElementById('trends-dashboard');
+  if (!el) return;
+  if (trendsView === 'muscle-detail') { renderMuscleDetail(); return; }
+  const stats = muscleStatusPast();
+  const statusCounts = {};
+  MUSCLES.forEach(m => { const s = stats[m].status; statusCounts[s]=(statusCounts[s]||0)+1; });
+  const lastWeight = myWeights.length ? myWeights[myWeights.length-1] : null;
+  const totalWorkouts = myWorkouts.length;
+  const streak = computeStreak(currentUser.uid);
+  el.innerHTML = `
+    <div class="sl-section-head" style="padding:12px 0 16px;">Intelligence</div>
+
+    <div class="card widget" id="widget-muscle" style="cursor:pointer;">
+      <div class="card-title"><h3>◈ Muscle Activation <span class="chev">›</span></h3></div>
+      ${Object.entries(statusCounts).filter(([,v])=>v>0).map(([s,v])=>`<span class="trend-badge" style="background:${STATUS_COLOR[s]}18;color:${STATUS_COLOR[s]};border:1px solid ${STATUS_COLOR[s]}44;padding:3px 10px;border-radius:10px;font-size:11px;margin-right:6px;font-family:var(--font-mono);">${s} ${v}</span>`).join('')}
+      <div class="body-pair" style="margin-top:12px;">${bodySvg('front',stats)}${bodySvg('back',stats)}</div>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><h3>◐ Weight</h3></div>
+      ${weightLineChart(myWeights)}
+      <div class="weight-input-row">
+        <input type="number" step="0.1" id="weight-input" placeholder="Log today's weight (kg)" inputmode="decimal" />
+        <button class="btn btn-sm" id="weight-save-btn">Save</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><h3>◇ Activity</h3></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+        <div style="text-align:center;padding:10px;background:var(--card-2);border-radius:6px;">
+          <div class="bignum" style="font-size:28px;">${totalWorkouts}</div>
+          <div style="font-size:10px;color:var(--text-faint);font-family:var(--font-mono);letter-spacing:0.1em;">TOTAL SESSIONS</div>
+        </div>
+        <div style="text-align:center;padding:10px;background:var(--card-2);border-radius:6px;">
+          <div class="bignum" style="font-size:28px;">${streak}</div>
+          <div style="font-size:10px;color:var(--text-faint);font-family:var(--font-mono);letter-spacing:0.1em;">DAY STREAK</div>
+        </div>
+      </div>
+    </div>`;
+
+  document.getElementById('widget-muscle').addEventListener('click', () => { trendsView='muscle-detail'; renderTrends(); });
+
+  const wBtn = document.getElementById('weight-save-btn');
+  const wInp = document.getElementById('weight-input');
+  if (wBtn && wInp) {
+    wBtn.addEventListener('click', async () => {
+      const val = parseFloat(wInp.value);
+      if (!val || val<20||val>300) { showToast('Enter a valid weight.','error'); return; }
+      wBtn.disabled=true; wBtn.textContent='Saving…';
+      try {
+        await addDoc(collection(db,'bodyweight'),{uid:currentUser.uid,date:todayStr(),weight:val,createdAt:serverTimestamp()});
+        await setDoc(doc(db,'users',currentUser.uid),{bodyweightKg:val},{merge:true});
+        profile.bodyweightKg=val;
+        await (async()=>{const wtSnap=await getDocs(query(collection(db,'bodyweight'),where('uid','==',currentUser.uid)));myWeights=wtSnap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>a.date.localeCompare(b.date));})();
+        wInp.value='';
+        renderTrends();
+        showToast('Weight logged!','success');
+      } catch(err){showToast('Could not save: '+err.message,'error');}
+      wBtn.disabled=false; wBtn.textContent='Save';
+    });
+  }
+}
+
+function renderMuscleDetail() {
+  const dashboard = document.getElementById('trends-dashboard');
+  const detailEl = document.getElementById('trends-muscle-detail');
+  if (!dashboard||!detailEl) return;
+  dashboard.classList.add('hidden');
+  detailEl.classList.remove('hidden');
+  const stats = muscleDetailMode==='Past' ? muscleStatusPast() : muscleStatusPlanned();
+  const maxW = Math.max(...Object.values(stats).map(s=>s.volume),1);
+  detailEl.innerHTML = `
+    <div class="sl-section-head" style="padding:12px 0 16px;">Muscle Detail</div>
+    <div class="card">
+      <div style="display:flex;gap:8px;align-items:center;justify-content:space-between;margin-bottom:14px;">
+        <button id="back-to-dashboard" class="btn btn-sm">← Back</button>
+        <div style="display:flex;gap:6px;">
+          <button class="trend-tab ${muscleDetailMode==='Past'?'active':''}" id="mode-past">This week</button>
+          <button class="trend-tab ${muscleDetailMode==='Planned'?'active':''}" id="mode-planned">Planned</button>
+        </div>
+      </div>
+      <div class="body-pair big">${bodySvg('front',stats)}${bodySvg('back',stats)}</div>
+    </div>
+    <div class="card">
+      <div class="card-title"><h3>Breakdown</h3></div>
+      <div id="muscle-detail-list">
+        ${MUSCLES.map(m=>{const s=stats[m];return `<div class="muscle-detail-row card" style="padding:10px 12px;margin-bottom:8px;cursor:pointer;" data-m="${m}">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+            <div><div style="font-size:13px;font-weight:600;">${m}</div><div style="font-size:10px;color:var(--text-faint);">${s.volume.toLocaleString()} ${muscleDetailMode==='Past'?'vol this wk':'planned'}</div></div>
+            <span style="font-size:11px;padding:3px 8px;border-radius:8px;background:${STATUS_COLOR[s.status]}18;color:${STATUS_COLOR[s.status]};font-family:var(--font-mono);">${s.status}</span>
+          </div>
+          <div style="display:flex;gap:2px;align-items:flex-end;height:24px;">
+            ${s.weeks.slice().reverse().map(v=>`<div style="flex:1;height:${Math.max(4,(v/maxW)*24)}px;background:${STATUS_COLOR[s.status]};border-radius:2px 2px 0 0;opacity:0.7;"></div>`).join('')}
+          </div>
+        </div>`}).join('')}
+      </div>
+    </div>`;
+  document.getElementById('back-to-dashboard').addEventListener('click',()=>{trendsView='dashboard';dashboard.classList.remove('hidden');detailEl.classList.add('hidden');renderTrends();});
+  document.getElementById('mode-past').addEventListener('click',()=>{muscleDetailMode='Past';renderMuscleDetail();});
+  document.getElementById('mode-planned').addEventListener('click',()=>{muscleDetailMode='Planned';renderMuscleDetail();});
 }
 
 function renderPRPanel() {
@@ -4852,524 +5410,120 @@ async function renderRaidBoss() {
   const el = document.getElementById('raid-boss-slot');
   if (!el) return;
 
-  // boss spawns Monday, expires Sunday
   const now = new Date();
   const weekStart = startOfWeek(now);
   const weekEnd = new Date(weekStart); weekEnd.setDate(weekEnd.getDate()+7);
-  const bossKey = weekStart.toISOString().slice(0,10);
+  const daysLeft = Math.max(0, Math.ceil((weekEnd - now) / 86400000));
 
-  // count total workouts this week across all party members
+  // figure out when the party actually started — earliest workout date across everyone
+  const allDates = allWorkouts.map(w => w.date).sort();
+  const partyStartDate = allDates.length ? new Date(allDates[0]) : now;
+
+  // how many days of this week have elapsed since the party started
+  const weekDaysSinceStart = Math.min(7, Math.max(1,
+    Math.ceil((now - Math.max(weekStart, partyStartDate)) / 86400000)
+  ));
+  const isFirstWeek = partyStartDate >= weekStart;
+
+  // count this week's workouts (not sets — more intuitive)
   const weekWorkouts = allWorkouts.filter(w => {
     const d = new Date(w.date);
     return d >= weekStart && d < weekEnd;
   });
-  const totalSets = weekWorkouts.reduce((n,w) =>
-    n + (w.exercises||[]).reduce((m,ex) => m + (ex.sets||[]).filter(s=>s.reps>0).length, 0), 0);
+  const totalRaids = weekWorkouts.length; // each workout = 1 raid attempt
 
-  // boss HP = 10 sets per party member per day × 7 days (scaled)
+  // average party power to determine boss tier
+  const partyPower = allUsers.length
+    ? Math.round(allUsers.reduce((s,u) => s + getUserPowerLevel(u), 0) / allUsers.length)
+    : 0;
+
+  const bossTier = partyPower > 7500 ? 'S' : partyPower > 4500 ? 'A'
+    : partyPower > 2100 ? 'B' : partyPower > 900 ? 'C'
+    : partyPower > 300 ? 'D' : 'E';
+
+  const BOSS_DATA = {
+    E: { name:'Goblin Scout',       rank:'E-Rank Gate', desc:'A lone creature from the lowest dungeon. Weak — but a real test for new hunters.', color:'var(--text-dim)',      raidsPerMember:3 },
+    D: { name:'Stone Golem',        rank:'D-Rank Gate', desc:'An awakened construct of the dungeon. It will not fall without collective effort.', color:'var(--brass)',        raidsPerMember:4 },
+    C: { name:'Iron Shadow',        rank:'C-Rank Gate', desc:'A shadow creature born from dungeon energy. It learns from your weakness.', color:'var(--maintaining)', raidsPerMember:5 },
+    B: { name:'Void Warden',        rank:'B-Rank Gate', desc:'A guardian of the deep. Your growing power has attracted something dangerous.', color:'var(--violet)',      raidsPerMember:5 },
+    A: { name:"Monarch's Shadow",   rank:'A-Rank Gate', desc:"A fragment of the Shadow Monarch's army. Only hunters at their limits stand here.", color:'var(--excess)',      raidsPerMember:6 },
+    S: { name:'Antares the Sovereign Beast', rank:'S-Rank Gate', desc:'The dungeon has recognised your power. This is not a test — this is war.', color:'#FFD700',      raidsPerMember:7 },
+  };
+
+  const boss = BOSS_DATA[bossTier];
   const partySize = allUsers.length || 1;
-  const bossMaxHP = partySize * 7 * 8; // 8 sets/member/day target
-  const bossHP = Math.max(0, bossMaxHP - totalSets);
+
+  // pro-rate HP for first week — only require workouts per day elapsed so far
+  // full weeks require the full target
+  const targetDays = isFirstWeek ? weekDaysSinceStart : 7;
+  const bossMaxHP = partySize * targetDays * boss.raidsPerMember;
+  const bossHP = Math.max(0, bossMaxHP - totalRaids);
   const bossHPpct = Math.max(0, (bossHP / bossMaxHP) * 100);
   const cleared = bossHP === 0;
-  const daysLeft = Math.ceil((weekEnd - now) / 86400000);
+
+  const bossPhase = cleared ? 'Defeated'
+    : bossHPpct > 66 ? 'Unchallenged'
+    : bossHPpct > 33 ? 'Weakening'
+    : 'Critical — finish it';
+  const bossColor = cleared ? 'var(--growing)'
+    : bossHPpct > 66 ? boss.color
+    : bossHPpct > 33 ? '#FF9500'
+    : 'var(--excess)';
+
+  // preview next week's boss
+  const nextPartyPower = partyPower + 50; // small projected gain
+  const nextTier = nextPartyPower > 7500 ? 'S' : nextPartyPower > 4500 ? 'A'
+    : nextPartyPower > 2100 ? 'B' : nextPartyPower > 900 ? 'C'
+    : nextPartyPower > 300 ? 'D' : 'E';
+  const nextBoss = BOSS_DATA[nextTier];
+  const nextMaxHP = partySize * 7 * nextBoss.raidsPerMember;
+
   const contributors = allUsers.map(u => {
     const wCount = weekWorkouts.filter(w=>w.uid===u.uid).length;
     return { name: u.displayName||'Hunter', wCount, uid: u.uid };
   }).sort((a,b)=>b.wCount-a.wCount);
 
-  const bossPhase = bossHPpct > 60 ? 'Unchallenged' : bossHPpct > 30 ? 'Weakening' : bossHPpct > 0 ? 'Critical' : 'Defeated';
-  const bossColor = bossHPpct > 60 ? 'var(--excess)' : bossHPpct > 30 ? '#FF9500' : bossHPpct > 0 ? 'var(--violet)' : 'var(--growing)';
-
   el.innerHTML = `
-    <div class="raid-boss-card ${cleared?'cleared':''}">
+    <div class="raid-boss-card ${cleared?'cleared':''}" style="border-color:${cleared?'rgba(139,107,255,0.3)':`${boss.color}44`};">
       <div class="raid-boss-header">
-        <div>
-          <div class="raid-eyebrow">⚔ WEEKLY RAID</div>
-          <div class="raid-boss-name">${cleared ? '★ BOSS DEFEATED ★' : 'Shadow Beast'}</div>
+        <div style="flex:1;min-width:0;">
+          <div class="raid-eyebrow" style="color:${boss.color};">⚔ ${boss.rank}${isFirstWeek?' · INITIATION WEEK':''}</div>
+          <div class="raid-boss-name" style="color:${cleared?'var(--growing)':boss.color};text-shadow:0 0 20px ${boss.color}44;">
+            ${cleared?'★ ':''} ${boss.name}${cleared?' — Defeated':''}
+          </div>
           <div class="raid-phase" style="color:${bossColor};">[${bossPhase}]${!cleared?` · ${daysLeft}d remaining`:''}</div>
+          <div style="font-size:10px;color:var(--text-faint);font-family:var(--font-mono);margin-top:5px;line-height:1.5;">${boss.desc}</div>
         </div>
-        <div class="raid-hp-col">
-          <div class="raid-hp-value" style="color:${bossColor};">${cleared?'0':bossHP.toLocaleString()}</div>
+        <div class="raid-hp-col" style="margin-left:12px;">
+          <div class="raid-hp-value" style="color:${bossColor};">${cleared?'0':bossHP}</div>
           <div class="raid-hp-label">HP LEFT</div>
+          <div style="font-size:9px;color:var(--text-faint);font-family:var(--font-mono);margin-top:4px;">${totalRaids}/${bossMaxHP} raids</div>
         </div>
       </div>
-      <div class="raid-hp-bar-wrap">
-        <div class="raid-hp-bar" style="width:${bossHPpct.toFixed(1)}%;background:${bossColor};"></div>
-        ${!cleared?`<div class="raid-hp-bar-stripes"></div>`:''}
+      <div class="raid-hp-bar-wrap" style="background:${boss.color}18;">
+        <div class="raid-hp-bar" style="width:${bossHPpct.toFixed(1)}%;background:${bossColor};box-shadow:0 0 8px ${bossColor};"></div>
+        ${!cleared?'<div class="raid-hp-bar-stripes"></div>':''}
       </div>
+      ${isFirstWeek?`<div style="font-family:var(--font-mono);font-size:9px;color:var(--text-faint);margin:8px 0;letter-spacing:0.04em;">⚠ Initiation week — boss HP scaled to ${weekDaysSinceStart} days elapsed. Full raids begin next week.</div>`:''}
       <div class="raid-contributors">
-        ${contributors.map(c => `
-          <div class="raid-contrib ${c.uid===currentUser.uid?'me':''}">
+        ${contributors.map(c => {
+          const { damage, type } = calcRaidDamage(c.uid, []);
+          const totalDmg = c.wCount * damage;
+          return `<div class="raid-contrib ${c.uid===currentUser.uid?'me':''}">
             <span class="raid-contrib-name">${escapeHtml(c.name)}</span>
-            <div class="raid-contrib-bar-wrap">
-              <div class="raid-contrib-bar" style="width:${Math.min(100,(c.wCount/7)*100).toFixed(0)}%;"></div>
+            <div style="display:flex;align-items:center;gap:4px;flex:1;min-width:0;">
+              <span style="font-size:12px;">${type.icon}</span>
+              <div class="raid-contrib-bar-wrap" style="flex:1;">
+                <div class="raid-contrib-bar" style="width:${Math.min(100,(c.wCount/Math.max(targetDays,1))*100).toFixed(0)}%;background:${type.color};box-shadow:0 0 4px ${type.color}66;"></div>
+              </div>
             </div>
-            <span class="raid-contrib-count">${c.wCount} ${c.wCount===1?'raid':'raids'}</span>
-          </div>`).join('')}
-      </div>
-      ${!cleared?`<p class="raid-warning">Miss this and the boss wins — all hunters lose <strong>50 AP</strong>.</p>`
-        :`<p class="raid-cleared-msg">Party cleared the gate. Bonus AP awarded on Sunday.</p>`}
-    </div>`;
-}
-
-
-/* =========================================================================
-   TRENDS
-   ========================================================================= */
-function weeklyMuscleVolumes() {
-  const weekStarts = [0,1,2,3].map(i => startOfWeek(daysAgo(i*7)));
-  const weekVolumes = [0,1,2,3].map(() => ({}));
-  for (const w of myWorkouts) {
-    const wd = new Date(w.date);
-    for (let i = 0; i < 4; i++) {
-      const start = weekStarts[i]; const end = new Date(start); end.setDate(end.getDate() + 7);
-      if (wd >= start && wd < end) {
-        const vol = computeWorkoutVolume(w.exercises);
-        for (const [m, v] of Object.entries(vol)) weekVolumes[i][m] = (weekVolumes[i][m] || 0) + v;
-      }
-    }
-  }
-  return weekVolumes;
-}
-function muscleStatusPast() {
-  const weekVolumes = weeklyMuscleVolumes();
-  const result = {};
-  for (const m of MUSCLES) {
-    const thisWeek = weekVolumes[0][m] || 0;
-    const prior = [weekVolumes[1][m]||0, weekVolumes[2][m]||0, weekVolumes[3][m]||0];
-    const priorAvg = prior.reduce((a,b)=>a+b,0) / 3;
-    let status;
-    if (thisWeek === 0) status = 'Stalled';
-    else if (priorAvg === 0) status = 'Focusing';
-    else { const ratio = thisWeek / priorAvg;
-      if (ratio >= 1.4) status = 'Excess'; else if (ratio >= 1.15) status = 'Growing';
-      else if (ratio >= 0.85) status = 'Maintaining'; else status = 'Stalled'; }
-    result[m] = { volume: Math.round(thisWeek), status, weeks: [weekVolumes[0][m]||0, weekVolumes[1][m]||0, weekVolumes[2][m]||0, weekVolumes[3][m]||0] };
-  }
-  return result;
-}
-function muscleStatusPlanned() {
-  const planned = {}; MUSCLES.forEach(m => planned[m] = 0);
-  if (myProgram && myProgram.days) {
-    for (const day of myProgram.days) for (const ex of day.exercises) {
-      const map = (EXERCISES_ALL[ex.name]||{}).muscles || {};
-      for (const [m, emph] of Object.entries(map)) planned[m] += emph;
-    }
-  }
-  const max = Math.max(...Object.values(planned), 0.0001);
-  const result = {};
-  for (const m of MUSCLES) {
-    const v = planned[m]; const ratio = v / max;
-    let status;
-    if (v === 0) status = 'Stalled'; else if (ratio <= 0.25) status = 'Maintaining';
-    else if (ratio <= 0.5) status = 'Growing'; else if (ratio <= 0.75) status = 'Focusing'; else status = 'Excess';
-    result[m] = { volume: Math.round(v*10)/10, status, weeks: [v,v,v,v] };
-  }
-  return result;
-}
-/* ANATOMY_TEMPLATES is loaded once near the top of this script, one per body type */
-function muscleFromId(id) {
-  if (!id) return null;
-  const stripped = id.replace(/_\d+$/, ''); // Figma dedupes repeated names as "Name_2", "Name_3"...
-  return MUSCLES.includes(stripped) ? stripped : null;
-}
-function bodySvg(view, stats, overrideBodyType) {
-  const bodyType = overrideBodyType || ((profile && profile.bodyType === 'female') ? 'female' : 'male');
-  const template = ANATOMY_TEMPLATES[bodyType];
-  if (!template) return '<div class="empty-state" style="padding:20px;">Loading anatomy…</div>';
-  const clone = template.cloneNode(true);
-  clone.querySelectorAll('[id]').forEach(el => {
-    const m = muscleFromId(el.id);
-    if (!m) return;
-    const status = stats[m]?.status || 'Stalled';
-    const color = STATUS_COLOR[status];
-    el.classList.add('body-part');
-    el.dataset.m = m;
-    el.dataset.status = status;
-    el.style.filter = `drop-shadow(0 0 5px ${color})`;
-    // Some muscles trace as a single <path>, others as a <g> wrapping several
-    // sub-paths (each with its own fill) — recolor the element itself AND
-    // every descendant shape, so a child's own color can't win over ours.
-    [el, ...el.querySelectorAll('*')].forEach(shape => {
-      shape.setAttribute('fill', color);
-      shape.style.fill = color;
-    });
-  });
-  // Head and hands/feet ("misc") aren't tracked muscles, but they ARE recognizable
-  // Remove the large full-canvas background rectangle (fill="#1F1F1F" or similar)
-  // that sits behind everything — it bleeds into the opposite figure's space.
-  clone.querySelectorAll('path[id="Vector"]').forEach(el => {
-    const fill = (el.getAttribute('fill') || '').toLowerCase();
-    if (fill === '#1f1f1f' || fill === '#1e1e1e' || fill === 'black' || fill === '#000000') el.remove();
-  });
-  // body landmarks worth seeing clearly — recolor them to a muted slate tone so the
-  // figure reads as a monochrome holographic silhouette instead of clashing warm
-  // skin tones sitting next to the neon status colors.
-  ['Head', 'misc'].forEach(nonMuscleId => {
-    const group = clone.querySelector('#' + CSS.escape(nonMuscleId));
-    if (!group) return;
-    [group, ...group.querySelectorAll('*')].forEach(shape => {
-      if (shape.getAttribute('fill') === 'none') return;
-      shape.setAttribute('fill', 'var(--text-dim)');
-      shape.style.fill = 'var(--text-dim)';
-    });
-  });
-  // The groin covering isn't a tracked muscle — give it the same "Stalled" gray
-  // any untracked/no-data muscle shows, so it reads as "not tracked" rather than
-  // a distinct shape or a black void.
-  const groin = clone.querySelector('#Groin');
-  if (groin) {
-    [groin, ...groin.querySelectorAll('*')].forEach(shape => {
-      if (shape.getAttribute('fill') === 'none') return;
-      shape.setAttribute('fill', 'var(--stalled)');
-      shape.style.fill = 'var(--stalled)';
-    });
-  }
-  // Each body type's source file has its own measured front/back split point —
-  // never assumed to match between male and female files.
-  const crop = ANATOMY_CROP[bodyType][view];
-  clone.setAttribute('viewBox', crop.viewBox);
-  clone.setAttribute('width', String(crop.w));
-  clone.setAttribute('height', String(crop.h));
-  // overflow:hidden on the SVG itself is the simplest, most browser-compatible
-  // way to clip the opposite figure from bleeding into this view's frame.
-  // The viewBox zooms in; overflow:hidden clips anything outside that box.
-  clone.style.overflow = 'hidden';
-  clone.setAttribute('overflow', 'hidden');
-  // the source file's <mask>/<clipPath> ids aren't unique once both views render
-  // side by side on the same page — suffix them per view (whatever Figma happened to
-  // auto-generate this export) so neither view steals the other's mask/clip definition.
-  clone.querySelectorAll('mask[id], clipPath[id]').forEach(def => {
-    const oldId = def.getAttribute('id');
-    const newId = oldId + '-' + view;
-    def.setAttribute('id', newId);
-    clone.querySelectorAll(`[mask="url(#${oldId})"]`).forEach(el => el.setAttribute('mask', `url(#${newId})`));
-    clone.querySelectorAll(`[clip-path="url(#${oldId})"]`).forEach(el => el.setAttribute('clip-path', `url(#${newId})`));
-  });
-  // Neither traced file has real outline strokes on individual shapes — the
-  // "outlines" seen up to now were only ever the edge between two differently
-  // colored fills. When two neighboring muscles happen to share the same
-  // status (very common — e.g. both "Stalled"), there's no boundary at all
-  // and they visually merge into one shape. Give every filled shape a
-  // consistent thin dark stroke so boundaries stay visible no matter what
-  // color sits on either side of them.
-  clone.querySelectorAll('path, circle, ellipse, polygon, rect').forEach(shape => {
-    if (shape.getAttribute('fill') === 'none') return;
-    shape.setAttribute('stroke', 'rgba(5,7,13,0.55)');
-    shape.setAttribute('stroke-width', '1.5');
-    shape.style.stroke = 'rgba(5,7,13,0.55)';
-    shape.style.strokeWidth = '1.5';
-  });
-  const svgStr = new XMLSerializer().serializeToString(clone);
-  return `<div class="body-pair-slot">${svgStr}</div>`;
-}
-function statusCounts(stats) {
-  const counts = { Stalled:0, Maintaining:0, Growing:0, Focusing:0, Excess:0 };
-  MUSCLES.forEach(m => counts[stats[m].status]++);
-  return counts;
-}
-function statusCountRow(stats) {
-  const counts = statusCounts(stats);
-  return `<div class="status-count-row">${Object.entries(counts).map(([k,v]) =>
-    `<span class="status-pill" style="border-color:${STATUS_COLOR[k]};color:${STATUS_COLOR[k]};">${k} ${v}</span>`).join('')}</div>`;
-}
-
-function weightLineChart(weights) {
-  if (!weights || weights.length === 0) {
-    return `<p class="sub" style="margin:0 0 12px;">No weight logged yet. Log your first entry below.</p>`;
-  }
-
-  const last = weights[weights.length - 1];
-  const first = weights[0];
-  const totalChange = last.weight - first.weight;
-  const changeStr = `${totalChange >= 0 ? '+' : ''}${totalChange.toFixed(1)}kg`;
-  const changeColor = totalChange > 0.5 ? 'var(--excess)' : totalChange < -0.5 ? 'var(--growing)' : 'var(--text-dim)';
-
-  // use last 30 entries max to keep chart readable
-  const pts = weights.slice(-30);
-  if (pts.length === 1) {
-    return `<div style="display:flex;align-items:baseline;gap:10px;margin-bottom:12px;">
-      <span class="bignum">${last.weight} <small>kg</small></span>
-      <span class="sub">${last.date}</span>
-    </div>`;
-  }
-
-  const W = 320, H = 90, PAD = { t:8, r:8, b:20, l:36 };
-  const gW = W - PAD.l - PAD.r;
-  const gH = H - PAD.t - PAD.b;
-
-  const vals = pts.map(p => Number(p.weight));
-  const minV = Math.min(...vals);
-  const maxV = Math.max(...vals);
-  const range = maxV - minV || 1;
-
-  const toX = i => PAD.l + (i / (pts.length - 1)) * gW;
-  const toY = v => PAD.t + gH - ((v - minV) / range) * gH;
-
-  // build polyline points
-  const linePoints = pts.map((p,i) => `${toX(i).toFixed(1)},${toY(Number(p.weight)).toFixed(1)}`).join(' ');
-
-  // fill area under the line
-  const firstX = toX(0).toFixed(1), lastX = toX(pts.length-1).toFixed(1);
-  const baseY = (PAD.t + gH).toFixed(1);
-  const areaPoints = `${firstX},${baseY} ${linePoints} ${lastX},${baseY}`;
-
-  // x-axis labels — show first, middle, last date
-  const labelIdxs = [0, Math.floor((pts.length-1)/2), pts.length-1];
-  const xLabels = labelIdxs.map(i => {
-    const d = pts[i].date.slice(5); // MM-DD
-    return `<text x="${toX(i).toFixed(1)}" y="${H}" text-anchor="middle" fill="var(--text-faint)" font-size="9">${d}</text>`;
-  }).join('');
-
-  // y-axis labels
-  const yLabels = [minV, (minV+maxV)/2, maxV].map((v,i) => {
-    const y = toY(v).toFixed(1);
-    return `<text x="${PAD.l - 4}" y="${parseFloat(y)+3}" text-anchor="end" fill="var(--text-faint)" font-size="9">${v.toFixed(1)}</text>`;
-  }).join('');
-
-  // dot on the latest point
-  const dotX = toX(pts.length-1).toFixed(1);
-  const dotY = toY(vals[vals.length-1]).toFixed(1);
-
-  return `
-    <div style="display:flex;align-items:baseline;gap:10px;margin-bottom:8px;">
-      <span class="bignum">${last.weight} <small>kg</small></span>
-      <span style="font-size:12px;color:${changeColor};">${changeStr} total</span>
-      <span class="sub" style="margin-left:auto;">${pts.length} entries</span>
-    </div>
-    <svg viewBox="0 0 ${W} ${H}" style="width:100%;overflow:visible;" xmlns="http://www.w3.org/2000/svg">
-      <!-- grid lines -->
-      <line x1="${PAD.l}" y1="${PAD.t}" x2="${PAD.l}" y2="${PAD.t+gH}" stroke="var(--border)" stroke-width="1"/>
-      <line x1="${PAD.l}" y1="${PAD.t+gH}" x2="${PAD.l+gW}" y2="${PAD.t+gH}" stroke="var(--border)" stroke-width="1"/>
-      <!-- area fill -->
-      <defs>
-        <linearGradient id="wt-grad" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stop-color="var(--brass)" stop-opacity="0.25"/>
-          <stop offset="100%" stop-color="var(--brass)" stop-opacity="0"/>
-        </linearGradient>
-      </defs>
-      <polygon points="${areaPoints}" fill="url(#wt-grad)"/>
-      <!-- line -->
-      <polyline points="${linePoints}" fill="none" stroke="var(--brass)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
-      <!-- latest dot -->
-      <circle cx="${dotX}" cy="${dotY}" r="3.5" fill="var(--brass)" stroke="var(--card)" stroke-width="2"/>
-      <!-- labels -->
-      ${yLabels}
-      ${xLabels}
-    </svg>`;
-}
-
-function barChart(values, labels, opts) {
-  opts = opts || {};
-  const max = Math.max(...values, opts.minMax || 1);
-  return `<div class="bar-chart-row">${values.map((v,i) => `
-    <div class="bar-chart-col">
-      <div class="bar-chart-bar" style="height:${Math.max(2, (v/max)*100)}%;background:${opts.color || 'var(--brass)'};"></div>
-      <span class="bar-chart-lbl">${labels[i]}</span>
-    </div>`).join('')}</div>`;
-}
-
-function renderTrends() {
-  document.getElementById('trends-dashboard').classList.toggle('hidden', trendsView !== 'dashboard');
-  document.getElementById('trends-muscle-detail').classList.toggle('hidden', trendsView !== 'muscle-detail');
-  if (trendsView === 'muscle-detail') { renderMuscleDetail(); return; }
-
-  const stats = muscleStatusPast();
-  const counts = statusCounts(stats);
-  const topStatus = Object.entries(counts).sort((a,b)=>b[1]-a[1])[0];
-  const goal = profile.weeklyGoal || 3;
-  const weekStart = startOfWeek(new Date());
-  const weekCount = countSince(currentUser.uid, weekStart);
-
-  // consistency grid: last 12 weeks x 7 days
-  const weeks = 12;
-  const gridCols = [];
-  for (let w = weeks-1; w >= 0; w--) {
-    const col = [];
-    for (let d = 0; d < 7; d++) {
-      const day = new Date(startOfWeek(daysAgo(w*7))); day.setDate(day.getDate()+d);
-      col.push(myWorkouts.some(wo => wo.date === todayStr(day)));
-    }
-    gridCols.push(col);
-  }
-  let goalsHitWeeks = 0;
-  for (let w = 0; w < weeks; w++) {
-    const start = startOfWeek(daysAgo(w*7)); const end = new Date(start); end.setDate(end.getDate()+7);
-    const c = myWorkouts.filter(wo => new Date(wo.date) >= start && new Date(wo.date) < end).length;
-    if (c >= goal) goalsHitWeeks++;
-  }
-  const goalsHitPct = Math.round((goalsHitWeeks/weeks)*100);
-
-  // volume last 7 days
-  const volLabels = []; const volValues = [];
-  for (let i = 6; i >= 0; i--) {
-    const d = daysAgo(i);
-    const dayWorkouts = myWorkouts.filter(w => w.date === todayStr(d));
-    let total = 0; dayWorkouts.forEach(w => Object.values(computeWorkoutVolume(w.exercises)).forEach(v => total += v));
-    volLabels.push('MTWTFSS'[ (d.getDay()+6)%7 ]);
-    volValues.push(Math.round(total));
-  }
-  const thisWeekVol = volValues.reduce((a,b)=>a+b,0);
-  let priorTotal = 0, priorDays = 0;
-  for (let i = 8; i <= 35; i++) { const d = daysAgo(i); const dw = myWorkouts.filter(w => w.date === todayStr(d));
-    dw.forEach(w => Object.values(computeWorkoutVolume(w.exercises)).forEach(v => priorTotal += v)); priorDays++; }
-  const priorWeekAvg = priorDays ? (priorTotal/priorDays)*7 : 0;
-  const volPct = priorWeekAvg ? Math.round(((thisWeekVol-priorWeekAvg)/priorWeekAvg)*100) : 0;
-
-  // training days (weekday counts)
-  const weekdayCounts = [0,0,0,0,0,0,0];
-  myWorkouts.forEach(w => { const d = new Date(w.date); weekdayCounts[(d.getDay()+6)%7]++; });
-  const wdLabels = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
-  const bestDays = wdLabels.map((l,i)=>({l,c:weekdayCounts[i]})).sort((a,b)=>b.c-a.c).filter(x=>x.c>0).slice(0,3).map(x=>x.l);
-  const firstWorkoutDate = myWorkouts.length ? myWorkouts[myWorkouts.length-1].date : todayStr();
-  const weeksSinceStart = Math.max(1, daysBetween(firstWorkoutDate, todayStr())/7);
-  const avgPerWeek = (myWorkouts.length / weeksSinceStart).toFixed(1);
-
-  // training months (last 12 months)
-  const monthLabels = []; const monthValues = [];
-  for (let i = 11; i >= 0; i--) {
-    const d = new Date(); d.setMonth(d.getMonth()-i);
-    const label = d.toLocaleDateString(undefined,{month:'short'});
-    const count = myWorkouts.filter(w => { const wd = new Date(w.date); return wd.getMonth()===d.getMonth() && wd.getFullYear()===d.getFullYear(); }).length;
-    monthLabels.push(label); monthValues.push(count);
-  }
-  const bestMonthIdx = monthValues.indexOf(Math.max(...monthValues));
-  const avgMonth = (monthValues.reduce((a,b)=>a+b,0)/12).toFixed(1);
-  const totalMonth = monthValues.reduce((a,b)=>a+b,0);
-
-  // weight
-  const lastWeight = myWeights[myWeights.length-1];
-  const prevWeight = myWeights[myWeights.length-2];
-  let weightTrend = 'Stable', weightDiff = 0;
-  if (lastWeight && prevWeight) { weightDiff = lastWeight.weight - prevWeight.weight; weightTrend = weightDiff > 0.3 ? 'Gaining' : weightDiff < -0.3 ? 'Losing' : 'Stable'; }
-
-  // training hours
-  const hourCounts = new Array(24).fill(0);
-  myWorkouts.forEach(w => { if (w.time) { const h = Number(w.time.split(':')[0]); if(!isNaN(h)) hourCounts[h]++; } });
-  const modeHour = hourCounts.indexOf(Math.max(...hourCounts));
-
-  document.getElementById('trends-widgets').innerHTML = `
-    <div class="card widget" id="widget-muscle">
-      <div class="card-title"><h3>◈ Muscle Activation <span class="chev">›</span></h3></div>
-      <div class="status-pill" style="border-color:${STATUS_COLOR[topStatus[0]]};color:${STATUS_COLOR[topStatus[0]]};display:inline-flex;margin-bottom:8px;">${topStatus[0]} ${topStatus[1]}</div>
-      <div class="body-pair">${bodySvg('front', stats)}${bodySvg('back', stats)}</div>
-    </div>
-
-    <div class="card">
-      <div class="card-title"><h3>⚡ Streaks</h3></div>
-      ${weekCount === 0 ? `<p style="font-family:var(--font-display);font-size:16px;margin:0 0 6px;">Build your first streak</p><p class="sub" style="margin:0 0 10px;">Hit ${goal} workouts this week to start a streak.</p>` : `<p class="sub" style="margin:0 0 10px;">${weekCount} of ${goal} this week — keep it alive.</p>`}
-      <div style="font-size:11px;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.04em;">This week</div>
-      <div class="bignum">${weekCount} <small>/ ${goal}</small></div>
-      <div class="goal-bar-row">${Array.from({length: goal}).map((_,i) => `<div class="goal-seg ${i < weekCount ? 'filled' : ''}"></div>`).join('')}</div>
-    </div>
-
-    <div class="card">
-      <div class="card-title"><h3>◎ Consistency</h3></div>
-      <div class="stat-grid-3">
-        <div><div class="lbl">This week</div><div class="val">${weekCount} of ${goal}</div></div>
-        <div><div class="lbl">Goals hit</div><div class="val">${goalsHitPct}%</div></div>
-        <div><div class="lbl">${weeks} weeks</div><div class="val">${goalsHitWeeks} hit</div></div>
-      </div>
-      <div class="consistency-grid">${gridCols.map(col => col.map(on => `<div class="consistency-cell ${on?'on':''}"></div>`).join('')).join('')}</div>
-    </div>
-
-    <div class="card">
-      <div class="card-title"><h3>▲ Volume</h3></div>
-      <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:2px;">
-        <span class="bignum" style="font-size:20px;">${thisWeekVol.toLocaleString()} <small>vol</small></span>
-        <span class="trend-badge" style="background:${volPct>=0?'rgba(139,107,255,0.15)':'rgba(255,61,90,0.15)'};color:${volPct>=0?'var(--violet)':'var(--excess)'};">${volPct>=0?'+':''}${volPct}%</span>
-      </div>
-      <p class="sub" style="margin:0 0 4px;">vs. 4-week average</p>
-      ${barChart(volValues, volLabels)}
-    </div>
-
-    <div class="card">
-      <div class="card-title"><h3>▦ Training Days</h3></div>
-      <p style="font-family:var(--font-display);font-size:18px;margin:0 0 2px;">${bestDays.join(' · ') || '—'}</p>
-      <p class="sub" style="margin:0 0 4px;">~${avgPerWeek}x / week · last ${myWorkouts.length} workouts</p>
-      ${barChart(weekdayCounts, wdLabels.map(w=>w.slice(0,3)), {color:'var(--excess)'})}
-    </div>
-
-    <div class="card">
-      <div class="card-title"><h3>▤ Training Months</h3></div>
-      <div class="stat-grid-3">
-        <div><div class="lbl">Best</div><div class="val" style="font-size:14px;">${monthLabels[bestMonthIdx]}</div></div>
-        <div><div class="lbl">Average</div><div class="val" style="font-size:14px;">${avgMonth}</div></div>
-        <div><div class="lbl">Total</div><div class="val" style="font-size:14px;">${totalMonth}</div></div>
-      </div>
-      ${barChart(monthValues, monthLabels, {color:'var(--growing)'})}
-    </div>
-
-    <div class="card">
-      <div class="card-title"><h3>◐ Weight</h3></div>
-      ${weightLineChart(myWeights)}
-      <div class="weight-input-row">
-        <input type="number" step="0.1" id="weight-input" placeholder="Log today's weight (kg)" inputmode="decimal" />
-        <button class="btn btn-sm" id="weight-save-btn">Save</button>
-      </div>
-    </div>
-
-    <div class="card">
-      <div class="card-title"><h3>◷ Training Hours</h3></div>
-      <p style="font-family:var(--font-display);font-size:18px;margin:0 0 8px;">You lift around <span style="color:var(--maintaining);">${modeHour}:00</span></p>
-      ${barChart(hourCounts.filter((_,i)=>i%2===0), Array.from({length:12},(_,i)=>i*2+'h'), {color:'var(--maintaining)'})}
-    </div>
-  `;
-  document.getElementById('widget-muscle').addEventListener('click', () => { trendsView = 'muscle-detail'; renderTrends(); });
-  const wBtn = document.getElementById('weight-save-btn');
-  if (wBtn) wBtn.addEventListener('click', async () => {
-    const val = Number(document.getElementById('weight-input').value);
-    if (!val) return;
-    await addDoc(collection(db, 'bodyweight'), { uid: currentUser.uid, date: todayStr(), weight: val, createdAt: serverTimestamp() });
-    // store latest bodyweight on user profile so strength comparisons work for other party members
-    await setDoc(doc(db, 'users', currentUser.uid), { bodyweightKg: val }, { merge: true });
-    profile.bodyweightKg = val;
-    await loadAllData(); trendsView='dashboard'; renderTrends();
-  });
-}
-
-function renderMuscleDetail() {
-  const stats = muscleDetailMode === 'Past' ? muscleStatusPast() : muscleStatusPlanned();
-  const el = document.getElementById('trends-muscle-detail');
-  const sorted = [...MUSCLES].sort((a,b) => stats[b].volume - stats[a].volume);
-  el.innerHTML = `
-    <button class="icon-btn" id="back-to-dashboard" style="margin-bottom:14px;">‹ Back to Trends</button>
-    <h2>Muscle Activation</h2>
-    <div class="toggle-row">
-      <button id="mode-past" class="${muscleDetailMode==='Past'?'active':''}">Past</button>
-      <button id="mode-planned" class="${muscleDetailMode==='Planned'?'active':''}">Planned</button>
-    </div>
-    <div class="card">
-      <div class="body-pair big">${bodySvg('front', stats)}${bodySvg('back', stats)}</div>
-      ${statusCountRow(stats)}
-      <p class="sub" style="margin:14px 0 0;">${muscleDetailMode === 'Past' ? 'Sets completed per muscle group — last 7 days' : `Planned emphasis from ${myProgram ? escapeHtml(myProgram.name) : 'your program'}`}</p>
-    </div>
-    <div class="card">
-      <div class="card-title"><h3>High Volume</h3></div>
-      <div class="muscle-detail-list">
-        ${sorted.map(m => {
-          const s = stats[m]; const maxW = Math.max(...s.weeks, 1);
-          return `<div class="muscle-detail-row" data-m="${m}">
-            <div class="muscle-detail-row-top">
-              <div><div class="m-name">${m}</div><div class="m-vol">${s.volume.toLocaleString()} ${muscleDetailMode==='Past'?'vol this week':'planned emphasis'}</div></div>
-              <span class="status-badge" style="background:${STATUS_COLOR[s.status]}22;color:${STATUS_COLOR[s.status]};">${s.status}</span>
-            </div>
-            <div class="spark-row">${s.weeks.slice().reverse().map(v => `<div class="spark-bar" style="height:${Math.max(10,(v/maxW)*100)}%;background:${STATUS_COLOR[s.status]};opacity:${0.4};"></div>`).join('')}</div>
+            <span style="font-family:var(--font-mono);font-size:9px;color:${type.color};white-space:nowrap;">${type.label} ×${c.wCount}</span>
           </div>`;
         }).join('')}
       </div>
     </div>`;
-  document.querySelectorAll('#trends-muscle-detail .body-part').forEach(p => {
-    p.addEventListener('click', () => {
-      const row = document.querySelector(`.muscle-detail-row[data-m="${p.dataset.m}"]`);
-      if (row) { row.scrollIntoView({ behavior: 'smooth', block: 'center' }); row.classList.add('flash'); setTimeout(() => row.classList.remove('flash'), 900); }
-    });
-  });
-  document.getElementById('back-to-dashboard').addEventListener('click', () => { trendsView = 'dashboard'; renderTrends(); });
-  document.getElementById('mode-past').addEventListener('click', () => { muscleDetailMode = 'Past'; renderMuscleDetail(); });
-  document.getElementById('mode-planned').addEventListener('click', () => { muscleDetailMode = 'Planned'; renderMuscleDetail(); });
 }
+
 
 /* =========================================================================
    EXERCISES LIBRARY
@@ -5611,7 +5765,9 @@ function openWorkoutDetail(workoutId) {
         </div>
         <button class="icon-btn" id="detail-close" style="font-size:20px;flex-shrink:0;">✕</button>
       </div>
-      <div style="margin:16px 0;">${exerciseRows || '<p class="sub">No exercises logged.</p>'}</div>
+      <div style="margin:12px 0;">${exerciseRows || '<p class="sub">No exercises logged.</p>'}</div>
+
+      <button class="btn" id="detail-debrief-btn" style="width:100%;margin-bottom:8px;border-color:var(--brass);color:var(--brass);">⚡ View Session Debrief</button>
 
       <div class="delete-warning-box" id="delete-warning-box" style="display:none;background:rgba(255,61,90,0.08);border:1px solid var(--excess);border-radius:8px;padding:12px 14px;margin-bottom:12px;">
         <p style="font-size:12.5px;color:var(--excess);font-weight:700;margin:0 0 6px;">⚠ Deleting this workout will:</p>
@@ -5625,6 +5781,20 @@ function openWorkoutDetail(workoutId) {
   document.body.appendChild(overlay);
   overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
   overlay.querySelector('#detail-close').addEventListener('click', () => overlay.remove());
+
+  // Debrief button — reconstruct PRs for that date and show debrief
+  overlay.querySelector('#detail-debrief-btn').addEventListener('click', () => {
+    overlay.remove();
+    const datePRs = Object.entries(myPRs)
+      .filter(([, pr]) => pr.date === w.date)
+      .map(([exercise, pr]) => ({ exercise, xp: pr.xp||0, tier: pr.tier, e1rm: pr.e1rm }));
+    // calculate AP earned that day
+    const dayWorkouts = myWorkouts.filter(x => x.date === w.date);
+    const streak = computeStreak(currentUser.uid);
+    const mult = streak >= 60 ? 3 : streak >= 30 ? 2 : streak >= 7 ? 1.5 : 1;
+    const apEarned = profile.lastApDate === w.date ? Math.round(10*mult) : 0;
+    showDebriefModal(w.exercises||[], apEarned, datePRs, null);
+  });
 
   // Step 1 — show consequences before confirming
   overlay.querySelector('#detail-delete-warn').addEventListener('click', () => {
