@@ -2457,6 +2457,11 @@ if (configOk) {
 
         // load all data
         await loadAllData();
+        console.log('✓ loadAllData complete', { 
+          workouts: allWorkouts.length, 
+          program: !!myProgram,
+          users: allUsers.length 
+        });
 
         // load anatomy in background — trends will retry if not ready
         const bodyType = profile.bodyType === 'female' ? 'female' : 'male';
@@ -2533,13 +2538,17 @@ async function loadAllData() {
   myPRs = prSnap.exists() ? prSnap.data() : {};
 
   populateExerciseSelects();
+  console.log('rendering quest feed...');
   renderQuestFeed();
+  console.log('rendering board...');
   renderBoard();
   renderCharCard();
   renderTodayCard();
-  try { renderTrends(); } catch(e) {}
-  try { renderExerciseLibrary(); } catch(e) {}
-  try { renderCalendar(); } catch(e) {}
+  console.log('rendering trends...');
+  try { renderTrends(); } catch(e) { console.error('renderTrends failed:', e); }
+  try { renderExerciseLibrary(); } catch(e) { console.error('renderExerciseLibrary failed:', e); }
+  try { renderCalendar(); } catch(e) { console.error('renderCalendar failed:', e); }
+  console.log('✓ all renders complete');
   startDailyTimer();
 }
 function rebuildExercisesAll() {
