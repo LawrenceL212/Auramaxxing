@@ -1639,7 +1639,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import {
   getFirestore, collection, doc, setDoc, addDoc, getDoc, getDocs,
-  query, where, orderBy, serverTimestamp, updateDoc, deleteDoc
+  query, where, orderBy, limit, serverTimestamp, updateDoc, deleteDoc
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 /* =========================================================================
@@ -2260,6 +2260,15 @@ function openSettingsModal() {
         <button class="btn" id="cancel-settings" style="flex:1;">Cancel</button>
         <button class="btn btn-primary" id="save-settings" style="flex:2;">Save</button>
       </div>
+      ${currentUser?.uid === 'eUtGPwQBcCSO0x3xS3ZGYFGXNIT2' ? `
+      <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border);">
+        <div style="font-family:var(--font-mono);font-size:9px;letter-spacing:0.2em;color:var(--excess);margin-bottom:10px;">◈ ADMIN PANEL</div>
+        <div style="display:flex;flex-direction:column;gap:8px;">
+          <button class="btn" id="admin-open-tester" style="color:var(--brass);border-color:var(--brass);font-size:12px;">🧪 Run System Tests</button>
+          <button class="btn" id="admin-open-users" style="font-size:12px;">👥 View All Users & Stats</button>
+          <button class="btn" id="admin-fix-streaks" style="font-size:12px;color:var(--excess);border-color:var(--excess);">🔧 Fix Missing Streaks</button>
+        </div>
+      </div>` : ''}
       <p class="auth-error" id="settings-error" style="margin-top:10px;"></p>
     </div>`;
   document.body.appendChild(overlay);
@@ -2280,6 +2289,10 @@ function openSettingsModal() {
   }));
   overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
   overlay.querySelector('#cancel-settings').addEventListener('click', () => overlay.remove());
+  // admin buttons
+  overlay.querySelector('#admin-open-tester')?.addEventListener('click', () => { overlay.remove(); openAdminTester(); });
+  overlay.querySelector('#admin-open-users')?.addEventListener('click', () => { overlay.remove(); openAdminUserPanel(); });
+  overlay.querySelector('#admin-fix-streaks')?.addEventListener('click', () => { overlay.remove(); fixMissingStreaks(); });
   overlay.querySelector('#save-settings').addEventListener('click', async () => {
     const newName = document.getElementById('settings-name').value.trim();
     const newGoal = Math.max(1, Number(document.getElementById('settings-goal').value) || 3);
@@ -6101,6 +6114,256 @@ async function openHunterProfile(targetUid) {
   if (logBtn) logBtn.addEventListener('click', () => {
     modal.classList.add('hidden');
     openAdminWorkoutLogger(targetUid, target.displayName || 'Hunter');
+  });
+}
+
+/* =========================================================================
+   ADMIN FUNCTIONS
+   ========================================================================= */
+async function fixMissingStreaks() {
+  const yesterday = new Date(); yesterday.setDate(yesterday.getDate()-1);
+  const yesterdayStr = yesterday.toISOString().slice(0,10);
+  const targets = [
+    { uid: 'd1W5vTx5aSTIwkR4CIwnO2xW7vf1', name: 'LuChing' },
+    { uid: 'rzcznIkNRrSKVXl74LsTaRSdHOk2', name: 'Lucas' },
+  ];
+  let fixed = [];
+  for (const t of targets) {
+    try {
+      const snap = await getDoc(doc(db, 'users', t.uid));
+      const data = snap.data() || {};
+      if (!data.lastWorkoutDate || data.lastWorkoutDate < yesterdayStr) {
+        await setDoc(doc(db, 'users', t.uid), { lastWorkoutDate: yesterdayStr }, { merge: true });
+        fixed.push(t.name);
+      }
+    } catch(e) {}
+  }
+  showToast(fixed.length ? `Fixed streaks for: ${fixed.join(', ')}` : 'All streaks already up to date', 'success');
+}
+
+async function openAdminUserPanel() {
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.innerHTML = `<div class="modal" style="max-height:85vh;overflow-y:auto;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+      <h3>All Users</h3>
+      <button class="icon-btn" id="aup-close" style="font-size:20px;">✕</button>
+    </div>
+    <div id="aup-content"><p style="color:var(--text-faint);">Loading…</p></div>
+  </div>`;
+  document.body.appendChild(overlay);
+  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+  overlay.querySelector('#aup-close').addEventListener('click', () => overlay.remove());
+
+  const content = overlay.querySelector('#aup-content');
+  try {
+    const today = todayStr();
+    const html = allUsers.map(u => {
+      const lastWO = u.lastWorkoutDate || 'never';
+      const days = lastWO === 'never' ? 999 : Math.floor((Date.now() - new Date(lastWO)) / 86400000);
+      const streakOk = days <= 1;
+      const wCount = allWorkouts.filter(w => w.uid === u.uid).length;
+      const ap = u.auraPoints || 0;
+      const goal = u.weeklyGoal || '?';
+      const cls = u.hunterClass || 'Unclassified';
+      return `<div style="padding:12px;border:1px solid var(--border);border-radius:6px;margin-bottom:8px;${!streakOk?'border-color:rgba(255,61,90,0.3);':''}">
+        <div style="font-weight:700;font-size:14px;">${escapeHtml(u.displayName||'?')}</div>
+        <div style="font-size:11px;color:var(--text-faint);font-family:var(--font-mono);margin-top:4px;display:grid;grid-template-columns:1fr 1fr;gap:2px;">
+          <span>Workouts: ${wCount}</span>
+          <span>AP: ${ap}</span>
+          <span>Goal: ${goal}/wk</span>
+          <span>Class: ${cls}</span>
+          <span style="color:${streakOk?'var(--growing)':'var(--excess)'};">Last WO: ${lastWO} ${days===0?'(today)':days===1?'(yesterday)':'('+days+'d ago)'}</span>
+          <span>UID: ${u.uid.slice(0,8)}…</span>
+        </div>
+      </div>`;
+    }).join('');
+    content.innerHTML = html || '<p style="color:var(--text-faint);">No users found.</p>';
+  } catch(e) {
+    content.innerHTML = `<p style="color:var(--excess);">Error: ${e.message}</p>`;
+  }
+}
+
+async function openAdminTester() {
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.innerHTML = `<div class="modal" style="max-height:88vh;overflow-y:auto;font-family:var(--font-mono);font-size:12px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+      <div>
+        <div style="font-size:9px;letter-spacing:0.25em;color:var(--text-faint);">ADMIN</div>
+        <h3 style="margin:0;">◈ System Tester</h3>
+      </div>
+      <button class="icon-btn" id="tester-close" style="font-size:20px;">✕</button>
+    </div>
+    <div id="tester-results"></div>
+    <button class="btn btn-primary" id="tester-run" style="width:100%;margin-top:12px;">▶ Run All Tests</button>
+  </div>`;
+  document.body.appendChild(overlay);
+  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+  overlay.querySelector('#tester-close').addEventListener('click', () => overlay.remove());
+
+  function addResult(container, label, status, detail) {
+    const colors = { pass:'var(--growing)', fail:'var(--excess)', warn:'var(--brass)', skip:'var(--text-faint)' };
+    const icons = { pass:'✓', fail:'✗', warn:'⚠', skip:'—' };
+    const row = document.createElement('div');
+    row.style.cssText = 'display:flex;align-items:flex-start;gap:8px;padding:6px 0;border-bottom:1px solid rgba(93,157,255,0.08);';
+    row.innerHTML = `<span style="color:${colors[status]};flex-shrink:0;width:14px;">${icons[status]}</span>
+      <div style="flex:1;">
+        <span style="color:${status==='fail'?'var(--excess)':status==='warn'?'var(--brass)':'var(--text-dim)'};">${label}</span>
+        ${detail ? `<div style="font-size:10px;color:var(--text-faint);margin-top:2px;">${detail}</div>` : ''}
+      </div>`;
+    container.appendChild(row);
+  }
+
+  overlay.querySelector('#tester-run').addEventListener('click', async () => {
+    const btn = overlay.querySelector('#tester-run');
+    btn.disabled = true; btn.textContent = '⟳ Running…';
+    const results = overlay.querySelector('#tester-results');
+    results.innerHTML = '';
+    let pass = 0, fail = 0, warn = 0;
+
+    const tests = [
+      // ── Critical: Quest Complete Button ──
+      ['Complete Quest button exists in DOM', () => {
+        const btn = document.getElementById('save-workout-btn');
+        if (!btn) throw new Error('save-workout-btn not found in DOM');
+        return 'Element found';
+      }],
+      ['refreshCompleteButton function exists', () => {
+        if (typeof refreshCompleteButton !== 'function') throw new Error('Not a function');
+        return 'Function present';
+      }],
+      ['RIR chips use class .rir-chip', () => {
+        const html = document.body.innerHTML;
+        if (!html.includes('rir-chip')) throw new Error('.rir-chip class missing from page');
+        return 'Class found in DOM';
+      }],
+
+      // ── Firebase ──
+      ['Firestore connected', async () => {
+        const snap = await getDocs(query(collection(db, 'users'), limit(1)));
+        return `${snap.size} user(s) reachable`;
+      }],
+      ['All users loaded in memory', () => {
+        if (!allUsers.length) throw new Error('allUsers is empty');
+        return `${allUsers.length} users in memory`;
+      }],
+      ['All workouts loaded in memory', () => {
+        if (!allWorkouts.length) { return { warn: 'No workouts in memory — first login?' }; }
+        return `${allWorkouts.length} workouts in memory`;
+      }],
+
+      // ── Streaks ──
+      ['Lawrence lastWorkoutDate recent', () => {
+        const days = profile.lastWorkoutDate
+          ? Math.floor((Date.now() - new Date(profile.lastWorkoutDate)) / 86400000) : 999;
+        if (days > 1) return { warn: `lastWorkoutDate is ${days}d ago — streak may be broken` };
+        return `lastWorkoutDate: ${profile.lastWorkoutDate}`;
+      }],
+      ['LuChing streak status', () => {
+        const u = allUsers.find(u => u.uid === 'd1W5vTx5aSTIwkR4CIwnO2xW7vf1');
+        if (!u) return { warn: 'LuChing not in allUsers' };
+        const days = u.lastWorkoutDate ? Math.floor((Date.now() - new Date(u.lastWorkoutDate)) / 86400000) : 999;
+        if (days > 1) return { warn: `LuChing: ${days}d since last workout — streak broken` };
+        return `OK · last: ${u.lastWorkoutDate}`;
+      }],
+      ['Lucas streak status', () => {
+        const u = allUsers.find(u => u.uid === 'rzcznIkNRrSKVXl74LsTaRSdHOk2');
+        if (!u) return { warn: 'Lucas not in allUsers' };
+        const days = u.lastWorkoutDate ? Math.floor((Date.now() - new Date(u.lastWorkoutDate)) / 86400000) : 999;
+        if (days > 1) return { warn: `Lucas: ${days}d since last workout — streak broken` };
+        return `OK · last: ${u.lastWorkoutDate}`;
+      }],
+
+      // ── Key functions ──
+      ['SFX system present', () => {
+        if (typeof SFX === 'undefined') throw new Error('SFX not defined');
+        if (typeof SFX.tap !== 'function') throw new Error('SFX.tap not a function');
+        return 'SFX object OK';
+      }],
+      ['Hunter classes defined', () => {
+        if (typeof HUNTER_CLASSES === 'undefined') throw new Error('HUNTER_CLASSES not defined');
+        const count = Object.keys(HUNTER_CLASSES).length;
+        if (count < 10) throw new Error(`Only ${count} classes — expected 15+`);
+        return `${count} classes defined`;
+      }],
+      ['Archetype chains defined', () => {
+        if (typeof ARCHETYPE_CHAINS === 'undefined') throw new Error('ARCHETYPE_CHAINS not defined');
+        if (ARCHETYPE_CHAINS.length < 9) throw new Error(`Only ${ARCHETYPE_CHAINS.length} chains`);
+        return `${ARCHETYPE_CHAINS.length} archetype chains`;
+      }],
+      ['Progression chains defined', () => {
+        if (typeof PROGRESSION_CHAINS === 'undefined') throw new Error('PROGRESSION_CHAINS not defined');
+        return `${PROGRESSION_CHAINS.length} progression chains`;
+      }],
+      ['Auto achievements defined', () => {
+        if (typeof AUTO_ACHIEVEMENTS === 'undefined') throw new Error('AUTO_ACHIEVEMENTS not defined');
+        return `${AUTO_ACHIEVEMENTS.length} achievements`;
+      }],
+      ['Exercise library loaded', () => {
+        if (typeof EXERCISES_ALL === 'undefined') throw new Error('EXERCISES_ALL not defined');
+        const count = Object.keys(EXERCISES_ALL).length;
+        if (count < 100) throw new Error(`Only ${count} exercises — expected 100+`);
+        return `${count} exercises`;
+      }],
+      ['New exercises present', () => {
+        const checks = ['Bouldering','Freestyle Swimming','Tennis','Boxing — Bag Work','Cycling','Front Splits','German Hang'];
+        const missing = checks.filter(n => !EXERCISES_ALL[n]);
+        if (missing.length) throw new Error(`Missing: ${missing.join(', ')}`);
+        return `All ${checks.length} sport/flex exercises present`;
+      }],
+      ['getStatForExercise works', () => {
+        const s = getStatForExercise('Deadlift');
+        if (s !== 'strength') throw new Error(`Expected strength, got ${s}`);
+        const s2 = getStatForExercise('Front Splits');
+        if (s2 !== 'flexibility') throw new Error(`Front Splits → expected flexibility, got ${s2}`);
+        return 'Stat mapping correct';
+      }],
+      ['Raid boss data defined', () => {
+        if (typeof BOSS_DATA === 'undefined' && typeof NAMED_BOSSES === 'undefined') throw new Error('Boss data not in scope — check renderRaidBoss');
+        return 'Boss data present (inside renderRaidBoss scope)';
+      }],
+      ['Profile loaded', () => {
+        if (!profile) throw new Error('profile is null/undefined');
+        if (!profile.displayName) return { warn: 'No displayName on profile' };
+        return `Profile: ${profile.displayName}`;
+      }],
+      ['Nav tabs all present', () => {
+        const tabs = ['quest','rank','trends','moves','history','feats'];
+        const missing = tabs.filter(t => !document.querySelector(`[data-view="${t}"]`));
+        if (missing.length) throw new Error(`Missing nav tabs: ${missing.join(', ')}`);
+        return `All ${tabs.length} tabs present`;
+      }],
+      ['openAdminWorkoutLogger defined', () => {
+        if (typeof openAdminWorkoutLogger !== 'function') throw new Error('Not defined');
+        return 'Admin logger present';
+      }],
+    ];
+
+    for (const [label, fn] of tests) {
+      try {
+        const result = await fn();
+        if (result?.warn) {
+          addResult(results, label, 'warn', result.warn);
+          warn++;
+        } else {
+          addResult(results, label, 'pass', typeof result === 'string' ? result : '');
+          pass++;
+        }
+      } catch(e) {
+        addResult(results, label, 'fail', e.message);
+        fail++;
+      }
+    }
+
+    const summary = document.createElement('div');
+    summary.style.cssText = `margin-top:12px;padding:10px;border-radius:6px;font-size:12px;text-align:center;background:${fail?'rgba(255,61,90,0.1)':'rgba(62,207,142,0.1)'};color:${fail?'var(--excess)':'var(--growing)'};border:1px solid ${fail?'rgba(255,61,90,0.3)':'rgba(62,207,142,0.3)'};`;
+    summary.textContent = fail
+      ? `✗ ${fail} FAILED · ${warn} warnings · ${pass} passed — fix before pushing`
+      : `✓ All ${pass} tests passed${warn?` · ${warn} warnings to review`:''}`;
+    results.appendChild(summary);
+
+    btn.disabled = false; btn.textContent = '▶ Run Again';
   });
 }
 
