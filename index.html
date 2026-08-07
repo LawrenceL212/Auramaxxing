@@ -2150,11 +2150,30 @@ const SFX = {
   soundOn: () => localStorage.getItem('aura_sound') !== 'off',
   hapticOn: () => localStorage.getItem('aura_haptic') !== 'off',
 
-  // Web Audio API context — created lazily on first interaction
+  // Web Audio API context — created lazily, resumed on first gesture
   _ctx: null,
   ctx() {
-    if (!this._ctx) this._ctx = new (window.AudioContext || window.webkitAudioContext)();
+    if (!this._ctx) {
+      this._ctx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    // iOS/mobile requires resume after user gesture
+    if (this._ctx.state === 'suspended') {
+      this._ctx.resume();
+    }
     return this._ctx;
+  },
+
+  // unlock audio on first touch — call this on any early tap
+  unlock() {
+    try {
+      const ctx = this.ctx();
+      // play a silent buffer to unlock
+      const buf = ctx.createBuffer(1, 1, 22050);
+      const src = ctx.createBufferSource();
+      src.buffer = buf;
+      src.connect(ctx.destination);
+      src.start(0);
+    } catch(e) {}
   },
 
   // Haptic wrapper
@@ -2343,7 +2362,19 @@ if (configOk) {
 /* =========================================================================
    NAV
    ========================================================================= */
+// Unlock Web Audio on first user gesture — required by all mobile browsers
+document.addEventListener('touchstart', function unlockAudio() {
+  SFX.unlock();
+  document.removeEventListener('touchstart', unlockAudio);
+}, { once: true, passive: true });
+
+document.addEventListener('click', function unlockAudioClick() {
+  SFX.unlock();
+  document.removeEventListener('click', unlockAudioClick);
+}, { once: true });
+
 document.querySelectorAll('.bottom-nav button').forEach(btn => btn.addEventListener('click', () => {
+  SFX.unlock();
   SFX.vibrate([6]);
   switchView(btn.dataset.view);
 }));
