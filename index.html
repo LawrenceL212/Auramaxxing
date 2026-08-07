@@ -6201,6 +6201,8 @@ async function renderRaidBoss() {
   const weekDaysSinceStart = Math.min(7, Math.max(1, Math.ceil((now - Math.max(weekStart.getTime(), partyStartDate.getTime())) / 86400000)));
   const isFirstWeek = partyStartDate >= weekStart;
   const totalRaids = weekWorkouts.length;
+  const daysLeft = Math.max(0, Math.ceil((weekEnd - now) / 86400000));
+  const daysPassed = 7 - daysLeft;
   const partyPower = allUsers.length ? Math.round(allUsers.reduce((s,u) => s + getUserPowerLevel(u), 0) / allUsers.length) : 0;
   const bossTier = partyPower > 7500 ? 'S' : partyPower > 4500 ? 'A' : partyPower > 2100 ? 'B' : partyPower > 900 ? 'C' : partyPower > 300 ? 'D' : 'E';
   const BOSS_DATA = {
@@ -6213,14 +6215,18 @@ async function renderRaidBoss() {
   };
   const boss = BOSS_DATA[bossTier];
   const partySize = allUsers.length || 1;
-  const targetDays = isFirstWeek ? weekDaysSinceStart : 7;
-  const bossMaxHP = partySize * targetDays * boss.raidsPerMember;
+  // Sum each member's weekly goal — that's the boss HP for the week
+  // Each workout = 1 raid = 1 damage. Clear when totalRaids >= bossMaxHP
+  const totalWeeklyGoal = Math.max(1, allUsers.reduce((s,u) => s + ((u.weeklyGoal)||3), 0));
+  // First week: scale HP by days remaining so it's always beatable
+  // e.g. started Thursday with 4 days left (Thu-Sun) → HP = round(totalGoal × 4/7)
+  const firstWeekFactor = isFirstWeek ? Math.min(1, (daysLeft + 1) / 7) : 1;
+  const bossMaxHP = Math.max(1, Math.round(totalWeeklyGoal * firstWeekFactor));
   const bossHP = Math.max(0, bossMaxHP - totalRaids);
   const bossHPpct = Math.max(0, (bossHP / bossMaxHP) * 100);
   const cleared = bossHP === 0;
-  const daysLeft = Math.max(0, Math.ceil((weekEnd - now) / 86400000));
   const nextBoss = BOSS_DATA[bossTier];
-  const nextMaxHP = partySize * 7 * nextBoss.raidsPerMember;
+  const nextMaxHP = totalWeeklyGoal;
   const bossPhase = cleared ? 'Defeated' : bossHPpct > 66 ? 'Unchallenged' : bossHPpct > 33 ? 'Weakening' : 'Critical — finish it';
   const bossColor = cleared ? 'var(--growing)' : bossHPpct > 66 ? boss.color : bossHPpct > 33 ? '#FF9500' : 'var(--excess)';
   const contributors = allUsers.map(u => ({ name: u.displayName||'Hunter', wCount: weekWorkouts.filter(w=>w.uid===u.uid).length, uid: u.uid })).sort((a,b)=>b.wCount-a.wCount);
@@ -6245,14 +6251,19 @@ async function renderRaidBoss() {
       </div>
       ${isFirstWeek?`<div style="font-family:var(--font-mono);font-size:9px;color:var(--text-faint);margin:6px 0;letter-spacing:0.04em;">⚠ Initiation week — HP scaled to ${weekDaysSinceStart} day${weekDaysSinceStart!==1?'s':''} elapsed.</div>`:''}
       <div class="raid-contributors">
-        ${contributors.map(c=>`
-          <div class="raid-contrib ${c.uid===currentUser.uid?'me':''}">
+        ${contributors.map(c=>{
+          const memberGoal = allUsers.find(u=>u.uid===c.uid)?.weeklyGoal || 3;
+          const pct = Math.min(100,(c.wCount/memberGoal)*100).toFixed(0);
+          const goalMet = c.wCount >= memberGoal;
+          const color = goalMet ? 'var(--growing)' : c.uid===currentUser.uid ? 'var(--brass)' : 'var(--violet)';
+          return `<div class="raid-contrib ${c.uid===currentUser.uid?'me':''}">
             <span class="raid-contrib-name">${escapeHtml(c.name)}</span>
             <div class="raid-contrib-bar-wrap">
-              <div class="raid-contrib-bar" style="width:${Math.min(100,(c.wCount/Math.max(targetDays,1))*100).toFixed(0)}%;background:${c.uid===currentUser.uid?'var(--brass)':'var(--violet)'};"></div>
+              <div class="raid-contrib-bar" style="width:${pct}%;background:${color};"></div>
             </div>
-            <span class="raid-contrib-count">${c.wCount} raids</span>
-          </div>`).join('')}
+            <span class="raid-contrib-count" style="color:${goalMet?'var(--growing)':'var(--text-faint)'};">${c.wCount}/${memberGoal}</span>
+          </div>`;
+        }).join('')}
       </div>
       <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-top:10px;gap:12px;">
         <p class="${cleared?'raid-cleared-msg':'raid-warning'}" style="margin:0;flex:1;">
