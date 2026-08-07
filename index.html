@@ -6241,15 +6241,18 @@ async function renderRaidBoss() {
         </div>
         <div class="raid-hp-col" style="margin-left:12px;">
           <div class="raid-hp-value" style="color:${bossColor};">${cleared?'0':bossHP}</div>
-          <div class="raid-hp-label">HP LEFT</div>
-          <div style="font-size:9px;color:var(--text-faint);font-family:var(--font-mono);margin-top:4px;">${totalRaids}/${bossMaxHP} raids</div>
+          <div class="raid-hp-label">HP REMAINING</div>
+          <div style="font-size:9px;color:var(--growing);font-family:var(--font-mono);margin-top:4px;">⚔ ${totalRaids} damage dealt</div>
         </div>
       </div>
-      <div class="raid-hp-bar-wrap">
-        <div class="raid-hp-bar" style="width:${bossHPpct.toFixed(1)}%;background:${bossColor};"></div>
+      <div class="raid-hp-bar-wrap" style="position:relative;">
+        <div class="raid-hp-bar" style="width:${bossHPpct.toFixed(1)}%;background:${bossColor};box-shadow:0 0 8px ${bossColor};"></div>
         ${!cleared?'<div class="raid-hp-bar-stripes"></div>':''}
       </div>
-      ${isFirstWeek?`<div style="font-family:var(--font-mono);font-size:9px;color:var(--text-faint);margin:6px 0;letter-spacing:0.04em;">⚠ Initiation week — HP scaled to ${weekDaysSinceStart} day${weekDaysSinceStart!==1?'s':''} elapsed.</div>`:''}
+      <div style="display:flex;justify-content:space-between;font-family:var(--font-mono);font-size:9px;color:var(--text-faint);margin-top:4px;">
+        <span style="color:var(--growing);">0</span>
+        <span>${isFirstWeek?'Initiation week · ':''}${bossMaxHP} HP total</span>
+      </div>
       <div class="raid-contributors">
         ${contributors.map(c=>{
           const memberGoal = allUsers.find(u=>u.uid===c.uid)?.weeklyGoal || 3;
