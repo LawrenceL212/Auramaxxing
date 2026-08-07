@@ -1840,6 +1840,7 @@ function closeNumpad(confirm = true) {
 }
 
 function numpadKey(key) {
+  SFX.numpadKey();
   if (key === 'del') {
     numpadRaw = numpadRaw.slice(0, -1);
   } else if (key === '.') {
@@ -1855,11 +1856,12 @@ function numpadKey(key) {
 document.getElementById('numpad-overlay')?.addEventListener('click', e => {
   if (e.target === document.getElementById('numpad-overlay')) closeNumpad(false);
 });
-document.getElementById('numpad-confirm')?.addEventListener('click', () => closeNumpad(true));
+document.getElementById('numpad-confirm')?.addEventListener('click', () => { SFX.numpadConfirm(); closeNumpad(true); });
 document.querySelectorAll('.numpad-key').forEach(btn => {
   btn.addEventListener('click', () => numpadKey(btn.dataset.key));
 });
 document.getElementById('numpad-plus')?.addEventListener('click', () => {
+  SFX.numpadKey();
   if (!numpadTarget) return;
   const step = parseFloat(numpadTarget.dataset.step) || 1;
   const cur = parseFloat(numpadRaw) || 0;
@@ -1867,6 +1869,7 @@ document.getElementById('numpad-plus')?.addEventListener('click', () => {
   document.getElementById('numpad-display').textContent = numpadRaw;
 });
 document.getElementById('numpad-minus')?.addEventListener('click', () => {
+  SFX.numpadKey();
   if (!numpadTarget) return;
   const step = parseFloat(numpadTarget.dataset.step) || 1;
   const min = parseFloat(numpadTarget.dataset.min) || 0;
@@ -2248,6 +2251,58 @@ const SFX = {
     this.vibrate([8]);
   },
 
+  // Numpad key press — mechanical keyboard feel
+  numpadKey() {
+    this._tone(600, 'square', 0.025, 0.04, 0);
+    this.vibrate([4]);
+  },
+
+  // Numpad confirm / set complete
+  numpadConfirm() {
+    this._tone(440, 'sine', 0.06, 0.08, 0);
+    this._tone(660, 'sine', 0.04, 0.1, 0.05);
+    this.vibrate([15]);
+  },
+
+  // Set marked complete
+  setComplete() {
+    this._tone(523, 'sine', 0.05, 0.12, 0);
+    this._tone(659, 'sine', 0.04, 0.15, 0.06);
+    this.vibrate([10, 5, 10]);
+  },
+
+  // RIR chip / toggle chip select
+  chipSelect() {
+    this._tone(700, 'sine', 0.03, 0.05, 0);
+    this.vibrate([6]);
+  },
+
+  // Carousel swipe
+  swipe() {
+    this._tone(300, 'sine', 0.04, 0.08, 0);
+    this._tone(400, 'sine', 0.03, 0.06, 0.04);
+    this.vibrate([10]);
+  },
+
+  // Begin Quest / primary action
+  beginQuest() {
+    this._tone(220, 'sine', 0.06, 0.15, 0);
+    this._tone(330, 'sine', 0.05, 0.2, 0.08);
+    this.vibrate([20, 10, 30]);
+  },
+
+  // Add/remove set or exercise — soft pop
+  pop() {
+    this._tone(500, 'sine', 0.04, 0.07, 0);
+    this.vibrate([8]);
+  },
+
+  // Rest preset tap
+  restTap() {
+    this._tone(440, 'triangle', 0.04, 0.06, 0);
+    this.vibrate([6]);
+  },
+
   // Rest timer done — three gentle chimes
   restDone() {
     this._tone(523, 'sine', 0.08, 0.2, 0);
@@ -2288,7 +2343,10 @@ if (configOk) {
 /* =========================================================================
    NAV
    ========================================================================= */
-document.querySelectorAll('.bottom-nav button').forEach(btn => btn.addEventListener('click', () => switchView(btn.dataset.view)));
+document.querySelectorAll('.bottom-nav button').forEach(btn => btn.addEventListener('click', () => {
+  SFX.vibrate([6]);
+  switchView(btn.dataset.view);
+}));
 function switchView(name) {
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
   document.getElementById('view-' + name).classList.add('active');
@@ -2431,11 +2489,11 @@ function renderQuestFeed() {
     myProgram = null; editingProgram = true; renderQuestFeed();
   });
   wireQuestCard(wrap.querySelector('.quest-card'), questCarouselIndex);
-  document.getElementById('carousel-prev')?.addEventListener('click', () => navigateCarousel('prev'));
-  document.getElementById('carousel-next')?.addEventListener('click', () => navigateCarousel('next'));
+  document.getElementById('carousel-prev')?.addEventListener('click', () => { SFX.swipe(); navigateCarousel('prev'); });
+  document.getElementById('carousel-next')?.addEventListener('click', () => { SFX.swipe(); navigateCarousel('next'); });
   attachSwipeHandlers(wrap.querySelector('.quest-carousel-card'),
-    () => navigateCarousel('next'),
-    () => navigateCarousel('prev')
+    () => { SFX.swipe(); navigateCarousel('next'); },
+    () => { SFX.swipe(); navigateCarousel('prev'); }
   );
 }
 
@@ -2575,7 +2633,7 @@ function buildQuestCardHTML(idx) {
 function wireQuestCard(cardEl, idx) {
   if (!cardEl) return;
   const btn = cardEl.querySelector('.quest-begin-btn');
-  if (btn) btn.addEventListener('click', () => startProgramDay(idx));
+  if (btn) btn.addEventListener('click', () => { SFX.beginQuest(); startProgramDay(idx); });
 }
 
 let carouselAnimating = false;
@@ -2876,6 +2934,7 @@ document.getElementById('run-modal-overlay')?.addEventListener('click', e => {
 let selectedRunType = 'Easy Run';
 document.getElementById('run-type-chips').querySelectorAll('.run-type-chip').forEach(btn => {
   btn.addEventListener('click', () => {
+    SFX.chipSelect();
     document.querySelectorAll('.run-type-chip').forEach(b => b.classList.remove('selected'));
     btn.classList.add('selected');
     selectedRunType = btn.dataset.type;
@@ -2886,6 +2945,7 @@ document.getElementById('run-type-chips').querySelectorAll('.run-type-chip').for
 let runUnit = 'km';
 document.querySelectorAll('.run-unit-btn').forEach(btn => {
   btn.addEventListener('click', () => {
+    SFX.chipSelect();
     document.querySelectorAll('.run-unit-btn').forEach(b => b.classList.remove('selected'));
     btn.classList.add('selected');
     runUnit = btn.dataset.unit;
@@ -2989,7 +3049,7 @@ function stopRestTimer() {
   const stopBtn = document.getElementById('rest-timer-stop');
   if (stopBtn) stopBtn.classList.add('hidden');
 }
-document.querySelectorAll('.rest-preset-btn').forEach(btn => btn.addEventListener('click', () => startRestTimer(Number(btn.dataset.secs))));
+document.querySelectorAll('.rest-preset-btn').forEach(btn => btn.addEventListener('click', () => { SFX.restTap(); startRestTimer(Number(btn.dataset.secs)); }));
 document.getElementById('rest-timer-stop')?.addEventListener('click', stopRestTimer);
 
 function renderProgramEditor(wrap) {
@@ -3041,6 +3101,7 @@ function renderProgramEditor(wrap) {
   }));
 
   wrap.querySelectorAll('.weekday-chip').forEach(chip => chip.addEventListener('click', () => {
+    SFX.chipSelect();
     const d = chip.dataset.day;
     const i = myProgram.schedule.indexOf(d);
     if (i === -1) myProgram.schedule.push(d); else myProgram.schedule.splice(i, 1);
@@ -3249,6 +3310,7 @@ function openExercisePicker(onSelect) {
       </div>`;
     }).join('') || `<p class="empty-state" style="padding:20px 0;">No matches.</p>`;
     listEl.querySelectorAll('.picker-item').forEach(item => item.addEventListener('click', () => {
+      SFX.pop();
       onSelect(item.dataset.name);
       overlay.remove();
     }));
@@ -3299,7 +3361,10 @@ function addExerciseRow(presetName, targetSets, targetReps, prefillSets) {
     const repsInput = setRow.querySelector('.set-reps');
     const reps = Number(repsInput?.value) || 0;
     const confirmed = repsInput?.dataset.confirmed === '1';
-    setRow.classList.toggle('complete', reps > 0 && confirmed);
+    const wasComplete = setRow.classList.contains('complete');
+    const isNowComplete = reps > 0 && confirmed;
+    if (isNowComplete && !wasComplete) SFX.setComplete();
+    setRow.classList.toggle('complete', isNowComplete);
     refreshCompleteButton();
   }
   function addSetRow(prefillReps, prefillWeight, prefillRir, suggestion) {
@@ -3322,6 +3387,7 @@ function addExerciseRow(presetName, targetSets, targetReps, prefillSets) {
         ${rirChips(prefillRir ?? null)}
       </div>`;
     setRow.querySelectorAll('.step-down').forEach(btn => btn.addEventListener('click', () => {
+      SFX.numpadKey();
       const input = btn.parentElement.querySelector('input');
       const step = Number(input.dataset.step) || 1;
       const cur = Number(input.value) || 0;
@@ -3331,6 +3397,7 @@ function addExerciseRow(presetName, targetSets, targetReps, prefillSets) {
       checkComplete(setRow);
     }));
     setRow.querySelectorAll('.step-up').forEach(btn => btn.addEventListener('click', () => {
+      SFX.numpadKey();
       const input = btn.parentElement.querySelector('input');
       const step = Number(input.dataset.step) || 1;
       const cur = Number(input.value) || 0;
@@ -3341,10 +3408,11 @@ function addExerciseRow(presetName, targetSets, targetReps, prefillSets) {
     }));
     setRow.querySelectorAll('input').forEach(inp => inp.addEventListener('input', () => checkComplete(setRow)));
     setRow.querySelectorAll('.rir-chip').forEach(chip => chip.addEventListener('click', () => {
+      SFX.chipSelect();
       setRow.querySelectorAll('.rir-chip').forEach(c => c.classList.remove('selected'));
       chip.classList.add('selected');
     }));
-    setRow.querySelector('.set-remove').addEventListener('click', () => { setRow.remove(); [...setsList.children].forEach((r,i) => r.querySelector('.set-idx').textContent = i+1); });
+    setRow.querySelector('.set-remove').addEventListener('click', () => { SFX.pop(); setRow.remove(); [...setsList.children].forEach((r,i) => r.querySelector('.set-idx').textContent = i+1); });
     setsList.appendChild(setRow);
     tableHead.classList.remove('hidden');
     // immediately check if prefilled values make this set complete
@@ -3376,7 +3444,7 @@ function addExerciseRow(presetName, targetSets, targetReps, prefillSets) {
     refreshTags();
   }
   pickerBtn.addEventListener('click', () => openExercisePicker(selectExercise));
-  row.querySelector('.add-set-btn').addEventListener('click', () => addSetRow());
+  row.querySelector('.add-set-btn').addEventListener('click', () => { SFX.pop(); addSetRow(); });
   row.querySelector('.remove-x').addEventListener('click', () => row.remove());
   if (prefillSets && prefillSets.length) {
     prefillSets.forEach(s => addSetRow(s.reps, s.weight, s.rir, s.suggestion));
@@ -3388,7 +3456,7 @@ function addExerciseRow(presetName, targetSets, targetReps, prefillSets) {
   refreshTags();
   exerciseRows.appendChild(row);
 }
-document.getElementById('add-exercise-btn')?.addEventListener('click', () => { addExerciseRow(); refreshCompleteButton(); });
+document.getElementById('add-exercise-btn')?.addEventListener('click', () => { SFX.pop(); addExerciseRow(); refreshCompleteButton(); });
 addExerciseRow();
 
 document.getElementById('save-workout-btn')?.addEventListener('click', async () => {
