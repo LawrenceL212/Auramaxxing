@@ -3155,20 +3155,20 @@ function refreshCompleteButton() {
   if (!btn) return;
   const rows = document.querySelectorAll('#exercise-rows .exercise-row');
   if (!rows.length) { btn.classList.add('hidden'); return; }
-  let allHaveAtLeastOneSet = true;
+  // collect all set rows that have reps > 0
+  const completedSets = [];
   rows.forEach(row => {
-    // a set only counts as done if the USER has confirmed a value through the numpad
-    // we track this with data-user-confirmed on the input
-    const setRows = row.querySelectorAll('.set-row');
-    const hasConfirmedSet = [...setRows].some(sr => {
-      const repsInput = sr.querySelector('.set-reps');
-      const reps = Number(repsInput?.value) || 0;
-      // must have reps AND be marked as user-confirmed (not just prefilled)
-      return reps > 0 && repsInput?.dataset.confirmed === '1';
+    row.querySelectorAll('.set-row').forEach(sr => {
+      const reps = Number(sr.querySelector('.set-reps')?.value) || 0;
+      if (reps > 0) completedSets.push(sr);
     });
-    if (!hasConfirmedSet) allHaveAtLeastOneSet = false;
   });
-  btn.classList.toggle('hidden', !allHaveAtLeastOneSet);
+  // need at least one completed set
+  if (!completedSets.length) { btn.classList.add('hidden'); return; }
+  // all completed sets must have a RIR selected OR all have confirmed reps (fallback for pre-RIR logging)
+  const allRIRSelected = completedSets.every(sr => sr.querySelector('.rir-chip.selected') !== null);
+  const anyConfirmed = completedSets.some(sr => sr.querySelector('.set-reps')?.dataset.confirmed === '1');
+  btn.classList.toggle('hidden', !allRIRSelected && !anyConfirmed);
 }
 document.getElementById('end-workout-modal')?.addEventListener('click', () => {
   if (!window.confirm('End this workout?\n\nAll your logged sets will be lost.')) return;
@@ -3686,6 +3686,7 @@ function addExerciseRow(presetName, targetSets, targetReps, prefillSets) {
       SFX.chipSelect();
       setRow.querySelectorAll('.rir-chip').forEach(c => c.classList.remove('selected'));
       chip.classList.add('selected');
+      refreshCompleteButton();
     }));
     setRow.querySelector('.set-remove').addEventListener('click', () => { SFX.pop(); setRow.remove(); [...setsList.children].forEach((r,i) => r.querySelector('.set-idx').textContent = i+1); });
     setsList.appendChild(setRow);
