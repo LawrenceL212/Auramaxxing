@@ -837,11 +837,19 @@
     pointer-events: none;
     animation: questBannerDrop 3.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
   }
+  .quest-clear-banner.persistent {
+    animation: questBannerSettle 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    pointer-events: auto;
+  }
   @keyframes questBannerDrop {
     0%   { transform: translateX(-50%) translateY(-120%); opacity: 0; }
     18%  { transform: translateX(-50%) translateY(0px);   opacity: 1; }
     70%  { transform: translateX(-50%) translateY(0px);   opacity: 1; }
     100% { transform: translateX(-50%) translateY(-140%); opacity: 0; }
+  }
+  @keyframes questBannerSettle {
+    0%   { transform: translateX(-50%) translateY(-120%); opacity: 0; }
+    100% { transform: translateX(-50%) translateY(0px);   opacity: 1; }
   }
   .quest-clear-banner-inner {
     position: relative;
@@ -2449,6 +2457,7 @@ if (configOk) {
       // run system checks on every login — penalties, rank-up alerts etc.
       setTimeout(() => runSystemChecks(), 800);
       setTimeout(() => ensureStatBaselines(), 1200);
+      setTimeout(() => checkPersistentQuestBanner(), 1500);
     } else {
       currentUser = null;
       document.getElementById('auth-screen').style.display = 'flex';
@@ -5826,12 +5835,11 @@ function buildMuscleStats(uid) {
   return stats;
 }
 
-function showQuestClearBanner(apEarned, prCount) {
-  // remove any existing banner
+function showQuestClearBanner(apEarned, prCount, persistent = false) {
   document.querySelectorAll('.quest-clear-banner').forEach(b => b.remove());
 
   const banner = document.createElement('div');
-  banner.className = 'quest-clear-banner';
+  banner.className = 'quest-clear-banner' + (persistent ? ' persistent' : '');
 
   const apText = apEarned ? `+${apEarned} AP` : '';
   const prText = prCount ? ` · ${prCount} PR${prCount>1?'s':''}` : '';
@@ -5847,32 +5855,45 @@ function showQuestClearBanner(apEarned, prCount) {
 
   document.body.appendChild(banner);
 
-  // spawn particles after banner lands (~0.6s)
-  setTimeout(() => {
-    const container = banner.querySelector('#qcb-particles');
-    if (!container) return;
-    const colors = ['var(--violet)', 'var(--brass)', '#fff'];
-    for (let i = 0; i < 16; i++) {
-      const p = document.createElement('div');
-      p.className = 'quest-clear-particle';
-      const angle = (i / 16) * 360;
-      const dist = 40 + Math.random() * 60;
-      const tx = Math.round(Math.cos(angle * Math.PI/180) * dist);
-      const ty = Math.round(Math.sin(angle * Math.PI/180) * dist);
-      p.style.cssText = `
-        left:50%; top:50%;
-        background:${colors[i%colors.length]};
-        --tx:${tx}px; --ty:${ty}px;
-        animation-duration:${0.6+Math.random()*0.4}s;
-        animation-delay:${Math.random()*0.15}s;
-        box-shadow: 0 0 4px ${colors[i%colors.length]};
-      `;
-      container.appendChild(p);
-    }
-  }, 600);
+  if (!persistent) {
+    // save to localStorage so it persists for the rest of the day
+    localStorage.setItem('aura_quest_clear_date', todayStr());
+    // spawn particles
+    setTimeout(() => {
+      const container = banner.querySelector('#qcb-particles');
+      if (!container) return;
+      const colors = ['var(--violet)', 'var(--brass)', '#fff'];
+      for (let i = 0; i < 16; i++) {
+        const p = document.createElement('div');
+        p.className = 'quest-clear-particle';
+        const angle = (i / 16) * 360;
+        const dist = 40 + Math.random() * 60;
+        const tx = Math.round(Math.cos(angle * Math.PI/180) * dist);
+        const ty = Math.round(Math.sin(angle * Math.PI/180) * dist);
+        p.style.cssText = `
+          left:50%; top:50%;
+          background:${colors[i%colors.length]};
+          --tx:${tx}px; --ty:${ty}px;
+          animation-duration:${0.6+Math.random()*0.4}s;
+          animation-delay:${Math.random()*0.15}s;
+          box-shadow: 0 0 4px ${colors[i%colors.length]};
+        `;
+        container.appendChild(p);
+      }
+    }, 600);
+    // auto-remove after animation — persistent version stays
+    setTimeout(() => banner.remove(), 3400);
+    // show persistent version after the animated one disappears
+    setTimeout(() => showQuestClearBanner(0, 0, true), 3600);
+  }
+  // persistent banner: tap to dismiss early but respawn next page load until day changes
+}
 
-  // auto-remove after animation
-  setTimeout(() => banner.remove(), 3400);
+function checkPersistentQuestBanner() {
+  const savedDate = localStorage.getItem('aura_quest_clear_date');
+  if (savedDate === todayStr()) {
+    setTimeout(() => showQuestClearBanner(0, 0, true), 1200);
+  }
 }
 
 function showDebriefModal(exercises, apEarned, prs) {
@@ -6206,15 +6227,37 @@ async function renderRaidBoss() {
   const partyPower = allUsers.length ? Math.round(allUsers.reduce((s,u) => s + getUserPowerLevel(u), 0) / allUsers.length) : 0;
   const bossTier = partyPower > 7500 ? 'S' : partyPower > 4500 ? 'A' : partyPower > 2100 ? 'B' : partyPower > 900 ? 'C' : partyPower > 300 ? 'D' : 'E';
   const BOSS_DATA = {
-    E: { name:'Goblin Scout',       rank:'E-Rank Gate', desc:'A lone creature from the lowest dungeon. Weak — but a real test for new hunters.', color:'var(--text-dim)',      raidsPerMember:3 },
-    D: { name:'Stone Golem',        rank:'D-Rank Gate', desc:'An awakened construct. It will not fall without collective effort.',               color:'var(--brass)',        raidsPerMember:4 },
-    C: { name:'Iron Shadow',        rank:'C-Rank Gate', desc:'A shadow creature born from dungeon energy. It learns from weakness.',             color:'var(--maintaining)', raidsPerMember:5 },
-    B: { name:'Void Warden',        rank:'B-Rank Gate', desc:'A guardian of the deep. Your growing power has attracted something dangerous.',    color:'var(--violet)',      raidsPerMember:5 },
-    A: { name:"Monarch's Shadow",   rank:'A-Rank Gate', desc:"A fragment of the Shadow Monarch's army. Only hunters at their limits stand here.",color:'var(--excess)',      raidsPerMember:6 },
-    S: { name:'Antares the Sovereign Beast', rank:'S-Rank Gate', desc:'The dungeon has recognised your power. This is not a test — this is war.',color:'#FFD700',           raidsPerMember:7 },
+    E: { name:'Goblin Scout',       rank:'E-Rank Gate', desc:'A lone creature from the lowest dungeon. Weak — but a real test for new hunters.',  color:'var(--text-dim)',      weakness:'strength',   weaknessLabel:'⚔️ Strength',   weaknessDesc:'Heavy compound lifts deal 1.5× damage' },
+    D: { name:'Stone Golem',        rank:'D-Rank Gate', desc:'An awakened construct. It will not fall without collective effort.',                color:'var(--brass)',         weakness:'strength',   weaknessLabel:'⚔️ Strength',   weaknessDesc:'Compound lifts crack its armour for 1.5× damage' },
+    C: { name:'Iron Shadow',        rank:'C-Rank Gate', desc:'A shadow creature born from dungeon energy. It learns from weakness.',              color:'var(--maintaining)',   weakness:'agility',    weaknessLabel:'⚡ Agility',    weaknessDesc:'Explosive & sprint training deals 1.5× damage' },
+    B: { name:'Void Warden',        rank:'B-Rank Gate', desc:'A guardian of the deep. Your growing power has attracted something dangerous.',     color:'var(--violet)',        weakness:'endurance',  weaknessLabel:'🔥 Endurance',  weaknessDesc:'Cardio sessions deal 1.5× damage' },
+    A: { name:"Monarch's Shadow",   rank:'A-Rank Gate', desc:"A fragment of the Shadow Monarch's army. Only hunters at their limits stand here.", color:'var(--excess)',        weakness:'focus',      weaknessLabel:'🎯 Focus',     weaknessDesc:'Skill & isolation work deals 1.5× damage' },
+    S: { name:'Antares the Sovereign Beast', rank:'S-Rank Gate', desc:'The dungeon has recognised your power. This is not a test — this is war.', color:'#FFD700',             weakness:'all',        weaknessLabel:'💀 No weakness', weaknessDesc:'Full weekly goal required. No damage bonus' },
   };
+
+  function getWorkoutDamage(workout, weakness) {
+    if (weakness === 'all') return 1;
+    const exes = (workout.exercises || []);
+    const STRENGTH_EX = new Set(['Squat','Deadlift','Bench Press','Overhead Press','Barbell Row','Pull Up','Chin Up','Dips','Romanian Deadlift','Sumo Deadlift','Hip Thrust','Push Press','Pendlay Row','T-Bar Row','Front Squat','Weighted Dip','Weighted Pull Up']);
+    const AGILITY_EX  = new Set(['Hill Sprints','Sprinting','Box Jump','Jump Squat','Burpee','Interval Running','Tempo Run']);
+    const ENDURANCE_EX = new Set(['Running','Easy Run','Long Run','Treadmill Run','Stair Climb','Jump Rope']);
+    const FOCUS_EX    = new Set(['Lateral Raise','Cable Lateral Raise','Concentration Curl','Preacher Curl','L-Sit','Tuck Planche','Advanced Tuck Planche','Full Planche','Front Lever','Handstand Push Up','Face Pull','Incline Dumbbell Press','Cable Crossover','Single-Arm Cable Crossover']);
+    let totalSets = 0, weakSets = 0;
+    exes.forEach(ex => {
+      const sets = (ex.sets||[]).filter(s=>s.reps>0).length || 1;
+      totalSets += sets;
+      const map = { strength: STRENGTH_EX, agility: AGILITY_EX, endurance: ENDURANCE_EX, focus: FOCUS_EX };
+      if (map[weakness]?.has(ex.name)) weakSets += sets;
+    });
+    if (!totalSets) return 1;
+    // if >40% of sets hit the weakness, deal 1.5× damage
+    return (weakSets / totalSets) >= 0.4 ? 1.5 : 1;
+  }
   const boss = BOSS_DATA[bossTier];
   const partySize = allUsers.length || 1;
+  // Total damage = sum of each workout's damage (1 base, 1.5 if hits boss weakness)
+  const totalDamage = weekWorkouts.reduce((sum, w) => sum + getWorkoutDamage(w, boss.weakness), 0);
+  const boostedRaids = weekWorkouts.filter(w => getWorkoutDamage(w, boss.weakness) > 1).length;
   // Sum each member's weekly goal — that's the boss HP for the week
   // Each workout = 1 raid = 1 damage. Clear when totalRaids >= bossMaxHP
   const totalWeeklyGoal = Math.max(1, allUsers.reduce((s,u) => s + ((u.weeklyGoal)||3), 0));
@@ -6222,9 +6265,9 @@ async function renderRaidBoss() {
   // e.g. started Thursday with 4 days left (Thu-Sun) → HP = round(totalGoal × 4/7)
   const firstWeekFactor = isFirstWeek ? Math.min(1, (daysLeft + 1) / 7) : 1;
   const bossMaxHP = Math.max(1, Math.round(totalWeeklyGoal * firstWeekFactor));
-  const bossHP = Math.max(0, bossMaxHP - totalRaids);
+  const bossHP = Math.max(0, bossMaxHP - totalDamage);
   const bossHPpct = Math.max(0, (bossHP / bossMaxHP) * 100);
-  const cleared = bossHP === 0;
+  const cleared = bossHP <= 0;
   const nextBoss = BOSS_DATA[bossTier];
   const nextMaxHP = totalWeeklyGoal;
   const bossPhase = cleared ? 'Defeated' : bossHPpct > 66 ? 'Unchallenged' : bossHPpct > 33 ? 'Weakening' : 'Critical — finish it';
@@ -6238,11 +6281,15 @@ async function renderRaidBoss() {
           <div class="raid-boss-name" style="color:${cleared?'var(--growing)':boss.color};">${cleared?'★ ':''} ${boss.name}${cleared?' — Defeated':''}</div>
           <div class="raid-phase" style="color:${bossColor};">[${bossPhase}]${!cleared?` · ${daysLeft}d remaining`:''}</div>
           <div style="font-size:10px;color:var(--text-faint);font-family:var(--font-mono);margin-top:5px;line-height:1.5;">${boss.desc}</div>
+          ${boss.weakness !== 'all' && !cleared ? `<div style="margin-top:8px;padding:5px 10px;background:rgba(255,215,0,0.08);border:1px solid rgba(255,215,0,0.25);border-radius:4px;display:inline-flex;align-items:center;gap:6px;">
+            <span style="font-size:10px;font-family:var(--font-mono);color:#FFD700;letter-spacing:0.06em;">WEAKNESS: ${boss.weaknessLabel}</span>
+          </div>` : ''}
+          ${boostedRaids > 0 ? `<div style="font-size:10px;color:var(--growing);font-family:var(--font-mono);margin-top:4px;">⚡ ${boostedRaids} raid${boostedRaids>1?'s':''} hit the weakness — 1.5× damage</div>` : ''}
         </div>
         <div class="raid-hp-col" style="margin-left:12px;">
-          <div class="raid-hp-value" style="color:${bossColor};">${cleared?'0':bossHP}</div>
+          <div class="raid-hp-value" style="color:${bossColor};">${cleared?'0':Math.ceil(bossHP)}</div>
           <div class="raid-hp-label">HP REMAINING</div>
-          <div style="font-size:9px;color:var(--growing);font-family:var(--font-mono);margin-top:4px;">⚔ ${totalRaids} damage dealt</div>
+          <div style="font-size:9px;color:var(--growing);font-family:var(--font-mono);margin-top:4px;">⚔ ${totalDamage.toFixed(1)} damage dealt</div>
         </div>
       </div>
       <div class="raid-hp-bar-wrap" style="position:relative;">
