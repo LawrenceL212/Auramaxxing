@@ -2179,12 +2179,52 @@ function buildQuestCardHTML(idx) {
     : isActiveDay
       ? 'WARNING: leaving this quest incomplete puts your streak at risk.'
       : `Last done: ${fmtDaysAgo(day.lastDate)}`;
+  // build rewards preview
+  function buildRewardsPreview() {
+    if (allComplete) return '';
+    const streak = computeStreak(currentUser.uid);
+    const mult = streak >= 60 ? 3 : streak >= 30 ? 2 : streak >= 7 ? 1.5 : 1;
+    const baseAP = Math.round(10 * mult);
+    const weekStart = startOfWeek(new Date());
+    const weekCount = myWorkouts.filter(w => w.uid === currentUser.uid && new Date(w.date) >= weekStart).length;
+    const goalBonus = (weekCount + 1) >= (profile.weeklyGoal || 3) ? 5 : 0;
+    const totalAP = baseAP + goalBonus;
+    // which stats get XP from this day's exercises
+    const statGains = {};
+    day.exercises.forEach(ex => {
+      const statId = getStatForExercise(ex.name);
+      if (statId) statGains[statId] = (statGains[statId] || 0) + ex.sets;
+    });
+    const STAT_ICONS = { strength:'⚔️', endurance:'🔥', agility:'⚡', focus:'🎯', recovery:'🛡️', flexibility:'💫' };
+    const statRows = Object.entries(statGains).map(([id, sets]) =>
+      `<span style="font-size:11px;font-family:var(--font-mono);color:var(--text-dim);">${STAT_ICONS[id]||''} ${id} +${sets}xp</span>`
+    ).join('  ');
+    // PR potential — check if any exercise has a close PR
+    const prPotential = day.exercises.filter(ex => {
+      const pr = myPRs[ex.name];
+      return pr && pr.e1rm; // has a PR to beat
+    });
+    return `
+      <div style="border-top:1px solid rgba(61,165,255,0.15);margin:14px 0 16px;padding-top:12px;">
+        <div style="font-family:var(--font-mono);font-size:9px;letter-spacing:0.25em;color:var(--text-faint);text-transform:uppercase;margin-bottom:8px;">◈ Quest Rewards Preview</div>
+        <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;">
+          <div style="display:flex;align-items:baseline;gap:4px;">
+            <span style="font-family:var(--font-display);font-size:20px;color:var(--brass);">+${totalAP}</span>
+            <span style="font-size:10px;color:var(--text-faint);font-family:var(--font-mono);">AP${mult>1?` ×${mult} streak`:''}${goalBonus?' +5 goal':''}</span>
+          </div>
+          ${statRows ? `<div style="display:flex;flex-wrap:wrap;gap:8px;">${statRows}</div>` : ''}
+        </div>
+        ${prPotential.length ? `<div style="margin-top:6px;font-size:11px;color:var(--violet);font-family:var(--font-mono);">🏆 ${prPotential.length} PR${prPotential.length>1?'s':''} on the line — ${prPotential.slice(0,2).map(e=>e.name).join(', ')}${prPotential.length>2?'…':''}</div>` : ''}
+      </div>`;
+  }
+
   return `
     <div class="quest-eyebrow">⚠ QUEST INFO</div>
     <p class="quest-flavor">${flavor}</p>
     <div class="quest-goal-label">GOAL</div>
     <div class="quest-checklist">${checklist}</div>
     <p class="quest-warning">${warning}</p>
+    ${buildRewardsPreview()}
     <button class="quest-complete-btn quest-begin-btn">${allComplete ? '✓ Quest Cleared' : (isActiveDay ? 'Begin Quest' : 'Log this instead')}</button>`;
 }
 
