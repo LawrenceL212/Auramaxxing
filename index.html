@@ -1503,13 +1503,7 @@ nav.bottom-nav button.active svg { filter:drop-shadow(0 0 4px var(--brass)); }
 
     <!-- ---- QUEST (log + program) ---- -->
     <section class="view active" id="view-quest">
-      <div id="program-card-wrap">
-        <div class="card" style="opacity:0.4;pointer-events:none;">
-          <div style="height:14px;background:var(--card-2);border-radius:4px;width:60%;margin-bottom:12px;"></div>
-          <div style="height:10px;background:var(--card-2);border-radius:4px;width:80%;margin-bottom:8px;"></div>
-          <div style="height:10px;background:var(--card-2);border-radius:4px;width:70%;"></div>
-        </div>
-      </div>
+      <div id="program-card-wrap"></div>
       <div id="program-editor-wrap"></div>
       <div style="display:flex;gap:8px;margin-top:8px;">
         <button class="btn btn-block" id="manual-log-btn" style="flex:1;">+ Log session</button>
@@ -2539,7 +2533,9 @@ async function loadAllData() {
 
   populateExerciseSelects();
   console.log('rendering quest feed...');
-  renderQuestFeed();
+  try { renderQuestFeed(); } catch(e) { console.error('renderQuestFeed failed:', e); }
+  const questContent = document.getElementById('program-card-wrap')?.innerHTML?.length;
+  console.log('quest card HTML length:', questContent);
   console.log('rendering board...');
   renderBoard();
   renderCharCard();
