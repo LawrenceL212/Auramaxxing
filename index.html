@@ -2145,9 +2145,23 @@ function buildQuestCardHTML(idx) {
     ? (day.assignedDays||[]).includes(today)
     : idx === rotationIdx;
   const allComplete = isQuestComplete(idx);
+
+  // for fixed mode, count sets from this week; rotation uses today only
+  function setsForChecklist(exName) {
+    if (myProgram.scheduleMode === 'fixed') {
+      const weekStart = startOfWeek(new Date()).toISOString().slice(0,10);
+      return myWorkouts
+        .filter(w => w.uid === currentUser.uid && w.date >= weekStart)
+        .flatMap(w => w.exercises||[])
+        .filter(e => e.name === exName)
+        .reduce((sum, e) => sum + (e.sets||[]).filter(s => s.reps > 0).length, 0);
+    }
+    return setsLoggedToday(exName, idx);
+  }
+
   const checklist = day.exercises.map(ex => {
-    const done = setsLoggedToday(ex.name, idx);
-    const complete = done >= ex.sets;
+    const done = setsForChecklist(ex.name);
+    const complete = allComplete || done >= ex.sets;
     const exDef = EXERCISES_ALL[ex.name] || {};
     const timed = exDef.timed;
     const unit = exDef.timedUnit || 'secs';
