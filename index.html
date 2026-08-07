@@ -24,7 +24,7 @@
     --brass-dim:rgba(61,165,255,0.14);
     --violet:#8B6BFF;
     --violet-dim:rgba(139,107,255,0.16);
-    --growing:#8B6BFF;
+    --growing:#3ecf8e;
     --maintaining:#2FB8C6;
     --stalled:#3A4560;
     --excess:#FF3D5A;
@@ -132,9 +132,9 @@
   .day-nav button{background:none;border:none;color:var(--text-dim);font-size:20px;cursor:pointer;padding:4px 10px;}
   .day-nav .day-label{font-family:var(--font-mono);font-size:11px;color:var(--text-faint);letter-spacing:0.05em;}
   .day-dots{display:flex;gap:5px;justify-content:center;margin:14px 0 4px;}
-  .day-dot{width:7px;height:7px;border-radius:50%;background:var(--card-2);border:1px solid rgba(93,157,255,0.3);transition:all .25s ease;}
+  .day-dot{width:7px;height:7px;border-radius:50%;background:rgba(93,157,255,0.12);border:1px solid rgba(93,157,255,0.2);transition:all .25s ease;}
   .day-dot.current{background:var(--brass);border-color:var(--brass);box-shadow:0 0 8px var(--brass),0 0 16px rgba(61,165,255,0.4);width:18px;border-radius:4px;}
-  .day-dot.done{background:var(--growing);border-color:var(--growing);box-shadow:0 0 5px var(--growing);}
+  .day-dot.done{background:#2FB8C6;border-color:#2FB8C6;box-shadow:0 0 5px #2FB8C6;}
   .tag{font-size:10.5px;padding:3px 8px;border-radius:3px;background:var(--brass-dim);color:var(--brass);text-transform:uppercase;letter-spacing:0.03em;border:1px solid var(--border);}
   .tag.tag-alt{background:var(--violet-dim);color:var(--violet);}
   .muscle-tags{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0;}
@@ -2109,7 +2109,32 @@ function renderQuestFeed() {
 
 function isQuestComplete(idx) {
   const day = myProgram.days[idx];
-  return day.exercises.length > 0 && day.exercises.every(ex => setsLoggedToday(ex.name, idx) >= ex.sets);
+  if (!day.exercises.length) return false;
+
+  if (myProgram.scheduleMode === 'fixed') {
+    // Fixed mode: resets every Monday — completed if logged any time this week
+    const weekStart = startOfWeek(new Date()).toISOString().slice(0,10);
+    const dayExNames = new Set(day.exercises.map(e => e.name));
+    return myWorkouts.some(w =>
+      w.uid === currentUser.uid &&
+      w.date >= weekStart &&
+      (w.exercises||[]).some(e => dayExNames.has(e.name))
+    );
+  } else {
+    // Rotation mode: resets after a full cycle
+    // Find the date the current cycle started — when currentDayIndex last wrapped to 0
+    // We use day.lastDate and compare to other days to figure out cycle order
+    // Simplest reliable approach: day is complete if lastDate is more recent than
+    // the lastDate of the day that comes BEFORE index 0 in the rotation
+    // (i.e. the day that was last logged before the cycle reset)
+    const n = myProgram.days.length;
+    const currentIdx = myProgram.currentDayIndex % n;
+    // Days that have been completed in the current cycle:
+    // if currentIdx > 0: days 0..currentIdx-1 are done this cycle
+    // if currentIdx === 0: no days done yet in new cycle (just reset)
+    if (currentIdx === 0) return false;
+    return idx < currentIdx;
+  }
 }
 
 function buildQuestCardHTML(idx) {
@@ -2138,8 +2163,11 @@ function buildQuestCardHTML(idx) {
     : myProgram.scheduleMode === 'fixed' && day.assignedDays?.length
       ? `[Viewing: <b>${escapeHtml(day.name)}</b> — scheduled on ${day.assignedDays.join(', ')}.]`
       : `[Viewing: <b>${escapeHtml(day.name)}</b> — Day ${idx+1} of ${myProgram.days.length} in rotation.]`;
-  const warning = allComplete ? 'Quest cleared. Your streak holds.'
-    : (isActiveDay ? 'WARNING: leaving this quest incomplete puts your streak at risk.' : `Last done: ${fmtDaysAgo(day.lastDate)}`);
+  const warning = allComplete
+    ? '✓ Quest cleared. Come back next cycle.'
+    : isActiveDay
+      ? 'WARNING: leaving this quest incomplete puts your streak at risk.'
+      : `Last done: ${fmtDaysAgo(day.lastDate)}`;
   return `
     <div class="quest-eyebrow">⚠ QUEST INFO</div>
     <p class="quest-flavor">${flavor}</p>
