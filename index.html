@@ -5096,6 +5096,30 @@ async function runSystemChecks() {
   await checkStatDecay();
   await evaluateAndSaveClass();
   await checkAndUnlockAchievements();
+  // ── ONE-TIME streak restore for LuChing and Lucas ──
+  if (currentUser?.uid === 'eUtGPwQBcCSO0x3xS3ZGYFGXNIT2') {
+    const restoreTargets = [
+      { uid: 'd1W5vTx5aSTIwkR4CIwnO2xW7vf1', name: 'LuChing' },
+      { uid: 'rzcznIkNRrSKVXl74LsTaRSdHOk2', name: 'Lucas' },
+    ];
+    const yesterday = new Date(); yesterday.setDate(yesterday.getDate()-1);
+    const yesterdayStr = yesterday.toISOString().slice(0,10);
+    for (const target of restoreTargets) {
+      try {
+        const snap = await getDoc(doc(db, 'users', target.uid));
+        if (snap.exists()) {
+          const data = snap.data();
+          // only restore if they don't already have a recent workout logged
+          if (!data.lastWorkoutDate || data.lastWorkoutDate < yesterdayStr) {
+            await setDoc(doc(db, 'users', target.uid), {
+              lastWorkoutDate: yesterdayStr,
+            }, { merge: true });
+            console.log(`Restored streak seed for ${target.name}`);
+          }
+        }
+      } catch(e) { console.warn('streak restore failed for', target.name, e); }
+    }
+  }
   // silently award AP if they already have a workout today but haven't been awarded yet
   const silentAp = await tryAwardAp();
   if (silentAp) {
@@ -6030,7 +6054,10 @@ async function openHunterProfile(targetUid) {
   inner.innerHTML = `
     <div class="hunter-modal-header">
       <button class="hunter-back-btn" id="hunter-back">← Back</button>
-      ${currentUser.uid === 'eUtGPwQBcCSO0x3xS3ZGYFGXNIT2' && !isMe ? `<button class="icon-btn" id="hunter-edit-program" style="font-size:12px;color:var(--brass);">✎ Edit their plan</button>` : ''}
+      ${currentUser.uid === 'eUtGPwQBcCSO0x3xS3ZGYFGXNIT2' && !isMe ? `
+        <button class="icon-btn" id="hunter-edit-program" style="font-size:12px;color:var(--brass);">✎ Edit plan</button>
+        <button class="icon-btn" id="hunter-log-workout" style="font-size:12px;color:var(--growing);">+ Log workout</button>
+      ` : ''}
     </div>
     <div class="card char-card" style="margin-bottom:12px;">
       <div class="char-header">
@@ -6069,6 +6096,214 @@ async function openHunterProfile(targetUid) {
   if (editProgBtn) editProgBtn.addEventListener('click', async () => {
     modal.classList.add('hidden');
     await openAdminProgramEditor(targetUid, target.displayName || 'Hunter');
+  });
+  const logBtn = document.getElementById('hunter-log-workout');
+  if (logBtn) logBtn.addEventListener('click', () => {
+    modal.classList.add('hidden');
+    openAdminWorkoutLogger(targetUid, target.displayName || 'Hunter');
+  });
+}
+
+function openAdminWorkoutLogger(targetUid, hunterName) {
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+
+  // get their program to prefill exercises
+  const targetUser = allUsers.find(u => u.uid === targetUid);
+  const program = targetUser?.program;
+  const today = todayStr();
+
+  // find today's program day
+  let prefillExercises = [];
+  if (program?.days?.length) {
+    const dayOfWeek = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][new Date().getDay()];
+    let day = null;
+    if (program.scheduleMode === 'fixed') {
+      day = program.days.find(d => d.assignedDays?.includes(dayOfWeek));
+    } else {
+      const totalDone = allWorkouts.filter(w => w.uid === targetUid).length;
+      day = program.days[totalDone % program.days.length];
+    }
+    if (day) prefillExercises = day.exercises || [];
+  }
+
+  function buildExerciseRows(exercises) {
+    return exercises.map((ex, ei) => {
+      const exDef = EXERCISES_ALL[ex.name] || {};
+      const isTimed = !!exDef.timed;
+      const repsLabel = isTimed ? (exDef.timedUnit === 'mins' ? 'Mins' : 'Secs') : 'Reps';
+      const sets = Array.from({length: ex.sets || 3}, (_, si) => `
+        <div class="admin-set-row" style="display:grid;grid-template-columns:24px 1fr 1fr auto;gap:6px;align-items:center;margin-bottom:6px;">
+          <span style="font-size:11px;color:var(--text-faint);text-align:center;">${si+1}</span>
+          <input type="number" class="admin-reps" placeholder="${repsLabel}" min="0" inputmode="decimal"
+            style="background:var(--card-2);border:1px solid var(--border);border-radius:4px;color:var(--text);padding:6px 8px;font-size:13px;width:100%;" />
+          <input type="number" class="admin-weight" placeholder="kg" min="0" step="0.5" inputmode="decimal"
+            style="background:var(--card-2);border:1px solid var(--border);border-radius:4px;color:var(--text);padding:6px 8px;font-size:13px;width:100%;" />
+          <select class="admin-rir" style="background:var(--card-2);border:1px solid var(--border);border-radius:4px;color:var(--text);padding:6px 4px;font-size:12px;">
+            <option value="">-</option>
+            ${isTimed
+              ? [6,7,8,9,10].map(n=>`<option value="${n}">RPE${n}</option>`).join('')
+              : [0,1,2,3,4,5].map(n=>`<option value="${n}">RIR${n}</option>`).join('')}
+          </select>
+        </div>`).join('');
+      return `<div class="admin-ex-block" data-ei="${ei}" style="background:var(--card-2);border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:10px;">
+        <div style="font-size:13px;font-weight:700;margin-bottom:8px;color:var(--brass);">${escapeHtml(ex.name)}</div>
+        <div style="display:grid;grid-template-columns:24px 1fr 1fr auto;gap:6px;margin-bottom:4px;">
+          <span></span>
+          <span style="font-size:9px;color:var(--text-faint);font-family:var(--font-mono);">${repsLabel.toUpperCase()}</span>
+          <span style="font-size:9px;color:var(--text-faint);font-family:var(--font-mono);">WEIGHT</span>
+          <span style="font-size:9px;color:var(--text-faint);font-family:var(--font-mono);">RIR/RPE</span>
+        </div>
+        ${sets}
+      </div>`;
+    }).join('');
+  }
+
+  overlay.innerHTML = `
+    <div class="modal" style="max-height:88vh;overflow-y:auto;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+        <div>
+          <div style="font-family:var(--font-mono);font-size:9px;color:var(--text-faint);letter-spacing:0.2em;">ADMIN · LOG WORKOUT FOR</div>
+          <h3 style="margin:2px 0 0;color:var(--growing);">${escapeHtml(hunterName)}</h3>
+        </div>
+        <button class="icon-btn" id="admin-log-close" style="font-size:20px;">✕</button>
+      </div>
+      <div class="field" style="margin-bottom:12px;">
+        <label>Date</label>
+        <input type="date" id="admin-log-date" value="${today}" style="background:var(--card-2);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:8px 10px;font-size:14px;width:100%;" />
+      </div>
+      <div class="field" style="margin-bottom:12px;">
+        <label>Time (when they trained)</label>
+        <input type="time" id="admin-log-time" value="${new Date().toTimeString().slice(0,5)}" style="background:var(--card-2);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:8px 10px;font-size:14px;width:100%;" />
+      </div>
+      <div id="admin-ex-rows">${prefillExercises.length ? buildExerciseRows(prefillExercises) : '<p style="color:var(--text-faint);font-size:13px;">No program found — add exercises below.</p>'}</div>
+      <button class="btn" id="admin-add-ex" style="width:100%;margin-bottom:14px;">+ Add exercise</button>
+      <button class="btn btn-primary" id="admin-log-save" style="width:100%;">Save workout for ${escapeHtml(hunterName)}</button>
+    </div>`;
+
+  document.body.appendChild(overlay);
+  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+  overlay.querySelector('#admin-log-close').addEventListener('click', () => overlay.remove());
+
+  overlay.querySelector('#admin-add-ex').addEventListener('click', () => {
+    const name = prompt('Exercise name:');
+    if (!name) return;
+    const sets = parseInt(prompt('Number of sets:', '3')) || 3;
+    const exDef = EXERCISES_ALL[name] || {};
+    const isTimed = !!exDef.timed;
+    const repsLabel = isTimed ? (exDef.timedUnit === 'mins' ? 'Mins' : 'Secs') : 'Reps';
+    const block = document.createElement('div');
+    block.className = 'admin-ex-block';
+    block.style.cssText = 'background:var(--card-2);border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:10px;';
+    block.dataset.name = name;
+    block.innerHTML = `<div style="font-size:13px;font-weight:700;margin-bottom:8px;color:var(--brass);">${escapeHtml(name)}</div>
+      <div style="display:grid;grid-template-columns:24px 1fr 1fr auto;gap:6px;margin-bottom:4px;">
+        <span></span>
+        <span style="font-size:9px;color:var(--text-faint);font-family:var(--font-mono);">${repsLabel.toUpperCase()}</span>
+        <span style="font-size:9px;color:var(--text-faint);font-family:var(--font-mono);">WEIGHT</span>
+        <span style="font-size:9px;color:var(--text-faint);font-family:var(--font-mono);">RIR/RPE</span>
+      </div>
+      ${Array.from({length:sets},(_,si)=>`
+        <div class="admin-set-row" style="display:grid;grid-template-columns:24px 1fr 1fr auto;gap:6px;align-items:center;margin-bottom:6px;">
+          <span style="font-size:11px;color:var(--text-faint);text-align:center;">${si+1}</span>
+          <input type="number" class="admin-reps" placeholder="${repsLabel}" min="0" inputmode="decimal" style="background:var(--card);border:1px solid var(--border);border-radius:4px;color:var(--text);padding:6px 8px;font-size:13px;width:100%;" />
+          <input type="number" class="admin-weight" placeholder="kg" min="0" step="0.5" inputmode="decimal" style="background:var(--card);border:1px solid var(--border);border-radius:4px;color:var(--text);padding:6px 8px;font-size:13px;width:100%;" />
+          <select class="admin-rir" style="background:var(--card);border:1px solid var(--border);border-radius:4px;color:var(--text);padding:6px 4px;font-size:12px;">
+            <option value="">-</option>
+            ${isTimed?[6,7,8,9,10].map(n=>`<option value="${n}">RPE${n}</option>`).join(''):[0,1,2,3,4,5].map(n=>`<option value="${n}">RIR${n}</option>`).join('')}
+          </select>
+        </div>`).join('')}`;
+    overlay.querySelector('#admin-ex-rows').appendChild(block);
+  });
+
+  overlay.querySelector('#admin-log-save').addEventListener('click', async () => {
+    const date = overlay.querySelector('#admin-log-date').value || today;
+    const timeVal = overlay.querySelector('#admin-log-time').value || new Date().toTimeString().slice(0,5);
+    const timeStr = timeVal ? new Date(`${date}T${timeVal}`).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}) : '';
+    const blocks = overlay.querySelectorAll('.admin-ex-block');
+    const exercises = [];
+    blocks.forEach((block, bi) => {
+      const exName = block.dataset.name || (prefillExercises[bi]?.name) || '';
+      if (!exName) return;
+      const sets = [];
+      block.querySelectorAll('.admin-set-row').forEach(row => {
+        const reps = Number(row.querySelector('.admin-reps')?.value) || 0;
+        if (!reps) return;
+        const weight = Number(row.querySelector('.admin-weight')?.value) || 0;
+        const rir = row.querySelector('.admin-rir')?.value;
+        sets.push({ reps, weight, rir: rir !== '' ? Number(rir) : null });
+      });
+      if (sets.length) exercises.push({ name: exName, sets });
+    });
+
+    if (!exercises.length) { showToast('No sets logged.', 'error'); return; }
+
+    const btn = overlay.querySelector('#admin-log-save');
+    btn.disabled = true; btn.textContent = 'Saving…';
+
+    try {
+      const workoutId = `${targetUid}_${date}_${Date.now()}`;
+      const workoutData = {
+        uid: targetUid, date,
+        time: timeStr,
+        exercises,
+        createdAt: new Date().toISOString(),
+      };
+      await setDoc(doc(db, 'workouts', workoutId), workoutData);
+      // update their lastWorkoutDate
+      await setDoc(doc(db, 'users', targetUid), { lastWorkoutDate: date }, { merge: true });
+      // award AP for the day if not already awarded
+      const targetProfile = (await getDoc(doc(db, 'users', targetUid))).data() || {};
+      if (targetProfile.lastApDate !== date) {
+        const streak = computeStreak(targetUid);
+        const mult = streak >= 60 ? 3 : streak >= 30 ? 2 : streak >= 7 ? 1.5 : 1;
+        const ap = Math.round(10 * mult);
+        const currentAp = targetProfile.auraPoints || 0;
+        await setDoc(doc(db, 'users', targetUid), {
+          lastApDate: date,
+          auraPoints: currentAp + ap,
+        }, { merge: true });
+      }
+      // check PRs for each exercise
+      for (const ex of exercises) {
+        const exDef = EXERCISES_ALL[ex.name] || {};
+        if (exDef.timed) continue; // no e1RM for timed exercises
+        const bestSet = ex.sets.reduce((best, s) => {
+          const e = epley1RM(s.weight, s.reps);
+          return e > best ? e : best;
+        }, 0);
+        if (bestSet > 0) {
+          const existingPR = (await getDoc(doc(db, 'prs', targetUid))).data() || {};
+          const currentBest = existingPR[ex.name]?.e1rm || 0;
+          if (bestSet > currentBest) {
+            const tier = getPRTier(ex.name, bestSet, targetProfile.bodyWeight || 70, targetProfile.bodyType || 'male');
+            const xp = { Elite:250, Advanced:100, Intermediate:40, Novice:15, Beginner:5 }[tier] || 5;
+            const prUpdate = {};
+            prUpdate[ex.name] = { e1rm: bestSet, date, tier, xp };
+            await setDoc(doc(db, 'prs', targetUid), prUpdate, { merge: true });
+          }
+        }
+      }
+      // apply stat XP
+      const statXpMap = {};
+      exercises.forEach(ex => {
+        const statId = getStatForExercise(ex.name);
+        if (statId) statXpMap[statId] = (statXpMap[statId] || 0) + ex.sets.length;
+      });
+      if (Object.keys(statXpMap).length) {
+        const statXpUpdate = {};
+        Object.entries(statXpMap).forEach(([id, xp]) => {
+          statXpUpdate[`statXP.${id}`] = (targetProfile.statXP?.[id] || 0) + xp;
+        });
+        await setDoc(doc(db, 'users', targetUid), statXpUpdate, { merge: true });
+      }
+      await loadAllData();
+      showToast(`Workout saved for ${hunterName} — AP, PRs and stat XP processed!`, 'success');
+      overlay.remove();
+    } catch(e) {
+      showToast('Error: ' + e.message, 'error');
+      btn.disabled = false; btn.textContent = `Save workout for ${hunterName}`;
+    }
   });
 }
 
