@@ -302,7 +302,7 @@
   .rest-sub{font-size:13.5px;color:var(--text-dim);line-height:1.6;margin:0;}
 
   .rest-note{font-size:12.5px;color:var(--maintaining);text-align:center;margin:0 0 12px;}
-  .quest-carousel{display:flex;align-items:center;gap:8px;overflow:visible;}
+  .quest-carousel{display:flex;align-items:center;gap:8px;overflow:hidden;}
   .quest-carousel-card{flex:1;min-width:0;position:relative;}
   .quest-carousel-card .quest-card{will-change:transform,opacity;}
   @keyframes slideInRight{from{transform:translateX(100%);opacity:0;}to{transform:translateX(0);opacity:1;}}
@@ -480,12 +480,10 @@
     position:absolute;inset:0;border-radius:50%;
     border:1.5px solid var(--brass);opacity:0.5;
     animation:orbRotate 8s linear infinite;
-    will-change:transform;
   }
   .char-rank-orb-ring.r2{
     inset:6px;border-color:var(--violet);opacity:0.3;
     animation:orbRotate 5s linear infinite reverse;
-    will-change:transform;
   }
   @keyframes orbRotate{from{transform:rotate(0deg);}to{transform:rotate(360deg);}}
   .char-rank-letter{
@@ -992,7 +990,339 @@
   .history-card .exlist{font-size:13px;color:var(--text-dim);line-height:1.6;}
   .empty-state{text-align:center;padding:40px 20px;color:var(--text-faint);}
   .empty-state .display{font-size:16px;color:var(--text-dim);margin-bottom:6px;}
+</style>
+</head>
+<body>
 
+<!-- ============ AUTH SCREEN ============ -->
+<div id="auth-screen">
+  <div>
+    <div id="config-warning" class="config-warning hidden">
+      Firebase isn't configured yet. Open <span class="mono">index.html</span> and fill in
+      <span class="mono">firebaseConfig</span> near the top of the script with your project's keys.
+    </div>
+    <div class="auth-card">
+      <p class="eyebrow">◈ The System ◈</p>
+      <p class="wordmark">AURAMAXXING<span>.</span></p>
+      <p class="tagline">Arise. Log your training. Rank up with your party.</p>
+      <form id="auth-form">
+        <div class="field hidden" id="name-field">
+          <label for="displayName">Hunter name</label>
+          <input id="displayName" type="text" placeholder="What your party calls you" autocomplete="name" maxlength="24" inputmode="text" />
+        </div>
+        <div class="field">
+          <label for="email">Email</label>
+          <input id="email" type="email" placeholder="you@example.com" autocomplete="email" required />
+        </div>
+        <div class="field">
+          <label for="password">Password</label>
+          <input id="password" type="password" placeholder="••••••••" autocomplete="current-password" required />
+        </div>
+        <button type="submit" class="btn btn-primary" id="auth-submit">Enter the System</button>
+        <p class="auth-error" id="auth-error"></p>
+      </form>
+      <p class="switch-mode">
+        <span id="switch-text">New hunter?</span>
+        <button type="button" id="switch-btn">Awaken your account</button>
+      </p>
+    </div>
+  </div>
+</div>
+
+<!-- ============ APP ============ -->
+<div id="app">
+  <header class="topbar">
+    <p class="wordmark">AURA<span>MAXX</span></p>
+    <div class="daily-timer" id="daily-timer"></div>
+    <div class="user-chip">
+      <button class="icon-btn" id="settings-btn" title="Settings">⚙</button>
+      <div class="avatar" id="user-avatar">–</div>
+      <button class="icon-btn" id="logout-btn">Log out</button>
+    </div>
+  </header>
+
+  <main class="view-area">
+
+    <!-- ---- QUEST (log + program) ---- -->
+    <section class="view active" id="view-quest">
+      <h2>Daily Quest</h2>
+      <p class="sub">Run your program or log a one-off session. Every set feeds your stats and your streak.</p>
+
+      <div id="program-card-wrap"></div>
+      <div id="program-editor-wrap"></div>
+
+      <button class="btn btn-block" id="manual-log-btn" style="margin-top:4px;">+ Log a workout manually</button>
+      <button class="btn btn-block" id="log-run-btn" style="margin-top:8px;background:var(--maintaining);color:#fff;">🏃 Log a run</button>
+    </section>
+
+    <!-- Full-screen workout logging modal — opened by Begin Quest or manual logging -->
+    <div class="workout-modal-overlay hidden" id="workout-modal-overlay">
+      <div class="workout-modal">
+        <div class="workout-modal-header">
+          <h3 id="logger-title">Log exercises</h3>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <button class="icon-btn" id="minimise-workout-modal" title="Continue in background" style="font-size:13px;color:var(--text-dim);">− Minimise</button>
+            <button class="icon-btn" id="end-workout-modal" title="End workout" style="font-size:13px;color:var(--excess);">✕ End</button>
+          </div>
+        </div>
+        <div class="rest-timer-bar">
+          <span class="rest-timer-label">⏱ Rest</span>
+          <div class="rest-timer-presets">
+            <button type="button" class="rest-preset-btn" data-secs="30">30s</button>
+            <button type="button" class="rest-preset-btn" data-secs="60">60s</button>
+            <button type="button" class="rest-preset-btn" data-secs="90">90s</button>
+            <button type="button" class="rest-preset-btn" data-secs="120">120s</button>
+          </div>
+          <div class="rest-timer-display" id="rest-timer-display">—</div>
+          <button type="button" class="rest-timer-stop hidden" id="rest-timer-stop">Stop</button>
+        </div>
+        <div class="workout-modal-body">
+          <div class="date-row">
+            <div class="field">
+              <label for="workout-date">Date</label>
+              <input type="date" id="workout-date" />
+            </div>
+            <div class="field">
+              <label for="workout-time">Time</label>
+              <input type="time" id="workout-time" />
+            </div>
+          </div>
+          <div id="exercise-rows"></div>
+          <button class="btn add-exercise-btn" id="add-exercise-btn">+ Add exercise</button>
+          <div class="save-bar">
+            <button class="btn btn-primary hidden" id="save-workout-btn">Complete quest</button>
+            <p class="save-msg hidden" id="save-msg">Quest cleared — XP logged.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Minimised workout pill — shows when workout continues in background -->
+    <div class="workout-pill hidden" id="workout-pill">
+      <span class="workout-pill-label" id="workout-pill-label">Workout in progress</span>
+      <button class="workout-pill-btn" id="workout-pill-open">Resume →</button>
+    </div>
+
+    <!-- Run Logger Modal -->
+    <div class="modal-overlay hidden" id="run-modal-overlay">
+      <div class="modal" style="max-height:85vh;overflow-y:auto;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+          <h3 style="margin:0;">🏃 Log a Run</h3>
+          <button class="icon-btn" id="close-run-modal" style="font-size:20px;">✕</button>
+        </div>
+        <div class="field">
+          <label>Run type</label>
+          <div class="run-type-chips" id="run-type-chips">
+            <button type="button" class="run-type-chip selected" data-type="Easy Run">Easy</button>
+            <button type="button" class="run-type-chip" data-type="Tempo Run">Tempo</button>
+            <button type="button" class="run-type-chip" data-type="Interval Running">Intervals</button>
+            <button type="button" class="run-type-chip" data-type="Long Run">Long Run</button>
+            <button type="button" class="run-type-chip" data-type="Hill Sprints">Hills</button>
+            <button type="button" class="run-type-chip" data-type="Race">Race</button>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+          <div class="field">
+            <label>Distance</label>
+            <div style="display:flex;align-items:center;gap:6px;">
+              <input type="number" id="run-distance" step="0.01" min="0" placeholder="0.00" inputmode="decimal" style="flex:1;" />
+              <div class="run-unit-toggle">
+                <button type="button" class="run-unit-btn selected" data-unit="km">km</button>
+                <button type="button" class="run-unit-btn" data-unit="mi">mi</button>
+              </div>
+            </div>
+          </div>
+          <div class="field">
+            <label>Duration</label>
+            <div style="display:flex;align-items:center;gap:4px;">
+              <input type="number" id="run-mins" min="0" max="999" placeholder="00" inputmode="numeric" style="width:52px;text-align:center;" />
+              <span style="color:var(--text-dim);">m</span>
+              <input type="number" id="run-secs" min="0" max="59" placeholder="00" inputmode="numeric" style="width:44px;text-align:center;" />
+              <span style="color:var(--text-dim);">s</span>
+            </div>
+          </div>
+        </div>
+        <div class="field">
+          <label>Pace <span id="run-pace-display" style="color:var(--brass);font-family:var(--font-mono);"></span></label>
+        </div>
+        <div class="field">
+          <label>Notes (optional)</label>
+          <input type="text" id="run-notes" placeholder="How did it feel?" inputmode="text" maxlength="100" />
+        </div>
+        <div class="field">
+          <label>Date</label>
+          <input type="date" id="run-date" />
+        </div>
+        <button class="btn btn-primary" id="save-run-btn" style="width:100%;">Save Run</button>
+      </div>
+    </div>
+
+    <!-- Custom in-app numpad — replaces system keyboard for reps/weight -->
+    <div class="numpad-overlay hidden" id="numpad-overlay">
+      <div class="numpad-sheet" id="numpad-sheet">
+        <div class="numpad-header">
+          <span class="numpad-context" id="numpad-context">Reps</span>
+          <span class="numpad-display" id="numpad-display">—</span>
+          <button class="numpad-confirm" id="numpad-confirm">✓ Done</button>
+        </div>
+        <div class="numpad-stepper-row">
+          <button class="numpad-step-btn" id="numpad-minus">−</button>
+          <button class="numpad-step-btn" id="numpad-plus">+</button>
+        </div>
+        <div class="numpad-grid">
+          <button class="numpad-key" data-key="1">1</button>
+          <button class="numpad-key" data-key="2">2</button>
+          <button class="numpad-key" data-key="3">3</button>
+          <button class="numpad-key" data-key="4">4</button>
+          <button class="numpad-key" data-key="5">5</button>
+          <button class="numpad-key" data-key="6">6</button>
+          <button class="numpad-key" data-key="7">7</button>
+          <button class="numpad-key" data-key="8">8</button>
+          <button class="numpad-key" data-key="9">9</button>
+          <button class="numpad-key numpad-dot" data-key=".">.</button>
+          <button class="numpad-key numpad-zero" data-key="0">0</button>
+          <button class="numpad-key numpad-del" data-key="del">⌫</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ---- RANK ---- -->
+    <section class="view" id="view-board">
+
+      <!-- Today's session card -->
+      <div id="today-debrief-card-slot"></div>
+
+      <!-- WEEKLY RAID BOSS -->
+      <div id="raid-boss-slot"></div>
+
+      <!-- CHARACTER SCREEN -->
+      <div class="char-screen" id="char-card">
+        <div class="char-screen-bg" id="char-screen-bg"></div>
+        <div class="char-screen-inner">
+          <div class="char-top-row">
+            <div class="char-rank-orb" id="char-rank-badge">
+              <div class="char-rank-orb-ring"></div>
+              <div class="char-rank-orb-ring r2"></div>
+              <span class="char-rank-letter">E</span>
+            </div>
+            <div class="char-identity">
+              <div class="char-eyebrow">HUNTER PROFILE</div>
+              <div class="char-name" id="char-name">—</div>
+              <div class="char-title" id="char-title">Unranked Hunter</div>
+            </div>
+            <div class="char-power-col">
+              <div class="char-power-value" id="char-power-value">0</div>
+              <div class="char-power-label">POWER</div>
+              <div class="char-ap-row"><span class="char-ap-value" id="ap-amount">0</span><span class="char-ap-label">AP</span></div>
+            </div>
+          </div>
+          <div class="char-divider"></div>
+          <div class="char-stats" id="char-stats"></div>
+          <p class="char-rank-hint" id="char-rank-hint"></p>
+        </div>
+      </div>
+
+      <!-- PR Records panel -->
+      <div id="pr-panel"></div>
+
+      <!-- Strength Rankings -->
+      <div id="strength-rankings"></div>
+
+      <!-- Weekly Superlatives -->
+      <div id="weekly-superlatives"></div>
+
+      <!-- Party Stats Dashboard -->
+      <div id="party-dashboard"></div>
+
+      <div class="sl-section-head">Party Status — Today</div>
+      <div class="today-list" id="today-list"></div>
+
+      <div class="sl-section-head">Guild Rankings</div>
+      <table class="board sl-board">
+        <thead><tr><th></th><th>Hunter</th><th>Power</th><th>Rank</th><th>Streak</th><th>Total</th></tr></thead>
+        <tbody id="board-body"></tbody>
+      </table>
+
+      <!-- Hunter profile modal -->
+      <div class="hunter-modal hidden" id="hunter-modal">
+        <div class="hunter-modal-inner" id="hunter-modal-inner"></div>
+      </div>
+    </section>
+
+    <!-- ---- TRENDS ---- -->
+    <section class="view" id="view-trends">
+      <div id="trends-dashboard">
+        <h2>Trends</h2>
+        <p class="sub">Everything your training data can tell you.</p>
+        <div id="trends-widgets"></div>
+      </div>
+      <div id="trends-muscle-detail" class="hidden"></div>
+    </section>
+
+    <!-- ---- EXERCISES ---- -->
+    <section class="view" id="view-exercises">
+      <div class="card-title" style="margin-bottom:6px;">
+        <h2 style="margin:0;">Exercises</h2>
+        <button class="btn btn-sm" id="add-exercise-lib-btn">+ Add</button>
+      </div>
+      <p class="sub">Your full move list — search it, filter it, or add your own.</p>
+      <input type="text" class="lib-search" id="lib-search" placeholder="Search exercises…" />
+      <div class="lib-filters">
+        <select id="lib-muscle-filter"><option value="">All muscles</option></select>
+        <select id="lib-equip-filter"><option value="">All equipment</option></select>
+      </div>
+      <div class="ex-grid" id="ex-grid"></div>
+    </section>
+
+    <!-- ---- HISTORY ---- -->
+    <section class="view" id="view-history">
+      <h2>Quest Log</h2>
+      <p class="sub">Every cleared quest across the party.</p>
+      <div class="card">
+        <div class="cal-head">
+          <button id="cal-prev">‹</button>
+          <span class="cal-title" id="cal-title"></span>
+          <button id="cal-next">›</button>
+        </div>
+        <div class="cal-weekdays"><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span><span>S</span></div>
+        <div class="cal-grid" id="cal-grid"></div>
+      </div>
+      <div id="history-list"></div>
+    </section>
+
+  </main>
+
+  <nav class="bottom-nav">
+    <div class="nav-inner">
+      <button data-view="quest" class="active">
+        <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Quest
+      </button>
+      <button data-view="board">
+        <svg viewBox="0 0 24 24"><path d="M4 20V10M12 20V4M20 20v-7"/></svg>Rank
+      </button>
+      <button data-view="trends">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="7" r="3"/><path d="M9 21v-6a3 3 0 0 1 6 0v6M6 21v-4M18 21v-4"/></svg>Trends
+      </button>
+      <button data-view="exercises">
+        <svg viewBox="0 0 24 24"><path d="M6 6l6 12 6-12"/><path d="M3 6h18"/></svg>Moves
+      </button>
+      <button data-view="history">
+        <svg viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7M3 4v5h5"/><path d="M12 8v4l3 2"/></svg>Log
+      </button>
+    </div>
+  </nav>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import {
+  getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword,
+  onAuthStateChanged, signOut, updateProfile
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import {
+  getFirestore, collection, doc, setDoc, addDoc, getDoc, getDocs,
+  query, where, orderBy, serverTimestamp, updateDoc, deleteDoc
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 /* =========================================================================
    FIREBASE CONFIG
@@ -1020,7 +1350,181 @@ try {
 /* =========================================================================
    EXERCISE DATABASE
    ========================================================================= */
-const BASE_EXERCISES = window.BASE_EXERCISES_DATA || {}; // loaded from exercises.js
+const BASE_EXERCISES = {
+  "Bench Press": { muscles: { "Middle Chest": 1, "Triceps": 0.6, "Front Shoulders": 0.3 }, equipment: "Barbell" },
+  "Incline Bench Press": { muscles: { "Upper Chest": 1, "Front Shoulders": 0.6, "Triceps": 0.3 }, equipment: "Barbell" },
+  "Incline Dumbbell Press": { muscles: { "Upper Chest": 1, "Front Shoulders": 0.6, "Triceps": 0.3 }, equipment: "Dumbbell" },
+  "Dumbbell Fly": { muscles: { "Middle Chest": 1, "Front Shoulders": 0.2 }, equipment: "Dumbbell" },
+  "Push Up": { bwPercent: 0.67, muscles: { "Middle Chest": 1, "Triceps": 0.6, "Front Shoulders": 0.3 }, equipment: "Bodyweight" },
+  "Dips": { bwPercent: 0.85, muscles: { "Lower Chest": 1, "Triceps": 0.6, "Front Shoulders": 0.3 }, equipment: "Bodyweight" },
+  "Decline Bench Press": { muscles: { "Lower Chest": 1, "Triceps": 0.6, "Front Shoulders": 0.2 }, equipment: "Barbell" },
+  "Decline Dumbbell Press": { muscles: { "Lower Chest": 1, "Triceps": 0.6, "Front Shoulders": 0.2 }, equipment: "Dumbbell" },
+  "Incline Dumbbell Fly": { muscles: { "Upper Chest": 1, "Front Shoulders": 0.3 }, equipment: "Dumbbell" },
+  "Decline Dumbbell Fly": { muscles: { "Lower Chest": 1, "Front Shoulders": 0.2 }, equipment: "Dumbbell" },
+  "Cable Crossover": { muscles: { "Middle Chest": 1, "Front Shoulders": 0.2 }, equipment: "Cable" },
+  "Cable Fly Low-to-High": { muscles: { "Upper Chest": 1, "Front Shoulders": 0.3 }, equipment: "Cable" },
+  "Cable Fly High-to-Low": { muscles: { "Lower Chest": 1, "Front Shoulders": 0.2 }, equipment: "Cable" },
+  "Pec Deck Machine": { muscles: { "Middle Chest": 1 }, equipment: "Machine" },
+  "Svend Press": { muscles: { "Middle Chest": 1, "Front Shoulders": 0.2 }, equipment: "Dumbbell" },
+  "Dumbbell Pullover": { muscles: { "Lats": 1, "Middle Chest": 0.3, "Triceps": 0.2 }, equipment: "Dumbbell" },
+  "Incline Push Up": { bwPercent: 0.55, muscles: { "Lower Chest": 1, "Triceps": 0.3, "Front Shoulders": 0.2 }, equipment: "Bodyweight" },
+  "Decline Push Up": { bwPercent: 0.75, muscles: { "Upper Chest": 1, "Front Shoulders": 0.6, "Triceps": 0.3 }, equipment: "Bodyweight" },
+  "Diamond Push Up": { bwPercent: 0.75, muscles: { "Triceps": 1, "Middle Chest": 0.6, "Front Shoulders": 0.3 }, equipment: "Bodyweight" },
+  "Wide Push Up": { bwPercent: 0.67, muscles: { "Middle Chest": 1, "Front Shoulders": 0.3 }, equipment: "Bodyweight" },
+  "Archer Push Up": { bwPercent: 0.67, muscles: { "Middle Chest": 1, "Triceps": 0.6, "Front Shoulders": 0.3 }, equipment: "Bodyweight" },
+  "Ring Dips": { bwPercent: 0.85, muscles: { "Lower Chest": 1, "Triceps": 0.6, "Front Shoulders": 0.3 }, equipment: "Bodyweight" },
+  "Overhead Press": { muscles: { "Front Shoulders": 1, "Lateral Shoulders": 0.6, "Triceps": 0.6, "Upper Abs": 0.2 }, equipment: "Barbell" },
+  "Lateral Raise": { muscles: { "Lateral Shoulders": 1, "Traps": 0.2 }, equipment: "Dumbbell" },
+  "Front Raise": { muscles: { "Front Shoulders": 1, "Upper Chest": 0.2 }, equipment: "Dumbbell" },
+  "Rear Delt Fly": { muscles: { "Rear Shoulders": 1, "Upper Back": 0.6, "Traps": 0.2 }, equipment: "Dumbbell" },
+  "Arnold Press": { muscles: { "Front Shoulders": 1, "Lateral Shoulders": 0.6, "Triceps": 0.3 }, equipment: "Dumbbell" },
+  "Dumbbell Shoulder Press": { muscles: { "Front Shoulders": 1, "Lateral Shoulders": 0.6, "Triceps": 0.6 }, equipment: "Dumbbell" },
+  "Machine Shoulder Press": { muscles: { "Front Shoulders": 1, "Lateral Shoulders": 0.3, "Triceps": 0.6 }, equipment: "Machine" },
+  "Push Press": { muscles: { "Front Shoulders": 1, "Lateral Shoulders": 0.6, "Triceps": 0.6, "Quads": 0.3, "Hip Flexors": 0.2 }, equipment: "Barbell" },
+  "Cable Lateral Raise": { muscles: { "Lateral Shoulders": 1, "Traps": 0.2 }, equipment: "Cable" },
+  "Plate Front Raise": { muscles: { "Front Shoulders": 1, "Upper Chest": 0.2, "Lateral Shoulders": 0.2 }, equipment: "Barbell" },
+  "Upright Row": { muscles: { "Lateral Shoulders": 1, "Traps": 0.6, "Biceps": 0.2 }, equipment: "Barbell" },
+  "Cuban Press": { muscles: { "Lateral Shoulders": 0.7, "Rear Shoulders": 0.7, "Front Shoulders": 0.4, "Traps": 0.2 }, equipment: "Dumbbell" },
+  "Cable Rear Delt Fly": { muscles: { "Rear Shoulders": 1, "Upper Back": 0.3 }, equipment: "Cable" },
+  "Face Pull": { muscles: { "Rear Shoulders": 1, "Upper Back": 0.6, "Traps": 0.3 }, equipment: "Cable" },
+  "Reverse Pec Deck": { muscles: { "Rear Shoulders": 1, "Upper Back": 0.3 }, equipment: "Machine" },
+  "Pike Push Up": { bwPercent: 0.7, muscles: { "Front Shoulders": 1, "Lateral Shoulders": 0.3, "Triceps": 0.6 }, equipment: "Bodyweight" },
+  "Handstand Push Up": { bwPercent: 1.0, muscles: { "Front Shoulders": 1, "Lateral Shoulders": 0.6, "Triceps": 0.6 }, equipment: "Bodyweight" },
+  "Wall Walk": { muscles: { "Front Shoulders": 1, "Upper Abs": 0.6, "Lats": 0.2 }, equipment: "Bodyweight" },
+  "Deadlift": { muscles: { "Lower Back": 1, "Glutes": 1, "Hamstrings": 0.6, "Lats": 0.6, "Traps": 0.6, "Quads": 0.3, "Forearms": 0.3 }, equipment: "Barbell" },
+  "Pull Up": { bwPercent: 1.0, muscles: { "Lats": 1, "Upper Back": 0.6, "Biceps": 0.6, "Forearms": 0.3 }, equipment: "Bodyweight" },
+  "Lat Pulldown": { muscles: { "Lats": 1, "Upper Back": 0.3, "Biceps": 0.6 }, equipment: "Cable" },
+  "Barbell Row": { muscles: { "Upper Back": 1, "Lats": 0.6, "Biceps": 0.6, "Traps": 0.3, "Lower Back": 0.2 }, equipment: "Barbell" },
+  "Seated Cable Row": { muscles: { "Upper Back": 1, "Lats": 0.6, "Biceps": 0.6 }, equipment: "Cable" },
+  "T-Bar Row": { muscles: { "Upper Back": 1, "Lats": 0.6, "Biceps": 0.6, "Lower Back": 0.2 }, equipment: "Machine" },
+  "One-Arm Dumbbell Row": { muscles: { "Lats": 1, "Upper Back": 0.6, "Biceps": 0.6 }, equipment: "Dumbbell" },
+  "Sumo Deadlift": { muscles: { "Glutes": 1, "Quads": 0.6, "Hamstrings": 0.6, "Lower Back": 0.4, "Traps": 0.3 }, equipment: "Barbell" },
+  "Stiff-Leg Deadlift": { muscles: { "Hamstrings": 1, "Lower Back": 0.6, "Glutes": 0.3 }, equipment: "Barbell" },
+  "Rack Pull": { muscles: { "Traps": 1, "Upper Back": 0.6, "Lower Back": 0.6, "Forearms": 0.3 }, equipment: "Barbell" },
+  "Chin Up": { bwPercent: 1.0, muscles: { "Lats": 1, "Biceps": 1, "Upper Back": 0.3, "Forearms": 0.2 }, equipment: "Bodyweight" },
+  "Wide Grip Pull Up": { bwPercent: 1.0, muscles: { "Lats": 1, "Upper Back": 0.6, "Biceps": 0.3 }, equipment: "Bodyweight" },
+  "Neutral Grip Pull Up": { bwPercent: 1.0, muscles: { "Lats": 1, "Biceps": 0.6, "Upper Back": 0.3, "Forearms": 0.2 }, equipment: "Bodyweight" },
+  "Commando Pull Up": { bwPercent: 1.0, muscles: { "Lats": 1, "Biceps": 0.6, "Upper Back": 0.3, "Obliques": 0.2 }, equipment: "Bodyweight" },
+  "Muscle Up": { bwPercent: 1.0, muscles: { "Lats": 1, "Triceps": 1, "Upper Back": 0.6, "Biceps": 0.6, "Middle Chest": 0.3 }, equipment: "Bodyweight" },
+  "Inverted Row": { bwPercent: 0.7, muscles: { "Upper Back": 1, "Lats": 0.6, "Biceps": 0.6, "Rear Shoulders": 0.3 }, equipment: "Bodyweight" },
+  "Close Grip Lat Pulldown": { muscles: { "Lats": 1, "Biceps": 0.6, "Upper Back": 0.3 }, equipment: "Cable" },
+  "Straight Arm Pulldown": { muscles: { "Lats": 1, "Triceps": 0.3 }, equipment: "Cable" },
+  "Pendlay Row": { muscles: { "Upper Back": 1, "Lats": 0.6, "Biceps": 0.6, "Lower Back": 0.2 }, equipment: "Barbell" },
+  "Chest Supported Row": { muscles: { "Upper Back": 1, "Lats": 0.3, "Biceps": 0.6, "Rear Shoulders": 0.3 }, equipment: "Machine" },
+  "Meadows Row": { muscles: { "Lats": 1, "Upper Back": 0.6, "Biceps": 0.6 }, equipment: "Barbell" },
+  "Good Morning": { muscles: { "Hamstrings": 1, "Lower Back": 1, "Glutes": 0.6 }, equipment: "Barbell" },
+  "Back Extension": { muscles: { "Lower Back": 1, "Glutes": 0.6, "Hamstrings": 0.6 }, equipment: "Bodyweight" },
+  "Superman": { muscles: { "Lower Back": 1, "Glutes": 0.6, "Rear Shoulders": 0.2 }, equipment: "Bodyweight" },
+  "Dumbbell Shrugs": { muscles: { "Traps": 1, "Forearms": 0.2 }, equipment: "Dumbbell" },
+  "Farmers Carry": { timed: true, muscles: { "Traps": 1, "Forearms": 1 }, equipment: "Dumbbell" },
+  "Barbell Curl": { muscles: { "Biceps": 1, "Forearms": 0.3 }, equipment: "Barbell" },
+  "Dumbbell Curl": { muscles: { "Biceps": 1, "Forearms": 0.3 }, equipment: "Dumbbell" },
+  "Alternate Incline Dumbbell Curl": { muscles: { "Biceps": 1, "Forearms": 0.2 }, equipment: "Dumbbell" },
+  "Hammer Curl": { muscles: { "Biceps": 0.6, "Forearms": 1 }, equipment: "Dumbbell" },
+  "Preacher Curl": { muscles: { "Biceps": 1 }, equipment: "Barbell" },
+  "EZ Bar Curl": { muscles: { "Biceps": 1, "Forearms": 0.3 }, equipment: "Barbell" },
+  "Cable Curl": { muscles: { "Biceps": 1, "Forearms": 0.2 }, equipment: "Cable" },
+  "Concentration Curl": { muscles: { "Biceps": 1 }, equipment: "Dumbbell" },
+  "Spider Curl": { muscles: { "Biceps": 1 }, equipment: "Barbell" },
+  "Zottman Curl": { muscles: { "Biceps": 0.6, "Forearms": 1 }, equipment: "Dumbbell" },
+  "Tricep Pushdown": { muscles: { "Triceps": 1 }, equipment: "Cable" },
+  "Skull Crusher": { muscles: { "Triceps": 1 }, equipment: "Barbell" },
+  "Overhead Tricep Extension": { muscles: { "Triceps": 1 }, equipment: "Dumbbell" },
+  "Close Grip Bench Press": { muscles: { "Triceps": 1, "Middle Chest": 0.6, "Front Shoulders": 0.3 }, equipment: "Barbell" },
+  "Tricep Kickback": { muscles: { "Triceps": 1 }, equipment: "Dumbbell" },
+  "JM Press": { muscles: { "Triceps": 1, "Middle Chest": 0.3 }, equipment: "Barbell" },
+  "Bench Dip": { bwPercent: 0.75, muscles: { "Triceps": 1, "Lower Chest": 0.3, "Front Shoulders": 0.3 }, equipment: "Bodyweight" },
+  "Wrist Curl": { muscles: { "Forearms": 1 }, equipment: "Dumbbell" },
+  "Reverse Wrist Curl": { muscles: { "Forearms": 1 }, equipment: "Dumbbell" },
+  "Dead Hang": { timed: true, bwPercent: 1.0, muscles: { "Forearms": 1, "Lats": 0.3 }, equipment: "Bodyweight" },
+  "Scapula Push Up": { muscles: { "Traps": 0.6, "Upper Back": 1, "Rear Shoulders": 0.4 }, equipment: "Bodyweight" },
+  "Scapular Push Up": { muscles: { "Traps": 0.6, "Upper Back": 1, "Rear Shoulders": 0.4 }, equipment: "Bodyweight" },
+  "Scapula Pull Up": { muscles: { "Traps": 1, "Upper Back": 0.6, "Lats": 0.4 }, equipment: "Bodyweight" },
+  "Crunch": { muscles: { "Upper Abs": 1 }, equipment: "Bodyweight" },
+  "Plank": { timed: true, muscles: { "Upper Abs": 0.6, "Lower Abs": 0.6, "Obliques": 0.3, "Front Shoulders": 0.2 }, equipment: "Bodyweight" },
+  "Hanging Leg Raise": { muscles: { "Lower Abs": 1, "Hip Flexors": 0.6, "Forearms": 0.2 }, equipment: "Bodyweight" },
+  "Cable Crunch": { muscles: { "Upper Abs": 1, "Middle Abs": 0.3 }, equipment: "Cable" },
+  "Russian Twist": { muscles: { "Obliques": 1, "Upper Abs": 0.3 }, equipment: "Bodyweight" },
+  "Reverse Crunch": { muscles: { "Lower Abs": 1, "Hip Flexors": 0.3 }, equipment: "Bodyweight" },
+  "Bicycle Crunch": { muscles: { "Obliques": 1, "Upper Abs": 0.6 }, equipment: "Bodyweight" },
+  "Side Plank": { timed: true, muscles: { "Obliques": 1, "Lateral Shoulders": 0.2 }, equipment: "Bodyweight" },
+  "Hanging Knee Raise": { muscles: { "Lower Abs": 1, "Hip Flexors": 0.6, "Forearms": 0.2 }, equipment: "Bodyweight" },
+  "Toes to Bar": { muscles: { "Lower Abs": 1, "Hip Flexors": 0.6, "Forearms": 0.3 }, equipment: "Bodyweight" },
+  "Cable Woodchopper": { muscles: { "Obliques": 1, "Upper Abs": 0.3, "Lats": 0.2 }, equipment: "Cable" },
+  "V-Up": { muscles: { "Upper Abs": 1, "Lower Abs": 1, "Hip Flexors": 0.6 }, equipment: "Bodyweight" },
+  "Mountain Climber": { timed: true, muscles: { "Lower Abs": 1, "Hip Flexors": 0.6, "Front Shoulders": 0.3 }, equipment: "Bodyweight" },
+  "Ab Wheel Rollout": { muscles: { "Upper Abs": 1, "Lower Abs": 0.6, "Lats": 0.3, "Triceps": 0.2 }, equipment: "Bodyweight" },
+  "Dragon Flag": { muscles: { "Lower Abs": 1, "Upper Abs": 0.6, "Hip Flexors": 0.3, "Lats": 0.2 }, equipment: "Bodyweight" },
+  "Sit Up": { muscles: { "Upper Abs": 1, "Hip Flexors": 0.6, "Middle Abs": 0.3 }, equipment: "Bodyweight" },
+  "Decline Sit Up": { muscles: { "Upper Abs": 1, "Hip Flexors": 0.6, "Middle Abs": 0.3 }, equipment: "Bodyweight" },
+  "Flutter Kicks": { timed: true, muscles: { "Lower Abs": 1, "Hip Flexors": 0.6 }, equipment: "Bodyweight" },
+  "L-Sit": { timed: true, muscles: { "Lower Abs": 1, "Hip Flexors": 1, "Triceps": 0.3, "Front Shoulders": 0.2 }, equipment: "Bodyweight" },
+  "Lying Leg Raise": { muscles: { "Lower Abs": 1, "Hip Flexors": 0.6 }, equipment: "Bodyweight" },
+  "Squat": { muscles: { "Quads": 1, "Glutes": 1, "Hamstrings": 0.3, "Lower Back": 0.2, "Hip Flexors": 0.2 }, equipment: "Barbell" },
+  "Front Squat": { muscles: { "Quads": 1, "Glutes": 0.6, "Hip Flexors": 0.2, "Upper Back": 0.2 }, equipment: "Barbell" },
+  "Leg Press": { muscles: { "Quads": 1, "Glutes": 0.6, "Hamstrings": 0.2 }, equipment: "Machine" },
+  "Lunges": { bwPercent: 0.5, muscles: { "Quads": 1, "Glutes": 1, "Hamstrings": 0.3, "Hip Flexors": 0.2 }, equipment: "Dumbbell" },
+  "Leg Extension": { muscles: { "Quads": 1 }, equipment: "Machine" },
+  "Leg Curl": { muscles: { "Hamstrings": 1 }, equipment: "Machine" },
+  "Romanian Deadlift": { muscles: { "Hamstrings": 1, "Glutes": 0.6, "Lower Back": 0.6 }, equipment: "Barbell" },
+  "Hip Thrust": { muscles: { "Glutes": 1, "Hamstrings": 0.6 }, equipment: "Barbell" },
+  "Calf Raise": { muscles: { "Calves": 1 }, equipment: "Machine" },
+  "Hack Squat": { muscles: { "Quads": 1, "Glutes": 0.6, "Hamstrings": 0.2 }, equipment: "Machine" },
+  "Bulgarian Split Squat": { muscles: { "Quads": 1, "Glutes": 1, "Hamstrings": 0.3, "Hip Flexors": 0.2 }, equipment: "Dumbbell" },
+  "Goblet Squat": { muscles: { "Quads": 1, "Glutes": 0.6, "Upper Back": 0.2 }, equipment: "Dumbbell" },
+  "Pistol Squat": { bwPercent: 0.72, muscles: { "Quads": 1, "Glutes": 0.6, "Hip Flexors": 0.3 }, equipment: "Bodyweight" },
+  "Jump Squat": { bwPercent: 0.56, muscles: { "Quads": 1, "Glutes": 1, "Calves": 0.6 }, equipment: "Bodyweight" },
+  "Wall Sit": { timed: true, muscles: { "Quads": 1, "Glutes": 0.3 }, equipment: "Bodyweight" },
+  "Bodyweight Squat": { bwPercent: 0.56, muscles: { "Quads": 1, "Glutes": 0.6 }, equipment: "Bodyweight" },
+  "Walking Lunge": { bwPercent: 0.5, muscles: { "Quads": 1, "Glutes": 1, "Hamstrings": 0.3, "Calves": 0.2 }, equipment: "Dumbbell" },
+  "Reverse Lunge": { bwPercent: 0.5, muscles: { "Quads": 1, "Glutes": 1, "Hip Flexors": 0.2 }, equipment: "Dumbbell" },
+  "Step Up": { bwPercent: 0.8, muscles: { "Quads": 1, "Glutes": 1, "Hamstrings": 0.2, "Hip Flexors": 0.2 }, equipment: "Dumbbell" },
+  "Nordic Curl": { bwPercent: 0.8, muscles: { "Hamstrings": 1, "Lower Back": 0.3, "Glutes": 0.2 }, equipment: "Bodyweight" },
+  "Glute Bridge": { bwPercent: 0.5, muscles: { "Glutes": 1, "Hamstrings": 0.6 }, equipment: "Bodyweight" },
+  "Cable Kickback": { muscles: { "Glutes": 1, "Hamstrings": 0.3 }, equipment: "Cable" },
+  "Seated Calf Raise": { muscles: { "Calves": 1 }, equipment: "Machine" },
+  "Standing Calf Raise": { muscles: { "Calves": 1 }, equipment: "Machine" },
+  "Donkey Calf Raise": { muscles: { "Calves": 1 }, equipment: "Machine" },
+  "Single Leg Calf Raise": { muscles: { "Calves": 1 }, equipment: "Bodyweight" },
+  "Burpee": { muscles: { "Quads": 0.6, "Glutes": 0.6, "Front Shoulders": 0.6, "Triceps": 0.3, "Upper Abs": 0.3 }, equipment: "Bodyweight" },
+  "Bear Crawl": { timed: true, muscles: { "Front Shoulders": 0.6, "Upper Abs": 0.6, "Triceps": 0.3, "Hip Flexors": 0.3 }, equipment: "Bodyweight" },
+  "Box Jump": { muscles: { "Quads": 1, "Glutes": 1, "Calves": 0.6 }, equipment: "Bodyweight" },
+
+  /* ---- Running & cardio ---- */
+  "Running": { timed: true, timedUnit: "mins", muscles: { "Quads": 0.6, "Hamstrings": 0.6, "Glutes": 0.6, "Calves": 1, "Hip Flexors": 0.3 }, equipment: "Bodyweight" },
+  "Easy Run": { timed: true, timedUnit: "mins", muscles: { "Quads": 0.6, "Hamstrings": 0.6, "Glutes": 0.6, "Calves": 1, "Hip Flexors": 0.3 }, equipment: "Bodyweight" },
+  "Tempo Run": { timed: true, timedUnit: "mins", muscles: { "Quads": 0.6, "Hamstrings": 0.6, "Glutes": 0.6, "Calves": 1, "Hip Flexors": 0.3 }, equipment: "Bodyweight" },
+  "Long Run": { timed: true, timedUnit: "mins", muscles: { "Quads": 0.6, "Hamstrings": 0.6, "Glutes": 0.6, "Calves": 1, "Hip Flexors": 0.3 }, equipment: "Bodyweight" },
+  "Race": { timed: true, timedUnit: "mins", muscles: { "Quads": 0.6, "Hamstrings": 0.6, "Glutes": 0.6, "Calves": 1, "Hip Flexors": 0.3 }, equipment: "Bodyweight" },
+  "Sprinting": { muscles: { "Quads": 1, "Hamstrings": 1, "Glutes": 1, "Calves": 0.6, "Hip Flexors": 0.6 }, equipment: "Bodyweight" },
+  "Interval Running": { timed: true, timedUnit: "mins", muscles: { "Quads": 0.6, "Hamstrings": 0.6, "Glutes": 0.6, "Calves": 1, "Hip Flexors": 0.3 }, equipment: "Bodyweight" },
+  "Hill Sprints": { timed: true, timedUnit: "mins", muscles: { "Quads": 1, "Glutes": 1, "Hamstrings": 0.6, "Calves": 0.6, "Hip Flexors": 0.6 }, equipment: "Bodyweight" },
+  "Treadmill Run": { timed: true, timedUnit: "mins", muscles: { "Quads": 0.6, "Hamstrings": 0.6, "Glutes": 0.6, "Calves": 1, "Hip Flexors": 0.3 }, equipment: "Machine" },
+  "Stair Climb": { timed: true, timedUnit: "mins", muscles: { "Quads": 1, "Glutes": 1, "Calves": 0.6, "Hamstrings": 0.3 }, equipment: "Machine" },
+  "Jump Rope": { timed: true, timedUnit: "mins", muscles: { "Calves": 1, "Quads": 0.3, "Front Shoulders": 0.2 }, equipment: "Bodyweight" },
+  "Tuck Front Lever": { timed: true, bwPercent: 1.00, muscles: { "Lats": 1, "Upper Abs": 0.6, "Biceps": 0.3, "Forearms": 0.3 }, equipment: "Bodyweight" },
+  "Advanced Tuck Front Lever": { timed: true, bwPercent: 1.00, muscles: { "Lats": 1, "Upper Abs": 0.6, "Lower Abs": 0.3, "Biceps": 0.3, "Forearms": 0.3 }, equipment: "Bodyweight" },
+  "Single Leg Front Lever": { timed: true, bwPercent: 1.00, muscles: { "Lats": 1, "Lower Abs": 0.6, "Upper Abs": 0.6, "Biceps": 0.3, "Forearms": 0.3 }, equipment: "Bodyweight" },
+  "Straddle Front Lever": { timed: true, bwPercent: 1.00, muscles: { "Lats": 1, "Lower Abs": 0.6, "Upper Abs": 0.6, "Biceps": 0.3, "Forearms": 0.3 }, equipment: "Bodyweight" },
+  "Front Lever": { timed: true, bwPercent: 1.00, muscles: { "Lats": 1, "Lower Abs": 1, "Upper Abs": 0.6, "Biceps": 0.3, "Forearms": 0.6 }, equipment: "Bodyweight" },
+  "Front Lever Row": { muscles: { "Lats": 1, "Upper Back": 0.6, "Biceps": 0.6 }, equipment: "Bodyweight" },
+  "Front Lever Raise": { muscles: { "Lats": 1, "Lower Abs": 0.6, "Upper Abs": 0.6 }, equipment: "Bodyweight" },
+  "Ice Cream Makers": { muscles: { "Lats": 1, "Upper Abs": 0.6, "Triceps": 0.3 }, equipment: "Bodyweight" },
+  "Skin The Cat": { timed: true, muscles: { "Lats": 0.6, "Front Shoulders": 0.6, "Upper Abs": 0.3, "Biceps": 0.3 }, equipment: "Bodyweight" },
+  "Wall Handstand Hold": { timed: true, muscles: { "Front Shoulders": 1, "Lateral Shoulders": 0.6, "Triceps": 0.2, "Upper Abs": 0.3, "Forearms": 0.2 }, equipment: "Bodyweight" },
+  "Freestanding Handstand Hold": { timed: true, muscles: { "Front Shoulders": 1, "Lateral Shoulders": 0.6, "Upper Abs": 0.6, "Forearms": 0.3 }, equipment: "Bodyweight" },
+  "Chest-to-Wall Handstand Hold": { timed: true, muscles: { "Front Shoulders": 1, "Lateral Shoulders": 0.3, "Upper Abs": 0.6, "Lower Back": 0.2 }, equipment: "Bodyweight" },
+  "Handstand Shoulder Taps": { timed: true, muscles: { "Front Shoulders": 1, "Lateral Shoulders": 0.6, "Upper Abs": 0.6, "Obliques": 0.3 }, equipment: "Bodyweight" },
+  "Deficit Handstand Push Up": { bwPercent: 1.0, muscles: { "Front Shoulders": 1, "Lateral Shoulders": 0.6, "Triceps": 1 }, equipment: "Bodyweight" },
+  "Handstand Push Up Negative": { bwPercent: 1.0, muscles: { "Front Shoulders": 1, "Lateral Shoulders": 0.6, "Triceps": 0.6 }, equipment: "Bodyweight" },
+  "Frog Stand": { timed: true, muscles: { "Front Shoulders": 1, "Upper Abs": 0.6, "Forearms": 0.3, "Triceps": 0.3 }, equipment: "Bodyweight" },
+  "Tuck Planche": { timed: true, bwPercent: 1.00, muscles: { "Front Shoulders": 1, "Lower Abs": 0.6, "Middle Chest": 0.3, "Triceps": 0.6, "Forearms": 0.3 }, equipment: "Bodyweight" },
+  "Advanced Tuck Planche": { timed: true, bwPercent: 1.00, muscles: { "Front Shoulders": 1, "Lower Abs": 0.6, "Middle Chest": 0.3, "Triceps": 0.6, "Forearms": 0.3 }, equipment: "Bodyweight" },
+  "Straddle Planche": { timed: true, bwPercent: 1.00, muscles: { "Front Shoulders": 1, "Lower Abs": 0.6, "Middle Chest": 0.6, "Triceps": 0.6, "Forearms": 0.6 }, equipment: "Bodyweight" },
+  "Full Planche": { timed: true, bwPercent: 1.00, muscles: { "Front Shoulders": 1, "Lower Abs": 0.6, "Middle Chest": 0.6, "Triceps": 0.6, "Forearms": 0.6 }, equipment: "Bodyweight" },
+  "Planche Lean": { timed: true, bwPercent: 1.00, muscles: { "Front Shoulders": 1, "Middle Chest": 0.6, "Forearms": 0.6, "Lower Abs": 0.3 }, equipment: "Bodyweight" },
+  "Planche Push Up": { muscles: { "Front Shoulders": 1, "Middle Chest": 0.6, "Triceps": 0.6 }, equipment: "Bodyweight" },
+};
 const MUSCLES = [
   "Upper Chest","Middle Chest","Lower Chest","Front Shoulders","Lateral Shoulders","Rear Shoulders",
   "Biceps","Triceps","Forearms","Upper Abs","Middle Abs","Lower Abs","Obliques","Hip Flexors",
@@ -1138,21 +1642,21 @@ function numpadKey(key) {
   document.getElementById('numpad-display').textContent = numpadRaw || '—';
 }
 
-document.getElementById('numpad-overlay')?.addEventListener('click', e => {
+document.getElementById('numpad-overlay').addEventListener('click', e => {
   if (e.target === document.getElementById('numpad-overlay')) closeNumpad(false);
 });
-document.getElementById('numpad-confirm')?.addEventListener('click', () => closeNumpad(true));
+document.getElementById('numpad-confirm').addEventListener('click', () => closeNumpad(true));
 document.querySelectorAll('.numpad-key').forEach(btn => {
   btn.addEventListener('click', () => numpadKey(btn.dataset.key));
 });
-document.getElementById('numpad-plus')?.addEventListener('click', () => {
+document.getElementById('numpad-plus').addEventListener('click', () => {
   if (!numpadTarget) return;
   const step = parseFloat(numpadTarget.dataset.step) || 1;
   const cur = parseFloat(numpadRaw) || 0;
   numpadRaw = String(Math.round((cur + step) * 100) / 100);
   document.getElementById('numpad-display').textContent = numpadRaw;
 });
-document.getElementById('numpad-minus')?.addEventListener('click', () => {
+document.getElementById('numpad-minus').addEventListener('click', () => {
   if (!numpadTarget) return;
   const step = parseFloat(numpadTarget.dataset.step) || 1;
   const min = parseFloat(numpadTarget.dataset.min) || 0;
@@ -1171,37 +1675,6 @@ document.addEventListener('click', e => {
   }
 });
 let allUsers = [], myWorkouts = [], allWorkouts = [], myWeights = [], myPRs = {};
-
-// ── Precomputed lookup maps — rebuilt once after loadAllData ──────────────
-// Instead of scanning allWorkouts on every render, everything reads from these maps.
-let _workoutsByUid = {};        // uid → [workouts]
-let _workoutsByDate = {};       // 'YYYY-MM-DD' → [workouts] (all users)
-let _myWorkoutsByDate = {};     // 'YYYY-MM-DD' → [workouts] (current user)
-let _setsLoggedTodayCache = {}; // exerciseName → count
-
-function rebuildLookupMaps() {
-  _workoutsByUid = {};
-  _workoutsByDate = {};
-  _myWorkoutsByDate = {};
-  _setsLoggedTodayCache = {};
-  _streakCache && Object.keys(_streakCache).forEach(k => delete _streakCache[k]);
-  _powerCache && Object.keys(_powerCache).forEach(k => delete _powerCache[k]);
-  _styleCache && Object.keys(_styleCache).forEach(k => delete _styleCache[k]);
-  _gateCache && Object.keys(_gateCache).forEach(k => delete _gateCache[k]);
-
-  for (const w of allWorkouts) {
-    if (!_workoutsByUid[w.uid]) _workoutsByUid[w.uid] = [];
-    _workoutsByUid[w.uid].push(w);
-    if (!_workoutsByDate[w.date]) _workoutsByDate[w.date] = [];
-    _workoutsByDate[w.date].push(w);
-  }
-  if (currentUser) {
-    for (const w of myWorkouts) {
-      if (!_myWorkoutsByDate[w.date]) _myWorkoutsByDate[w.date] = [];
-      _myWorkoutsByDate[w.date].push(w);
-    }
-  }
-}
 // myPRs: { "Bench Press": { e1rm: 120.5, date: "2026-08-01", xpTier: "Intermediate" }, ... }
 let myProgram = null;       // { name, schedule:['Mon',...], days:[{name,tag,exercises:[{name,sets,reps}],lastDate}], currentDayIndex }
 let customExercises = [];   // from Firestore
@@ -1231,8 +1704,7 @@ function migrateProgram(prog) {
   return prog;
 }
 function setsLoggedToday(name, dayIndex) {
-  const today = todayStr();
-  const todayWorkouts = _myWorkoutsByDate[today] || [];
+  const todayWorkouts = myWorkouts.filter(w => w.date === todayStr() && w.uid === currentUser.uid);
   return todayWorkouts
     .filter(w => {
       if (w.programDayIndex !== undefined && w.programDayIndex !== null) {
@@ -1333,36 +1805,12 @@ function friendlyAuthError(err) {
   if (code.includes('invalid-email')) return 'That email address looks off.';
   return err.message || 'Something went wrong.';
 }
-document.getElementById('logout-btn')?.addEventListener('click', () => signOut(auth));
+document.getElementById('logout-btn').addEventListener('click', () => signOut(auth));
 
 /* ---- Daily Quest Timer ---- */
 let dailyTimerInterval = null;
 // start immediately so the timer shows even before auth/data loads
 setTimeout(() => startDailyTimer(), 0);
-
-/* ── SL Frame corners — inject into all cards dynamically ── */
-function addSlCorners(el) {
-  if (!el || el.dataset.slCorners || !document.body.contains(el)) return;
-  const shouldFrame = el.classList.contains('card') || el.classList.contains('quest-card') ||
-    el.classList.contains('char-screen') || el.classList.contains('raid-boss-card') ||
-    el.classList.contains('awakening-window') || el.classList.contains('system-window') ||
-    el.classList.contains('debrief-window');
-  if (!shouldFrame) return;
-  el.dataset.slCorners = '1';
-  ['tl','tr','bl','br'].forEach(pos => {
-    const c = document.createElement('div');
-    c.className = `sl-corner ${pos}`;
-    c.setAttribute('aria-hidden','true');
-    el.appendChild(c);
-  });
-}
-
-// Run corners once after each render — no MutationObserver (too expensive)
-function addSlCornersToAll() {
-  document.querySelectorAll('.card:not([data-sl-corners]),.quest-card:not([data-sl-corners]),.char-screen:not([data-sl-corners]),.raid-boss-card:not([data-sl-corners]),.awakening-window:not([data-sl-corners]),.system-window:not([data-sl-corners]),.debrief-window:not([data-sl-corners])')
-    .forEach(addSlCorners);
-}
-
 function startDailyTimer() {
   if (dailyTimerInterval) clearInterval(dailyTimerInterval);
   const render = () => {
@@ -1391,7 +1839,7 @@ function startDailyTimer() {
   render();
   dailyTimerInterval = setInterval(render, 1000);
 }
-document.getElementById('settings-btn')?.addEventListener('click', () => openSettingsModal());
+document.getElementById('settings-btn').addEventListener('click', () => openSettingsModal());
 
 function openSettingsModal() {
   const overlay = document.createElement('div');
@@ -1459,47 +1907,22 @@ if (configOk) {
   onAuthStateChanged(auth, async (user) => {
     if (user) {
       currentUser = user;
-
-      // show app immediately
+      const snap = await getDoc(doc(db, 'users', user.uid));
+      profile = snap.exists() ? snap.data() : { displayName: user.displayName || 'You', weeklyGoal: 3 };
+      if (!profile.stats) profile.stats = defaultStats();
+      if (profile.auraPoints === undefined) profile.auraPoints = 0;
+      if (!profile.email && currentUser.email) {
+        await setDoc(doc(db, 'users', currentUser.uid), { email: currentUser.email }, { merge: true });
+        profile.email = currentUser.email;
+      }
+      document.getElementById('user-avatar').textContent = initials(profile.displayName);
       document.getElementById('auth-screen').style.display = 'none';
       document.getElementById('app').style.display = 'flex';
-
-      try {
-        // load profile
-        const snap = await getDoc(doc(db, 'users', user.uid));
-        profile = snap.exists() ? snap.data() : { displayName: user.displayName || 'You', weeklyGoal: 3 };
-        if (!profile.stats) profile.stats = defaultStats();
-        if (profile.auraPoints === undefined) profile.auraPoints = 0;
-        document.getElementById('user-avatar').textContent = initials(profile.displayName);
-
-        // fix missing email in background (don't await)
-        if (!profile.email && currentUser.email) {
-          setDoc(doc(db, 'users', currentUser.uid), { email: currentUser.email }, { merge: true });
-          profile.email = currentUser.email;
-        }
-
-        // load all data
-        await loadAllData();
-        console.log('✓ loadAllData complete', { 
-          workouts: allWorkouts.length, 
-          program: !!myProgram,
-          users: allUsers.length 
-        });
-
-        // load anatomy in background — trends will retry if not ready
-        const bodyType = profile.bodyType === 'female' ? 'female' : 'male';
-        loadAnatomyTemplate(bodyType).catch(() => {});
-
-        setTimeout(() => runSystemChecks(), 800);
-        setTimeout(() => ensureStatBaselines(), 1200);
-
-      } catch(err) {
-        console.error('Load error:', err);
-        // show a recoverable error state
-        document.getElementById('program-card-wrap').innerHTML =
-          `<div class="card"><p style="color:var(--excess);">Load failed — check your connection and refresh.</p></div>`;
-      }
-
+      await loadAnatomyTemplate(profile.bodyType === 'female' ? 'female' : 'male');
+      await loadAllData();
+      // run system checks on every login — penalties, rank-up alerts etc.
+      setTimeout(() => runSystemChecks(), 800);
+      setTimeout(() => ensureStatBaselines(), 1200);
     } else {
       currentUser = null;
       document.getElementById('auth-screen').style.display = 'flex';
@@ -1521,17 +1944,7 @@ function switchView(name) {
   if (name === 'exercises') renderExerciseLibrary();
   if (name === 'history') renderCalendar();
   if (name === 'quest') {
-    if (myProgram && myProgram.days && myProgram.days.length) {
-      if (myProgram.scheduleMode === 'fixed') {
-        // fixed mode — jump to today's assigned day
-        const today = todayWeekday();
-        const todayIdx = myProgram.days.findIndex(d => (d.assignedDays||[]).includes(today));
-        questCarouselIndex = todayIdx >= 0 ? todayIdx : 0;
-      } else {
-        // rotation mode — show the next day in the rotation
-        questCarouselIndex = myProgram.currentDayIndex % myProgram.days.length;
-      }
-    }
+    if (myProgram && myProgram.days && myProgram.days.length) questCarouselIndex = myProgram.currentDayIndex % myProgram.days.length;
     renderQuestFeed();
   }
 }
@@ -1540,47 +1953,32 @@ function switchView(name) {
    DATA LOAD
    ========================================================================= */
 async function loadAllData() {
-  // run all independent queries in parallel — cuts load time by ~60%
-  // load customExercises from localStorage cache first (they rarely change)
-  const cachedEx = localStorage.getItem('aura_custom_ex');
-  const exPromise = cachedEx
-    ? Promise.resolve(null) // skip fetch if cached
-    : getDocs(collection(db, 'customExercises'));
-
-  const [usersSnap, woSnap, exSnap, progSnap, wtSnap, prSnap] = await Promise.all([
-    getDocs(collection(db, 'users')),
-    getDocs(query(collection(db, 'workouts'), orderBy('date', 'desc'))),
-    exPromise,
-    getDoc(doc(db, 'programs', currentUser.uid)),
-    getDocs(query(collection(db, 'bodyweight'), where('uid','==', currentUser.uid))),
-    getDoc(doc(db, 'prs', currentUser.uid)),
-  ]);
-
+  const usersSnap = await getDocs(collection(db, 'users'));
   allUsers = usersSnap.docs.map(d => ({ uid: d.id, ...d.data() }));
+
+  const woSnap = await getDocs(query(collection(db, 'workouts'), orderBy('date', 'desc')));
   allWorkouts = woSnap.docs.map(d => ({ id: d.id, ...d.data() }));
   myWorkouts = allWorkouts.filter(w => w.uid === currentUser.uid);
-  rebuildLookupMaps();
-  if (exSnap) {
-    customExercises = exSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-    try { localStorage.setItem('aura_custom_ex', JSON.stringify(customExercises)); } catch(e) {}
-  } else {
-    try { customExercises = JSON.parse(cachedEx) || []; } catch(e) { customExercises = []; }
-  }
+
+  const exSnap = await getDocs(collection(db, 'customExercises'));
+  customExercises = exSnap.docs.map(d => ({ id: d.id, ...d.data() }));
   rebuildExercisesAll();
+
+  const progSnap = await getDoc(doc(db, 'programs', currentUser.uid));
   myProgram = migrateProgram(progSnap.exists() ? progSnap.data() : null);
+
+  const wtSnap = await getDocs(query(collection(db, 'bodyweight'), where('uid','==', currentUser.uid)));
   myWeights = wtSnap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a,b) => a.date.localeCompare(b.date));
+
+  const prSnap = await getDoc(doc(db, 'prs', currentUser.uid));
   myPRs = prSnap.exists() ? prSnap.data() : {};
 
   populateExerciseSelects();
   renderQuestFeed();
-
-  // stagger heavy renders so the quest tab appears instantly
-  // each deferred to next available frame
-  setTimeout(() => { try { renderBoard(); renderCharCard(); renderTodayCard(); } catch(e) { console.error(e); } }, 0);
-  setTimeout(() => { try { renderTrends(); } catch(e) {} }, 50);
-  setTimeout(() => { try { renderExerciseLibrary(); } catch(e) {} }, 100);
-  setTimeout(() => { try { renderCalendar(); } catch(e) {} }, 150);
-  setTimeout(() => { try { addSlCornersToAll(); } catch(e) {} }, 200);
+  renderBoard();
+  renderTrends();
+  renderExerciseLibrary();
+  renderCalendar();
   startDailyTimer();
 }
 function rebuildExercisesAll() {
@@ -1601,8 +1999,6 @@ document.getElementById('workout-time').value = nowTimeStr();
 function renderQuestFeed() {
   const wrap = document.getElementById('program-card-wrap');
   const editorWrap = document.getElementById('program-editor-wrap');
-  // debug: confirm wrap exists
-  if (!wrap) { console.error('program-card-wrap not found!'); return; }
   if (editingProgram) {
     wrap.innerHTML = '';
     renderProgramEditor(editorWrap);
@@ -1617,7 +2013,7 @@ function renderQuestFeed() {
         <p>Build one so the System knows what's next.</p>
         <button class="btn btn-primary" id="build-program-btn" style="width:auto;padding:11px 20px;">+ Create plan</button>
       </div>`;
-    document.getElementById('build-program-btn')?.addEventListener('click', () => { editingProgram = true; renderQuestFeed(); });
+    document.getElementById('build-program-btn').addEventListener('click', () => { editingProgram = true; renderQuestFeed(); });
     return;
   }
 
@@ -1666,14 +2062,14 @@ function renderQuestFeed() {
     <div class="day-dots">${dots}</div>
   `;
 
-  document.getElementById('edit-program-btn')?.addEventListener('click', () => { editingProgram = true; renderQuestFeed(); });
-  document.getElementById('new-program-btn')?.addEventListener('click', () => {
+  document.getElementById('edit-program-btn').addEventListener('click', () => { editingProgram = true; renderQuestFeed(); });
+  document.getElementById('new-program-btn').addEventListener('click', () => {
     if (!window.confirm('Start a new plan?\n\nYour current plan will be replaced.')) return;
     myProgram = null; editingProgram = true; renderQuestFeed();
   });
   wireQuestCard(wrap.querySelector('.quest-card'), questCarouselIndex);
-  document.getElementById('carousel-prev')?.addEventListener('click', () => navigateCarousel('prev'));
-  document.getElementById('carousel-next')?.addEventListener('click', () => navigateCarousel('next'));
+  document.getElementById('carousel-prev').addEventListener('click', () => navigateCarousel('prev'));
+  document.getElementById('carousel-next').addEventListener('click', () => navigateCarousel('next'));
   attachSwipeHandlers(wrap.querySelector('.quest-carousel-card'),
     () => navigateCarousel('next'),
     () => navigateCarousel('prev')
@@ -1688,10 +2084,7 @@ function isQuestComplete(idx) {
 function buildQuestCardHTML(idx) {
   const rotationIdx = myProgram.currentDayIndex % myProgram.days.length;
   const day = myProgram.days[idx];
-  const today = todayWeekday();
-  const isActiveDay = myProgram.scheduleMode === 'fixed'
-    ? (day.assignedDays||[]).includes(today)
-    : idx === rotationIdx;
+  const isActiveDay = idx === rotationIdx;
   const allComplete = isQuestComplete(idx);
   const checklist = day.exercises.map(ex => {
     const done = setsLoggedToday(ex.name, idx);
@@ -1987,17 +2380,17 @@ function refreshCompleteButton() {
   });
   btn.classList.toggle('hidden', !allHaveAtLeastOneSet);
 }
-document.getElementById('end-workout-modal')?.addEventListener('click', () => {
+document.getElementById('end-workout-modal').addEventListener('click', () => {
   if (!window.confirm('End this workout?\n\nAll your logged sets will be lost.')) return;
   closeWorkoutModal(true); // true = discard
 });
-document.getElementById('minimise-workout-modal')?.addEventListener('click', () => {
+document.getElementById('minimise-workout-modal').addEventListener('click', () => {
   minimiseWorkoutModal();
 });
-document.getElementById('workout-pill-open')?.addEventListener('click', () => {
+document.getElementById('workout-pill-open').addEventListener('click', () => {
   openWorkoutModal();
 });
-document.getElementById('manual-log-btn')?.addEventListener('click', () => {
+document.getElementById('manual-log-btn').addEventListener('click', () => {
   document.getElementById('workout-date').value = todayStr();
   document.getElementById('workout-time').value = nowTimeStr();
   activeDayIndex = null;
@@ -2006,16 +2399,16 @@ document.getElementById('manual-log-btn')?.addEventListener('click', () => {
 });
 
 /* ── Run Logger ── */
-document.getElementById('log-run-btn')?.addEventListener('click', () => {
+document.getElementById('log-run-btn').addEventListener('click', () => {
   document.getElementById('run-date').value = todayStr();
   document.getElementById('run-modal-overlay').classList.remove('hidden');
   document.body.style.overflow = 'hidden';
 });
-document.getElementById('close-run-modal')?.addEventListener('click', () => {
+document.getElementById('close-run-modal').addEventListener('click', () => {
   document.getElementById('run-modal-overlay').classList.add('hidden');
   document.body.style.overflow = '';
 });
-document.getElementById('run-modal-overlay')?.addEventListener('click', e => {
+document.getElementById('run-modal-overlay').addEventListener('click', e => {
   if (e.target === document.getElementById('run-modal-overlay')) {
     document.getElementById('run-modal-overlay').classList.add('hidden');
     document.body.style.overflow = '';
@@ -2056,9 +2449,9 @@ function updateRunPace() {
   document.getElementById('run-pace-display').textContent = `${pm}:${String(ps).padStart(2,'0')} /km`;
 }
 ['run-distance','run-mins','run-secs'].forEach(id =>
-  document.getElementById(id)?.addEventListener('input', updateRunPace));
+  document.getElementById(id).addEventListener('input', updateRunPace));
 
-document.getElementById('save-run-btn')?.addEventListener('click', async () => {
+document.getElementById('save-run-btn').addEventListener('click', async () => {
   const dist = parseFloat(document.getElementById('run-distance').value) || 0;
   const mins = parseInt(document.getElementById('run-mins').value) || 0;
   const secs = parseInt(document.getElementById('run-secs').value) || 0;
@@ -2140,7 +2533,7 @@ function stopRestTimer() {
   if (stopBtn) stopBtn.classList.add('hidden');
 }
 document.querySelectorAll('.rest-preset-btn').forEach(btn => btn.addEventListener('click', () => startRestTimer(Number(btn.dataset.secs))));
-document.getElementById('rest-timer-stop')?.addEventListener('click', stopRestTimer);
+document.getElementById('rest-timer-stop').addEventListener('click', stopRestTimer);
 
 function renderProgramEditor(wrap) {
   if (!myProgram) myProgram = { name: '', schedule: [], days: [], currentDayIndex: 0, scheduleMode: 'rotation' };
@@ -2196,12 +2589,12 @@ function renderProgramEditor(wrap) {
     if (i === -1) myProgram.schedule.push(d); else myProgram.schedule.splice(i, 1);
     chip.classList.toggle('on');
   }));
-  document.getElementById('add-day-btn')?.addEventListener('click', () => {
+  document.getElementById('add-day-btn').addEventListener('click', () => {
     myProgram.days.push({ name: `Day ${myProgram.days.length+1}`, tag:'', exercises: [], lastDate: null, assignedDays: [] });
     renderDayEditors();
   });
-  document.getElementById('cancel-program-btn')?.addEventListener('click', () => { editingProgram = false; renderQuestFeed(); });
-  document.getElementById('save-program-btn')?.addEventListener('click', saveProgram);
+  document.getElementById('cancel-program-btn').addEventListener('click', () => { editingProgram = false; renderQuestFeed(); });
+  document.getElementById('save-program-btn').addEventListener('click', saveProgram);
 
   function renderDayEditors() {
     const daysWrap = document.getElementById('prog-days-wrap');
@@ -2513,10 +2906,10 @@ function addExerciseRow(presetName, targetSets, targetReps, prefillSets) {
   refreshTags();
   exerciseRows.appendChild(row);
 }
-document.getElementById('add-exercise-btn')?.addEventListener('click', () => { addExerciseRow(); refreshCompleteButton(); });
+document.getElementById('add-exercise-btn').addEventListener('click', () => { addExerciseRow(); refreshCompleteButton(); });
 addExerciseRow();
 
-document.getElementById('save-workout-btn')?.addEventListener('click', async () => {
+document.getElementById('save-workout-btn').addEventListener('click', async () => {
   if (!currentUser) return;
   const date = document.getElementById('workout-date').value || todayStr();
   const time = document.getElementById('workout-time').value || nowTimeStr();
@@ -2544,13 +2937,8 @@ document.getElementById('save-workout-btn')?.addEventListener('click', async () 
       // only advance rotation in rotation mode — fixed mode doesn't use currentDayIndex
       if (myProgram.scheduleMode !== 'fixed') {
         myProgram.currentDayIndex = (activeDayIndex + 1) % myProgram.days.length;
-        questCarouselIndex = myProgram.currentDayIndex;
-      } else {
-        // fixed mode — after saving, stay on today's day
-        const today = todayWeekday();
-        const todayIdx = myProgram.days.findIndex(d => (d.assignedDays||[]).includes(today));
-        questCarouselIndex = todayIdx >= 0 ? todayIdx : activeDayIndex;
       }
+      questCarouselIndex = myProgram.currentDayIndex;
       await setDoc(doc(db, 'programs', currentUser.uid), myProgram);
       activeDayIndex = null;
       document.getElementById('logger-title').textContent = 'Log exercises';
@@ -2562,11 +2950,10 @@ document.getElementById('save-workout-btn')?.addEventListener('click', async () 
     await loadAllData();
     const earned = await tryAwardAp();
     const prs = await checkAndAwardPRs(exercises, date);
-    const statGains = await applyWorkoutStatXP(exercises);
     startDailyTimer();
     setTimeout(() => {
       closeWorkoutModal(false);
-      showDebriefModal(exercises, earned, prs, statGains);
+      showDebriefModal(exercises, earned, prs);
     }, 600);
   } catch (err) {
     alert('Could not save: ' + err.message);
@@ -2578,20 +2965,14 @@ document.getElementById('save-workout-btn')?.addEventListener('click', async () 
 /* =========================================================================
    RANK
    ========================================================================= */
-const _streakCache = {};
 function computeStreak(uid) {
-  if (_streakCache[uid] !== undefined) return _streakCache[uid];
-  const workouts = _workoutsByUid[uid] || [];
-  const dates = new Set(workouts.map(w => w.date));
+  const dates = new Set(allWorkouts.filter(w => w.uid === uid).map(w => w.date));
   const hasToday = dates.has(todayStr());
   let streak = 0, i = hasToday ? 0 : 1;
   while (dates.has(todayStr(daysAgo(i)))) { streak++; i++; }
-  _streakCache[uid] = streak;
   return streak;
 }
-function countSince(uid, sinceDate) {
-  return (_workoutsByUid[uid] || []).filter(w => new Date(w.date) >= sinceDate).length;
-}
+function countSince(uid, sinceDate) { return allWorkouts.filter(w => w.uid === uid && new Date(w.date) >= sinceDate).length; }
 /* =========================================================================
    PERSONAL RECORD (PR) SYSTEM
    — Tracks estimated 1RM per exercise, compares to world strength standards,
@@ -2666,67 +3047,11 @@ async function applyStatBonus(statId, tier) {
   if (!profile || !statId) return;
   const bonus = STAT_BONUS_XP[tier] || 0;
   if (!bonus) return;
+  // store accumulated stat XP in profile.statXP
   const statXP = { ...(profile.statXP || {}) };
   statXP[statId] = (statXP[statId] || 0) + bonus;
   await setDoc(doc(db, 'users', currentUser.uid), { statXP }, { merge: true });
   profile.statXP = statXP;
-}
-
-// Award stat XP from workout content — called after every workout save
-async function applyWorkoutStatXP(exercises) {
-  if (!profile || !currentUser) return;
-  const statXP = { ...(profile.statXP || {}) };
-  const gains = {};
-  exercises.forEach(ex => {
-    const completedSets = (ex.sets||[]).filter(s => s.reps > 0).length;
-    if (!completedSets) return;
-    const stat = getStatForExercise(ex.name);
-    if (stat) gains[stat] = (gains[stat]||0) + completedSets;
-  });
-  // 1 XP per 3 sets, minimum 1 per exercise type
-  Object.entries(gains).forEach(([stat, sets]) => {
-    statXP[stat] = (statXP[stat]||0) + Math.max(1, Math.floor(sets/3));
-  });
-  // consistency bonus
-  const weekStart = startOfWeek(new Date());
-  const weekCount = myWorkouts.filter(w => w.uid === currentUser.uid && new Date(w.date) >= weekStart).length;
-  if (weekCount >= (profile.weeklyGoal||3)) statXP.recovery = (statXP.recovery||0) + 2;
-  await setDoc(doc(db, 'users', currentUser.uid), { statXP }, { merge: true });
-  profile.statXP = statXP;
-  return gains;
-}
-
-// Get user's dominant stat (highest statXP) for raid damage type
-function getDominantStat(uid) {
-  const u = uid === currentUser?.uid ? profile : allUsers.find(x=>x.uid===uid);
-  if (!u) return 'strength';
-  const statXP = u.statXP || {};
-  const stats = profile.stats || {};
-  // combine statXP earned + current rank as tiebreaker
-  const score = id => (statXP[id]||0) + RANK_TIERS.indexOf(stats[id]||'E')*10;
-  return STAT_DEFS.reduce((best, d) => score(d.id) > score(best) ? d.id : best, 'strength');
-}
-
-// Calculate raid damage for a workout
-function calcRaidDamage(uid, exercises) {
-  const dominantStat = getDominantStat(uid);
-  const u = allUsers.find(x=>x.uid===uid);
-  const stats = u?.stats || {};
-  const rankIdx = RANK_TIERS.indexOf(stats[dominantStat]||'E');
-  const rankMult = [1, 1.2, 1.5, 2, 2.5, 3][rankIdx] || 1;
-  const baseDmg = 10;
-  const damage = Math.round(baseDmg * rankMult);
-
-  const DAMAGE_TYPES = {
-    strength:    { label:'CRUSH',  icon:'⚔️', color:'var(--brass)',       desc:'Raw physical damage' },
-    endurance:   { label:'BURN',   icon:'🔥', color:'#FF6B35',            desc:'Stamina drain' },
-    agility:     { label:'CRIT',   icon:'⚡', color:'#FFD700',            desc:'Speed strike' },
-    focus:       { label:'PIERCE', icon:'🎯', color:'var(--maintaining)', desc:'Armor pierce' },
-    recovery:    { label:'SHIELD', icon:'🛡️', color:'var(--violet)',      desc:'Party shield' },
-    flexibility: { label:'WEAKEN', icon:'💫', color:'var(--growing)',     desc:'Debuff' },
-  };
-  const type = DAMAGE_TYPES[dominantStat] || DAMAGE_TYPES.strength;
-  return { damage, type, dominantStat, rankMult };
 }
 
 function getStatForExercise(exerciseName) {
@@ -3007,25 +3332,28 @@ function getStatImprovement(statId) {
   return 0;
 }
 
-let _gateCache = {};
 function checkUpgradeGates(statId) {
-  if (_gateCache[statId]) return _gateCache[statId];
   const currentRank = (profile.stats || {})[statId] || 'E';
   if (currentRank === 'S') return { ready: false, reason: 'Maxed' };
   const nextRank = RANK_TIERS[RANK_TIERS.indexOf(currentRank)+1];
   const apCost = UPGRADE_COSTS[currentRank];
   const ap = profile.auraPoints || 0;
+
+  // time gate
   const weeksNeeded = TIME_GATES[currentRank] || 0;
   const weeksDone = weeksAtCurrentRank(statId);
   const timeOk = weeksDone >= weeksNeeded;
+
+  // improvement gate
   const improvNeeded = IMPROVEMENT_GATES[statId]?.[currentRank] || 0;
   const improvDone = getStatImprovement(statId);
   const improvOk = improvDone >= improvNeeded;
+
+  // ap gate
   const apOk = ap >= apCost;
+
   const ready = timeOk && improvOk && apOk;
-  const result = { ready, timeOk, improvOk, apOk, weeksDone, weeksNeeded, improvDone: Math.round(improvDone*10)/10, improvNeeded, ap, apCost, nextRank };
-  _gateCache[statId] = result;
-  return result;
+  return { ready, timeOk, improvOk, apOk, weeksDone, weeksNeeded, improvDone: Math.round(improvDone*10)/10, improvNeeded, ap, apCost, nextRank };
 }
 
 // Record baseline when a stat is first measured
@@ -3212,7 +3540,7 @@ function renderCharCard() {
     const btnLabel = isMaxed ? 'MAX' : allReady ? '⚡ AWAKEN' : `${gates?.apCost||0} AP`;
     const btnCls = isMaxed ? 'stat-upgrade-btn maxed' : allReady ? 'stat-upgrade-btn can-upgrade awakening' : 'stat-upgrade-btn';
     const statXP = (profile.statXP || {})[def.id] || 0;
-    const xpTag = statXP > 0 ? `<span class="stat-xp-bonus">${statXP} XP · +${Math.floor(statXP/10)} AP</span>` : '';
+    const xpTag = statXP > 0 ? `<span class="stat-xp-bonus">+${Math.floor(statXP/10)} AP from PRs</span>` : '';
 
     return `<div class="stat-row ${allReady?'gate-ready':''}">
       <span class="stat-label" title="${def.desc}">${def.label}</span>
@@ -3499,13 +3827,8 @@ function calcPowerLevel(stats) {
   return STAT_DEFS.reduce((sum, d) => sum + (TIER_VALUES[stats[d.id] || 'E'] || 0), 0) * 100;
 }
 
-const _powerCache = {};
 function getUserPowerLevel(user) {
-  if (!user) return 0;
-  if (_powerCache[user.uid] !== undefined) return _powerCache[user.uid];
-  const p = calcPowerLevel(user.stats);
-  _powerCache[user.uid] = p;
-  return p;
+  return calcPowerLevel(user.stats);
 }
 
 function getUserCharRank(user) {
@@ -3660,11 +3983,9 @@ const EXERCISE_CATEGORIES = {
   cardio: new Set(['Running','Treadmill Run','Interval Running','Hill Sprints','Stair Climb','Jump Rope','Bear Crawl','Burpee','Box Jump','Mountain Climber','Flutter Kicks','Easy Run','Tempo Run','Long Run','Race']),
 };
 
-const _styleCache = {};
 function analyseTrainingStyle(uid) {
-  if (_styleCache[uid]) return _styleCache[uid];
   const cutoff = new Date(); cutoff.setDate(cutoff.getDate() - 30);
-  const recent = (_workoutsByUid[uid]||[]).filter(w => new Date(w.date) >= cutoff);
+  const recent = allWorkouts.filter(w => w.uid === uid && new Date(w.date) >= cutoff);
   if (!recent.length) return null;
 
   const counts = { powerlifting: 0, bodybuilding: 0, calisthenics: 0, cardio: 0, other: 0 };
@@ -3692,23 +4013,21 @@ function analyseTrainingStyle(uid) {
   const isBB = pct('bodybuilding') >= 0.4;
   const isBalanced = Object.values(counts).every(v => v / totalSets < 0.5) && totalSets > 20;
 
-  const result = isPureCardio ? { style: 'Endurance Wraith', emoji: '🌪️', desc: 'Pure cardio hunter' }
-    : isHybrid ? { style: 'Hybrid Hunter', emoji: '⚡', desc: 'Gym + road combined' }
-    : isCali ? { style: 'Shadow Athlete', emoji: '🐉', desc: 'Master of bodyweight' }
-    : isPower ? { style: 'Powerlifter', emoji: '⚔️', desc: 'Forged from iron' }
-    : isBB ? { style: 'Bodybuilder', emoji: '💪', desc: 'Sculpting the vessel' }
-    : isBalanced ? { style: 'Sovereign', emoji: '⚖️', desc: 'Balance is power' }
-    : pct('other') + pct('bodybuilding') >= 0.5 ? { style: 'Street Fighter', emoji: '👊', desc: 'Functional warrior' }
-    : null;
-  _styleCache[uid] = result;
-  return result;
+  if (isPureCardio) return { style: 'Endurance Wraith', emoji: '🌪️', desc: 'Pure cardio hunter' };
+  if (isHybrid) return { style: 'Hybrid Hunter', emoji: '⚡', desc: 'Gym + road combined' };
+  if (isCali) return { style: 'Shadow Athlete', emoji: '🐉', desc: 'Master of bodyweight' };
+  if (isPower) return { style: 'Powerlifter', emoji: '⚔️', desc: 'Forged from iron' };
+  if (isBB) return { style: 'Bodybuilder', emoji: '💪', desc: 'Sculpting the vessel' };
+  if (isBalanced) return { style: 'Sovereign', emoji: '⚖️', desc: 'Balance is power' };
+  if (pct('other') + pct('bodybuilding') >= 0.5) return { style: 'Street Fighter', emoji: '👊', desc: 'Functional warrior' };
+  return null;
 }
 
 function getUserTitle(uid) {
   const user = allUsers.find(u => u.uid === uid);
   if (!user) return '';
   const streak = computeStreak(uid);
-  const total = (_workoutsByUid[uid]||[]).length;
+  const total = allWorkouts.filter(w => w.uid === uid).length;
   const weekStart = startOfWeek(new Date());
   const thisWeek = countSince(uid, weekStart);
   if (STAT_DEFS.every(d => (user.stats||{})[d.id] === 'S')) return '[Shadow Monarch]';
@@ -3732,7 +4051,7 @@ function renderWeeklySuperlatives() {
   const weekStart = startOfWeek(new Date());
   const lastWeekStart = new Date(weekStart); lastWeekStart.setDate(lastWeekStart.getDate() - 7);
 
-  const byUid = uid => (_workoutsByUid[uid]||[]);
+  const byUid = uid => allWorkouts.filter(w => w.uid === uid);
   const thisWeekCount = uid => countSince(uid, weekStart);
   const powerOf = u => getUserPowerLevel(u);
 
@@ -3775,7 +4094,7 @@ function renderPartyDashboard() {
   const highest = [...allUsers].sort((a,b) => getUserPowerLevel(b) - getUserPowerLevel(a))[0];
   const mostPRsThisWeek = [...allUsers].map(u => {
     const ws = weekStart.toISOString().slice(0,10);
-    const userWorkouts = (_workoutsByUid[u.uid]||[]).filter(w => w.date >= ws);
+    const userWorkouts = allWorkouts.filter(w => w.uid === u.uid && w.date >= ws);
     const prCount = userWorkouts.reduce((n, w) => n + (w.exercises||[]).reduce((m, ex) => m + (ex.sets||[]).filter(s => s.reps && s.weight).length, 0), 0);
     return { u, prCount };
   }).sort((a,b) => b.prCount - a.prCount)[0];
@@ -3871,7 +4190,7 @@ async function openHunterProfile(targetUid) {
       </div>
       <div style="display:flex;gap:12px;margin-top:8px;font-size:12px;color:var(--text-dim);">
         <span>🔥 ${targetStreak} day streak</span>
-        <span>🏋️ ${(_workoutsByUid[targetUid]||[]).length} total workouts</span>
+        <span>🏋️ ${allWorkouts.filter(w=>w.uid===targetUid).length} total workouts</span>
       </div>
     </div>
 
@@ -3884,36 +4203,12 @@ async function openHunterProfile(targetUid) {
       ${h2hRows}
     </div>` : ''}
 
-    ${!isMe ? `<div class="card hunter-section">
-      <div class="hunter-section-title">Stat XP Comparison</div>
-      <p style="font-size:11px;color:var(--text-faint);font-family:var(--font-mono);margin:0 0 12px;">Accumulated XP from workouts — shows what each hunter trains most</p>
-      ${STAT_DEFS.map(def => {
-        const myXP = (profile.statXP||{})[def.id] || 0;
-        const theirXP = (target.statXP||{})[def.id] || 0;
-        const maxXP = Math.max(myXP, theirXP, 1);
-        const myPct = Math.round((myXP/maxXP)*100);
-        const theirPct = Math.round((theirXP/maxXP)*100);
-        const iAhead = myXP > theirXP;
-        return `<div style="margin-bottom:10px;">
-          <div style="display:flex;justify-content:space-between;font-family:var(--font-mono);font-size:10px;color:var(--text-faint);margin-bottom:4px;">
-            <span style="color:${iAhead?'var(--brass)':'var(--text-dim)'};">${myXP} XP</span>
-            <span style="color:var(--text-dim);">${def.label}</span>
-            <span style="color:${!iAhead&&myXP!==theirXP?'var(--violet)':'var(--text-dim)'};">${theirXP} XP</span>
-          </div>
-          <div style="position:relative;height:6px;background:rgba(93,157,255,0.08);border-radius:3px;overflow:hidden;">
-            <div style="position:absolute;left:0;top:0;height:100%;width:${myPct}%;background:var(--brass);border-radius:3px;opacity:0.8;"></div>
-            <div style="position:absolute;right:0;top:0;height:100%;width:${theirPct}%;background:var(--violet);border-radius:3px;opacity:0.5;transform:scaleX(-1);transform-origin:right;"></div>
-          </div>
-        </div>`;
-      }).join('')}
-    </div>` : ''}
-
     <div class="card hunter-section">
       <div class="hunter-section-title">Muscle Activation</div>
       <div class="body-pair">${bodySvg('front', buildMuscleStats(targetUid), target.bodyType || 'male')}${bodySvg('back', buildMuscleStats(targetUid), target.bodyType || 'male')}</div>
     </div>
   `;
-  document.getElementById('hunter-back')?.addEventListener('click', () => modal.classList.add('hidden'));
+  document.getElementById('hunter-back').addEventListener('click', () => modal.classList.add('hidden'));
   const editProgBtn = document.getElementById('hunter-edit-program');
   if (editProgBtn) editProgBtn.addEventListener('click', async () => {
     modal.classList.add('hidden');
@@ -3923,7 +4218,7 @@ async function openHunterProfile(targetUid) {
 
 function buildMuscleStats(uid) {
   const sevenDaysAgo = new Date(); sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-  const recentWorkouts = (_workoutsByUid[uid] || []).filter(w => new Date(w.date) >= sevenDaysAgo);
+  const recentWorkouts = allWorkouts.filter(w => w.uid === uid && new Date(w.date) >= sevenDaysAgo);
   const setCounts = {};
   recentWorkouts.forEach(w => (w.exercises||[]).forEach(ex => {
     const def = EXERCISES_ALL[ex.name];
@@ -3948,7 +4243,7 @@ function buildMuscleStats(uid) {
   return stats;
 }
 
-function showDebriefModal(exercises, apEarned, prs, statGains) {
+function showDebriefModal(exercises, apEarned, prs) {
   const totalSets = exercises.reduce((n, ex) => n + (ex.sets||[]).filter(s=>s.reps>0).length, 0);
   const totalVol = exercises.reduce((n, ex) =>
     n + (ex.sets||[]).filter(s=>s.reps>0 && s.weight>0).reduce((v,s) => v + s.reps * s.weight, 0), 0);
@@ -4009,38 +4304,11 @@ function showDebriefModal(exercises, apEarned, prs, statGains) {
           10 base${mult > 1 ? ` × ${mult} streak bonus` : ''} = ${Math.round(10*mult)} AP
           ${apEarned > Math.round(10*mult) ? ` + 5 weekly goal bonus` : ''}
         </div>` : ''}
-      ${statGains && Object.keys(statGains).length ? `
-        <div style="background:rgba(61,165,255,0.05);border:1px solid rgba(93,157,255,0.2);border-radius:6px;padding:10px 12px;margin-bottom:12px;">
-          <p style="font-size:10px;color:var(--text-faint);font-family:var(--font-mono);letter-spacing:0.1em;margin:0 0 8px;">STAT XP EARNED</p>
-          ${Object.entries(statGains).map(([stat, sets]) => {
-            const xp = Math.max(1, Math.floor(sets/3));
-            const def = STAT_DEFS.find(d=>d.id===stat);
-            return `<div style="display:flex;justify-content:space-between;font-size:12px;font-family:var(--font-mono);margin-bottom:4px;">
-              <span style="color:var(--text-dim);">${def?.label||stat}</span>
-              <span style="color:var(--brass);">+${xp} XP</span>
-            </div>`;
-          }).join('')}
-        </div>` : ''}
-      ${(() => {
-        const { damage, type } = calcRaidDamage(currentUser.uid, exercises);
-        return `<div style="background:rgba(${type.color.includes('brass')?'61,165,255':type.color.includes('excess')?'255,61,90':'139,107,255'},0.06);border:1px solid ${type.color}44;border-radius:6px;padding:10px 12px;margin-bottom:12px;display:flex;align-items:center;gap:12px;">
-          <div style="font-size:28px;">${type.icon}</div>
-          <div style="flex:1;">
-            <div style="font-family:var(--font-display);font-size:11px;letter-spacing:0.1em;color:${type.color};">${type.label}</div>
-            <div style="font-size:10px;color:var(--text-faint);font-family:var(--font-mono);">${type.desc}</div>
-          </div>
-          <div style="text-align:right;">
-            <div style="font-family:var(--font-display);font-size:22px;color:${type.color};text-shadow:0 0 12px ${type.color};">${damage}</div>
-            <div style="font-size:9px;color:var(--text-faint);font-family:var(--font-mono);">RAID DMG</div>
-          </div>
-        </div>`;
-      })()}
       <div style="font-size:12px;color:var(--text-faint);margin-bottom:12px;">Total AP: ${(profile.auraPoints||0).toLocaleString()}</div>
       <button class="debrief-close-btn">Back to the Hunt</button>
     </div>`;
 
   document.body.appendChild(el);
-  setTimeout(addSlCornersToAll, 50);
 
   const rirSelections = {};
   el.querySelectorAll('.rir-chip').forEach(chip => {
@@ -4092,7 +4360,7 @@ function renderTodayCard() {
     const streak = computeStreak(currentUser.uid);
     el.innerHTML = `<div class="today-debrief-card">
       <p style="font-size:11px;color:var(--brass);text-transform:uppercase;letter-spacing:.06em;margin:0 0 8px;">Today</p>
-      <p class="today-no-workout">No workout logged yet today.${streak > 0 ? `<br><span style="color:var(--excess);">🔥 ${streak}d streak at risk.</span>` : ''}</p>
+      <p class="today-no-workout">No workout logged yet today.${streak > 0 ? `<br><span style="color:var(--excess);">🔥 ${streak} day streak at risk.</span>` : ''}</p>
     </div>`;
     return;
   }
@@ -4109,13 +4377,9 @@ function renderTodayCard() {
   })() : 0;
   const todayPRs = Object.values(myPRs).filter(p => p.date === today);
   const prXP = todayPRs.reduce((s,p) => s+(p.xp||0), 0);
-  const { damage, type } = calcRaidDamage(currentUser.uid, todayWorkouts[0]?.exercises||[]);
 
-  el.innerHTML = `<div class="today-debrief-card" id="today-debrief-card-clickable" style="cursor:pointer;">
-    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;">
-      <p style="font-size:11px;color:var(--brass);text-transform:uppercase;letter-spacing:.06em;margin:0;">⚡ Today's Session</p>
-      <span style="font-size:10px;color:var(--text-faint);font-family:var(--font-mono);">Tap to replay debrief ›</span>
-    </div>
+  el.innerHTML = `<div class="today-debrief-card">
+    <p style="font-size:11px;color:var(--brass);text-transform:uppercase;letter-spacing:.06em;margin:0 0 10px;">⚡ Today's Session</p>
     <div class="today-debrief-row">
       <div class="today-stat-pill">
         <div class="today-stat-val">+${apToday + prXP}</div>
@@ -4129,236 +4393,14 @@ function renderTodayCard() {
         <div class="today-stat-val">${totalVol > 0 ? (totalVol >= 1000 ? (totalVol/1000).toFixed(1)+'t' : totalVol+'kg') : '—'}</div>
         <div class="today-stat-lbl">Volume</div>
       </div>
-      <div class="today-stat-pill" style="border-color:${type.color}44;">
-        <div class="today-stat-val" style="font-size:16px;">${type.icon}</div>
-        <div class="today-stat-lbl" style="color:${type.color};">${type.label} ${damage}</div>
+      <div class="today-stat-pill">
+        <div class="today-stat-val">${streak}🔥</div>
+        <div class="today-stat-lbl">Streak</div>
       </div>
     </div>
-    ${todayPRs.length ? `<p style="font-size:12px;color:var(--violet);margin:4px 0 0;">🏆 ${todayPRs.length} PR${todayPRs.length>1?'s':''} beaten · +${prXP} AP</p>` : ''}
-    <p style="font-size:11px;color:var(--text-faint);margin:6px 0 0;">Total AP: ${(profile.auraPoints||0).toLocaleString()}</p>
+    ${todayPRs.length ? `<p style="font-size:12px;color:var(--violet);margin:4px 0 0;">🏆 ${todayPRs.length} PR${todayPRs.length>1?'s':''} beaten today · +${prXP} AP</p>` : ''}
+    <p style="font-size:11px;color:var(--text-faint);margin:6px 0 0;">Total Aura Points: ${(profile.auraPoints||0).toLocaleString()}</p>
   </div>`;
-
-  // tap to reopen debrief
-  document.getElementById('today-debrief-card-clickable')?.addEventListener('click', () => {
-    const allExercises = todayWorkouts.flatMap(w => w.exercises||[]);
-    showDebriefModal(allExercises, apToday, todayPRs.map(p => ({ exercise: Object.entries(myPRs).find(([,v])=>v===p)?.[0]||'', xp: p.xp||0, tier: p.tier, e1rm: p.e1rm })), null);
-  });
-}
-
-/* =========================================================================
-   TRENDS — muscle heatmap, weight chart, weekly volume
-   ========================================================================= */
-// STATUS_COLOR already defined above — using existing definition
-function weeklyMuscleVolumes() {
-  const weekStarts = [0,1,2,3].map(i => startOfWeek(daysAgo(i*7)));
-  const weekVolumes = [0,1,2,3].map(() => ({}));
-  for (const w of myWorkouts) {
-    const wd = new Date(w.date);
-    for (let i = 0; i < 4; i++) {
-      const start = weekStarts[i]; const end = new Date(start); end.setDate(end.getDate()+7);
-      if (wd >= start && wd < end) {
-        const vol = computeWorkoutVolume(w.exercises||[]);
-        for (const [m,v] of Object.entries(vol)) weekVolumes[i][m] = (weekVolumes[i][m]||0)+v;
-      }
-    }
-  }
-  return weekVolumes;
-}
-
-function muscleStatusPast() {
-  const weekVolumes = weeklyMuscleVolumes();
-  const result = {};
-  for (const m of MUSCLES) {
-    const thisWeek = weekVolumes[0][m]||0;
-    const prior = [weekVolumes[1][m]||0, weekVolumes[2][m]||0, weekVolumes[3][m]||0];
-    const priorAvg = prior.reduce((a,b)=>a+b,0)/3;
-    let status;
-    if (thisWeek === 0) status = 'Stalled';
-    else if (priorAvg === 0) status = 'Focusing';
-    else { const ratio = thisWeek/priorAvg;
-      if (ratio >= 1.4) status = 'Excess'; else if (ratio >= 1.15) status = 'Growing';
-      else if (ratio >= 0.85) status = 'Maintaining'; else status = 'Stalled'; }
-    result[m] = { volume: Math.round(thisWeek), status, weeks: [weekVolumes[0][m]||0, weekVolumes[1][m]||0, weekVolumes[2][m]||0, weekVolumes[3][m]||0] };
-  }
-  return result;
-}
-
-function muscleStatusPlanned() {
-  const planned = {}; MUSCLES.forEach(m => planned[m] = 0);
-  if (myProgram && myProgram.days) {
-    for (const day of myProgram.days) for (const ex of day.exercises) {
-      const map = (EXERCISES_ALL[ex.name]||{}).muscles||{};
-      for (const [m,emph] of Object.entries(map)) planned[m] += emph;
-    }
-  }
-  const max = Math.max(...Object.values(planned), 0.0001);
-  const result = {};
-  for (const m of MUSCLES) {
-    const v = planned[m]; const ratio = v/max;
-    let status;
-    if (v===0) status='Stalled'; else if (ratio<=0.25) status='Maintaining';
-    else if (ratio<=0.5) status='Growing'; else if (ratio<=0.75) status='Focusing'; else status='Excess';
-    result[m] = { volume: Math.round(v*10)/10, status, weeks:[v,v,v,v] };
-  }
-  return result;
-}
-
-function weightLineChart(weights) {
-  if (!weights || weights.length === 0) {
-    return `<p class="sub" style="margin:0 0 12px;">No weight logged yet. Log your first entry below.</p>`;
-  }
-  const last = weights[weights.length-1];
-  const first = weights[0];
-  const totalChange = last.weight - first.weight;
-  const changeStr = `${totalChange>=0?'+':''}${totalChange.toFixed(1)}kg`;
-  const changeColor = totalChange>0.5?'var(--excess)':totalChange<-0.5?'var(--growing)':'var(--text-dim)';
-  const pts = weights.slice(-30);
-  if (pts.length===1) return `<div style="display:flex;align-items:baseline;gap:10px;margin-bottom:12px;"><span class="bignum">${last.weight} <small>kg</small></span><span class="sub">${last.date}</span></div>`;
-  const W=320,H=90,PAD={t:8,r:8,b:20,l:36};
-  const gW=W-PAD.l-PAD.r, gH=H-PAD.t-PAD.b;
-  const vals=pts.map(p=>Number(p.weight));
-  const minV=Math.min(...vals), maxV=Math.max(...vals), range=maxV-minV||1;
-  const toX=i=>PAD.l+(i/(pts.length-1))*gW;
-  const toY=v=>PAD.t+gH-((v-minV)/range)*gH;
-  const linePoints=pts.map((p,i)=>`${toX(i).toFixed(1)},${toY(Number(p.weight)).toFixed(1)}`).join(' ');
-  const firstX=toX(0).toFixed(1),lastX=toX(pts.length-1).toFixed(1),baseY=(PAD.t+gH).toFixed(1);
-  const areaPoints=`${firstX},${baseY} ${linePoints} ${lastX},${baseY}`;
-  const labelIdxs=[0,Math.floor((pts.length-1)/2),pts.length-1];
-  const xLabels=labelIdxs.map(i=>`<text x="${toX(i).toFixed(1)}" y="${H}" text-anchor="middle" fill="var(--text-faint)" font-size="9">${pts[i].date.slice(5)}</text>`).join('');
-  const yLabels=[minV,(minV+maxV)/2,maxV].map(v=>`<text x="${PAD.l-4}" y="${parseFloat(toY(v).toFixed(1))+3}" text-anchor="end" fill="var(--text-faint)" font-size="9">${v.toFixed(1)}</text>`).join('');
-  const dotX=toX(pts.length-1).toFixed(1), dotY=toY(vals[vals.length-1]).toFixed(1);
-  return `<div style="display:flex;align-items:baseline;gap:10px;margin-bottom:8px;">
-    <span class="bignum">${last.weight} <small>kg</small></span>
-    <span style="font-size:12px;color:${changeColor};">${changeStr} total</span>
-    <span class="sub" style="margin-left:auto;">${pts.length} entries</span>
-  </div>
-  <svg viewBox="0 0 ${W} ${H}" style="width:100%;overflow:visible;" xmlns="http://www.w3.org/2000/svg">
-    <line x1="${PAD.l}" y1="${PAD.t}" x2="${PAD.l}" y2="${PAD.t+gH}" stroke="var(--border)" stroke-width="1"/>
-    <line x1="${PAD.l}" y1="${PAD.t+gH}" x2="${PAD.l+gW}" y2="${PAD.t+gH}" stroke="var(--border)" stroke-width="1"/>
-    <defs><linearGradient id="wt-grad" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="var(--brass)" stop-opacity="0.25"/>
-      <stop offset="100%" stop-color="var(--brass)" stop-opacity="0"/>
-    </linearGradient></defs>
-    <polygon points="${areaPoints}" fill="url(#wt-grad)"/>
-    <polyline points="${linePoints}" fill="none" stroke="var(--brass)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
-    <circle cx="${dotX}" cy="${dotY}" r="3.5" fill="var(--brass)" stroke="var(--card)" stroke-width="2"/>
-    ${yLabels}${xLabels}
-  </svg>`;
-}
-
-function renderTrends() {
-  const el = document.getElementById('trends-dashboard');
-  if (!el) return;
-  if (trendsView === 'muscle-detail') { renderMuscleDetail(); return; }
-  if (!currentUser) return;
-
-  const stats = muscleStatusPast();
-  const statusCounts = {};
-  MUSCLES.forEach(m => { const s = stats[m].status; statusCounts[s]=(statusCounts[s]||0)+1; });
-  const totalWorkouts = myWorkouts.length;
-  const streak = computeStreak(currentUser.uid);
-
-  // safely render body SVG — anatomy template may not be loaded yet
-  let muscleSvg = '';
-  try { muscleSvg = bodySvg('front',stats) + bodySvg('back',stats); }
-  catch(e) {
-    muscleSvg = `<p style="color:var(--text-faint);font-size:12px;padding:10px 0;">Loading anatomy...</p>`;
-    // retry after template loads
-    loadAnatomyTemplate(profile?.bodyType === 'female' ? 'female' : 'male')
-      .then(() => renderTrends()).catch(()=>{});
-  }
-  el.innerHTML = `
-    <div class="sl-section-head" style="padding:12px 0 16px;">Intelligence</div>
-
-    <div class="card widget" id="widget-muscle" style="cursor:pointer;">
-      <div class="card-title"><h3>◈ Muscle Activation <span class="chev">›</span></h3></div>
-      ${Object.entries(statusCounts).filter(([,v])=>v>0).map(([s,v])=>`<span class="trend-badge" style="background:${STATUS_COLOR[s]}18;color:${STATUS_COLOR[s]};border:1px solid ${STATUS_COLOR[s]}44;padding:3px 10px;border-radius:10px;font-size:11px;margin-right:6px;font-family:var(--font-mono);">${s} ${v}</span>`).join('')}
-      <div class="body-pair" style="margin-top:12px;">${muscleSvg}</div>
-    </div>
-
-    <div class="card">
-      <div class="card-title"><h3>◐ Weight</h3></div>
-      ${weightLineChart(myWeights)}
-      <div class="weight-input-row">
-        <input type="number" step="0.1" id="weight-input" placeholder="Log today's weight (kg)" inputmode="decimal" />
-        <button class="btn btn-sm" id="weight-save-btn">Save</button>
-      </div>
-    </div>
-
-    <div class="card">
-      <div class="card-title"><h3>◇ Activity</h3></div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
-        <div style="text-align:center;padding:10px;background:var(--card-2);border-radius:6px;">
-          <div class="bignum" style="font-size:28px;">${totalWorkouts}</div>
-          <div style="font-size:10px;color:var(--text-faint);font-family:var(--font-mono);letter-spacing:0.1em;">TOTAL SESSIONS</div>
-        </div>
-        <div style="text-align:center;padding:10px;background:var(--card-2);border-radius:6px;">
-          <div class="bignum" style="font-size:28px;">${streak}</div>
-          <div style="font-size:10px;color:var(--text-faint);font-family:var(--font-mono);letter-spacing:0.1em;">DAY STREAK</div>
-        </div>
-      </div>
-    </div>`;
-
-  document.getElementById('widget-muscle')?.addEventListener('click', () => { trendsView='muscle-detail'; renderTrends(); });
-
-  const wBtn = document.getElementById('weight-save-btn');
-  const wInp = document.getElementById('weight-input');
-  if (wBtn && wInp) {
-    wBtn.addEventListener('click', async () => {
-      const val = parseFloat(wInp.value);
-      if (!val || val<20||val>300) { showToast('Enter a valid weight.','error'); return; }
-      wBtn.disabled=true; wBtn.textContent='Saving…';
-      try {
-        await addDoc(collection(db,'bodyweight'),{uid:currentUser.uid,date:todayStr(),weight:val,createdAt:serverTimestamp()});
-        await setDoc(doc(db,'users',currentUser.uid),{bodyweightKg:val},{merge:true});
-        profile.bodyweightKg=val;
-        await (async()=>{const wtSnap=await getDocs(query(collection(db,'bodyweight'),where('uid','==',currentUser.uid)));myWeights=wtSnap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>a.date.localeCompare(b.date));})();
-        wInp.value='';
-        renderTrends();
-        showToast('Weight logged!','success');
-      } catch(err){showToast('Could not save: '+err.message,'error');}
-      wBtn.disabled=false; wBtn.textContent='Save';
-    });
-  }
-}
-
-function renderMuscleDetail() {
-  const dashboard = document.getElementById('trends-dashboard');
-  const detailEl = document.getElementById('trends-muscle-detail');
-  if (!dashboard||!detailEl) return;
-  dashboard.classList.add('hidden');
-  detailEl.classList.remove('hidden');
-  const stats = muscleDetailMode==='Past' ? muscleStatusPast() : muscleStatusPlanned();
-  const maxW = Math.max(...Object.values(stats).map(s=>s.volume),1);
-  detailEl.innerHTML = `
-    <div class="sl-section-head" style="padding:12px 0 16px;">Muscle Detail</div>
-    <div class="card">
-      <div style="display:flex;gap:8px;align-items:center;justify-content:space-between;margin-bottom:14px;">
-        <button id="back-to-dashboard" class="btn btn-sm">← Back</button>
-        <div style="display:flex;gap:6px;">
-          <button class="trend-tab ${muscleDetailMode==='Past'?'active':''}" id="mode-past">This week</button>
-          <button class="trend-tab ${muscleDetailMode==='Planned'?'active':''}" id="mode-planned">Planned</button>
-        </div>
-      </div>
-      <div class="body-pair big">${(() => { try { return bodySvg('front',stats)+bodySvg('back',stats); } catch(e) { return '<p style="color:var(--text-faint);font-size:12px;">Loading...</p>'; } })()}</div>
-    </div>
-    <div class="card">
-      <div class="card-title"><h3>Breakdown</h3></div>
-      <div id="muscle-detail-list">
-        ${MUSCLES.map(m=>{const s=stats[m];return `<div class="muscle-detail-row card" style="padding:10px 12px;margin-bottom:8px;cursor:pointer;" data-m="${m}">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
-            <div><div style="font-size:13px;font-weight:600;">${m}</div><div style="font-size:10px;color:var(--text-faint);">${s.volume.toLocaleString()} ${muscleDetailMode==='Past'?'vol this wk':'planned'}</div></div>
-            <span style="font-size:11px;padding:3px 8px;border-radius:8px;background:${STATUS_COLOR[s.status]}18;color:${STATUS_COLOR[s.status]};font-family:var(--font-mono);">${s.status}</span>
-          </div>
-          <div style="display:flex;gap:2px;align-items:flex-end;height:24px;">
-            ${s.weeks.slice().reverse().map(v=>`<div style="flex:1;height:${Math.max(4,(v/maxW)*24)}px;background:${STATUS_COLOR[s.status]};border-radius:2px 2px 0 0;opacity:0.7;"></div>`).join('')}
-          </div>
-        </div>`}).join('')}
-      </div>
-    </div>`;
-  document.getElementById('back-to-dashboard')?.addEventListener('click',()=>{trendsView='dashboard';dashboard.classList.remove('hidden');detailEl.classList.add('hidden');renderTrends();});
-  document.getElementById('mode-past')?.addEventListener('click',()=>{muscleDetailMode='Past';renderMuscleDetail();});
-  document.getElementById('mode-planned')?.addEventListener('click',()=>{muscleDetailMode='Planned';renderMuscleDetail();});
 }
 
 function renderPRPanel() {
@@ -4401,13 +4443,12 @@ function renderPRPanel() {
 }
 
 function renderBoard() {
-  // stagger board sub-renders so none block the main thread
+  loadAllUserPRs().then(() => renderStrengthRankings());
   renderPartyStatus();
   renderCompetitionBoard();
-  setTimeout(() => { try { renderWeeklySuperlatives(); } catch(e) {} }, 0);
-  setTimeout(() => { try { renderPartyDashboard(); } catch(e) {} }, 0);
-  setTimeout(() => { try { renderRaidBoss(); } catch(e) {} }, 0);
-  setTimeout(() => { try { loadAllUserPRs().then(() => renderStrengthRankings()); } catch(e) {} }, 100);
+  renderWeeklySuperlatives();
+  renderPartyDashboard();
+  renderRaidBoss();
 }
 
 /* ── Party Status Today ── */
@@ -4461,7 +4502,7 @@ function renderCompetitionBoard() {
     power: getUserPowerLevel(u),
     rank: getUserCharRank(u),
     streak: computeStreak(u.uid),
-    total: (_workoutsByUid[u.uid]||[]).length,
+    total: allWorkouts.filter(w => w.uid === u.uid).length,
     weeklyGain: weeklyAP(u.uid),
     trainedToday: allWorkouts.some(w => w.uid === u.uid && w.date === today),
   })).sort((a,b) => b.power - a.power || b.streak - a.streak);
@@ -4501,120 +4542,524 @@ async function renderRaidBoss() {
   const el = document.getElementById('raid-boss-slot');
   if (!el) return;
 
+  // boss spawns Monday, expires Sunday
   const now = new Date();
   const weekStart = startOfWeek(now);
   const weekEnd = new Date(weekStart); weekEnd.setDate(weekEnd.getDate()+7);
-  const daysLeft = Math.max(0, Math.ceil((weekEnd - now) / 86400000));
+  const bossKey = weekStart.toISOString().slice(0,10);
 
-  // figure out when the party actually started — earliest workout date across everyone
-  const allDates = allWorkouts.map(w => w.date).sort();
-  const partyStartDate = allDates.length ? new Date(allDates[0]) : now;
-
-  // how many days of this week have elapsed since the party started
-  const weekDaysSinceStart = Math.min(7, Math.max(1,
-    Math.ceil((now - Math.max(weekStart, partyStartDate)) / 86400000)
-  ));
-  const isFirstWeek = partyStartDate >= weekStart;
-
-  // count this week's workouts (not sets — more intuitive)
+  // count total workouts this week across all party members
   const weekWorkouts = allWorkouts.filter(w => {
     const d = new Date(w.date);
     return d >= weekStart && d < weekEnd;
   });
-  const totalRaids = weekWorkouts.length; // each workout = 1 raid attempt
+  const totalSets = weekWorkouts.reduce((n,w) =>
+    n + (w.exercises||[]).reduce((m,ex) => m + (ex.sets||[]).filter(s=>s.reps>0).length, 0), 0);
 
-  // average party power to determine boss tier
-  const partyPower = allUsers.length
-    ? Math.round(allUsers.reduce((s,u) => s + getUserPowerLevel(u), 0) / allUsers.length)
-    : 0;
-
-  const bossTier = partyPower > 7500 ? 'S' : partyPower > 4500 ? 'A'
-    : partyPower > 2100 ? 'B' : partyPower > 900 ? 'C'
-    : partyPower > 300 ? 'D' : 'E';
-
-  const BOSS_DATA = {
-    E: { name:'Goblin Scout',       rank:'E-Rank Gate', desc:'A lone creature from the lowest dungeon. Weak — but a real test for new hunters.', color:'var(--text-dim)',      raidsPerMember:3 },
-    D: { name:'Stone Golem',        rank:'D-Rank Gate', desc:'An awakened construct of the dungeon. It will not fall without collective effort.', color:'var(--brass)',        raidsPerMember:4 },
-    C: { name:'Iron Shadow',        rank:'C-Rank Gate', desc:'A shadow creature born from dungeon energy. It learns from your weakness.', color:'var(--maintaining)', raidsPerMember:5 },
-    B: { name:'Void Warden',        rank:'B-Rank Gate', desc:'A guardian of the deep. Your growing power has attracted something dangerous.', color:'var(--violet)',      raidsPerMember:5 },
-    A: { name:"Monarch's Shadow",   rank:'A-Rank Gate', desc:"A fragment of the Shadow Monarch's army. Only hunters at their limits stand here.", color:'var(--excess)',      raidsPerMember:6 },
-    S: { name:'Antares the Sovereign Beast', rank:'S-Rank Gate', desc:'The dungeon has recognised your power. This is not a test — this is war.', color:'#FFD700',      raidsPerMember:7 },
-  };
-
-  const boss = BOSS_DATA[bossTier];
+  // boss HP = 10 sets per party member per day × 7 days (scaled)
   const partySize = allUsers.length || 1;
-
-  // pro-rate HP for first week — only require workouts per day elapsed so far
-  // full weeks require the full target
-  const targetDays = isFirstWeek ? weekDaysSinceStart : 7;
-  const bossMaxHP = partySize * targetDays * boss.raidsPerMember;
-  const bossHP = Math.max(0, bossMaxHP - totalRaids);
+  const bossMaxHP = partySize * 7 * 8; // 8 sets/member/day target
+  const bossHP = Math.max(0, bossMaxHP - totalSets);
   const bossHPpct = Math.max(0, (bossHP / bossMaxHP) * 100);
   const cleared = bossHP === 0;
-
-  const bossPhase = cleared ? 'Defeated'
-    : bossHPpct > 66 ? 'Unchallenged'
-    : bossHPpct > 33 ? 'Weakening'
-    : 'Critical — finish it';
-  const bossColor = cleared ? 'var(--growing)'
-    : bossHPpct > 66 ? boss.color
-    : bossHPpct > 33 ? '#FF9500'
-    : 'var(--excess)';
-
-  // preview next week's boss
-  const nextPartyPower = partyPower + 50; // small projected gain
-  const nextTier = nextPartyPower > 7500 ? 'S' : nextPartyPower > 4500 ? 'A'
-    : nextPartyPower > 2100 ? 'B' : nextPartyPower > 900 ? 'C'
-    : nextPartyPower > 300 ? 'D' : 'E';
-  const nextBoss = BOSS_DATA[nextTier];
-  const nextMaxHP = partySize * 7 * nextBoss.raidsPerMember;
-
+  const daysLeft = Math.ceil((weekEnd - now) / 86400000);
   const contributors = allUsers.map(u => {
     const wCount = weekWorkouts.filter(w=>w.uid===u.uid).length;
     return { name: u.displayName||'Hunter', wCount, uid: u.uid };
   }).sort((a,b)=>b.wCount-a.wCount);
 
+  const bossPhase = bossHPpct > 60 ? 'Unchallenged' : bossHPpct > 30 ? 'Weakening' : bossHPpct > 0 ? 'Critical' : 'Defeated';
+  const bossColor = bossHPpct > 60 ? 'var(--excess)' : bossHPpct > 30 ? '#FF9500' : bossHPpct > 0 ? 'var(--violet)' : 'var(--growing)';
+
   el.innerHTML = `
-    <div class="raid-boss-card ${cleared?'cleared':''}" style="border-color:${cleared?'rgba(139,107,255,0.3)':`${boss.color}44`};">
+    <div class="raid-boss-card ${cleared?'cleared':''}">
       <div class="raid-boss-header">
-        <div style="flex:1;min-width:0;">
-          <div class="raid-eyebrow" style="color:${boss.color};">⚔ ${boss.rank}${isFirstWeek?' · INITIATION WEEK':''}</div>
-          <div class="raid-boss-name" style="color:${cleared?'var(--growing)':boss.color};text-shadow:0 0 20px ${boss.color}44;">
-            ${cleared?'★ ':''} ${boss.name}${cleared?' — Defeated':''}
-          </div>
+        <div>
+          <div class="raid-eyebrow">⚔ WEEKLY RAID</div>
+          <div class="raid-boss-name">${cleared ? '★ BOSS DEFEATED ★' : 'Shadow Beast'}</div>
           <div class="raid-phase" style="color:${bossColor};">[${bossPhase}]${!cleared?` · ${daysLeft}d remaining`:''}</div>
-          <div style="font-size:10px;color:var(--text-faint);font-family:var(--font-mono);margin-top:5px;line-height:1.5;">${boss.desc}</div>
         </div>
-        <div class="raid-hp-col" style="margin-left:12px;">
-          <div class="raid-hp-value" style="color:${bossColor};">${cleared?'0':bossHP}</div>
+        <div class="raid-hp-col">
+          <div class="raid-hp-value" style="color:${bossColor};">${cleared?'0':bossHP.toLocaleString()}</div>
           <div class="raid-hp-label">HP LEFT</div>
-          <div style="font-size:9px;color:var(--text-faint);font-family:var(--font-mono);margin-top:4px;">${totalRaids}/${bossMaxHP} raids</div>
         </div>
       </div>
-      <div class="raid-hp-bar-wrap" style="background:${boss.color}18;">
-        <div class="raid-hp-bar" style="width:${bossHPpct.toFixed(1)}%;background:${bossColor};box-shadow:0 0 8px ${bossColor};"></div>
-        ${!cleared?'<div class="raid-hp-bar-stripes"></div>':''}
+      <div class="raid-hp-bar-wrap">
+        <div class="raid-hp-bar" style="width:${bossHPpct.toFixed(1)}%;background:${bossColor};"></div>
+        ${!cleared?`<div class="raid-hp-bar-stripes"></div>`:''}
       </div>
-      ${isFirstWeek?`<div style="font-family:var(--font-mono);font-size:9px;color:var(--text-faint);margin:8px 0;letter-spacing:0.04em;">⚠ Initiation week — boss HP scaled to ${weekDaysSinceStart} days elapsed. Full raids begin next week.</div>`:''}
       <div class="raid-contributors">
-        ${contributors.map(c => {
-          const { damage, type } = calcRaidDamage(c.uid, []);
-          const totalDmg = c.wCount * damage;
-          return `<div class="raid-contrib ${c.uid===currentUser.uid?'me':''}">
+        ${contributors.map(c => `
+          <div class="raid-contrib ${c.uid===currentUser.uid?'me':''}">
             <span class="raid-contrib-name">${escapeHtml(c.name)}</span>
-            <div style="display:flex;align-items:center;gap:4px;flex:1;min-width:0;">
-              <span style="font-size:12px;">${type.icon}</span>
-              <div class="raid-contrib-bar-wrap" style="flex:1;">
-                <div class="raid-contrib-bar" style="width:${Math.min(100,(c.wCount/Math.max(targetDays,1))*100).toFixed(0)}%;background:${type.color};box-shadow:0 0 4px ${type.color}66;"></div>
-              </div>
+            <div class="raid-contrib-bar-wrap">
+              <div class="raid-contrib-bar" style="width:${Math.min(100,(c.wCount/7)*100).toFixed(0)}%;"></div>
             </div>
-            <span style="font-family:var(--font-mono);font-size:9px;color:${type.color};white-space:nowrap;">${type.label} ×${c.wCount}</span>
+            <span class="raid-contrib-count">${c.wCount} ${c.wCount===1?'raid':'raids'}</span>
+          </div>`).join('')}
+      </div>
+      ${!cleared?`<p class="raid-warning">Miss this and the boss wins — all hunters lose <strong>50 AP</strong>.</p>`
+        :`<p class="raid-cleared-msg">Party cleared the gate. Bonus AP awarded on Sunday.</p>`}
+    </div>`;
+}
+
+
+/* =========================================================================
+   TRENDS
+   ========================================================================= */
+function weeklyMuscleVolumes() {
+  const weekStarts = [0,1,2,3].map(i => startOfWeek(daysAgo(i*7)));
+  const weekVolumes = [0,1,2,3].map(() => ({}));
+  for (const w of myWorkouts) {
+    const wd = new Date(w.date);
+    for (let i = 0; i < 4; i++) {
+      const start = weekStarts[i]; const end = new Date(start); end.setDate(end.getDate() + 7);
+      if (wd >= start && wd < end) {
+        const vol = computeWorkoutVolume(w.exercises);
+        for (const [m, v] of Object.entries(vol)) weekVolumes[i][m] = (weekVolumes[i][m] || 0) + v;
+      }
+    }
+  }
+  return weekVolumes;
+}
+function muscleStatusPast() {
+  const weekVolumes = weeklyMuscleVolumes();
+  const result = {};
+  for (const m of MUSCLES) {
+    const thisWeek = weekVolumes[0][m] || 0;
+    const prior = [weekVolumes[1][m]||0, weekVolumes[2][m]||0, weekVolumes[3][m]||0];
+    const priorAvg = prior.reduce((a,b)=>a+b,0) / 3;
+    let status;
+    if (thisWeek === 0) status = 'Stalled';
+    else if (priorAvg === 0) status = 'Focusing';
+    else { const ratio = thisWeek / priorAvg;
+      if (ratio >= 1.4) status = 'Excess'; else if (ratio >= 1.15) status = 'Growing';
+      else if (ratio >= 0.85) status = 'Maintaining'; else status = 'Stalled'; }
+    result[m] = { volume: Math.round(thisWeek), status, weeks: [weekVolumes[0][m]||0, weekVolumes[1][m]||0, weekVolumes[2][m]||0, weekVolumes[3][m]||0] };
+  }
+  return result;
+}
+function muscleStatusPlanned() {
+  const planned = {}; MUSCLES.forEach(m => planned[m] = 0);
+  if (myProgram && myProgram.days) {
+    for (const day of myProgram.days) for (const ex of day.exercises) {
+      const map = (EXERCISES_ALL[ex.name]||{}).muscles || {};
+      for (const [m, emph] of Object.entries(map)) planned[m] += emph;
+    }
+  }
+  const max = Math.max(...Object.values(planned), 0.0001);
+  const result = {};
+  for (const m of MUSCLES) {
+    const v = planned[m]; const ratio = v / max;
+    let status;
+    if (v === 0) status = 'Stalled'; else if (ratio <= 0.25) status = 'Maintaining';
+    else if (ratio <= 0.5) status = 'Growing'; else if (ratio <= 0.75) status = 'Focusing'; else status = 'Excess';
+    result[m] = { volume: Math.round(v*10)/10, status, weeks: [v,v,v,v] };
+  }
+  return result;
+}
+/* ANATOMY_TEMPLATES is loaded once near the top of this script, one per body type */
+function muscleFromId(id) {
+  if (!id) return null;
+  const stripped = id.replace(/_\d+$/, ''); // Figma dedupes repeated names as "Name_2", "Name_3"...
+  return MUSCLES.includes(stripped) ? stripped : null;
+}
+function bodySvg(view, stats, overrideBodyType) {
+  const bodyType = overrideBodyType || ((profile && profile.bodyType === 'female') ? 'female' : 'male');
+  const template = ANATOMY_TEMPLATES[bodyType];
+  if (!template) return '<div class="empty-state" style="padding:20px;">Loading anatomy…</div>';
+  const clone = template.cloneNode(true);
+  clone.querySelectorAll('[id]').forEach(el => {
+    const m = muscleFromId(el.id);
+    if (!m) return;
+    const status = stats[m]?.status || 'Stalled';
+    const color = STATUS_COLOR[status];
+    el.classList.add('body-part');
+    el.dataset.m = m;
+    el.dataset.status = status;
+    el.style.filter = `drop-shadow(0 0 5px ${color})`;
+    // Some muscles trace as a single <path>, others as a <g> wrapping several
+    // sub-paths (each with its own fill) — recolor the element itself AND
+    // every descendant shape, so a child's own color can't win over ours.
+    [el, ...el.querySelectorAll('*')].forEach(shape => {
+      shape.setAttribute('fill', color);
+      shape.style.fill = color;
+    });
+  });
+  // Head and hands/feet ("misc") aren't tracked muscles, but they ARE recognizable
+  // Remove the large full-canvas background rectangle (fill="#1F1F1F" or similar)
+  // that sits behind everything — it bleeds into the opposite figure's space.
+  clone.querySelectorAll('path[id="Vector"]').forEach(el => {
+    const fill = (el.getAttribute('fill') || '').toLowerCase();
+    if (fill === '#1f1f1f' || fill === '#1e1e1e' || fill === 'black' || fill === '#000000') el.remove();
+  });
+  // body landmarks worth seeing clearly — recolor them to a muted slate tone so the
+  // figure reads as a monochrome holographic silhouette instead of clashing warm
+  // skin tones sitting next to the neon status colors.
+  ['Head', 'misc'].forEach(nonMuscleId => {
+    const group = clone.querySelector('#' + CSS.escape(nonMuscleId));
+    if (!group) return;
+    [group, ...group.querySelectorAll('*')].forEach(shape => {
+      if (shape.getAttribute('fill') === 'none') return;
+      shape.setAttribute('fill', 'var(--text-dim)');
+      shape.style.fill = 'var(--text-dim)';
+    });
+  });
+  // The groin covering isn't a tracked muscle — give it the same "Stalled" gray
+  // any untracked/no-data muscle shows, so it reads as "not tracked" rather than
+  // a distinct shape or a black void.
+  const groin = clone.querySelector('#Groin');
+  if (groin) {
+    [groin, ...groin.querySelectorAll('*')].forEach(shape => {
+      if (shape.getAttribute('fill') === 'none') return;
+      shape.setAttribute('fill', 'var(--stalled)');
+      shape.style.fill = 'var(--stalled)';
+    });
+  }
+  // Each body type's source file has its own measured front/back split point —
+  // never assumed to match between male and female files.
+  const crop = ANATOMY_CROP[bodyType][view];
+  clone.setAttribute('viewBox', crop.viewBox);
+  clone.setAttribute('width', String(crop.w));
+  clone.setAttribute('height', String(crop.h));
+  // overflow:hidden on the SVG itself is the simplest, most browser-compatible
+  // way to clip the opposite figure from bleeding into this view's frame.
+  // The viewBox zooms in; overflow:hidden clips anything outside that box.
+  clone.style.overflow = 'hidden';
+  clone.setAttribute('overflow', 'hidden');
+  // the source file's <mask>/<clipPath> ids aren't unique once both views render
+  // side by side on the same page — suffix them per view (whatever Figma happened to
+  // auto-generate this export) so neither view steals the other's mask/clip definition.
+  clone.querySelectorAll('mask[id], clipPath[id]').forEach(def => {
+    const oldId = def.getAttribute('id');
+    const newId = oldId + '-' + view;
+    def.setAttribute('id', newId);
+    clone.querySelectorAll(`[mask="url(#${oldId})"]`).forEach(el => el.setAttribute('mask', `url(#${newId})`));
+    clone.querySelectorAll(`[clip-path="url(#${oldId})"]`).forEach(el => el.setAttribute('clip-path', `url(#${newId})`));
+  });
+  // Neither traced file has real outline strokes on individual shapes — the
+  // "outlines" seen up to now were only ever the edge between two differently
+  // colored fills. When two neighboring muscles happen to share the same
+  // status (very common — e.g. both "Stalled"), there's no boundary at all
+  // and they visually merge into one shape. Give every filled shape a
+  // consistent thin dark stroke so boundaries stay visible no matter what
+  // color sits on either side of them.
+  clone.querySelectorAll('path, circle, ellipse, polygon, rect').forEach(shape => {
+    if (shape.getAttribute('fill') === 'none') return;
+    shape.setAttribute('stroke', 'rgba(5,7,13,0.55)');
+    shape.setAttribute('stroke-width', '1.5');
+    shape.style.stroke = 'rgba(5,7,13,0.55)';
+    shape.style.strokeWidth = '1.5';
+  });
+  const svgStr = new XMLSerializer().serializeToString(clone);
+  return `<div class="body-pair-slot">${svgStr}</div>`;
+}
+function statusCounts(stats) {
+  const counts = { Stalled:0, Maintaining:0, Growing:0, Focusing:0, Excess:0 };
+  MUSCLES.forEach(m => counts[stats[m].status]++);
+  return counts;
+}
+function statusCountRow(stats) {
+  const counts = statusCounts(stats);
+  return `<div class="status-count-row">${Object.entries(counts).map(([k,v]) =>
+    `<span class="status-pill" style="border-color:${STATUS_COLOR[k]};color:${STATUS_COLOR[k]};">${k} ${v}</span>`).join('')}</div>`;
+}
+
+function weightLineChart(weights) {
+  if (!weights || weights.length === 0) {
+    return `<p class="sub" style="margin:0 0 12px;">No weight logged yet. Log your first entry below.</p>`;
+  }
+
+  const last = weights[weights.length - 1];
+  const first = weights[0];
+  const totalChange = last.weight - first.weight;
+  const changeStr = `${totalChange >= 0 ? '+' : ''}${totalChange.toFixed(1)}kg`;
+  const changeColor = totalChange > 0.5 ? 'var(--excess)' : totalChange < -0.5 ? 'var(--growing)' : 'var(--text-dim)';
+
+  // use last 30 entries max to keep chart readable
+  const pts = weights.slice(-30);
+  if (pts.length === 1) {
+    return `<div style="display:flex;align-items:baseline;gap:10px;margin-bottom:12px;">
+      <span class="bignum">${last.weight} <small>kg</small></span>
+      <span class="sub">${last.date}</span>
+    </div>`;
+  }
+
+  const W = 320, H = 90, PAD = { t:8, r:8, b:20, l:36 };
+  const gW = W - PAD.l - PAD.r;
+  const gH = H - PAD.t - PAD.b;
+
+  const vals = pts.map(p => Number(p.weight));
+  const minV = Math.min(...vals);
+  const maxV = Math.max(...vals);
+  const range = maxV - minV || 1;
+
+  const toX = i => PAD.l + (i / (pts.length - 1)) * gW;
+  const toY = v => PAD.t + gH - ((v - minV) / range) * gH;
+
+  // build polyline points
+  const linePoints = pts.map((p,i) => `${toX(i).toFixed(1)},${toY(Number(p.weight)).toFixed(1)}`).join(' ');
+
+  // fill area under the line
+  const firstX = toX(0).toFixed(1), lastX = toX(pts.length-1).toFixed(1);
+  const baseY = (PAD.t + gH).toFixed(1);
+  const areaPoints = `${firstX},${baseY} ${linePoints} ${lastX},${baseY}`;
+
+  // x-axis labels — show first, middle, last date
+  const labelIdxs = [0, Math.floor((pts.length-1)/2), pts.length-1];
+  const xLabels = labelIdxs.map(i => {
+    const d = pts[i].date.slice(5); // MM-DD
+    return `<text x="${toX(i).toFixed(1)}" y="${H}" text-anchor="middle" fill="var(--text-faint)" font-size="9">${d}</text>`;
+  }).join('');
+
+  // y-axis labels
+  const yLabels = [minV, (minV+maxV)/2, maxV].map((v,i) => {
+    const y = toY(v).toFixed(1);
+    return `<text x="${PAD.l - 4}" y="${parseFloat(y)+3}" text-anchor="end" fill="var(--text-faint)" font-size="9">${v.toFixed(1)}</text>`;
+  }).join('');
+
+  // dot on the latest point
+  const dotX = toX(pts.length-1).toFixed(1);
+  const dotY = toY(vals[vals.length-1]).toFixed(1);
+
+  return `
+    <div style="display:flex;align-items:baseline;gap:10px;margin-bottom:8px;">
+      <span class="bignum">${last.weight} <small>kg</small></span>
+      <span style="font-size:12px;color:${changeColor};">${changeStr} total</span>
+      <span class="sub" style="margin-left:auto;">${pts.length} entries</span>
+    </div>
+    <svg viewBox="0 0 ${W} ${H}" style="width:100%;overflow:visible;" xmlns="http://www.w3.org/2000/svg">
+      <!-- grid lines -->
+      <line x1="${PAD.l}" y1="${PAD.t}" x2="${PAD.l}" y2="${PAD.t+gH}" stroke="var(--border)" stroke-width="1"/>
+      <line x1="${PAD.l}" y1="${PAD.t+gH}" x2="${PAD.l+gW}" y2="${PAD.t+gH}" stroke="var(--border)" stroke-width="1"/>
+      <!-- area fill -->
+      <defs>
+        <linearGradient id="wt-grad" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="var(--brass)" stop-opacity="0.25"/>
+          <stop offset="100%" stop-color="var(--brass)" stop-opacity="0"/>
+        </linearGradient>
+      </defs>
+      <polygon points="${areaPoints}" fill="url(#wt-grad)"/>
+      <!-- line -->
+      <polyline points="${linePoints}" fill="none" stroke="var(--brass)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+      <!-- latest dot -->
+      <circle cx="${dotX}" cy="${dotY}" r="3.5" fill="var(--brass)" stroke="var(--card)" stroke-width="2"/>
+      <!-- labels -->
+      ${yLabels}
+      ${xLabels}
+    </svg>`;
+}
+
+function barChart(values, labels, opts) {
+  opts = opts || {};
+  const max = Math.max(...values, opts.minMax || 1);
+  return `<div class="bar-chart-row">${values.map((v,i) => `
+    <div class="bar-chart-col">
+      <div class="bar-chart-bar" style="height:${Math.max(2, (v/max)*100)}%;background:${opts.color || 'var(--brass)'};"></div>
+      <span class="bar-chart-lbl">${labels[i]}</span>
+    </div>`).join('')}</div>`;
+}
+
+function renderTrends() {
+  document.getElementById('trends-dashboard').classList.toggle('hidden', trendsView !== 'dashboard');
+  document.getElementById('trends-muscle-detail').classList.toggle('hidden', trendsView !== 'muscle-detail');
+  if (trendsView === 'muscle-detail') { renderMuscleDetail(); return; }
+
+  const stats = muscleStatusPast();
+  const counts = statusCounts(stats);
+  const topStatus = Object.entries(counts).sort((a,b)=>b[1]-a[1])[0];
+  const goal = profile.weeklyGoal || 3;
+  const weekStart = startOfWeek(new Date());
+  const weekCount = countSince(currentUser.uid, weekStart);
+
+  // consistency grid: last 12 weeks x 7 days
+  const weeks = 12;
+  const gridCols = [];
+  for (let w = weeks-1; w >= 0; w--) {
+    const col = [];
+    for (let d = 0; d < 7; d++) {
+      const day = new Date(startOfWeek(daysAgo(w*7))); day.setDate(day.getDate()+d);
+      col.push(myWorkouts.some(wo => wo.date === todayStr(day)));
+    }
+    gridCols.push(col);
+  }
+  let goalsHitWeeks = 0;
+  for (let w = 0; w < weeks; w++) {
+    const start = startOfWeek(daysAgo(w*7)); const end = new Date(start); end.setDate(end.getDate()+7);
+    const c = myWorkouts.filter(wo => new Date(wo.date) >= start && new Date(wo.date) < end).length;
+    if (c >= goal) goalsHitWeeks++;
+  }
+  const goalsHitPct = Math.round((goalsHitWeeks/weeks)*100);
+
+  // volume last 7 days
+  const volLabels = []; const volValues = [];
+  for (let i = 6; i >= 0; i--) {
+    const d = daysAgo(i);
+    const dayWorkouts = myWorkouts.filter(w => w.date === todayStr(d));
+    let total = 0; dayWorkouts.forEach(w => Object.values(computeWorkoutVolume(w.exercises)).forEach(v => total += v));
+    volLabels.push('MTWTFSS'[ (d.getDay()+6)%7 ]);
+    volValues.push(Math.round(total));
+  }
+  const thisWeekVol = volValues.reduce((a,b)=>a+b,0);
+  let priorTotal = 0, priorDays = 0;
+  for (let i = 8; i <= 35; i++) { const d = daysAgo(i); const dw = myWorkouts.filter(w => w.date === todayStr(d));
+    dw.forEach(w => Object.values(computeWorkoutVolume(w.exercises)).forEach(v => priorTotal += v)); priorDays++; }
+  const priorWeekAvg = priorDays ? (priorTotal/priorDays)*7 : 0;
+  const volPct = priorWeekAvg ? Math.round(((thisWeekVol-priorWeekAvg)/priorWeekAvg)*100) : 0;
+
+  // training days (weekday counts)
+  const weekdayCounts = [0,0,0,0,0,0,0];
+  myWorkouts.forEach(w => { const d = new Date(w.date); weekdayCounts[(d.getDay()+6)%7]++; });
+  const wdLabels = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+  const bestDays = wdLabels.map((l,i)=>({l,c:weekdayCounts[i]})).sort((a,b)=>b.c-a.c).filter(x=>x.c>0).slice(0,3).map(x=>x.l);
+  const firstWorkoutDate = myWorkouts.length ? myWorkouts[myWorkouts.length-1].date : todayStr();
+  const weeksSinceStart = Math.max(1, daysBetween(firstWorkoutDate, todayStr())/7);
+  const avgPerWeek = (myWorkouts.length / weeksSinceStart).toFixed(1);
+
+  // training months (last 12 months)
+  const monthLabels = []; const monthValues = [];
+  for (let i = 11; i >= 0; i--) {
+    const d = new Date(); d.setMonth(d.getMonth()-i);
+    const label = d.toLocaleDateString(undefined,{month:'short'});
+    const count = myWorkouts.filter(w => { const wd = new Date(w.date); return wd.getMonth()===d.getMonth() && wd.getFullYear()===d.getFullYear(); }).length;
+    monthLabels.push(label); monthValues.push(count);
+  }
+  const bestMonthIdx = monthValues.indexOf(Math.max(...monthValues));
+  const avgMonth = (monthValues.reduce((a,b)=>a+b,0)/12).toFixed(1);
+  const totalMonth = monthValues.reduce((a,b)=>a+b,0);
+
+  // weight
+  const lastWeight = myWeights[myWeights.length-1];
+  const prevWeight = myWeights[myWeights.length-2];
+  let weightTrend = 'Stable', weightDiff = 0;
+  if (lastWeight && prevWeight) { weightDiff = lastWeight.weight - prevWeight.weight; weightTrend = weightDiff > 0.3 ? 'Gaining' : weightDiff < -0.3 ? 'Losing' : 'Stable'; }
+
+  // training hours
+  const hourCounts = new Array(24).fill(0);
+  myWorkouts.forEach(w => { if (w.time) { const h = Number(w.time.split(':')[0]); if(!isNaN(h)) hourCounts[h]++; } });
+  const modeHour = hourCounts.indexOf(Math.max(...hourCounts));
+
+  document.getElementById('trends-widgets').innerHTML = `
+    <div class="card widget" id="widget-muscle">
+      <div class="card-title"><h3>◈ Muscle Activation <span class="chev">›</span></h3></div>
+      <div class="status-pill" style="border-color:${STATUS_COLOR[topStatus[0]]};color:${STATUS_COLOR[topStatus[0]]};display:inline-flex;margin-bottom:8px;">${topStatus[0]} ${topStatus[1]}</div>
+      <div class="body-pair">${bodySvg('front', stats)}${bodySvg('back', stats)}</div>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><h3>⚡ Streaks</h3></div>
+      ${weekCount === 0 ? `<p style="font-family:var(--font-display);font-size:16px;margin:0 0 6px;">Build your first streak</p><p class="sub" style="margin:0 0 10px;">Hit ${goal} workouts this week to start a streak.</p>` : `<p class="sub" style="margin:0 0 10px;">${weekCount} of ${goal} this week — keep it alive.</p>`}
+      <div style="font-size:11px;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.04em;">This week</div>
+      <div class="bignum">${weekCount} <small>/ ${goal}</small></div>
+      <div class="goal-bar-row">${Array.from({length: goal}).map((_,i) => `<div class="goal-seg ${i < weekCount ? 'filled' : ''}"></div>`).join('')}</div>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><h3>◎ Consistency</h3></div>
+      <div class="stat-grid-3">
+        <div><div class="lbl">This week</div><div class="val">${weekCount} of ${goal}</div></div>
+        <div><div class="lbl">Goals hit</div><div class="val">${goalsHitPct}%</div></div>
+        <div><div class="lbl">${weeks} weeks</div><div class="val">${goalsHitWeeks} hit</div></div>
+      </div>
+      <div class="consistency-grid">${gridCols.map(col => col.map(on => `<div class="consistency-cell ${on?'on':''}"></div>`).join('')).join('')}</div>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><h3>▲ Volume</h3></div>
+      <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:2px;">
+        <span class="bignum" style="font-size:20px;">${thisWeekVol.toLocaleString()} <small>vol</small></span>
+        <span class="trend-badge" style="background:${volPct>=0?'rgba(139,107,255,0.15)':'rgba(255,61,90,0.15)'};color:${volPct>=0?'var(--violet)':'var(--excess)'};">${volPct>=0?'+':''}${volPct}%</span>
+      </div>
+      <p class="sub" style="margin:0 0 4px;">vs. 4-week average</p>
+      ${barChart(volValues, volLabels)}
+    </div>
+
+    <div class="card">
+      <div class="card-title"><h3>▦ Training Days</h3></div>
+      <p style="font-family:var(--font-display);font-size:18px;margin:0 0 2px;">${bestDays.join(' · ') || '—'}</p>
+      <p class="sub" style="margin:0 0 4px;">~${avgPerWeek}x / week · last ${myWorkouts.length} workouts</p>
+      ${barChart(weekdayCounts, wdLabels.map(w=>w.slice(0,3)), {color:'var(--excess)'})}
+    </div>
+
+    <div class="card">
+      <div class="card-title"><h3>▤ Training Months</h3></div>
+      <div class="stat-grid-3">
+        <div><div class="lbl">Best</div><div class="val" style="font-size:14px;">${monthLabels[bestMonthIdx]}</div></div>
+        <div><div class="lbl">Average</div><div class="val" style="font-size:14px;">${avgMonth}</div></div>
+        <div><div class="lbl">Total</div><div class="val" style="font-size:14px;">${totalMonth}</div></div>
+      </div>
+      ${barChart(monthValues, monthLabels, {color:'var(--growing)'})}
+    </div>
+
+    <div class="card">
+      <div class="card-title"><h3>◐ Weight</h3></div>
+      ${weightLineChart(myWeights)}
+      <div class="weight-input-row">
+        <input type="number" step="0.1" id="weight-input" placeholder="Log today's weight (kg)" inputmode="decimal" />
+        <button class="btn btn-sm" id="weight-save-btn">Save</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><h3>◷ Training Hours</h3></div>
+      <p style="font-family:var(--font-display);font-size:18px;margin:0 0 8px;">You lift around <span style="color:var(--maintaining);">${modeHour}:00</span></p>
+      ${barChart(hourCounts.filter((_,i)=>i%2===0), Array.from({length:12},(_,i)=>i*2+'h'), {color:'var(--maintaining)'})}
+    </div>
+  `;
+  document.getElementById('widget-muscle').addEventListener('click', () => { trendsView = 'muscle-detail'; renderTrends(); });
+  const wBtn = document.getElementById('weight-save-btn');
+  if (wBtn) wBtn.addEventListener('click', async () => {
+    const val = Number(document.getElementById('weight-input').value);
+    if (!val) return;
+    await addDoc(collection(db, 'bodyweight'), { uid: currentUser.uid, date: todayStr(), weight: val, createdAt: serverTimestamp() });
+    // store latest bodyweight on user profile so strength comparisons work for other party members
+    await setDoc(doc(db, 'users', currentUser.uid), { bodyweightKg: val }, { merge: true });
+    profile.bodyweightKg = val;
+    await loadAllData(); trendsView='dashboard'; renderTrends();
+  });
+}
+
+function renderMuscleDetail() {
+  const stats = muscleDetailMode === 'Past' ? muscleStatusPast() : muscleStatusPlanned();
+  const el = document.getElementById('trends-muscle-detail');
+  const sorted = [...MUSCLES].sort((a,b) => stats[b].volume - stats[a].volume);
+  el.innerHTML = `
+    <button class="icon-btn" id="back-to-dashboard" style="margin-bottom:14px;">‹ Back to Trends</button>
+    <h2>Muscle Activation</h2>
+    <div class="toggle-row">
+      <button id="mode-past" class="${muscleDetailMode==='Past'?'active':''}">Past</button>
+      <button id="mode-planned" class="${muscleDetailMode==='Planned'?'active':''}">Planned</button>
+    </div>
+    <div class="card">
+      <div class="body-pair big">${bodySvg('front', stats)}${bodySvg('back', stats)}</div>
+      ${statusCountRow(stats)}
+      <p class="sub" style="margin:14px 0 0;">${muscleDetailMode === 'Past' ? 'Sets completed per muscle group — last 7 days' : `Planned emphasis from ${myProgram ? escapeHtml(myProgram.name) : 'your program'}`}</p>
+    </div>
+    <div class="card">
+      <div class="card-title"><h3>High Volume</h3></div>
+      <div class="muscle-detail-list">
+        ${sorted.map(m => {
+          const s = stats[m]; const maxW = Math.max(...s.weeks, 1);
+          return `<div class="muscle-detail-row" data-m="${m}">
+            <div class="muscle-detail-row-top">
+              <div><div class="m-name">${m}</div><div class="m-vol">${s.volume.toLocaleString()} ${muscleDetailMode==='Past'?'vol this week':'planned emphasis'}</div></div>
+              <span class="status-badge" style="background:${STATUS_COLOR[s.status]}22;color:${STATUS_COLOR[s.status]};">${s.status}</span>
+            </div>
+            <div class="spark-row">${s.weeks.slice().reverse().map(v => `<div class="spark-bar" style="height:${Math.max(10,(v/maxW)*100)}%;background:${STATUS_COLOR[s.status]};opacity:${0.4};"></div>`).join('')}</div>
           </div>`;
         }).join('')}
       </div>
     </div>`;
+  document.querySelectorAll('#trends-muscle-detail .body-part').forEach(p => {
+    p.addEventListener('click', () => {
+      const row = document.querySelector(`.muscle-detail-row[data-m="${p.dataset.m}"]`);
+      if (row) { row.scrollIntoView({ behavior: 'smooth', block: 'center' }); row.classList.add('flash'); setTimeout(() => row.classList.remove('flash'), 900); }
+    });
+  });
+  document.getElementById('back-to-dashboard').addEventListener('click', () => { trendsView = 'dashboard'; renderTrends(); });
+  document.getElementById('mode-past').addEventListener('click', () => { muscleDetailMode = 'Past'; renderMuscleDetail(); });
+  document.getElementById('mode-planned').addEventListener('click', () => { muscleDetailMode = 'Planned'; renderMuscleDetail(); });
 }
-
 
 /* =========================================================================
    EXERCISES LIBRARY
@@ -4625,9 +5070,9 @@ function populateExerciseSelects() {
   muscleSel.innerHTML = '<option value="">All muscles</option>' + MUSCLES.map(m => `<option value="${m}">${m}</option>`).join('');
   equipSel.innerHTML = '<option value="">All equipment</option>' + EQUIPMENT_TYPES.map(e => `<option value="${e}">${e}</option>`).join('');
 }
-document.getElementById('lib-search')?.addEventListener('input', renderExerciseLibrary);
-document.getElementById('lib-muscle-filter')?.addEventListener('change', renderExerciseLibrary);
-document.getElementById('lib-equip-filter')?.addEventListener('change', renderExerciseLibrary);
+document.getElementById('lib-search').addEventListener('input', renderExerciseLibrary);
+document.getElementById('lib-muscle-filter').addEventListener('change', renderExerciseLibrary);
+document.getElementById('lib-equip-filter').addEventListener('change', renderExerciseLibrary);
 
 function techniqueLink(name) {
   return `https://www.youtube.com/results?search_query=${encodeURIComponent(name + ' exercise proper form technique')}`;
@@ -4663,7 +5108,7 @@ function renderExerciseLibrary() {
   }));
 }
 
-document.getElementById('add-exercise-lib-btn')?.addEventListener('click', openAddExerciseModal);
+document.getElementById('add-exercise-lib-btn').addEventListener('click', openAddExerciseModal);
 function openAddExerciseModal() {
   const overlay = document.createElement('div');
   overlay.className = 'modal-overlay';
@@ -4767,8 +5212,8 @@ function openEditExerciseModal(name) {
 /* =========================================================================
    HISTORY CALENDAR
    ========================================================================= */
-document.getElementById('cal-prev')?.addEventListener('click', () => { calCursor.setMonth(calCursor.getMonth()-1); renderCalendar(); });
-document.getElementById('cal-next')?.addEventListener('click', () => { calCursor.setMonth(calCursor.getMonth()+1); renderCalendar(); });
+document.getElementById('cal-prev').addEventListener('click', () => { calCursor.setMonth(calCursor.getMonth()-1); renderCalendar(); });
+document.getElementById('cal-next').addEventListener('click', () => { calCursor.setMonth(calCursor.getMonth()+1); renderCalendar(); });
 
 function renderCalendar() {
   document.getElementById('cal-title').textContent = calCursor.toLocaleDateString(undefined,{month:'long', year:'numeric'});
@@ -4856,9 +5301,7 @@ function openWorkoutDetail(workoutId) {
         </div>
         <button class="icon-btn" id="detail-close" style="font-size:20px;flex-shrink:0;">✕</button>
       </div>
-      <div style="margin:12px 0;">${exerciseRows || '<p class="sub">No exercises logged.</p>'}</div>
-
-      <button class="btn" id="detail-debrief-btn" style="width:100%;margin-bottom:8px;border-color:var(--brass);color:var(--brass);">⚡ View Session Debrief</button>
+      <div style="margin:16px 0;">${exerciseRows || '<p class="sub">No exercises logged.</p>'}</div>
 
       <div class="delete-warning-box" id="delete-warning-box" style="display:none;background:rgba(255,61,90,0.08);border:1px solid var(--excess);border-radius:8px;padding:12px 14px;margin-bottom:12px;">
         <p style="font-size:12.5px;color:var(--excess);font-weight:700;margin:0 0 6px;">⚠ Deleting this workout will:</p>
@@ -4870,23 +5313,8 @@ function openWorkoutDetail(workoutId) {
     </div>`;
 
   document.body.appendChild(overlay);
-  setTimeout(addSlCornersToAll, 50);
   overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
   overlay.querySelector('#detail-close').addEventListener('click', () => overlay.remove());
-
-  // Debrief button — reconstruct PRs for that date and show debrief
-  overlay.querySelector('#detail-debrief-btn').addEventListener('click', () => {
-    overlay.remove();
-    const datePRs = Object.entries(myPRs)
-      .filter(([, pr]) => pr.date === w.date)
-      .map(([exercise, pr]) => ({ exercise, xp: pr.xp||0, tier: pr.tier, e1rm: pr.e1rm }));
-    // calculate AP earned that day
-    const dayWorkouts = myWorkouts.filter(x => x.date === w.date);
-    const streak = computeStreak(currentUser.uid);
-    const mult = streak >= 60 ? 3 : streak >= 30 ? 2 : streak >= 7 ? 1.5 : 1;
-    const apEarned = profile.lastApDate === w.date ? Math.round(10*mult) : 0;
-    showDebriefModal(w.exercises||[], apEarned, datePRs, null);
-  });
 
   // Step 1 — show consequences before confirming
   overlay.querySelector('#detail-delete-warn').addEventListener('click', () => {
