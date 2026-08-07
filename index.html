@@ -2113,19 +2113,11 @@ function isQuestComplete(idx) {
 
   if (myProgram.scheduleMode === 'fixed') {
     const weekStart = startOfWeek(new Date()).toISOString().slice(0,10);
-    const thisWeekWorkouts = myWorkouts.filter(w =>
-      w.uid === currentUser.uid && w.date >= weekStart
+    return myWorkouts.some(w =>
+      w.uid === currentUser.uid &&
+      w.date >= weekStart &&
+      Number(w.programDayIndex) === idx
     );
-    // First try: exact programDayIndex match
-    const exactMatch = thisWeekWorkouts.some(w => Number(w.programDayIndex) === idx);
-    if (exactMatch) return true;
-    // Fallback: exercise overlap ≥50% (covers manual logs or old data without index)
-    const dayExNames = new Set(day.exercises.map(e => e.name));
-    const threshold = Math.max(1, Math.ceil(day.exercises.length * 0.5));
-    return thisWeekWorkouts.some(w => {
-      const overlap = (w.exercises||[]).filter(e => dayExNames.has(e.name)).length;
-      return overlap >= threshold;
-    });
   } else {
     const n = myProgram.days.length;
     const currentIdx = myProgram.currentDayIndex % n;
@@ -2147,17 +2139,11 @@ function buildQuestCardHTML(idx) {
   function getBestMatchWorkout() {
     if (myProgram.scheduleMode !== 'fixed') return null;
     const weekStart = startOfWeek(new Date()).toISOString().slice(0,10);
-    const thisWeekWorkouts = myWorkouts.filter(w =>
-      w.uid === currentUser.uid && w.date >= weekStart
-    );
-    // prefer exact programDayIndex match first
-    const exact = thisWeekWorkouts.find(w => Number(w.programDayIndex) === idx);
-    if (exact) return exact;
-    // fallback: best exercise overlap
-    const dayExNames = new Set(day.exercises.map(e => e.name));
-    return thisWeekWorkouts
-      .map(w => ({ w, overlap: (w.exercises||[]).filter(e => dayExNames.has(e.name)).length }))
-      .sort((a,b) => b.overlap - a.overlap)[0]?.w || null;
+    return myWorkouts.find(w =>
+      w.uid === currentUser.uid &&
+      w.date >= weekStart &&
+      Number(w.programDayIndex) === idx
+    ) || null;
   }
   const matchedWorkout = getBestMatchWorkout();
 
