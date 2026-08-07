@@ -1503,7 +1503,13 @@ nav.bottom-nav button.active svg { filter:drop-shadow(0 0 4px var(--brass)); }
 
     <!-- ---- QUEST (log + program) ---- -->
     <section class="view active" id="view-quest">
-      <div id="program-card-wrap"></div>
+      <div id="program-card-wrap">
+        <div class="card" style="opacity:0.4;pointer-events:none;">
+          <div style="height:14px;background:var(--card-2);border-radius:4px;width:60%;margin-bottom:12px;"></div>
+          <div style="height:10px;background:var(--card-2);border-radius:4px;width:80%;margin-bottom:8px;"></div>
+          <div style="height:10px;background:var(--card-2);border-radius:4px;width:70%;"></div>
+        </div>
+      </div>
       <div id="program-editor-wrap"></div>
       <div style="display:flex;gap:8px;margin-top:8px;">
         <button class="btn btn-block" id="manual-log-btn" style="flex:1;">+ Log session</button>
@@ -2132,6 +2138,37 @@ document.addEventListener('click', e => {
   }
 });
 let allUsers = [], myWorkouts = [], allWorkouts = [], myWeights = [], myPRs = {};
+
+// ── Precomputed lookup maps — rebuilt once after loadAllData ──────────────
+// Instead of scanning allWorkouts on every render, everything reads from these maps.
+let _workoutsByUid = {};        // uid → [workouts]
+let _workoutsByDate = {};       // 'YYYY-MM-DD' → [workouts] (all users)
+let _myWorkoutsByDate = {};     // 'YYYY-MM-DD' → [workouts] (current user)
+let _setsLoggedTodayCache = {}; // exerciseName → count
+
+function rebuildLookupMaps() {
+  _workoutsByUid = {};
+  _workoutsByDate = {};
+  _myWorkoutsByDate = {};
+  _setsLoggedTodayCache = {};
+  _streakCache && Object.keys(_streakCache).forEach(k => delete _streakCache[k]);
+  _powerCache && Object.keys(_powerCache).forEach(k => delete _powerCache[k]);
+  _styleCache && Object.keys(_styleCache).forEach(k => delete _styleCache[k]);
+  _gateCache && Object.keys(_gateCache).forEach(k => delete _gateCache[k]);
+
+  for (const w of allWorkouts) {
+    if (!_workoutsByUid[w.uid]) _workoutsByUid[w.uid] = [];
+    _workoutsByUid[w.uid].push(w);
+    if (!_workoutsByDate[w.date]) _workoutsByDate[w.date] = [];
+    _workoutsByDate[w.date].push(w);
+  }
+  if (currentUser) {
+    for (const w of myWorkouts) {
+      if (!_myWorkoutsByDate[w.date]) _myWorkoutsByDate[w.date] = [];
+      _myWorkoutsByDate[w.date].push(w);
+    }
+  }
+}
 // myPRs: { "Bench Press": { e1rm: 120.5, date: "2026-08-01", xpTier: "Intermediate" }, ... }
 let myProgram = null;       // { name, schedule:['Mon',...], days:[{name,tag,exercises:[{name,sets,reps}],lastDate}], currentDayIndex }
 let customExercises = [];   // from Firestore
@@ -2161,7 +2198,8 @@ function migrateProgram(prog) {
   return prog;
 }
 function setsLoggedToday(name, dayIndex) {
-  const todayWorkouts = myWorkouts.filter(w => w.date === todayStr() && w.uid === currentUser.uid);
+  const today = todayStr();
+  const todayWorkouts = _myWorkoutsByDate[today] || [];
   return todayWorkouts
     .filter(w => {
       if (w.programDayIndex !== undefined && w.programDayIndex !== null) {
@@ -2392,23 +2430,37 @@ function openSettingsModal() {
 }
 
 if (configOk) {
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('./sw.js').catch(() => {});
+  }
   onAuthStateChanged(auth, async (user) => {
     if (user) {
       currentUser = user;
+
+      // show app shell immediately — don't wait for data
+      document.getElementById('auth-screen').style.display = 'none';
+      document.getElementById('app').style.display = 'flex';
+
+      // load profile first (fast — single doc)
       const snap = await getDoc(doc(db, 'users', user.uid));
       profile = snap.exists() ? snap.data() : { displayName: user.displayName || 'You', weeklyGoal: 3 };
       if (!profile.stats) profile.stats = defaultStats();
       if (profile.auraPoints === undefined) profile.auraPoints = 0;
+      document.getElementById('user-avatar').textContent = initials(profile.displayName);
+
+      // fix missing email silently in background
       if (!profile.email && currentUser.email) {
-        await setDoc(doc(db, 'users', currentUser.uid), { email: currentUser.email }, { merge: true });
+        setDoc(doc(db, 'users', currentUser.uid), { email: currentUser.email }, { merge: true });
         profile.email = currentUser.email;
       }
-      document.getElementById('user-avatar').textContent = initials(profile.displayName);
-      document.getElementById('auth-screen').style.display = 'none';
-      document.getElementById('app').style.display = 'flex';
-      await loadAnatomyTemplate(profile.bodyType === 'female' ? 'female' : 'male');
-      await loadAllData();
-      // run system checks on every login — penalties, rank-up alerts etc.
+
+      // load anatomy SVG and all data in parallel — don't await anatomy before data
+      const bodyType = profile.bodyType === 'female' ? 'female' : 'male';
+      await Promise.all([
+        loadAnatomyTemplate(bodyType),
+        loadAllData(),
+      ]);
+
       setTimeout(() => runSystemChecks(), 800);
       setTimeout(() => ensureStatBaselines(), 1200);
     } else {
@@ -2464,7 +2516,7 @@ async function loadAllData() {
   allUsers = usersSnap.docs.map(d => ({ uid: d.id, ...d.data() }));
   allWorkouts = woSnap.docs.map(d => ({ id: d.id, ...d.data() }));
   myWorkouts = allWorkouts.filter(w => w.uid === currentUser.uid);
-  Object.keys(_streakCache).forEach(k => delete _streakCache[k]); // bust streak cache
+  rebuildLookupMaps();
   customExercises = exSnap.docs.map(d => ({ id: d.id, ...d.data() }));
   rebuildExercisesAll();
   myProgram = migrateProgram(progSnap.exists() ? progSnap.data() : null);
@@ -3478,14 +3530,17 @@ document.getElementById('save-workout-btn').addEventListener('click', async () =
 const _streakCache = {};
 function computeStreak(uid) {
   if (_streakCache[uid] !== undefined) return _streakCache[uid];
-  const dates = new Set(allWorkouts.filter(w => w.uid === uid).map(w => w.date));
+  const workouts = _workoutsByUid[uid] || [];
+  const dates = new Set(workouts.map(w => w.date));
   const hasToday = dates.has(todayStr());
   let streak = 0, i = hasToday ? 0 : 1;
   while (dates.has(todayStr(daysAgo(i)))) { streak++; i++; }
   _streakCache[uid] = streak;
   return streak;
 }
-function countSince(uid, sinceDate) { return allWorkouts.filter(w => w.uid === uid && new Date(w.date) >= sinceDate).length; }
+function countSince(uid, sinceDate) {
+  return (_workoutsByUid[uid] || []).filter(w => new Date(w.date) >= sinceDate).length;
+}
 /* =========================================================================
    PERSONAL RECORD (PR) SYSTEM
    — Tracks estimated 1RM per exercise, compares to world strength standards,
@@ -3901,28 +3956,25 @@ function getStatImprovement(statId) {
   return 0;
 }
 
+let _gateCache = {};
 function checkUpgradeGates(statId) {
+  if (_gateCache[statId]) return _gateCache[statId];
   const currentRank = (profile.stats || {})[statId] || 'E';
   if (currentRank === 'S') return { ready: false, reason: 'Maxed' };
   const nextRank = RANK_TIERS[RANK_TIERS.indexOf(currentRank)+1];
   const apCost = UPGRADE_COSTS[currentRank];
   const ap = profile.auraPoints || 0;
-
-  // time gate
   const weeksNeeded = TIME_GATES[currentRank] || 0;
   const weeksDone = weeksAtCurrentRank(statId);
   const timeOk = weeksDone >= weeksNeeded;
-
-  // improvement gate
   const improvNeeded = IMPROVEMENT_GATES[statId]?.[currentRank] || 0;
   const improvDone = getStatImprovement(statId);
   const improvOk = improvDone >= improvNeeded;
-
-  // ap gate
   const apOk = ap >= apCost;
-
   const ready = timeOk && improvOk && apOk;
-  return { ready, timeOk, improvOk, apOk, weeksDone, weeksNeeded, improvDone: Math.round(improvDone*10)/10, improvNeeded, ap, apCost, nextRank };
+  const result = { ready, timeOk, improvOk, apOk, weeksDone, weeksNeeded, improvDone: Math.round(improvDone*10)/10, improvNeeded, ap, apCost, nextRank };
+  _gateCache[statId] = result;
+  return result;
 }
 
 // Record baseline when a stat is first measured
@@ -4561,7 +4613,7 @@ const _styleCache = {};
 function analyseTrainingStyle(uid) {
   if (_styleCache[uid]) return _styleCache[uid];
   const cutoff = new Date(); cutoff.setDate(cutoff.getDate() - 30);
-  const recent = allWorkouts.filter(w => w.uid === uid && new Date(w.date) >= cutoff);
+  const recent = (_workoutsByUid[uid]||[]).filter(w => new Date(w.date) >= cutoff);
   if (!recent.length) return null;
 
   const counts = { powerlifting: 0, bodybuilding: 0, calisthenics: 0, cardio: 0, other: 0 };
@@ -4605,7 +4657,7 @@ function getUserTitle(uid) {
   const user = allUsers.find(u => u.uid === uid);
   if (!user) return '';
   const streak = computeStreak(uid);
-  const total = allWorkouts.filter(w => w.uid === uid).length;
+  const total = (_workoutsByUid[uid]||[]).length;
   const weekStart = startOfWeek(new Date());
   const thisWeek = countSince(uid, weekStart);
   if (STAT_DEFS.every(d => (user.stats||{})[d.id] === 'S')) return '[Shadow Monarch]';
@@ -4629,7 +4681,7 @@ function renderWeeklySuperlatives() {
   const weekStart = startOfWeek(new Date());
   const lastWeekStart = new Date(weekStart); lastWeekStart.setDate(lastWeekStart.getDate() - 7);
 
-  const byUid = uid => allWorkouts.filter(w => w.uid === uid);
+  const byUid = uid => (_workoutsByUid[uid]||[]);
   const thisWeekCount = uid => countSince(uid, weekStart);
   const powerOf = u => getUserPowerLevel(u);
 
@@ -4672,7 +4724,7 @@ function renderPartyDashboard() {
   const highest = [...allUsers].sort((a,b) => getUserPowerLevel(b) - getUserPowerLevel(a))[0];
   const mostPRsThisWeek = [...allUsers].map(u => {
     const ws = weekStart.toISOString().slice(0,10);
-    const userWorkouts = allWorkouts.filter(w => w.uid === u.uid && w.date >= ws);
+    const userWorkouts = (_workoutsByUid[u.uid]||[]).filter(w => w.date >= ws);
     const prCount = userWorkouts.reduce((n, w) => n + (w.exercises||[]).reduce((m, ex) => m + (ex.sets||[]).filter(s => s.reps && s.weight).length, 0), 0);
     return { u, prCount };
   }).sort((a,b) => b.prCount - a.prCount)[0];
@@ -4768,7 +4820,7 @@ async function openHunterProfile(targetUid) {
       </div>
       <div style="display:flex;gap:12px;margin-top:8px;font-size:12px;color:var(--text-dim);">
         <span>🔥 ${targetStreak} day streak</span>
-        <span>🏋️ ${allWorkouts.filter(w=>w.uid===targetUid).length} total workouts</span>
+        <span>🏋️ ${(_workoutsByUid[targetUid]||[]).length} total workouts</span>
       </div>
     </div>
 
@@ -4820,7 +4872,7 @@ async function openHunterProfile(targetUid) {
 
 function buildMuscleStats(uid) {
   const sevenDaysAgo = new Date(); sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-  const recentWorkouts = allWorkouts.filter(w => w.uid === uid && new Date(w.date) >= sevenDaysAgo);
+  const recentWorkouts = (_workoutsByUid[uid] || []).filter(w => new Date(w.date) >= sevenDaysAgo);
   const setCounts = {};
   recentWorkouts.forEach(w => (w.exercises||[]).forEach(ex => {
     const def = EXERCISES_ALL[ex.name];
@@ -5356,7 +5408,7 @@ function renderCompetitionBoard() {
     power: getUserPowerLevel(u),
     rank: getUserCharRank(u),
     streak: computeStreak(u.uid),
-    total: allWorkouts.filter(w => w.uid === u.uid).length,
+    total: (_workoutsByUid[u.uid]||[]).length,
     weeklyGain: weeklyAP(u.uid),
     trainedToday: allWorkouts.some(w => w.uid === u.uid && w.date === today),
   })).sort((a,b) => b.power - a.power || b.streak - a.streak);
