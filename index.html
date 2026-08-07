@@ -302,7 +302,7 @@
   .rest-sub{font-size:13.5px;color:var(--text-dim);line-height:1.6;margin:0;}
 
   .rest-note{font-size:12.5px;color:var(--maintaining);text-align:center;margin:0 0 12px;}
-  .quest-carousel{display:flex;align-items:center;gap:8px;overflow:hidden;}
+  .quest-carousel{display:flex;align-items:center;gap:8px;overflow:visible;}
   .quest-carousel-card{flex:1;min-width:0;position:relative;}
   .quest-carousel-card .quest-card{will-change:transform,opacity;}
   @keyframes slideInRight{from{transform:translateX(100%);opacity:0;}to{transform:translateX(0);opacity:1;}}
@@ -1051,9 +1051,9 @@ nav.bottom-nav button.active svg { filter:drop-shadow(0 0 4px var(--brass)); }
   text-transform:uppercase;
 }
 .quest-card {
-  background:linear-gradient(160deg,rgba(61,165,255,0.07),rgba(14,17,32,0.98) 50%);
-  border:1px solid rgba(93,157,255,0.2);border-radius:4px;padding:16px;
-  position:relative;overflow:hidden;
+  background:linear-gradient(160deg,rgba(61,165,255,0.12),rgba(14,17,32,0.95) 50%);
+  border:1px solid rgba(61,165,255,0.4);border-radius:4px;padding:16px;
+  position:relative;
 }
 .quest-card::before,.quest-card::after {
   content:"";position:absolute;width:12px;height:12px;pointer-events:none;border-color:var(--brass);
@@ -2360,21 +2360,16 @@ async function loadAllData() {
   myPRs = prSnap.exists() ? prSnap.data() : {};
 
   populateExerciseSelects();
-  console.log('rendering quest feed...');
-  try { renderQuestFeed(); } catch(e) { console.error('renderQuestFeed failed:', e); }
-  const questContent = document.getElementById('program-card-wrap')?.innerHTML?.length;
-  console.log('quest card HTML length:', questContent);
-  console.log('rendering board...');
-  renderBoard();
-  renderCharCard();
-  renderTodayCard();
-  console.log('rendering trends...');
-  try { renderTrends(); } catch(e) { console.error('renderTrends failed:', e); }
-  try { renderExerciseLibrary(); } catch(e) { console.error('renderExerciseLibrary failed:', e); }
-  try { renderCalendar(); } catch(e) { console.error('renderCalendar failed:', e); }
-  console.log('✓ all renders complete');
+  renderQuestFeed();
+
+  // stagger heavy renders so the quest tab appears instantly
+  // each deferred to next available frame
+  setTimeout(() => { try { renderBoard(); renderCharCard(); renderTodayCard(); } catch(e) { console.error(e); } }, 0);
+  setTimeout(() => { try { renderTrends(); } catch(e) {} }, 50);
+  setTimeout(() => { try { renderExerciseLibrary(); } catch(e) {} }, 100);
+  setTimeout(() => { try { renderCalendar(); } catch(e) {} }, 150);
+  setTimeout(() => { try { addSlCornersToAll(); } catch(e) {} }, 200);
   startDailyTimer();
-  setTimeout(addSlCornersToAll, 100);
 }
 function rebuildExercisesAll() {
   EXERCISES_ALL = structuredCloneLite(BASE_EXERCISES);
@@ -2394,6 +2389,8 @@ document.getElementById('workout-time').value = nowTimeStr();
 function renderQuestFeed() {
   const wrap = document.getElementById('program-card-wrap');
   const editorWrap = document.getElementById('program-editor-wrap');
+  // debug: confirm wrap exists
+  if (!wrap) { console.error('program-card-wrap not found!'); return; }
   if (editingProgram) {
     wrap.innerHTML = '';
     renderProgramEditor(editorWrap);
@@ -5192,12 +5189,13 @@ function renderPRPanel() {
 }
 
 function renderBoard() {
-  loadAllUserPRs().then(() => renderStrengthRankings());
+  // stagger board sub-renders so none block the main thread
   renderPartyStatus();
   renderCompetitionBoard();
-  renderWeeklySuperlatives();
-  renderPartyDashboard();
-  renderRaidBoss();
+  setTimeout(() => { try { renderWeeklySuperlatives(); } catch(e) {} }, 0);
+  setTimeout(() => { try { renderPartyDashboard(); } catch(e) {} }, 0);
+  setTimeout(() => { try { renderRaidBoss(); } catch(e) {} }, 0);
+  setTimeout(() => { try { loadAllUserPRs().then(() => renderStrengthRankings()); } catch(e) {} }, 100);
 }
 
 /* ── Party Status Today ── */
