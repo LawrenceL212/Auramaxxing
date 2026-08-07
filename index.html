@@ -5175,19 +5175,30 @@ function renderTrends() {
   const el = document.getElementById('trends-dashboard');
   if (!el) return;
   if (trendsView === 'muscle-detail') { renderMuscleDetail(); return; }
+  if (!currentUser) return;
+
   const stats = muscleStatusPast();
   const statusCounts = {};
   MUSCLES.forEach(m => { const s = stats[m].status; statusCounts[s]=(statusCounts[s]||0)+1; });
-  const lastWeight = myWeights.length ? myWeights[myWeights.length-1] : null;
   const totalWorkouts = myWorkouts.length;
   const streak = computeStreak(currentUser.uid);
+
+  // safely render body SVG — anatomy template may not be loaded yet
+  let muscleSvg = '';
+  try { muscleSvg = bodySvg('front',stats) + bodySvg('back',stats); }
+  catch(e) {
+    muscleSvg = `<p style="color:var(--text-faint);font-size:12px;padding:10px 0;">Loading anatomy...</p>`;
+    // retry after template loads
+    loadAnatomyTemplate(profile?.bodyType === 'female' ? 'female' : 'male')
+      .then(() => renderTrends()).catch(()=>{});
+  }
   el.innerHTML = `
     <div class="sl-section-head" style="padding:12px 0 16px;">Intelligence</div>
 
     <div class="card widget" id="widget-muscle" style="cursor:pointer;">
       <div class="card-title"><h3>◈ Muscle Activation <span class="chev">›</span></h3></div>
       ${Object.entries(statusCounts).filter(([,v])=>v>0).map(([s,v])=>`<span class="trend-badge" style="background:${STATUS_COLOR[s]}18;color:${STATUS_COLOR[s]};border:1px solid ${STATUS_COLOR[s]}44;padding:3px 10px;border-radius:10px;font-size:11px;margin-right:6px;font-family:var(--font-mono);">${s} ${v}</span>`).join('')}
-      <div class="body-pair" style="margin-top:12px;">${bodySvg('front',stats)}${bodySvg('back',stats)}</div>
+      <div class="body-pair" style="margin-top:12px;">${muscleSvg}</div>
     </div>
 
     <div class="card">
@@ -5254,7 +5265,7 @@ function renderMuscleDetail() {
           <button class="trend-tab ${muscleDetailMode==='Planned'?'active':''}" id="mode-planned">Planned</button>
         </div>
       </div>
-      <div class="body-pair big">${bodySvg('front',stats)}${bodySvg('back',stats)}</div>
+      <div class="body-pair big">${(() => { try { return bodySvg('front',stats)+bodySvg('back',stats); } catch(e) { return '<p style="color:var(--text-faint);font-size:12px;">Loading...</p>'; } })()}</div>
     </div>
     <div class="card">
       <div class="card-title"><h3>Breakdown</h3></div>
