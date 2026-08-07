@@ -2685,12 +2685,13 @@ function renderProgramEditor(wrap) {
             ${WEEKDAYS.map(d => `<button type="button" class="weekday-chip ${(day.assignedDays||[]).includes(d)?'on':''}" data-day="${d}">${d}</button>`).join('')}
           </div>
         </div>` : ''}
-        <div class="ex-chip-row">
-          ${day.exercises.map((ex,ei) => `<span class="ex-chip">
-            ${escapeHtml(ex.name)}
-            <input type="number" class="ex-chip-sets" data-ei="${ei}" value="${ex.sets}" min="1" style="width:28px;" /><span class="ex-chip-x">×</span><input type="number" class="ex-chip-reps" data-ei="${ei}" value="${ex.reps}" min="1" style="width:28px;" />
-            <button class="remove-ex-btn" data-ei="${ei}">×</button>
-          </span>`).join('')}
+        <div class="ex-chip-row" id="ex-sort-${di}">
+          ${day.exercises.map((ex,ei) => `<div class="ex-chip" draggable="true" data-di="${di}" data-ei="${ei}" style="cursor:grab;width:100%;display:flex;align-items:center;gap:6px;margin-bottom:4px;">
+            <span style="color:var(--text-faint);font-size:16px;cursor:grab;padding:0 4px;">⠿</span>
+            <span style="flex:1;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(ex.name)}</span>
+            <input type="number" class="ex-chip-sets" data-ei="${ei}" value="${ex.sets}" min="1" style="width:32px;text-align:center;" /><span class="ex-chip-x">×</span><input type="number" class="ex-chip-reps" data-ei="${ei}" value="${ex.reps}" min="1" style="width:32px;text-align:center;" />
+            <button class="remove-ex-btn" data-ei="${ei}" style="flex-shrink:0;">×</button>
+          </div>`).join('')}
         </div>
         <button type="button" class="btn btn-sm day-add-ex-btn">+ Add exercise</button>
       </div>`).join('') || '<p style="color:var(--text-faint);font-size:13px;">No workout days yet — add one.</p>';
@@ -2732,6 +2733,30 @@ function renderProgramEditor(wrap) {
           renderDayEditors();
         });
       });
+      // drag to reorder exercises
+      const sortList = el.querySelector(`#ex-sort-${di}`);
+      if (sortList) {
+        let dragSrc = null;
+        sortList.querySelectorAll('.ex-chip[draggable]').forEach(chip => {
+          chip.addEventListener('dragstart', e => {
+            dragSrc = chip;
+            chip.style.opacity = '0.4';
+            e.dataTransfer.effectAllowed = 'move';
+          });
+          chip.addEventListener('dragend', () => { chip.style.opacity = '1'; dragSrc = null; });
+          chip.addEventListener('dragover', e => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; });
+          chip.addEventListener('drop', e => {
+            e.preventDefault();
+            if (!dragSrc || dragSrc === chip) return;
+            const fromEi = Number(dragSrc.dataset.ei);
+            const toEi = Number(chip.dataset.ei);
+            const exercises = myProgram.days[di].exercises;
+            const [moved] = exercises.splice(fromEi, 1);
+            exercises.splice(toEi, 0, moved);
+            renderDayEditors();
+          });
+        });
+      }
     });
   }
 }
@@ -4572,9 +4597,11 @@ function renderPartyStatus() {
       <span class="status-dot ${done?'done':'pending'}"></span>
       <div style="flex:1;min-width:0;">
         <div style="font-size:14px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(u.displayName||'Hunter')}</div>
-        <div style="font-size:11px;color:${streakAtRisk?'var(--excess)':done?'var(--growing)':'var(--text-faint)'};">
+        <div style="font-size:11px;color:var(--brass);font-family:var(--font-mono);letter-spacing:0.03em;margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
+          ${RANK_TITLES[getUserCharRank(u)] || 'Unranked Hunter'}${(() => { const s = analyseTrainingStyle(u.uid); return s ? ` · ${s.emoji} ${s.style}` : ''; })()}
+        </div>
+        <div style="font-size:11px;color:${streakAtRisk?'var(--excess)':done?'var(--growing)':'var(--text-faint)'};margin-top:2px;">
           ${done ? '✓ Quest cleared today' : streakAtRisk ? `⚠ ${streak}d streak at risk` : 'Not yet logged'}
-          ${getUserTitle(u.uid) ? `<span style="color:var(--text-faint);margin-left:4px;">${getUserTitle(u.uid)}</span>` : ''}
         </div>
       </div>
       <div style="text-align:right;flex-shrink:0;">
@@ -5308,6 +5335,20 @@ function openAddExerciseModal() {
       <div class="field"><label>Equipment</label>
         <select id="new-ex-equip">${EQUIPMENT_TYPES.map(e => `<option value="${e}">${e}</option>`).join('')}</select>
       </div>
+      <div class="field">
+        <label>Exercise type</label>
+        <div style="display:flex;gap:8px;margin-top:4px;">
+          <button type="button" class="weekday-chip on" id="new-type-reps" style="flex:1;">Reps</button>
+          <button type="button" class="weekday-chip" id="new-type-timed" style="flex:1;">Timed</button>
+        </div>
+      </div>
+      <div class="field hidden" id="new-timed-unit-field">
+        <label>Time unit</label>
+        <div style="display:flex;gap:8px;margin-top:4px;">
+          <button type="button" class="weekday-chip on" id="new-unit-secs" style="flex:1;">Seconds</button>
+          <button type="button" class="weekday-chip" id="new-unit-mins" style="flex:1;">Minutes</button>
+        </div>
+      </div>
       <div style="display:flex;gap:10px;margin-top:6px;">
         <button class="btn" id="cancel-add-ex" style="flex:1;">Cancel</button>
         <button class="btn btn-primary" id="save-add-ex" style="flex:2;">Add exercise</button>
@@ -5315,17 +5356,46 @@ function openAddExerciseModal() {
     </div>`;
   document.body.appendChild(overlay);
   const selected = new Set();
+  let isTimed = false;
+  let timedUnit = 'secs';
   overlay.querySelectorAll('.muscle-check').forEach(chip => chip.addEventListener('click', () => {
     const m = chip.dataset.m;
     if (selected.has(m)) { selected.delete(m); chip.classList.remove('on'); } else { selected.add(m); chip.classList.add('on'); }
   }));
+  overlay.querySelector('#new-type-reps').addEventListener('click', () => {
+    isTimed = false;
+    overlay.querySelector('#new-type-reps').classList.add('on');
+    overlay.querySelector('#new-type-timed').classList.remove('on');
+    overlay.querySelector('#new-timed-unit-field').classList.add('hidden');
+  });
+  overlay.querySelector('#new-type-timed').addEventListener('click', () => {
+    isTimed = true;
+    overlay.querySelector('#new-type-timed').classList.add('on');
+    overlay.querySelector('#new-type-reps').classList.remove('on');
+    overlay.querySelector('#new-timed-unit-field').classList.remove('hidden');
+  });
+  overlay.querySelector('#new-unit-secs').addEventListener('click', () => {
+    timedUnit = 'secs';
+    overlay.querySelector('#new-unit-secs').classList.add('on');
+    overlay.querySelector('#new-unit-mins').classList.remove('on');
+  });
+  overlay.querySelector('#new-unit-mins').addEventListener('click', () => {
+    timedUnit = 'mins';
+    overlay.querySelector('#new-unit-mins').classList.add('on');
+    overlay.querySelector('#new-unit-secs').classList.remove('on');
+  });
   overlay.querySelector('#cancel-add-ex').addEventListener('click', () => overlay.remove());
   overlay.querySelector('#save-add-ex').addEventListener('click', async () => {
     const name = document.getElementById('new-ex-name').value.trim();
     if (!name || !selected.size) { showToast('Give it a name and pick at least one muscle.', 'error'); return; }
     const muscles = {}; selected.forEach(m => muscles[m] = 1);
     const equipment = document.getElementById('new-ex-equip').value;
-    await addDoc(collection(db, 'customExercises'), { name, muscles, equipment, addedBy: currentUser.uid, createdAt: serverTimestamp() });
+    await addDoc(collection(db, 'customExercises'), {
+      name, muscles, equipment,
+      timed: isTimed || null,
+      timedUnit: isTimed ? timedUnit : null,
+      addedBy: currentUser.uid, createdAt: serverTimestamp()
+    });
     overlay.remove();
     await loadAllData();
     switchView('exercises');
@@ -5335,10 +5405,12 @@ function openAddExerciseModal() {
 function openEditExerciseModal(name) {
   const overlay = document.createElement('div');
   overlay.className = 'modal-overlay';
-  const existingOverride = customExercises.find(c => c.name === name); // Firestore doc, if this exercise already has one
-  const isBaseExercise = Object.prototype.hasOwnProperty.call(BASE_EXERCISES, name); // ships with the app by default
+  const existingOverride = customExercises.find(c => c.name === name);
+  const isBaseExercise = Object.prototype.hasOwnProperty.call(BASE_EXERCISES, name);
   const currentDef = EXERCISES_ALL[name] || { muscles: {}, equipment: 'Bodyweight' };
   const currentMuscles = new Set(Object.keys(currentDef.muscles || {}));
+  const currentTimed = !!currentDef.timed;
+  const currentUnit = currentDef.timedUnit || 'secs';
   overlay.innerHTML = `
     <div class="modal">
       <h3>Edit exercise</h3>
@@ -5354,6 +5426,20 @@ function openEditExerciseModal(name) {
       <div class="field"><label>Equipment</label>
         <select id="edit-ex-equip">${EQUIPMENT_TYPES.map(e => `<option value="${e}" ${e===currentDef.equipment?'selected':''}>${e}</option>`).join('')}</select>
       </div>
+      <div class="field">
+        <label>Exercise type</label>
+        <div style="display:flex;gap:8px;margin-top:4px;">
+          <button type="button" class="weekday-chip ${!currentTimed?'on':''}" id="edit-type-reps" style="flex:1;">Reps</button>
+          <button type="button" class="weekday-chip ${currentTimed?'on':''}" id="edit-type-timed" style="flex:1;">Timed</button>
+        </div>
+      </div>
+      <div class="field ${currentTimed?'':'hidden'}" id="edit-timed-unit-field">
+        <label>Time unit</label>
+        <div style="display:flex;gap:8px;margin-top:4px;">
+          <button type="button" class="weekday-chip ${currentUnit==='secs'?'on':''}" id="edit-unit-secs" style="flex:1;">Seconds</button>
+          <button type="button" class="weekday-chip ${currentUnit==='mins'?'on':''}" id="edit-unit-mins" style="flex:1;">Minutes</button>
+        </div>
+      </div>
       <div style="display:flex;gap:10px;margin-top:6px;">
         <button class="btn" id="cancel-edit-ex" style="flex:1;">Cancel</button>
         <button class="btn btn-primary" id="save-edit-ex" style="flex:2;">Save changes</button>
@@ -5362,21 +5448,45 @@ function openEditExerciseModal(name) {
     </div>`;
   document.body.appendChild(overlay);
   const selected = new Set(currentMuscles);
+  let isTimed = currentTimed;
+  let timedUnit = currentUnit;
   overlay.querySelectorAll('.muscle-check').forEach(chip => chip.addEventListener('click', () => {
     const m = chip.dataset.m;
     if (selected.has(m)) { selected.delete(m); chip.classList.remove('on'); } else { selected.add(m); chip.classList.add('on'); }
   }));
+  overlay.querySelector('#edit-type-reps').addEventListener('click', () => {
+    isTimed = false;
+    overlay.querySelector('#edit-type-reps').classList.add('on');
+    overlay.querySelector('#edit-type-timed').classList.remove('on');
+    overlay.querySelector('#edit-timed-unit-field').classList.add('hidden');
+  });
+  overlay.querySelector('#edit-type-timed').addEventListener('click', () => {
+    isTimed = true;
+    overlay.querySelector('#edit-type-timed').classList.add('on');
+    overlay.querySelector('#edit-type-reps').classList.remove('on');
+    overlay.querySelector('#edit-timed-unit-field').classList.remove('hidden');
+  });
+  overlay.querySelector('#edit-unit-secs').addEventListener('click', () => {
+    timedUnit = 'secs';
+    overlay.querySelector('#edit-unit-secs').classList.add('on');
+    overlay.querySelector('#edit-unit-mins').classList.remove('on');
+  });
+  overlay.querySelector('#edit-unit-mins').addEventListener('click', () => {
+    timedUnit = 'mins';
+    overlay.querySelector('#edit-unit-mins').classList.add('on');
+    overlay.querySelector('#edit-unit-secs').classList.remove('on');
+  });
   overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
   overlay.querySelector('#cancel-edit-ex').addEventListener('click', () => overlay.remove());
   overlay.querySelector('#save-edit-ex').addEventListener('click', async () => {
-    if (!selected.size) { showToast('Pick at least one muscle.', 'error'); return; return; }
+    if (!selected.size) { showToast('Pick at least one muscle.', 'error'); return; }
     const muscles = {}; selected.forEach(m => muscles[m] = 1);
     const equipment = document.getElementById('edit-ex-equip').value;
+    const data = { muscles, equipment, timed: isTimed || null, timedUnit: isTimed ? timedUnit : null };
     if (existingOverride) {
-      await updateDoc(doc(db, 'customExercises', existingOverride.id), { muscles, equipment });
+      await updateDoc(doc(db, 'customExercises', existingOverride.id), data);
     } else {
-      // first time this exercise is being customized — create the override doc
-      await addDoc(collection(db, 'customExercises'), { name, muscles, equipment, addedBy: currentUser.uid, createdAt: serverTimestamp() });
+      await addDoc(collection(db, 'customExercises'), { name, ...data, addedBy: currentUser.uid, createdAt: serverTimestamp() });
     }
     overlay.remove();
     await loadAllData();
@@ -5386,7 +5496,7 @@ function openEditExerciseModal(name) {
   if (deleteBtn) deleteBtn.addEventListener('click', async () => {
     const msg = isBaseExercise
       ? `Revert "${name}" back to its default muscle mapping? Your customization will be removed.`
-      : `Delete "${name}"? This can't be undone. Any program days or past logs referencing it will show it as an unrecognized exercise.`;
+      : `Delete "${name}"? This can't be undone.`;
     if (!confirm(msg)) return;
     await deleteDoc(doc(db, 'customExercises', existingOverride.id));
     overlay.remove();
@@ -5458,25 +5568,51 @@ function renderHistoryList() {
 function openWorkoutDetail(workoutId) {
   const w = allWorkouts.find(x => x.id === workoutId);
   if (!w || w.uid !== currentUser.uid) return;
-
   const overlay = document.createElement('div');
   overlay.className = 'modal-overlay';
   const dateStr = new Date(w.date).toLocaleDateString(undefined, { weekday:'long', month:'long', day:'numeric' });
-  const exerciseRows = (w.exercises||[]).map(ex => {
-    const sets = (ex.sets||[]).map((s,i) =>
-      `<div class="detail-set-row">
-        <span class="set-idx">${i+1}</span>
-        <span>${s.reps} reps</span>
-        <span>${s.weight ? s.weight+'kg' : '—'}</span>
-        ${s.rir != null ? `<span style="color:var(--text-faint);font-size:11px;">RIR ${s.rir}</span>` : '<span></span>'}
-      </div>`
-    ).join('');
-    return `<div class="detail-exercise">
-      <p class="detail-ex-name">${escapeHtml(ex.name)}</p>
-      <div class="detail-sets-head"><span>#</span><span>Reps</span><span>Weight</span><span></span></div>
-      ${sets}
-    </div>`;
-  }).join('');
+
+  function buildReadView() {
+    return (w.exercises||[]).map(ex => {
+      const exDef = EXERCISES_ALL[ex.name] || {};
+      const timed = !!exDef.timed;
+      const repsLabel = timed ? (exDef.timedUnit==='mins'?'Mins':'Secs') : 'Reps';
+      const sets = (ex.sets||[]).map((s,i) =>
+        `<div class="detail-set-row">
+          <span class="set-idx">${i+1}</span>
+          <span>${s.reps} ${repsLabel.toLowerCase()}</span>
+          <span>${s.weight ? s.weight+'kg' : String.fromCharCode(8212)}</span>
+          ${s.rir != null ? `<span style="color:var(--text-faint);font-size:11px;">RIR ${s.rir}</span>` : '<span></span>'}
+        </div>`).join('');
+      return `<div class="detail-exercise">
+        <p class="detail-ex-name">${escapeHtml(ex.name)}</p>
+        <div class="detail-sets-head"><span>#</span><span>${repsLabel}</span><span>Weight</span><span></span></div>
+        ${sets}
+      </div>`;
+    }).join('') || '<p class="sub">No exercises logged.</p>';
+  }
+
+  function buildEditView() {
+    return (w.exercises||[]).map((ex, ei) => {
+      const exDef = EXERCISES_ALL[ex.name] || {};
+      const timed = !!exDef.timed;
+      const repsLabel = timed ? (exDef.timedUnit==='mins'?'Mins':'Secs') : 'Reps';
+      return `<div class="detail-exercise" data-ei="${ei}">
+        <p class="detail-ex-name" style="display:flex;align-items:center;justify-content:space-between;">
+          <span>${escapeHtml(ex.name)}</span>
+          <button class="btn btn-sm add-set-edit-btn" data-ei="${ei}" style="font-size:11px;padding:4px 8px;">+ Set</button>
+        </p>
+        <div class="detail-sets-head"><span>#</span><span>${repsLabel}</span><span>kg</span><span></span></div>
+        ${(ex.sets||[]).map((s,si) => `
+          <div class="detail-set-row" data-si="${si}">
+            <span class="set-idx">${si+1}</span>
+            <input type="number" class="edit-reps" data-ei="${ei}" data-si="${si}" value="${s.reps||0}" min="0" inputmode="decimal" style="width:60px;background:var(--card-2);border:1px solid var(--border);border-radius:4px;color:var(--text);padding:4px 6px;font-size:13px;" />
+            <input type="number" class="edit-weight" data-ei="${ei}" data-si="${si}" value="${s.weight||0}" min="0" step="0.5" inputmode="decimal" style="width:60px;background:var(--card-2);border:1px solid var(--border);border-radius:4px;color:var(--text);padding:4px 6px;font-size:13px;" />
+            <button class="remove-set-edit-btn" data-ei="${ei}" data-si="${si}" style="background:none;border:none;color:var(--excess);font-size:16px;cursor:pointer;">×</button>
+          </div>`).join('')}
+      </div>`;
+    }).join('');
+  }
 
   overlay.innerHTML = `
     <div class="modal" style="max-height:80vh;overflow-y:auto;">
@@ -5485,16 +5621,21 @@ function openWorkoutDetail(workoutId) {
           <h3 style="margin:0 0 2px;">${dateStr}</h3>
           <p style="font-size:12px;color:var(--text-faint);margin:0;">${w.time || ''}</p>
         </div>
-        <button class="icon-btn" id="detail-close" style="font-size:20px;flex-shrink:0;">✕</button>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <button class="btn btn-sm" id="detail-edit-btn" style="font-size:12px;">✎ Edit</button>
+          <button class="icon-btn" id="detail-close" style="font-size:20px;">✕</button>
+        </div>
       </div>
       <button class="btn" id="detail-debrief-btn" style="width:100%;margin-bottom:12px;border-color:var(--brass);color:var(--brass);">⚡ View Session Debrief</button>
-      <div style="margin:0 0 16px;">${exerciseRows || '<p class="sub">No exercises logged.</p>'}</div>
-
+      <div id="detail-content" style="margin:0 0 16px;">${buildReadView()}</div>
+      <div id="detail-edit-actions" style="display:none;margin-bottom:12px;">
+        <button class="btn btn-primary" id="detail-save-edit" style="width:100%;margin-bottom:8px;">Save changes</button>
+        <button class="btn" id="detail-cancel-edit" style="width:100%;">Cancel</button>
+      </div>
       <div class="delete-warning-box" id="delete-warning-box" style="display:none;background:rgba(255,61,90,0.08);border:1px solid var(--excess);border-radius:8px;padding:12px 14px;margin-bottom:12px;">
         <p style="font-size:12.5px;color:var(--excess);font-weight:700;margin:0 0 6px;">⚠ Deleting this workout will:</p>
         <ul id="delete-consequences" style="font-size:12px;color:var(--text-dim);margin:0;padding-left:16px;line-height:1.8;"></ul>
       </div>
-
       <button class="btn" id="detail-delete-warn" style="width:100%;color:var(--excess);border-color:var(--excess);">🗑 Delete this workout</button>
       <button class="btn" id="detail-delete-confirm" style="width:100%;background:var(--excess);color:#fff;display:none;margin-top:8px;">Confirm — delete and reverse AP</button>
     </div>`;
@@ -5502,6 +5643,7 @@ function openWorkoutDetail(workoutId) {
   document.body.appendChild(overlay);
   overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
   overlay.querySelector('#detail-close').addEventListener('click', () => overlay.remove());
+
   overlay.querySelector('#detail-debrief-btn').addEventListener('click', () => {
     overlay.remove();
     const datePRs = Object.entries(myPRs)
@@ -5511,6 +5653,85 @@ function openWorkoutDetail(workoutId) {
     const mult = streak >= 60 ? 3 : streak >= 30 ? 2 : streak >= 7 ? 1.5 : 1;
     const apEarned = profile.lastApDate === w.date ? Math.round(10*mult) : 0;
     showDebriefModal(w.exercises||[], apEarned, datePRs);
+  });
+
+  let editing = false;
+  overlay.querySelector('#detail-edit-btn').addEventListener('click', () => {
+    editing = !editing;
+    const content = overlay.querySelector('#detail-content');
+    const actions = overlay.querySelector('#detail-edit-actions');
+    const debrief = overlay.querySelector('#detail-debrief-btn');
+    const deleteWarn = overlay.querySelector('#detail-delete-warn');
+    if (editing) {
+      content.innerHTML = buildEditView();
+      actions.style.display = 'block';
+      debrief.style.display = 'none';
+      deleteWarn.style.display = 'none';
+      overlay.querySelector('#detail-edit-btn').textContent = '✕ Cancel';
+      wireEditHandlers();
+    } else {
+      content.innerHTML = buildReadView();
+      actions.style.display = 'none';
+      debrief.style.display = 'block';
+      deleteWarn.style.display = 'block';
+      overlay.querySelector('#detail-edit-btn').textContent = '✎ Edit';
+    }
+  });
+
+  overlay.querySelector('#detail-cancel-edit').addEventListener('click', () => {
+    editing = false;
+    overlay.querySelector('#detail-content').innerHTML = buildReadView();
+    overlay.querySelector('#detail-edit-actions').style.display = 'none';
+    overlay.querySelector('#detail-debrief-btn').style.display = 'block';
+    overlay.querySelector('#detail-delete-warn').style.display = 'block';
+    overlay.querySelector('#detail-edit-btn').textContent = '✎ Edit';
+  });
+
+  function wireEditHandlers() {
+    overlay.querySelectorAll('.edit-reps').forEach(inp => inp.addEventListener('change', () => {
+      w.exercises[Number(inp.dataset.ei)].sets[Number(inp.dataset.si)].reps = Number(inp.value)||0;
+    }));
+    overlay.querySelectorAll('.edit-weight').forEach(inp => inp.addEventListener('change', () => {
+      w.exercises[Number(inp.dataset.ei)].sets[Number(inp.dataset.si)].weight = Number(inp.value)||0;
+    }));
+    overlay.querySelectorAll('.remove-set-edit-btn').forEach(btn => btn.addEventListener('click', () => {
+      const ei = Number(btn.dataset.ei), si = Number(btn.dataset.si);
+      w.exercises[ei].sets.splice(si, 1);
+      overlay.querySelector('#detail-content').innerHTML = buildEditView();
+      wireEditHandlers();
+    }));
+    overlay.querySelectorAll('.add-set-edit-btn').forEach(btn => btn.addEventListener('click', () => {
+      const ei = Number(btn.dataset.ei);
+      const last = w.exercises[ei].sets[w.exercises[ei].sets.length-1] || { reps:0, weight:0 };
+      w.exercises[ei].sets.push({ reps: last.reps, weight: last.weight, rir: null });
+      overlay.querySelector('#detail-content').innerHTML = buildEditView();
+      wireEditHandlers();
+    }));
+  }
+
+  overlay.querySelector('#detail-save-edit').addEventListener('click', async () => {
+    overlay.querySelectorAll('.edit-reps').forEach(inp => {
+      w.exercises[Number(inp.dataset.ei)].sets[Number(inp.dataset.si)].reps = Number(inp.value)||0;
+    });
+    overlay.querySelectorAll('.edit-weight').forEach(inp => {
+      w.exercises[Number(inp.dataset.ei)].sets[Number(inp.dataset.si)].weight = Number(inp.value)||0;
+    });
+    const btn = overlay.querySelector('#detail-save-edit');
+    btn.disabled = true; btn.textContent = 'Saving…';
+    try {
+      const cleanedExercises = w.exercises.map(ex => ({
+        ...ex, sets: ex.sets.filter(s => s.reps > 0)
+      })).filter(ex => ex.sets.length > 0);
+      await updateDoc(doc(db, 'workouts', workoutId), { exercises: cleanedExercises });
+      w.exercises = cleanedExercises;
+      await loadAllData();
+      showToast('Workout updated.', 'success');
+      overlay.remove();
+      renderHistoryList();
+    } catch(err) {
+      showToast('Could not save: ' + err.message, 'error');
+      btn.disabled = false; btn.textContent = 'Save changes';
+    }
   });
 
   // Step 1 — show consequences before confirming
