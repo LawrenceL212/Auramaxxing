@@ -297,9 +297,9 @@
   .quest-check-row .qc-name{font-size:14px;flex:1;transition:color 0.2s;}
   .quest-check-row .qc-progress{font-size:11.5px;font-family:var(--font-mono);color:var(--text-faint);white-space:nowrap;}
   .quest-check-row .qc-box{font-size:16px;color:var(--text-faint);width:20px;text-align:center;transition:all 0.2s;}
-  .quest-check-row.complete{background:rgba(139,107,255,0.06);border-radius:4px;margin:0 -4px;padding:9px 8px;}
-  .quest-check-row.complete .qc-name{color:var(--growing);text-decoration:line-through;text-decoration-color:rgba(139,107,255,0.4);}
-  .quest-check-row.complete .qc-box{color:var(--growing);text-shadow:0 0 8px var(--growing);}
+  .quest-check-row.complete{background:rgba(139,107,255,0.08);border-radius:4px;margin:0 -4px;padding:9px 8px;}
+  .quest-check-row.complete .qc-name{color:var(--violet);text-decoration:line-through;text-decoration-color:rgba(139,107,255,0.5);}
+  .quest-check-row.complete .qc-box{color:var(--violet);text-shadow:0 0 8px var(--violet);}
   .quest-warning{text-align:center;font-size:12px;color:var(--excess);line-height:1.6;margin:0 0 18px;padding:0 6px;}
   .quest-card.quest-complete .quest-warning{color:var(--growing);}
   .quest-complete-btn{
@@ -2112,26 +2112,23 @@ function isQuestComplete(idx) {
   if (!day.exercises.length) return false;
 
   if (myProgram.scheduleMode === 'fixed') {
-    // Fixed mode: resets every Monday — completed if logged any time this week
     const weekStart = startOfWeek(new Date()).toISOString().slice(0,10);
-    const dayExNames = new Set(day.exercises.map(e => e.name));
-    return myWorkouts.some(w =>
-      w.uid === currentUser.uid &&
-      w.date >= weekStart &&
-      (w.exercises||[]).some(e => dayExNames.has(e.name))
+    const thisWeekWorkouts = myWorkouts.filter(w =>
+      w.uid === currentUser.uid && w.date >= weekStart
     );
+    // First try: exact programDayIndex match
+    const exactMatch = thisWeekWorkouts.some(w => Number(w.programDayIndex) === idx);
+    if (exactMatch) return true;
+    // Fallback: exercise overlap ≥50% (covers manual logs or old data without index)
+    const dayExNames = new Set(day.exercises.map(e => e.name));
+    const threshold = Math.max(1, Math.ceil(day.exercises.length * 0.5));
+    return thisWeekWorkouts.some(w => {
+      const overlap = (w.exercises||[]).filter(e => dayExNames.has(e.name)).length;
+      return overlap >= threshold;
+    });
   } else {
-    // Rotation mode: resets after a full cycle
-    // Find the date the current cycle started — when currentDayIndex last wrapped to 0
-    // We use day.lastDate and compare to other days to figure out cycle order
-    // Simplest reliable approach: day is complete if lastDate is more recent than
-    // the lastDate of the day that comes BEFORE index 0 in the rotation
-    // (i.e. the day that was last logged before the cycle reset)
     const n = myProgram.days.length;
     const currentIdx = myProgram.currentDayIndex % n;
-    // Days that have been completed in the current cycle:
-    // if currentIdx > 0: days 0..currentIdx-1 are done this cycle
-    // if currentIdx === 0: no days done yet in new cycle (just reset)
     if (currentIdx === 0) return false;
     return idx < currentIdx;
   }
@@ -2146,13 +2143,27 @@ function buildQuestCardHTML(idx) {
     : idx === rotationIdx;
   const allComplete = isQuestComplete(idx);
 
-  // for fixed mode, count sets from this week; rotation uses today only
+  // find the best matching workout this week for this day (by exercise overlap)
+  function getBestMatchWorkout() {
+    if (myProgram.scheduleMode !== 'fixed') return null;
+    const weekStart = startOfWeek(new Date()).toISOString().slice(0,10);
+    const thisWeekWorkouts = myWorkouts.filter(w =>
+      w.uid === currentUser.uid && w.date >= weekStart
+    );
+    // prefer exact programDayIndex match first
+    const exact = thisWeekWorkouts.find(w => Number(w.programDayIndex) === idx);
+    if (exact) return exact;
+    // fallback: best exercise overlap
+    const dayExNames = new Set(day.exercises.map(e => e.name));
+    return thisWeekWorkouts
+      .map(w => ({ w, overlap: (w.exercises||[]).filter(e => dayExNames.has(e.name)).length }))
+      .sort((a,b) => b.overlap - a.overlap)[0]?.w || null;
+  }
+  const matchedWorkout = getBestMatchWorkout();
+
   function setsForChecklist(exName) {
-    if (myProgram.scheduleMode === 'fixed') {
-      const weekStart = startOfWeek(new Date()).toISOString().slice(0,10);
-      return myWorkouts
-        .filter(w => w.uid === currentUser.uid && w.date >= weekStart)
-        .flatMap(w => w.exercises||[])
+    if (myProgram.scheduleMode === 'fixed' && matchedWorkout) {
+      return (matchedWorkout.exercises||[])
         .filter(e => e.name === exName)
         .reduce((sum, e) => sum + (e.sets||[]).filter(s => s.reps > 0).length, 0);
     }
