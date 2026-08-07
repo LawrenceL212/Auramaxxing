@@ -2437,32 +2437,41 @@ if (configOk) {
     if (user) {
       currentUser = user;
 
-      // show app shell immediately — don't wait for data
+      // show app immediately
       document.getElementById('auth-screen').style.display = 'none';
       document.getElementById('app').style.display = 'flex';
 
-      // load profile first (fast — single doc)
-      const snap = await getDoc(doc(db, 'users', user.uid));
-      profile = snap.exists() ? snap.data() : { displayName: user.displayName || 'You', weeklyGoal: 3 };
-      if (!profile.stats) profile.stats = defaultStats();
-      if (profile.auraPoints === undefined) profile.auraPoints = 0;
-      document.getElementById('user-avatar').textContent = initials(profile.displayName);
+      try {
+        // load profile
+        const snap = await getDoc(doc(db, 'users', user.uid));
+        profile = snap.exists() ? snap.data() : { displayName: user.displayName || 'You', weeklyGoal: 3 };
+        if (!profile.stats) profile.stats = defaultStats();
+        if (profile.auraPoints === undefined) profile.auraPoints = 0;
+        document.getElementById('user-avatar').textContent = initials(profile.displayName);
 
-      // fix missing email silently in background
-      if (!profile.email && currentUser.email) {
-        setDoc(doc(db, 'users', currentUser.uid), { email: currentUser.email }, { merge: true });
-        profile.email = currentUser.email;
+        // fix missing email in background (don't await)
+        if (!profile.email && currentUser.email) {
+          setDoc(doc(db, 'users', currentUser.uid), { email: currentUser.email }, { merge: true });
+          profile.email = currentUser.email;
+        }
+
+        // load all data
+        await loadAllData();
+
+        // load anatomy in background — trends will retry if not ready
+        const bodyType = profile.bodyType === 'female' ? 'female' : 'male';
+        loadAnatomyTemplate(bodyType).catch(() => {});
+
+        setTimeout(() => runSystemChecks(), 800);
+        setTimeout(() => ensureStatBaselines(), 1200);
+
+      } catch(err) {
+        console.error('Load error:', err);
+        // show a recoverable error state
+        document.getElementById('program-card-wrap').innerHTML =
+          `<div class="card"><p style="color:var(--excess);">Load failed — check your connection and refresh.</p></div>`;
       }
 
-      // load anatomy SVG and all data in parallel — don't await anatomy before data
-      const bodyType = profile.bodyType === 'female' ? 'female' : 'male';
-      await Promise.all([
-        loadAnatomyTemplate(bodyType),
-        loadAllData(),
-      ]);
-
-      setTimeout(() => runSystemChecks(), 800);
-      setTimeout(() => ensureStatBaselines(), 1200);
     } else {
       currentUser = null;
       document.getElementById('auth-screen').style.display = 'flex';
@@ -2525,14 +2534,13 @@ async function loadAllData() {
 
   populateExerciseSelects();
   renderQuestFeed();
-  // defer heavy renders to next frame so UI appears faster
-  requestAnimationFrame(() => {
-    renderBoard();
-    renderTrends();
-    renderExerciseLibrary();
-    renderCalendar();
-    startDailyTimer();
-  });
+  renderBoard();
+  renderCharCard();
+  renderTodayCard();
+  try { renderTrends(); } catch(e) {}
+  try { renderExerciseLibrary(); } catch(e) {}
+  try { renderCalendar(); } catch(e) {}
+  startDailyTimer();
 }
 function rebuildExercisesAll() {
   EXERCISES_ALL = structuredCloneLite(BASE_EXERCISES);
