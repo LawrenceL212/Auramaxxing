@@ -1012,6 +1012,82 @@
   .history-card .who{font-size:13.5px;color:var(--text-dim);margin-bottom:4px;}
   .history-card .exlist{font-size:13px;color:var(--text-dim);line-height:1.6;}
   .empty-state{text-align:center;padding:40px 20px;color:var(--text-faint);}
+  /* ========== FEATS TAB ========== */
+  .feat-card{
+    background:var(--card);border:1px solid var(--border);border-radius:8px;
+    padding:14px;margin-bottom:10px;display:flex;align-items:center;gap:14px;
+    position:relative;overflow:hidden;transition:border-color 0.2s;
+  }
+  .feat-card.unlocked{border-color:rgba(61,165,255,0.4);}
+  .feat-card.unlocked::before{
+    content:"";position:absolute;inset:0;
+    background:linear-gradient(135deg,rgba(61,165,255,0.05),transparent 60%);
+    pointer-events:none;
+  }
+  .feat-card.legendary.unlocked{border-color:rgba(255,215,0,0.5);}
+  .feat-card.legendary.unlocked::before{background:linear-gradient(135deg,rgba(255,215,0,0.07),transparent 60%);}
+  .feat-icon{
+    width:44px;height:44px;border-radius:8px;display:flex;align-items:center;
+    justify-content:center;font-size:22px;flex-shrink:0;
+    background:var(--card-2);border:1px solid var(--border);
+  }
+  .feat-card.unlocked .feat-icon{border-color:rgba(61,165,255,0.3);background:rgba(61,165,255,0.08);}
+  .feat-card.legendary.unlocked .feat-icon{border-color:rgba(255,215,0,0.4);background:rgba(255,215,0,0.08);}
+  .feat-body{flex:1;min-width:0;}
+  .feat-name{font-size:14px;font-weight:700;color:var(--text-dim);margin-bottom:2px;}
+  .feat-card.unlocked .feat-name{color:var(--text);}
+  .feat-desc{font-size:11px;color:var(--text-faint);line-height:1.5;margin-bottom:4px;}
+  .feat-date{font-size:10px;color:var(--brass);font-family:var(--font-mono);}
+  .feat-progress-wrap{height:4px;background:rgba(93,157,255,0.1);border-radius:2px;margin-top:6px;overflow:hidden;}
+  .feat-progress-bar{height:100%;border-radius:2px;transition:width 0.6s ease;}
+  .feat-pct{font-size:10px;color:var(--text-faint);font-family:var(--font-mono);margin-top:2px;}
+  .feat-locked-icon{font-size:16px;color:var(--text-faint);flex-shrink:0;}
+  .feat-section-head{
+    font-family:var(--font-mono);font-size:9px;letter-spacing:0.3em;
+    color:var(--text-faint);text-transform:uppercase;text-align:center;
+    padding:16px 0 10px;display:flex;align-items:center;gap:12px;
+  }
+  .feat-section-head::before,.feat-section-head::after{
+    content:"";flex:1;height:1px;
+    background:linear-gradient(90deg,transparent,rgba(93,157,255,0.2),transparent);
+  }
+  .feat-tabs{display:flex;gap:6px;margin-bottom:16px;}
+  .feat-tab{
+    flex:1;padding:8px;border-radius:6px;background:var(--card-2);
+    border:1px solid var(--border);color:var(--text-faint);font-size:12px;
+    cursor:pointer;text-align:center;font-family:var(--font-mono);
+    letter-spacing:0.04em;transition:all 0.15s;
+  }
+  .feat-tab.active{border-color:var(--brass);color:var(--brass);background:var(--brass-dim);}
+  .goal-add-btn{
+    width:100%;padding:12px;border:1px dashed var(--border);border-radius:8px;
+    background:none;color:var(--text-faint);font-size:13px;cursor:pointer;
+    font-family:var(--font-body);margin-bottom:12px;
+  }
+  .goal-add-btn:hover{border-color:var(--brass);color:var(--brass);}
+  .chain-card{
+    background:var(--card);border:1px solid var(--border);border-radius:8px;
+    padding:14px;margin-bottom:10px;
+  }
+  .chain-title{font-size:13px;font-weight:700;margin-bottom:10px;display:flex;align-items:center;gap:8px;}
+  .chain-steps{display:flex;flex-direction:column;gap:0;}
+  .chain-step{display:flex;align-items:center;gap:10px;padding:6px 0;position:relative;}
+  .chain-step:not(:last-child)::after{
+    content:"";position:absolute;left:11px;top:28px;width:2px;height:14px;
+    background:var(--border);
+  }
+  .chain-dot{
+    width:22px;height:22px;border-radius:50%;border:2px solid var(--border);
+    background:var(--card-2);display:flex;align-items:center;justify-content:center;
+    font-size:10px;flex-shrink:0;z-index:1;
+  }
+  .chain-dot.done{background:var(--brass);border-color:var(--brass);color:#06111f;font-weight:700;}
+  .chain-dot.current{border-color:var(--brass);color:var(--brass);animation:chainPulse 2s ease-in-out infinite;}
+  @keyframes chainPulse{0%,100%{box-shadow:0 0 0 0 rgba(61,165,255,0.4);}50%{box-shadow:0 0 0 6px rgba(61,165,255,0);}}
+  .chain-step-name{font-size:12px;color:var(--text-faint);}
+  .chain-step-name.done{color:var(--text);font-weight:600;}
+  .chain-step-name.current{color:var(--brass);font-weight:700;}
+  .chain-step-sessions{font-size:10px;font-family:var(--font-mono);color:var(--text-faint);margin-left:auto;}
   .empty-state .display{font-size:16px;color:var(--text-dim);margin-bottom:6px;}
 </style>
 </head>
@@ -1313,6 +1389,11 @@
       <div id="history-list"></div>
     </section>
 
+    <!-- ---- FEATS ---- -->
+    <section class="view" id="view-feats">
+      <div id="feats-content"></div>
+    </section>
+
   </main>
 
   <nav class="bottom-nav">
@@ -1331,6 +1412,9 @@
       </button>
       <button data-view="history">
         <svg viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7M3 4v5h5"/><path d="M12 8v4l3 2"/></svg>Log
+      </button>
+      <button data-view="feats">
+        <svg viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>Feats
       </button>
     </div>
   </nav>
@@ -1965,6 +2049,7 @@ function switchView(name) {
   if (name === 'board') { renderBoard(); renderCharCard(); renderPRPanel(); renderTodayCard(); }
   if (name === 'trends') { trendsView = 'dashboard'; renderTrends(); }
   if (name === 'exercises') renderExerciseLibrary();
+  if (name === 'feats') renderFeats();
   if (name === 'history') renderCalendar();
   if (name === 'quest') {
     if (myProgram && myProgram.days && myProgram.days.length) {
@@ -3101,6 +3186,7 @@ document.getElementById('save-workout-btn')?.addEventListener('click', async () 
     const earned = await tryAwardAp();
     const prs = await checkAndAwardPRs(exercises, date);
     await applyWorkoutStatXP(exercises);
+    await checkAndUnlockAchievements();
     startDailyTimer();
     setTimeout(() => {
       closeWorkoutModal(false);
@@ -3367,7 +3453,7 @@ const RANK_TITLES = {
   E:'Unranked Hunter', D:'Novice Hunter', C:'Seasoned Hunter',
   B:'Elite Hunter', A:'Shadow Monarch', S:'Absolute Being'
 };
-const UPGRADE_COSTS = { E:50, D:150, C:400, B:1000, A:2500 };
+const UPGRADE_COSTS = { E:50, D:300, C:1000, B:5000, A:20000 };
 const STAT_DEFS = [
   { id:'strength',    label:'Strength',    desc:'Personal lift improvement from your baseline' },
   { id:'endurance',   label:'Endurance',   desc:'Running pace & distance improvement' },
@@ -3378,17 +3464,17 @@ const STAT_DEFS = [
 ];
 
 // Time gates: minimum weeks at current rank before you CAN upgrade
-// stored as profile.statTimeAtRank[statId] = { rank, sinceDate }
-const TIME_GATES = { E:2, D:4, C:8, B:12, A:20 }; // weeks
+// E:1mo D:3mo C:6mo B:1yr A:2yr — S rank takes 4-5 years minimum
+const TIME_GATES = { E:4, D:12, C:26, B:52, A:104 }; // weeks
 
 // Improvement gates: % improvement from YOUR personal baseline
 const IMPROVEMENT_GATES = {
-  strength:    { E:0, D:10, C:25, B:40, A:60 }, // % e1RM improvement
-  endurance:   { E:0, D:10, C:20, B:35, A:50 }, // % pace improvement (faster)
-  agility:     { E:0, D:10, C:20, B:35, A:50 }, // % explosive PR improvement
-  flexibility: { E:0, D:5,  C:15, B:25, A:40 }, // % core set increase
-  recovery:    { E:0, D:70, C:80, B:85, A:95 }, // % weekly goal hit rate
-  focus:       { E:0, D:14, C:30, B:60, A:120 }, // consecutive streak days
+  strength:    { E:0, D:5,  C:15, B:30, A:50  }, // % e1RM improvement from baseline
+  endurance:   { E:0, D:5,  C:15, B:30, A:50  }, // % pace improvement (faster)
+  agility:     { E:0, D:5,  C:15, B:30, A:50  }, // % explosive PR improvement
+  flexibility: { E:0, D:3,  C:10, B:20, A:35  }, // avg core/mobility sets per week
+  recovery:    { E:0, D:60, C:75, B:85, A:92  }, // % of weeks hitting weekly goal
+  focus:       { E:0, D:7,  C:21, B:60, A:180 }, // streak days (180 = 6 months)
 };
 
 const RANK_FLAVOUR = {
@@ -3670,6 +3756,86 @@ async function upgradeStatWithAp(statId) {
   renderCharCard();
 }
 
+function improvTarget(id, needed, done) {
+        const remaining = Math.max(0, needed - done).toFixed(1);
+        switch(id) {
+          case 'strength':
+            return {
+              current: `${done.toFixed(0)}% stronger than baseline`,
+              need: done >= needed ? '✓ Achieved' : `Lift ${remaining}% more than when you started`,
+              example: done >= needed ? null : `e.g. if you started at 60kg bench, target ${Math.round(60*(1+needed/100))}kg`,
+            };
+          case 'endurance':
+            return {
+              current: `${done.toFixed(0)}% faster than first run`,
+              need: done >= needed ? '✓ Achieved' : `Run ${remaining}% faster than your first logged pace`,
+              example: done >= needed ? null : `Log runs consistently to build your pace history`,
+            };
+          case 'agility':
+            return {
+              current: `${done.toFixed(0)}% more explosive than baseline`,
+              need: done >= needed ? '✓ Achieved' : `Improve explosive PRs by ${remaining}% from baseline`,
+              example: done >= needed ? null : `Box jumps, hill sprints, jump squats`,
+            };
+          case 'flexibility':
+            return {
+              current: `${done.toFixed(1)} core/mobility sets per week avg`,
+              need: done >= needed ? '✓ Achieved' : `Average ${needed} core/mobility sets per week`,
+              example: done >= needed ? null : `Plank, hanging leg raise, ab wheel — ${Math.ceil(needed)} sets/week`,
+            };
+          case 'recovery':
+            return {
+              current: `${done.toFixed(0)}% of recent weeks hit goal`,
+              need: done >= needed ? '✓ Achieved' : `Hit your weekly goal in ${needed}% of weeks`,
+              example: done >= needed ? null : `Currently ${done.toFixed(0)}% — ${remaining}% more consistency needed`,
+            };
+          case 'focus':
+            return {
+              current: `${Math.round(done)} day current streak`,
+              need: done >= needed ? '✓ Achieved' : `Reach a ${needed}-day consecutive streak`,
+              example: done >= needed ? null : `${Math.round(needed - done)} more days without missing`,
+            };
+          default: return { current: `${done}%`, need: `${needed}%`, example: null };
+        }
+      }
+
+function buildGateHtml(statId, gates, ap) {
+  if (!gates) return '';
+  const timeOk = gates.timeOk, improvOk = gates.improvOk, apOk = gates.apOk;
+  const cur = gates.nextRank ? RANK_TIERS[RANK_TIERS.indexOf(gates.nextRank)-1] : 'E';
+  const timeRemaining = gates.weeksNeeded - gates.weeksDone;
+  const timeStr = timeRemaining >= 8 ? Math.round(timeRemaining/4.3) + ' months remaining' : timeRemaining + ' week' + (timeRemaining!==1?'s':'') + ' remaining';
+  const improv = improvTarget(statId, gates.improvNeeded, gates.improvDone);
+
+  let html = '<div style="margin-top:6px;display:flex;flex-direction:column;gap:3px;">';
+
+  // Time gate row
+  html += '<div style="display:flex;align-items:center;gap:6px;">';
+  html += '<span style="font-size:9px;font-family:var(--font-mono);color:' + (timeOk?'var(--growing)':'var(--text-faint)') + ';white-space:nowrap;">' + (timeOk?'✓':'○') + ' TIME</span>';
+  html += '<span style="font-size:9px;color:' + (timeOk?'var(--growing)':'var(--text-dim)') + ';font-family:var(--font-mono);">';
+  html += timeOk ? gates.weeksDone + ' weeks at ' + cur + ' rank — cleared' : gates.weeksDone + '/' + gates.weeksNeeded + ' weeks — ' + timeStr;
+  html += '</span></div>';
+
+  // Power gate row
+  html += '<div style="display:flex;align-items:flex-start;gap:6px;">';
+  html += '<span style="font-size:9px;font-family:var(--font-mono);color:' + (improvOk?'var(--growing)':'var(--text-faint)') + ';white-space:nowrap;margin-top:1px;">' + (improvOk?'✓':'○') + ' POWER</span>';
+  html += '<div style="font-size:9px;color:' + (improvOk?'var(--growing)':'var(--text-dim)') + ';font-family:var(--font-mono);line-height:1.5;">';
+  html += '<div>' + improv.need + '</div>';
+  if (!improvOk && improv.example) html += '<div style="color:var(--text-faint);font-size:8px;">' + improv.example + '</div>';
+  if (!improvOk) html += '<div style="color:var(--text-faint);font-size:8px;">Current: ' + improv.current + '</div>';
+  html += '</div></div>';
+
+  // AP gate row
+  html += '<div style="display:flex;align-items:center;gap:6px;">';
+  html += '<span style="font-size:9px;font-family:var(--font-mono);color:' + (apOk?'var(--growing)':'var(--text-faint)') + ';white-space:nowrap;">' + (apOk?'✓':'○') + ' AURA</span>';
+  html += '<span style="font-size:9px;color:' + (apOk?'var(--growing)':'var(--text-dim)') + ';font-family:var(--font-mono);">';
+  html += apOk ? gates.apCost + ' AP — cleared' : ap.toLocaleString() + ' / ' + gates.apCost.toLocaleString() + ' AP — need ' + (gates.apCost-ap).toLocaleString() + ' more';
+  html += '</span></div>';
+
+  html += '</div>';
+  return html;
+}
+
 function renderCharCard() {
   const stats = profile.stats || defaultStats();
   const ap = profile.auraPoints || 0;
@@ -3741,22 +3907,7 @@ function renderCharCard() {
     // gate progress indicators
     let gateHtml = '';
     if (!isMaxed && gates) {
-      const timeIcon = gates.timeOk ? '✓' : '○';
-      const improvIcon = gates.improvOk ? '✓' : '○';
-      const apIcon = gates.apOk ? '✓' : '○';
-      const timeColor = gates.timeOk ? 'var(--growing)' : 'var(--text-faint)';
-      const improvColor = gates.improvOk ? 'var(--growing)' : 'var(--text-faint)';
-      const apColor = gates.apOk ? 'var(--growing)' : 'var(--text-faint)';
-      // format improvement label
-      const improvLabel = def.id === 'focus' ? `${Math.round(gates.improvDone)}d streak`
-        : def.id === 'recovery' ? `${Math.round(gates.improvDone)}%`
-        : def.id === 'flexibility' ? `${Math.round(gates.improvDone)} sets/wk`
-        : `${Math.round(gates.improvDone)}%`;
-      gateHtml = `<div class="stat-gates">
-        <span style="color:${timeColor};">${timeIcon} ${gates.weeksDone}/${gates.weeksNeeded}wk</span>
-        <span style="color:${improvColor};">${improvIcon} ${improvLabel}/${gates.improvNeeded}${def.id==='focus'?'d':def.id==='flexibility'?' sets':def.id==='recovery'?'%':'%'}</span>
-        <span style="color:${apColor};">${apIcon} ${Math.min(ap,gates.apCost)}/${gates.apCost}AP</span>
-      </div>`;
+      gateHtml = buildGateHtml(def.id, gates, ap);
     }
 
     const btnLabel = isMaxed ? 'MAX' : allReady ? '⚡ AWAKEN' : `${gates?.apCost||0} AP`;
@@ -3764,7 +3915,7 @@ function renderCharCard() {
     const statXP = (profile.statXP || {})[def.id] || 0;
     const xpTag = statXP > 0 ? `<span class="stat-xp-bonus">+${Math.floor(statXP/10)} AP from PRs</span>` : '';
 
-    return `<div class="stat-row ${allReady?'gate-ready':''}">
+    return `<div class="stat-row ${allReady?'gate-ready':''}" style="cursor:pointer;" data-stat-detail="${def.id}">
       <span class="stat-label" title="${def.desc}">${def.label}</span>
       <div style="flex:1;min-width:0;">
         <div class="stat-bar-wrap">
@@ -3783,6 +3934,14 @@ function renderCharCard() {
 
   statsEl.querySelectorAll('.stat-upgrade-btn:not([disabled])').forEach(btn =>
     btn.addEventListener('click', () => upgradeStatWithAp(btn.dataset.stat)));
+
+  // tap stat row to open gate detail
+  statsEl.querySelectorAll('.stat-row[data-stat-detail]').forEach(row => {
+    row.addEventListener('click', e => {
+      if (e.target.closest('button')) return; // don't fire if tapping upgrade btn
+      showStatGateModal(row.dataset.statDetail);
+    });
+  });
 
   // hint
   const hint = document.getElementById('char-rank-hint');
@@ -3890,6 +4049,202 @@ function showRankUpModal(statLabel, oldRank, newRank, hunterName) {
       <p class="system-detail">The shadows grow stronger.</p>
       <button class="system-btn success">Rise</button>
     </div>`);
+}
+
+function showStatGateModal(statId) {
+  const def = STAT_DEFS.find(d => d.id === statId);
+  if (!def) return;
+  const cur = (profile.stats || {})[statId] || 'E';
+  const isMaxed = cur === 'S';
+  const gates = isMaxed ? null : checkUpgradeGates(statId);
+  const nextRank = isMaxed ? null : RANK_TIERS[RANK_TIERS.indexOf(cur)+1];
+  const barColor = RANK_COLORS[cur];
+  const curIdx = RANK_TIERS.indexOf(cur);
+  const ap = profile.auraPoints || 0;
+
+  const STAT_ICONS = { strength:'⚔️', endurance:'🔥', agility:'⚡', focus:'🎯', recovery:'🛡️', flexibility:'💫' };
+  const STAT_LORE = {
+    strength:    'The System measures your capacity to move iron. Not what you lift today — how far you have come from where you started.',
+    endurance:   'The System measures your capacity to sustain effort over distance. Your pace against your first logged run.',
+    agility:     'The System measures explosive output. Speed, power, and the ability to generate force in an instant.',
+    flexibility: 'The System measures your dedication to core and mobility work. Consistency over weeks, not single sessions.',
+    recovery:    'The System measures your discipline across the calendar. How often you show up when it matters.',
+    focus:       'The System measures your unbroken commitment. Every day you train, the streak grows. Every day you miss, it resets.',
+  };
+  const RANK_REAL_MEANING = {
+    strength: {
+      E:'Just beginning — baseline established',
+      D:'Noticeable strength gains from your start point',
+      C:'Consistent progression — visibly stronger',
+      B:'Significant strength — years of real adaptation',
+      A:'Advanced lifter — approaching your genetic potential',
+      S:'Elite — top tier of human strength development',
+    },
+    endurance: {
+      E:'First runs logged — baseline set',
+      D:'Measurably faster than when you started',
+      C:'Aerobic base developing — can sustain longer efforts',
+      B:'Strong runner — significant pace improvement',
+      A:'Serious endurance athlete',
+      S:'Elite endurance — sub-2hr half marathon territory',
+    },
+    agility: {
+      E:'Explosive work just beginning',
+      D:'Fast-twitch fibres awakening',
+      C:'Noticeable power output improvement',
+      B:'Athletic — explosive and reactive',
+      A:'High-performance athlete',
+      S:'Elite power output — top percentile',
+    },
+    flexibility: {
+      E:'Core work occasional',
+      D:'Building a core habit',
+      C:'Consistent core training',
+      B:'Strong core foundation — weeks of discipline',
+      A:'Advanced — serious mobility practice',
+      S:'Elite — daily dedicated mobility and core work',
+    },
+    recovery: {
+      E:'Still finding your rhythm',
+      D:'Starting to show up consistently',
+      C:'Reliable — hitting goals most weeks',
+      B:'Disciplined — rarely missing targets',
+      A:'Near-perfect consistency over months',
+      S:'Unbreakable — the System has never seen you quit',
+    },
+    focus: {
+      E:'The streak begins',
+      D:'One week without missing',
+      C:'Three weeks of discipline',
+      B:'Two months straight',
+      A:'Half a year without breaking',
+      S:'A full year. Continuous. No exceptions.',
+    },
+  };
+
+  // progress bars for each rank tier
+  const tierBars = RANK_TIERS.map((rank, i) => {
+    const isCurrentRank = rank === cur;
+    const isPast = i < curIdx;
+    const isFuture = i > curIdx;
+    const rankColor = RANK_COLORS[rank];
+    return `<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid rgba(93,157,255,0.06);">
+      <span style="font-family:var(--font-display);font-size:16px;font-weight:900;color:${rankColor};width:18px;text-align:center;${isFuture?'opacity:0.3':''}">${rank}</span>
+      <div style="flex:1;">
+        <div style="font-size:11px;color:${isPast?'var(--growing)':isCurrentRank?rankColor:'var(--text-faint)'};font-family:var(--font-mono);margin-bottom:3px;">
+          ${isPast?'✓ ':isCurrentRank?'→ ':''}${RANK_REAL_MEANING[statId]?.[rank]||rank}
+        </div>
+        <div style="height:3px;background:rgba(93,157,255,0.1);border-radius:2px;overflow:hidden;">
+          <div style="height:100%;background:${rankColor};width:${isPast?'100%':isCurrentRank?'50%':'0%'};transition:width 0.6s ease;"></div>
+        </div>
+      </div>
+      ${isCurrentRank ? `<span style="font-size:9px;font-family:var(--font-mono);color:${rankColor};background:${rankColor}22;padding:2px 6px;border-radius:3px;border:1px solid ${rankColor}44;">NOW</span>` : ''}
+      ${isPast ? `<span style="font-size:9px;color:var(--growing);">✓</span>` : ''}
+    </div>`;
+  }).join('');
+
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.innerHTML = `
+    <div class="modal" style="max-height:85vh;overflow-y:auto;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <span style="font-size:28px;">${STAT_ICONS[statId]||''}</span>
+          <div>
+            <div style="font-family:var(--font-mono);font-size:9px;letter-spacing:0.3em;color:var(--text-faint);text-transform:uppercase;">Stat Analysis</div>
+            <h3 style="margin:2px 0 0;font-size:20px;">${def.label}</h3>
+          </div>
+        </div>
+        <button class="icon-btn" id="gate-modal-close" style="font-size:20px;">✕</button>
+      </div>
+
+      <div style="background:var(--card-2);border:1px solid rgba(93,157,255,0.1);border-radius:8px;padding:14px;margin-bottom:16px;">
+        <div style="font-size:12px;color:var(--text-dim);line-height:1.7;font-style:italic;">"${STAT_LORE[statId]}"</div>
+      </div>
+
+      <div style="margin-bottom:16px;">
+        <div style="font-family:var(--font-mono);font-size:9px;letter-spacing:0.2em;color:var(--text-faint);text-transform:uppercase;margin-bottom:10px;">◈ Rank Progression</div>
+        ${tierBars}
+      </div>
+
+      ${!isMaxed && gates ? `
+        <div style="background:rgba(61,165,255,0.05);border:1px solid rgba(61,165,255,0.2);border-radius:8px;padding:14px;margin-bottom:16px;">
+          <div style="font-family:var(--font-mono);font-size:9px;letter-spacing:0.2em;color:var(--brass);text-transform:uppercase;margin-bottom:12px;">◈ Gate Requirements — ${cur} → ${nextRank}</div>
+
+          <div style="display:flex;flex-direction:column;gap:12px;">
+            <!-- Time Gate -->
+            <div>
+              <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px;">
+                <span style="font-family:var(--font-mono);font-size:10px;color:${gates.timeOk?'var(--growing)':'var(--brass)'};letter-spacing:0.1em;">⏳ TIME GATE</span>
+                <span style="font-family:var(--font-mono);font-size:10px;color:${gates.timeOk?'var(--growing)':'var(--text-dim)'};">${gates.weeksDone}/${gates.weeksNeeded} weeks</span>
+              </div>
+              <div style="height:6px;background:rgba(93,157,255,0.1);border-radius:3px;overflow:hidden;">
+                <div style="height:100%;background:${gates.timeOk?'var(--growing)':'var(--brass)'};width:${Math.min(100,(gates.weeksDone/gates.weeksNeeded)*100).toFixed(0)}%;transition:width 0.8s ease;"></div>
+              </div>
+              <div style="font-size:10px;color:var(--text-faint);margin-top:4px;font-family:var(--font-mono);">
+                ${gates.timeOk ? '✓ Time served at this rank' : `${gates.weeksNeeded - gates.weeksDone} more week${gates.weeksNeeded-gates.weeksDone!==1?'s':''} — the System is watching your consistency`}
+              </div>
+            </div>
+
+            <!-- Power Gate -->
+            <div>
+              <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px;">
+                <span style="font-family:var(--font-mono);font-size:10px;color:${gates.improvOk?'var(--growing)':'var(--brass)'};letter-spacing:0.1em;">💪 POWER GATE</span>
+                <span style="font-family:var(--font-mono);font-size:10px;color:${gates.improvOk?'var(--growing)':'var(--text-dim)'};">${gates.improvDone.toFixed(1)} / ${gates.improvNeeded}${statId==='focus'?'d':statId==='flexibility'?' sets/wk':'%'}</span>
+              </div>
+              <div style="height:6px;background:rgba(93,157,255,0.1);border-radius:3px;overflow:hidden;">
+                <div style="height:100%;background:${gates.improvOk?'var(--growing)':'var(--brass)'};width:${gates.improvNeeded>0?Math.min(100,(gates.improvDone/gates.improvNeeded)*100).toFixed(0):100}%;transition:width 0.8s ease;"></div>
+              </div>
+              <div style="font-size:10px;color:var(--text-faint);margin-top:4px;font-family:var(--font-mono);line-height:1.6;">
+                ${gates.improvOk ? '✓ Performance threshold reached' : (() => {
+                  const rem = (gates.improvNeeded - gates.improvDone);
+                  switch(statId) {
+                    case 'strength': return `Lift ${rem.toFixed(1)}% more than your starting point — train heavier, log your sets`;
+                    case 'endurance': return `Run ${rem.toFixed(1)}% faster than your first pace — consistent running builds this`;
+                    case 'agility': return `Improve explosive PRs by ${rem.toFixed(1)}% — box jumps, hill sprints, jump squats`;
+                    case 'flexibility': return `Average ${rem.toFixed(1)} more core/mobility sets per week — plank, leg raises, ab wheel`;
+                    case 'recovery': return `Hit your weekly goal more consistently — need ${rem.toFixed(0)}% more weeks on target`;
+                    case 'focus': return `Build a ${Math.ceil(rem)}-day longer streak — do not miss a single session`;
+                    default: return `${rem.toFixed(1)} more improvement needed`;
+                  }
+                })()}
+              </div>
+            </div>
+
+            <!-- AP Gate -->
+            <div>
+              <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px;">
+                <span style="font-family:var(--font-mono);font-size:10px;color:${gates.apOk?'var(--growing)':'var(--brass)'};letter-spacing:0.1em;">⚡ AURA GATE</span>
+                <span style="font-family:var(--font-mono);font-size:10px;color:${gates.apOk?'var(--growing)':'var(--text-dim)'};">${ap.toLocaleString()} / ${gates.apCost.toLocaleString()} AP</span>
+              </div>
+              <div style="height:6px;background:rgba(93,157,255,0.1);border-radius:3px;overflow:hidden;">
+                <div style="height:100%;background:${gates.apOk?'var(--growing)':'var(--brass)'};width:${Math.min(100,(ap/gates.apCost)*100).toFixed(0)}%;transition:width 0.8s ease;"></div>
+              </div>
+              <div style="font-size:10px;color:var(--text-faint);margin-top:4px;font-family:var(--font-mono);">
+                ${gates.apOk ? '✓ Aura threshold reached' : `Need ${(gates.apCost-ap).toLocaleString()} more AP — earned by training daily and beating PRs`}
+              </div>
+            </div>
+          </div>
+
+          ${gates.ready ? `
+            <div style="margin-top:14px;padding:10px;background:rgba(255,215,0,0.08);border:1px solid rgba(255,215,0,0.3);border-radius:6px;text-align:center;">
+              <div style="font-family:var(--font-display);font-size:13px;color:#FFD700;letter-spacing:0.1em;">ALL GATES CLEARED</div>
+              <div style="font-size:11px;color:var(--text-dim);margin-top:4px;">Return to the Rank screen and tap AWAKEN</div>
+            </div>
+          ` : ''}
+        </div>
+      ` : isMaxed ? `
+        <div style="text-align:center;padding:20px;background:rgba(255,215,0,0.06);border:1px solid rgba(255,215,0,0.2);border-radius:8px;">
+          <div style="font-size:32px;margin-bottom:8px;">👑</div>
+          <div style="font-family:var(--font-display);font-size:14px;color:#FFD700;letter-spacing:0.1em;">ABSOLUTE BEING</div>
+          <div style="font-size:12px;color:var(--text-faint);margin-top:6px;">This stat has reached its pinnacle. There is no higher rank.</div>
+        </div>
+      ` : ''}
+    </div>`;
+
+  document.body.appendChild(overlay);
+  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+  overlay.querySelector('#gate-modal-close').addEventListener('click', () => overlay.remove());
 }
 
 function showGateClearModal(cleared, weeklyGoal, completed) {
@@ -4024,6 +4379,7 @@ async function checkWeeklyGate() {
 async function runSystemChecks() {
   await checkStatDecay();
   await evaluateAndSaveClass();
+  await checkAndUnlockAchievements();
   // silently award AP if they already have a workout today but haven't been awarded yet
   const silentAp = await tryAwardAp();
   if (silentAp) {
@@ -6150,8 +6506,688 @@ function openEditExerciseModal(name) {
 }
 
 /* =========================================================================
-   HISTORY CALENDAR
+   FEATS & ACHIEVEMENTS SYSTEM
    ========================================================================= */
+
+// Progression chains — each step requires MIN_SESSIONS sessions before
+// the next step counts as a legitimate progression
+const MIN_CHAIN_SESSIONS = 3;
+const PROGRESSION_CHAINS = [
+  // ── Calisthenics Skills ──
+  {
+    id:'planche', name:'Planche Mastery', icon:'🤸', category:'calisthenics',
+    steps:['Frog Stand','Tuck Planche','Advanced Tuck Planche','Straddle Planche','Full Planche'],
+  },
+  {
+    id:'front_lever', name:'Front Lever Mastery', icon:'🔩', category:'calisthenics',
+    steps:['Tuck Front Lever','Advanced Tuck Front Lever','Single Leg Front Lever','Straddle Front Lever','Front Lever'],
+  },
+  {
+    id:'back_lever', name:'Back Lever Mastery', icon:'🔗', category:'calisthenics',
+    steps:['Skin The Cat','Tuck Back Lever','Advanced Tuck Back Lever','Straddle Back Lever','Back Lever'],
+  },
+  {
+    id:'handstand', name:'Handstand Mastery', icon:'🙆', category:'calisthenics',
+    steps:['Wall Handstand Hold','Chest-to-Wall Handstand Hold','Freestanding Handstand Hold','Handstand Push Up','Deficit Handstand Push Up'],
+  },
+  {
+    id:'pull_progression', name:'Pull Progression', icon:'💪', category:'calisthenics',
+    steps:['Inverted Row','Pull Up','Chin Up','Neutral Grip Pull Up','Muscle Up'],
+  },
+  {
+    id:'push_up', name:'Push Up Progression', icon:'💥', category:'calisthenics',
+    steps:['Incline Push Up','Push Up','Wide Push Up','Archer Push Up','Diamond Push Up'],
+  },
+  {
+    id:'dip', name:'Dip Progression', icon:'🔱', category:'calisthenics',
+    steps:['Bench Dip','Dips','Ring Dips','Weighted Dip','Muscle Up'],
+  },
+  {
+    id:'core_progression', name:'Core Mastery', icon:'⚡', category:'calisthenics',
+    steps:['Plank','Hanging Knee Raise','Hanging Leg Raise','Toes to Bar','Dragon Flag'],
+  },
+  // ── Strength Progressions ──
+  {
+    id:'squat_prog', name:'Squat Progression', icon:'🏋️', category:'strength',
+    steps:['Bodyweight Squat','Goblet Squat','Squat','Front Squat','Pistol Squat'],
+  },
+  {
+    id:'deadlift_prog', name:'Deadlift Progression', icon:'⚓', category:'strength',
+    steps:['Romanian Deadlift','Stiff-Leg Deadlift','Deadlift','Sumo Deadlift','Rack Pull'],
+  },
+  {
+    id:'press_prog', name:'Press Progression', icon:'🔨', category:'strength',
+    steps:['Push Up','Dips','Bench Press','Incline Bench Press','Close Grip Bench Press'],
+  },
+  {
+    id:'overhead_prog', name:'Overhead Progression', icon:'🏹', category:'strength',
+    steps:['Pike Push Up','Dumbbell Shoulder Press','Overhead Press','Push Press','Handstand Push Up'],
+  },
+  {
+    id:'row_prog', name:'Row Progression', icon:'🚣', category:'strength',
+    steps:['Inverted Row','One-Arm Dumbbell Row','Barbell Row','Pendlay Row','T-Bar Row'],
+  },
+  // ── Endurance Progressions ──
+  {
+    id:'run_type', name:"Runner's Path", icon:'🏃', category:'endurance',
+    steps:['Easy Run','Tempo Run','Interval Running','Hill Sprints','Race'],
+  },
+  // ── Explosive / Agility ──
+  {
+    id:'explosive_prog', name:'Explosive Power', icon:'💨', category:'agility',
+    steps:['Burpee','Jump Squat','Box Jump','Hill Sprints','Interval Running'],
+  },
+  // ── Mobility / Recovery ──
+  {
+    id:'mobility_prog', name:'Mobility Mastery', icon:'🌊', category:'flexibility',
+    steps:['Side Plank','Dead Hang','L-Sit','Skin The Cat','Front Lever'],
+  },
+];
+
+// ── Archetype Chains — multi-discipline achievement paths ──
+// Steps here use check() functions instead of session counts
+const ARCHETYPE_CHAINS = [
+  {
+    id:'iron_sovereign',
+    name:'Iron Sovereign',
+    icon:'⚔️',
+    color:'#D4A017',
+    desc:'Master the iron. Pure strength dominance.',
+    steps:[
+      { name:'Bench Press 1× bodyweight',       check:(bw)=>{ const m=profile.bodyType==='female'?0.7:1.0;   return myPRs['Bench Press']?.e1rm >= bw*m; },    label:(bw)=>{ const m=profile.bodyType==='female'?0.7:1.0;   return `Bench Press ${m}× bodyweight (${Math.round(bw*m)}kg)`; } },
+      { name:'Squat 1.5× bodyweight',           check:(bw)=>{ const m=profile.bodyType==='female'?1.1:1.5;   return myPRs['Squat']?.e1rm >= bw*m; },          label:(bw)=>{ const m=profile.bodyType==='female'?1.1:1.5;   return `Squat ${m}× bodyweight (${Math.round(bw*m)}kg)`; } },
+      { name:'Deadlift 2× bodyweight',          check:(bw)=>{ const m=profile.bodyType==='female'?1.5:2.0;   return myPRs['Deadlift']?.e1rm >= bw*m; },        label:(bw)=>{ const m=profile.bodyType==='female'?1.5:2.0;   return `Deadlift ${m}× bodyweight (${Math.round(bw*m)}kg)`; } },
+      { name:'Overhead Press 0.75× bodyweight', check:(bw)=>{ const m=profile.bodyType==='female'?0.5:0.75;  return myPRs['Overhead Press']?.e1rm >= bw*m; },  label:(bw)=>{ const m=profile.bodyType==='female'?0.5:0.75;  return `OHP ${m}× bodyweight (${Math.round(bw*m)}kg)`; } },
+      { name:'Bench Press 1.5× bodyweight',     check:(bw)=>{ const m=profile.bodyType==='female'?1.0:1.5;   return myPRs['Bench Press']?.e1rm >= bw*m; },    label:(bw)=>{ const m=profile.bodyType==='female'?1.0:1.5;   return `Bench Press ${m}× bodyweight (${Math.round(bw*m)}kg)`; } },
+      { name:'Squat 2× bodyweight',             check:(bw)=>{ const m=profile.bodyType==='female'?1.5:2.0;   return myPRs['Squat']?.e1rm >= bw*m; },          label:(bw)=>{ const m=profile.bodyType==='female'?1.5:2.0;   return `Squat ${m}× bodyweight (${Math.round(bw*m)}kg)`; } },
+      { name:'Deadlift 2.5× bodyweight',        check:(bw)=>{ const m=profile.bodyType==='female'?1.85:2.5;  return myPRs['Deadlift']?.e1rm >= bw*m; },        label:(bw)=>{ const m=profile.bodyType==='female'?1.85:2.5;  return `Deadlift ${m}× bodyweight (${Math.round(bw*m)}kg)`; } },
+    ],
+    title:'[Iron Sovereign]',
+  },
+  {
+    id:'shadow_athlete',
+    name:'Shadow Athlete',
+    icon:'🐉',
+    color:'#9B59B6',
+    desc:'Master your own body. The iron needs no bar.',
+    steps:[
+      { name:'Muscle Up (5 sessions)',        check:()=>getExerciseSessionCount('Muscle Up', currentUser.uid)>=5 },
+      { name:'Tuck Planche (3 sessions)',     check:()=>getExerciseSessionCount('Tuck Planche', currentUser.uid)>=3 },
+      { name:'Tuck Front Lever (3 sessions)',  check:()=>getExerciseSessionCount('Tuck Front Lever', currentUser.uid)>=3 },
+      { name:'Advanced Tuck Planche (3 sessions)', check:()=>getExerciseSessionCount('Advanced Tuck Planche', currentUser.uid)>=3 },
+      { name:'Straddle Front Lever (3 sessions)', check:()=>getExerciseSessionCount('Straddle Front Lever', currentUser.uid)>=3 },
+      { name:'Straddle Planche (3 sessions)', check:()=>getExerciseSessionCount('Straddle Planche', currentUser.uid)>=3 },
+      { name:'Full Planche (3 sessions)',     check:()=>getExerciseSessionCount('Full Planche', currentUser.uid)>=3 },
+      { name:'Front Lever (3 sessions)',      check:()=>getExerciseSessionCount('Front Lever', currentUser.uid)>=3 },
+    ],
+    title:'[Shadow Athlete]',
+  },
+  {
+    id:'endurance_wraith',
+    name:'Endurance Wraith',
+    icon:'🌪️',
+    color:'#1ABC9C',
+    desc:'Distance is not your enemy. It never was.',
+    steps:[
+      { name:'Log first run',            check:()=>myWorkouts.some(w=>w.isRun) },
+      { name:'Run 5km',                  check:()=>myWorkouts.some(w=>w.runSummary?.distKm>=5) },
+      { name:'Run 10km',                 check:()=>myWorkouts.some(w=>w.runSummary?.distKm>=10) },
+      { name:'Sub-30 min 5km',           check:()=>{ const t=profile.bodyType==='female'?34:30; return myWorkouts.some(w=>{ const r=w.runSummary; return r&&r.distKm>=4.9&&r.durationMins<=t; }); }, label:()=>`Sub-${profile.bodyType==='female'?34:30} min 5km` },
+      { name:'Run half marathon (21km)', check:()=>myWorkouts.some(w=>w.runSummary?.distKm>=21) },
+      { name:'Sub-60 min 10km',          check:()=>{ const t=profile.bodyType==='female'?68:60; return myWorkouts.some(w=>{ const r=w.runSummary; return r&&r.distKm>=9.9&&r.durationMins<=t; }); }, label:()=>`Sub-${profile.bodyType==='female'?68:60} min 10km` },
+      { name:'Sub-2hr half marathon',    check:()=>{ const t=profile.bodyType==='female'?135:120; return myWorkouts.some(w=>{ const r=w.runSummary; return r&&r.distKm>=21&&r.durationMins<=t; }); }, label:()=>`Sub-${profile.bodyType==='female'?'2hr 15min':'2hr'} half marathon` },
+      { name:'Run full marathon (42km)', check:()=>myWorkouts.some(w=>w.runSummary?.distKm>=42) },
+    ],
+    title:'[Endurance Wraith]',
+  },
+  {
+    id:'assassin',
+    name:'Assassin',
+    icon:'⚡',
+    color:'#F0D000',
+    desc:'Speed is the only truth. Explosive, reactive, lethal.',
+    steps:[
+      { name:'Box Jump (5 sessions)',          check:()=>getExerciseSessionCount('Box Jump', currentUser.uid)>=5 },
+      { name:'Jump Squat (5 sessions)',        check:()=>getExerciseSessionCount('Jump Squat', currentUser.uid)>=5 },
+      { name:'Hill Sprints (5 sessions)',      check:()=>getExerciseSessionCount('Hill Sprints', currentUser.uid)>=5 },
+      { name:'Interval Running (5 sessions)', check:()=>getExerciseSessionCount('Interval Running', currentUser.uid)>=5 },
+      { name:'Tempo Run (5 sessions)',         check:()=>getExerciseSessionCount('Tempo Run', currentUser.uid)>=5 },
+      { name:'Elite 5km time',                check:()=>{ const t=profile.bodyType==='female'?28:25; return myWorkouts.some(w=>{ const r=w.runSummary; return r&&r.distKm>=4.9&&r.durationMins<=t; }); }, label:()=>`Sub-${profile.bodyType==='female'?28:25} min 5km` },
+    ],
+    title:'[Assassin]',
+  },
+  {
+    id:'hybrid_sovereign',
+    name:'Hybrid Sovereign',
+    icon:'⚖️',
+    color:'#3DA5FF',
+    desc:'Iron and bodyweight. Both bend to you.',
+    steps:[
+      { name:'Deadlift 1.5× bodyweight',     check:(bw)=>{ const m=profile.bodyType==='female'?1.1:1.5;  return myPRs['Deadlift']?.e1rm >= bw*m; },    label:(bw)=>{ const m=profile.bodyType==='female'?1.1:1.5;  return `Deadlift ${m}× bodyweight (${Math.round(bw*m)}kg)`; } },
+      { name:'Pull Up (10 sessions)',         check:()=>getExerciseSessionCount('Pull Up', currentUser.uid)>=10 },
+      { name:'Bench Press 1.25× bodyweight', check:(bw)=>{ const m=profile.bodyType==='female'?0.85:1.25; return myPRs['Bench Press']?.e1rm >= bw*m; }, label:(bw)=>{ const m=profile.bodyType==='female'?0.85:1.25; return `Bench Press ${m}× bodyweight (${Math.round(bw*m)}kg)`; } },
+      { name:'Muscle Up (5 sessions)',        check:()=>getExerciseSessionCount('Muscle Up', currentUser.uid)>=5 },
+      { name:'Squat 1.5× bodyweight',        check:(bw)=>{ const m=profile.bodyType==='female'?1.1:1.5;  return myPRs['Squat']?.e1rm >= bw*m; },       label:(bw)=>{ const m=profile.bodyType==='female'?1.1:1.5;  return `Squat ${m}× bodyweight (${Math.round(bw*m)}kg)`; } },
+      { name:'Tuck Planche (3 sessions)',     check:()=>getExerciseSessionCount('Tuck Planche', currentUser.uid)>=3 },
+      { name:'Deadlift 2× bodyweight',       check:(bw)=>{ const m=profile.bodyType==='female'?1.5:2.0;  return myPRs['Deadlift']?.e1rm >= bw*m; },    label:(bw)=>{ const m=profile.bodyType==='female'?1.5:2.0;  return `Deadlift ${m}× bodyweight (${Math.round(bw*m)}kg)`; } },
+      { name:'Front Lever (3 sessions)',      check:()=>getExerciseSessionCount('Front Lever', currentUser.uid)>=3 },
+    ],
+    title:'[Hybrid Sovereign]',
+  },
+  {
+    id:'ranger',
+    name:'Ranger',
+    icon:'🏹',
+    color:'#2ECC71',
+    desc:'Road and iron. Neither owns you. Both serve you.',
+    steps:[
+      { name:'Deadlift 1× bodyweight',       check:(bw)=>{ const m=profile.bodyType==='female'?0.75:1.0; return myPRs['Deadlift']?.e1rm >= bw*m; },   label:(bw)=>{ const m=profile.bodyType==='female'?0.75:1.0; return `Deadlift ${m}× bodyweight (${Math.round(bw*m)}kg)`; } },
+      { name:'Run 5km',                      check:()=>myWorkouts.some(w=>w.runSummary?.distKm>=5) },
+      { name:'Squat 1× bodyweight',          check:(bw)=>{ const m=profile.bodyType==='female'?0.75:1.0; return myPRs['Squat']?.e1rm >= bw*m; },      label:(bw)=>{ const m=profile.bodyType==='female'?0.75:1.0; return `Squat ${m}× bodyweight (${Math.round(bw*m)}kg)`; } },
+      { name:'Sub-30 min 5km',               check:()=>{ const t=profile.bodyType==='female'?34:30; return myWorkouts.some(w=>{ const r=w.runSummary; return r&&r.distKm>=4.9&&r.durationMins<=t; }); }, label:()=>`Sub-${profile.bodyType==='female'?34:30} min 5km` },
+      { name:'Bench Press 1× bodyweight',    check:(bw)=>{ const m=profile.bodyType==='female'?0.7:1.0;  return myPRs['Bench Press']?.e1rm >= bw*m; }, label:(bw)=>{ const m=profile.bodyType==='female'?0.7:1.0;  return `Bench Press ${m}× bodyweight (${Math.round(bw*m)}kg)`; } },
+      { name:'Run 10km',                     check:()=>myWorkouts.some(w=>w.runSummary?.distKm>=10) },
+      { name:'Deadlift 1.5× bodyweight',     check:(bw)=>{ const m=profile.bodyType==='female'?1.1:1.5;  return myPRs['Deadlift']?.e1rm >= bw*m; },   label:(bw)=>{ const m=profile.bodyType==='female'?1.1:1.5;  return `Deadlift ${m}× bodyweight (${Math.round(bw*m)}kg)`; } },
+      { name:'Sub-60 min 10km',              check:()=>{ const t=profile.bodyType==='female'?68:60; return myWorkouts.some(w=>{ const r=w.runSummary; return r&&r.distKm>=9.9&&r.durationMins<=t; }); }, label:()=>`Sub-${profile.bodyType==='female'?68:60} min 10km` },
+    ],
+    title:'[Ranger]',
+  },
+  {
+    id:'warlord',
+    name:'Warlord',
+    icon:'🏛️',
+    color:'#D4A017',
+    desc:'Volume is the language of dominance. High sets, relentless reps, maximal hypertrophy.',
+    steps:[
+      { name:'Log 50 total workouts',                    check:()=>myWorkouts.length>=50 },
+      { name:'Bench Press — Novice tier PR',             check:()=>['Novice','Intermediate','Advanced','Elite'].includes(myPRs['Bench Press']?.tier) },
+      { name:'Squat — Novice tier PR',                   check:()=>['Novice','Intermediate','Advanced','Elite'].includes(myPRs['Squat']?.tier) },
+      { name:'Log 100 total workouts',                   check:()=>myWorkouts.length>=100 },
+      { name:'Bench Press — Intermediate tier PR',       check:()=>['Intermediate','Advanced','Elite'].includes(myPRs['Bench Press']?.tier) },
+      { name:'Squat — Intermediate tier PR',             check:()=>['Intermediate','Advanced','Elite'].includes(myPRs['Squat']?.tier) },
+      { name:'Deadlift — Intermediate tier PR',          check:()=>['Intermediate','Advanced','Elite'].includes(myPRs['Deadlift']?.tier) },
+      { name:'Log 200 total workouts',                   check:()=>myWorkouts.length>=200 },
+      { name:'Bench Press — Advanced tier PR',           check:()=>['Advanced','Elite'].includes(myPRs['Bench Press']?.tier) },
+      { name:'Deadlift — Advanced tier PR',              check:()=>['Advanced','Elite'].includes(myPRs['Deadlift']?.tier) },
+    ],
+    title:'[Warlord]',
+  },
+  {
+    id:'monk',
+    name:'Monk',
+    icon:'🧘',
+    color:'#A8D8EA',
+    desc:'Stillness is its own kind of strength. Control, precision, mastery of movement.',
+    steps:[
+      { name:'Dead Hang (5 sessions)',                   check:()=>getExerciseSessionCount('Dead Hang', currentUser.uid)>=5 },
+      { name:'L-Sit (5 sessions)',                       check:()=>getExerciseSessionCount('L-Sit', currentUser.uid)>=5 },
+      { name:'Wall Handstand Hold (5 sessions)',         check:()=>getExerciseSessionCount('Wall Handstand Hold', currentUser.uid)>=5 },
+      { name:'Frog Stand (5 sessions)',                  check:()=>getExerciseSessionCount('Frog Stand', currentUser.uid)>=5 },
+      { name:'Plank (20 sessions)',                      check:()=>getExerciseSessionCount('Plank', currentUser.uid)>=20 },
+      { name:'Freestanding Handstand (5 sessions)',      check:()=>getExerciseSessionCount('Freestanding Handstand Hold', currentUser.uid)>=5 },
+      { name:'Tuck Planche (5 sessions)',                check:()=>getExerciseSessionCount('Tuck Planche', currentUser.uid)>=5 },
+      { name:'Tuck Front Lever (5 sessions)',            check:()=>getExerciseSessionCount('Tuck Front Lever', currentUser.uid)>=5 },
+      { name:'Handstand Push Up (5 sessions)',           check:()=>getExerciseSessionCount('Handstand Push Up', currentUser.uid)>=5 },
+      { name:'30-day streak',                            check:()=>computeStreak(currentUser.uid)>=30 },
+    ],
+    title:'[Monk]',
+  },
+  {
+    id:'the_one_above_all',
+    name:'The One Above All',
+    icon:'👑',
+    color:'#FFD700',
+    desc:'You pursued everything. Speed. Strength. Skill. Endurance. The System has no rank for what you are.',
+    steps:[
+      { name:'Deadlift — elite level',             check:(bw)=>{ const m=profile.bodyType==='female'?2.0:2.75; return myPRs['Deadlift']?.e1rm >= bw*m; },        label:(bw)=>{ const m=profile.bodyType==='female'?2.0:2.75; return `Deadlift ${m}× bodyweight (${Math.round(bw*m)}kg e1RM)`; } },
+      { name:'Bench Press — elite level',          check:(bw)=>{ const m=profile.bodyType==='female'?1.35:2.0; return myPRs['Bench Press']?.e1rm >= bw*m; },     label:(bw)=>{ const m=profile.bodyType==='female'?1.35:2.0; return `Bench Press ${m}× bodyweight (${Math.round(bw*m)}kg e1RM)`; } },
+      { name:'Squat — elite level',                check:(bw)=>{ const m=profile.bodyType==='female'?1.75:2.25; return myPRs['Squat']?.e1rm >= bw*m; },          label:(bw)=>{ const m=profile.bodyType==='female'?1.75:2.25; return `Squat ${m}× bodyweight (${Math.round(bw*m)}kg e1RM)`; } },
+      { name:'Overhead Press — elite level',       check:(bw)=>{ const m=profile.bodyType==='female'?0.85:1.25; return myPRs['Overhead Press']?.e1rm >= bw*m; },  label:(bw)=>{ const m=profile.bodyType==='female'?0.85:1.25; return `OHP ${m}× bodyweight (${Math.round(bw*m)}kg e1RM)`; } },
+      { name:'Muscle Up (15 sessions)',             check:()=>getExerciseSessionCount('Muscle Up', currentUser.uid)>=15 },
+      { name:'Full Planche (10 sessions)',          check:()=>getExerciseSessionCount('Full Planche', currentUser.uid)>=10 },
+      { name:'Front Lever (10 sessions)',           check:()=>getExerciseSessionCount('Front Lever', currentUser.uid)>=10 },
+      { name:'Handstand Push Up (10 sessions)',     check:()=>getExerciseSessionCount('Handstand Push Up', currentUser.uid)>=10 },
+      { name:'Elite 5km time',                     check:()=>{ const t=profile.bodyType==='female'?25:22; return myWorkouts.some(w=>{ const r=w.runSummary; return r&&r.distKm>=4.9&&r.durationMins<=t; }); },  label:()=>`Sub-${profile.bodyType==='female'?25:22} min 5km` },
+      { name:'Elite 10km time',                    check:()=>{ const t=profile.bodyType==='female'?52:45; return myWorkouts.some(w=>{ const r=w.runSummary; return r&&r.distKm>=9.9&&r.durationMins<=t; }); }, label:()=>`Sub-${profile.bodyType==='female'?52:45} min 10km` },
+      { name:'Elite half marathon',                check:()=>{ const t=profile.bodyType==='female'?120:105; return myWorkouts.some(w=>{ const r=w.runSummary; return r&&r.distKm>=21&&r.durationMins<=t; }); }, label:()=>`Sub-${profile.bodyType==='female'?'2hr':'1hr 45min'} half marathon` },
+      { name:'365-day streak',                     check:()=>computeStreak(currentUser.uid)>=365 },
+    ],
+    title:'[The One Above All]',
+  },
+];
+
+
+// Automatic achievement definitions
+const AUTO_ACHIEVEMENTS = [
+  // Streak milestones
+  { id:'streak_7',   category:'consistency', icon:'🔥', name:'First Week',        desc:'Maintain a 7-day training streak',       rarity:'common',    check: () => computeStreak(currentUser.uid) >= 7,   ap:0 },
+  { id:'streak_30',  category:'consistency', icon:'🔥', name:'Iron Month',         desc:'Maintain a 30-day training streak',      rarity:'rare',      check: () => computeStreak(currentUser.uid) >= 30,  ap:0 },
+  { id:'streak_60',  category:'consistency', icon:'🔥', name:'The Unyielding',     desc:'Maintain a 60-day training streak',      rarity:'epic',      check: () => computeStreak(currentUser.uid) >= 60,  ap:0 },
+  { id:'streak_100', category:'consistency', icon:'👑', name:'Century Hunter',     desc:'100 consecutive days without missing',   rarity:'legendary', check: () => computeStreak(currentUser.uid) >= 100, ap:0 },
+  { id:'streak_365', category:'consistency', icon:'👑', name:'Absolute Devotion',  desc:'365 consecutive days. A full year.',     rarity:'legendary', check: () => computeStreak(currentUser.uid) >= 365, ap:0 },
+  // Total workout milestones
+  { id:'workouts_10',  category:'volume', icon:'⚡', name:'Awakened',       desc:'Complete 10 workouts',   rarity:'common', check: () => myWorkouts.length >= 10,  ap:0 },
+  { id:'workouts_50',  category:'volume', icon:'⚡', name:'Hunter',         desc:'Complete 50 workouts',   rarity:'rare',   check: () => myWorkouts.length >= 50,  ap:0 },
+  { id:'workouts_100', category:'volume', icon:'⚡', name:'Veteran Hunter', desc:'Complete 100 workouts',  rarity:'epic',   check: () => myWorkouts.length >= 100, ap:0 },
+  { id:'workouts_365', category:'volume', icon:'👑', name:'Eternal Grinder',desc:'Complete 365 workouts',  rarity:'legendary', check: () => myWorkouts.length >= 365, ap:0 },
+  // PR tier milestones
+  { id:'pr_novice',       category:'strength', icon:'🗡️', name:'First Blood',       desc:'Reach Novice tier on any PR',        rarity:'common',    check: () => Object.values(myPRs).some(p => ['Novice','Intermediate','Advanced','Elite'].includes(p.tier)), ap:0 },
+  { id:'pr_intermediate', category:'strength', icon:'⚔️', name:'True Hunter',       desc:'Reach Intermediate tier on any PR',  rarity:'rare',      check: () => Object.values(myPRs).some(p => ['Intermediate','Advanced','Elite'].includes(p.tier)),             ap:0 },
+  { id:'pr_advanced',     category:'strength', icon:'💀', name:'Shadow Fighter',    desc:'Reach Advanced tier on any PR',      rarity:'epic',      check: () => Object.values(myPRs).some(p => ['Advanced','Elite'].includes(p.tier)),                              ap:0 },
+  { id:'pr_elite',        category:'strength', icon:'👑', name:'The Elite',         desc:'Reach Elite tier on any PR',         rarity:'legendary', check: () => Object.values(myPRs).some(p => p.tier === 'Elite'),                                                  ap:0 },
+  // Stat rank milestones
+  { id:'rank_d', category:'rank', icon:'🔵', name:'Rank D',    desc:'Upgrade any stat to D rank',  rarity:'common', check: () => Object.values(profile.stats||{}).some(r => ['D','C','B','A','S'].includes(r)), ap:0 },
+  { id:'rank_c', category:'rank', icon:'🩵', name:'Rank C',    desc:'Upgrade any stat to C rank',  rarity:'rare',   check: () => Object.values(profile.stats||{}).some(r => ['C','B','A','S'].includes(r)),     ap:0 },
+  { id:'rank_b', category:'rank', icon:'🟣', name:'Rank B',    desc:'Upgrade any stat to B rank',  rarity:'epic',   check: () => Object.values(profile.stats||{}).some(r => ['B','A','S'].includes(r)),         ap:0 },
+  { id:'rank_a', category:'rank', icon:'🔴', name:'Rank A',    desc:'Upgrade any stat to A rank',  rarity:'legendary', check: () => Object.values(profile.stats||{}).some(r => ['A','S'].includes(r)),          ap:0 },
+  { id:'rank_s', category:'rank', icon:'👑', name:'Absolute Being', desc:'Reach S rank on any stat', rarity:'legendary', check: () => Object.values(profile.stats||{}).some(r => r === 'S'),                   ap:0 },
+  // Class achievement
+  { id:'class_assigned', category:'identity', icon:'⚔️', name:'Identity Confirmed', desc:'The System assigns your Hunter Class', rarity:'rare', check: () => !!profile.hunterClass, ap:0 },
+  // Run milestone
+  { id:'first_run', category:'endurance', icon:'🏃', name:'First Steps',  desc:'Log your first run', rarity:'common', check: () => myWorkouts.some(w => w.isRun), ap:0 },
+  { id:'runs_10',   category:'endurance', icon:'🏃', name:'Road Hunter',  desc:'Log 10 runs',        rarity:'rare',   check: () => myWorkouts.filter(w=>w.isRun).length >= 10, ap:0 },
+];
+
+const RARITY_COLORS = {
+  common:    { color:'var(--text-dim)',    bg:'rgba(93,157,255,0.06)',   label:'Common'    },
+  rare:      { color:'var(--brass)',       bg:'rgba(61,165,255,0.1)',    label:'Rare'      },
+  epic:      { color:'var(--violet)',      bg:'rgba(139,107,255,0.1)',   label:'Epic'      },
+  legendary: { color:'#FFD700',           bg:'rgba(255,215,0,0.08)',    label:'Legendary' },
+};
+
+// Get session count for an exercise from workout history
+function getExerciseSessionCount(exName, uid) {
+  return allWorkouts.filter(w =>
+    w.uid === uid &&
+    (w.exercises||[]).some(e => e.name === exName)
+  ).length;
+}
+
+// Evaluate progression chains for current user
+function evaluateChains() {
+  const uid = currentUser.uid;
+  return PROGRESSION_CHAINS.map(chain => {
+    const steps = chain.steps.map(exName => {
+      const sessions = getExerciseSessionCount(exName, uid);
+      return { name: exName, sessions, done: sessions >= MIN_CHAIN_SESSIONS };
+    });
+    const firstIncomplete = steps.findIndex(s => !s.done);
+    const currentIdx = firstIncomplete === -1 ? steps.length : firstIncomplete;
+    const completed = steps.filter(s => s.done).length;
+    return { ...chain, steps, currentIdx, completed, total: steps.length };
+  });
+}
+
+// Evaluate archetype chains
+function evaluateArchetypes() {
+  const bw = latestBodyweightKg() || 70;
+  return ARCHETYPE_CHAINS.map(chain => {
+    const steps = chain.steps.map(step => {
+      let done = false;
+      try { done = step.check(bw); } catch(e) {}
+      const name = step.label ? step.label(bw) : step.name;
+      return { name, done };
+    });
+    const firstIncomplete = steps.findIndex(s => !s.done);
+    const currentIdx = firstIncomplete === -1 ? steps.length : firstIncomplete;
+    const completed = steps.filter(s => s.done).length;
+    return { ...chain, steps, currentIdx, completed, total: steps.length };
+  });
+}
+
+// Check and save newly unlocked achievements
+async function checkAndUnlockAchievements() {
+  if (!profile || !currentUser) return [];
+  const unlocked = profile.unlockedAchievements || {};
+  const newlyUnlocked = [];
+  for (const ach of AUTO_ACHIEVEMENTS) {
+    if (unlocked[ach.id]) continue;
+    try {
+      if (ach.check()) {
+        unlocked[ach.id] = todayStr();
+        newlyUnlocked.push(ach);
+      }
+    } catch(e) {}
+  }
+  if (newlyUnlocked.length) {
+    await setDoc(doc(db, 'users', currentUser.uid), { unlockedAchievements: unlocked }, { merge: true });
+    profile.unlockedAchievements = unlocked;
+  }
+  return newlyUnlocked;
+}
+
+let featsActiveTab = 'achievements'; // 'achievements' | 'chains' | 'goals'
+
+function renderFeats() {
+  const el = document.getElementById('feats-content');
+  if (!el) return;
+  el.innerHTML = `
+    <div style="padding-bottom:8px;">
+      <div style="font-family:var(--font-display);font-size:22px;letter-spacing:0.04em;margin:0 0 4px;">FEAT LOG</div>
+      <p style="font-size:13px;color:var(--text-dim);margin:0 0 16px;">The System records every milestone. These cannot be faked.</p>
+      <div class="feat-tabs">
+        <button class="feat-tab ${featsActiveTab==='achievements'?'active':''}" data-tab="achievements">Achievements</button>
+        <button class="feat-tab ${featsActiveTab==='chains'?'active':''}" data-tab="chains">Progressions</button>
+        <button class="feat-tab ${featsActiveTab==='goals'?'active':''}" data-tab="goals">Personal Goals</button>
+      </div>
+      <div id="feats-tab-content"></div>
+    </div>`;
+
+  el.querySelectorAll('.feat-tab').forEach(btn => btn.addEventListener('click', () => {
+    featsActiveTab = btn.dataset.tab;
+    renderFeats();
+  }));
+
+  const content = el.querySelector('#feats-tab-content');
+  if (featsActiveTab === 'achievements') renderAchievementsTab(content);
+  else if (featsActiveTab === 'chains') renderChainsTab(content);
+  else renderGoalsTab(content);
+}
+
+function renderAchievementsTab(el) {
+  const unlocked = profile.unlockedAchievements || {};
+  const categories = [
+    { id:'consistency', label:'Consistency', icon:'🔥' },
+    { id:'strength',    label:'Strength',    icon:'⚔️' },
+    { id:'volume',      label:'Volume',      icon:'⚡' },
+    { id:'rank',        label:'Rank',        icon:'🔵' },
+    { id:'endurance',   label:'Endurance',   icon:'🏃' },
+    { id:'identity',    label:'Identity',    icon:'🌑' },
+  ];
+
+  const unlockedCount = AUTO_ACHIEVEMENTS.filter(a => unlocked[a.id]).length;
+  let html = `<div style="font-family:var(--font-mono);font-size:10px;color:var(--text-faint);margin-bottom:14px;letter-spacing:0.06em;">
+    ${unlockedCount} / ${AUTO_ACHIEVEMENTS.length} FEATS UNLOCKED
+  </div>`;
+
+  categories.forEach(cat => {
+    const catAchs = AUTO_ACHIEVEMENTS.filter(a => a.category === cat.id);
+    const anyUnlocked = catAchs.some(a => unlocked[a.id]);
+    html += `<div class="feat-section-head">${cat.icon} ${cat.label}</div>`;
+    catAchs.forEach(ach => {
+      const isUnlocked = !!unlocked[ach.id];
+      const rarity = RARITY_COLORS[ach.rarity];
+      html += `<div class="feat-card ${isUnlocked?'unlocked':''} ${ach.rarity==='legendary'?'legendary':''}" style="${isUnlocked?'border-color:'+rarity.color+'44;':''}">
+        <div class="feat-icon" style="${isUnlocked?'background:'+rarity.bg+';border-color:'+rarity.color+'44;':''}">
+          <span style="${isUnlocked?'':'filter:grayscale(1);opacity:0.4;'}">${ach.icon}</span>
+        </div>
+        <div class="feat-body">
+          <div class="feat-name" style="${isUnlocked?'color:'+rarity.color+';':''}">${ach.name}</div>
+          <div class="feat-desc">${ach.desc}</div>
+          ${isUnlocked ? `<div class="feat-date">Unlocked ${unlocked[ach.id]}</div>` : ''}
+          <div style="font-size:9px;font-family:var(--font-mono);color:${rarity.color};margin-top:2px;opacity:${isUnlocked?1:0.5};">${rarity.label}</div>
+        </div>
+        <div>${isUnlocked ? `<span style="color:${rarity.color};font-size:18px;">✓</span>` : '<span class="feat-locked-icon">🔒</span>'}</div>
+      </div>`;
+    });
+  });
+
+  el.innerHTML = html;
+}
+
+function renderChainsTab(el) {
+  const chains = evaluateChains();
+  const archetypes = evaluateArchetypes();
+  const bw = latestBodyweightKg();
+
+  // group progression chains by category
+  const categories = [
+    { id:'calisthenics', label:'Calisthenics Skills', icon:'🤸' },
+    { id:'strength',     label:'Strength',            icon:'🏋️' },
+    { id:'endurance',    label:'Endurance',           icon:'🏃' },
+    { id:'agility',      label:'Agility',             icon:'⚡' },
+    { id:'flexibility',  label:'Mobility',            icon:'🌊' },
+  ];
+
+  let html = '';
+
+  // Archetype chains first — the big picture paths
+  html += `<div class="feat-section-head" style="margin-top:0;">◈ Hunter Archetypes</div>`;
+  html += `<div style="font-size:11px;color:var(--text-dim);margin-bottom:12px;line-height:1.6;">
+    Complete an archetype path to earn a permanent title on the leaderboard.
+    ${!bw ? '<br><span style="color:var(--excess);font-family:var(--font-mono);font-size:10px;">⚠ Log your bodyweight in Trends for strength milestone tracking.</span>' : ''}
+  </div>`;
+
+  archetypes.forEach(chain => {
+    const pct = Math.round((chain.completed / chain.total) * 100);
+    const isComplete = chain.completed === chain.total;
+    const isTheOne = chain.id === 'the_one_above_all';
+    html += `<div class="chain-card" style="border-color:${chain.color}${isComplete?'':'33'};${isTheOne&&isComplete?'box-shadow:0 0 30px '+chain.color+'44;':''}">
+      <div class="chain-title" style="color:${chain.color};">
+        <span style="font-size:22px;">${chain.icon}</span>
+        <div>
+          <div style="font-size:14px;font-weight:700;">${chain.name}</div>
+          <div style="font-size:10px;color:var(--text-faint);font-weight:400;margin-top:1px;">${chain.desc}</div>
+        </div>
+        <div style="margin-left:auto;text-align:right;flex-shrink:0;">
+          <div style="font-family:var(--font-mono);font-size:10px;color:${chain.color};">${chain.completed}/${chain.total}</div>
+          ${isComplete ? `<div style="font-size:9px;font-family:var(--font-mono);color:${chain.color};">${chain.title}</div>` : ''}
+        </div>
+      </div>
+      <div style="height:5px;background:rgba(93,157,255,0.08);border-radius:3px;margin-bottom:12px;overflow:hidden;">
+        <div style="height:100%;background:${chain.color};width:${pct}%;transition:width 0.6s ease;${isComplete?'box-shadow:0 0 8px '+chain.color+';':''}"></div>
+      </div>
+      <div class="chain-steps">
+        ${chain.steps.map((step, i) => {
+          const isCurrent = i === chain.currentIdx;
+          const isDone = step.done;
+          const isFuture = i > chain.currentIdx;
+          return `<div class="chain-step">
+            <div class="chain-dot ${isDone?'done':isCurrent?'current':''}" style="${isDone?'background:'+chain.color+';border-color:'+chain.color+';':isCurrent?'border-color:'+chain.color+';color:'+chain.color+';':''}">
+              ${isDone ? '✓' : isCurrent ? '→' : ''}
+            </div>
+            <div class="chain-step-name ${isDone?'done':isCurrent?'current':''}" style="${isFuture?'opacity:0.3;':''}color:${isDone?chain.color:isCurrent?chain.color:'var(--text-faint)'};">
+              ${escapeHtml(step.name)}
+            </div>
+            ${isDone ? '<span style="margin-left:auto;font-size:10px;color:var(--growing);">✓</span>' : ''}
+          </div>`;
+        }).join('')}
+      </div>
+      ${isComplete ? `<div style="margin-top:12px;text-align:center;font-family:var(--font-display);font-size:13px;color:${chain.color};letter-spacing:0.1em;text-shadow:0 0 20px ${chain.color};">
+        ${chain.title} — UNLOCKED
+      </div>` : chain.currentIdx < chain.total ? `<div style="margin-top:8px;font-size:10px;color:var(--text-faint);font-family:var(--font-mono);">
+        Next: <span style="color:${chain.color};">${escapeHtml(chain.steps[chain.currentIdx]?.name||'')}</span>
+      </div>` : ''}
+    </div>`;
+  });
+
+  // Progression chains by category
+  categories.forEach(cat => {
+    const catChains = chains.filter(c => c.category === cat.id);
+    if (!catChains.length) return;
+    html += `<div class="feat-section-head">${cat.icon} ${cat.label}</div>`;
+    catChains.forEach(chain => { html += buildChainCard(chain); });
+  });
+
+  el.innerHTML = html;
+}
+
+function buildChainCard(chain) {
+  const stepsHtml = chain.steps.map((step, i) => {
+    const isCurrent = i === chain.currentIdx;
+    const isDone = step.done;
+    const isFuture = i > chain.currentIdx;
+    return `<div class="chain-step">
+      <div class="chain-dot ${isDone?'done':isCurrent?'current':''}">
+        ${isDone ? '✓' : isCurrent ? '→' : ''}
+      </div>
+      <div style="flex:1;min-width:0;">
+        <div class="chain-step-name ${isDone?'done':isCurrent?'current':''}" style="${isFuture?'opacity:0.35;':''}">
+          ${escapeHtml(step.name)}
+        </div>
+        ${isCurrent && !isDone ? `<div style="font-size:9px;color:var(--text-faint);font-family:var(--font-mono);margin-top:1px;">
+          ${step.sessions}/${MIN_CHAIN_SESSIONS} sessions logged
+          <div class="feat-progress-wrap" style="margin-top:3px;">
+            <div class="feat-progress-bar" style="width:${Math.min(100,(step.sessions/MIN_CHAIN_SESSIONS)*100).toFixed(0)}%;background:var(--brass);"></div>
+          </div>
+        </div>` : ''}
+        ${isDone ? `<div style="font-size:9px;color:var(--growing);font-family:var(--font-mono);margin-top:1px;">✓ ${step.sessions} sessions</div>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+
+  const pct = Math.round((chain.completed / chain.total) * 100);
+  return `<div class="chain-card">
+    <div class="chain-title">
+      <span style="font-size:20px;">${chain.icon}</span>
+      <span>${chain.name}</span>
+      <span style="font-family:var(--font-mono);font-size:10px;color:var(--text-faint);margin-left:auto;">${chain.completed}/${chain.total}</span>
+    </div>
+    <div style="height:4px;background:rgba(93,157,255,0.1);border-radius:2px;margin-bottom:12px;overflow:hidden;">
+      <div style="height:100%;background:${pct===100?'#FFD700':'var(--brass)'};width:${pct}%;transition:width 0.6s ease;"></div>
+    </div>
+    <div class="chain-steps">${stepsHtml}</div>
+    ${chain.currentIdx < chain.total ? `<div style="margin-top:10px;font-size:11px;color:var(--text-faint);font-family:var(--font-mono);">
+      Next: log <span style="color:var(--brass);">${escapeHtml(chain.steps[chain.currentIdx]?.name||'')}</span> ${MIN_CHAIN_SESSIONS} times to advance
+    </div>` : `<div style="margin-top:10px;text-align:center;font-size:12px;color:#FFD700;font-family:var(--font-display);letter-spacing:0.1em;">★ PROGRESSION COMPLETE ★</div>`}
+  </div>`;
+}
+
+function renderGoalsTab(el) {
+  const goals = profile.personalGoals || [];
+  let html = `
+    <div style="font-size:12px;color:var(--text-dim);margin-bottom:14px;line-height:1.6;">
+      Personal goals track your own targets. No AP rewards — these are for you. Progress is measured automatically from your logged workouts.
+    </div>
+    <button class="goal-add-btn" id="add-goal-btn">+ Set a new personal goal</button>`;
+
+  if (!goals.length) {
+    html += `<div class="empty-state"><p style="color:var(--text-faint);">No personal goals set yet.<br>Set a target — the System will track it.</p></div>`;
+  } else {
+    goals.forEach((goal, gi) => {
+      const progress = getGoalProgress(goal);
+      const isComplete = progress.pct >= 100;
+      html += `<div class="feat-card ${isComplete?'unlocked':''}">
+        <div class="feat-icon">${goal.icon || '🎯'}</div>
+        <div class="feat-body">
+          <div class="feat-name">${escapeHtml(goal.name)}</div>
+          <div class="feat-desc">${escapeHtml(goal.desc||'')}</div>
+          <div class="feat-progress-wrap" style="margin-top:6px;">
+            <div class="feat-progress-bar" style="width:${progress.pct.toFixed(0)}%;background:${isComplete?'var(--growing)':'var(--brass)'};"></div>
+          </div>
+          <div class="feat-pct">${progress.label}</div>
+          ${isComplete ? '<div style="font-size:10px;color:var(--growing);font-family:var(--font-mono);margin-top:2px;">✓ Goal achieved</div>' : ''}
+        </div>
+        <button class="icon-btn remove-goal-btn" data-gi="${gi}" style="color:var(--text-faint);font-size:16px;">×</button>
+      </div>`;
+    });
+  }
+
+  el.innerHTML = html;
+
+  el.querySelector('#add-goal-btn')?.addEventListener('click', () => openAddGoalModal());
+  el.querySelectorAll('.remove-goal-btn').forEach(btn => btn.addEventListener('click', async () => {
+    const goals = [...(profile.personalGoals||[])];
+    goals.splice(Number(btn.dataset.gi), 1);
+    await setDoc(doc(db, 'users', currentUser.uid), { personalGoals: goals }, { merge: true });
+    profile.personalGoals = goals;
+    renderFeats();
+  }));
+}
+
+function getGoalProgress(goal) {
+  if (goal.type === 'e1rm') {
+    const pr = myPRs[goal.exercise];
+    const current = pr?.e1rm || 0;
+    const pct = goal.target > 0 ? Math.min(100, (current / goal.target) * 100) : 0;
+    return { pct, label: `${current.toFixed(1)}kg e1RM / ${goal.target}kg target` };
+  }
+  if (goal.type === 'sessions') {
+    const count = getExerciseSessionCount(goal.exercise, currentUser.uid);
+    const pct = Math.min(100, (count / goal.target) * 100);
+    return { pct, label: `${count} / ${goal.target} sessions of ${goal.exercise}` };
+  }
+  if (goal.type === 'streak') {
+    const streak = computeStreak(currentUser.uid);
+    const pct = Math.min(100, (streak / goal.target) * 100);
+    return { pct, label: `${streak} / ${goal.target} day streak` };
+  }
+  if (goal.type === 'workouts') {
+    const count = myWorkouts.length;
+    const pct = Math.min(100, (count / goal.target) * 100);
+    return { pct, label: `${count} / ${goal.target} total workouts` };
+  }
+  return { pct: 0, label: 'No progress data' };
+}
+
+function openAddGoalModal() {
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.innerHTML = `
+    <div class="modal">
+      <h3>Set a Personal Goal</h3>
+      <div class="field">
+        <label>Goal type</label>
+        <div style="display:flex;flex-direction:column;gap:6px;margin-top:4px;" id="goal-type-btns">
+          <button class="weekday-chip on" data-type="e1rm" style="text-align:left;border-radius:6px;">🏋️ Hit a target weight — e.g. 100kg bench press e1RM</button>
+          <button class="weekday-chip" data-type="sessions" style="text-align:left;border-radius:6px;">📅 Log X sessions of a specific exercise</button>
+          <button class="weekday-chip" data-type="streak" style="text-align:left;border-radius:6px;">🔥 Reach a streak milestone</button>
+          <button class="weekday-chip" data-type="workouts" style="text-align:left;border-radius:6px;">⚡ Complete X total workouts</button>
+        </div>
+      </div>
+      <div id="goal-fields" style="margin-top:12px;"></div>
+      <div style="display:flex;gap:10px;margin-top:16px;">
+        <button class="btn" id="cancel-goal" style="flex:1;">Cancel</button>
+        <button class="btn btn-primary" id="save-goal" style="flex:2;">Set Goal</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+
+  let goalType = 'e1rm';
+
+  function renderGoalFields() {
+    const fields = overlay.querySelector('#goal-fields');
+    if (goalType === 'e1rm') {
+      fields.innerHTML = `
+        <div class="field"><label>Exercise</label><input id="goal-exercise" placeholder="e.g. Bench Press" list="goal-ex-list" />
+          <datalist id="goal-ex-list">${Object.keys(EXERCISES_ALL).sort().map(n=>`<option value="${escapeHtml(n)}">`).join('')}</datalist>
+        </div>
+        <div class="field"><label>Target e1RM (kg)</label><input type="number" id="goal-target" placeholder="e.g. 100" min="1" /></div>
+        <div class="field"><label>Goal name</label><input id="goal-name" placeholder="e.g. 100kg Bench" /></div>`;
+    } else if (goalType === 'sessions') {
+      fields.innerHTML = `
+        <div class="field"><label>Exercise</label><input id="goal-exercise" placeholder="e.g. Pull Up" list="goal-ex-list2" />
+          <datalist id="goal-ex-list2">${Object.keys(EXERCISES_ALL).sort().map(n=>`<option value="${escapeHtml(n)}">`).join('')}</datalist>
+        </div>
+        <div class="field"><label>Number of sessions</label><input type="number" id="goal-target" placeholder="e.g. 50" min="1" /></div>
+        <div class="field"><label>Goal name</label><input id="goal-name" placeholder="e.g. 50 Pull Up sessions" /></div>`;
+    } else if (goalType === 'streak') {
+      fields.innerHTML = `
+        <div class="field"><label>Target streak (days)</label><input type="number" id="goal-target" placeholder="e.g. 30" min="1" /></div>
+        <div class="field"><label>Goal name</label><input id="goal-name" placeholder="e.g. 30-day streak" /></div>`;
+    } else {
+      fields.innerHTML = `
+        <div class="field"><label>Target workouts</label><input type="number" id="goal-target" placeholder="e.g. 100" min="1" /></div>
+        <div class="field"><label>Goal name</label><input id="goal-name" placeholder="e.g. 100 workouts" /></div>`;
+    }
+  }
+
+  overlay.querySelectorAll('[data-type]').forEach(btn => btn.addEventListener('click', () => {
+    overlay.querySelectorAll('[data-type]').forEach(b => b.classList.remove('on'));
+    btn.classList.add('on');
+    goalType = btn.dataset.type;
+    renderGoalFields();
+  }));
+
+  renderGoalFields();
+  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+  overlay.querySelector('#cancel-goal').addEventListener('click', () => overlay.remove());
+  overlay.querySelector('#save-goal').addEventListener('click', async () => {
+    const name = overlay.querySelector('#goal-name')?.value.trim();
+    const target = Number(overlay.querySelector('#goal-target')?.value);
+    const exercise = overlay.querySelector('#goal-exercise')?.value.trim();
+    if (!name || !target || target < 1) { showToast('Fill in all fields.','error'); return; }
+    if ((goalType==='e1rm'||goalType==='sessions') && !exercise) { showToast('Pick an exercise.','error'); return; }
+    const GOAL_ICONS = { e1rm:'🏋️', sessions:'📅', streak:'🔥', workouts:'⚡' };
+    const goal = { type: goalType, name, target, icon: GOAL_ICONS[goalType], createdAt: todayStr() };
+    if (exercise) goal.exercise = exercise;
+    const goals = [...(profile.personalGoals||[]), goal];
+    await setDoc(doc(db, 'users', currentUser.uid), { personalGoals: goals }, { merge: true });
+    profile.personalGoals = goals;
+    overlay.remove();
+    renderFeats();
+  });
+}
 document.getElementById('cal-prev')?.addEventListener('click', () => { calCursor.setMonth(calCursor.getMonth()-1); renderCalendar(); });
 document.getElementById('cal-next')?.addEventListener('click', () => { calCursor.setMonth(calCursor.getMonth()+1); renderCalendar(); });
 
