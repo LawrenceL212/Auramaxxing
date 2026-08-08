@@ -5111,29 +5111,38 @@ async function runSystemChecks() {
   await checkStatDecay();
   await evaluateAndSaveClass();
   await checkAndUnlockAchievements();
-  // ── ONE-TIME streak restore for LuChing and Lucas ──
+  // ── ONE-TIME: Log missed Friday 7th Aug workout for LuChing and Lucas ──
   if (currentUser?.uid === 'eUtGPwQBcCSO0x3xS3ZGYFGXNIT2') {
-    const restoreTargets = [
-      { uid: 'd1W5vTx5aSTIwkR4CIwnO2xW7vf1', name: 'LuChing' },
-      { uid: 'oFFi2hATYARhqcSZQlHwlsYBOge2', name: "I'm just a girl" },
-      { uid: 'rzcznIkNRrSKVXl74LsTaRSdHOk2', name: 'Lucas' },
-    ];
-    const yesterday = new Date(); yesterday.setDate(yesterday.getDate()-1);
-    const yesterdayStr = yesterday.toISOString().slice(0,10);
-    for (const target of restoreTargets) {
-      try {
-        const snap = await getDoc(doc(db, 'users', target.uid));
-        if (snap.exists()) {
-          const data = snap.data();
-          // only restore if they don't already have a recent workout logged
-          if (!data.lastWorkoutDate || data.lastWorkoutDate < yesterdayStr) {
-            await setDoc(doc(db, 'users', target.uid), {
-              lastWorkoutDate: yesterdayStr,
-            }, { merge: true });
-            console.log(`Restored streak seed for ${target.name}`);
+    const missedDate = '2026-08-07';
+    const missedKey = 'aura_missed_workout_injected_0807';
+    if (!localStorage.getItem(missedKey)) {
+      const missedExercises = [
+        { name: 'Tuck Planche', sets: [{reps:12,weight:0,rir:7},{reps:12,weight:0,rir:7},{reps:10,weight:0,rir:8},{reps:10,weight:0,rir:8}] },
+        { name: 'Planche Lean', sets: [{reps:10,weight:0,rir:7},{reps:10,weight:0,rir:7},{reps:8,weight:0,rir:8},{reps:8,weight:0,rir:8}] },
+        { name: 'Push Up', sets: [{reps:8,weight:0,rir:2},{reps:8,weight:0,rir:2},{reps:7,weight:0,rir:3},{reps:6,weight:0,rir:3}] },
+        { name: 'Ring Dips', sets: [{reps:6,weight:0,rir:2},{reps:6,weight:0,rir:2},{reps:5,weight:0,rir:3},{reps:5,weight:0,rir:3}] },
+        { name: 'Pike Push Up', sets: [{reps:7,weight:0,rir:2},{reps:6,weight:0,rir:2},{reps:6,weight:0,rir:3},{reps:5,weight:0,rir:3}] },
+        { name: 'Overhead Tricep Extension', sets: [{reps:12,weight:0,rir:2},{reps:12,weight:0,rir:2},{reps:10,weight:0,rir:3}] },
+        { name: 'German Hang', sets: [{reps:12,weight:0,rir:7},{reps:12,weight:0,rir:7}] },
+      ];
+      const targets = [
+        { uid: 'd1W5vTx5aSTIwkR4CIwnO2xW7vf1', name: 'LuChing' },
+        { uid: 'rzcznIkNRrSKVXl74LsTaRSdHOk2', name: 'Lucas' },
+      ];
+      for (const t of targets) {
+        try {
+          const existing = allWorkouts.find(w => w.uid === t.uid && w.date === missedDate);
+          if (!existing) {
+            await setDoc(doc(db, 'workouts', `${t.uid}_${missedDate}_missed`), {
+              uid: t.uid, date: missedDate, time: '6:00 PM',
+              exercises: missedExercises, programDayIndex: 0,
+              createdAt: new Date().toISOString(),
+            });
+            await setDoc(doc(db, 'users', t.uid), { lastWorkoutDate: missedDate }, { merge: true });
           }
-        }
-      } catch(e) { console.warn('streak restore failed for', target.name, e); }
+        } catch(e) {}
+      }
+      localStorage.setItem(missedKey, '1');
     }
   }
   // silently award AP if they already have a workout today but haven't been awarded yet
@@ -9029,9 +9038,17 @@ function openWorkoutDetail(workoutId) {
       await updateDoc(doc(db, 'workouts', workoutId), { exercises: cleanedExercises });
       w.exercises = cleanedExercises;
       await loadAllData();
-      showToast('Workout updated.', 'success');
+      // reprocess PRs with updated data
+      const newPRs = await checkAndAwardPRs(cleanedExercises, w.date);
+      // reprocess stat XP
+      await applyWorkoutStatXP(cleanedExercises);
+      // reprocess achievements
+      await checkAndUnlockAchievements();
+      const prMsg = newPRs.length ? ` · ${newPRs.length} new PR${newPRs.length>1?'s':''}` : '';
+      showToast(`Workout updated${prMsg}`, 'success');
       overlay.remove();
       renderHistoryList();
+      renderCharCard();
     } catch(err) {
       showToast('Could not save: ' + err.message, 'error');
       btn.disabled = false; btn.textContent = 'Save changes';
