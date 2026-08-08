@@ -6643,14 +6643,22 @@ function openRawWorkoutPanel() {
     // never had a bwPercent defined) are left untouched — those need a real number typed in manually.
     function wireRawButtons() {
       overlay.querySelectorAll('.raw-autofill-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
+        btn.addEventListener('click', async () => {
           const wid = btn.dataset.wid;
           const auid = btn.dataset.uid;
           const box = overlay.querySelector(`.raw-json-box[data-wid="${wid}"]`);
+          const origLabel = btn.textContent;
+          btn.disabled = true; btn.textContent = 'Fetching bodyweight…';
           try {
             const parsed = JSON.parse(box.value);
-            const targetUser = allUsers.find(u => u.uid === auid);
-            const bw = targetUser?.bodyWeight || 70;
+            // Bodyweight is tracked as a time-series in the `bodyweight` collection (same as
+            // latestBodyweightKg() uses for the current user) — NOT the static profile.bodyWeight
+            // field, which is almost never populated. Query the target's actual latest weigh-in.
+            const wtSnap = await getDocs(query(collection(db, 'bodyweight'), where('uid','==', auid)));
+            const weighIns = wtSnap.docs.map(d => d.data()).sort((a,b) => a.date.localeCompare(b.date));
+            const latest = weighIns.length ? Number(weighIns[weighIns.length - 1].weight) : 0;
+            const bw = latest || allUsers.find(u => u.uid === auid)?.bodyWeight || 70;
+            const usedFallback = !latest;
             let skipped = [];
             (parsed.exercises || []).forEach(ex => {
               const exDef = EXERCISES_ALL[ex.name] || {};
@@ -6659,9 +6667,12 @@ function openRawWorkoutPanel() {
               (ex.sets || []).forEach(s => { s.weight = weight; });
             });
             box.value = JSON.stringify(parsed, null, 2);
-            showToast(skipped.length ? `Filled from ${bw}kg BW. No bwPercent for: ${skipped.join(', ')} — enter those manually.` : `Filled from ${bw}kg bodyweight.`, 'success');
+            const bwNote = usedFallback ? `${bw}kg (no weigh-in on file — used fallback)` : `${bw}kg (latest logged weigh-in)`;
+            showToast(skipped.length ? `Filled from ${bwNote}. No bwPercent for: ${skipped.join(', ')} — enter those manually.` : `Filled from ${bwNote}.`, 'success');
           } catch(e) {
-            showToast('Invalid JSON: ' + e.message, 'error');
+            showToast('Error: ' + e.message, 'error');
+          } finally {
+            btn.disabled = false; btn.textContent = origLabel;
           }
         });
       });
