@@ -10072,15 +10072,22 @@ function openWorkoutDetail(workoutId) {
   }
 
   function buildEditView() {
-    return (w.exercises||[]).map((ex, ei) => {
+    const exHtml = (w.exercises||[]).map((ex, ei) => {
       const exDef = EXERCISES_ALL[ex.name] || {};
       const timed = !!exDef.timed;
       const repsLabel = timed ? (exDef.timedUnit==='mins'?'Mins':'Secs') : 'Reps';
+      const isFirst = ei === 0;
+      const isLast = ei === (w.exercises.length - 1);
       return `<div class="detail-exercise" data-ei="${ei}">
-        <p class="detail-ex-name" style="display:flex;align-items:center;justify-content:space-between;">
-          <span>${escapeHtml(ex.name)}</span>
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;margin-bottom:4px;">
+          <button type="button" class="swap-ex-btn" data-ei="${ei}" style="flex:1;text-align:left;background:none;border:none;color:var(--text);font-weight:700;font-size:13px;padding:2px 0;cursor:pointer;text-decoration:underline dotted;">${escapeHtml(ex.name)} ⇄</button>
+          <button type="button" class="move-ex-btn" data-ei="${ei}" data-dir="up" ${isFirst?'disabled':''} style="background:none;border:none;color:${isFirst?'var(--text-faint)':'var(--text)'};font-size:14px;cursor:${isFirst?'default':'pointer'};padding:2px 4px;">↑</button>
+          <button type="button" class="move-ex-btn" data-ei="${ei}" data-dir="down" ${isLast?'disabled':''} style="background:none;border:none;color:${isLast?'var(--text-faint)':'var(--text)'};font-size:14px;cursor:${isLast?'default':'pointer'};padding:2px 4px;">↓</button>
+          <button type="button" class="delete-ex-btn" data-ei="${ei}" style="background:none;border:none;color:var(--excess);font-size:15px;cursor:pointer;padding:2px 4px;">🗑</button>
+        </div>
+        <div style="display:flex;justify-content:flex-end;margin-bottom:4px;">
           <button class="btn btn-sm add-set-edit-btn" data-ei="${ei}" style="font-size:11px;padding:4px 8px;">+ Set</button>
-        </p>
+        </div>
         <div class="detail-sets-head"><span>#</span><span>${repsLabel}</span><span>kg</span><span>RIR/RPE</span><span></span></div>
         ${(ex.sets||[]).map((s,si) => {
           const rirOptions = timed
@@ -10099,6 +10106,7 @@ function openWorkoutDetail(workoutId) {
         }).join('')}
       </div>`;
     }).join('');
+    return exHtml + `<button type="button" class="btn" id="add-exercise-edit-btn" style="width:100%;margin-top:4px;">+ Add exercise</button>`;
   }
 
   overlay.innerHTML = `
@@ -10194,6 +10202,42 @@ function openWorkoutDetail(workoutId) {
       overlay.querySelector('#detail-content').innerHTML = buildEditView();
       wireEditHandlers();
     }));
+    // swap which exercise this block represents — reuses the same searchable picker the
+    // logger uses, so renamed exercises still resolve correctly to timed/rep-based, bwPercent, etc.
+    overlay.querySelectorAll('.swap-ex-btn').forEach(btn => btn.addEventListener('click', () => {
+      const ei = Number(btn.dataset.ei);
+      openExercisePicker((name) => {
+        w.exercises[ei].name = name;
+        overlay.querySelector('#detail-content').innerHTML = buildEditView();
+        wireEditHandlers();
+      });
+    }));
+    // reorder exercise blocks
+    overlay.querySelectorAll('.move-ex-btn').forEach(btn => btn.addEventListener('click', () => {
+      const ei = Number(btn.dataset.ei);
+      const dir = btn.dataset.dir;
+      const target = dir === 'up' ? ei - 1 : ei + 1;
+      if (target < 0 || target >= w.exercises.length) return;
+      [w.exercises[ei], w.exercises[target]] = [w.exercises[target], w.exercises[ei]];
+      overlay.querySelector('#detail-content').innerHTML = buildEditView();
+      wireEditHandlers();
+    }));
+    // delete an entire exercise block (all its sets)
+    overlay.querySelectorAll('.delete-ex-btn').forEach(btn => btn.addEventListener('click', () => {
+      const ei = Number(btn.dataset.ei);
+      if (!window.confirm(`Remove ${w.exercises[ei].name} from this workout?`)) return;
+      w.exercises.splice(ei, 1);
+      overlay.querySelector('#detail-content').innerHTML = buildEditView();
+      wireEditHandlers();
+    }));
+    // add a brand-new exercise block with one starter set
+    overlay.querySelector('#add-exercise-edit-btn')?.addEventListener('click', () => {
+      openExercisePicker((name) => {
+        w.exercises.push({ name, sets: [{ reps: 0, weight: 0, rir: null }] });
+        overlay.querySelector('#detail-content').innerHTML = buildEditView();
+        wireEditHandlers();
+      });
+    });
   }
 
   overlay.querySelector('#detail-save-edit').addEventListener('click', async () => {
