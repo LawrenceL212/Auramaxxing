@@ -2596,6 +2596,20 @@ async function loadAllData() {
 
   const progSnap = await getDoc(doc(db, 'programs', currentUser.uid));
   myProgram = migrateProgram(progSnap.exists() ? progSnap.data() : null);
+  // Sync the quest carousel to the actual current day on every fresh data load (app open,
+  // login, refresh). Without this, questCarouselIndex just keeps its stale in-memory default
+  // (0 / Day 1) on cold load because renderQuestFeed() below only auto-jumps for fixed-mode
+  // schedules — rotation mode was never re-synced except when manually switching to the Quest
+  // tab, so a freshly opened app kept showing the old day even after currentDayIndex advanced.
+  if (myProgram && myProgram.days && myProgram.days.length) {
+    if (myProgram.scheduleMode === 'fixed') {
+      const today = todayWeekday();
+      const todayIdx = myProgram.days.findIndex(d => (d.assignedDays||[]).includes(today));
+      questCarouselIndex = todayIdx >= 0 ? todayIdx : 0;
+    } else {
+      questCarouselIndex = (myProgram.currentDayIndex || 0) % myProgram.days.length;
+    }
+  }
 
   const wtSnap = await getDocs(query(collection(db, 'bodyweight'), where('uid','==', currentUser.uid)));
   myWeights = wtSnap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a,b) => a.date.localeCompare(b.date));
