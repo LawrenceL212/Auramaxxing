@@ -345,6 +345,8 @@ import { auth, db, configOk } from "./firebase.js";
 import { BASE_EXERCISES } from "./exercises.js";
 import { HUNTER_CLASSES } from "./hunter-classes.js";
 import { PROGRESSION_CHAINS } from "./progression-chains.js";
+import { getArchetypeChains } from "./archetype-chains.js";
+import { getAutoAchievements } from "./auto-achievements.js";
 import {
   createUserWithEmailAndPassword, signInWithEmailAndPassword,
   onAuthStateChanged, signOut, updateProfile
@@ -5314,17 +5316,19 @@ async function openAdminTester() {
         return `${count} classes defined`;
       }],
       ['Archetype chains defined', () => {
-        if (typeof ARCHETYPE_CHAINS === 'undefined') throw new Error('ARCHETYPE_CHAINS not defined');
-        if (ARCHETYPE_CHAINS.length < 9) throw new Error(`Only ${ARCHETYPE_CHAINS.length} chains`);
-        return `${ARCHETYPE_CHAINS.length} archetype chains`;
+        if (typeof getArchetypeChains === 'undefined') throw new Error('getArchetypeChains not defined');
+        const chains = getArchetypeChains({ profile, myPRs, currentUser, myWorkouts, getExerciseSessionCount });
+        if (chains.length < 9) throw new Error(`Only ${chains.length} chains`);
+        return `${chains.length} archetype chains`;
       }],
       ['Progression chains defined', () => {
         if (typeof PROGRESSION_CHAINS === 'undefined') throw new Error('PROGRESSION_CHAINS not defined');
         return `${PROGRESSION_CHAINS.length} progression chains`;
       }],
       ['Auto achievements defined', () => {
-        if (typeof AUTO_ACHIEVEMENTS === 'undefined') throw new Error('AUTO_ACHIEVEMENTS not defined');
-        return `${AUTO_ACHIEVEMENTS.length} achievements`;
+        if (typeof getAutoAchievements === 'undefined') throw new Error('getAutoAchievements not defined');
+        const achs = getAutoAchievements({ profile, myPRs, currentUser, myWorkouts, computeStreak });
+        return `${achs.length} achievements`;
       }],
       ['Exercise library loaded', () => {
         if (typeof EXERCISES_ALL === 'undefined') throw new Error('EXERCISES_ALL not defined');
@@ -7451,311 +7455,9 @@ const MIN_CHAIN_SESSIONS = 3;
 
 // ── Archetype Chains — multi-discipline achievement paths ──
 // Steps here use check() functions instead of session counts
-const ARCHETYPE_CHAINS = [
-  {
-    id:'iron_sovereign',
-    name:'Iron Sovereign',
-    icon:'⚔️',
-    color:'#D4A017',
-    desc:'Master the iron. Pure strength dominance.',
-    steps:[
-      { name:'Bench Press 1× bodyweight',       check:(bw)=>{ const m=profile.bodyType==='female'?0.7:1.0;   return myPRs['Bench Press']?.e1rm >= bw*m; },    label:(bw)=>{ const m=profile.bodyType==='female'?0.7:1.0;   return `Bench Press ${m}× bodyweight (${Math.round(bw*m)}kg)`; } },
-      { name:'Squat 1.5× bodyweight',           check:(bw)=>{ const m=profile.bodyType==='female'?1.1:1.5;   return myPRs['Squat']?.e1rm >= bw*m; },          label:(bw)=>{ const m=profile.bodyType==='female'?1.1:1.5;   return `Squat ${m}× bodyweight (${Math.round(bw*m)}kg)`; } },
-      { name:'Deadlift 2× bodyweight',          check:(bw)=>{ const m=profile.bodyType==='female'?1.5:2.0;   return myPRs['Deadlift']?.e1rm >= bw*m; },        label:(bw)=>{ const m=profile.bodyType==='female'?1.5:2.0;   return `Deadlift ${m}× bodyweight (${Math.round(bw*m)}kg)`; } },
-      { name:'Overhead Press 0.75× bodyweight', check:(bw)=>{ const m=profile.bodyType==='female'?0.5:0.75;  return myPRs['Overhead Press']?.e1rm >= bw*m; },  label:(bw)=>{ const m=profile.bodyType==='female'?0.5:0.75;  return `OHP ${m}× bodyweight (${Math.round(bw*m)}kg)`; } },
-      { name:'Bench Press 1.5× bodyweight',     check:(bw)=>{ const m=profile.bodyType==='female'?1.0:1.5;   return myPRs['Bench Press']?.e1rm >= bw*m; },    label:(bw)=>{ const m=profile.bodyType==='female'?1.0:1.5;   return `Bench Press ${m}× bodyweight (${Math.round(bw*m)}kg)`; } },
-      { name:'Squat 2× bodyweight',             check:(bw)=>{ const m=profile.bodyType==='female'?1.5:2.0;   return myPRs['Squat']?.e1rm >= bw*m; },          label:(bw)=>{ const m=profile.bodyType==='female'?1.5:2.0;   return `Squat ${m}× bodyweight (${Math.round(bw*m)}kg)`; } },
-      { name:'Deadlift 2.5× bodyweight',        check:(bw)=>{ const m=profile.bodyType==='female'?1.85:2.5;  return myPRs['Deadlift']?.e1rm >= bw*m; },        label:(bw)=>{ const m=profile.bodyType==='female'?1.85:2.5;  return `Deadlift ${m}× bodyweight (${Math.round(bw*m)}kg)`; } },
-    ],
-    title:'[Iron Sovereign]',
-  },
-  {
-    id:'shadow_athlete',
-    name:'Shadow Athlete',
-    icon:'🐉',
-    color:'#9B59B6',
-    desc:'Master your own body. The iron needs no bar.',
-    steps:[
-      { name:'Muscle Up (5 sessions)',                 check:()=>getExerciseSessionCount('Muscle Up', currentUser.uid)>=5 },
-      { name:'Tuck Planche (3 sessions)',              check:()=>getExerciseSessionCount('Tuck Planche', currentUser.uid)>=3 },
-      { name:'Tuck Front Lever (3 sessions)',          check:()=>getExerciseSessionCount('Tuck Front Lever', currentUser.uid)>=3 },
-      { name:'Advanced Tuck Planche (3 sessions)',     check:()=>getExerciseSessionCount('Advanced Tuck Planche', currentUser.uid)>=3 },
-      { name:'Straddle Front Lever (3 sessions)',      check:()=>getExerciseSessionCount('Straddle Front Lever', currentUser.uid)>=3 },
-      { name:'Straddle Planche (3 sessions)',          check:()=>getExerciseSessionCount('Straddle Planche', currentUser.uid)>=3 },
-      { name:'Full Planche (3 sessions)',              check:()=>getExerciseSessionCount('Full Planche', currentUser.uid)>=3 },
-      { name:'Front Lever (3 sessions)',               check:()=>getExerciseSessionCount('Front Lever', currentUser.uid)>=3 },
-    ],
-    title:'[Shadow Athlete]',
-  },
-  {
-    id:'endurance_wraith',
-    name:'Endurance Wraith',
-    icon:'🌪️',
-    color:'#1ABC9C',
-    desc:'Distance is not your enemy. It never was.',
-    steps:[
-      { name:'Log first run',            check:()=>myWorkouts.some(w=>w.isRun) },
-      { name:'Run 5km',                  check:()=>myWorkouts.some(w=>w.runSummary?.distKm>=5) },
-      { name:'Run 10km',                 check:()=>myWorkouts.some(w=>w.runSummary?.distKm>=10) },
-      { name:'Sub-30 min 5km',           check:()=>{ const t=profile.bodyType==='female'?34:30; return myWorkouts.some(w=>{ const r=w.runSummary; return r&&r.distKm>=4.9&&r.durationMins<=t; }); }, label:()=>`Sub-${profile.bodyType==='female'?34:30} min 5km` },
-      { name:'Run half marathon (21km)', check:()=>myWorkouts.some(w=>w.runSummary?.distKm>=21) },
-      { name:'Sub-60 min 10km',          check:()=>{ const t=profile.bodyType==='female'?68:60; return myWorkouts.some(w=>{ const r=w.runSummary; return r&&r.distKm>=9.9&&r.durationMins<=t; }); }, label:()=>`Sub-${profile.bodyType==='female'?68:60} min 10km` },
-      { name:'Sub-2hr half marathon',    check:()=>{ const t=profile.bodyType==='female'?135:120; return myWorkouts.some(w=>{ const r=w.runSummary; return r&&r.distKm>=21&&r.durationMins<=t; }); }, label:()=>`Sub-${profile.bodyType==='female'?'2hr 15min':'2hr'} half marathon` },
-      { name:'Run full marathon (42km)', check:()=>myWorkouts.some(w=>w.runSummary?.distKm>=42) },
-    ],
-    title:'[Endurance Wraith]',
-  },
-  {
-    id:'assassin',
-    name:'Assassin',
-    icon:'⚡',
-    color:'#F0D000',
-    desc:'Speed is the only truth. Explosive, reactive, lethal.',
-    steps:[
-      { name:'Box Jump (5 sessions)',          check:()=>getExerciseSessionCount('Box Jump', currentUser.uid)>=5 },
-      { name:'Jump Squat (5 sessions)',        check:()=>getExerciseSessionCount('Jump Squat', currentUser.uid)>=5 },
-      { name:'Hill Sprints (5 sessions)',      check:()=>getExerciseSessionCount('Hill Sprints', currentUser.uid)>=5 },
-      { name:'Interval Running (5 sessions)', check:()=>getExerciseSessionCount('Interval Running', currentUser.uid)>=5 },
-      { name:'Tempo Run (5 sessions)',         check:()=>getExerciseSessionCount('Tempo Run', currentUser.uid)>=5 },
-      { name:'Elite 5km time',                check:()=>{ const t=profile.bodyType==='female'?28:25; return myWorkouts.some(w=>{ const r=w.runSummary; return r&&r.distKm>=4.9&&r.durationMins<=t; }); }, label:()=>`Sub-${profile.bodyType==='female'?28:25} min 5km` },
-    ],
-    title:'[Assassin]',
-  },
-  {
-    id:'hybrid_sovereign',
-    name:'Hybrid Sovereign',
-    icon:'⚖️',
-    color:'#3DA5FF',
-    desc:'Iron and bodyweight. Both bend to you.',
-    steps:[
-      { name:'Deadlift 1.5× bodyweight',     check:(bw)=>{ const m=profile.bodyType==='female'?1.1:1.5;  return myPRs['Deadlift']?.e1rm >= bw*m; },    label:(bw)=>{ const m=profile.bodyType==='female'?1.1:1.5;  return `Deadlift ${m}× bodyweight (${Math.round(bw*m)}kg)`; } },
-      { name:'Pull Up (10 sessions)',         check:()=>getExerciseSessionCount('Pull Up', currentUser.uid)>=10 },
-      { name:'Bench Press 1.25× bodyweight', check:(bw)=>{ const m=profile.bodyType==='female'?0.85:1.25; return myPRs['Bench Press']?.e1rm >= bw*m; }, label:(bw)=>{ const m=profile.bodyType==='female'?0.85:1.25; return `Bench Press ${m}× bodyweight (${Math.round(bw*m)}kg)`; } },
-      { name:'Muscle Up (5 sessions)',        check:()=>getExerciseSessionCount('Muscle Up', currentUser.uid)>=5 },
-      { name:'Squat 1.5× bodyweight',        check:(bw)=>{ const m=profile.bodyType==='female'?1.1:1.5;  return myPRs['Squat']?.e1rm >= bw*m; },       label:(bw)=>{ const m=profile.bodyType==='female'?1.1:1.5;  return `Squat ${m}× bodyweight (${Math.round(bw*m)}kg)`; } },
-      { name:'Tuck Planche (3 sessions)',     check:()=>getExerciseSessionCount('Tuck Planche', currentUser.uid)>=3 },
-      { name:'Deadlift 2× bodyweight',       check:(bw)=>{ const m=profile.bodyType==='female'?1.5:2.0;  return myPRs['Deadlift']?.e1rm >= bw*m; },    label:(bw)=>{ const m=profile.bodyType==='female'?1.5:2.0;  return `Deadlift ${m}× bodyweight (${Math.round(bw*m)}kg)`; } },
-      { name:'Front Lever (3 sessions)',      check:()=>getExerciseSessionCount('Front Lever', currentUser.uid)>=3 },
-    ],
-    title:'[Hybrid Sovereign]',
-  },
-  {
-    id:'ranger',
-    name:'Ranger',
-    icon:'🏹',
-    color:'#2ECC71',
-    desc:'Road and iron. Neither owns you. Both serve you.',
-    steps:[
-      { name:'Deadlift 1× bodyweight',       check:(bw)=>{ const m=profile.bodyType==='female'?0.75:1.0; return myPRs['Deadlift']?.e1rm >= bw*m; },   label:(bw)=>{ const m=profile.bodyType==='female'?0.75:1.0; return `Deadlift ${m}× bodyweight (${Math.round(bw*m)}kg)`; } },
-      { name:'Run 5km',                      check:()=>myWorkouts.some(w=>w.runSummary?.distKm>=5) },
-      { name:'Squat 1× bodyweight',          check:(bw)=>{ const m=profile.bodyType==='female'?0.75:1.0; return myPRs['Squat']?.e1rm >= bw*m; },      label:(bw)=>{ const m=profile.bodyType==='female'?0.75:1.0; return `Squat ${m}× bodyweight (${Math.round(bw*m)}kg)`; } },
-      { name:'Sub-30 min 5km',               check:()=>{ const t=profile.bodyType==='female'?34:30; return myWorkouts.some(w=>{ const r=w.runSummary; return r&&r.distKm>=4.9&&r.durationMins<=t; }); }, label:()=>`Sub-${profile.bodyType==='female'?34:30} min 5km` },
-      { name:'Bench Press 1× bodyweight',    check:(bw)=>{ const m=profile.bodyType==='female'?0.7:1.0;  return myPRs['Bench Press']?.e1rm >= bw*m; }, label:(bw)=>{ const m=profile.bodyType==='female'?0.7:1.0;  return `Bench Press ${m}× bodyweight (${Math.round(bw*m)}kg)`; } },
-      { name:'Run 10km',                     check:()=>myWorkouts.some(w=>w.runSummary?.distKm>=10) },
-      { name:'Deadlift 1.5× bodyweight',     check:(bw)=>{ const m=profile.bodyType==='female'?1.1:1.5;  return myPRs['Deadlift']?.e1rm >= bw*m; },   label:(bw)=>{ const m=profile.bodyType==='female'?1.1:1.5;  return `Deadlift ${m}× bodyweight (${Math.round(bw*m)}kg)`; } },
-      { name:'Sub-60 min 10km',              check:()=>{ const t=profile.bodyType==='female'?68:60; return myWorkouts.some(w=>{ const r=w.runSummary; return r&&r.distKm>=9.9&&r.durationMins<=t; }); }, label:()=>`Sub-${profile.bodyType==='female'?68:60} min 10km` },
-    ],
-    title:'[Ranger]',
-  },
-  {
-    id:'warlord',
-    name:'Warlord',
-    icon:'🏛️',
-    color:'#D4A017',
-    desc:'Volume is the language of dominance. High sets, relentless reps, maximal hypertrophy.',
-    steps:[
-      { name:'Log 50 total workouts',                    check:()=>myWorkouts.length>=50 },
-      { name:'Bench Press — Novice tier PR',             check:()=>['Novice','Intermediate','Advanced','Elite'].includes(myPRs['Bench Press']?.tier) },
-      { name:'Squat — Novice tier PR',                   check:()=>['Novice','Intermediate','Advanced','Elite'].includes(myPRs['Squat']?.tier) },
-      { name:'Log 100 total workouts',                   check:()=>myWorkouts.length>=100 },
-      { name:'Bench Press — Intermediate tier PR',       check:()=>['Intermediate','Advanced','Elite'].includes(myPRs['Bench Press']?.tier) },
-      { name:'Squat — Intermediate tier PR',             check:()=>['Intermediate','Advanced','Elite'].includes(myPRs['Squat']?.tier) },
-      { name:'Deadlift — Intermediate tier PR',          check:()=>['Intermediate','Advanced','Elite'].includes(myPRs['Deadlift']?.tier) },
-      { name:'Log 200 total workouts',                   check:()=>myWorkouts.length>=200 },
-      { name:'Bench Press — Advanced tier PR',           check:()=>['Advanced','Elite'].includes(myPRs['Bench Press']?.tier) },
-      { name:'Deadlift — Advanced tier PR',              check:()=>['Advanced','Elite'].includes(myPRs['Deadlift']?.tier) },
-    ],
-    title:'[Warlord]',
-  },
-  {
-    id:'monk',
-    name:'Monk',
-    icon:'🧘',
-    color:'#A8D8EA',
-    desc:'Stillness is its own kind of strength. Control, precision, mastery of movement.',
-    steps:[
-      { name:'Dead Hang (5 sessions)',                   check:()=>getExerciseSessionCount('Dead Hang', currentUser.uid)>=5 },
-      { name:'L-Sit (5 sessions)',                       check:()=>getExerciseSessionCount('L-Sit', currentUser.uid)>=5 },
-      { name:'Wall Handstand Hold (5 sessions)',         check:()=>getExerciseSessionCount('Wall Handstand Hold', currentUser.uid)>=5 },
-      { name:'Frog Stand (5 sessions)',                  check:()=>getExerciseSessionCount('Frog Stand', currentUser.uid)>=5 },
-      { name:'Plank (20 sessions)',                      check:()=>getExerciseSessionCount('Plank', currentUser.uid)>=20 },
-      { name:'Freestanding Handstand (5 sessions)',      check:()=>getExerciseSessionCount('Freestanding Handstand Hold', currentUser.uid)>=5 },
-      { name:'Tuck Planche (5 sessions)',                check:()=>getExerciseSessionCount('Tuck Planche', currentUser.uid)>=5 },
-      { name:'Tuck Front Lever (5 sessions)',            check:()=>getExerciseSessionCount('Tuck Front Lever', currentUser.uid)>=5 },
-      { name:'Handstand Push Up (5 sessions)',           check:()=>getExerciseSessionCount('Handstand Push Up', currentUser.uid)>=5 },
-      { name:'30-day streak',                            check:()=>computeStreak(currentUser.uid)>=30 },
-    ],
-    title:'[Monk]',
-  },
-  {
-    id:'striker',
-    name:'Striker',
-    icon:'🥊',
-    color:'#E74C3C',
-    desc:'The ring forged you. Combat conditioning defines you.',
-    steps:[
-      { name:'Boxing — Bag Work (10 sessions)',   check:()=>getExerciseSessionCount('Boxing — Bag Work', currentUser.uid)>=10 },
-      { name:'Boxing — Shadow Boxing (10 sessions)', check:()=>getExerciseSessionCount('Boxing — Shadow Boxing', currentUser.uid)>=10 },
-      { name:'Boxing — Pad Work (10 sessions)',   check:()=>getExerciseSessionCount('Boxing — Pad Work', currentUser.uid)>=10 },
-      { name:'Boxing — Sparring (5 sessions)',    check:()=>getExerciseSessionCount('Boxing — Sparring', currentUser.uid)>=5 },
-      { name:'Hill Sprints (10 sessions)',        check:()=>getExerciseSessionCount('Hill Sprints', currentUser.uid)>=10 },
-      { name:'50 total boxing sessions',          check:()=>['Boxing — Bag Work','Boxing — Sparring','Boxing — Pad Work','Boxing — Shadow Boxing'].reduce((t,n)=>t+getExerciseSessionCount(n,currentUser.uid),0)>=50 },
-    ],
-    title:'[Striker]',
-  },
-  {
-    id:'aqua_hunter',
-    name:'Aqua Hunter',
-    icon:'🌊',
-    color:'#2980B9',
-    desc:'The water is your domain.',
-    steps:[
-      { name:'Freestyle Swimming (10 sessions)',    check:()=>getExerciseSessionCount('Freestyle Swimming', currentUser.uid)>=10 },
-      { name:'Breaststroke Swimming (5 sessions)',  check:()=>getExerciseSessionCount('Breaststroke Swimming', currentUser.uid)>=5 },
-      { name:'Backstroke Swimming (5 sessions)',    check:()=>getExerciseSessionCount('Backstroke Swimming', currentUser.uid)>=5 },
-      { name:'Butterfly Swimming (5 sessions)',     check:()=>getExerciseSessionCount('Butterfly Swimming', currentUser.uid)>=5 },
-      { name:'Open Water Swimming (3 sessions)',    check:()=>getExerciseSessionCount('Open Water Swimming', currentUser.uid)>=3 },
-      { name:'50 total swim sessions',             check:()=>['Freestyle Swimming','Breaststroke Swimming','Backstroke Swimming','Butterfly Swimming','Open Water Swimming','HIIT Swimming'].reduce((t,n)=>t+getExerciseSessionCount(n,currentUser.uid),0)>=50 },
-    ],
-    title:'[Aqua Hunter]',
-  },
-  {
-    id:'court_king',
-    name:'Court King',
-    icon:'🏀',
-    color:'#F39C12',
-    desc:'The arena is your domain. Sport defines your movement.',
-    steps:[
-      { name:'Basketball (10 sessions)',           check:()=>getExerciseSessionCount('Basketball', currentUser.uid)>=10 },
-      { name:'Tennis (10 sessions)',               check:()=>getExerciseSessionCount('Tennis', currentUser.uid)>=10 },
-      { name:'Football — Soccer (10 sessions)',    check:()=>getExerciseSessionCount('Football (Soccer)', currentUser.uid)>=10 },
-      { name:'50 total sport sessions',            check:()=>['Tennis','Tennis Drills','Basketball','Basketball Drills','Football (Soccer)','Football Drills','American Football'].reduce((t,n)=>t+getExerciseSessionCount(n,currentUser.uid),0)>=50 },
-      { name:'Bench Press 1× bodyweight',          check:(bw)=>{ const m=profile.bodyType==='female'?0.7:1.0; return myPRs['Bench Press']?.e1rm >= bw*m; }, label:(bw)=>{ const m=profile.bodyType==='female'?0.7:1.0; return `Bench Press ${m}× bodyweight (${Math.round(bw*m)}kg)`; } },
-    ],
-    title:'[Court King]',
-  },
-  {
-    id:'alpinist',
-    name:'Alpinist',
-    icon:'🏔️',
-    color:'#27AE60',
-    desc:'The summit does not care about your excuses.',
-    steps:[
-      { name:'Bouldering (10 sessions)',           check:()=>getExerciseSessionCount('Bouldering', currentUser.uid)>=10 },
-      { name:'Top Rope Climbing (5 sessions)',     check:()=>getExerciseSessionCount('Top Rope Climbing', currentUser.uid)>=5 },
-      { name:'Sport Climbing (10 sessions)',       check:()=>getExerciseSessionCount('Sport Climbing', currentUser.uid)>=10 },
-      { name:'Traditional Climbing (5 sessions)', check:()=>getExerciseSessionCount('Traditional Climbing', currentUser.uid)>=5 },
-      { name:'German Hang (10 sessions)',          check:()=>getExerciseSessionCount('German Hang', currentUser.uid)>=10 },
-      { name:'Front Splits (5 sessions)',          check:()=>getExerciseSessionCount('Front Splits', currentUser.uid)>=5 },
-      { name:'50 total climbing sessions',         check:()=>['Bouldering','Sport Climbing','Top Rope Climbing','Traditional Climbing'].reduce((t,n)=>t+getExerciseSessionCount(n,currentUser.uid),0)>=50 },
-    ],
-    title:'[Alpinist]',
-  },
-  {
-    id:'sovereign_flex',
-    name:'Sovereign of Mobility',
-    icon:'🌊',
-    color:'#E8D5B7',
-    desc:'Range of motion is power most hunters never develop.',
-    steps:[
-      { name:'Front Splits (10 sessions)',                check:()=>getExerciseSessionCount('Front Splits', currentUser.uid)>=10 },
-      { name:'Side Splits (10 sessions)',                 check:()=>getExerciseSessionCount('Side Splits', currentUser.uid)>=10 },
-      { name:'German Hang (10 sessions)',                 check:()=>getExerciseSessionCount('German Hang', currentUser.uid)>=10 },
-      { name:'Pike Stretch (15 sessions)',                check:()=>getExerciseSessionCount('Pike Stretch', currentUser.uid)>=15 },
-      { name:'Hip Mobility Routine (10 sessions)',        check:()=>getExerciseSessionCount('Hip Mobility Routine', currentUser.uid)>=10 },
-      { name:'Yoga (20 sessions)',                        check:()=>getExerciseSessionCount('Yoga', currentUser.uid)>=20 },
-      { name:'Pancake Stretch (10 sessions)',             check:()=>getExerciseSessionCount('Pancake Stretch', currentUser.uid)>=10 },
-    ],
-    title:'[Sovereign of Mobility]',
-  },
-  {
-    id:'triathlete',
-    name:'Triathlete',
-    icon:'🚴',
-    color:'#0EA5E9',
-    desc:'Three disciplines. One relentless engine.',
-    steps:[
-      { name:'Run 10km',                           check:()=>myWorkouts.some(w=>w.runSummary?.distKm>=10) },
-      { name:'Cycling (20 sessions)',              check:()=>['Cycling','Road Cycling','Mountain Biking','Stationary Bike','Spin Class','Cycling Intervals'].reduce((t,n)=>t+getExerciseSessionCount(n,currentUser.uid),0)>=20 },
-      { name:'Freestyle Swimming (20 sessions)',   check:()=>getExerciseSessionCount('Freestyle Swimming', currentUser.uid)>=20 },
-      { name:'Sub-60 min 10km',                   check:()=>{ const t=profile.bodyType==='female'?68:60; return myWorkouts.some(w=>{ const r=w.runSummary; return r&&r.distKm>=9.9&&r.durationMins<=t; }); }, label:()=>`Sub-${profile.bodyType==='female'?68:60} min 10km` },
-      { name:'Cycling (50 sessions)',              check:()=>['Cycling','Road Cycling','Mountain Biking','Stationary Bike','Spin Class','Cycling Intervals'].reduce((t,n)=>t+getExerciseSessionCount(n,currentUser.uid),0)>=50 },
-      { name:'Run half marathon (21km)',           check:()=>myWorkouts.some(w=>w.runSummary?.distKm>=21) },
-    ],
-    title:'[Triathlete]',
-  },
-  {
-    id:'the_one_above_all',
-    name:'The One Above All',
-    icon:'👑',
-    color:'#FFD700',
-    desc:'You pursued everything. Speed. Strength. Skill. Endurance. Flexibility. Sport. The System has no rank for what you are.',
-    steps:[
-      { name:'Deadlift — elite level',             check:(bw)=>{ const m=profile.bodyType==='female'?2.0:2.75; return myPRs['Deadlift']?.e1rm >= bw*m; },        label:(bw)=>{ const m=profile.bodyType==='female'?2.0:2.75; return `Deadlift ${m}× bodyweight (${Math.round(bw*m)}kg e1RM)`; } },
-      { name:'Bench Press — elite level',          check:(bw)=>{ const m=profile.bodyType==='female'?1.35:2.0; return myPRs['Bench Press']?.e1rm >= bw*m; },     label:(bw)=>{ const m=profile.bodyType==='female'?1.35:2.0; return `Bench Press ${m}× bodyweight (${Math.round(bw*m)}kg e1RM)`; } },
-      { name:'Squat — elite level',                check:(bw)=>{ const m=profile.bodyType==='female'?1.75:2.25; return myPRs['Squat']?.e1rm >= bw*m; },          label:(bw)=>{ const m=profile.bodyType==='female'?1.75:2.25; return `Squat ${m}× bodyweight (${Math.round(bw*m)}kg e1RM)`; } },
-      { name:'Overhead Press — elite level',       check:(bw)=>{ const m=profile.bodyType==='female'?0.85:1.25; return myPRs['Overhead Press']?.e1rm >= bw*m; },  label:(bw)=>{ const m=profile.bodyType==='female'?0.85:1.25; return `OHP ${m}× bodyweight (${Math.round(bw*m)}kg e1RM)`; } },
-      { name:'Muscle Up (15 sessions)',             check:()=>getExerciseSessionCount('Muscle Up', currentUser.uid)>=15 },
-      { name:'Full Planche (10 sessions)',          check:()=>getExerciseSessionCount('Full Planche', currentUser.uid)>=10 },
-      { name:'Front Lever (10 sessions)',           check:()=>getExerciseSessionCount('Front Lever', currentUser.uid)>=10 },
-      { name:'Handstand Push Up (10 sessions)',     check:()=>getExerciseSessionCount('Handstand Push Up', currentUser.uid)>=10 },
-      { name:'Front Splits (10 sessions)',          check:()=>getExerciseSessionCount('Front Splits', currentUser.uid)>=10 },
-      { name:'German Hang (10 sessions)',           check:()=>getExerciseSessionCount('German Hang', currentUser.uid)>=10 },
-      { name:'Elite 5km time',                     check:()=>{ const t=profile.bodyType==='female'?25:22; return myWorkouts.some(w=>{ const r=w.runSummary; return r&&r.distKm>=4.9&&r.durationMins<=t; }); },  label:()=>`Sub-${profile.bodyType==='female'?25:22} min 5km` },
-      { name:'Elite 10km time',                    check:()=>{ const t=profile.bodyType==='female'?52:45; return myWorkouts.some(w=>{ const r=w.runSummary; return r&&r.distKm>=9.9&&r.durationMins<=t; }); }, label:()=>`Sub-${profile.bodyType==='female'?52:45} min 10km` },
-      { name:'Elite half marathon',                check:()=>{ const t=profile.bodyType==='female'?120:105; return myWorkouts.some(w=>{ const r=w.runSummary; return r&&r.distKm>=21&&r.durationMins<=t; }); }, label:()=>`Sub-${profile.bodyType==='female'?'2hr':'1hr 45min'} half marathon` },
-      { name:'Boxing (50 sessions)',               check:()=>['Boxing — Bag Work','Boxing — Sparring','Boxing — Pad Work','Boxing — Shadow Boxing'].reduce((t,n)=>t+getExerciseSessionCount(n,currentUser.uid),0)>=50 },
-      { name:'Court/Field sport (50 sessions)',    check:()=>['Tennis','Tennis Drills','Basketball','Basketball Drills','Football (Soccer)','Football Drills','American Football'].reduce((t,n)=>t+getExerciseSessionCount(n,currentUser.uid),0)>=50 },
-      { name:'Swimming (30 sessions)',             check:()=>['Freestyle Swimming','Breaststroke Swimming','Butterfly Swimming','Backstroke Swimming','Open Water Swimming','HIIT Swimming'].reduce((t,n)=>t+getExerciseSessionCount(n,currentUser.uid),0)>=30 },
-      { name:'Climbing (30 sessions)',             check:()=>['Bouldering','Sport Climbing','Top Rope Climbing','Traditional Climbing'].reduce((t,n)=>t+getExerciseSessionCount(n,currentUser.uid),0)>=30 },
-      { name:'Cycling (30 sessions)',              check:()=>['Cycling','Road Cycling','Mountain Biking','Stationary Bike','Spin Class','Cycling Intervals'].reduce((t,n)=>t+getExerciseSessionCount(n,currentUser.uid),0)>=30 },
-      { name:'365-day streak',                     check:()=>computeStreak(currentUser.uid)>=365 },
-    ],
-    title:'[The One Above All]',
-  },
-];
 
 
 // Automatic achievement definitions
-const AUTO_ACHIEVEMENTS = [
-  // Streak milestones
-  { id:'streak_7',   category:'consistency', icon:'🔥', name:'First Week',        desc:'Maintain a 7-day training streak',       rarity:'common',    check: () => computeStreak(currentUser.uid) >= 7,   ap:0 },
-  { id:'streak_30',  category:'consistency', icon:'🔥', name:'Iron Month',         desc:'Maintain a 30-day training streak',      rarity:'rare',      check: () => computeStreak(currentUser.uid) >= 30,  ap:0 },
-  { id:'streak_60',  category:'consistency', icon:'🔥', name:'The Unyielding',     desc:'Maintain a 60-day training streak',      rarity:'epic',      check: () => computeStreak(currentUser.uid) >= 60,  ap:0 },
-  { id:'streak_100', category:'consistency', icon:'👑', name:'Century Hunter',     desc:'100 consecutive days without missing',   rarity:'legendary', check: () => computeStreak(currentUser.uid) >= 100, ap:0 },
-  { id:'streak_365', category:'consistency', icon:'👑', name:'Absolute Devotion',  desc:'365 consecutive days. A full year.',     rarity:'legendary', check: () => computeStreak(currentUser.uid) >= 365, ap:0 },
-  // Total workout milestones
-  { id:'workouts_10',  category:'volume', icon:'⚡', name:'Awakened',       desc:'Complete 10 workouts',   rarity:'common', check: () => myWorkouts.length >= 10,  ap:0 },
-  { id:'workouts_50',  category:'volume', icon:'⚡', name:'Hunter',         desc:'Complete 50 workouts',   rarity:'rare',   check: () => myWorkouts.length >= 50,  ap:0 },
-  { id:'workouts_100', category:'volume', icon:'⚡', name:'Veteran Hunter', desc:'Complete 100 workouts',  rarity:'epic',   check: () => myWorkouts.length >= 100, ap:0 },
-  { id:'workouts_365', category:'volume', icon:'👑', name:'Eternal Grinder',desc:'Complete 365 workouts',  rarity:'legendary', check: () => myWorkouts.length >= 365, ap:0 },
-  // PR tier milestones
-  { id:'pr_novice',       category:'strength', icon:'🗡️', name:'First Blood',       desc:'Reach Novice tier on any PR',        rarity:'common',    check: () => Object.values(myPRs).some(p => ['Novice','Intermediate','Advanced','Elite'].includes(p.tier)), ap:0 },
-  { id:'pr_intermediate', category:'strength', icon:'⚔️', name:'True Hunter',       desc:'Reach Intermediate tier on any PR',  rarity:'rare',      check: () => Object.values(myPRs).some(p => ['Intermediate','Advanced','Elite'].includes(p.tier)),             ap:0 },
-  { id:'pr_advanced',     category:'strength', icon:'💀', name:'Shadow Fighter',    desc:'Reach Advanced tier on any PR',      rarity:'epic',      check: () => Object.values(myPRs).some(p => ['Advanced','Elite'].includes(p.tier)),                              ap:0 },
-  { id:'pr_elite',        category:'strength', icon:'👑', name:'The Elite',         desc:'Reach Elite tier on any PR',         rarity:'legendary', check: () => Object.values(myPRs).some(p => p.tier === 'Elite'),                                                  ap:0 },
-  // Stat rank milestones
-  { id:'rank_d', category:'rank', icon:'🔵', name:'Rank D',    desc:'Upgrade any stat to D rank',  rarity:'common', check: () => Object.values(profile.stats||{}).some(r => ['D','C','B','A','S'].includes(r)), ap:0 },
-  { id:'rank_c', category:'rank', icon:'🩵', name:'Rank C',    desc:'Upgrade any stat to C rank',  rarity:'rare',   check: () => Object.values(profile.stats||{}).some(r => ['C','B','A','S'].includes(r)),     ap:0 },
-  { id:'rank_b', category:'rank', icon:'🟣', name:'Rank B',    desc:'Upgrade any stat to B rank',  rarity:'epic',   check: () => Object.values(profile.stats||{}).some(r => ['B','A','S'].includes(r)),         ap:0 },
-  { id:'rank_a', category:'rank', icon:'🔴', name:'Rank A',    desc:'Upgrade any stat to A rank',  rarity:'legendary', check: () => Object.values(profile.stats||{}).some(r => ['A','S'].includes(r)),          ap:0 },
-  { id:'rank_s', category:'rank', icon:'👑', name:'Absolute Being', desc:'Reach S rank on any stat', rarity:'legendary', check: () => Object.values(profile.stats||{}).some(r => r === 'S'),                   ap:0 },
-  // Class achievement
-  { id:'class_assigned', category:'identity', icon:'⚔️', name:'Identity Confirmed', desc:'The System assigns your Hunter Class', rarity:'rare', check: () => !!profile.hunterClass, ap:0 },
-  // Run milestone
-  { id:'first_run', category:'endurance', icon:'🏃', name:'First Steps',  desc:'Log your first run', rarity:'common', check: () => myWorkouts.some(w => w.isRun), ap:0 },
-  { id:'runs_10',   category:'endurance', icon:'🏃', name:'Road Hunter',  desc:'Log 10 runs',        rarity:'rare',   check: () => myWorkouts.filter(w=>w.isRun).length >= 10, ap:0 },
-];
 
 const RARITY_COLORS = {
   common:    { color:'var(--text-dim)',    bg:'rgba(93,157,255,0.06)',   label:'Common'    },
@@ -7790,7 +7492,7 @@ function evaluateChains() {
 // Evaluate archetype chains
 function evaluateArchetypes() {
   const bw = latestBodyweightKg() || 70;
-  return ARCHETYPE_CHAINS.map(chain => {
+  return getArchetypeChains({ profile, myPRs, currentUser, myWorkouts, getExerciseSessionCount }).map(chain => {
     const steps = chain.steps.map(step => {
       let done = false;
       try { done = step.check(bw); } catch(e) {}
@@ -7809,7 +7511,7 @@ async function checkAndUnlockAchievements() {
   if (!profile || !currentUser) return [];
   const unlocked = profile.unlockedAchievements || {};
   const newlyUnlocked = [];
-  for (const ach of AUTO_ACHIEVEMENTS) {
+  for (const ach of getAutoAchievements({ profile, myPRs, currentUser, myWorkouts, computeStreak })) {
     if (unlocked[ach.id]) continue;
     try {
       if (ach.check()) {
@@ -8065,6 +7767,7 @@ function renderTrialsTab(el) {
 
 function renderAchievementsTab(el) {
   const unlocked = profile.unlockedAchievements || {};
+  const achievements = getAutoAchievements({ profile, myPRs, currentUser, myWorkouts, computeStreak });
   const categories = [
     { id:'consistency', label:'Consistency', icon:'🔥' },
     { id:'strength',    label:'Strength',    icon:'⚔️' },
@@ -8074,13 +7777,13 @@ function renderAchievementsTab(el) {
     { id:'identity',    label:'Identity',    icon:'🌑' },
   ];
 
-  const unlockedCount = AUTO_ACHIEVEMENTS.filter(a => unlocked[a.id]).length;
+  const unlockedCount = achievements.filter(a => unlocked[a.id]).length;
   let html = `<div style="font-family:var(--font-mono);font-size:10px;color:var(--text-faint);margin-bottom:14px;letter-spacing:0.06em;">
-    ${unlockedCount} / ${AUTO_ACHIEVEMENTS.length} FEATS UNLOCKED
+    ${unlockedCount} / ${achievements.length} FEATS UNLOCKED
   </div>`;
 
   categories.forEach(cat => {
-    const catAchs = AUTO_ACHIEVEMENTS.filter(a => a.category === cat.id);
+    const catAchs = achievements.filter(a => a.category === cat.id);
     const anyUnlocked = catAchs.some(a => unlocked[a.id]);
     html += `<div class="feat-section-head">${cat.icon} ${cat.label}</div>`;
     catAchs.forEach(ach => {
