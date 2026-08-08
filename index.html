@@ -7555,37 +7555,12 @@ async function renderRaidBoss() {
   const boostLine = boostedRaids > 0
     ? '<div style="font-size:10px;color:var(--growing);font-family:var(--font-mono);margin-top:4px;">⚡ ' + boostedRaids + ' raid' + (boostedRaids>1?'s':'') + ' hit the weakness \u2014 stat rank bonus applied</div>'
     : '';
-  el.innerHTML = `
-    <div class="raid-boss-card ${cleared?'cleared':''}" style="border-color:${cleared?'rgba(139,107,255,0.3)':`${boss.color}44`};">
-      <div class="raid-boss-header">
-        <div style="flex:1;min-width:0;">
-          <div class="raid-eyebrow" style="color:${boss.color};">⚔ ${boss.rank}${isFirstWeek?' · INITIATION WEEK':''}</div>
-          <div class="raid-boss-name" style="color:${cleared?'var(--growing)':boss.color};">${cleared?'★ ':''} ${boss.name}${cleared?' — Defeated':''}</div>
-          <div class="raid-phase" style="color:${bossColor};">[${bossPhase}]${!cleared?` · ${daysLeft}d remaining`:''}</div>
-          <div style="font-size:10px;color:var(--text-faint);font-family:var(--font-mono);margin-top:5px;line-height:1.5;">${boss.desc}</div>
-          ${boss.weakness !== 'all' && !cleared ? weaknessBadge : ''}
-          ${boostedRaids > 0 ? boostLine : ''}
-        </div>
-        <div class="raid-hp-col" style="margin-left:12px;">
-          <div class="raid-hp-value" style="color:${bossColor};">${cleared?'0':Math.ceil(bossHP)}</div>
-          <div class="raid-hp-label">HP REMAINING</div>
-          <div style="font-size:9px;color:var(--growing);font-family:var(--font-mono);margin-top:4px;">⚔ ${totalDamage.toFixed(1)} damage dealt</div>
-        </div>
-      </div>
-      <div class="raid-hp-bar-wrap" style="position:relative;">
-        <div class="raid-hp-bar" style="width:${bossHPpct.toFixed(1)}%;background:${bossColor};box-shadow:0 0 8px ${bossColor};"></div>
-        ${!cleared?'<div class="raid-hp-bar-stripes"></div>':''}
-      </div>
-      <div style="display:flex;justify-content:space-between;font-family:var(--font-mono);font-size:9px;color:var(--text-faint);margin-top:4px;">
-        <span style="color:var(--growing);">0</span>
-        <span>${isFirstWeek?'Initiation week · ':''}${bossMaxHP} HP total</span>
-      </div>
-  // update grid CSS to accommodate new layout — injected once
+
+  // inject contrib CSS once
   if (!document.getElementById('raid-contrib-style')) {
     const s = document.createElement('style');
     s.id = 'raid-contrib-style';
-    s.textContent = '.raid-contrib-v2{display:flex;flex-direction:column;gap:3px;padding:8px 0;border-bottom:1px solid rgba(93,157,255,0.08);}' +
-      '.raid-contrib-v2:last-child{border-bottom:none;}';
+    s.textContent = '.raid-contrib-v2{display:flex;flex-direction:column;gap:3px;padding:8px 0;border-bottom:1px solid rgba(93,157,255,0.08);}.raid-contrib-v2:last-child{border-bottom:none;}';
     document.head.appendChild(s);
   }
 
@@ -7632,6 +7607,34 @@ async function renderRaidBoss() {
       + boostBadge
       + '</div>';
   }).join('');
+
+  el.innerHTML = `
+    <div class="raid-boss-card ${cleared?'cleared':''}" style="border-color:${cleared?'rgba(139,107,255,0.3)':`${boss.color}44`};">
+      <div class="raid-boss-header">
+        <div style="flex:1;min-width:0;">
+          <div class="raid-eyebrow" style="color:${boss.color};">⚔ ${boss.rank}${isFirstWeek?' · INITIATION WEEK':''}</div>
+          <div class="raid-boss-name" style="color:${cleared?'var(--growing)':boss.color};">${cleared?'★ ':''} ${boss.name}${cleared?' — Defeated':''}</div>
+          <div class="raid-phase" style="color:${bossColor};">[${bossPhase}]${!cleared?` · ${daysLeft}d remaining`:''}</div>
+          <div style="font-size:10px;color:var(--text-faint);font-family:var(--font-mono);margin-top:5px;line-height:1.5;">${boss.desc}</div>
+          ${boss.weakness !== 'all' && !cleared ? weaknessBadge : ''}
+          ${boostedRaids > 0 ? boostLine : ''}
+        </div>
+        <div class="raid-hp-col" style="margin-left:12px;">
+          <div class="raid-hp-value" style="color:${bossColor};">${cleared?'0':Math.ceil(bossHP)}</div>
+          <div class="raid-hp-label">HP REMAINING</div>
+          <div style="font-size:9px;color:var(--growing);font-family:var(--font-mono);margin-top:4px;">⚔ ${totalDamage.toFixed(1)} damage dealt</div>
+        </div>
+      </div>
+      <div class="raid-hp-bar-wrap" style="position:relative;">
+        <div class="raid-hp-bar" style="width:${bossHPpct.toFixed(1)}%;background:${bossColor};box-shadow:0 0 8px ${bossColor};"></div>
+        ${!cleared?'<div class="raid-hp-bar-stripes"></div>':''}
+      </div>
+      <div style="display:flex;justify-content:space-between;font-family:var(--font-mono);font-size:9px;color:var(--text-faint);margin-top:4px;">
+        <span style="color:var(--growing);">0</span>
+        <span>${isFirstWeek?'Initiation week · ':''}${bossMaxHP} HP total</span>
+      </div>
+      <div class="raid-contributors" style="margin-bottom:12px;">${contribHtml}</div>
+      <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-top:10px;gap:12px;">
       <div class="raid-contributors" style="margin-bottom:12px;">${contribHtml}</div>
         <p class="${cleared?'raid-cleared-msg':'raid-warning'}" style="margin:0;flex:1;">
           ${cleared
