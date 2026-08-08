@@ -1172,7 +1172,21 @@ function renderQuestFeed() {
         <button class="icon-btn" id="edit-program-btn">✎ Edit plan</button>
       </div>
     </div>
-    ${!isScheduledToday ? '<p class="rest-note">Not a scheduled training day — browse or log anyway below.</p>' : ''}
+    ${!isScheduledToday ? `
+    <div class="rest-day-card">
+      <div class="rest-day-corner-tl"></div>
+      <div class="rest-day-corner-br"></div>
+      <p class="rest-day-eyebrow">◈ SYSTEM NOTICE ◈</p>
+      <div class="rest-day-icon">🌑</div>
+      <h2 class="rest-day-title">RECOVERY PHASE</h2>
+      <p class="rest-day-body">The System has granted you a rest interval.<br>Your streak is shielded. Your rank is secure.<br><span style="color:var(--text-faint);font-size:11px;">Even hunters must recover to grow stronger.</span></p>
+      <div class="rest-day-streak-shield">
+        <span style="color:var(--brass);font-size:16px;">🔥</span>
+        <span style="font-family:var(--font-mono);font-size:11px;color:var(--text-faint);">STREAK PROTECTED — NO ACTION REQUIRED</span>
+        <span style="color:var(--brass);font-size:16px;">🔥</span>
+      </div>
+      <button class="btn rest-day-log-btn" id="rest-day-log-btn">+ Log a bonus session anyway</button>
+    </div>` : ''}
     <div class="quest-carousel">
       <button class="carousel-arrow" id="carousel-prev" aria-label="Previous day">‹</button>
       <div class="quest-carousel-card">
@@ -1186,6 +1200,9 @@ function renderQuestFeed() {
   `;
 
   document.getElementById('edit-program-btn')?.addEventListener('click', () => { editingProgram = true; renderQuestFeed(); });
+  document.getElementById('rest-day-log-btn')?.addEventListener('click', () => {
+    document.getElementById('logger-title')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
   document.getElementById('new-program-btn')?.addEventListener('click', () => {
     if (!window.confirm('Start a new plan?\n\nYour current plan will be replaced.')) return;
     myProgram = null; editingProgram = true; renderQuestFeed();
