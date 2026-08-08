@@ -2780,22 +2780,32 @@ function buildQuestCardHTML(idx) {
   function buildRewardsPreview() {
     if (allComplete) return '';
     const streak = computeStreak(currentUser.uid);
-    const mult = streak >= 60 ? 3 : streak >= 30 ? 2 : streak >= 7 ? 1.5 : 1;
+    const mult = streak >= 30 ? 2 : streak >= 7 ? 1.5 : 1;
     const baseAP = Math.round(10 * mult);
     const weekStart = startOfWeek(new Date());
     const weekCount = myWorkouts.filter(w => w.uid === currentUser.uid && new Date(w.date) >= weekStart).length;
     const goalBonus = (weekCount + 1) >= (profile.weeklyGoal || 3) ? 5 : 0;
     const totalAP = baseAP + goalBonus;
 
-    // stat XP — count total sets per stat across all exercises in this day
-    const statGains = {};
-    day.exercises.forEach(ex => {
-      const statId = getStatForExercise(ex.name);
-      if (statId) statGains[statId] = (statGains[statId] || 0) + ex.sets;
-    });
+    // stat XP — primary path
     const STAT_ICONS  = { strength:'⚔️', endurance:'🔥', agility:'⚡', focus:'🎯', recovery:'🛡️', flexibility:'💫' };
     const STAT_COLORS = { strength:'var(--brass)', endurance:'#FF6B35', agility:'#FFD700', focus:'var(--maintaining)', recovery:'var(--violet)', flexibility:'var(--growing)' };
-
+    const statGains = {};
+    const crossGains = {};
+    day.exercises.forEach(ex => {
+      const primary = getStatForExercise(ex.name);
+      if (primary) statGains[primary] = (statGains[primary] || 0) + ex.sets;
+      const isCombat = ['Boxing — Bag Work','Boxing — Sparring','Boxing — Pad Work','Boxing — Shadow Boxing'].includes(ex.name);
+      const isClimbing = ['Bouldering','Sport Climbing','Traditional Climbing','Top Rope Climbing'].includes(ex.name);
+      const isCourt = ['Tennis','Tennis Drills','Basketball','Basketball Drills','Football (Soccer)','Football Drills'].includes(ex.name);
+      const isSwim = ['Freestyle Swimming','Breaststroke Swimming','Butterfly Swimming','Backstroke Swimming'].includes(ex.name);
+      const isCycle = ['Cycling','Road Cycling','Mountain Biking','Stationary Bike','Spin Class','Cycling Intervals'].includes(ex.name);
+      if (isCombat) { crossGains.agility = 1; crossGains.endurance = 1; crossGains.focus = 1; }
+      if (isClimbing) { crossGains.strength = 1; crossGains.agility = 1; crossGains.flexibility = 1; }
+      if (isCourt) { crossGains.agility = 1; crossGains.endurance = 1; }
+      if (isSwim) { crossGains.endurance = 1; crossGains.flexibility = 1; }
+      if (isCycle) { crossGains.endurance = 1; }
+    });
     const statRows = Object.entries(statGains).map(([id, sets]) =>
       `<div style="display:flex;align-items:center;gap:6px;padding:5px 8px;background:var(--card-2);border-radius:6px;border-left:2px solid ${STAT_COLORS[id]};">
         <span style="font-size:13px;">${STAT_ICONS[id]||''}</span>
@@ -2803,8 +2813,15 @@ function buildQuestCardHTML(idx) {
         <span style="font-family:var(--font-mono);font-size:10px;color:var(--text-faint);margin-left:auto;">+${sets} xp</span>
       </div>`
     ).join('');
+    const crossRows = Object.entries(crossGains).filter(([id]) => !statGains[id]).map(([id]) =>
+      `<div style="display:flex;align-items:center;gap:6px;padding:4px 8px;background:var(--card-2);border-radius:6px;border-left:2px dashed ${STAT_COLORS[id]};opacity:0.6;">
+        <span style="font-size:11px;">${STAT_ICONS[id]||''}</span>
+        <span style="font-family:var(--font-mono);font-size:9px;color:${STAT_COLORS[id]};text-transform:uppercase;">${id}</span>
+        <span style="font-family:var(--font-mono);font-size:9px;color:var(--text-faint);margin-left:auto;">cross-trains</span>
+      </div>`
+    ).join('');
 
-    // unmapped exercises — show them so user knows
+    // unmapped exercises
     const unmapped = day.exercises.filter(ex => !getStatForExercise(ex.name)).map(ex => ex.name);
 
     // PR potential
@@ -2821,7 +2838,11 @@ function buildQuestCardHTML(idx) {
         </div>
         ${statRows ? `
           <div style="font-size:10px;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px;font-family:var(--font-mono);">Stat XP</div>
-          <div style="display:flex;flex-direction:column;gap:4px;margin-bottom:8px;">${statRows}</div>
+          <div style="display:flex;flex-direction:column;gap:4px;margin-bottom:${crossRows?'4px':'8px'};">${statRows}</div>
+        ` : ''}
+        ${crossRows ? `
+          <div style="font-size:9px;color:var(--text-faint);letter-spacing:0.06em;margin-bottom:4px;font-family:var(--font-mono);">Cross-trains</div>
+          <div style="display:flex;flex-direction:column;gap:3px;margin-bottom:8px;">${crossRows}</div>
         ` : ''}
         ${unmapped.length ? `<div style="font-size:10px;color:var(--text-faint);font-family:var(--font-mono);">+ volume XP: ${unmapped.slice(0,3).join(', ')}${unmapped.length>3?` +${unmapped.length-3} more`:''}</div>` : ''}
         ${prPotential.length ? `<div style="margin-top:8px;padding:6px 10px;background:rgba(139,107,255,0.08);border:1px solid rgba(139,107,255,0.3);border-radius:6px;font-size:11px;color:var(--violet);font-family:var(--font-mono);">🏆 ${prPotential.length} PR${prPotential.length>1?'s':''} on the line → ${prPotential.slice(0,2).map(e=>e.name).join(', ')}${prPotential.length>2?`…`:''}</div>` : ''}
@@ -4185,12 +4206,12 @@ const TIME_GATES = { E:4, D:12, C:26, B:52, A:104 }; // weeks
 
 // Improvement gates: % improvement from YOUR personal baseline
 const IMPROVEMENT_GATES = {
-  strength:    { E:0, D:5,  C:15, B:30, A:50  }, // % e1RM improvement from baseline
-  endurance:   { E:0, D:5,  C:15, B:30, A:50  }, // % pace improvement (faster)
-  agility:     { E:0, D:5,  C:15, B:30, A:50  }, // % explosive PR improvement
-  flexibility: { E:0, D:3,  C:10, B:20, A:35  }, // avg core/mobility sets per week
-  recovery:    { E:0, D:60, C:75, B:85, A:92  }, // % of weeks hitting weekly goal
-  focus:       { E:0, D:7,  C:21, B:60, A:180 }, // streak days (180 = 6 months)
+  strength:    { E:0, D:5,  C:15, B:30, A:70  }, // % e1RM improvement — A→S requires near-Advanced world tier
+  endurance:   { E:0, D:5,  C:15, B:30, A:70  }, // % pace improvement
+  agility:     { E:0, D:5,  C:15, B:30, A:70  }, // % explosive PR improvement
+  flexibility: { E:0, D:3,  C:10, B:20, A:50  }, // avg core/mobility sets per week
+  recovery:    { E:0, D:60, C:75, B:85, A:95  }, // % of weeks hitting weekly goal — near perfect
+  focus:       { E:0, D:7,  C:21, B:60, A:270 }, // streak days — 270 = 9 months continuous
 };
 
 const RANK_FLAVOUR = {
@@ -4243,82 +4264,223 @@ function getStatBaseline(statId) {
 
 function weeksAtCurrentRank(statId) {
   const info = (profile.statTimeAtRank || {})[statId];
-  if (!info || !info.sinceDate) return 999; // no record = treat as always been there
+  if (!info || !info.sinceDate) return 999;
+  // Time gate pauses if no workout in last 30 days — clock only runs while training
+  const lastWorkout = myWorkouts.length
+    ? new Date(myWorkouts.reduce((a,b) => a.date > b.date ? a : b).date)
+    : null;
+  const daysSinceWorkout = lastWorkout
+    ? (new Date() - lastWorkout) / 86400000 : 999;
+  if (daysSinceWorkout > 30) {
+    // clock paused — subtract the inactive period
+    const inactiveDays = Math.floor(daysSinceWorkout - 30);
+    const totalDays = (new Date() - new Date(info.sinceDate)) / 86400000;
+    const activeDays = Math.max(0, totalDays - inactiveDays);
+    return Math.floor(activeDays / 7);
+  }
   const weeks = (new Date() - new Date(info.sinceDate)) / (7 * 86400000);
   return Math.floor(weeks);
 }
 
 function getStrengthImprovement() {
-  // average e1RM improvement % across all tracked lifts from baseline
+  // Primary: e1RM improvement on compound lifts
   const baselines = profile.statBaselines?.strengthLifts || {};
-  if (!Object.keys(baselines).length) return 0;
   const improvements = Object.entries(baselines).map(([ex, baseE1rm]) => {
     const pr = myPRs[ex];
     if (!pr || !pr.e1rm || !baseE1rm) return 0;
     return ((pr.e1rm - baseE1rm) / baseE1rm) * 100;
   }).filter(v => v > 0);
-  return improvements.length ? improvements.reduce((a,b)=>a+b,0) / improvements.length : 0;
+  const liftImprovement = improvements.length
+    ? improvements.reduce((a,b)=>a+b,0) / improvements.length : 0;
+
+  // Secondary: calisthenics PRs (planche, levers, muscle up — these require massive strength)
+  const calisthenicsPRs = ['Pull Up','Muscle Up','Dips','Handstand Push Up','Ring Dips'];
+  const calBaselines = profile.statBaselines?.strengthLifts || {};
+  const calImprovements = calisthenicsPRs.map(ex => {
+    const pr = myPRs[ex]; const base = calBaselines[ex];
+    if (!pr?.e1rm || !base) return 0;
+    return ((pr.e1rm - base) / base) * 100;
+  }).filter(v => v > 0);
+  const calImprovement = calImprovements.length
+    ? calImprovements.reduce((a,b)=>a+b,0) / calImprovements.length : 0;
+
+  // Secondary: climbing session count (pulling strength proxy)
+  const climbingSessions = ['Bouldering','Sport Climbing','Traditional Climbing','Top Rope Climbing']
+    .reduce((t,n) => t + getExerciseSessionCount(n, currentUser.uid), 0);
+  const climbingBonus = Math.min(20, climbingSessions * 0.5); // up to 20% bonus
+
+  // Secondary: boxing strength (pad work, bag work = power output)
+  const boxingSessions = ['Boxing — Bag Work','Boxing — Pad Work']
+    .reduce((t,n) => t + getExerciseSessionCount(n, currentUser.uid), 0);
+  const boxingBonus = Math.min(10, boxingSessions * 0.3);
+
+  return Math.max(liftImprovement, calImprovement) + climbingBonus + boxingBonus;
 }
 
 function getEnduranceImprovement() {
+  // Primary: running pace improvement
   const base = profile.statBaselines?.endurancePace;
-  if (!base) return 0;
-  const runWorkouts = myWorkouts.filter(w =>
-    (w.exercises||[]).some(e => ['Easy Run','Long Run','Treadmill Run','Running','Tempo Run'].includes(e.name))
-    && w.runSummary?.pace
-  );
-  if (!runWorkouts.length) return 0;
-  // pace is stored as "MM:SS /km" — lower = better
   const parsePace = p => { const [m,s] = (p||'').replace(' /km','').split(':').map(Number); return m*60+(s||0); };
-  const basePaceSecs = parsePace(base);
-  const bestPace = Math.min(...runWorkouts.map(w => parsePace(w.runSummary.pace)));
-  if (!basePaceSecs || !bestPace) return 0;
-  return ((basePaceSecs - bestPace) / basePaceSecs) * 100; // positive = faster
+  let runImprovement = 0;
+  if (base) {
+    const runWorkouts = myWorkouts.filter(w => w.runSummary?.pace);
+    if (runWorkouts.length) {
+      const basePaceSecs = parsePace(base);
+      const bestPace = Math.min(...runWorkouts.map(w => parsePace(w.runSummary.pace)));
+      if (basePaceSecs && bestPace) runImprovement = ((basePaceSecs - bestPace) / basePaceSecs) * 100;
+    }
+  }
+
+  // Secondary: cycling sessions (cardiovascular endurance)
+  const cyclingSessions = ['Cycling','Road Cycling','Mountain Biking','Stationary Bike','Spin Class','Cycling Intervals']
+    .reduce((t,n) => t + getExerciseSessionCount(n, currentUser.uid), 0);
+  const cyclingBonus = Math.min(25, cyclingSessions * 0.4);
+
+  // Secondary: swimming sessions (full body cardiovascular)
+  const swimmingSessions = ['Freestyle Swimming','Breaststroke Swimming','Butterfly Swimming','Backstroke Swimming','Open Water Swimming']
+    .reduce((t,n) => t + getExerciseSessionCount(n, currentUser.uid), 0);
+  const swimmingBonus = Math.min(25, swimmingSessions * 0.4);
+
+  // Secondary: boxing rounds (3-min rounds = real cardio)
+  const boxingSessions = ['Boxing — Bag Work','Boxing — Sparring','Boxing — Pad Work','Boxing — Shadow Boxing']
+    .reduce((t,n) => t + getExerciseSessionCount(n, currentUser.uid), 0);
+  const boxingBonus = Math.min(20, boxingSessions * 0.3);
+
+  // Secondary: court/field sports (sustained movement)
+  const sportSessions = ['Football (Soccer)','Football Drills','Basketball','Basketball Drills','Tennis','Tennis Drills']
+    .reduce((t,n) => t + getExerciseSessionCount(n, currentUser.uid), 0);
+  const sportBonus = Math.min(20, sportSessions * 0.3);
+
+  // Secondary: high volume lifting (metabolic conditioning — >15 sets/session)
+  const highVolumeSessions = myWorkouts.filter(w => {
+    const totalSets = (w.exercises||[]).reduce((t,ex) => t + (ex.sets||[]).filter(s=>s.reps>0).length, 0);
+    return totalSets >= 15;
+  }).length;
+  const volumeBonus = Math.min(15, highVolumeSessions * 0.2);
+
+  return Math.max(runImprovement, cyclingBonus, swimmingBonus) + boxingBonus + sportBonus + volumeBonus;
 }
 
 function getAgilityImprovement() {
+  // Primary: explosive lift PRs (box jump, jump squat etc)
   const baselines = profile.statBaselines?.agilityLifts || {};
-  if (!Object.keys(baselines).length) return 0;
   const improvements = Object.entries(baselines).map(([ex, baseE1rm]) => {
     const pr = myPRs[ex];
     if (!pr || !pr.e1rm || !baseE1rm) return 0;
     return ((pr.e1rm - baseE1rm) / baseE1rm) * 100;
   }).filter(v => v > 0);
-  return improvements.length ? improvements.reduce((a,b)=>a+b,0) / improvements.length : 0;
+  const explosiveImprovement = improvements.length
+    ? improvements.reduce((a,b)=>a+b,0) / improvements.length : 0;
+
+  // Secondary: boxing footwork (reactive speed, lateral agility)
+  const boxingSessions = ['Boxing — Sparring','Boxing — Shadow Boxing','Boxing — Pad Work']
+    .reduce((t,n) => t + getExerciseSessionCount(n, currentUser.uid), 0);
+  const boxingBonus = Math.min(25, boxingSessions * 0.4);
+
+  // Secondary: court sports (lateral movement, reactive agility)
+  const courtSessions = ['Basketball','Basketball Drills','Tennis','Tennis Drills','Football (Soccer)','Football Drills']
+    .reduce((t,n) => t + getExerciseSessionCount(n, currentUser.uid), 0);
+  const courtBonus = Math.min(25, courtSessions * 0.4);
+
+  // Secondary: bouldering (dynamic explosive moves)
+  const boulderingSessions = getExerciseSessionCount('Bouldering', currentUser.uid);
+  const boulderingBonus = Math.min(20, boulderingSessions * 0.5);
+
+  // Secondary: calisthenics transitions (muscle up = explosive pull)
+  const calSessions = ['Muscle Up','Jump Squat','Box Jump']
+    .reduce((t,n) => t + getExerciseSessionCount(n, currentUser.uid), 0);
+  const calBonus = Math.min(15, calSessions * 0.3);
+
+  return Math.max(explosiveImprovement, boxingBonus, courtBonus) + boulderingBonus + calBonus;
 }
 
 function getRecoveryRate() {
-  // % of weeks in the last 8 where weekly goal was hit
+  // Universal — every training style earns this the same way
   const weeks = 8;
   let hit = 0;
   for (let i = 0; i < weeks; i++) {
     const start = startOfWeek(daysAgo(i*7));
     const end = new Date(start); end.setDate(end.getDate()+7);
-    const count = myWorkouts.filter(w => w.uid === currentUser.uid && new Date(w.date) >= start && new Date(w.date) < end).length;
+    const count = myWorkouts.filter(w =>
+      w.uid === currentUser.uid && new Date(w.date) >= start && new Date(w.date) < end
+    ).length;
     if (count >= (profile.weeklyGoal||3)) hit++;
   }
   return (hit / weeks) * 100;
 }
 
 function getFocusStreak() {
-  return computeStreak(currentUser.uid);
+  // Primary: training streak (universal discipline signal)
+  const streak = computeStreak(currentUser.uid);
+
+  // Secondary: skill hold sessions (handstand, planche, lever — max neural focus)
+  const skillSessions = ['Tuck Planche','Advanced Tuck Planche','Full Planche','Front Lever',
+    'Freestanding Handstand Hold','L-Sit','Dead Hang','German Hang']
+    .reduce((t,n) => t + getExerciseSessionCount(n, currentUser.uid), 0);
+  // Skill sessions count as bonus streak days (proxy for focus quality)
+  const skillBonus = Math.min(60, skillSessions * 0.8);
+
+  // Secondary: heavy low-RIR training (RIR 0-1 = maximum neural focus)
+  const heavySets = myWorkouts.reduce((total, w) => {
+    return total + (w.exercises||[]).reduce((t, ex) => {
+      return t + (ex.sets||[]).filter(s => s.reps > 0 && s.rir != null && s.rir <= 1).length;
+    }, 0);
+  }, 0);
+  const heavyBonus = Math.min(60, heavySets * 0.3);
+
+  // Secondary: boxing technical work (pad work/shadow = pure focus discipline)
+  const boxingFocusSessions = getExerciseSessionCount('Boxing — Pad Work', currentUser.uid)
+    + getExerciseSessionCount('Boxing — Shadow Boxing', currentUser.uid);
+  const boxingBonus = Math.min(30, boxingFocusSessions * 0.6);
+
+  // Secondary: climbing (route reading, problem solving = mental focus)
+  const climbingSessions = ['Bouldering','Sport Climbing','Traditional Climbing']
+    .reduce((t,n) => t + getExerciseSessionCount(n, currentUser.uid), 0);
+  const climbingBonus = Math.min(30, climbingSessions * 0.5);
+
+  return streak + Math.min(90, skillBonus + heavyBonus + boxingBonus + climbingBonus);
 }
 
 function getFlexibilityScore() {
-  // sets of core/flexibility exercises per week average over last 4 weeks
-  const flexExercises = new Set(['Plank','Side Plank','Dead Hang','L-Sit','Ab Wheel Rollout',
-    'Dragon Flag','Hanging Leg Raise','Hanging Knee Raise','Toes to Bar','Flutter Kicks',
-    'V-Up','Mountain Climber','Hollow Body Hold','Skin The Cat']);
-  let totalSets = 0;
+  // Primary: dedicated flexibility sessions
+  const primaryFlex = new Set(['Front Splits','Side Splits','Middle Splits','Pike Stretch',
+    'Hip Flexor Stretch','Pancake Stretch','Shoulder Flexibility Training','Thoracic Mobility',
+    'Hip Mobility Routine','Full Body Stretching','Yoga','German Hang','German Hang Progression',
+    'Plank','Side Plank','Dead Hang','L-Sit','Ab Wheel Rollout','Dragon Flag',
+    'Hanging Leg Raise','Hanging Knee Raise','Toes to Bar','Flutter Kicks','V-Up',
+    'Mountain Climber','Hollow Body Hold','Skin The Cat']);
+  let primarySets = 0;
   for (let i = 0; i < 4; i++) {
     const start = startOfWeek(daysAgo(i*7));
     const end = new Date(start); end.setDate(end.getDate()+7);
     myWorkouts.filter(w => w.uid === currentUser.uid && new Date(w.date) >= start && new Date(w.date) < end)
       .forEach(w => (w.exercises||[]).forEach(ex => {
-        if (flexExercises.has(ex.name)) totalSets += (ex.sets||[]).filter(s=>s.reps>0).length;
+        if (primaryFlex.has(ex.name)) primarySets += (ex.sets||[]).filter(s=>s.reps>0).length;
       }));
   }
-  return totalSets / 4; // avg sets per week
+  const primaryScore = primarySets / 4;
+
+  // Secondary: swimming (shoulder/hip mobility requirements of all strokes)
+  const swimmingSessions = ['Freestyle Swimming','Breaststroke Swimming','Butterfly Swimming','Backstroke Swimming']
+    .reduce((t,n) => t + getExerciseSessionCount(n, currentUser.uid), 0);
+  const swimmingBonus = Math.min(8, swimmingSessions * 0.1);
+
+  // Secondary: climbing (hip flexibility essential for high steps)
+  const climbingSessions = ['Bouldering','Sport Climbing','Traditional Climbing']
+    .reduce((t,n) => t + getExerciseSessionCount(n, currentUser.uid), 0);
+  const climbingBonus = Math.min(6, climbingSessions * 0.08);
+
+  // Secondary: calisthenics skill work (pike compression, pancake in levers/planche)
+  const skillSessions = ['Tuck Front Lever','Front Lever','Straddle Planche','Full Planche']
+    .reduce((t,n) => t + getExerciseSessionCount(n, currentUser.uid), 0);
+  const skillBonus = Math.min(6, skillSessions * 0.1);
+
+  // Secondary: boxing (hip rotation and shoulder flexibility for punching mechanics)
+  const boxingSessions = ['Boxing — Bag Work','Boxing — Sparring','Boxing — Pad Work']
+    .reduce((t,n) => t + getExerciseSessionCount(n, currentUser.uid), 0);
+  const boxingBonus = Math.min(4, boxingSessions * 0.06);
+
+  return primaryScore + swimmingBonus + climbingBonus + skillBonus + boxingBonus;
 }
 
 function getStatImprovement(statId) {
@@ -4409,7 +4571,7 @@ function computeApEarned() {
   let base = 10;
   let bonus = 0;
   // streak multiplier (stacks naturally with multiple days)
-  const mult = streak >= 60 ? 3 : streak >= 30 ? 2 : streak >= 7 ? 1.5 : 1;
+  const mult = streak >= 30 ? 2 : streak >= 7 ? 1.5 : 1;
   base = Math.round(base * mult);
   // weekly goal bonus
   const weekStart = startOfWeek(new Date());
@@ -4474,47 +4636,48 @@ async function upgradeStatWithAp(statId) {
 }
 
 function improvTarget(id, needed, done) {
-        const remaining = Math.max(0, needed - done).toFixed(1);
-        switch(id) {
-          case 'strength':
-            return {
-              current: `${done.toFixed(0)}% stronger than baseline`,
-              need: done >= needed ? '✓ Achieved' : `Lift ${remaining}% more than when you started`,
-              example: done >= needed ? null : `e.g. if you started at 60kg bench, target ${Math.round(60*(1+needed/100))}kg`,
-            };
-          case 'endurance':
-            return {
-              current: `${done.toFixed(0)}% faster than first run`,
-              need: done >= needed ? '✓ Achieved' : `Run ${remaining}% faster than your first logged pace`,
-              example: done >= needed ? null : `Log runs consistently to build your pace history`,
-            };
-          case 'agility':
-            return {
-              current: `${done.toFixed(0)}% more explosive than baseline`,
-              need: done >= needed ? '✓ Achieved' : `Improve explosive PRs by ${remaining}% from baseline`,
-              example: done >= needed ? null : `Box jumps, hill sprints, jump squats`,
-            };
-          case 'flexibility':
-            return {
-              current: `${done.toFixed(1)} core/mobility sets per week avg`,
-              need: done >= needed ? '✓ Achieved' : `Average ${needed} core/mobility sets per week`,
-              example: done >= needed ? null : `Plank, hanging leg raise, ab wheel — ${Math.ceil(needed)} sets/week`,
-            };
-          case 'recovery':
-            return {
-              current: `${done.toFixed(0)}% of recent weeks hit goal`,
-              need: done >= needed ? '✓ Achieved' : `Hit your weekly goal in ${needed}% of weeks`,
-              example: done >= needed ? null : `Currently ${done.toFixed(0)}% — ${remaining}% more consistency needed`,
-            };
-          case 'focus':
-            return {
-              current: `${Math.round(done)} day current streak`,
-              need: done >= needed ? '✓ Achieved' : `Reach a ${needed}-day consecutive streak`,
-              example: done >= needed ? null : `${Math.round(needed - done)} more days without missing`,
-            };
-          default: return { current: `${done}%`, need: `${needed}%`, example: null };
-        }
-      }
+  const remaining = Math.max(0, needed - done).toFixed(1);
+  const achieved = done >= needed;
+  switch(id) {
+    case 'strength':
+      return {
+        current: `${done.toFixed(0)}% stronger than baseline`,
+        need: achieved ? '✓ Achieved' : `${remaining}% more strength improvement needed`,
+        example: achieved ? null : `Primary: compound lifts (Squat, Deadlift, Bench, OHP)\nAlso counts: calisthenics PRs (Muscle Up, Pull Up), climbing sessions, boxing bag/pad work`,
+      };
+    case 'endurance':
+      return {
+        current: `${done.toFixed(0)}% endurance improvement`,
+        need: achieved ? '✓ Achieved' : `${remaining}% more endurance improvement needed`,
+        example: achieved ? null : `Primary: running pace improvement\nAlso counts: cycling, swimming, boxing rounds, court sports, high-volume lifting sessions (15+ sets)`,
+      };
+    case 'agility':
+      return {
+        current: `${done.toFixed(0)}% agility improvement`,
+        need: achieved ? '✓ Achieved' : `${remaining}% more agility improvement needed`,
+        example: achieved ? null : `Primary: box jumps, hill sprints, jump squats\nAlso counts: boxing footwork (sparring/shadow/pads), court sports, bouldering dynamic moves, muscle ups`,
+      };
+    case 'flexibility':
+      return {
+        current: `${done.toFixed(1)} flexibility score`,
+        need: achieved ? '✓ Achieved' : `${needed} flexibility score needed`,
+        example: achieved ? null : `Primary: splits, German hang, yoga, mobility routines\nAlso counts: swimming (shoulder/hip mobility), climbing (hip flexibility), levers and planche skill work, boxing (hip rotation)`,
+      };
+    case 'recovery':
+      return {
+        current: `${done.toFixed(0)}% of recent weeks hit goal`,
+        need: achieved ? '✓ Achieved' : `Hit weekly goal in ${needed}% of weeks`,
+        example: achieved ? null : `Universal — every training style earns this. Show up. Hit your goal. Every week.`,
+      };
+    case 'focus':
+      return {
+        current: `${Math.round(done)} focus score (streak + quality)`,
+        need: achieved ? '✓ Achieved' : `${Math.round(needed - done)} more focus score needed`,
+        example: achieved ? null : `Primary: training streak (every unbroken day counts)\nAlso counts: skill holds (planche, levers, handstand), RIR 0-1 sets (maximum effort), boxing pad/shadow work, climbing route reading`,
+      };
+    default: return { current: `${done}%`, need: `${needed}%`, example: null };
+  }
+}
 
 function buildGateHtml(statId, gates, ap) {
   if (!gates) return '';
@@ -4673,14 +4836,22 @@ function renderCharCard() {
     });
   });
 
-  // hint
+  // hint — show what the current overall rank means in real-world terms
   const hint = document.getElementById('char-rank-hint');
+  const OVERALL_RANK_MEANING = {
+    E: 'You are beginning. The System is watching. Most people stop here.',
+    D: 'You are building something real. Most people have already quit.',
+    C: 'You are consistent. You have earned the right to call yourself a hunter.',
+    B: 'Years of work live in your body. The gap between you and others is visible.',
+    A: 'You are among the serious. Elite athletes train their whole lives for this.',
+    S: 'There is no rank above this. The System has nothing left to give you.',
+  };
   if (charRank === 'S') {
     hint.textContent = '◆ Absolute Being — you have reached the pinnacle.';
   } else {
     const nextRank = RANK_TIERS[rankIdx + 1];
     const limiting = STAT_DEFS.filter(d => (stats[d.id] || 'E') === charRank);
-    hint.textContent = `To reach ${nextRank} Rank: upgrade ${limiting.map(d=>d.label).join(', ')} past ${charRank}.`;
+    hint.innerHTML = `<span style="color:var(--text-dim);font-style:italic;">"${OVERALL_RANK_MEANING[charRank]}"</span><br><span style="color:var(--text-faint);font-size:9px;letter-spacing:0.06em;">NEXT: ${nextRank} RANK — upgrade ${limiting.map(d=>d.label.toUpperCase()).join(', ')}</span>`;
   }
 }
 
@@ -4745,18 +4916,77 @@ function showPenaltyModal(missedDays, apLost) {
 }
 
 function showBossDefeatedModal(exerciseName, e1rm, tier, xp, percentile) {
-  const tierEmoji = { Elite:'👑', Advanced:'💀', Intermediate:'⚔️', Novice:'🗡️', Beginner:'🛡️' }[tier] || '🏆';
-  return showSystemModal(`
-    <div class="system-window">
-      <p class="system-eyebrow">Boss Defeated</p>
-      <div class="system-icon">${tierEmoji}</div>
-      <h2 class="system-title">${escapeHtml(exerciseName)}</h2>
-      <p class="system-body">A new personal record has been forged.<br>The dungeon boss has fallen.</p>
-      <p class="system-detail">${e1rm.toFixed(1)} kg estimated 1RM<br><span style="color:var(--violet)">[${tier} Level]</span></p>
-      ${percentile ? `<p class="system-percentile">You surpass ${percentile}% of all hunters</p>` : ''}
-      <p class="system-detail" style="color:var(--brass)">+${xp} Aura Points awarded</p>
-      <button class="system-btn primary">Claim Reward</button>
-    </div>`);
+  const TIER_CONFIG = {
+    Elite:        { color:'#FFD700', glow:'rgba(255,215,0,0.6)',   label:'ELITE',        eyebrow:'◈ World-Class Record ◈',   body:'You have reached the summit. This lift places you among the rarest athletes on earth.', particleCount:40, scale:'giant' },
+    Advanced:     { color:'#FF3D5A', glow:'rgba(255,61,90,0.5)',   label:'ADVANCED',     eyebrow:'◈ Record Shattered ◈',     body:'An advanced hunter does not accept limits. This PR proves you never did.',            particleCount:24, scale:'large' },
+    Intermediate: { color:'#9B59B6', glow:'rgba(155,89,182,0.5)',  label:'INTERMEDIATE', eyebrow:'◈ Gate Cleared ◈',         body:'The iron has yielded. Your progress is undeniable.',                                  particleCount:16, scale:'medium' },
+    Novice:       { color:'#3DA5FF', glow:'rgba(61,165,255,0.4)',  label:'NOVICE',       eyebrow:'◈ System Alert ◈',         body:'A personal record has been forged. The dungeon registers your growth.',                particleCount:10, scale:'small' },
+    Beginner:     { color:'var(--brass)', glow:'rgba(212,160,23,0.3)', label:'BEGINNER', eyebrow:'◈ System Alert ◈',         body:'First steps on a long road. The System has recorded your baseline.',                  particleCount:6,  scale:'small' },
+  };
+  const cfg = TIER_CONFIG[tier] || TIER_CONFIG.Beginner;
+
+  const overlay = document.createElement('div');
+  overlay.style.cssText = `position:fixed;inset:0;z-index:600;background:rgba(5,7,13,${tier==='Elite'?'0.97':'0.93'});display:flex;align-items:center;justify-content:center;animation:sysOverlayIn 0.3s ease;`;
+
+  const titleSize = { giant:'36px', large:'28px', medium:'22px', small:'18px' }[cfg.scale];
+  const iconSize  = { giant:'64px', large:'48px', medium:'36px', small:'28px' }[cfg.scale];
+
+  overlay.innerHTML = `
+    <div id="boss-particles" style="position:fixed;inset:0;pointer-events:none;overflow:hidden;"></div>
+    <div style="position:relative;z-index:1;text-align:center;padding:40px 32px;max-width:380px;width:90%;
+      animation:classWindowIn 0.6s cubic-bezier(0.16,1,0.3,1) both;">
+      <div style="font-family:var(--font-mono);font-size:9px;letter-spacing:0.4em;color:${cfg.color};margin-bottom:20px;
+        animation:classFadeIn 0.5s ease 0.2s both;opacity:0;">${cfg.eyebrow}</div>
+      <div style="font-size:${iconSize};margin-bottom:16px;filter:drop-shadow(0 0 20px ${cfg.color});
+        animation:classFadeIn 0.6s ease 0.3s both;opacity:0;">
+        ${{ Elite:'👑', Advanced:'💀', Intermediate:'⚔️', Novice:'🗡️', Beginner:'🛡️' }[tier] || '🏆'}
+      </div>
+      <div style="font-family:var(--font-display);font-size:${titleSize};font-weight:900;color:${cfg.color};
+        text-shadow:0 0 30px ${cfg.glow};letter-spacing:0.06em;margin-bottom:8px;
+        animation:classFadeIn 0.6s ease 0.4s both;opacity:0;">${escapeHtml(exerciseName)}</div>
+      <div style="font-family:var(--font-mono);font-size:11px;color:${cfg.color};letter-spacing:0.1em;
+        margin-bottom:16px;animation:classFadeIn 0.5s ease 0.5s both;opacity:0;">[${cfg.label}]</div>
+      <div style="font-size:13px;color:var(--text-dim);line-height:1.7;margin-bottom:16px;
+        animation:classFadeIn 0.6s ease 0.6s both;opacity:0;">${cfg.body}</div>
+      <div style="font-family:var(--font-display);font-size:26px;color:var(--text);
+        text-shadow:0 0 20px ${cfg.color};margin-bottom:6px;
+        animation:classFadeIn 0.5s ease 0.7s both;opacity:0;">${e1rm.toFixed(1)} kg</div>
+      <div style="font-size:11px;color:var(--text-faint);font-family:var(--font-mono);margin-bottom:6px;
+        animation:classFadeIn 0.5s ease 0.75s both;opacity:0;">Estimated 1RM</div>
+      ${percentile ? `<div style="font-size:13px;color:var(--violet);font-family:var(--font-mono);margin-bottom:14px;
+        animation:classFadeIn 0.5s ease 0.8s both;opacity:0;">Top ${100-percentile}% of all hunters worldwide</div>` : ''}
+      <div style="font-family:var(--font-display);font-size:18px;color:var(--brass);margin-bottom:24px;
+        animation:classFadeIn 0.5s ease 0.85s both;opacity:0;">+${xp} Aura Points</div>
+      <button style="background:none;border:1px solid ${cfg.color};color:${cfg.color};
+        padding:12px 40px;font-family:var(--font-display);font-size:11px;letter-spacing:0.15em;
+        cursor:pointer;border-radius:2px;animation:classFadeIn 0.5s ease 1s both;opacity:0;"
+        id="boss-close">ACKNOWLEDGED</button>
+    </div>`;
+
+  document.body.appendChild(overlay);
+
+  // spawn particles scaled to tier
+  const container = overlay.querySelector('#boss-particles');
+  for (let i = 0; i < cfg.particleCount; i++) {
+    const p = document.createElement('div');
+    const size = 2 + Math.random() * (tier === 'Elite' ? 6 : 3);
+    p.style.cssText = `position:absolute;border-radius:50%;
+      width:${size}px;height:${size}px;
+      left:${Math.random()*100}%;
+      background:${cfg.color};
+      box-shadow:0 0 ${size*2}px ${cfg.color};
+      animation:classParticleFloat linear infinite;
+      animation-delay:${Math.random()*3}s;
+      animation-duration:${2+Math.random()*4}s;
+      opacity:0;`;
+    container.appendChild(p);
+  }
+
+  overlay.querySelector('#boss-close').addEventListener('click', () => {
+    overlay.style.animation = 'sysOverlayIn 0.3s ease reverse forwards';
+    setTimeout(() => overlay.remove(), 300);
+  });
+  setTimeout(() => overlay.querySelector('#boss-close')?.click(), 8000);
 }
 
 function showRankUpModal(statLabel, oldRank, newRank, hunterName) {
@@ -4803,52 +5033,52 @@ function showStatGateModal(statId) {
   };
   const RANK_REAL_MEANING = {
     strength: {
-      E:'Just beginning — baseline established',
-      D:'Noticeable strength gains from your start point',
-      C:'Consistent progression — visibly stronger',
-      B:'Significant strength — years of real adaptation',
-      A:'Advanced lifter — approaching your genetic potential',
-      S:'Elite — top tier of human strength development',
+      E:'Just starting — your baseline is set. Most people never go further.',
+      D:'Noticeably stronger than when you started. Friends can see it.',
+      C:'You lift more than 60% of people your age who train. It shows.',
+      B:'Serious lifter. Years of real adaptation. Top 25% of trained athletes.',
+      A:'Advanced — approaching your genetic ceiling. Top 5% of athletes.',
+      S:'Elite. World-class strength. Less than 1% of trained humans reach this.',
     },
     endurance: {
-      E:'First runs logged — baseline set',
-      D:'Measurably faster than when you started',
-      C:'Aerobic base developing — can sustain longer efforts',
-      B:'Strong runner — significant pace improvement',
-      A:'Serious endurance athlete',
-      S:'Elite endurance — sub-2hr half marathon territory',
+      E:'First steps. Your aerobic baseline is being established.',
+      D:'Measurably faster than when you started. Your lungs are adapting.',
+      C:'You can sustain efforts most people cannot. Aerobic base is real.',
+      B:'Strong runner. Sub-60 minute 10K territory. Serious athlete.',
+      A:'Elite amateur. Sub-45 minute 10K. Most runners never get here.',
+      S:'World-class endurance. Sub-2hr half marathon. Exceptional.',
     },
     agility: {
-      E:'Explosive work just beginning',
-      D:'Fast-twitch fibres awakening',
-      C:'Noticeable power output improvement',
-      B:'Athletic — explosive and reactive',
-      A:'High-performance athlete',
-      S:'Elite power output — top percentile',
+      E:'Explosive training just beginning. Fast-twitch fibres waking up.',
+      D:'Noticeably more reactive. Power output improving.',
+      C:'Athletic. Your body generates force faster than most.',
+      B:'High-performance. Explosive and reactive under load.',
+      A:'Elite athleticism. Top 5% of power output.',
+      S:'Exceptional. Sprint times and jump heights that define careers.',
     },
     flexibility: {
-      E:'Core work occasional',
-      D:'Building a core habit',
-      C:'Consistent core training',
-      B:'Strong core foundation — weeks of discipline',
-      A:'Advanced — serious mobility practice',
-      S:'Elite — daily dedicated mobility and core work',
+      E:'Mobility work just beginning.',
+      D:'Range of motion improving. Body starting to open up.',
+      C:'Consistent mobility practice. Your movement quality stands out.',
+      B:'Serious mobility athlete. Splits or near-splits territory.',
+      A:'Advanced flexibility. Most gymnasts train years to reach this.',
+      S:'Elite. Full splits, German hang mastery, exceptional range of motion.',
     },
     recovery: {
-      E:'Still finding your rhythm',
-      D:'Starting to show up consistently',
-      C:'Reliable — hitting goals most weeks',
-      B:'Disciplined — rarely missing targets',
-      A:'Near-perfect consistency over months',
-      S:'Unbreakable — the System has never seen you quit',
+      E:'Still finding your rhythm. Consistency is the first battle.',
+      D:'Starting to show up reliably. Habits forming.',
+      C:'Consistent. You hit your goals most weeks. That matters.',
+      B:'Disciplined. Rarely miss targets. Built the habit deeply.',
+      A:'Near-perfect consistency over months. The System respects this.',
+      S:'Unbreakable. A full year of showing up. No excuses. No exceptions.',
     },
     focus: {
-      E:'The streak begins',
-      D:'One week without missing',
-      C:'Three weeks of discipline',
-      B:'Two months straight',
-      A:'Half a year without breaking',
-      S:'A full year. Continuous. No exceptions.',
+      E:'The streak begins. Every day counts.',
+      D:'One week without breaking. The habit is forming.',
+      C:'Three weeks of discipline. Most people quit before here.',
+      B:'Two months straight. You are not most people.',
+      A:'Nine months without missing. This is rare. This is real.',
+      S:'A full year. Continuous. The System has never seen you quit.',
     },
   };
 
@@ -4928,15 +5158,15 @@ function showStatGateModal(statId) {
               <div style="font-size:10px;color:var(--text-faint);margin-top:4px;font-family:var(--font-mono);line-height:1.6;">
                 ${gates.improvOk ? '✓ Performance threshold reached' : (() => {
                   const rem = (gates.improvNeeded - gates.improvDone);
-                  switch(statId) {
-                    case 'strength': return `Lift ${rem.toFixed(1)}% more than your starting point — train heavier, log your sets`;
-                    case 'endurance': return `Run ${rem.toFixed(1)}% faster than your first pace — consistent running builds this`;
-                    case 'agility': return `Improve explosive PRs by ${rem.toFixed(1)}% — box jumps, hill sprints, jump squats`;
-                    case 'flexibility': return `Average ${rem.toFixed(1)} more core/mobility sets per week — plank, leg raises, ab wheel`;
-                    case 'recovery': return `Hit your weekly goal more consistently — need ${rem.toFixed(0)}% more weeks on target`;
-                    case 'focus': return `Build a ${Math.ceil(rem)}-day longer streak — do not miss a single session`;
-                    default: return `${rem.toFixed(1)} more improvement needed`;
-                  }
+                  const paths = {
+                    strength: `Lift heavier on compounds, improve calisthenics PRs, or add climbing & boxing sessions`,
+                    endurance: `Run faster, cycle more, swim, box rounds, play court sports, or do high-volume lifting`,
+                    agility: `Box jumps, sprints, boxing footwork, court sports, or bouldering dynamic moves`,
+                    flexibility: `Splits, German hang, yoga — or supplement with swimming, climbing, and skill work`,
+                    recovery: `Show up. Hit your weekly goal. Every training style counts equally here.`,
+                    focus: `Unbroken streak + heavy RIR 0-1 sets + skill holds + boxing technical work + climbing`,
+                  };
+                  return paths[statId] || `${rem.toFixed(1)} more improvement needed`;
                 })()}
               </div>
             </div>
@@ -6503,7 +6733,7 @@ function openAdminWorkoutLogger(targetUid, hunterName) {
       const targetProfile = (await getDoc(doc(db, 'users', targetUid))).data() || {};
       if (targetProfile.lastApDate !== date) {
         const streak = computeStreak(targetUid);
-        const mult = streak >= 60 ? 3 : streak >= 30 ? 2 : streak >= 7 ? 1.5 : 1;
+        const mult = streak >= 30 ? 2 : streak >= 7 ? 1.5 : 1;
         const ap = Math.round(10 * mult);
         const currentAp = targetProfile.auraPoints || 0;
         await setDoc(doc(db, 'users', targetUid), {
@@ -6647,7 +6877,7 @@ function showDebriefModal(exercises, apEarned, prs) {
   const totalPrXP = prs.reduce((s,p) => s+p.xp, 0);
   const totalAP = (apEarned || 0) + totalPrXP;
   const streak = computeStreak(currentUser.uid);
-  const mult = streak >= 60 ? 3 : streak >= 30 ? 2 : streak >= 7 ? 1.5 : 1;
+  const mult = streak >= 30 ? 2 : streak >= 7 ? 1.5 : 1;
   const missingRIR = exercises.filter(ex => (ex.sets||[]).some(s => s.reps > 0 && s.rir == null));
   const tierEmojis = { Elite:'👑', Advanced:'💀', Intermediate:'⚔️', Novice:'🗡️', Beginner:'🛡️' };
   const prRows = prs.map(p => `
@@ -6769,7 +6999,7 @@ function renderTodayCard() {
       m + (ex.sets||[]).filter(s=>s.reps>0&&s.weight>0).reduce((v,s) => v+s.reps*s.weight, 0), 0), 0);
   const streak = computeStreak(currentUser.uid);
   const apToday = profile.lastApDate === today ? (() => {
-    const mult = streak >= 60 ? 3 : streak >= 30 ? 2 : streak >= 7 ? 1.5 : 1;
+    const mult = streak >= 30 ? 2 : streak >= 7 ? 1.5 : 1;
     return Math.round(10*mult) + (profile.weeklyGoal && countSince(currentUser.uid, startOfWeek(new Date())) >= profile.weeklyGoal ? 5 : 0);
   })() : 0;
   const todayPRs = Object.values(myPRs).filter(p => p.date === today);
@@ -8929,7 +9159,7 @@ function openWorkoutDetail(workoutId) {
       .filter(([, pr]) => pr.date === w.date)
       .map(([exercise, pr]) => ({ exercise, xp: pr.xp||0, tier: pr.tier, e1rm: pr.e1rm }));
     const streak = computeStreak(currentUser.uid);
-    const mult = streak >= 60 ? 3 : streak >= 30 ? 2 : streak >= 7 ? 1.5 : 1;
+    const mult = streak >= 30 ? 2 : streak >= 7 ? 1.5 : 1;
     const apEarned = profile.lastApDate === w.date ? Math.round(10*mult) : 0;
     showDebriefModal(w.exercises||[], apEarned, datePRs);
   });
@@ -9034,7 +9264,7 @@ function openWorkoutDetail(workoutId) {
     if (wasOnlyWorkout && profile.lastApDate === w.date) {
       // AP was awarded for this day — calculate what was earned
       const streak = computeStreak(currentUser.uid);
-      const mult = streak >= 60 ? 3 : streak >= 30 ? 2 : streak >= 7 ? 1.5 : 1;
+      const mult = streak >= 30 ? 2 : streak >= 7 ? 1.5 : 1;
       apToReverse = Math.round(10 * mult);
       const weekStart = startOfWeek(new Date(w.date));
       const weekCount = myWorkouts.filter(x => x.uid === currentUser.uid && new Date(x.date) >= weekStart && x.id !== workoutId).length;
