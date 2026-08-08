@@ -1134,7 +1134,6 @@ function renderQuestFeed() {
     return;
   }
 
-  const rotationIdx = myProgram.currentDayIndex % myProgram.days.length;
   const today = todayWeekday();
   const isScheduledToday = myProgram.schedule.includes(today);
 
@@ -1148,12 +1147,19 @@ function renderQuestFeed() {
     });
   }
 
+  // The green "current position" dot: in rotation mode this is the sequential counter
+  // (currentDayIndex); in fixed mode it must instead be whichever day is assigned to
+  // TODAY's actual weekday — using currentDayIndex here was a bug, since that counter has
+  // no relationship to weekday-assigned schedules and could point at any arbitrary day.
+  const rotationIdx = myProgram.scheduleMode === 'fixed'
+    ? myProgram.days.findIndex(d => (d.assignedDays||[]).includes(today))
+    : myProgram.currentDayIndex % myProgram.days.length;
+
   if (questCarouselIndex >= myProgram.days.length) questCarouselIndex = 0;
 
   // in fixed mode, auto-jump carousel to today's assigned day
-  if (myProgram.scheduleMode === 'fixed') {
-    const todayDayIdx = myProgram.days.findIndex(d => (d.assignedDays||[]).includes(today));
-    if (todayDayIdx >= 0) questCarouselIndex = todayDayIdx;
+  if (myProgram.scheduleMode === 'fixed' && rotationIdx >= 0) {
+    questCarouselIndex = rotationIdx;
   }
 
   const dots = myProgram.days.map((_, i) => `<span class="day-dot ${i===questCarouselIndex?'current':''} ${i===rotationIdx && i!==questCarouselIndex?'done':''}"></span>`).join('');
