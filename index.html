@@ -6197,15 +6197,12 @@ function getUserTitle(uid) {
   const user = allUsers.find(u => u.uid === uid);
   if (!user) return '';
   const streak = computeStreak(uid);
-  const total = allWorkouts.filter(w => w.uid === uid).length;
   const weekStart = startOfWeek(new Date());
   const thisWeek = countSince(uid, weekStart);
   if (STAT_DEFS.every(d => (user.stats||{})[d.id] === 'S')) return '[Shadow Monarch]';
-  if (streak >= 30) return '[The Unyielding]';
-  if (thisWeek === Math.max(...allUsers.map(u => countSince(u.uid, weekStart)))) return '[Raid Boss]';
-  const score = getUserStrengthScore(uid);
-  if (score !== null) return strengthScoreToTitle(score);
-  if (total <= 5) return '[The Weakest Hunter]';
+  if (streak >= 365) return '[The Unyielding]';
+  if (streak >= 30) return '[Consistent]';
+  if (thisWeek > 0 && thisWeek === Math.max(...allUsers.map(u => countSince(u.uid, weekStart)))) return '[Raid Boss]';
   return '';
 }
 
@@ -7365,7 +7362,9 @@ function renderCompetitionBoard() {
     const rivalBadge = isRival ? '<span style="font-size:8px;background:rgba(255,61,90,0.15);color:var(--excess);padding:1px 5px;border-radius:2px;font-family:var(--font-mono);letter-spacing:0.1em;">RIVAL</span>' : '';
     const chaserBadge = isChaser ? '<span style="font-size:8px;background:rgba(62,207,142,0.12);color:var(--growing);padding:1px 5px;border-radius:2px;font-family:var(--font-mono);letter-spacing:0.1em;">CHASER</span>' : '';
 
-    const latestTitle = r.slayerTitles.length ? r.slayerTitles[r.slayerTitles.length-1] : getUserTitle(r.uid);
+    const latestTitle = r.slayerTitles.length
+      ? r.slayerTitles[r.slayerTitles.length-1]
+      : getUserTitle(r.uid) || null;
 
     return '<div class="threat-card" data-uid="' + r.uid + '" style="'
       + 'background:' + cardBg + ';'
