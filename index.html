@@ -1547,11 +1547,8 @@
       <div class="sl-section-head">Party Status — Today</div>
       <div class="today-list" id="today-list"></div>
 
-      <div class="sl-section-head">Guild Rankings</div>
-      <table class="board sl-board">
-        <thead><tr><th></th><th>Hunter</th><th>Power</th><th>Rank</th><th>Streak</th><th>Total</th></tr></thead>
-        <tbody id="board-body"></tbody>
-      </table>
+      <div class="sl-section-head">Hunter Threat Board</div>
+      <div id="board-body"></div>
 
       <!-- Hunter profile modal -->
       <div class="hunter-modal hidden" id="hunter-modal">
@@ -7239,60 +7236,186 @@ function renderPartyStatus() {
     row.addEventListener('click', async () => { await openHunterProfile(row.dataset.uid); }));
 }
 
-/* ── Competition Board with Power Gap & Weekly Delta ── */
+/* ── Hunter Threat Board ── */
 function renderCompetitionBoard() {
   const el = document.getElementById('board-body');
   if (!el) return;
   const today = todayStr();
   const weekStart = startOfWeek(new Date());
   const lastWeekStart = new Date(weekStart); lastWeekStart.setDate(lastWeekStart.getDate()-7);
+  const lastWeekEnd = new Date(weekStart);
 
-  // compute weekly power delta — approximated by counting AP earned this week vs last
-  const weeklyAP = uid => myWorkouts
-    .filter(w => w.uid === uid && new Date(w.date) >= weekStart)
-    .length * 10;
+  // compute each hunter's data
+  const rows = allUsers.map(u => {
+    const thisWeekWOs = allWorkouts.filter(w => w.uid === u.uid && new Date(w.date) >= weekStart);
+    const lastWeekWOs = allWorkouts.filter(w => w.uid === u.uid && new Date(w.date) >= lastWeekStart && new Date(w.date) < lastWeekEnd);
+    const power = getUserPowerLevel(u);
+    const thisWeekAP = thisWeekWOs.length * 10;
+    const lastWeekAP = lastWeekWOs.length * 10;
+    const weekDelta = thisWeekAP - lastWeekAP;
+    const momentum = weekDelta >= 20 ? '↑↑' : weekDelta >= 10 ? '↑' : weekDelta <= -20 ? '↓↓' : weekDelta <= -10 ? '↓' : '→';
+    const momentumColor = weekDelta >= 10 ? 'var(--excess)' : weekDelta <= -10 ? 'var(--growing)' : 'var(--text-faint)';
+    return {
+      uid: u.uid,
+      name: u.displayName || 'Hunter',
+      power, rank: getUserCharRank(u),
+      streak: computeStreak(u.uid),
+      total: allWorkouts.filter(w => w.uid === u.uid).length,
+      thisWeekWOs: thisWeekWOs.length,
+      weeklyGoal: u.weeklyGoal || 3,
+      trainedToday: allWorkouts.some(w => w.uid === u.uid && w.date === today),
+      momentum, momentumColor, weekDelta,
+      stats: u.stats || {},
+      hunterClass: u.uid === currentUser.uid ? profile.hunterClass : u.hunterClass,
+      slayerTitles: u.uid === currentUser.uid ? (profile.slayerTitles||[]) : (u.slayerTitles||[]),
+    };
+  }).sort((a,b) => b.power - a.power || b.streak - a.streak);
 
-  const rows = allUsers.map(u => ({
-    uid: u.uid,
-    name: u.displayName || 'Hunter',
-    power: getUserPowerLevel(u),
-    rank: getUserCharRank(u),
-    streak: computeStreak(u.uid),
-    total: allWorkouts.filter(w => w.uid === u.uid).length,
-    weeklyGain: weeklyAP(u.uid),
-    trainedToday: allWorkouts.some(w => w.uid === u.uid && w.date === today),
-  })).sort((a,b) => b.power - a.power || b.streak - a.streak);
+  const myRow = rows.find(r => r.uid === currentUser.uid);
+  const myPower = myRow?.power || 0;
+  const myRankIdx = rows.findIndex(r => r.uid === currentUser.uid);
 
-  const myPower = rows.find(r=>r.uid===currentUser.uid)?.power || 0;
+  // find rival — closest person above in power
+  const rival = myRankIdx > 0 ? rows[myRankIdx - 1] : null;
+  const chaser = myRankIdx < rows.length - 1 ? rows[myRankIdx + 1] : null;
+
+  const STAT_ICONS = { strength:'⚔️', endurance:'🔥', agility:'⚡', focus:'🎯', recovery:'🛡️', flexibility:'💫' };
+  const RANK_ORDER = ['S','A','B','C','D','E'];
 
   el.innerHTML = rows.map((r, i) => {
-    const rankCls = 'rank-' + r.rank.toLowerCase();
     const isMe = r.uid === currentUser.uid;
+    const isRival = rival && r.uid === rival.uid;
+    const isChaser = chaser && r.uid === chaser.uid;
     const gap = r.power - myPower;
-    const gapStr = isMe ? '' : gap > 0 ? `+${gap.toLocaleString()} ahead` : gap < 0 ? `${gap.toLocaleString()} behind` : 'Tied';
-    const gapColor = isMe ? '' : gap > 0 ? 'var(--excess)' : gap < 0 ? 'var(--growing)' : 'var(--text-faint)';
-    const deltaStr = r.weeklyGain > 0 ? `+${r.weeklyGain}` : '—';
+    const gapAbs = Math.abs(gap);
+    const cls = r.hunterClass ? HUNTER_CLASSES[r.hunterClass] : null;
     const rankColor = RANK_COLORS[r.rank];
-    return `<tr class="${isMe?'me':''}" data-uid="${r.uid}">
-      <td style="font-family:var(--font-mono);font-size:12px;color:var(--text-faint);text-align:center;">${i+1}</td>
-      <td>
-        <div style="font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100px;">${escapeHtml(r.name)}</div>
-        ${!isMe && gapStr ? `<div style="font-size:9px;color:${gapColor};font-family:var(--font-mono);">${gapStr}</div>` : ''}
-        ${getUserTitle(r.uid) ? `<div style="font-size:9px;color:var(--text-faint);font-family:var(--font-mono);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${getUserTitle(r.uid)}</div>` : ''}
-        ${(() => { const uc = r.uid === currentUser.uid ? profile.hunterClass : allUsers.find(u=>u.uid===r.uid)?.hunterClass; const ucls = uc ? HUNTER_CLASSES[uc] : null; return ucls ? `<div style="font-size:9px;font-family:var(--font-mono);color:${ucls.color};letter-spacing:0.04em;">${ucls.label}</div>` : ''; })()}
-      </td>
-      <td>
-        <div style="font-family:var(--font-display);font-size:13px;color:${rankColor};">${r.power.toLocaleString()}</div>
-        <div style="font-size:9px;color:var(--growing);font-family:var(--font-mono);">${deltaStr} this wk</div>
-      </td>
-      <td><div style="font-family:var(--font-display);font-size:14px;color:${rankColor};text-shadow:0 0 10px ${rankColor};">${r.rank}</div></td>
-      <td><span class="streak-pill ${!r.trainedToday&&r.streak>0?'at-risk':r.trainedToday?'safe':''}">${r.streak}d</span></td>
-      <td style="font-size:12px;color:var(--text-dim);">${r.total}</td>
-    </tr>`;
+
+    // threat level — how dangerous are they relative to me
+    const threatLevel = isMe ? 'self'
+      : gap > 500 ? 'dominant'
+      : gap > 200 ? 'strong'
+      : gap > 50  ? 'ahead'
+      : gap > 0   ? 'close-ahead'
+      : gap === 0 ? 'tied'
+      : gap > -50 ? 'close-behind'
+      : 'behind';
+
+    const threatLabel = {
+      dominant: '◆ DOMINANT',
+      strong: '▲ STRONG',
+      'ahead': '↑ AHEAD',
+      'close-ahead': '~ CLOSE',
+      tied: '= TIED',
+      'close-behind': '~ CLOSE',
+      behind: '↓ BEHIND',
+      self: '',
+    }[threatLevel];
+
+    const threatColor = {
+      dominant: 'var(--excess)',
+      strong: '#FF9500',
+      ahead: '#FFD700',
+      'close-ahead': '#FFD700',
+      tied: 'var(--text-faint)',
+      'close-behind': 'var(--growing)',
+      behind: 'var(--growing)',
+      self: '',
+    }[threatLevel];
+
+    // stat comparison vs me — show where they beat me and where I beat them
+    // only show if they're not me
+    let statCompHtml = '';
+    if (!isMe && myRow) {
+      const statDiffs = Object.keys(STAT_ICONS).map(sid => {
+        const myRank = myRow.stats[sid] || 'E';
+        const theirRank = r.stats[sid] || 'E';
+        const myIdx = RANK_ORDER.indexOf(myRank);
+        const theirIdx = RANK_ORDER.indexOf(theirRank);
+        return { sid, myRank, theirRank, diff: myIdx - theirIdx }; // negative = they're higher rank
+      });
+      const theyBeatMe = statDiffs.filter(s => s.diff > 0).map(s =>
+        '<span style="font-size:9px;color:var(--excess);font-family:var(--font-mono);">' + STAT_ICONS[s.sid] + s.theirRank + '</span>'
+      );
+      const iBeatThem = statDiffs.filter(s => s.diff < 0).map(s =>
+        '<span style="font-size:9px;color:var(--growing);font-family:var(--font-mono);">' + STAT_ICONS[s.sid] + s.theirRank + '</span>'
+      );
+      if (theyBeatMe.length || iBeatThem.length) {
+        statCompHtml = '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px;align-items:center;">'
+          + (theyBeatMe.length ? '<span style="font-size:8px;color:var(--text-faint);">STRONGER:</span>' + theyBeatMe.join('') : '')
+          + (iBeatThem.length ? (theyBeatMe.length ? '<span style="font-size:8px;color:var(--text-faint);margin-left:4px;">WEAKER:</span>' : '<span style="font-size:8px;color:var(--text-faint);">WEAKER:</span>') + iBeatThem.join('') : '')
+          + '</div>';
+      }
+    }
+
+    // weekly progress bar
+    const weekPct = Math.min(100, (r.thisWeekWOs / r.weeklyGoal) * 100).toFixed(0);
+    const weekColor = r.thisWeekWOs >= r.weeklyGoal ? 'var(--growing)' : r.trainedToday ? 'var(--brass)' : 'var(--text-faint)';
+
+    // border glow based on threat/rivalry
+    const cardBorder = isMe ? 'rgba(212,160,23,0.4)'
+      : isRival ? 'rgba(255,61,90,0.5)'
+      : isChaser ? 'rgba(62,207,142,0.3)'
+      : 'var(--border)';
+    const cardBg = isMe ? 'rgba(212,160,23,0.04)'
+      : isRival ? 'rgba(255,61,90,0.04)'
+      : isChaser ? 'rgba(62,207,142,0.03)'
+      : 'transparent';
+
+    const rivalBadge = isRival ? '<span style="font-size:8px;background:rgba(255,61,90,0.15);color:var(--excess);padding:1px 5px;border-radius:2px;font-family:var(--font-mono);letter-spacing:0.1em;">RIVAL</span>' : '';
+    const chaserBadge = isChaser ? '<span style="font-size:8px;background:rgba(62,207,142,0.12);color:var(--growing);padding:1px 5px;border-radius:2px;font-family:var(--font-mono);letter-spacing:0.1em;">CHASER</span>' : '';
+
+    const latestTitle = r.slayerTitles.length ? r.slayerTitles[r.slayerTitles.length-1] : getUserTitle(r.uid);
+
+    return '<div class="threat-card" data-uid="' + r.uid + '" style="'
+      + 'background:' + cardBg + ';'
+      + 'border:1px solid ' + cardBorder + ';'
+      + 'border-radius:8px;padding:12px 14px;margin-bottom:8px;cursor:pointer;'
+      + 'transition:border-color .2s;'
+      + '">'
+      // rank + name row
+      + '<div style="display:flex;align-items:flex-start;gap:10px;">'
+        + '<div style="font-family:var(--font-display);font-size:22px;color:' + rankColor + ';text-shadow:0 0 12px ' + rankColor + ';flex-shrink:0;width:28px;text-align:center;">' + r.rank + '</div>'
+        + '<div style="flex:1;min-width:0;">'
+          + '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">'
+            + '<span style="font-size:14px;font-weight:700;color:' + (isMe?'var(--brass)':'var(--text)') + ';overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + (isMe?'▶ ':'') + escapeHtml(r.name) + '</span>'
+            + rivalBadge + chaserBadge
+          + '</div>'
+          + (cls ? '<div style="font-size:10px;font-family:var(--font-mono);color:' + cls.color + ';letter-spacing:0.05em;margin-top:1px;">' + cls.label + '</div>' : '')
+          + (latestTitle ? '<div style="font-size:9px;color:#FFD700;font-family:var(--font-mono);letter-spacing:0.06em;margin-top:1px;">' + escapeHtml(latestTitle) + '</div>' : '')
+        + '</div>'
+        // right col — power + threat
+        + '<div style="text-align:right;flex-shrink:0;">'
+          + '<div style="font-family:var(--font-display);font-size:18px;color:' + rankColor + ';">' + r.power.toLocaleString() + '</div>'
+          + '<div style="font-size:9px;font-family:var(--font-mono);color:' + r.momentumColor + ';">' + r.momentum + ' ' + (r.weekDelta >= 0 ? '+' : '') + r.weekDelta + ' AP/wk</div>'
+          + (!isMe && threatLabel ? '<div style="font-size:9px;font-family:var(--font-mono);color:' + threatColor + ';margin-top:2px;">' + threatLabel + ' · ' + (gap > 0 ? '+' : '') + gapAbs + '</div>' : '')
+        + '</div>'
+      + '</div>'
+      // stat comparison (only vs others)
+      + statCompHtml
+      // week progress bar
+      + '<div style="margin-top:8px;">'
+        + '<div style="display:flex;justify-content:space-between;margin-bottom:3px;">'
+          + '<span style="font-size:9px;color:var(--text-faint);font-family:var(--font-mono);">THIS WEEK</span>'
+          + '<span style="font-size:9px;font-family:var(--font-mono);color:' + weekColor + ';">'
+            + r.thisWeekWOs + '/' + r.weeklyGoal
+            + (r.trainedToday ? ' · trained today' : !r.trainedToday && r.streak > 0 ? ' · streak at risk' : '')
+          + '</span>'
+        + '</div>'
+        + '<div style="height:2px;background:rgba(93,157,255,0.1);border-radius:1px;">'
+          + '<div style="height:100%;width:' + weekPct + '%;background:' + weekColor + ';border-radius:1px;transition:width .8s;"></div>'
+        + '</div>'
+      + '</div>'
+      // streak
+      + '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px;">'
+        + '<span style="font-size:9px;color:var(--text-faint);font-family:var(--font-mono);">' + r.total + ' total sessions</span>'
+        + '<span class="streak-pill ' + (!r.trainedToday&&r.streak>0?'at-risk':r.trainedToday?'safe':'') + '">' + r.streak + 'd</span>'
+      + '</div>'
+    + '</div>';
   }).join('') || '';
 
-  el.querySelectorAll('tr[data-uid]').forEach(row =>
-    row.addEventListener('click', async () => { await openHunterProfile(row.dataset.uid); }));
+  el.querySelectorAll('.threat-card[data-uid]').forEach(card =>
+    card.addEventListener('click', async () => { await openHunterProfile(card.dataset.uid); }));
 }
 
 /* ── Weekly Raid Boss ── */
