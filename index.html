@@ -1636,7 +1636,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import {
   getFirestore, collection, doc, setDoc, addDoc, getDoc, getDocs,
-  query, where, orderBy, limit, serverTimestamp, updateDoc, deleteDoc
+  query, where, orderBy, limit, serverTimestamp, updateDoc, deleteDoc, increment
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 /* =========================================================================
@@ -3794,7 +3794,7 @@ function addExerciseRow(presetName, targetSets, targetReps, prefillSets) {
       ${suggTag}
       <div class="set-row-rir">
         <span class="set-row-rir-label">${timed ? 'RPE' : 'RIR'}</span>
-        ${timed ? rpeChips(prefillRir ?? null) : rirChips(prefillRir ?? null)}
+        ${timed ? rpeChips(null) : rirChips(null)}
       </div>`;
     setRow.querySelectorAll('.step-down').forEach(btn => btn.addEventListener('click', () => {
       SFX.numpadKey();
@@ -4177,7 +4177,7 @@ async function checkAndAwardPRs(exercises, workoutDate) {
   const newAP = (profile.auraPoints || 0) + totalNewXP;
 
   await setDoc(doc(db, 'prs', currentUser.uid), newPRs);
-  await setDoc(doc(db, 'users', currentUser.uid), { auraPoints: newAP }, { merge: true });
+  await setDoc(doc(db, 'users', currentUser.uid), { auraPoints: increment(totalNewXP) }, { merge: true });
   myPRs = newPRs;
   profile.auraPoints = newAP;
 
@@ -4611,7 +4611,7 @@ async function tryAwardAp() {
   const earned = computeApEarned();
   const newAp = (profile.auraPoints || 0) + earned;
   await setDoc(doc(db, 'users', currentUser.uid), {
-    auraPoints: newAp,
+    auraPoints: increment(earned),
     lastApDate: today,
   }, { merge: true });
   profile.auraPoints = newAp;
@@ -4640,7 +4640,7 @@ async function upgradeStatWithAp(statId) {
 
   const pending = [...(profile.pendingRankUpModals || []), { stat: statId, oldRank: currentRank, newRank }];
   await setDoc(doc(db, 'users', currentUser.uid), {
-    auraPoints: newAp, stats: newStats,
+    auraPoints: increment(-gates.apCost), stats: newStats,
     statTimeAtRank, pendingRankUpModals: pending,
   }, { merge: true });
   profile.auraPoints = newAp;
@@ -5379,7 +5379,7 @@ async function checkPenalty() {
 
   const apLost = Math.max(5, Math.round((profile.auraPoints || 0) * 0.05));
   const newAp = Math.max(0, (profile.auraPoints || 0) - apLost);
-  await setDoc(doc(db, 'users', currentUser.uid), { auraPoints: newAp, lastPenaltyCheck: todayStr() }, { merge: true });
+  await setDoc(doc(db, 'users', currentUser.uid), { auraPoints: increment(-apLost), lastPenaltyCheck: todayStr() }, { merge: true });
   profile.auraPoints = newAp;
   profile.lastPenaltyCheck = todayStr();
   return { apLost };
@@ -6469,7 +6469,7 @@ async function fixMissingAp() {
         const currentAp = data.auraPoints || 0;
         await setDoc(doc(db, 'users', t.uid), {
           lastApDate: dateToAward,
-          auraPoints: currentAp + ap,
+          auraPoints: increment(ap),
         }, { merge: true });
         fixed.push(`${t.name} (+${ap} AP for ${dateToAward})`);
       }
@@ -6747,6 +6747,10 @@ async function openAdminUserPanel() {
 
   const content = overlay.querySelector('#aup-content');
   try {
+    // Force a fresh pull before rendering — this panel previously just read the in-memory
+    // allUsers array, which could be stale from earlier in the session (e.g. showing AP
+    // totals from before a workout or raid claim actually landed in Firestore).
+    await loadAllData();
     const today = todayStr();
     const html = allUsers.map(u => {
       const lastWO = u.lastWorkoutDate || 'never';
@@ -7174,7 +7178,7 @@ function openAdminWorkoutLogger(targetUid, hunterName) {
         const currentAp = targetProfile.auraPoints || 0;
         await setDoc(doc(db, 'users', targetUid), {
           lastApDate: date,
-          auraPoints: currentAp + ap,
+          auraPoints: increment(ap),
         }, { merge: true });
       }
       // check PRs for each exercise
@@ -7903,7 +7907,10 @@ async function renderRaidBoss() {
       localStorage.setItem(weekKey, '1');
       try {
         const newAp = (profile.auraPoints || 0) + myShareAP;
-        await setDoc(doc(db, 'users', currentUser.uid), { auraPoints: newAp }, { merge: true });
+        // atomic increment — a plain read-add-write here is what silently ate your base
+        // workout AP tonight: this and tryAwardAp() both read the same local profile.auraPoints
+        // and wrote back their own sum, so whichever finished last clobbered the other's delta.
+        await setDoc(doc(db, 'users', currentUser.uid), { auraPoints: increment(myShareAP) }, { merge: true });
         profile.auraPoints = newAp;
         const slayerTitle = `[${boss.name} Slayer]`;
         const existingTitles = profile.slayerTitles || [];
@@ -7954,7 +7961,7 @@ async function renderRaidBoss() {
       try {
         if (myPenaltyShare > 0) {
           const newAp = Math.max(0, (profile.auraPoints || 0) - myPenaltyShare);
-          await setDoc(doc(db, 'users', currentUser.uid), { auraPoints: newAp }, { merge: true });
+          await setDoc(doc(db, 'users', currentUser.uid), { auraPoints: increment(-myPenaltyShare) }, { merge: true });
           profile.auraPoints = newAp;
         }
         const penaltyBreakdown = allUsers
@@ -8088,7 +8095,6 @@ async function renderRaidBoss() {
       </div>
       <div class="raid-contributors" style="margin-bottom:12px;">${contribHtml}</div>
       <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-top:10px;gap:12px;">
-      <div class="raid-contributors" style="margin-bottom:12px;">${contribHtml}</div>
         <p class="${cleared?'raid-cleared-msg':'raid-warning'}" style="margin:0;flex:1;">
           ${cleared
             ? `★ Gate cleared — ${rewardPool} AP shared by contribution.`
@@ -9560,7 +9566,7 @@ function renderTrialsTab(el) {
           const newTitles = [...(profile.slayerTitles||[])];
           if (!newTitles.includes(trial.title)) newTitles.push(trial.title);
           await setDoc(doc(db, 'users', currentUser.uid), {
-            auraPoints: newAp,
+            auraPoints: increment(100),
             completedTrials: newCompleted,
             slayerTitles: newTitles,
             [`activeTrials.${hunterClass}`]: null,
@@ -10343,7 +10349,7 @@ function openWorkoutDetail(workoutId) {
       // 2. reverse AP
       if (apToReverse > 0) {
         const newAp = Math.max(0, (profile.auraPoints || 0) - apToReverse);
-        await setDoc(doc(db, 'users', currentUser.uid), { auraPoints: newAp }, { merge: true });
+        await setDoc(doc(db, 'users', currentUser.uid), { auraPoints: increment(-apToReverse) }, { merge: true });
         profile.auraPoints = newAp;
       }
 
