@@ -5134,7 +5134,7 @@ async function runSystemChecks() {
           const existing = allWorkouts.find(w => w.uid === t.uid && w.date === missedDate);
           if (!existing) {
             await setDoc(doc(db, 'workouts', `${t.uid}_${missedDate}_missed`), {
-              uid: t.uid, date: missedDate, time: '6:00 PM',
+              uid: t.uid, displayName: t.name, date: missedDate, time: '6:00 PM',
               exercises: missedExercises, programDayIndex: 0,
               createdAt: new Date().toISOString(),
             });
@@ -8861,7 +8861,7 @@ function renderHistoryList() {
         return `<div class="card history-card" style="cursor:${isMe?'pointer':'default'}" data-wid="${w.id}">
           <div class="history-card-header">
             <div>
-              <div class="who">${escapeHtml(w.displayName)}${w.time?` · ${w.time}`:''}</div>
+              <div class="who">${escapeHtml(w.displayName || allUsers.find(u=>u.uid===w.uid)?.displayName || 'Hunter')}${w.time?` · ${w.time}`:''}</div>
               <div class="exlist">${(w.exercises||[]).map(e => `${escapeHtml(e.name)} · ${e.sets.length} sets`).join('<br/>')}</div>
             </div>
             ${isMe ? `<button type="button" class="history-detail-btn" data-wid="${w.id}">View ›</button>` : ''}
