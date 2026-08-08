@@ -2264,6 +2264,8 @@ function openSettingsModal() {
           <button class="btn" id="admin-open-tester" style="color:var(--brass);border-color:var(--brass);font-size:12px;">🧪 Run System Tests</button>
           <button class="btn" id="admin-open-users" style="font-size:12px;">👥 View All Users & Stats</button>
           <button class="btn" id="admin-fix-streaks" style="font-size:12px;color:var(--excess);border-color:var(--excess);">🔧 Fix Missing Streaks</button>
+          <button class="btn" id="admin-fix-ap" style="font-size:12px;color:var(--excess);border-color:var(--excess);">🩹 Fix Missing AP</button>
+          <button class="btn" id="admin-fix-orphans" style="font-size:12px;color:var(--excess);border-color:var(--excess);">🔍 Find/Reassign Mismatched Workouts</button>
         </div>
       </div>` : ''}
       <p class="auth-error" id="settings-error" style="margin-top:10px;"></p>
@@ -2290,6 +2292,8 @@ function openSettingsModal() {
   overlay.querySelector('#admin-open-tester')?.addEventListener('click', () => { overlay.remove(); openAdminTester(); });
   overlay.querySelector('#admin-open-users')?.addEventListener('click', () => { overlay.remove(); openAdminUserPanel(); });
   overlay.querySelector('#admin-fix-streaks')?.addEventListener('click', () => { overlay.remove(); fixMissingStreaks(); });
+  overlay.querySelector('#admin-fix-ap')?.addEventListener('click', () => { overlay.remove(); fixMissingAp(); });
+  overlay.querySelector('#admin-fix-orphans')?.addEventListener('click', () => { overlay.remove(); openOrphanedWorkoutsPanel(); });
   overlay.querySelector('#save-settings').addEventListener('click', async () => {
     const newName = document.getElementById('settings-name').value.trim();
     const newGoal = Math.max(1, Number(document.getElementById('settings-goal').value) || 3);
@@ -6417,6 +6421,100 @@ async function fixMissingStreaks() {
   showToast(fixed.length ? `Fixed streaks for: ${fixed.join(', ')}` : 'All streaks already up to date', 'success');
 }
 
+// Repairs the "debrief shows 0 AP" bug: happens when a workout is written to Firestore
+// (e.g. via a manual/one-time script) without going through tryAwardAp()/the admin logger's
+// AP-award step, so profile.lastApDate never advances to that workout's date.
+// Safe to run repeatedly — only backfills a date that has a real workout but no matching AP award.
+async function fixMissingAp() {
+  const targets = [
+    { uid: 'eUtGPwQBcCSO0x3xS3ZGYFGXNIT2', name: 'Lawrence' },
+    { uid: 'd1W5vTx5aSTIwkR4CIwnO2xW7vf1', name: 'LuChing' },
+    { uid: 'oFFi2hATYARhqcSZQlHwlsYBOge2', name: "I'm just a girl" },
+    { uid: 'rzcznIkNRrSKVXl74LsTaRSdHOk2', name: 'Lucas' },
+  ];
+  let fixed = [];
+  for (const t of targets) {
+    try {
+      const snap = await getDoc(doc(db, 'users', t.uid));
+      const data = snap.data() || {};
+      const theirWorkouts = allWorkouts.filter(w => w.uid === t.uid).sort((a,b) => a.date.localeCompare(b.date));
+      if (!theirWorkouts.length) continue;
+      const lastApDate = data.lastApDate || null;
+      const mostRecentWorkoutDate = theirWorkouts[theirWorkouts.length - 1].date;
+      // if their most recent logged workout date is more recent than the last date AP was
+      // actually awarded, that day's AP was never credited — backfill it once.
+      if (!lastApDate || lastApDate < mostRecentWorkoutDate) {
+        const dateToAward = mostRecentWorkoutDate;
+        const streak = computeStreak(t.uid);
+        const mult = streak >= 30 ? 2 : streak >= 7 ? 1.5 : 1;
+        const ap = Math.round(10 * mult);
+        const currentAp = data.auraPoints || 0;
+        await setDoc(doc(db, 'users', t.uid), {
+          lastApDate: dateToAward,
+          auraPoints: currentAp + ap,
+        }, { merge: true });
+        fixed.push(`${t.name} (+${ap} AP for ${dateToAward})`);
+      }
+    } catch(e) { console.error(e); }
+  }
+  showToast(fixed.length ? `Fixed AP for: ${fixed.join(', ')}` : 'All AP already up to date', 'success');
+  await loadAllData();
+}
+
+// Diagnostic/repair tool for the "can't edit their own log" bug: openWorkoutDetail() only
+// allows editing when w.uid === currentUser.uid. If a workout was inserted with a wrong/missing
+// uid (e.g. hand-typed into Firestore, or a one-time script bug), the owner will silently be
+// unable to open or edit it. This lists any workout whose uid doesn't match one of the 4 known
+// party members so it can be reassigned to the correct owner with one tap.
+function openOrphanedWorkoutsPanel() {
+  const KNOWN = {
+    'eUtGPwQBcCSO0x3xS3ZGYFGXNIT2': 'Lawrence',
+    'd1W5vTx5aSTIwkR4CIwnO2xW7vf1': 'LuChing',
+    'oFFi2hATYARhqcSZQlHwlsYBOge2': "I'm just a girl",
+    'rzcznIkNRrSKVXl74LsTaRSdHOk2': 'Lucas',
+  };
+  const orphans = allWorkouts.filter(w => !KNOWN[w.uid]);
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.innerHTML = `<div class="modal" style="max-height:85vh;overflow-y:auto;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+      <h3>Mismatched Workouts</h3>
+      <button class="icon-btn" id="orphan-close" style="font-size:20px;">✕</button>
+    </div>
+    <div id="orphan-content">
+      ${orphans.length ? orphans.map(w => `
+        <div style="padding:12px;border:1px solid var(--excess);border-radius:6px;margin-bottom:8px;">
+          <div style="font-size:12px;font-family:var(--font-mono);color:var(--text-faint);">Workout ID: ${escapeHtml(w.id)}</div>
+          <div style="font-size:12px;font-family:var(--font-mono);color:var(--excess);margin:4px 0;">Stored uid: "${escapeHtml(String(w.uid || '(missing)'))}" — no match</div>
+          <div style="font-size:12px;color:var(--text-faint);margin-bottom:8px;">${w.date} · ${(w.exercises||[]).length} exercises</div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;">
+            ${Object.entries(KNOWN).map(([uid,name]) =>
+              `<button class="btn btn-sm reassign-btn" data-wid="${w.id}" data-uid="${uid}" style="font-size:11px;">→ ${name}</button>`
+            ).join('')}
+          </div>
+        </div>`).join('')
+        : '<p style="color:var(--text-faint);">No mismatched workouts found — every workout is correctly owned.</p>'}
+    </div>
+  </div>`;
+  document.body.appendChild(overlay);
+  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+  overlay.querySelector('#orphan-close').addEventListener('click', () => overlay.remove());
+  overlay.querySelectorAll('.reassign-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      btn.disabled = true; btn.textContent = 'Fixing…';
+      try {
+        await setDoc(doc(db, 'workouts', btn.dataset.wid), { uid: btn.dataset.uid }, { merge: true });
+        showToast('Workout reassigned. Ask them to also run Fix Missing AP if their debrief still shows 0.', 'success');
+        await loadAllData();
+        overlay.remove();
+      } catch(e) {
+        showToast('Error: ' + e.message, 'error');
+        btn.disabled = false; btn.textContent = 'Retry';
+      }
+    });
+  });
+}
+
 async function openAdminUserPanel() {
   const overlay = document.createElement('div');
   overlay.className = 'modal-overlay';
@@ -7246,6 +7344,7 @@ function renderCompetitionBoard() {
   const rows = allUsers.map(u => {
     const thisWeekWOs = allWorkouts.filter(w => w.uid === u.uid && new Date(w.date) >= weekStart);
     const lastWeekWOs = allWorkouts.filter(w => w.uid === u.uid && new Date(w.date) >= lastWeekStart && new Date(w.date) < lastWeekEnd);
+    const thisWeekDays = new Set(thisWeekWOs.map(w => w.date)).size; // distinct training days this week (not raw workout docs — a day logged twice still counts once)
     const power = getUserPowerLevel(u);
     const thisWeekAP = thisWeekWOs.length * 10;
     const lastWeekAP = lastWeekWOs.length * 10;
@@ -7258,7 +7357,7 @@ function renderCompetitionBoard() {
       power, rank: getUserCharRank(u),
       streak: computeStreak(u.uid),
       total: allWorkouts.filter(w => w.uid === u.uid).length,
-      thisWeekWOs: thisWeekWOs.length,
+      thisWeekWOs: thisWeekDays,
       weeklyGoal: u.weeklyGoal || 3,
       trainedToday: allWorkouts.some(w => w.uid === u.uid && w.date === today),
       momentum, momentumColor, weekDelta,
