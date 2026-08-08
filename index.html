@@ -5111,40 +5111,6 @@ async function runSystemChecks() {
   await checkStatDecay();
   await evaluateAndSaveClass();
   await checkAndUnlockAchievements();
-  // ── ONE-TIME: Log missed Friday 7th Aug workout for LuChing and Lucas ──
-  if (currentUser?.uid === 'eUtGPwQBcCSO0x3xS3ZGYFGXNIT2') {
-    const missedDate = '2026-08-07';
-    const missedKey = 'aura_missed_workout_injected_0807';
-    if (!localStorage.getItem(missedKey)) {
-      const missedExercises = [
-        { name: 'Tuck Planche', sets: [{reps:12,weight:0,rir:7},{reps:12,weight:0,rir:7},{reps:10,weight:0,rir:8},{reps:10,weight:0,rir:8}] },
-        { name: 'Planche Lean', sets: [{reps:10,weight:0,rir:7},{reps:10,weight:0,rir:7},{reps:8,weight:0,rir:8},{reps:8,weight:0,rir:8}] },
-        { name: 'Push Up', sets: [{reps:8,weight:0,rir:2},{reps:8,weight:0,rir:2},{reps:7,weight:0,rir:3},{reps:6,weight:0,rir:3}] },
-        { name: 'Ring Dips', sets: [{reps:6,weight:0,rir:2},{reps:6,weight:0,rir:2},{reps:5,weight:0,rir:3},{reps:5,weight:0,rir:3}] },
-        { name: 'Pike Push Up', sets: [{reps:7,weight:0,rir:2},{reps:6,weight:0,rir:2},{reps:6,weight:0,rir:3},{reps:5,weight:0,rir:3}] },
-        { name: 'Overhead Tricep Extension', sets: [{reps:12,weight:0,rir:2},{reps:12,weight:0,rir:2},{reps:10,weight:0,rir:3}] },
-        { name: 'German Hang', sets: [{reps:12,weight:0,rir:7},{reps:12,weight:0,rir:7}] },
-      ];
-      const targets = [
-        { uid: 'd1W5vTx5aSTIwkR4CIwnO2xW7vf1', name: 'LuChing' },
-        { uid: 'rzcznIkNRrSKVXl74LsTaRSdHOk2', name: 'Lucas' },
-      ];
-      for (const t of targets) {
-        try {
-          const existing = allWorkouts.find(w => w.uid === t.uid && w.date === missedDate);
-          if (!existing) {
-            await setDoc(doc(db, 'workouts', `${t.uid}_${missedDate}_missed`), {
-              uid: t.uid, displayName: t.name, date: missedDate, time: '6:00 PM',
-              exercises: missedExercises, programDayIndex: 0,
-              createdAt: new Date().toISOString(),
-            });
-            await setDoc(doc(db, 'users', t.uid), { lastWorkoutDate: missedDate }, { merge: true });
-          }
-        } catch(e) {}
-      }
-      localStorage.setItem(missedKey, '1');
-    }
-  }
   // silently award AP if they already have a workout today but haven't been awarded yet
   const silentAp = await tryAwardAp();
   if (silentAp) {
