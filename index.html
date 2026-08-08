@@ -1636,7 +1636,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import {
   getFirestore, collection, doc, setDoc, addDoc, getDoc, getDocs,
-  query, where, orderBy, limit, serverTimestamp, updateDoc, deleteDoc, increment
+  query, where, orderBy, limit, serverTimestamp, updateDoc, deleteDoc, increment, runTransaction
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 /* =========================================================================
@@ -2268,6 +2268,7 @@ function openSettingsModal() {
           <button class="btn" id="admin-fix-orphans" style="font-size:12px;color:var(--excess);border-color:var(--excess);">🔍 Find/Reassign Mismatched Workouts</button>
           <button class="btn" id="admin-advance-rotation" style="font-size:12px;color:var(--excess);border-color:var(--excess);">⏭ Advance Stuck Rotation Day</button>
           <button class="btn" id="admin-raw-workout" style="font-size:12px;color:var(--brass);border-color:var(--brass);">🗄 View/Edit Raw Workout</button>
+          <button class="btn" id="admin-adjust-ap" style="font-size:12px;color:var(--brass);border-color:var(--brass);">➕ Manual AP Adjustment</button>
         </div>
       </div>` : ''}
       <p class="auth-error" id="settings-error" style="margin-top:10px;"></p>
@@ -2298,6 +2299,7 @@ function openSettingsModal() {
   overlay.querySelector('#admin-fix-orphans')?.addEventListener('click', () => { overlay.remove(); openOrphanedWorkoutsPanel(); });
   overlay.querySelector('#admin-advance-rotation')?.addEventListener('click', () => { overlay.remove(); openAdvanceRotationPanel(); });
   overlay.querySelector('#admin-raw-workout')?.addEventListener('click', () => { overlay.remove(); openRawWorkoutPanel(); });
+  overlay.querySelector('#admin-adjust-ap')?.addEventListener('click', () => { overlay.remove(); openApAdjustPanel(); });
   overlay.querySelector('#save-settings').addEventListener('click', async () => {
     const newName = document.getElementById('settings-name').value.trim();
     const newGoal = Math.max(1, Number(document.getElementById('settings-goal').value) || 3);
@@ -6731,6 +6733,70 @@ function openRawWorkoutPanel() {
   });
 }
 
+// General-purpose manual AP correction — for cases like tonight's race-condition bug where
+// a known amount of AP was silently lost and needs a clean, auditable correction rather than
+// waiting for it to "true up" on its own (it won't — tomorrow's workout only awards tomorrow's
+// AP, it has no way to detect or backfill a past shortfall). Uses atomic increment() so it can
+// never collide with a concurrent award/spend elsewhere in the app.
+function openApAdjustPanel() {
+  const targets = [
+    { uid: 'eUtGPwQBcCSO0x3xS3ZGYFGXNIT2', name: 'Lawrence' },
+    { uid: 'd1W5vTx5aSTIwkR4CIwnO2xW7vf1', name: 'LuChing' },
+    { uid: 'oFFi2hATYARhqcSZQlHwlsYBOge2', name: "I'm just a girl" },
+    { uid: 'rzcznIkNRrSKVXl74LsTaRSdHOk2', name: 'Lucas' },
+  ];
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.innerHTML = `<div class="modal" style="max-height:85vh;overflow-y:auto;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+      <h3>Manual AP Adjustment</h3>
+      <button class="icon-btn" id="apadj-close" style="font-size:20px;">✕</button>
+    </div>
+    <div class="field" style="margin-bottom:12px;">
+      <label>Hunter</label>
+      <select id="apadj-user" style="width:100%;background:var(--card-2);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:8px;font-size:13px;">
+        ${targets.map(t => `<option value="${t.uid}">${escapeHtml(t.name)}</option>`).join('')}
+      </select>
+    </div>
+    <div class="field" style="margin-bottom:12px;">
+      <label>Amount (use a negative number to deduct)</label>
+      <input type="number" id="apadj-amount" placeholder="e.g. 10 or -10" style="width:100%;background:var(--card-2);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:8px;font-size:13px;" />
+    </div>
+    <div class="field" style="margin-bottom:14px;">
+      <label>Reason (for your own records)</label>
+      <input type="text" id="apadj-reason" placeholder="e.g. race-condition AP loss, Aug 8" style="width:100%;background:var(--card-2);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:8px;font-size:13px;" />
+    </div>
+    <button class="btn btn-primary" id="apadj-apply" style="width:100%;">Apply Adjustment</button>
+    <div id="apadj-result" style="margin-top:10px;font-size:12px;color:var(--text-faint);"></div>
+  </div>`;
+  document.body.appendChild(overlay);
+  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+  overlay.querySelector('#apadj-close').addEventListener('click', () => overlay.remove());
+
+  overlay.querySelector('#apadj-apply').addEventListener('click', async () => {
+    const uid = overlay.querySelector('#apadj-user').value;
+    const amount = Number(overlay.querySelector('#apadj-amount').value);
+    const reason = overlay.querySelector('#apadj-reason').value.trim();
+    const result = overlay.querySelector('#apadj-result');
+    if (!amount) { result.textContent = 'Enter a non-zero amount.'; result.style.color = 'var(--excess)'; return; }
+    const btn = overlay.querySelector('#apadj-apply');
+    btn.disabled = true; btn.textContent = 'Applying…';
+    try {
+      await setDoc(doc(db, 'users', uid), { auraPoints: increment(amount) }, { merge: true });
+      const name = targets.find(t => t.uid === uid)?.name || uid;
+      result.textContent = `Applied ${amount > 0 ? '+' : ''}${amount} AP to ${name}${reason ? ` (${reason})` : ''}.`;
+      result.style.color = 'var(--growing)';
+      showToast(`${amount > 0 ? '+' : ''}${amount} AP applied to ${name}.`, 'success');
+      await loadAllData();
+    } catch(e) {
+      result.textContent = 'Error: ' + e.message;
+      result.style.color = 'var(--excess)';
+    } finally {
+      btn.disabled = false; btn.textContent = 'Apply Adjustment';
+    }
+  });
+}
+
 async function openAdminUserPanel() {
   const overlay = document.createElement('div');
   overlay.className = 'modal-overlay';
@@ -7901,17 +7967,24 @@ async function renderRaidBoss() {
   const myPenaltyShare = !cleared ? getPenaltyShare(currentUser?.uid) : 0;
 
   // ── Award raid reward once per week ──
+  // Uses a Firestore transaction as the single source of truth for "already claimed this
+  // week" — NOT localStorage, which can be lost on cache clears, private browsing, or a
+  // different device, causing the exact double-award bug this replaced (56 = 38 + a second
+  // +18 raid credit after localStorage silently reset).
   if (cleared && currentUser) {
     const weekKey = `aura_raid_cleared_${startOfWeek(new Date()).toISOString().slice(0,10)}`;
-    if (!localStorage.getItem(weekKey)) {
-      localStorage.setItem(weekKey, '1');
-      try {
-        const newAp = (profile.auraPoints || 0) + myShareAP;
-        // atomic increment — a plain read-add-write here is what silently ate your base
-        // workout AP tonight: this and tryAwardAp() both read the same local profile.auraPoints
-        // and wrote back their own sum, so whichever finished last clobbered the other's delta.
-        await setDoc(doc(db, 'users', currentUser.uid), { auraPoints: increment(myShareAP) }, { merge: true });
-        profile.auraPoints = newAp;
+    try {
+      const alreadyClaimed = await runTransaction(db, async (tx) => {
+        const userRef = doc(db, 'users', currentUser.uid);
+        const snap = await tx.get(userRef);
+        const data = snap.data() || {};
+        if (data.lastRaidClaimWeek === weekKey) return true;
+        tx.set(userRef, { lastRaidClaimWeek: weekKey, auraPoints: increment(myShareAP) }, { merge: true });
+        return false;
+      });
+      if (!alreadyClaimed) {
+        profile.auraPoints = (profile.auraPoints || 0) + myShareAP;
+        profile.lastRaidClaimWeek = weekKey;
         const slayerTitle = `[${boss.name} Slayer]`;
         const existingTitles = profile.slayerTitles || [];
         if (!existingTitles.includes(slayerTitle)) {
@@ -7949,21 +8022,29 @@ async function renderRaidBoss() {
           </div>`);
           renderCharCard();
         }, 500);
-      } catch(e) { console.warn('Raid reward error:', e); }
-    }
+      }
+    } catch(e) { console.warn('Raid reward error:', e); }
   }
 
   // ── Apply raid failure penalty — once per week, contribution-weighted ──
+  // Same Firestore-transaction pattern as the reward above — replaces the localStorage gate
+  // that could reset and double-apply a penalty.
   if (!cleared && currentUser && daysLeft === 0) {
     const penaltyKey = `aura_raid_penalty_${startOfWeek(new Date()).toISOString().slice(0,10)}`;
-    if (!localStorage.getItem(penaltyKey)) {
-      localStorage.setItem(penaltyKey, '1');
-      try {
-        if (myPenaltyShare > 0) {
-          const newAp = Math.max(0, (profile.auraPoints || 0) - myPenaltyShare);
-          await setDoc(doc(db, 'users', currentUser.uid), { auraPoints: increment(-myPenaltyShare) }, { merge: true });
-          profile.auraPoints = newAp;
-        }
+    try {
+      const alreadyPenalized = await runTransaction(db, async (tx) => {
+        const userRef = doc(db, 'users', currentUser.uid);
+        const snap = await tx.get(userRef);
+        const data = snap.data() || {};
+        if (data.lastRaidPenaltyWeek === penaltyKey) return true;
+        const updates = { lastRaidPenaltyWeek: penaltyKey };
+        if (myPenaltyShare > 0) updates.auraPoints = increment(-myPenaltyShare);
+        tx.set(userRef, updates, { merge: true });
+        return false;
+      });
+      if (!alreadyPenalized) {
+        if (myPenaltyShare > 0) profile.auraPoints = Math.max(0, (profile.auraPoints || 0) - myPenaltyShare);
+        profile.lastRaidPenaltyWeek = penaltyKey;
         const penaltyBreakdown = allUsers
           .map(u => ({
             name: u.displayName || 'Hunter',
@@ -7994,8 +8075,8 @@ async function renderRaidBoss() {
           </div>`);
           renderCharCard();
         }, 500);
-      } catch(e) { console.warn('Raid penalty error:', e); }
-    }
+      }
+    } catch(e) { console.warn('Raid penalty error:', e); }
   }
   const nextBoss = BOSS_DATA[bossTier];
   const nextMaxHP = totalWeeklyGoal;
