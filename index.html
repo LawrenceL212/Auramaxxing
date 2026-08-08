@@ -2266,6 +2266,7 @@ function openSettingsModal() {
           <button class="btn" id="admin-fix-streaks" style="font-size:12px;color:var(--excess);border-color:var(--excess);">🔧 Fix Missing Streaks</button>
           <button class="btn" id="admin-fix-ap" style="font-size:12px;color:var(--excess);border-color:var(--excess);">🩹 Fix Missing AP</button>
           <button class="btn" id="admin-fix-orphans" style="font-size:12px;color:var(--excess);border-color:var(--excess);">🔍 Find/Reassign Mismatched Workouts</button>
+          <button class="btn" id="admin-advance-rotation" style="font-size:12px;color:var(--excess);border-color:var(--excess);">⏭ Advance Stuck Rotation Day</button>
         </div>
       </div>` : ''}
       <p class="auth-error" id="settings-error" style="margin-top:10px;"></p>
@@ -2294,6 +2295,7 @@ function openSettingsModal() {
   overlay.querySelector('#admin-fix-streaks')?.addEventListener('click', () => { overlay.remove(); fixMissingStreaks(); });
   overlay.querySelector('#admin-fix-ap')?.addEventListener('click', () => { overlay.remove(); fixMissingAp(); });
   overlay.querySelector('#admin-fix-orphans')?.addEventListener('click', () => { overlay.remove(); openOrphanedWorkoutsPanel(); });
+  overlay.querySelector('#admin-advance-rotation')?.addEventListener('click', () => { overlay.remove(); openAdvanceRotationPanel(); });
   overlay.querySelector('#save-settings').addEventListener('click', async () => {
     const newName = document.getElementById('settings-name').value.trim();
     const newGoal = Math.max(1, Number(document.getElementById('settings-goal').value) || 3);
@@ -6515,6 +6517,74 @@ function openOrphanedWorkoutsPanel() {
   });
 }
 
+// Repairs "quest shows yesterday's day as still due" — happens when a workout is logged
+// without going through the normal in-app completion flow, which is the only place that
+// advances programs/{uid}.currentDayIndex. Lets admin manually bump a stuck rotation forward.
+async function openAdvanceRotationPanel() {
+  const targets = [
+    { uid: 'eUtGPwQBcCSO0x3xS3ZGYFGXNIT2', name: 'Lawrence' },
+    { uid: 'd1W5vTx5aSTIwkR4CIwnO2xW7vf1', name: 'LuChing' },
+    { uid: 'oFFi2hATYARhqcSZQlHwlsYBOge2', name: "I'm just a girl" },
+    { uid: 'rzcznIkNRrSKVXl74LsTaRSdHOk2', name: 'Lucas' },
+  ];
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.innerHTML = `<div class="modal" style="max-height:85vh;overflow-y:auto;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+      <h3>Advance Rotation Day</h3>
+      <button class="icon-btn" id="rot-close" style="font-size:20px;">✕</button>
+    </div>
+    <p style="font-size:12px;color:var(--text-faint);margin:0 0 14px;">Rotation-mode only. Shows each hunter's current stuck day and lets you bump them to the next day in their program.</p>
+    <div id="rot-content"><p style="color:var(--text-faint);">Loading…</p></div>
+  </div>`;
+  document.body.appendChild(overlay);
+  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+  overlay.querySelector('#rot-close').addEventListener('click', () => overlay.remove());
+
+  const content = overlay.querySelector('#rot-content');
+  try {
+    const rows = await Promise.all(targets.map(async t => {
+      const snap = await getDoc(doc(db, 'programs', t.uid));
+      const prog = snap.exists() ? snap.data() : null;
+      return { ...t, prog };
+    }));
+    content.innerHTML = rows.map(r => {
+      if (!r.prog?.days?.length) return `<div style="padding:12px;border:1px solid var(--border);border-radius:6px;margin-bottom:8px;color:var(--text-faint);font-size:12px;">${escapeHtml(r.name)} — no program set.</div>`;
+      if (r.prog.scheduleMode === 'fixed') return `<div style="padding:12px;border:1px solid var(--border);border-radius:6px;margin-bottom:8px;color:var(--text-faint);font-size:12px;">${escapeHtml(r.name)} — fixed schedule (no rotation to advance).</div>`;
+      const idx = (r.prog.currentDayIndex || 0) % r.prog.days.length;
+      const dayName = r.prog.days[idx]?.name || `Day ${idx+1}`;
+      const nextIdx = (idx + 1) % r.prog.days.length;
+      const nextName = r.prog.days[nextIdx]?.name || `Day ${nextIdx+1}`;
+      return `<div style="padding:12px;border:1px solid var(--border);border-radius:6px;margin-bottom:8px;">
+        <div style="font-weight:700;font-size:14px;">${escapeHtml(r.name)}</div>
+        <div style="font-size:12px;color:var(--text-faint);margin:4px 0 8px;">Currently shows: <b style="color:var(--text);">${escapeHtml(dayName)}</b> → next would be <b style="color:var(--text);">${escapeHtml(nextName)}</b></div>
+        <button class="btn btn-sm advance-btn" data-uid="${r.uid}" style="font-size:12px;">Advance to ${escapeHtml(nextName)}</button>
+      </div>`;
+    }).join('');
+
+    overlay.querySelectorAll('.advance-btn').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        btn.disabled = true; btn.textContent = 'Advancing…';
+        try {
+          const uid = btn.dataset.uid;
+          const snap = await getDoc(doc(db, 'programs', uid));
+          const prog = snap.data();
+          const idx = (prog.currentDayIndex || 0) % prog.days.length;
+          prog.currentDayIndex = (idx + 1) % prog.days.length;
+          await setDoc(doc(db, 'programs', uid), prog);
+          showToast('Rotation advanced.', 'success');
+          overlay.remove();
+        } catch(e) {
+          showToast('Error: ' + e.message, 'error');
+          btn.disabled = false; btn.textContent = 'Retry';
+        }
+      });
+    });
+  } catch(e) {
+    content.innerHTML = `<p style="color:var(--excess);">Error: ${e.message}</p>`;
+  }
+}
+
 async function openAdminUserPanel() {
   const overlay = document.createElement('div');
   overlay.className = 'modal-overlay';
@@ -6754,16 +6824,20 @@ function openAdminWorkoutLogger(targetUid, hunterName) {
   const program = targetUser?.program;
   const today = todayStr();
 
-  // find today's program day
+  // find today's program day — use the authoritative rotation pointer (currentDayIndex),
+  // not a guess from total workout count, which drifts out of sync if any day was ever
+  // skipped, double-logged, or logged manually without advancing the rotation.
   let prefillExercises = [];
+  let adminDayIndex = null;
   if (program?.days?.length) {
     const dayOfWeek = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][new Date().getDay()];
     let day = null;
     if (program.scheduleMode === 'fixed') {
-      day = program.days.find(d => d.assignedDays?.includes(dayOfWeek));
+      adminDayIndex = program.days.findIndex(d => d.assignedDays?.includes(dayOfWeek));
+      day = adminDayIndex >= 0 ? program.days[adminDayIndex] : null;
     } else {
-      const totalDone = allWorkouts.filter(w => w.uid === targetUid).length;
-      day = program.days[totalDone % program.days.length];
+      adminDayIndex = (program.currentDayIndex || 0) % program.days.length;
+      day = program.days[adminDayIndex];
     }
     if (day) prefillExercises = day.exercises || [];
   }
@@ -6928,11 +7002,23 @@ function openAdminWorkoutLogger(targetUid, hunterName) {
         uid: targetUid, date,
         time: timeStr,
         exercises,
+        programDayIndex: adminDayIndex ?? null,
         createdAt: new Date().toISOString(),
       };
       await setDoc(doc(db, 'workouts', workoutId), workoutData);
       // update their lastWorkoutDate
       await setDoc(doc(db, 'users', targetUid), { lastWorkoutDate: date }, { merge: true });
+      // advance their rotation to the next day — the normal in-app "Complete Quest" flow does
+      // this automatically, but this admin logger writes straight to Firestore and was
+      // skipping it, which left the Quest tab showing the same day as still due after a
+      // manually-logged workout.
+      if (adminDayIndex !== null && program?.days?.length && program.scheduleMode !== 'fixed') {
+        const programSnap = await getDoc(doc(db, 'programs', targetUid));
+        const targetProgram = programSnap.exists() ? programSnap.data() : program;
+        if (targetProgram.days?.[adminDayIndex]) targetProgram.days[adminDayIndex].lastDate = date;
+        targetProgram.currentDayIndex = (adminDayIndex + 1) % targetProgram.days.length;
+        await setDoc(doc(db, 'programs', targetUid), targetProgram);
+      }
       // award AP for the day if not already awarded
       const targetProfile = (await getDoc(doc(db, 'users', targetUid))).data() || {};
       if (targetProfile.lastApDate !== date) {
@@ -9851,7 +9937,7 @@ function openWorkoutDetail(workoutId) {
         </p>
         <div class="detail-sets-head"><span>#</span><span>${repsLabel}</span><span>kg</span><span>RIR/RPE</span><span></span></div>
         ${(ex.sets||[]).map((s,si) => {
-          const rirOptions = isTimed
+          const rirOptions = timed
             ? [6,7,8,9,10].map(n=>`<option value="${n}" ${s.rir===n?'selected':''}>RPE${n}</option>`).join('')
             : [0,1,2,3,4,5].map(n=>`<option value="${n}" ${s.rir===n?'selected':''}>RIR${n}</option>`).join('');
           return `
