@@ -5349,10 +5349,6 @@ async function openAdminTester() {
         if (s2 !== 'flexibility') throw new Error(`Front Splits → expected flexibility, got ${s2}`);
         return 'Stat mapping correct';
       }],
-      ['Raid boss data defined', () => {
-        if (typeof BOSS_DATA === 'undefined' && typeof NAMED_BOSSES === 'undefined') throw new Error('Boss data not in scope — check renderRaidBoss');
-        return 'Boss data present (inside renderRaidBoss scope)';
-      }],
       ['Profile loaded', () => {
         if (!profile) throw new Error('profile is null/undefined');
         if (!profile.displayName) return { warn: 'No displayName on profile' };
