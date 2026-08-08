@@ -4747,18 +4747,89 @@ function renderCharCard() {
     }
   }
 
-  // class badge — inject after char-title
+  // class badge — inject after char-title with intensity based on class score
   const existingBadge = document.getElementById('char-class-badge');
   if (existingBadge) existingBadge.remove();
   if (cls) {
+    // compute class score intensity (0-100) by re-running scoring for this class only
+    const classFit = (() => {
+      try {
+        const recentCutoff = new Date(); recentCutoff.setDate(recentCutoff.getDate() - 30);
+        const recent = allWorkouts.filter(w => w.uid === currentUser.uid && new Date(w.date) >= recentCutoff);
+        if (!recent.length) return 50;
+        let totalSets = 0;
+        const cats = { compound:0, isolation:0, calisthenics:0, cardio:0, explosive:0, skill:0, combat:0, swimming:0, court:0, climbing:0, cycling:0, flexibility:0 };
+        const COMPOUND = new Set(['Squat','Deadlift','Bench Press','Overhead Press','Barbell Row','Pull Up','Chin Up','Dips','Romanian Deadlift','Sumo Deadlift','Hip Thrust','Push Press']);
+        const CALISTHENICS = new Set(['Pull Up','Chin Up','Dips','Push Up','Muscle Up','Tuck Planche','Advanced Tuck Planche','Full Planche','Front Lever','Handstand Push Up','L-Sit','Dragon Flag']);
+        const CARDIO = new Set(['Running','Easy Run','Long Run','Treadmill Run','Cycling','Road Cycling','Freestyle Swimming','Football (Soccer)']);
+        const EXPLOSIVE = new Set(['Hill Sprints','Sprinting','Box Jump','Jump Squat','Burpee','Bouldering']);
+        const SKILL = new Set(['Tuck Planche','Advanced Tuck Planche','Full Planche','Front Lever','Freestanding Handstand Hold','L-Sit','German Hang']);
+        const COMBAT = new Set(['Boxing — Bag Work','Boxing — Sparring','Boxing — Pad Work','Boxing — Shadow Boxing']);
+        const SWIMMING = new Set(['Freestyle Swimming','Breaststroke Swimming','Butterfly Swimming','Backstroke Swimming','Open Water Swimming','HIIT Swimming']);
+        const COURT = new Set(['Tennis','Tennis Drills','Basketball','Basketball Drills','Football (Soccer)','Football Drills']);
+        const CLIMBING = new Set(['Bouldering','Sport Climbing','Top Rope Climbing','Traditional Climbing']);
+        const CYCLING_S = new Set(['Cycling','Road Cycling','Stationary Bike','Spin Class','Mountain Biking','Cycling Intervals']);
+        const FLEX_S = new Set(['Front Splits','Side Splits','German Hang','Yoga','Hip Mobility Routine','Full Body Stretching']);
+        recent.forEach(w => (w.exercises||[]).forEach(ex => {
+          const s = (ex.sets||[]).filter(s=>s.reps>0).length||1; totalSets += s;
+          if (COMPOUND.has(ex.name)) cats.compound += s;
+          if (CALISTHENICS.has(ex.name)) cats.calisthenics += s;
+          if (CARDIO.has(ex.name)) cats.cardio += s;
+          if (EXPLOSIVE.has(ex.name)) cats.explosive += s;
+          if (SKILL.has(ex.name)) cats.skill += s;
+          if (COMBAT.has(ex.name)) cats.combat += s;
+          if (SWIMMING.has(ex.name)) cats.swimming += s;
+          if (COURT.has(ex.name)) cats.court += s;
+          if (CLIMBING.has(ex.name)) cats.climbing += s;
+          if (CYCLING_S.has(ex.name)) cats.cycling += s;
+          if (FLEX_S.has(ex.name)) cats.flexibility += s;
+        }));
+        const p = k => totalSets ? cats[k]/totalSets : 0;
+        // score based on class identity
+        const classScores = {
+          Berserker: p('compound')*35 + p('compound')>0.5?30:0,
+          Assassin: p('explosive')*60, Monk: p('skill')*60,
+          Warlord: p('isolation'||0)*40, Ranger: (p('cardio')+p('compound'))*25,
+          Shadowblade: p('calisthenics')*60, Titan: 50,
+          Striker: p('combat')*70, Ironclad: (p('cycling')+p('compound'))*35,
+          AquaHunter: p('swimming')*80, CourtKing: p('court')*80,
+          Alpinist: p('climbing')*80, Centurion: 40,
+          Phantom: (p('combat')+p('calisthenics'))*40, Sovereign: p('flexibility')*80,
+          Sprinter: p('cardio')*70, Yogi: p('flexibility')*60,
+          Merman: (p('swimming')+p('calisthenics'))*40, Vanguard: (p('climbing')+p('flexibility'))*40,
+          Gladiator: (p('combat')+p('cardio'))*40, Warlord2: (p('court')+p('compound'))*40,
+          Triathlete: (p('cycling')+p('swimming')+p('cardio'))*30, Transcendent: 30,
+        };
+        const raw = Math.min(100, Math.max(20, (classScores[hunterClass]||50)*2));
+        return raw;
+      } catch(e) { return 50; }
+    })();
+    const intensity = classFit / 100; // 0.2 → 1.0
+    const glowSize = Math.round(4 + intensity * 12); // 4px → 16px
+    const pulseSpeed = intensity > 0.8 ? '1.5s' : intensity > 0.6 ? '2.5s' : '4s';
     const badge = document.createElement('div');
     badge.id = 'char-class-badge';
     badge.style.cssText = `margin-top:6px;`;
     badge.innerHTML = `<span class="class-badge" style="--class-color:${cls.color};--class-color-dim:${cls.colorDim};">
-      <span style="width:8px;height:8px;border-radius:50%;background:${cls.color};display:inline-block;box-shadow:0 0 6px ${cls.color};flex-shrink:0;"></span>
+      <span style="width:8px;height:8px;border-radius:50%;background:${cls.color};display:inline-block;
+        box-shadow:0 0 ${glowSize}px ${cls.color};flex-shrink:0;
+        animation:classDotPulse ${pulseSpeed} ease-in-out infinite;"></span>
       ${cls.label}
+      ${classFit >= 80 ? `<span style="font-size:8px;opacity:0.7;margin-left:2px;">◆</span>` : ''}
     </span>`;
     document.getElementById('char-title').after(badge);
+
+    // slayer titles — show permanently earned boss kill titles
+    const slayerTitles = profile.slayerTitles || [];
+    if (slayerTitles.length) {
+      const titleEl = document.createElement('div');
+      titleEl.id = 'char-slayer-titles';
+      titleEl.style.cssText = 'margin-top:4px;display:flex;flex-wrap:wrap;gap:4px;';
+      titleEl.innerHTML = slayerTitles.slice(-2).map(t =>
+        `<span style="font-family:var(--font-mono);font-size:8px;color:#FFD700;letter-spacing:0.1em;opacity:0.8;">${t}</span>`
+      ).join('');
+      badge.after(titleEl);
+    }
   } else {
     const days14 = allWorkouts.filter(w=>w.uid===currentUser.uid).length >= 4;
     if (!days14) {
@@ -5729,6 +5800,7 @@ const CLASS_CSS = `
     85% { opacity: 0.6; }
     100% { transform: translateY(-20vh) scale(1.5); opacity:0; }
   }
+  @keyframes classDotPulse { 0%,100%{opacity:1;} 50%{opacity:0.3;} }
   .class-particles-wrap {
     position: absolute; inset: 0; overflow: hidden; pointer-events: none;
   }
@@ -6663,34 +6735,74 @@ function openAdminWorkoutLogger(targetUid, hunterName) {
   overlay.querySelector('#admin-log-close').addEventListener('click', () => overlay.remove());
 
   overlay.querySelector('#admin-add-ex').addEventListener('click', () => {
-    const name = prompt('Exercise name:');
-    if (!name) return;
-    const sets = parseInt(prompt('Number of sets:', '3')) || 3;
-    const exDef = EXERCISES_ALL[name] || {};
-    const isTimed = !!exDef.timed;
-    const repsLabel = isTimed ? (exDef.timedUnit === 'mins' ? 'Mins' : 'Secs') : 'Reps';
-    const block = document.createElement('div');
-    block.className = 'admin-ex-block';
-    block.style.cssText = 'background:var(--card-2);border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:10px;';
-    block.dataset.name = name;
-    block.innerHTML = `<div style="font-size:13px;font-weight:700;margin-bottom:8px;color:var(--brass);">${escapeHtml(name)}</div>
-      <div style="display:grid;grid-template-columns:24px 1fr 1fr auto;gap:6px;margin-bottom:4px;">
-        <span></span>
-        <span style="font-size:9px;color:var(--text-faint);font-family:var(--font-mono);">${repsLabel.toUpperCase()}</span>
-        <span style="font-size:9px;color:var(--text-faint);font-family:var(--font-mono);">WEIGHT</span>
-        <span style="font-size:9px;color:var(--text-faint);font-family:var(--font-mono);">RIR/RPE</span>
-      </div>
-      ${Array.from({length:sets},(_,si)=>`
-        <div class="admin-set-row" style="display:grid;grid-template-columns:24px 1fr 1fr auto;gap:6px;align-items:center;margin-bottom:6px;">
-          <span style="font-size:11px;color:var(--text-faint);text-align:center;">${si+1}</span>
-          <input type="number" class="admin-reps" placeholder="${repsLabel}" min="0" inputmode="decimal" style="background:var(--card);border:1px solid var(--border);border-radius:4px;color:var(--text);padding:6px 8px;font-size:13px;width:100%;" />
-          <input type="number" class="admin-weight" placeholder="kg" min="0" step="0.5" inputmode="decimal" style="background:var(--card);border:1px solid var(--border);border-radius:4px;color:var(--text);padding:6px 8px;font-size:13px;width:100%;" />
-          <select class="admin-rir" style="background:var(--card);border:1px solid var(--border);border-radius:4px;color:var(--text);padding:6px 4px;font-size:12px;">
-            <option value="">-</option>
-            ${isTimed?[6,7,8,9,10].map(n=>`<option value="${n}">RPE${n}</option>`).join(''):[0,1,2,3,4,5].map(n=>`<option value="${n}">RIR${n}</option>`).join('')}
-          </select>
-        </div>`).join('')}`;
-    overlay.querySelector('#admin-ex-rows').appendChild(block);
+    // searchable exercise picker
+    const pickerOverlay = document.createElement('div');
+    pickerOverlay.className = 'modal-overlay';
+    pickerOverlay.style.zIndex = '700';
+    const allExNames = Object.keys(EXERCISES_ALL).sort();
+    pickerOverlay.innerHTML = `
+      <div class="modal" style="max-height:70vh;display:flex;flex-direction:column;">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+          <input id="ex-search" placeholder="Search exercise…" autofocus
+            style="flex:1;background:var(--card-2);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:8px 10px;font-size:13px;" />
+          <button class="icon-btn" id="ex-picker-close" style="font-size:20px;">✕</button>
+        </div>
+        <div id="ex-list" style="overflow-y:auto;flex:1;display:flex;flex-direction:column;gap:4px;"></div>
+      </div>`;
+    document.body.appendChild(pickerOverlay);
+
+    const listEl = pickerOverlay.querySelector('#ex-list');
+    const searchEl = pickerOverlay.querySelector('#ex-search');
+
+    function renderList(filter) {
+      const filtered = allExNames.filter(n => n.toLowerCase().includes(filter.toLowerCase())).slice(0, 40);
+      listEl.innerHTML = filtered.map(n => {
+        const exDef = EXERCISES_ALL[n] || {};
+        const isTimed = !!exDef.timed;
+        return `<button class="ex-pick-btn" data-name="${escapeHtml(n)}"
+          style="background:var(--card-2);border:1px solid var(--border);border-radius:6px;
+          color:var(--text);padding:8px 12px;text-align:left;cursor:pointer;font-size:13px;
+          display:flex;align-items:center;justify-content:space-between;">
+          <span>${escapeHtml(n)}</span>
+          <span style="font-size:9px;color:var(--text-faint);font-family:var(--font-mono);">${isTimed?(exDef.timedUnit||'secs'):'reps'}</span>
+        </button>`;
+      }).join('');
+      listEl.querySelectorAll('.ex-pick-btn').forEach(btn => btn.addEventListener('click', () => {
+        const name = btn.dataset.name;
+        const sets = 3;
+        const exDef = EXERCISES_ALL[name] || {};
+        const isTimed = !!exDef.timed;
+        const repsLabel = isTimed ? (exDef.timedUnit === 'mins' ? 'Mins' : 'Secs') : 'Reps';
+        const block = document.createElement('div');
+        block.className = 'admin-ex-block';
+        block.dataset.name = name;
+        block.style.cssText = 'background:var(--card-2);border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:10px;';
+        block.innerHTML = `<div style="font-size:13px;font-weight:700;margin-bottom:8px;color:var(--brass);">${escapeHtml(name)}</div>
+          <div style="display:grid;grid-template-columns:24px 1fr 1fr auto;gap:6px;margin-bottom:4px;">
+            <span></span>
+            <span style="font-size:9px;color:var(--text-faint);font-family:var(--font-mono);">${repsLabel.toUpperCase()}</span>
+            <span style="font-size:9px;color:var(--text-faint);font-family:var(--font-mono);">WEIGHT</span>
+            <span style="font-size:9px;color:var(--text-faint);font-family:var(--font-mono);">RIR/RPE</span>
+          </div>
+          ${Array.from({length:sets},(_,si)=>`
+            <div class="admin-set-row" style="display:grid;grid-template-columns:24px 1fr 1fr auto;gap:6px;align-items:center;margin-bottom:6px;">
+              <span style="font-size:11px;color:var(--text-faint);text-align:center;">${si+1}</span>
+              <input type="number" class="admin-reps" placeholder="${repsLabel}" min="0" inputmode="decimal" style="background:var(--card);border:1px solid var(--border);border-radius:4px;color:var(--text);padding:6px 8px;font-size:13px;width:100%;" />
+              <input type="number" class="admin-weight" placeholder="kg" min="0" step="0.5" inputmode="decimal" style="background:var(--card);border:1px solid var(--border);border-radius:4px;color:var(--text);padding:6px 8px;font-size:13px;width:100%;" />
+              <select class="admin-rir" style="background:var(--card);border:1px solid var(--border);border-radius:4px;color:var(--text);padding:6px 4px;font-size:12px;">
+                <option value="">-</option>
+                ${isTimed?[6,7,8,9,10].map(n=>`<option value="${n}">RPE${n}</option>`).join(''):[0,1,2,3,4,5].map(n=>`<option value="${n}">RIR${n}</option>`).join('')}
+              </select>
+            </div>`).join('')}`;
+        overlay.querySelector('#admin-ex-rows').appendChild(block);
+        pickerOverlay.remove();
+      }));
+    }
+    renderList('');
+    searchEl.addEventListener('input', () => renderList(searchEl.value));
+    pickerOverlay.querySelector('#ex-picker-close').addEventListener('click', () => pickerOverlay.remove());
+    pickerOverlay.addEventListener('click', e => { if (e.target === pickerOverlay) pickerOverlay.remove(); });
+    setTimeout(() => searchEl.focus(), 50);
   });
 
   overlay.querySelector('#admin-log-save').addEventListener('click', async () => {
@@ -7278,11 +7390,163 @@ async function renderRaidBoss() {
   const bossHP = Math.max(0, bossMaxHP - totalDamage);
   const bossHPpct = Math.max(0, (bossHP / bossMaxHP) * 100);
   const cleared = bossHP <= 0;
+
+  // ── Reward pool scales with boss tier ──
+  const RAID_REWARD_POOL = { E:60, D:80, C:100, B:140, A:200, S:300 };
+  const rewardPool = RAID_REWARD_POOL[bossTier] || 100;
+
+  // ── Per-hunter damage contribution ──
+  const hunterDamage = {};
+  allUsers.forEach(u => { hunterDamage[u.uid] = 0; });
+  weekWorkouts.forEach(w => {
+    const dmg = getWorkoutDamage(w, boss.weakness);
+    hunterDamage[w.uid] = (hunterDamage[w.uid] || 0) + dmg;
+  });
+  const totalDamageForShares = Object.values(hunterDamage).reduce((a,b)=>a+b,0) || 1;
+  const myDamage = hunterDamage[currentUser?.uid] || 0;
+  const mySharePct = totalDamageForShares > 0 ? (myDamage / totalDamageForShares) * 100 : 0;
+  const myShareAP = cleared ? Math.round((myDamage / totalDamageForShares) * rewardPool) : 0;
+
+  // ── Punishment pool mirrors reward pool — same tier scaling ──
+  const RAID_PENALTY_POOL = rewardPool; // same as reward — symmetric stakes
+  const partyCount = allUsers.length || 1;
+  const expectedShare = 1 / partyCount; // what each person should contribute
+
+  // Shortfall = how much below their fair share each person was
+  // If you contributed more than your fair share, shortfall = 0 (you're protected)
+  const hunterShortfall = {};
+  allUsers.forEach(u => {
+    const actual = (hunterDamage[u.uid] || 0) / totalDamageForShares;
+    hunterShortfall[u.uid] = Math.max(0, expectedShare - actual);
+  });
+  const totalShortfall = Object.values(hunterShortfall).reduce((a,b)=>a+b,0) || 1;
+
+  // Penalty share = your shortfall / total shortfall × penalty pool
+  // Floor protection only for hunters who consciously trained BEYOND their weekly goal
+  // Hitting your goal = shortfall naturally near 0 = fair penalty
+  // Exceeding goal = small floor so the extra effort isn't invisible even in defeat
+  const getPenaltyShare = (uid) => {
+    const u = allUsers.find(u => u.uid === uid);
+    const memberGoal = u?.weeklyGoal || 3;
+    const memberWorkouts = weekWorkouts.filter(w => w.uid === uid).length;
+    const overloadRatio = memberWorkouts / memberGoal;
+    // floor only kicks in if you deliberately trained beyond your plan
+    const floor = overloadRatio >= 2
+      ? Math.round(RAID_PENALTY_POOL * 0.05)   // 5% — you went 2× your plan, acknowledged
+      : overloadRatio >= 1.5
+        ? Math.round(RAID_PENALTY_POOL * 0.10)  // 10% — you went 50% beyond plan
+        : 0;                                      // at/below goal — no floor, shortfall decides
+    const shortfallPenalty = totalShortfall > 0
+      ? Math.round((hunterShortfall[uid] / totalShortfall) * RAID_PENALTY_POOL)
+      : Math.round(RAID_PENALTY_POOL / partyCount);
+    return Math.max(floor, shortfallPenalty);
+  };
+  const myPenaltyShare = !cleared ? getPenaltyShare(currentUser?.uid) : 0;
+
+  // ── Award raid reward once per week ──
+  if (cleared && currentUser) {
+    const weekKey = `aura_raid_cleared_${startOfWeek(new Date()).toISOString().slice(0,10)}`;
+    if (!localStorage.getItem(weekKey)) {
+      localStorage.setItem(weekKey, '1');
+      try {
+        const newAp = (profile.auraPoints || 0) + myShareAP;
+        await setDoc(doc(db, 'users', currentUser.uid), { auraPoints: newAp }, { merge: true });
+        profile.auraPoints = newAp;
+        const slayerTitle = `[${boss.name} Slayer]`;
+        const existingTitles = profile.slayerTitles || [];
+        if (!existingTitles.includes(slayerTitle)) {
+          const newTitles = [...existingTitles, slayerTitle];
+          await setDoc(doc(db, 'users', currentUser.uid), { slayerTitles: newTitles }, { merge: true });
+          profile.slayerTitles = newTitles;
+        }
+        const breakdown = allUsers
+          .map(u => ({
+            name: u.displayName || 'Hunter',
+            dmg: hunterDamage[u.uid] || 0,
+            ap: Math.round(((hunterDamage[u.uid]||0) / totalDamageForShares) * rewardPool),
+            isMe: u.uid === currentUser.uid,
+          }))
+          .sort((a,b) => b.dmg - a.dmg);
+        const breakdownHtml = breakdown.map(h =>
+          `<div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid rgba(255,215,0,0.1);">
+            <span style="font-size:12px;color:${h.isMe?'var(--brass)':'var(--text-dim)'};">${h.isMe?'▶ ':''} ${escapeHtml(h.name)}</span>
+            <div style="display:flex;gap:12px;font-family:var(--font-mono);font-size:11px;">
+              <span style="color:var(--text-faint);">${h.dmg.toFixed(1)} dmg</span>
+              <span style="color:var(--brass);">+${h.ap} AP</span>
+            </div>
+          </div>`
+        ).join('');
+        setTimeout(() => {
+          showSystemModal(`<div class="system-window">
+            <p class="system-eyebrow">◈ Gate Cleared ◈</p>
+            <div class="system-icon">★</div>
+            <h2 class="system-title">${escapeHtml(boss.name)}</h2>
+            <p class="system-body">The dungeon gate has fallen.<br>Rewards distributed by contribution.</p>
+            <div style="margin:12px 0;text-align:left;">${breakdownHtml}</div>
+            <p class="system-detail" style="color:var(--brass);font-size:16px;">Your share: +${myShareAP} AP (${mySharePct.toFixed(0)}%)</p>
+            <p class="system-detail" style="color:#FFD700;font-size:11px;">${slayerTitle} earned</p>
+            <button class="system-btn success">Claim</button>
+          </div>`);
+          renderCharCard();
+        }, 500);
+      } catch(e) { console.warn('Raid reward error:', e); }
+    }
+  }
+
+  // ── Apply raid failure penalty — once per week, contribution-weighted ──
+  if (!cleared && currentUser && daysLeft === 0) {
+    const penaltyKey = `aura_raid_penalty_${startOfWeek(new Date()).toISOString().slice(0,10)}`;
+    if (!localStorage.getItem(penaltyKey)) {
+      localStorage.setItem(penaltyKey, '1');
+      try {
+        if (myPenaltyShare > 0) {
+          const newAp = Math.max(0, (profile.auraPoints || 0) - myPenaltyShare);
+          await setDoc(doc(db, 'users', currentUser.uid), { auraPoints: newAp }, { merge: true });
+          profile.auraPoints = newAp;
+        }
+        const penaltyBreakdown = allUsers
+          .map(u => ({
+            name: u.displayName || 'Hunter',
+            dmg: hunterDamage[u.uid] || 0,
+            penalty: getPenaltyShare(u.uid),
+            isMe: u.uid === currentUser.uid,
+          }))
+          .sort((a,b) => b.penalty - a.penalty);
+        const penaltyHtml = penaltyBreakdown.map(h =>
+          `<div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid rgba(255,61,90,0.1);">
+            <span style="font-size:12px;color:${h.isMe?'var(--excess)':'var(--text-dim)'};">${h.isMe?'▶ ':''} ${escapeHtml(h.name)}</span>
+            <div style="display:flex;gap:12px;font-family:var(--font-mono);font-size:11px;">
+              <span style="color:var(--text-faint);">${h.dmg.toFixed(1)} dmg</span>
+              <span style="color:${h.penalty>30?'var(--excess)':h.penalty>15?'#FF9500':'var(--text-faint)'};">${h.penalty > 0 ? '-'+h.penalty+' AP' : 'protected'}</span>
+            </div>
+          </div>`
+        ).join('');
+        setTimeout(() => {
+          showSystemModal(`<div class="system-window">
+            <p class="system-eyebrow" style="color:var(--excess);">◈ Gate Failed ◈</p>
+            <div class="system-icon">💀</div>
+            <h2 class="system-title" style="color:var(--excess);">${escapeHtml(boss.name)}</h2>
+            <p class="system-body">The dungeon gate held. The party has been judged.<br>Punishment scales with your absence.</p>
+            <div style="margin:12px 0;text-align:left;">${penaltyHtml}</div>
+            <p class="system-detail" style="color:var(--excess);font-size:16px;">Your penalty: -${myPenaltyShare} AP</p>
+            ${myPenaltyShare <= Math.round(RAID_PENALTY_POOL * 0.05) ? '<p class="system-detail" style="color:var(--growing);font-size:11px;">You carried — your penalty is minimal.</p>' : ''}
+            <button class="system-btn" style="border-color:var(--excess);color:var(--excess);">Acknowledged</button>
+          </div>`);
+          renderCharCard();
+        }, 500);
+      } catch(e) { console.warn('Raid penalty error:', e); }
+    }
+  }
   const nextBoss = BOSS_DATA[bossTier];
   const nextMaxHP = totalWeeklyGoal;
   const bossPhase = cleared ? 'Defeated' : bossHPpct > 66 ? 'Unchallenged' : bossHPpct > 33 ? 'Weakening' : 'Critical — finish it';
   const bossColor = cleared ? 'var(--growing)' : bossHPpct > 66 ? boss.color : bossHPpct > 33 ? '#FF9500' : 'var(--excess)';
-  const contributors = allUsers.map(u => ({ name: u.displayName||'Hunter', wCount: weekWorkouts.filter(w=>w.uid===u.uid).length, uid: u.uid })).sort((a,b)=>b.wCount-a.wCount);
+  const contributors = allUsers.map(u => {
+    const dmg = hunterDamage[u.uid] || 0;
+    const sharePct = totalDamageForShares > 0 ? (dmg / totalDamageForShares * 100) : 0;
+    const shareAP = cleared ? Math.round((dmg / totalDamageForShares) * rewardPool) : Math.round((dmg / totalDamageForShares) * rewardPool);
+    return { name: u.displayName||'Hunter', wCount: weekWorkouts.filter(w=>w.uid===u.uid).length, uid: u.uid, dmg, sharePct, shareAP };
+  }).sort((a,b)=>b.dmg-a.dmg);
 
   // pre-build weakness badge outside template to avoid nested backtick issue
   const weaknessBadge = (boss.weakness !== 'all' && !cleared)
@@ -7327,17 +7591,23 @@ async function renderRaidBoss() {
             <div class="raid-contrib-bar-wrap">
               <div class="raid-contrib-bar" style="width:${pct}%;background:${color};"></div>
             </div>
-            <span class="raid-contrib-count" style="color:${goalMet?'var(--growing)':'var(--text-faint)'};">${c.wCount}/${memberGoal}</span>
+            <div style="display:flex;flex-direction:column;align-items:flex-end;gap:1px;flex-shrink:0;">
+              <span class="raid-contrib-count" style="color:${goalMet?'var(--growing)':'var(--text-faint)'};">${c.wCount}/${memberGoal}</span>
+              <span style="font-size:9px;color:${c.dmg>1?'#FFD700':'var(--text-faint)'};font-family:var(--font-mono);">${c.dmg.toFixed(1)}dmg · +${c.shareAP}AP</span>
+            </div>
           </div>`;
         }).join('')}
       </div>
       <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-top:10px;gap:12px;">
         <p class="${cleared?'raid-cleared-msg':'raid-warning'}" style="margin:0;flex:1;">
-          ${cleared?'★ Gate cleared. The party grows stronger.':`Surrender the gate — all hunters lose <strong>50 AP</strong>.`}
+          ${cleared
+            ? `★ Gate cleared — ${rewardPool} AP shared by contribution.`
+            : `Surrender the gate — penalty scales with your contribution. Your exposure: <strong style="color:var(--excess);">-${myPenaltyShare} AP</strong>.`}
         </p>
         <div style="font-family:var(--font-mono);font-size:9px;color:var(--text-faint);text-align:right;flex-shrink:0;">
-          Next week<br><span style="color:${nextBoss.color};">${nextBoss.name}</span><br>
-          <span>${nextMaxHP} HP req.</span>
+          ${cleared
+            ? `Your share<br><span style="color:var(--brass);font-size:13px;">+${myShareAP} AP</span><br><span style="color:var(--text-faint);">${mySharePct.toFixed(0)}% contribution</span>`
+            : `Next week<br><span style="color:${nextBoss.color};">${nextBoss.name}</span><br><span>${nextMaxHP} HP req.</span>`}
         </div>
       </div>
     </div>`;
@@ -8698,6 +8968,7 @@ function renderFeats() {
         <button class="feat-tab ${featsActiveTab==='achievements'?'active':''}" data-tab="achievements">Achievements</button>
         <button class="feat-tab ${featsActiveTab==='chains'?'active':''}" data-tab="chains">Progressions</button>
         <button class="feat-tab ${featsActiveTab==='goals'?'active':''}" data-tab="goals">Personal Goals</button>
+        <button class="feat-tab ${featsActiveTab==='trials'?'active':''}" data-tab="trials">⚔ Trials</button>
       </div>
       <div id="feats-tab-content"></div>
     </div>`;
@@ -8710,7 +8981,215 @@ function renderFeats() {
   const content = el.querySelector('#feats-tab-content');
   if (featsActiveTab === 'achievements') renderAchievementsTab(content);
   else if (featsActiveTab === 'chains') renderChainsTab(content);
+  else if (featsActiveTab === 'trials') renderTrialsTab(content);
   else renderGoalsTab(content);
+}
+
+/* =========================================================================
+   TRAINING KEYS + CLASS TRIALS
+   Keys are earned from milestones. Each key unlocks a class-specific trial.
+   Complete the trial within 7 days for +100 AP + permanent title.
+   ========================================================================= */
+const CLASS_TRIALS = {
+  Berserker:    { name:'Iron Gauntlet',        desc:'Log 5 workouts in 7 days, each with at least 3 compound lifts at RIR 0-1.',  color:'#C0392B', check:(workouts)=>{ const w7=workouts.filter(w=>isWithinDays(w.date,7)); return w7.filter(w=>(w.exercises||[]).filter(ex=>['Squat','Deadlift','Bench Press','Overhead Press','Barbell Row'].includes(ex.name)&&(ex.sets||[]).some(s=>s.rir!=null&&s.rir<=1)).length>=3).length>=5; }, title:'[Iron Gauntlet Cleared]' },
+  Assassin:     { name:'Speed Trial',          desc:'Complete 5 explosive sessions in 7 days — hill sprints, box jumps, or interval runs.',  color:'#F0D000', check:(workouts)=>{ const EXP=new Set(['Hill Sprints','Box Jump','Jump Squat','Interval Running','Tempo Run','HIIT Swimming','Bouldering']); return workouts.filter(w=>isWithinDays(w.date,7)&&(w.exercises||[]).some(ex=>EXP.has(ex.name))).length>=5; }, title:'[Speed Demon]' },
+  Monk:         { name:'Still Water Trial',    desc:'Log 10 skill hold sessions in 7 days — planche, lever, handstand, or German hang.', color:'#A8D8EA', check:(workouts)=>{ const SKILL=new Set(['Tuck Planche','Advanced Tuck Planche','Full Planche','Front Lever','Freestanding Handstand Hold','L-Sit','German Hang','German Hang Progression']); return workouts.filter(w=>isWithinDays(w.date,7)&&(w.exercises||[]).some(ex=>SKILL.has(ex.name))).length>=10; }, title:'[Master of Stillness]' },
+  Warlord:      { name:'Volume War',           desc:'Accumulate 100 total sets across any 5 workouts in 7 days.', color:'#D4A017', check:(workouts)=>{ const w7=workouts.filter(w=>isWithinDays(w.date,7)); const totalSets=w7.reduce((t,w)=>t+(w.exercises||[]).reduce((s,ex)=>s+(ex.sets||[]).filter(s=>s.reps>0).length,0),0); return totalSets>=100&&w7.length>=5; }, title:'[Volume Sovereign]' },
+  Ranger:       { name:'Ranger\'s March',      desc:'Log a strength session and a cardio session on the same day, 3 times in 7 days.', color:'#1ABC9C', check:(workouts)=>{ const CARDIO=new Set(['Running','Easy Run','Long Run','Cycling','Road Cycling','Freestyle Swimming']); const STRENGTH=new Set(['Squat','Deadlift','Bench Press']); const days={}; workouts.filter(w=>isWithinDays(w.date,7)).forEach(w=>{ const exNames=(w.exercises||[]).map(e=>e.name); if(exNames.some(n=>CARDIO.has(n)))days[w.date]=(days[w.date]||0)|1; if(exNames.some(n=>STRENGTH.has(n)))days[w.date]=(days[w.date]||0)|2; }); return Object.values(days).filter(v=>v===3).length>=3; }, title:'[Iron Ranger]' },
+  Shadowblade:  { name:'Shadow Protocol',      desc:'Log 7 calisthenics-only sessions in 7 days — no barbell or machine work.', color:'#9B59B6', check:(workouts)=>{ const GYM=new Set(['Barbell','Machine','Cable','Smith']); return workouts.filter(w=>isWithinDays(w.date,7)&&(w.exercises||[]).length>0&&!(w.exercises||[]).some(ex=>ex.equipment&&GYM.has(ex.equipment)&&!['Bodyweight'].includes(ex.equipment))).length>=7; }, title:'[Shadow Protocol]' },
+  Titan:        { name:'Iron Attendance',      desc:'Train 7 days in a row this week — no rest days.', color:'#FFD700', check:(workouts)=>{ const days=new Set(workouts.filter(w=>isWithinDays(w.date,7)).map(w=>w.date)); return days.size>=7; }, title:'[The Relentless]' },
+  Striker:      { name:'Kombat Trial',         desc:'Log 7 boxing sessions in 7 days — any combination of bag, sparring, pads, or shadow.', color:'#E74C3C', check:(workouts)=>{ const BOX=new Set(['Boxing — Bag Work','Boxing — Sparring','Boxing — Pad Work','Boxing — Shadow Boxing']); return workouts.filter(w=>isWithinDays(w.date,7)&&(w.exercises||[]).some(ex=>BOX.has(ex.name))).length>=7; }, title:'[Battle-Hardened]' },
+  Ironclad:     { name:'Endurance Engine',     desc:'Log 4 cycling sessions and 2 strength sessions in 7 days.', color:'#7F8C8D', check:(workouts)=>{ const CYC=new Set(['Cycling','Road Cycling','Stationary Bike','Spin Class','Mountain Biking']); const STR=new Set(['Squat','Deadlift','Bench Press']); const w7=workouts.filter(w=>isWithinDays(w.date,7)); return w7.filter(w=>(w.exercises||[]).some(ex=>CYC.has(ex.name))).length>=4&&w7.filter(w=>(w.exercises||[]).some(ex=>STR.has(ex.name))).length>=2; }, title:'[Iron Engine]' },
+  AquaHunter:   { name:'Deep Water Trial',     desc:'Log 7 swimming sessions in 7 days — any stroke counts.', color:'#2980B9', check:(workouts)=>{ const SW=new Set(['Freestyle Swimming','Breaststroke Swimming','Butterfly Swimming','Backstroke Swimming','Open Water Swimming','HIIT Swimming']); return workouts.filter(w=>isWithinDays(w.date,7)&&(w.exercises||[]).some(ex=>SW.has(ex.name))).length>=7; }, title:'[Deep Water Hunter]' },
+  CourtKing:    { name:'Court Dominance',      desc:'Log 7 court or field sport sessions in 7 days.', color:'#F39C12', check:(workouts)=>{ const CT=new Set(['Tennis','Tennis Drills','Basketball','Basketball Drills','Football (Soccer)','Football Drills','American Football']); return workouts.filter(w=>isWithinDays(w.date,7)&&(w.exercises||[]).some(ex=>CT.has(ex.name))).length>=7; }, title:'[Court Sovereign]' },
+  Alpinist:     { name:'Summit Trial',         desc:'Log 5 climbing sessions and 5 flexibility sessions in 7 days.', color:'#27AE60', check:(workouts)=>{ const CL=new Set(['Bouldering','Sport Climbing','Traditional Climbing','Top Rope Climbing']); const FL=new Set(['Front Splits','Side Splits','German Hang','Hip Mobility Routine']); const w7=workouts.filter(w=>isWithinDays(w.date,7)); return w7.filter(w=>(w.exercises||[]).some(ex=>CL.has(ex.name))).length>=5&&w7.filter(w=>(w.exercises||[]).some(ex=>FL.has(ex.name))).length>=5; }, title:'[Summit Conqueror]' },
+  Centurion:    { name:'All-Front War',        desc:'Log sessions hitting 5 different stat categories in 7 days.', color:'#8E44AD', check:(workouts)=>{ const cats=new Set(); const w7=workouts.filter(w=>isWithinDays(w.date,7)); w7.forEach(w=>(w.exercises||[]).forEach(ex=>{ const s=getStatForExercise(ex.name); if(s)cats.add(s); })); return cats.size>=5; }, title:'[The Centurion]' },
+  Phantom:      { name:'Ghost Protocol',       desc:'Log 5 boxing sessions and 5 calisthenics sessions in 7 days.', color:'#9B59B6', check:(workouts)=>{ const BOX=new Set(['Boxing — Bag Work','Boxing — Sparring','Boxing — Pad Work','Boxing — Shadow Boxing']); const CAL=new Set(['Pull Up','Muscle Up','Dips','Push Up','Tuck Planche','Advanced Tuck Planche','Full Planche','Front Lever']); const w7=workouts.filter(w=>isWithinDays(w.date,7)); return w7.filter(w=>(w.exercises||[]).some(ex=>BOX.has(ex.name))).length>=5&&w7.filter(w=>(w.exercises||[]).some(ex=>CAL.has(ex.name))).length>=5; }, title:'[Ghost Operative]' },
+  Sovereign:    { name:'Sovereign\'s Grace',   desc:'Log flexibility sessions every day for 7 days.', color:'#E8D5B7', check:(workouts)=>{ const FL=new Set(['Front Splits','Side Splits','Middle Splits','German Hang','Yoga','Hip Mobility Routine','Full Body Stretching','Pike Stretch']); const days=new Set(workouts.filter(w=>isWithinDays(w.date,7)&&(w.exercises||[]).some(ex=>FL.has(ex.name))).map(w=>w.date)); return days.size>=7; }, title:'[Sovereign of Grace]' },
+  Sprinter:     { name:'Wind Sprint Trial',    desc:'Log running sessions 6 out of 7 days.', color:'#F97316', check:(workouts)=>{ const RUN=new Set(['Running','Easy Run','Long Run','Tempo Run','Hill Sprints','Interval Running']); const days=new Set(workouts.filter(w=>isWithinDays(w.date,7)&&(w.exercises||[]).some(ex=>RUN.has(ex.name))).map(w=>w.date)); return days.size>=6; }, title:'[Wind Runner]' },
+  Yogi:         { name:'The Still Mind',       desc:'Log yoga or mobility sessions every day for 7 days.', color:'#A78BFA', check:(workouts)=>{ const YOG=new Set(['Yoga','Hip Mobility Routine','Full Body Stretching','Front Splits','Side Splits','German Hang']); const days=new Set(workouts.filter(w=>isWithinDays(w.date,7)&&(w.exercises||[]).some(ex=>YOG.has(ex.name))).map(w=>w.date)); return days.size>=7; }, title:'[The Still Mind]' },
+  Merman:       { name:'Amphibious Trial',     desc:'Log 4 swimming and 4 calisthenics sessions in 7 days.', color:'#06B6D4', check:(workouts)=>{ const SW=new Set(['Freestyle Swimming','Breaststroke Swimming','Butterfly Swimming','Backstroke Swimming']); const CAL=new Set(['Pull Up','Muscle Up','Dips','Push Up','Tuck Planche','Front Lever']); const w7=workouts.filter(w=>isWithinDays(w.date,7)); return w7.filter(w=>(w.exercises||[]).some(ex=>SW.has(ex.name))).length>=4&&w7.filter(w=>(w.exercises||[]).some(ex=>CAL.has(ex.name))).length>=4; }, title:'[Amphibian]' },
+  Vanguard:     { name:'Vertical Horizon',     desc:'Log 4 climbing and 4 flexibility sessions in 7 days.', color:'#10B981', check:(workouts)=>{ const CL=new Set(['Bouldering','Sport Climbing','Traditional Climbing','Top Rope Climbing']); const FL=new Set(['Front Splits','Side Splits','German Hang','Hip Mobility Routine','Yoga']); const w7=workouts.filter(w=>isWithinDays(w.date,7)); return w7.filter(w=>(w.exercises||[]).some(ex=>CL.has(ex.name))).length>=4&&w7.filter(w=>(w.exercises||[]).some(ex=>FL.has(ex.name))).length>=4; }, title:'[Vanguard Elite]' },
+  Gladiator:    { name:'Arena Trial',          desc:'Log 4 boxing and 4 running sessions in 7 days.', color:'#DC2626', check:(workouts)=>{ const BOX=new Set(['Boxing — Bag Work','Boxing — Sparring','Boxing — Pad Work','Boxing — Shadow Boxing']); const RUN=new Set(['Running','Easy Run','Long Run','Tempo Run','Hill Sprints']); const w7=workouts.filter(w=>isWithinDays(w.date,7)); return w7.filter(w=>(w.exercises||[]).some(ex=>BOX.has(ex.name))).length>=4&&w7.filter(w=>(w.exercises||[]).some(ex=>RUN.has(ex.name))).length>=4; }, title:'[Arena Champion]' },
+  Warlord2:     { name:'Athletic Dominance',   desc:'Log 4 sport sessions and 4 strength sessions in 7 days.', color:'#B45309', check:(workouts)=>{ const SP=new Set(['Tennis','Basketball','Football (Soccer)','American Football']); const STR=new Set(['Squat','Deadlift','Bench Press','Overhead Press']); const w7=workouts.filter(w=>isWithinDays(w.date,7)); return w7.filter(w=>(w.exercises||[]).some(ex=>SP.has(ex.name))).length>=4&&w7.filter(w=>(w.exercises||[]).some(ex=>STR.has(ex.name))).length>=4; }, title:'[Athletic Warlord]' },
+  Triathlete:   { name:'Iron Distance',        desc:'Log cycling, swimming, and running sessions in the same 7-day window.', color:'#0EA5E9', check:(workouts)=>{ const CYC=new Set(['Cycling','Road Cycling','Stationary Bike','Spin Class']); const SW=new Set(['Freestyle Swimming','Breaststroke Swimming','Open Water Swimming']); const RUN=new Set(['Running','Easy Run','Long Run']); const w7=workouts.filter(w=>isWithinDays(w.date,7)); return w7.some(w=>(w.exercises||[]).some(ex=>CYC.has(ex.name)))&&w7.some(w=>(w.exercises||[]).some(ex=>SW.has(ex.name)))&&w7.some(w=>(w.exercises||[]).some(ex=>RUN.has(ex.name))); }, title:'[Iron Distance]' },
+  Transcendent: { name:'Absolute Trial',       desc:'Log 7 sessions in 7 days hitting all 6 stat categories across them.', color:'#F8FAFC', check:(workouts)=>{ const cats=new Set(); const days=new Set(); workouts.filter(w=>isWithinDays(w.date,7)).forEach(w=>{ days.add(w.date); (w.exercises||[]).forEach(ex=>{ const s=getStatForExercise(ex.name); if(s)cats.add(s); }); }); return days.size>=7&&cats.size>=6; }, title:'[Transcendent]' },
+};
+
+function isWithinDays(dateStr, days) {
+  return (new Date() - new Date(dateStr)) / 86400000 <= days;
+}
+
+// Keys are earned when milestones are hit — one key per class trial, once per class
+function getEarnedKeys() {
+  const hunterClass = profile.hunterClass;
+  if (!hunterClass) return [];
+  // Key is earned when you've been classified for 7+ days and have 10+ workouts
+  const totalWorkouts = myWorkouts.length;
+  const classAssignedDate = profile.classAssignedDate;
+  const daysSinceClass = classAssignedDate
+    ? (new Date() - new Date(classAssignedDate)) / 86400000 : 0;
+  if (totalWorkouts >= 10 && daysSinceClass >= 7) {
+    return [hunterClass]; // one key per current class
+  }
+  return [];
+}
+
+function renderTrialsTab(el) {
+  const hunterClass = profile.hunterClass;
+  const cls = hunterClass ? HUNTER_CLASSES[hunterClass] : null;
+  const trial = hunterClass ? CLASS_TRIALS[hunterClass] : null;
+  const keys = getEarnedKeys();
+  const activeTrials = profile.activeTrials || {};
+  const completedTrials = profile.completedTrials || [];
+  const hasKey = keys.includes(hunterClass);
+  const trialActive = activeTrials[hunterClass];
+  const trialCompleted = completedTrials.includes(hunterClass);
+
+  if (!hunterClass || !cls) {
+    el.innerHTML = `<div class="card" style="text-align:center;padding:32px;">
+      <div style="font-size:32px;margin-bottom:12px;">🔑</div>
+      <div style="font-family:var(--font-mono);font-size:11px;color:var(--text-faint);">CLASSIFICATION REQUIRED</div>
+      <p style="font-size:13px;color:var(--text-dim);margin-top:8px;">Train for 14 days to receive your Hunter Class — then your Trial will be revealed.</p>
+    </div>`;
+    return;
+  }
+
+  // Check if active trial is complete
+  let trialJustCompleted = false;
+  if (trialActive && !trialCompleted) {
+    const trialWorkouts = myWorkouts.filter(w => new Date(w.date) >= new Date(trialActive.startDate));
+    if (trial.check(trialWorkouts)) {
+      trialJustCompleted = true;
+      // Award the trial
+      (async () => {
+        try {
+          const newAp = (profile.auraPoints || 0) + 100;
+          const newCompleted = [...completedTrials, hunterClass];
+          const newTitles = [...(profile.slayerTitles||[])];
+          if (!newTitles.includes(trial.title)) newTitles.push(trial.title);
+          await setDoc(doc(db, 'users', currentUser.uid), {
+            auraPoints: newAp,
+            completedTrials: newCompleted,
+            slayerTitles: newTitles,
+            [`activeTrials.${hunterClass}`]: null,
+          }, { merge: true });
+          profile.auraPoints = newAp;
+          profile.completedTrials = newCompleted;
+          profile.slayerTitles = newTitles;
+          await loadAllData();
+          showSystemModal(`<div class="system-window levelup">
+            <p class="system-eyebrow">◈ Trial Complete ◈</p>
+            <div class="system-icon" style="font-size:48px;">${cls.sigil ? '⚔' : '★'}</div>
+            <h2 class="system-title" style="color:${cls.color};">${trial.name}</h2>
+            <p class="system-body">The System acknowledges what you have done.<br>This title is now yours permanently.</p>
+            <p class="system-detail" style="color:#FFD700;font-size:13px;">${trial.title}</p>
+            <p class="system-detail" style="color:var(--brass);">+100 Aura Points</p>
+            <button class="system-btn success">Claim</button>
+          </div>`);
+          renderCharCard();
+          renderFeats();
+        } catch(e) { console.warn('Trial reward error:', e); }
+      })();
+      return;
+    }
+  }
+
+  const daysLeft = trialActive
+    ? Math.max(0, 7 - Math.floor((new Date() - new Date(trialActive.startDate)) / 86400000))
+    : 0;
+  const trialExpired = trialActive && daysLeft <= 0 && !trialCompleted;
+
+  el.innerHTML = `
+    <div style="margin-bottom:16px;">
+      <div style="font-family:var(--font-mono);font-size:9px;letter-spacing:0.25em;color:var(--text-faint);margin-bottom:12px;">◈ CLASS TRIALS</div>
+      <p style="font-size:12px;color:var(--text-dim);line-height:1.6;margin-bottom:16px;">
+        Your Hunter Class unlocks a Trial — a 7-day challenge that tests whether your class identity is real. 
+        Complete it for <span style="color:var(--brass);">+100 AP</span> and a permanent title.
+        Trials reflect who you are as a hunter. There are no shortcuts.
+      </p>
+    </div>
+
+    <div class="card" style="border-color:${trialCompleted?'rgba(62,207,142,0.4)':cls.color+'44'};margin-bottom:12px;">
+      <div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:12px;">
+        <div style="width:44px;height:44px;border-radius:6px;background:${cls.colorDim};border:1px solid ${cls.color}44;
+          display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+          <span style="font-size:20px;">${{Berserker:'⚔️',Assassin:'⚡',Monk:'🧘',Warlord:'🏛️',Ranger:'🏹',Shadowblade:'🌑',Titan:'👑',Striker:'🥊',Ironclad:'🔩',AquaHunter:'🌊',CourtKing:'🏀',Alpinist:'🏔️',Centurion:'🔮',Phantom:'👻',Sovereign:'🌊',Sprinter:'🏃',Yogi:'🌸',Merman:'🐬',Vanguard:'🧗',Gladiator:'⚔',Warlord2:'🏟️',Triathlete:'🚴',Transcendent:'✨'}[hunterClass]||'⚔'}</span>
+        </div>
+        <div style="flex:1;">
+          <div style="font-family:var(--font-mono);font-size:9px;letter-spacing:0.15em;color:${cls.color};margin-bottom:2px;">${cls.label} TRIAL</div>
+          <div style="font-family:var(--font-display);font-size:18px;color:${trialCompleted?'var(--growing)':cls.color};">${trial?.name || 'Unknown Trial'}</div>
+          <div style="font-size:12px;color:var(--text-dim);margin-top:4px;line-height:1.5;">${trial?.desc || ''}</div>
+        </div>
+      </div>
+
+      ${trialCompleted ? `
+        <div style="padding:10px;background:rgba(62,207,142,0.08);border:1px solid rgba(62,207,142,0.3);border-radius:6px;text-align:center;">
+          <div style="color:var(--growing);font-family:var(--font-mono);font-size:11px;letter-spacing:0.1em;">✓ TRIAL COMPLETE</div>
+          <div style="color:var(--text-faint);font-size:11px;margin-top:4px;">${trial.title}</div>
+        </div>
+      ` : trialExpired ? `
+        <div style="padding:10px;background:rgba(255,61,90,0.08);border:1px solid rgba(255,61,90,0.2);border-radius:6px;text-align:center;margin-bottom:10px;">
+          <div style="color:var(--excess);font-family:var(--font-mono);font-size:11px;">✗ TRIAL EXPIRED</div>
+          <div style="font-size:11px;color:var(--text-faint);margin-top:4px;">The 7-day window passed. Your key remains — you can start again.</div>
+        </div>
+        <button id="start-trial-btn" class="btn btn-primary" style="width:100%;border-color:${cls.color};color:${cls.color};">🔑 Start Trial Again</button>
+      ` : trialActive ? `
+        <div style="padding:10px;background:${cls.colorDim};border:1px solid ${cls.color}44;border-radius:6px;margin-bottom:10px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <div style="font-family:var(--font-mono);font-size:10px;color:${cls.color};">TRIAL IN PROGRESS</div>
+            <div style="font-family:var(--font-display);font-size:18px;color:${daysLeft<=2?'var(--excess)':'var(--growing)'};">${daysLeft}d</div>
+          </div>
+          <div style="font-size:10px;color:var(--text-faint);margin-top:4px;">Started ${trialActive.startDate} · ${daysLeft} days remaining</div>
+        </div>
+      ` : hasKey ? `
+        <div style="padding:8px 12px;background:rgba(255,215,0,0.06);border:1px solid rgba(255,215,0,0.2);border-radius:6px;display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+          <span style="font-size:18px;">🔑</span>
+          <div>
+            <div style="font-family:var(--font-mono);font-size:10px;color:#FFD700;letter-spacing:0.1em;">TRIAL KEY EARNED</div>
+            <div style="font-size:11px;color:var(--text-faint);">You have been classified as ${cls.label} for 7+ days. Your trial is ready.</div>
+          </div>
+        </div>
+        <button id="start-trial-btn" class="btn btn-primary" style="width:100%;border-color:${cls.color};color:${cls.color};">⚔ Begin Trial — 7 Days</button>
+      ` : `
+        <div style="padding:10px;background:var(--card-2);border:1px solid var(--border);border-radius:6px;text-align:center;">
+          <div style="font-family:var(--font-mono);font-size:10px;color:var(--text-faint);">🔒 KEY NOT YET EARNED</div>
+          <div style="font-size:11px;color:var(--text-faint);margin-top:4px;">Keep training as ${cls.label} — your key unlocks after 7 days of this class + 10 total workouts.</div>
+        </div>
+      `}
+
+      ${trial?.title && !trialCompleted ? `<div style="margin-top:8px;font-size:10px;color:var(--text-faint);font-family:var(--font-mono);">Reward: +100 AP · ${trial.title}</div>` : ''}
+    </div>
+
+    ${completedTrials.length > 0 ? `
+      <div style="margin-top:16px;">
+        <div style="font-family:var(--font-mono);font-size:9px;letter-spacing:0.2em;color:var(--text-faint);margin-bottom:8px;">PAST TRIALS</div>
+        ${completedTrials.map(cls => {
+          const t = CLASS_TRIALS[cls];
+          const c = HUNTER_CLASSES[cls];
+          return t ? `<div style="padding:8px 12px;background:var(--card-2);border:1px solid rgba(62,207,142,0.2);border-radius:6px;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center;">
+            <div>
+              <div style="font-size:12px;color:var(--growing);">${t.name}</div>
+              <div style="font-size:10px;color:var(--text-faint);font-family:var(--font-mono);">${t.title}</div>
+            </div>
+            <span style="color:${c?.color||'var(--brass)'};font-size:11px;">${c?.label||cls}</span>
+          </div>` : '';
+        }).join('')}
+      </div>
+    ` : ''}`;
+
+  el.querySelector('#start-trial-btn')?.addEventListener('click', async () => {
+    try {
+      const startDate = todayStr();
+      await setDoc(doc(db, 'users', currentUser.uid), {
+        [`activeTrials.${hunterClass}`]: { startDate },
+      }, { merge: true });
+      if (!profile.activeTrials) profile.activeTrials = {};
+      profile.activeTrials[hunterClass] = { startDate };
+      renderFeats();
+      showToast(`${trial.name} trial started — 7 days. Go.`, 'success');
+    } catch(e) { showToast('Error starting trial: ' + e.message, 'error'); }
+  });
 }
 
 function renderAchievementsTab(el) {
@@ -9111,14 +9590,22 @@ function openWorkoutDetail(workoutId) {
           <span>${escapeHtml(ex.name)}</span>
           <button class="btn btn-sm add-set-edit-btn" data-ei="${ei}" style="font-size:11px;padding:4px 8px;">+ Set</button>
         </p>
-        <div class="detail-sets-head"><span>#</span><span>${repsLabel}</span><span>kg</span><span></span></div>
-        ${(ex.sets||[]).map((s,si) => `
+        <div class="detail-sets-head"><span>#</span><span>${repsLabel}</span><span>kg</span><span>RIR/RPE</span><span></span></div>
+        ${(ex.sets||[]).map((s,si) => {
+          const rirOptions = isTimed
+            ? [6,7,8,9,10].map(n=>`<option value="${n}" ${s.rir===n?'selected':''}>RPE${n}</option>`).join('')
+            : [0,1,2,3,4,5].map(n=>`<option value="${n}" ${s.rir===n?'selected':''}>RIR${n}</option>`).join('');
+          return `
           <div class="detail-set-row" data-si="${si}">
             <span class="set-idx">${si+1}</span>
-            <input type="number" class="edit-reps" data-ei="${ei}" data-si="${si}" value="${s.reps||0}" min="0" inputmode="decimal" style="width:60px;background:var(--card-2);border:1px solid var(--border);border-radius:4px;color:var(--text);padding:4px 6px;font-size:13px;" />
-            <input type="number" class="edit-weight" data-ei="${ei}" data-si="${si}" value="${s.weight||0}" min="0" step="0.5" inputmode="decimal" style="width:60px;background:var(--card-2);border:1px solid var(--border);border-radius:4px;color:var(--text);padding:4px 6px;font-size:13px;" />
+            <input type="number" class="edit-reps" data-ei="${ei}" data-si="${si}" value="${s.reps||0}" min="0" inputmode="decimal" style="width:52px;background:var(--card-2);border:1px solid var(--border);border-radius:4px;color:var(--text);padding:4px 6px;font-size:13px;" />
+            <input type="number" class="edit-weight" data-ei="${ei}" data-si="${si}" value="${s.weight||0}" min="0" step="0.5" inputmode="decimal" style="width:52px;background:var(--card-2);border:1px solid var(--border);border-radius:4px;color:var(--text);padding:4px 6px;font-size:13px;" />
+            <select class="edit-rir" data-ei="${ei}" data-si="${si}" style="background:var(--card-2);border:1px solid var(--border);border-radius:4px;color:var(--text);padding:4px 3px;font-size:11px;width:58px;">
+              <option value="">—</option>${rirOptions}
+            </select>
             <button class="remove-set-edit-btn" data-ei="${ei}" data-si="${si}" style="background:none;border:none;color:var(--excess);font-size:16px;cursor:pointer;">×</button>
-          </div>`).join('')}
+          </div>`;
+        }).join('')}
       </div>`;
     }).join('');
   }
@@ -9224,6 +9711,10 @@ function openWorkoutDetail(workoutId) {
     });
     overlay.querySelectorAll('.edit-weight').forEach(inp => {
       w.exercises[Number(inp.dataset.ei)].sets[Number(inp.dataset.si)].weight = Number(inp.value)||0;
+    });
+    overlay.querySelectorAll('.edit-rir').forEach(inp => {
+      const val = inp.value;
+      w.exercises[Number(inp.dataset.ei)].sets[Number(inp.dataset.si)].rir = val !== '' ? Number(val) : null;
     });
     const btn = overlay.querySelector('#detail-save-edit');
     btn.disabled = true; btn.textContent = 'Saving…';
