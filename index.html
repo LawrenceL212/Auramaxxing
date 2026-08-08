@@ -2267,6 +2267,7 @@ function openSettingsModal() {
           <button class="btn" id="admin-fix-ap" style="font-size:12px;color:var(--excess);border-color:var(--excess);">🩹 Fix Missing AP</button>
           <button class="btn" id="admin-fix-orphans" style="font-size:12px;color:var(--excess);border-color:var(--excess);">🔍 Find/Reassign Mismatched Workouts</button>
           <button class="btn" id="admin-advance-rotation" style="font-size:12px;color:var(--excess);border-color:var(--excess);">⏭ Advance Stuck Rotation Day</button>
+          <button class="btn" id="admin-raw-workout" style="font-size:12px;color:var(--brass);border-color:var(--brass);">🗄 View/Edit Raw Workout</button>
         </div>
       </div>` : ''}
       <p class="auth-error" id="settings-error" style="margin-top:10px;"></p>
@@ -2296,6 +2297,7 @@ function openSettingsModal() {
   overlay.querySelector('#admin-fix-ap')?.addEventListener('click', () => { overlay.remove(); fixMissingAp(); });
   overlay.querySelector('#admin-fix-orphans')?.addEventListener('click', () => { overlay.remove(); openOrphanedWorkoutsPanel(); });
   overlay.querySelector('#admin-advance-rotation')?.addEventListener('click', () => { overlay.remove(); openAdvanceRotationPanel(); });
+  overlay.querySelector('#admin-raw-workout')?.addEventListener('click', () => { overlay.remove(); openRawWorkoutPanel(); });
   overlay.querySelector('#save-settings').addEventListener('click', async () => {
     const newName = document.getElementById('settings-name').value.trim();
     const newGoal = Math.max(1, Number(document.getElementById('settings-goal').value) || 3);
@@ -6597,6 +6599,125 @@ async function openAdvanceRotationPanel() {
   } catch(e) {
     content.innerHTML = `<p style="color:var(--excess);">Error: ${e.message}</p>`;
   }
+}
+
+// Direct raw-JSON viewer/editor for a workout doc — for cases where the fastest fix is to
+// just correct the stored exercises/sets directly (e.g. a manually-inserted workout has
+// wrong data), without going through the normal per-set edit UI.
+function openRawWorkoutPanel() {
+  const targets = [
+    { uid: 'eUtGPwQBcCSO0x3xS3ZGYFGXNIT2', name: 'Lawrence' },
+    { uid: 'd1W5vTx5aSTIwkR4CIwnO2xW7vf1', name: 'LuChing' },
+    { uid: 'oFFi2hATYARhqcSZQlHwlsYBOge2', name: "I'm just a girl" },
+    { uid: 'rzcznIkNRrSKVXl74LsTaRSdHOk2', name: 'Lucas' },
+  ];
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.innerHTML = `<div class="modal" style="max-height:88vh;overflow-y:auto;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+      <h3>Raw Workout Viewer</h3>
+      <button class="icon-btn" id="raw-close" style="font-size:20px;">✕</button>
+    </div>
+    <div style="display:flex;gap:8px;margin-bottom:10px;">
+      <select id="raw-user" style="flex:1;background:var(--card-2);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:8px;font-size:13px;">
+        ${targets.map(t => `<option value="${t.uid}">${escapeHtml(t.name)}</option>`).join('')}
+      </select>
+      <input type="date" id="raw-date" value="${todayStr()}" style="flex:1;background:var(--card-2);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:8px;font-size:13px;" />
+      <button class="btn btn-sm" id="raw-load" style="font-size:12px;">Load</button>
+    </div>
+    <div id="raw-content" style="color:var(--text-faint);font-size:13px;">Pick a hunter and date, then Load.</div>
+  </div>`;
+  document.body.appendChild(overlay);
+  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+  overlay.querySelector('#raw-close').addEventListener('click', () => overlay.remove());
+
+  overlay.querySelector('#raw-load').addEventListener('click', async () => {
+    const uid = overlay.querySelector('#raw-user').value;
+    const date = overlay.querySelector('#raw-date').value;
+    const content = overlay.querySelector('#raw-content');
+    content.innerHTML = 'Loading…';
+
+    // For each bodyweight exercise (has bwPercent in EXERCISES_ALL), fills weight = bodyweight × bwPercent
+    // using the target hunter's stored profile.bodyWeight (falls back to 70kg like the rest of the admin
+    // tools do). Exercises without a bwPercent (e.g. dumbbell/barbell moves, or bodyweight moves that
+    // never had a bwPercent defined) are left untouched — those need a real number typed in manually.
+    function wireRawButtons() {
+      overlay.querySelectorAll('.raw-autofill-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const wid = btn.dataset.wid;
+          const auid = btn.dataset.uid;
+          const box = overlay.querySelector(`.raw-json-box[data-wid="${wid}"]`);
+          try {
+            const parsed = JSON.parse(box.value);
+            const targetUser = allUsers.find(u => u.uid === auid);
+            const bw = targetUser?.bodyWeight || 70;
+            let skipped = [];
+            (parsed.exercises || []).forEach(ex => {
+              const exDef = EXERCISES_ALL[ex.name] || {};
+              if (exDef.bwPercent == null) { skipped.push(ex.name); return; }
+              const weight = Math.round(bw * exDef.bwPercent * 10) / 10;
+              (ex.sets || []).forEach(s => { s.weight = weight; });
+            });
+            box.value = JSON.stringify(parsed, null, 2);
+            showToast(skipped.length ? `Filled from ${bw}kg BW. No bwPercent for: ${skipped.join(', ')} — enter those manually.` : `Filled from ${bw}kg bodyweight.`, 'success');
+          } catch(e) {
+            showToast('Invalid JSON: ' + e.message, 'error');
+          }
+        });
+      });
+      overlay.querySelectorAll('.raw-save-btn').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const wid = btn.dataset.wid;
+          const box = overlay.querySelector(`.raw-json-box[data-wid="${wid}"]`);
+          const origLabel = btn.textContent;
+          btn.disabled = true; btn.textContent = 'Saving…';
+          try {
+            const parsed = JSON.parse(box.value);
+            await setDoc(doc(db, 'workouts', wid), parsed, { merge: false });
+            showToast('Workout data saved.', 'success');
+            btn.textContent = origLabel;
+            btn.disabled = false;
+            await loadAllData();
+          } catch(e) {
+            showToast('Invalid JSON or save error: ' + e.message, 'error');
+            btn.disabled = false; btn.textContent = origLabel;
+          }
+        });
+      });
+    }
+
+    try {
+      const snap = await getDocs(query(collection(db, 'workouts'), where('uid','==', uid), where('date','==', date)));
+      const docs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      if (!docs.length) {
+        const newId = `${uid}_${date}_${Date.now()}`;
+        content.innerHTML = `
+          <p style="color:var(--text-faint);margin-bottom:8px;">No workout found for that hunter/date. You can create one:</p>
+          <div style="margin-bottom:14px;">
+            <div style="font-size:11px;font-family:var(--font-mono);color:var(--text-faint);margin-bottom:4px;">New Doc ID: ${escapeHtml(newId)}</div>
+            <textarea class="raw-json-box" data-wid="${newId}" spellcheck="false" style="width:100%;min-height:220px;background:var(--card-2);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:10px;font-family:var(--font-mono);font-size:11px;line-height:1.5;">${escapeHtml(JSON.stringify({ uid, date, time: new Date().toTimeString().slice(0,5), exercises: [ { name: 'Exercise Name', sets: [ { reps: 10, weight: 0, rir: null } ] } ], programDayIndex: null }, null, 2))}</textarea>
+            <div style="display:flex;gap:6px;margin-top:6px;">
+              <button class="btn btn-sm raw-autofill-btn" data-wid="${newId}" data-uid="${uid}" style="flex:1;font-size:11px;">🧮 Autofill BW% weight</button>
+              <button class="btn btn-sm raw-save-btn" data-wid="${newId}" style="flex:1;font-size:12px;">💾 Create this workout</button>
+            </div>
+          </div>`;
+        wireRawButtons();
+        return;
+      }
+      content.innerHTML = docs.map(d => `
+        <div style="margin-bottom:14px;">
+          <div style="font-size:11px;font-family:var(--font-mono);color:var(--text-faint);margin-bottom:4px;">Doc ID: ${escapeHtml(d.id)}</div>
+          <textarea class="raw-json-box" data-wid="${d.id}" spellcheck="false" style="width:100%;min-height:220px;background:var(--card-2);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:10px;font-family:var(--font-mono);font-size:11px;line-height:1.5;">${escapeHtml(JSON.stringify({ uid: d.uid, date: d.date, time: d.time, exercises: d.exercises, programDayIndex: d.programDayIndex ?? null }, null, 2))}</textarea>
+          <div style="display:flex;gap:6px;margin-top:6px;">
+            <button class="btn btn-sm raw-autofill-btn" data-wid="${d.id}" data-uid="${d.uid}" style="flex:1;font-size:11px;">🧮 Autofill BW% weight</button>
+            <button class="btn btn-sm raw-save-btn" data-wid="${d.id}" style="flex:1;font-size:12px;">💾 Save this workout</button>
+          </div>
+        </div>`).join('');
+      wireRawButtons();
+    } catch(e) {
+      content.innerHTML = `<p style="color:var(--excess);">Error: ${e.message}</p>`;
+    }
+  });
 }
 
 async function openAdminUserPanel() {
