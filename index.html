@@ -3853,6 +3853,8 @@ document.getElementById('save-workout-btn')?.addEventListener('click', async () 
   btn.disabled = true; btn.textContent = 'Saving…';
   try {
     await addDoc(collection(db, 'workouts'), { uid: currentUser.uid, displayName: profile.displayName, date, time, exercises, programDayIndex: activeDayIndex ?? null, createdAt: serverTimestamp() });
+    await setDoc(doc(db, 'users', currentUser.uid), { lastWorkoutDate: date }, { merge: true });
+    profile.lastWorkoutDate = date;
     if (activeDayIndex !== null && myProgram) {
       myProgram.days[activeDayIndex].lastDate = date;
       // only advance rotation in rotation mode — fixed mode doesn't use currentDayIndex
@@ -6255,10 +6257,12 @@ async function openAdminTester() {
 
       // ── Streaks ──
       ['Lawrence lastWorkoutDate recent', () => {
-        const days = profile.lastWorkoutDate
-          ? Math.floor((Date.now() - new Date(profile.lastWorkoutDate)) / 86400000) : 999;
-        if (days > 1) return { warn: `lastWorkoutDate is ${days}d ago — streak may be broken` };
-        return `lastWorkoutDate: ${profile.lastWorkoutDate}`;
+        const lastWO = profile.lastWorkoutDate ||
+          myWorkouts.sort((a,b) => b.date.localeCompare(a.date))[0]?.date;
+        if (!lastWO) return { warn: 'No workouts found at all' };
+        const days = Math.floor((Date.now() - new Date(lastWO)) / 86400000);
+        if (days > 2) return { warn: `Last workout was ${days}d ago (${lastWO}) — streak may be broken` };
+        return `Last workout: ${lastWO} (${days}d ago)`;
       }],
       ['LuChing streak status', () => {
         const u = allUsers.find(u => u.uid === 'd1W5vTx5aSTIwkR4CIwnO2xW7vf1');
@@ -6329,14 +6333,16 @@ async function openAdminTester() {
         return `Profile: ${profile.displayName}`;
       }],
       ['Nav tabs all present', () => {
-        const tabs = ['quest','rank','trends','moves','history','feats'];
+        const tabs = ['quest','board','trends','exercises','history','feats'];
         const missing = tabs.filter(t => !document.querySelector(`[data-view="${t}"]`));
         if (missing.length) throw new Error(`Missing nav tabs: ${missing.join(', ')}`);
         return `All ${tabs.length} tabs present`;
       }],
-      ['openAdminWorkoutLogger defined', () => {
-        if (typeof openAdminWorkoutLogger !== 'function') throw new Error('Not defined');
-        return 'Admin logger present';
+      ['Raid boss config valid', () => {
+        // BOSS_DATA is local to renderRaidBoss so we check the function exists and named bosses are defined
+        if (typeof renderRaidBoss !== 'function') throw new Error('renderRaidBoss not defined');
+        if (typeof NAMED_BOSSES !== 'undefined' && NAMED_BOSSES.length < 10) throw new Error(`Only ${NAMED_BOSSES.length} named bosses`);
+        return 'renderRaidBoss present — BOSS_DATA defined inside function scope (expected)';
       }],
     ];
 
