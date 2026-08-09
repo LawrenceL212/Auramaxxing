@@ -9845,7 +9845,7 @@ function renderCompetitionBoard() {
   const rows = allUsers.map(u => {
     const thisWeekWOs = allWorkouts.filter(w => w.uid === u.uid && dateInRange(w.date, weekStart, null));
     const lastWeekWOs = allWorkouts.filter(w => w.uid === u.uid && dateInRange(w.date, lastWeekStart, lastWeekEnd));
-    const thisWeekDays = new Set(thisWeekWOs.map(w => w.date)).size; // distinct training days this week (not raw workout docs — a day logged twice still counts once)
+    const thisWeekDays = thisWeekWOs.length; // total sessions this week
     const power = getUserPowerLevel(u);
     const thisWeekAP = thisWeekWOs.length * 10;
     const lastWeekAP = lastWeekWOs.length * 10;
@@ -12901,7 +12901,9 @@ const CLASS_TRIALS = {
 };
 
 function isWithinDays(dateStr, days) {
-  return (new Date() - new Date(dateStr)) / 86400000 <= days;
+  // Compare date strings directly — avoids UTC midnight shift
+  const cutoff = todayStr(new Date(Date.now() - days * 86400000));
+  return dateStr >= cutoff;
 }
 
 // Keys are earned when milestones are hit — one key per class trial, once per class
@@ -12912,7 +12914,7 @@ function getEarnedKeys() {
   const totalWorkouts = myWorkouts.length;
   const classAssignedDate = profile.classAssignedDate;
   const daysSinceClass = classAssignedDate
-    ? (new Date() - new Date(classAssignedDate)) / 86400000 : 0;
+    ? (new Date() - new Date(classAssignedDate + 'T12:00:00')) / 86400000 : 0;
   if (totalWorkouts >= 10 && daysSinceClass >= 7) {
     return [hunterClass]; // one key per current class
   }
@@ -12939,13 +12941,13 @@ function renderTrialsTab(el) {
     return;
   }
 
-  // Check if active trial is complete
+  // Check if active trial is complete — guard against re-firing while award is in progress
   let trialJustCompleted = false;
-  if (trialActive && !trialCompleted) {
+  if (trialActive && !trialCompleted && !window._trialAwardInProgress) {
     const trialWorkouts = myWorkouts.filter(w => dateInRange(w.date, trialActive.startDate, null));
     if (trial.check(trialWorkouts)) {
       trialJustCompleted = true;
-      // Award the trial
+      window._trialAwardInProgress = true;
       (async () => {
         try {
           const newAp = (profile.auraPoints || 0) + 100;
@@ -12974,13 +12976,14 @@ function renderTrialsTab(el) {
           renderCharCard();
           renderFeats();
         } catch(e) { console.warn('Trial reward error:', e); }
+        finally { window._trialAwardInProgress = false; }
       })();
       return;
     }
   }
 
   const daysLeft = trialActive
-    ? Math.max(0, 7 - Math.floor((new Date() - new Date(trialActive.startDate)) / 86400000))
+    ? Math.max(0, 7 - Math.floor((new Date() - new Date(trialActive.startDate + 'T12:00:00')) / 86400000))
     : 0;
   const trialExpired = trialActive && daysLeft <= 0 && !trialCompleted;
 
