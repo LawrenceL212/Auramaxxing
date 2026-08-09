@@ -1543,6 +1543,15 @@
             </div>
           </div>
           <div class="char-divider"></div>
+          <div id="system-progression-hint" style="
+            font-family:var(--font-mono);font-size:9px;color:rgba(93,157,255,0.35);
+            letter-spacing:0.08em;text-align:center;padding:8px 12px;
+            border:1px solid rgba(93,157,255,0.08);border-radius:4px;
+            margin-bottom:12px;line-height:1.7;cursor:pointer;
+          " title="Tap to learn more">
+            ◈ THE SYSTEM OBSERVES YOUR TRAINING ◈<br>
+            <span style="color:rgba(93,157,255,0.25);">Train → XP → Level Up → AP · Spend AP to raise stats · Your training shapes what you can invest in</span>
+          </div>
           <div class="char-stats" id="char-stats"></div>
           <p class="char-rank-hint" id="char-rank-hint"></p>
         </div>
@@ -3953,7 +3962,7 @@ document.getElementById('save-workout-btn')?.addEventListener('click', async () 
       };
     }).filter(s => s.reps > 0);    if (sets.length) exercises.push({ name, sets });
   });
-  if (!exercises.length) { showToast('Add at least one exercise with a completed set first.', 'error'); return; return; }
+  if (!exercises.length) { showToast('The System requires effort. Log at least one set before completing your quest.', 'error'); btn.disabled = false; btn.textContent = 'Complete quest'; return; }
 
   const btn = document.getElementById('save-workout-btn');
   btn.disabled = true; btn.textContent = 'Saving…';
@@ -4976,11 +4985,41 @@ function checkV2UpgradeGates(statId) {
 async function investApInStat(statId, amount) {
   if (!profile || !currentUser) return;
   const gates = checkV2UpgradeGates(statId);
-  if (gates.isMaxed) { showToast('Already at S rank — maximum power achieved.', 'error'); return; }
+  if (gates.isMaxed) {
+    showSystemModal(`<div class="system-window" style="text-align:center;">
+      <p class="system-eyebrow" style="color:#FFD700;">◈ SYSTEM NOTICE ◈</p>
+      <div style="font-size:32px;margin:8px 0;">👑</div>
+      <h2 class="system-title" style="color:#FFD700;font-size:18px;">S Rank — Maximum Power</h2>
+      <p class="system-body">The System has nothing left to offer this stat.<br>You have reached the ceiling. This is where legends end.</p>
+      <button class="system-btn">Acknowledged</button>
+    </div>`);
+    return;
+  }
   if (amount <= 0) { showToast('Enter a valid amount.', 'error'); return; }
-  if (amount > (profile.auraPoints || 0)) { showToast(`Not enough AP — you have ${profile.auraPoints || 0} AP.`, 'error'); return; }
+  if (amount > (profile.auraPoints || 0)) {
+    showSystemModal(`<div class="system-window" style="text-align:center;">
+      <p class="system-eyebrow" style="color:var(--excess);">◈ SYSTEM WARNING ◈</p>
+      <div style="font-size:32px;margin:8px 0;">⚠</div>
+      <h2 class="system-title" style="font-size:18px;">Insufficient AP</h2>
+      <p class="system-body">You carry <span style="color:var(--brass);">${profile.auraPoints || 0} AP</span>.<br>The System requires more potential before this investment can be made.<br><span style="color:var(--text-faint);font-size:11px;">Train. Level up. Accumulate.</span></p>
+      <button class="system-btn">Understood</button>
+    </div>`);
+    return;
+  }
   if (amount > gates.maxInvestable) {
-    showToast(`Training cap reached — max investable in ${statId}: ${gates.maxInvestable} AP. Train more ${statId} exercises to raise your cap.`, 'error');
+    const statLabel = STAT_DEFS.find(d => d.id === statId)?.label || statId;
+    showSystemModal(`<div class="system-window" style="text-align:center;">
+      <p class="system-eyebrow" style="color:rgba(93,157,255,0.6);">◈ SYSTEM RESTRICTION ◈</p>
+      <div style="font-size:32px;margin:8px 0;">🔒</div>
+      <h2 class="system-title" style="font-size:18px;">Training Cap Reached</h2>
+      <p class="system-body">The System will not allow investment beyond what your body has actually trained.<br><br>
+        Your <span style="color:var(--brass);">${statLabel}</span> cap is <span style="color:var(--brass);">${Math.floor(gates.trainingCap)} XP</span>.<br>
+        You have already invested <span style="color:var(--brass);">${gates.apInvested} AP</span>.<br><br>
+        <span style="color:rgba(93,157,255,0.6);">To raise your cap: log more ${statLabel.toLowerCase()} exercises.</span><br>
+        <span style="color:var(--text-faint);font-size:11px;">The System only rewards what you actually do.</span>
+      </p>
+      <button class="system-btn">Understood</button>
+    </div>`);
     return;
   }
 
@@ -5003,7 +5042,9 @@ async function investApInStat(statId, amount) {
     await triggerStatRankUp(statId, gates.currentRank, updatedGates.nextRank);
   } else {
     renderCharCard();
-    showToast(`+${amount} AP invested in ${statId.charAt(0).toUpperCase()+statId.slice(1)}. ${Math.max(0, updatedGates.apNeeded - updatedGates.apInvested)} AP to D rank.`, 'success');
+    const statLabel = STAT_DEFS.find(d => d.id === statId)?.label || statId;
+    const remaining = Math.max(0, updatedGates.apNeeded - updatedGates.apInvested);
+    showToast(`The System records your investment. ${remaining > 0 ? `${remaining} AP to ${statLabel} D rank.` : ''}`, 'success');
   }
 }
 
@@ -5031,6 +5072,43 @@ async function upgradeStatWithAp(statId) {
 }
 
 // Open stat investment panel
+function showProgressionHint() {
+  showSystemModal(`<div class="system-window" style="max-height:80vh;overflow-y:auto;">
+    <p class="system-eyebrow" style="color:rgba(93,157,255,0.5);letter-spacing:0.15em;">◈ SYSTEM NOTIFICATION ◈</p>
+    <div style="font-size:24px;margin:8px 0;">⚡</div>
+    <h2 class="system-title" style="font-size:18px;margin-bottom:16px;">How the System works</h2>
+
+    <div style="text-align:left;font-size:13px;color:var(--text-dim);line-height:1.7;margin-bottom:16px;">
+
+      <div style="margin-bottom:12px;">
+        <div style="font-family:var(--font-mono);font-size:9px;color:var(--brass);letter-spacing:0.1em;margin-bottom:4px;">STEP 1 — TRAIN</div>
+        Every set you log earns <span style="color:var(--brass);">General XP</span>. Harder sets earn more. Elite skill work earns most.
+      </div>
+
+      <div style="margin-bottom:12px;">
+        <div style="font-family:var(--font-mono);font-size:9px;color:var(--brass);letter-spacing:0.1em;margin-bottom:4px;">STEP 2 — LEVEL UP</div>
+        Enough XP and your Hunter Level rises. Each level-up awards <span style="color:var(--brass);">AP</span> — your growth currency.
+      </div>
+
+      <div style="margin-bottom:12px;">
+        <div style="font-family:var(--font-mono);font-size:9px;color:var(--brass);letter-spacing:0.1em;margin-bottom:4px;">STEP 3 — INVEST AP</div>
+        Spend AP to raise your stats. But the System only allows investment proportional to your actual training. You cannot raise Endurance if you never train endurance. <span style="color:rgba(93,157,255,0.6);">Your training shapes your potential.</span>
+      </div>
+
+      <div style="margin-bottom:12px;">
+        <div style="font-family:var(--font-mono);font-size:9px;color:var(--brass);letter-spacing:0.1em;margin-bottom:4px;">STEP 4 — RANK UP</div>
+        Invest enough AP in a stat and it ranks up automatically. <span style="color:var(--growing);">E → D → C → B → A → S</span>. Each rank is years of real work.
+      </div>
+
+      <div style="border-top:1px solid rgba(93,157,255,0.1);padding-top:12px;font-size:11px;color:var(--text-faint);">
+        Raid bosses give bonus AP. PRs give bonus XP. The System is always watching. Show up and it rewards you. Slack and it notices that too.
+      </div>
+    </div>
+
+    <button class="system-btn">Understood</button>
+  </div>`);
+}
+
 function openStatInvestPanel(statId) {
   const gates = checkV2UpgradeGates(statId);
   const def = STAT_DEFS.find(d => d.id === statId);
@@ -5073,10 +5151,16 @@ function openStatInvestPanel(statId) {
     ${canInvest > 0 ? `
     <div style="margin-bottom:14px;">
       <label style="font-size:12px;color:var(--text-faint);display:block;margin-bottom:6px;">Amount to invest (max ${canInvest} AP)</label>
+      <div style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap;">
+        ${[1, 5, 10, 25].filter(v => v <= canInvest).map(v =>
+          `<button class="btn btn-sm invest-quick" data-val="${v}" style="font-size:11px;min-width:40px;">+${v}</button>`
+        ).join('')}
+        <button class="btn btn-sm invest-quick" data-val="${canInvest}" style="font-size:11px;color:var(--brass);border-color:var(--brass);">Max</button>
+      </div>
       <div style="display:flex;gap:8px;align-items:center;">
-        <input type="number" id="invest-amount" min="1" max="${canInvest}" value="${Math.min(canInvest, STAT_RANK_AP_COST[gates.nextRank] - invested)}"
+        <input type="number" id="invest-amount" min="1" max="${canInvest}" value="1"
           style="flex:1;background:var(--card-2);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:8px;font-size:14px;" />
-        <button class="btn btn-sm" id="invest-max" style="font-size:11px;">Max</button>
+        <span style="font-size:12px;color:var(--text-faint);">AP</span>
       </div>
     </div>
     <button class="btn btn-primary" id="invest-confirm" style="width:100%;">Invest AP</button>
@@ -5086,8 +5170,10 @@ function openStatInvestPanel(statId) {
   document.body.appendChild(overlay);
   overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
   overlay.querySelector('#invest-close').addEventListener('click', () => overlay.remove());
-  overlay.querySelector('#invest-max')?.addEventListener('click', () => {
-    overlay.querySelector('#invest-amount').value = canInvest;
+  overlay.querySelectorAll('.invest-quick').forEach(btn => {
+    btn.addEventListener('click', () => {
+      overlay.querySelector('#invest-amount').value = btn.dataset.val;
+    });
   });
   overlay.querySelector('#invest-confirm')?.addEventListener('click', async () => {
     const amount = Number(overlay.querySelector('#invest-amount').value) || 0;
@@ -5399,6 +5485,9 @@ function renderCharCard() {
       openStatInvestPanel(row.dataset.statDetail);
     });
   });
+
+  // system progression hint — tap to open explanation
+  document.getElementById('system-progression-hint')?.addEventListener('click', showProgressionHint);
 
   // hint — show what the current overall rank means in real-world terms
   const hint = document.getElementById('char-rank-hint');
@@ -8207,7 +8296,7 @@ function showDebriefModal(exercises, apEarned, prs) {
 
   const saveRirBtn = el.querySelector('#save-rir-btn');
   if (saveRirBtn) saveRirBtn.addEventListener('click', async () => {
-    if (!Object.keys(rirSelections).length) { showToast('Tap a RIR value for each exercise first.','error'); return; }
+    if (!Object.keys(rirSelections).length) { showToast('The System needs your effort rating — tap a RIR value for each exercise.', 'error'); return; }
     saveRirBtn.disabled = true; saveRirBtn.textContent = 'Saving…';
     try {
       const today = todayStr();
