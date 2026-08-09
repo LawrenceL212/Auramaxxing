@@ -13453,8 +13453,9 @@ function openWorkoutDetail(workoutId) {
     const datePRs = Object.entries(myPRs)
       .filter(([, pr]) => pr.date === w.date)
       .map(([exercise, pr]) => ({ exercise, xp: pr.xp||0, tier: pr.tier, e1rm: pr.e1rm }));
-    const streak = computeStreak(currentUser.uid);
-    const mult = streak >= 30 ? 2 : streak >= 7 ? 1.5 : 1;
+    // Calculate XP from this workout's exercises directly
+    const { generalXP, trainingXP } = computeWorkoutXP(w.exercises || []);
+    profile._lastXpResult = { generalXP, trainingXP, levelUps: [], apEarned: 0 };
     showDebriefModal(w.exercises||[], 0, datePRs);
   });
 
