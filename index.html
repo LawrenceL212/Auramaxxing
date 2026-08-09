@@ -2358,7 +2358,7 @@ const ANATOMY_TEMPLATES = { male: null, female: null };
 // Each file's front/back split point and canvas size differ — measured directly
 // against each exported file, never assumed to match between body types.
 const ANATOMY_CROP = {
-  male:   { front: { viewBox: '0 0 544 1080', w: 544, h: 1080 }, back: { viewBox: '544 0 536 1080', w: 536, h: 1080 } },
+  male:   { front: { viewBox: '20 0 510 1080', w: 510, h: 1080 }, back: { viewBox: '560 0 510 1080', w: 510, h: 1080 } },
   female: { front: { viewBox: '143 100 401 903', w: 401, h: 903 }, back: { viewBox: '538 89 403 914', w: 403, h: 914 } },
 };
 async function loadAnatomyTemplate(bodyType) {
@@ -12389,7 +12389,6 @@ function renderInventory() {
     clone.removeAttribute('height');
     clone.style.overflow = 'hidden';
     clone.style.display = 'block';
-    clone.style.maxHeight = '70vh';
 
     return clone.outerHTML;
   }
