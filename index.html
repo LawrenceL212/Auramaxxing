@@ -9384,10 +9384,7 @@ function showDebriefModal(exercises, apEarned, prs) {
   const totalSets = exercises.reduce((n, ex) => n + (ex.sets||[]).filter(s=>s.reps>0).length, 0);
   const totalVol = exercises.reduce((n, ex) =>
     n + (ex.sets||[]).filter(s=>s.reps>0 && s.weight>0).reduce((v,s) => v + s.reps * s.weight, 0), 0);
-  const totalPrXP = prs.reduce((s,p) => s+p.xp, 0);
-  const totalAP = (apEarned || 0) + totalPrXP;
   const streak = computeStreak(currentUser.uid);
-  const mult = streak >= 30 ? 2 : streak >= 7 ? 1.5 : 1;
   const missingRIR = exercises.filter(ex => (ex.sets||[]).some(s => s.reps > 0 && s.rir == null));
   const tierEmojis = { Elite:'👑', Advanced:'💀', Intermediate:'⚔️', Novice:'🗡️', Beginner:'🛡️' };
   const prRows = prs.map(p => `
@@ -9397,10 +9394,11 @@ function showDebriefModal(exercises, apEarned, prs) {
       <span class="debrief-xp-badge">+${p.xp} XP</span>
     </div>`).join('');
 
-  // Compute XP earned this session for display
+  // XP earned this session
   const xpResult = profile._lastXpResult || null;
   const generalXP = xpResult?.generalXP || 0;
   const trainingXP = xpResult?.trainingXP || {};
+  const levelUps = xpResult?.levelUps || [];
   const hunterLevel = profile.hunterLevel || 1;
   let cumulativeXP = 0;
   for (let l = 1; l < hunterLevel; l++) cumulativeXP += Math.round(50 * Math.pow(l, 1.25));
@@ -9421,6 +9419,16 @@ function showDebriefModal(exercises, apEarned, prs) {
         <span style="font-family:var(--font-mono);font-size:10px;color:var(--growing);">+${xp.toFixed(1)} cap XP</span>
       </div>`).join('');
 
+  // Level-up notice
+  const levelUpHtml = levelUps.length ? `
+    <div style="background:rgba(255,215,0,0.08);border:1px solid rgba(255,215,0,0.3);border-radius:6px;padding:10px;margin-bottom:14px;text-align:center;">
+      <div style="font-family:var(--font-mono);font-size:9px;color:#FFD700;letter-spacing:0.15em;margin-bottom:4px;">◈ LEVEL UP ◈</div>
+      ${levelUps.map(lu => `
+        <div style="font-family:var(--font-head);font-size:18px;font-weight:800;color:#FFD700;">Level ${lu.level}</div>
+        <div style="font-size:12px;color:var(--text-dim);margin-top:2px;">+${lu.ap} AP earned</div>
+      `).join('')}
+    </div>` : '';
+
   const el = document.createElement('div');
   el.className = 'debrief-overlay';
   el.innerHTML = `
@@ -9428,8 +9436,9 @@ function showDebriefModal(exercises, apEarned, prs) {
       <p class="debrief-eyebrow">Quest Complete</p>
       <h2 class="debrief-title">⚡ Session Debrief</h2>
 
+      ${levelUpHtml}
+
       ${generalXP > 0 ? `
-      <!-- XP earned this session -->
       <div style="background:rgba(255,215,0,0.06);border:1px solid rgba(255,215,0,0.15);border-radius:6px;padding:12px;margin-bottom:14px;">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
           <span style="font-family:var(--font-mono);font-size:9px;color:rgba(255,215,0,0.5);letter-spacing:0.1em;">HUNTER LEVEL ${hunterLevel}</span>
@@ -9458,8 +9467,8 @@ function showDebriefModal(exercises, apEarned, prs) {
           <div class="debrief-stat-label">Streak</div>
         </div>
         <div class="debrief-stat">
-          <div class="debrief-stat-value">${(profile.auraPoints||0)}</div>
-          <div class="debrief-stat-label">Total AP</div>
+          <div class="debrief-stat-value">${Math.round(generalXP)}</div>
+          <div class="debrief-stat-label">XP Earned</div>
         </div>
       </div>
 
