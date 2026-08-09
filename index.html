@@ -341,20 +341,43 @@
 </div>
 
 <script type="module">
-import { auth, db, configOk } from "./firebase.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import {
+  getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword,
+  onAuthStateChanged, signOut, updateProfile
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import {
+  getFirestore, collection, doc, setDoc, addDoc, getDoc, getDocs,
+  query, where, orderBy, limit, serverTimestamp, updateDoc, deleteDoc, increment, runTransaction
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { BASE_EXERCISES } from "./exercises.js";
 import { HUNTER_CLASSES } from "./hunter-classes.js";
 import { PROGRESSION_CHAINS } from "./progression-chains.js";
 import { getArchetypeChains } from "./archetype-chains.js";
 import { getAutoAchievements } from "./auto-achievements.js";
-import {
-  createUserWithEmailAndPassword, signInWithEmailAndPassword,
-  onAuthStateChanged, signOut, updateProfile
-} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import {
-  collection, doc, setDoc, addDoc, getDoc, getDocs,
-  query, where, orderBy, limit, serverTimestamp, updateDoc, deleteDoc, increment, runTransaction
-} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+/* =========================================================================
+   FIREBASE CONFIG
+   ========================================================================= */
+const firebaseConfig = {
+  apiKey: "AIzaSyCmS8AsUKTqSZmeRjZkAnQDpgVmf168ZGY",
+  authDomain: "auramaxxing-3d4bb.firebaseapp.com",
+  projectId: "auramaxxing-3d4bb",
+  storageBucket: "auramaxxing-3d4bb.firebasestorage.app",
+  messagingSenderId: "634364008045",
+  appId: "1:634364008045:web:6e982579ecb217750e5164",
+  measurementId: "G-2Q07XYJPYY"
+};
+
+let auth, db, configOk = true;
+try {
+  const app = initializeApp(firebaseConfig);
+  auth = getAuth(app);
+  db = getFirestore(app);
+} catch (e) {
+  configOk = false;
+  document.getElementById('config-warning').classList.remove('hidden');
+}
 
 if (!configOk) document.getElementById('config-warning').classList.remove('hidden');
 
@@ -2391,9 +2414,7 @@ document.getElementById('save-workout-btn')?.addEventListener('click', async () 
     }).filter(s => s.reps > 0);
     if (sets.length) exercises.push({ name, sets });
   });
-  alert('DEBUG: exercises found = ' + exercises.length + '\n' + JSON.stringify(exercises.map(e => e.name)));
-  if (!exercises.length) {
-    showToast('Fill in reps for at least one set before completing.', 'error');
+  if (!exercises.length) {    showToast('Fill in reps for at least one set before completing.', 'error');
     btn.disabled = false; btn.textContent = 'Complete quest';
     return;
   }
