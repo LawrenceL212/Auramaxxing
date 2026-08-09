@@ -10822,190 +10822,83 @@ function bodySvg(view, stats, overrideBodyType, items) {
     shape.style.strokeWidth = '1.5';
   });
 
-  // ── Equipment overlays ──
-  // Drawn as SVG shapes in the figure's own coordinate space so they sit
-  // on the body like actual worn items, not floating badges.
+  // ── Equipment muscle highlights ──
+  // Instead of drawing items on the body, highlight which muscles that item
+  // covers — armour lights up the full torso, boots light up legs, etc.
   if (items) {
-    const bodyType2 = overrideBodyType || ((profile && profile.bodyType === 'female') ? 'female' : 'male');
-    const isFemale = bodyType2 === 'female';
-    const vb = ANATOMY_CROP[bodyType2][view].viewBox.split(' ').map(Number);
-    // vb = [ox, oy, vw, vh] — origin of crop within the full SVG
-    const ox = vb[0], oy = vb[1];
-
-    // Rarity colour for each item
-    const rc = (item) => ({ Common:'rgba(160,160,160,0.85)', Uncommon:'rgba(78,205,120,0.9)', Rare:'rgba(61,165,255,0.95)', Epic:'rgba(139,107,255,0.95)', Legendary:'rgba(255,215,0,1)' })[item?.rarity] || 'rgba(61,165,255,0.8)';
-    const glow = (item) => rc(item).replace(/[\d.]+\)$/, m => `${(parseFloat(m)*0.5).toFixed(2)})`);
-
-    // Helper: append a <g> of SVG shapes into the clone
-    const addOverlay = (svgContent) => {
-      const parser = new DOMParser();
-      const doc = parser.parseFromString(`<svg xmlns="http://www.w3.org/2000/svg">${svgContent}</svg>`, 'image/svg+xml');
-      [...doc.documentElement.children].forEach(child => clone.appendChild(child));
+    const ITEM_MUSCLE_MAP = {
+      weapon: {
+        strength: ['Upper Chest','Middle Chest','Lower Chest','Front Shoulders','Triceps','Biceps','Forearms'],
+        focus:    ['Front Shoulders','Lateral Shoulders','Biceps','Forearms','Upper Abs','Traps'],
+        agility:  ['Front Shoulders','Biceps','Forearms','Upper Abs','Obliques'],
+        default:  ['Upper Chest','Front Shoulders','Biceps','Forearms'],
+      },
+      armour: {
+        endurance:   ['Upper Chest','Middle Chest','Lower Chest','Front Shoulders','Lateral Shoulders',
+                      'Rear Shoulders','Traps','Upper Back','Lats','Lower Back','Upper Abs','Middle Abs','Obliques'],
+        default:     ['Upper Chest','Middle Chest','Lower Chest','Front Shoulders','Lateral Shoulders',
+                      'Rear Shoulders','Traps','Upper Back','Lats','Lower Back','Upper Abs','Middle Abs','Lower Abs','Obliques'],
+      },
+      boots: {
+        agility:     ['Quads','Calves','Hip Flexors','Glutes'],
+        endurance:   ['Quads','Hamstrings','Calves','Glutes','Hip Flexors'],
+        flexibility: ['Hamstrings','Calves','Hip Flexors','Glutes','Lower Back'],
+        default:     ['Quads','Calves','Hamstrings','Glutes'],
+      },
+      accessory: {
+        focus:   ['Front Shoulders','Biceps','Forearms','Upper Abs','Obliques'],
+        default: ['Biceps','Forearms','Upper Abs'],
+      },
+      ring: {
+        default: ['Forearms','Biceps'],
+      },
+      aura: {
+        default: ['Upper Chest','Middle Chest','Lower Chest','Front Shoulders','Lateral Shoulders',
+                  'Rear Shoulders','Biceps','Triceps','Forearms','Upper Abs','Middle Abs','Lower Abs',
+                  'Obliques','Traps','Upper Back','Lats','Lower Back','Glutes','Hamstrings','Quads','Calves','Hip Flexors'],
+      },
     };
 
-    if (view === 'front') {
-      // ── ARMOUR — chest plate, centred on torso ──
-      if (items.armour) {
-        const col = rc(items.armour), gl = glow(items.armour);
-        // Male front: chest centre ~x=265, y=320–500 within full SVG
-        const cx = isFemale ? 343 : 265;
-        const cy = isFemale ? 420 : 390;
-        addOverlay(`<g opacity="0.88" filter="drop-shadow(0 0 6px ${gl})">
-          <!-- Main chest plate -->
-          <path d="M${cx-55} ${cy-60} L${cx-70} ${cy-20} L${cx-55} ${cy+60} L${cx} ${cy+75} L${cx+55} ${cy+60} L${cx+70} ${cy-20} L${cx+55} ${cy-60} L${cx} ${cy-75} Z"
-            fill="${col}" fill-opacity="0.18" stroke="${col}" stroke-width="3" stroke-linejoin="round"/>
-          <!-- Chest ridge line -->
-          <line x1="${cx}" y1="${cy-70}" x2="${cx}" y2="${cy+70}" stroke="${col}" stroke-width="1.5" stroke-opacity="0.6"/>
-          <!-- Pec plates -->
-          <path d="M${cx-8} ${cy-30} L${cx-50} ${cy-20} L${cx-45} ${cy+20} L${cx-8} ${cy+15} Z"
-            fill="${col}" fill-opacity="0.25" stroke="${col}" stroke-width="1.5"/>
-          <path d="M${cx+8} ${cy-30} L${cx+50} ${cy-20} L${cx+45} ${cy+20} L${cx+8} ${cy+15} Z"
-            fill="${col}" fill-opacity="0.25" stroke="${col}" stroke-width="1.5"/>
-          <!-- Shoulder guards -->
-          <ellipse cx="${cx-72}" cy="${cy-55}" rx="22" ry="14" fill="${col}" fill-opacity="0.3" stroke="${col}" stroke-width="2" transform="rotate(-20,${cx-72},${cy-55})"/>
-          <ellipse cx="${cx+72}" cy="${cy-55}" rx="22" ry="14" fill="${col}" fill-opacity="0.3" stroke="${col}" stroke-width="2" transform="rotate(20,${cx+72},${cy-55})"/>
-          <!-- Ab segments -->
-          <path d="M${cx-35} ${cy+20} L${cx-30} ${cy+50} L${cx} ${cy+60} L${cx+30} ${cy+50} L${cx+35} ${cy+20}" fill="none" stroke="${col}" stroke-width="1.5" stroke-opacity="0.5"/>
-          <line x1="${cx-35}" y1="${cy+35}" x2="${cx+35}" y2="${cy+35}" stroke="${col}" stroke-width="1" stroke-opacity="0.4"/>
-        </g>`);
-      }
+    const RARITY_COLORS = {
+      Common:    'rgba(160,160,160,0.7)',
+      Uncommon:  'rgba(78,205,120,0.85)',
+      Rare:      'rgba(61,165,255,0.9)',
+      Epic:      'rgba(139,107,255,0.9)',
+      Legendary: 'rgba(255,215,0,1.0)',
+    };
 
-      // ── WEAPON — held in right hand (figure's right = our left in front view) ──
-      if (items.weapon) {
-        const col = rc(items.weapon), gl = glow(items.weapon);
-        const hx = isFemale ? 490 : 480; // right hand x
-        const hy = isFemale ? 620 : 600; // right hand y
-        const stat = items.weapon.stat;
-        if (stat === 'focus') {
-          // Staff / glaive for skill weapons
-          addOverlay(`<g opacity="0.92" filter="drop-shadow(0 0 8px ${gl})">
-            <line x1="${hx+20}" y1="${hy-180}" x2="${hx-30}" y2="${hy+80}" stroke="${col}" stroke-width="5" stroke-linecap="round"/>
-            <line x1="${hx+20}" y1="${hy-180}" x2="${hx-30}" y2="${hy+80}" stroke="rgba(255,255,255,0.2)" stroke-width="2" stroke-linecap="round"/>
-            <!-- Blade tip -->
-            <path d="M${hx+15} ${hy-175} L${hx+45} ${hy-220} L${hx+25} ${hy-165} Z" fill="${col}" stroke="${col}" stroke-width="1.5" stroke-linejoin="round"/>
-            <!-- Crossguard -->
-            <line x1="${hx-5}" y1="${hy-80}" x2="${hx+35}" y2="${hy-100}" stroke="${col}" stroke-width="4" stroke-linecap="round"/>
-          </g>`);
-        } else if (stat === 'agility') {
-          // Compact blade / wraps for boxing/court
-          addOverlay(`<g opacity="0.92" filter="drop-shadow(0 0 8px ${gl})">
-            <!-- Fist wraps -->
-            <rect x="${hx-20}" y="${hy-30}" width="40" height="55" rx="8" fill="${col}" fill-opacity="0.3" stroke="${col}" stroke-width="2.5"/>
-            <line x1="${hx-20}" y1="${hy-10}" x2="${hx+20}" y2="${hy-10}" stroke="${col}" stroke-width="1.5" stroke-opacity="0.6"/>
-            <line x1="${hx-20}" y1="${hy+10}" x2="${hx+20}" y2="${hy+10}" stroke="${col}" stroke-width="1.5" stroke-opacity="0.6"/>
-            <line x1="${hx-20}" y1="${hy+28}" x2="${hx+20}" y2="${hy+28}" stroke="${col}" stroke-width="1.5" stroke-opacity="0.6"/>
-          </g>`);
-        } else {
-          // Sword / barbell for strength weapons
-          addOverlay(`<g opacity="0.92" filter="drop-shadow(0 0 8px ${gl})">
-            <!-- Blade -->
-            <path d="M${hx+30} ${hy-200} L${hx+10} ${hy+60} L${hx-10} ${hy+55} L${hx+8} ${hy-195} Z"
-              fill="${col}" fill-opacity="0.35" stroke="${col}" stroke-width="2"/>
-            <!-- Edge highlight -->
-            <line x1="${hx+25}" y1="${hy-195}" x2="${hx+8}" y2="${hy+55}" stroke="rgba(255,255,255,0.35)" stroke-width="1.2"/>
-            <!-- Crossguard -->
-            <rect x="${hx-20}" y="${hy-60}" width="65" height="12" rx="4" fill="${col}" fill-opacity="0.6" stroke="${col}" stroke-width="2"/>
-            <!-- Grip -->
-            <rect x="${hx+6}" y="${hy-48}" width="18" height="50" rx="4" fill="${col}" fill-opacity="0.4" stroke="${col}" stroke-width="1.5"/>
-            <!-- Pommel -->
-            <circle cx="${hx+15}" cy="${hy+10}" r="10" fill="${col}" fill-opacity="0.5" stroke="${col}" stroke-width="2"/>
-          </g>`);
+    // Collect all muscles to highlight and their strongest rarity colour
+    const muscleHighlights = {}; // muscle → { color, glow }
+
+    Object.entries(items).forEach(([slot, item]) => {
+      if (!item) return;
+      const slotMap = ITEM_MUSCLE_MAP[slot];
+      if (!slotMap) return;
+      const muscles = slotMap[item.stat] || slotMap.default || [];
+      const color = RARITY_COLORS[item.rarity] || 'rgba(61,165,255,0.8)';
+      muscles.forEach(m => {
+        // Higher rarity wins if multiple items cover same muscle
+        const existing = muscleHighlights[m];
+        const rarityRank = { Common:1, Uncommon:2, Rare:3, Epic:4, Legendary:5 };
+        const newRank = rarityRank[item.rarity] || 3;
+        if (!existing || newRank > existing.rank) {
+          muscleHighlights[m] = { color, rank: newRank };
         }
-      }
+      });
+    });
 
-      // ── ACCESSORY — left wrist ──
-      if (items.accessory) {
-        const col = rc(items.accessory), gl = glow(items.accessory);
-        const wx = isFemale ? 200 : 55;
-        const wy = isFemale ? 600 : 580;
-        addOverlay(`<g opacity="0.88" filter="drop-shadow(0 0 6px ${gl})">
-          <!-- Bracer band -->
-          <rect x="${wx-18}" y="${wy-12}" width="36" height="28" rx="6"
-            fill="${col}" fill-opacity="0.3" stroke="${col}" stroke-width="2.5"/>
-          <!-- Detail lines -->
-          <line x1="${wx-18}" y1="${wy+2}" x2="${wx+18}" y2="${wy+2}" stroke="${col}" stroke-width="1.2" stroke-opacity="0.7"/>
-          <!-- Gem -->
-          <circle cx="${wx}" cy="${wy+8}" r="5" fill="${col}" fill-opacity="0.7" stroke="rgba(255,255,255,0.4)" stroke-width="1"/>
-        </g>`);
-      }
-    }
-
-    if (view === 'back') {
-      // ── BOOTS — drawn on both feet ──
-      if (items.boots) {
-        const col = rc(items.boots), gl = glow(items.boots);
-        // Male back: left foot ~x=215 y=990, right foot ~x=315 y=990
-        const lx = isFemale ? 280 : 210, rx2 = isFemale ? 400 : 315;
-        const by = isFemale ? 940 : 970;
-        [[lx, by], [rx2, by]].forEach(([fx, fy]) => {
-          addOverlay(`<g opacity="0.88" filter="drop-shadow(0 0 6px ${gl})">
-            <!-- Boot shaft -->
-            <path d="M${fx-22} ${fy-120} L${fx-25} ${fy} L${fx+10} ${fy+10} L${fx+35} ${fy-5} L${fx+28} ${fy-120} Z"
-              fill="${col}" fill-opacity="0.22" stroke="${col}" stroke-width="2.5" stroke-linejoin="round"/>
-            <!-- Boot sole -->
-            <path d="M${fx-28} ${fy} L${fx+12} ${fy+12} L${fx+40} ${fy-2} L${fx+42} ${fy+14} L${fx-5} ${fy+28} L${fx-30} ${fy+14} Z"
-              fill="${col}" fill-opacity="0.35" stroke="${col}" stroke-width="2"/>
-            <!-- Shaft detail line -->
-            <line x1="${fx-10}" y1="${fy-110}" x2="${fx-12}" y2="${fy-10}" stroke="${col}" stroke-width="1.2" stroke-opacity="0.5"/>
-            <line x1="${fx+15}" y1="${fy-100}" x2="${fx+13}" y2="${fy-10}" stroke="${col}" stroke-width="1.2" stroke-opacity="0.5"/>
-          </g>`);
-        });
-      }
-
-      // ── ARMOUR back plate ──
-      if (items.armour) {
-        const col = rc(items.armour), gl = glow(items.armour);
-        const cx = isFemale ? 343 : 265;
-        const cy = isFemale ? 400 : 380;
-        addOverlay(`<g opacity="0.80" filter="drop-shadow(0 0 6px ${gl})">
-          <!-- Back plate -->
-          <path d="M${cx-60} ${cy-70} L${cx-75} ${cy} L${cx-55} ${cy+70} L${cx} ${cy+80} L${cx+55} ${cy+70} L${cx+75} ${cy} L${cx+60} ${cy-70} L${cx} ${cy-85} Z"
-            fill="${col}" fill-opacity="0.15" stroke="${col}" stroke-width="2.5" stroke-linejoin="round"/>
-          <!-- Spine ridge -->
-          <line x1="${cx}" y1="${cy-75}" x2="${cx}" y2="${cy+75}" stroke="${col}" stroke-width="2" stroke-opacity="0.5"/>
-          <!-- Horizontal straps -->
-          <line x1="${cx-60}" y1="${cy-20}" x2="${cx+60}" y2="${cy-20}" stroke="${col}" stroke-width="1.5" stroke-opacity="0.4"/>
-          <line x1="${cx-60}" y1="${cy+25}" x2="${cx+60}" y2="${cy+25}" stroke="${col}" stroke-width="1.5" stroke-opacity="0.4"/>
-          <!-- Shoulder guards -->
-          <ellipse cx="${cx-72}" cy="${cy-60}" rx="22" ry="14" fill="${col}" fill-opacity="0.28" stroke="${col}" stroke-width="2" transform="rotate(20,${cx-72},${cy-60})"/>
-          <ellipse cx="${cx+72}" cy="${cy-60}" rx="22" ry="14" fill="${col}" fill-opacity="0.28" stroke="${col}" stroke-width="2" transform="rotate(-20,${cx+72},${cy-60})"/>
-        </g>`);
-      }
-
-      // ── RING — right hand (back view, figure's left = our right) ──
-      if (items.ring) {
-        const col = rc(items.ring), gl = glow(items.ring);
-        const rx2 = isFemale ? 490 : 475;
-        const ry = isFemale ? 620 : 600;
-        addOverlay(`<g opacity="0.92" filter="drop-shadow(0 0 8px ${gl})">
-          <circle cx="${rx2}" cy="${ry}" r="14" fill="none" stroke="${col}" stroke-width="3.5"/>
-          <circle cx="${rx2}" cy="${ry}" r="7" fill="${col}" fill-opacity="0.5"/>
-          <circle cx="${rx2}" cy="${ry}" r="4" fill="${col}" fill-opacity="0.9"/>
-        </g>`);
-      }
-
-      // ── AURA — halo above head ──
-      if (items.aura) {
-        const col = rc(items.aura), gl = glow(items.aura);
-        const ax = isFemale ? 343 : 265;
-        const ay = isFemale ? 135 : 95;
-        const isLegendary = items.aura.rarity === 'Legendary';
-        addOverlay(`<g opacity="0.9" filter="drop-shadow(0 0 ${isLegendary?'14':'8'}px ${gl})">
-          <!-- Outer halo ring -->
-          <ellipse cx="${ax}" cy="${ay}" rx="${isLegendary?72:55}" ry="${isLegendary?18:14}"
-            fill="none" stroke="${col}" stroke-width="${isLegendary?3:2}" stroke-opacity="0.8"/>
-          <!-- Inner glow ring -->
-          <ellipse cx="${ax}" cy="${ay}" rx="${isLegendary?55:40}" ry="${isLegendary?13:10}"
-            fill="${col}" fill-opacity="0.12" stroke="${col}" stroke-width="1.2" stroke-opacity="0.5"/>
-          ${isLegendary ? `
-          <!-- Legendary: extra sparks -->
-          <line x1="${ax-72}" y1="${ay}" x2="${ax-88}" y2="${ay-8}" stroke="${col}" stroke-width="1.5" stroke-opacity="0.7"/>
-          <line x1="${ax+72}" y1="${ay}" x2="${ax+88}" y2="${ay-8}" stroke="${col}" stroke-width="1.5" stroke-opacity="0.7"/>
-          <circle cx="${ax}" cy="${ay-22}" r="3" fill="${col}" fill-opacity="0.9"/>
-          ` : ''}
-        </g>`);
-      }
-    }
+    // Apply highlights — override the training-status colour with item colour
+    clone.querySelectorAll('[id]').forEach(el => {
+      const m = muscleFromId(el.id);
+      if (!m || !muscleHighlights[m]) return;
+      const { color } = muscleHighlights[m];
+      [el, ...el.querySelectorAll('*')].forEach(shape => {
+        if (shape.getAttribute('fill') === 'none') return;
+        shape.setAttribute('fill', color);
+        shape.style.fill = color;
+      });
+      el.style.filter = `drop-shadow(0 0 7px ${color})`;
+    });
   }
 
   const svgStr = new XMLSerializer().serializeToString(clone);
@@ -13957,6 +13850,16 @@ function renderInventory() {
 
       ${activeDungeonHtml}
 
+      <!-- Body model -->
+      <div style="background:var(--card);border:1px solid rgba(61,165,255,0.08);border-radius:12px;padding:16px;margin-bottom:20px;">
+        <div style="font-family:var(--font-mono);font-size:10px;color:rgba(61,165,255,0.4);letter-spacing:0.15em;margin-bottom:4px;">── CHARACTER ──</div>
+        <p style="font-size:11px;color:var(--text-faint);margin:0 0 12px;">Highlighted muscles show what each equipped item covers. Unlit muscles show training status.</p>
+        <div style="display:flex;gap:8px;justify-content:center;" id="inv-body-wrap">
+          ${bodySvg('front', buildMuscleStats(currentUser.uid), profile.bodyType || 'male', inv)}
+          ${bodySvg('back',  buildMuscleStats(currentUser.uid), profile.bodyType || 'male', inv)}
+        </div>
+      </div>
+
       <!-- Equipped loadout — 3+3 grid on mobile -->
       <div style="background:var(--card);border:1px solid rgba(61,165,255,0.12);border-radius:12px;padding:16px;margin-bottom:20px;">
         <div style="font-family:var(--font-mono);font-size:10px;color:rgba(61,165,255,0.4);letter-spacing:0.15em;margin-bottom:14px;">── CURRENT LOADOUT ──</div>
@@ -13968,17 +13871,8 @@ function renderInventory() {
       <!-- Dungeon chains -->
       <div style="font-family:var(--font-mono);font-size:10px;color:rgba(61,165,255,0.4);letter-spacing:0.15em;margin-bottom:16px;">── DUNGEON CHAINS ──</div>
       <p style="font-size:12px;color:var(--text-dim);margin:0 0 16px;line-height:1.6;">Each chain is a series of dungeons. Clear them to earn items. ⚔ marks your next boss fight. Tap <em>Enter</em> to make it active.</p>
-      ${chainHtml}
 
-      <!-- Body model — training coverage + equipment display -->
-      <div style="background:var(--card);border:1px solid rgba(61,165,255,0.08);border-radius:12px;padding:16px;margin-top:8px;">
-        <div style="font-family:var(--font-mono);font-size:10px;color:rgba(61,165,255,0.4);letter-spacing:0.15em;margin-bottom:4px;">── CHARACTER ──</div>
-        <p style="font-size:11px;color:var(--text-faint);margin:0 0 12px;">Equipped items are worn. Muscle activity shows last 7 days of training.</p>
-        <div style="display:flex;gap:8px;justify-content:center;" id="inv-body-wrap">
-          ${bodySvg('front', buildMuscleStats(currentUser.uid), profile.bodyType || 'male', inv)}
-          ${bodySvg('back',  buildMuscleStats(currentUser.uid), profile.bodyType || 'male', inv)}
-        </div>
-      </div>
+      ${chainHtml}
     </div>`;
 }
 
