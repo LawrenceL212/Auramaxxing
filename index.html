@@ -4438,8 +4438,8 @@ document.getElementById('save-workout-btn')?.addEventListener('click', async () 
     const sets = [...row.querySelectorAll('.set-row')].map(sr => {
       const selectedRir = sr.querySelector('.rir-chip.selected');
       return {
-        reps: Number(sr.querySelector('.set-reps').value) || 0,
-        weight: Number(sr.querySelector('.set-weight').value) || 0,
+        reps: Number(sr.querySelector('.set-reps')?.value) || 0,
+        weight: Number(sr.querySelector('.set-weight')?.value) || 0,
         rir: selectedRir ? Number(selectedRir.dataset.rir) : null,
       };
     }).filter(s => s.reps > 0);    if (sets.length) exercises.push({ name, sets });
@@ -11937,16 +11937,23 @@ async function maybeSpawnWeaknessTrial() {
   const activeTrial = profile.activeTrial;
   if (activeTrial) return; // already has one
 
-  // Only spawn on Monday (or if no trial has ever spawned)
+  // Only spawn on Monday
   const today = new Date();
   const dayOfWeek = today.getDay(); // 0=Sun, 1=Mon
+  if (dayOfWeek !== 1) return; // only on Monday
+
   const lastSpawn = profile.lastTrialSpawn;
   const thisMonday = getMonday(today).toISOString().slice(0,10);
   if (lastSpawn === thisMonday) return; // already spawned this week
 
-  // Find weakest stat from Training XP caps
+  // Don't spawn if calibration hasn't happened yet
+  // (all caps still at baseline means we don't know the real weakest stat)
   const caps = profile.statTrainingXP || {};
   const STATS_LIST = ['strength','endurance','agility','focus','flexibility','defence'];
+  const allAtBaseline = STATS_LIST.every(s => (caps[s]||0) <= 20);
+  if (allAtBaseline) return; // wait for calibration first
+
+  // Find genuinely weakest stat — lowest cap that has a trial definition
   const weakest = STATS_LIST.reduce((min, s) => (caps[s]||0) < (caps[min]||0) ? s : min, STATS_LIST[0]);
 
   const trialDef = TRIAL_DEFINITIONS[weakest];
