@@ -2783,7 +2783,7 @@ function openSettingsModal() {
     const saveBtn = overlay.querySelector('#save-settings');
     saveBtn.disabled = true; saveBtn.textContent = 'Saving…';
     try {
-      await setDoc(doc(db, 'users', currentUser.uid), { displayName: newName, weeklyGoal: newGoal, bodyType: selectedBodyType, email: currentUser.email || '' }, { merge: true });
+      await writeUserFields({ displayName: newName, weeklyGoal: newGoal, bodyType: selectedBodyType, email: currentUser.email || '' });
       await updateProfile(currentUser, { displayName: newName });
       profile.displayName = newName;
       profile.weeklyGoal = newGoal;
@@ -2997,7 +2997,7 @@ if (configOk) {
       if (!profile.stats) profile.stats = defaultStats();
       if (profile.auraPoints === undefined) profile.auraPoints = 0;
       if (!profile.email && currentUser.email) {
-        await setDoc(doc(db, 'users', currentUser.uid), { email: currentUser.email }, { merge: true });
+        await writeUserFields({ email: currentUser.email });
         profile.email = currentUser.email;
       }
       document.getElementById('user-avatar').textContent = initials(profile.displayName);
@@ -4530,7 +4530,7 @@ document.getElementById('save-workout-btn')?.addEventListener('click', async () 
       programDayIndex: activeDayIndex ?? null, createdAt: serverTimestamp(),
       ...(runSummaryFromLogger ? { isRun: true, runSummary: runSummaryFromLogger } : {}),
     });
-    await setDoc(doc(db, 'users', currentUser.uid), { lastWorkoutDate: date }, { merge: true });
+    await writeUserFields({ lastWorkoutDate: date });
     profile.lastWorkoutDate = date;
     if (activeDayIndex !== null && myProgram) {
       myProgram.days[activeDayIndex].lastDate = date;
@@ -4853,7 +4853,7 @@ async function applyStatBonus(statId, tier) {
   // store accumulated stat XP in profile.statXP
   const statXP = { ...(profile.statXP || {}) };
   statXP[statId] = (statXP[statId] || 0) + bonus;
-  await setDoc(doc(db, 'users', currentUser.uid), { statXP }, { merge: true });
+  await writeUserFields({ statXP });
   profile.statXP = statXP;
 }
 
@@ -5049,49 +5049,77 @@ function buildMilestoneData() {
   return data;
 }
 
-async function checkAndAwardMilestones() {
+/* =========================================================================
+   USER STATE COORDINATOR
+   All writes to users/{uid} go through writeUserFields().
+   Uses updateDoc with dot-notation paths only — never setDoc on the user doc.
+   This prevents concurrent writes from overwriting each other's fields.
+   ========================================================================= */
+async function writeUserFields(fields) {
+  if (!currentUser) return;
+  await updateDoc(doc(db, 'users', currentUser.uid), fields);
+  // Mirror into profile object
+  for (const [key, val] of Object.entries(fields)) {
+    if (key.includes('.')) {
+      // dot-notation: statTrainingXP.strength → profile.statTrainingXP.strength
+      const [top, sub] = key.split('.');
+      if (!profile[top]) profile[top] = {};
+      if (val && typeof val === 'object' && val.constructor?.name === 'FieldValueImpl') continue; // skip increment sentinels
+      profile[top][sub] = val;
+    } else {
+      if (val && typeof val === 'object' && val.constructor?.name === 'FieldValueImpl') continue;
+      profile[key] = val;
+    }
+  }
+}
+
+async function checkAndAwardMilestones(pendingUpdates) {
+  // If pendingUpdates is passed, we're being called from awardWorkoutXP batch flow
+  // and should merge into that object instead of writing directly.
+  const batched = !!pendingUpdates;
   if (!profile || !currentUser) return;
   const achieved = profile.milestonesAchieved || {};
   const data = buildMilestoneData();
   const newlyAchieved = [];
 
   for (const m of MILESTONES) {
-    if (achieved[m.id]) continue; // already got it
-    if (m.check(data)) {
-      newlyAchieved.push(m);
-    }
+    if (achieved[m.id]) continue;
+    if (m.check(data)) newlyAchieved.push(m);
   }
 
   if (!newlyAchieved.length) return;
 
-  // Award all newly achieved milestones
   let totalHunterXP = 0;
   const trainingXPGains = {};
-  const updates = { milestonesAchieved: { ...achieved } };
+  const updates = batched ? pendingUpdates : {};
 
   for (const m of newlyAchieved) {
-    updates.milestonesAchieved[m.id] = { achievedAt: new Date().toISOString() };
+    updates[`milestonesAchieved.${m.id}`] = { achievedAt: new Date().toISOString() };
     totalHunterXP += m.hunterXP;
     trainingXPGains[m.stat] = (trainingXPGains[m.stat] || 0) + m.trainingXP;
+    if (!profile.milestonesAchieved) profile.milestonesAchieved = {};
+    profile.milestonesAchieved[m.id] = { achievedAt: new Date().toISOString() };
   }
 
-  // Apply Training XP boosts
+  // Merge Training XP gains into pending updates
   const currentCaps = profile.statTrainingXP || {};
   for (const [stat, gain] of Object.entries(trainingXPGains)) {
-    const current = currentCaps[stat] || 0;
-    updates[`statTrainingXP.${stat}`] = current + gain;
+    const existingKey = `statTrainingXP.${stat}`;
+    const base = updates[existingKey] !== undefined ? updates[existingKey] : (currentCaps[stat] || 0);
+    updates[existingKey] = base + gain;
     if (!profile.statTrainingXP) profile.statTrainingXP = {};
-    profile.statTrainingXP[stat] = current + gain;
+    profile.statTrainingXP[stat] = updates[existingKey];
   }
 
-  updates.hunterXP = (profile.hunterXP || 0) + totalHunterXP;
-  profile.hunterXP = updates.hunterXP;
-  if (!profile.milestonesAchieved) profile.milestonesAchieved = {};
-  for (const m of newlyAchieved) profile.milestonesAchieved[m.id] = { achievedAt: new Date().toISOString() };
+  // Merge hunterXP
+  const baseXP = updates['hunterXP'] !== undefined ? updates['hunterXP'] : (profile.hunterXP || 0);
+  updates['hunterXP'] = Math.round((baseXP + totalHunterXP) * 10) / 10;
+  profile.hunterXP = updates['hunterXP'];
 
-  await setDoc(doc(db, 'users', currentUser.uid), updates, { merge: true });
+  if (!batched) {
+    await writeUserFields(updates);
+  }
 
-  // Queue milestone banner — shown after debrief is dismissed
   if (newlyAchieved.length) {
     queueNotif(done => showMilestonesBanner(newlyAchieved, trainingXPGains, totalHunterXP, done));
   }
@@ -5134,96 +5162,78 @@ async function awardWorkoutXP(exercises) {
   const currentLevel = profile.hunterLevel || 1;
   const currentXP = profile.hunterXP || 0;
   let newXP = currentXP + generalXP;
-  let newLevel = currentLevel;
+  let newLevel = 1;
+  let cumulativeXP = 0;
   let apEarned = 0;
   const levelUps = [];
 
-  // Detect level-ups
-  let threshold = xpForLevel(newLevel);
-  let cumulative = 0;
-  // first calculate cumulative XP already spent on current level
-  for (let l = 1; l < currentLevel; l++) cumulative += xpForLevel(l);
-  let xpIntoCurrentLevel = currentXP - cumulative;
-
-  // Walk forward through any level-ups earned this session
-  while (xpIntoCurrentLevel + generalXP >= xpForLevel(newLevel)) {
-    const needed = xpForLevel(newLevel) - xpIntoCurrentLevel;
-    xpIntoCurrentLevel = 0;
-    generalXP - needed; // consumed
-    newLevel++;
-    const ap = apForLevel(newLevel);
-    apEarned += ap;
-    levelUps.push({ level: newLevel, ap });
-    xpIntoCurrentLevel = 0;
-    // recalculate how much XP is left after this level-up
-    // (simplified: just track new total XP)
-    break; // re-evaluate below with total XP
-  }
-
-  // Simpler recalculation: just walk forward from total XP
-  newLevel = 1;
-  let cumulativeXP = 0;
-  apEarned = 0;
-  levelUps.length = 0;
+  // Walk forward from total XP to find new level
   while (true) {
     const needed = xpForLevel(newLevel);
     if (cumulativeXP + needed > newXP) break;
     cumulativeXP += needed;
     newLevel++;
     if (newLevel > currentLevel) {
-      // this is a new level-up
       const ap = apForLevel(newLevel);
       apEarned += ap;
       levelUps.push({ level: newLevel, ap });
     }
   }
 
-  // Update Training XP caps
-  const currentTrainingXP = profile.statTrainingXP || {};
-  const FLOOR = 10; // baseline floor per stat
-  const newTrainingXP = {};
-  for (const stat of Object.keys(trainingXP)) {
-    newTrainingXP[stat] = Math.max(FLOOR, (currentTrainingXP[stat] || 0) + trainingXP[stat]);
-  }
-
-  // Write to Firestore — use updateDoc for atomic field updates
-  const userRef = doc(db, 'users', currentUser.uid);
-  const updates = {
+  // Build single batch update — all post-workout writes go here
+  const batch = {
     hunterXP: Math.round(newXP * 10) / 10,
     hunterLevel: newLevel,
   };
-  // Write Training XP as individual dot-notation fields to avoid overwriting other stats
-  for (const [stat, val] of Object.entries(newTrainingXP)) {
-    updates[`statTrainingXP.${stat}`] = val;
+
+  // Training XP cap increments
+  const currentCaps = profile.statTrainingXP || {};
+  const FLOOR = 10;
+  for (const [stat, gain] of Object.entries(trainingXP)) {
+    const current = currentCaps[stat] || 0;
+    batch[`statTrainingXP.${stat}`] = Math.max(FLOOR, current + gain);
   }
+
+  // AP from level-ups
   if (apEarned > 0) {
-    updates.auraPoints = increment(apEarned);
+    batch.auraPoints = increment(apEarned);
   }
 
-  await updateDoc(userRef, updates);
+  // Milestone check — merges into batch, does not write
+  await checkAndAwardMilestones(batch);
 
-  profile.hunterXP = newXP;
+  // Trial check — merges into batch if trial completes
+  const trialComplete = await checkTrialProgressAndComplete(batch);
+
+  // ONE write for everything
+  await writeUserFields(batch);
+
+  // Update profile in memory
+  profile.hunterXP = batch.hunterXP;
   profile.hunterLevel = newLevel;
-  profile.statTrainingXP = newTrainingXP;
+  if (!profile.statTrainingXP) profile.statTrainingXP = {};
+  for (const [stat, gain] of Object.entries(trainingXP)) {
+    profile.statTrainingXP[stat] = batch[`statTrainingXP.${stat}`];
+  }
   if (apEarned > 0) {
     profile.auraPoints = (profile.auraPoints || 0) + apEarned;
     logAp(currentUser.uid, apEarned, `Level-up AP: reached level ${newLevel} (${levelUps.map(l=>`Lv${l.level}+${l.ap}AP`).join(', ')})`, (profile.auraPoints || 0) - apEarned);
   }
 
-  // Check milestones and trials sequentially to avoid Firestore conflicts
-  try { await checkAndAwardMilestones(); } catch(e) { console.warn('Milestone check error:', e); }
-  try { await checkTrialProgressAndComplete(); } catch(e) { console.warn('Trial check error:', e); }
+  // Show trial complete banner if needed (after write)
+  if (trialComplete) {
+    const def = TRIAL_DEFINITIONS[trialComplete.stat];
+    if (def) queueNotif(done => showTrialClearBanner(def, trialComplete.reward, trialComplete.item, trialComplete.tier, done));
+  }
 
   return { generalXP, trainingXP, levelUps, apEarned, newLevel };
 }
 
-async function checkTrialProgressAndComplete() {
-  if (!profile?.activeTrial || profile.activeTrial.completed) return;
+async function checkTrialProgressAndComplete(pendingUpdates) {
+  if (!profile?.activeTrial || profile.activeTrial.completed) return null;
   const { complete } = checkTrialProgress(profile.activeTrial);
-  if (complete) {
-    await completeTrial();
-    renderTrialCard();
-  }
+  if (!complete) return null;
+  return await completeTrial(pendingUpdates);
 }
 
 // Legacy: computeApEarned and tryAwardAp kept for backward compat during transition
@@ -5312,7 +5322,7 @@ async function checkAndAwardPRs(exercises, workoutDate) {
   const newAP = (profile.auraPoints || 0) + totalNewXP;
 
   await setDoc(doc(db, 'prs', currentUser.uid), newPRs);
-  await setDoc(doc(db, 'users', currentUser.uid), { auraPoints: increment(totalNewXP) }, { merge: true });
+  await writeUserFields({ auraPoints: increment(totalNewXP) });
   logAp(currentUser.uid, totalNewXP, `PR XP: ${awarded.map(a=>a.exercise).join(', ')}`, profile.auraPoints || 0);
   myPRs = newPRs;
   profile.auraPoints = newAP;
@@ -5715,7 +5725,7 @@ async function ensureStatBaselines() {
   });
 
   if (changed) {
-    await setDoc(doc(db, 'users', currentUser.uid), { statBaselines: baselines, statTimeAtRank }, { merge: true });
+    await writeUserFields({ statBaselines: baselines, statTimeAtRank });
     profile.statBaselines = baselines;
     profile.statTimeAtRank = statTimeAtRank;
   }
@@ -6103,7 +6113,7 @@ async function disputeCalibrationObservation(obsKey, stat) {
       systemStillBelieves: stillValid,
     }
   };
-  await setDoc(doc(db, 'users', currentUser.uid), updates, { merge: true });
+  await writeUserFields(updates);
   if (!profile.calibrationObservations) profile.calibrationObservations = {};
   profile.calibrationObservations[obsKey] = { disputed:true, systemStillBelieves:stillValid };
 
@@ -6243,10 +6253,10 @@ async function investApInStat(statId, amount) {
   statAP[statId] = (statAP[statId] || 0) + amount;
   const newAp = (profile.auraPoints || 0) - amount;
 
-  await setDoc(doc(db, 'users', currentUser.uid), {
-    statAP,
+  await writeUserFields({
+    [`statAP.${statId}`]: (profile.statAP?.[statId] || 0) + amount,
     auraPoints: increment(-amount),
-  }, { merge: true });
+  });
   logAp(currentUser.uid, -amount, `AP invested in ${statId} (total: ${statAP[statId]})`, profile.auraPoints || 0);
 
   profile.statAP = statAP;
@@ -6270,9 +6280,9 @@ async function triggerStatRankUp(statId, oldRank, newRank) {
   const statTimeAtRank = { ...(profile.statTimeAtRank || {}) };
   statTimeAtRank[statId] = { rank: newRank, sinceDate: todayStr() };
   const pending = [...(profile.pendingRankUpModals || []), { stat: statId, oldRank, newRank }];
-  await setDoc(doc(db, 'users', currentUser.uid), {
+  await writeUserFields({
     stats: newStats, statTimeAtRank, pendingRankUpModals: pending,
-  }, { merge: true });
+  });
   profile.stats = newStats;
   profile.statTimeAtRank = statTimeAtRank;
   profile.pendingRankUpModals = pending;
@@ -7159,7 +7169,7 @@ async function checkStatDecay() {
     decayed = true;
   });
   if (!decayed) return;
-  await setDoc(doc(db, 'users', currentUser.uid), { stats, lastDecayCheck: today }, { merge: true });
+  await writeUserFields({ stats, lastDecayCheck: today });
   profile.stats = stats;
   profile.lastDecayCheck = today;
 }
@@ -7178,14 +7188,14 @@ async function checkPenalty() {
   // don't penalise if the user already logged today — they're clearly still active
   const loggedToday = myWorkouts.some(w => w.date === todayStr());
   if (loggedToday) {
-    await setDoc(doc(db, 'users', currentUser.uid), { lastPenaltyCheck: todayStr() }, { merge: true });
+    await writeUserFields({ lastPenaltyCheck: todayStr() });
     profile.lastPenaltyCheck = todayStr();
     return null;
   }
 
   const loggedYesterday = myWorkouts.some(w => w.date === yStr);
   if (loggedYesterday) {
-    await setDoc(doc(db, 'users', currentUser.uid), { lastPenaltyCheck: todayStr() }, { merge: true });
+    await writeUserFields({ lastPenaltyCheck: todayStr() });
     profile.lastPenaltyCheck = todayStr();
     return null;
   }
@@ -7197,7 +7207,7 @@ async function checkPenalty() {
 
   const apLost = Math.max(5, Math.round((profile.auraPoints || 0) * 0.05));
   const newAp = Math.max(0, (profile.auraPoints || 0) - apLost);
-  await setDoc(doc(db, 'users', currentUser.uid), { auraPoints: increment(-apLost), lastPenaltyCheck: todayStr() }, { merge: true });
+  await writeUserFields({ auraPoints: increment(-apLost), lastPenaltyCheck: todayStr() });
   logAp(currentUser.uid, -apLost, `Missed training day penalty (${yStr})`, profile.auraPoints || 0);
   profile.auraPoints = newAp;
   profile.lastPenaltyCheck = todayStr();
@@ -7211,7 +7221,7 @@ function checkPendingRankUps() {
   let i = 0;
   const showNext = () => {
     if (i >= pending.length) {
-      setDoc(doc(db, 'users', currentUser.uid), { pendingRankUpModals: [] }, { merge: true });
+      writeUserFields({ pendingRankUpModals: [] });
       profile.pendingRankUpModals = [];
       renderCharCard();
       return;
@@ -7239,7 +7249,7 @@ async function checkWeeklyGate() {
   });
   const goal = profile.weeklyGoal || 3;
   const cleared = lastWeekWorkouts.length >= goal;
-  await setDoc(doc(db, 'users', currentUser.uid), { lastGateCheck: thisMonday }, { merge: true });
+  await writeUserFields({ lastGateCheck: thisMonday });
   profile.lastGateCheck = thisMonday;
   showGateClearModal(cleared, goal, lastWeekWorkouts.length);
   SFX.gateClear();
@@ -7783,7 +7793,7 @@ async function evaluateAndSaveClass() {
   const previous = profile.hunterClass;
   if (previous === assigned) return; // no change
   // save to Firestore
-  await setDoc(doc(db, 'users', currentUser.uid), { hunterClass: assigned, classAssignedDate: todayStr() }, { merge: true });
+  await writeUserFields({ hunterClass: assigned, classAssignedDate: todayStr() });
   profile.hunterClass = assigned;
   profile.classAssignedDate = todayStr();
   // fire the reveal modal
@@ -10265,7 +10275,7 @@ async function renderRaidBoss() {
         const existingTitles = profile.slayerTitles || [];
         if (!existingTitles.includes(slayerTitle)) {
           const newTitles = [...existingTitles, slayerTitle];
-          await setDoc(doc(db, 'users', currentUser.uid), { slayerTitles: newTitles }, { merge: true });
+          await writeUserFields({ slayerTitles: newTitles });
           profile.slayerTitles = newTitles;
         }
         const breakdown = allUsers
@@ -11032,7 +11042,7 @@ function renderTrends() {
     } else {
       await addDoc(collection(db, 'bodyweight'), { uid: currentUser.uid, date: today, weight: val, createdAt: serverTimestamp() });
     }
-    await setDoc(doc(db, 'users', currentUser.uid), { bodyweightKg: val }, { merge: true });
+    await writeUserFields({ bodyweightKg: val });
     profile.bodyweightKg = val;
     await loadAllData(); trendsView='dashboard'; renderTrends();
   });
@@ -11060,7 +11070,7 @@ function renderTrends() {
       const entry = myWeights.find(e => e.id === id);
       const isLatest = myWeights[myWeights.length - 1]?.id === id;
       if (isLatest) {
-        await setDoc(doc(db, 'users', currentUser.uid), { bodyweightKg: val }, { merge: true });
+        await writeUserFields({ bodyweightKg: val });
         profile.bodyweightKg = val;
       }
       await loadAllData(); trendsView='dashboard'; renderTrends();
@@ -11832,7 +11842,7 @@ async function checkAndUnlockAchievements() {
     } catch(e) {}
   }
   if (newlyUnlocked.length) {
-    await setDoc(doc(db, 'users', currentUser.uid), { unlockedAchievements: unlocked }, { merge: true });
+    await writeUserFields({ unlockedAchievements: unlocked });
     profile.unlockedAchievements = unlocked;
     SFX.achievement();
   }
@@ -12048,7 +12058,7 @@ async function polishItem(slot, rir) {
   const current = getItemCondition(item, slot);
   const newCondition = Math.min(100, current + restore);
   const updates = { [`inventory.${slot}.condition`]: newCondition, [`inventory.${slot}.lastPolished`]: new Date().toISOString() };
-  await setDoc(doc(db, 'users', currentUser.uid), updates, { merge: true });
+  await writeUserFields(updates);
   if (!profile.inventory) profile.inventory = {};
   if (!profile.inventory[slot]) profile.inventory[slot] = item;
   profile.inventory[slot].condition = newCondition;
@@ -12200,10 +12210,7 @@ async function maybeSpawnWeaknessTrial() {
     spawned: new Date().toISOString(),
   };
 
-  await setDoc(doc(db, 'users', currentUser.uid), {
-    activeTrial: newTrial,
-    lastTrialSpawn: thisMonday,
-  }, { merge: true });
+  await writeUserFields({ activeTrial: newTrial, lastTrialSpawn: thisMonday });
   profile.activeTrial = newTrial;
 }
 
@@ -12215,66 +12222,74 @@ function getMonday(date) {
 }
 
 // Complete a trial — award XP, update cap, grant item
-async function completeTrial() {
-  if (!profile || !currentUser) return;
+// If pendingUpdates passed, merges into batch — caller does the single write
+async function completeTrial(pendingUpdates) {
+  if (!profile || !currentUser) return null;
   const trial = profile.activeTrial;
-  if (!trial || trial.completed) return;
+  if (!trial || trial.completed) return null;
 
   const def = TRIAL_DEFINITIONS[trial.stat];
-  if (!def) return;
+  if (!def) return null;
 
   const reward = def.reward;
   const currentCap = (profile.statTrainingXP || {})[trial.stat] || 0;
-  const newCap = currentCap + reward.trainingXP;
 
-  // Determine item to grant
   const inv = getEffectiveInventory();
   const existingItem = inv[reward.itemSlot];
-  const currentTier = existingItem ? existingItem.tier : 0;
-  // Grant tier based on current cap level
   let grantTier = 1;
-  if (newCap >= 200) grantTier = 5;
-  else if (newCap >= 120) grantTier = 4;
-  else if (newCap >= 80) grantTier = 3;
-  else if (newCap >= 50) grantTier = 2;
+  const projectedCap = currentCap + reward.trainingXP;
+  if (projectedCap >= 200) grantTier = 5;
+  else if (projectedCap >= 120) grantTier = 4;
+  else if (projectedCap >= 80) grantTier = 3;
+  else if (projectedCap >= 50) grantTier = 2;
 
   const newItemKey = `${reward.itemKey}_${grantTier}`;
   const newItem = ITEM_DEFINITIONS[newItemKey];
 
-  const updates = {
-    [`statTrainingXP.${trial.stat}`]: newCap,
-    hunterXP: (profile.hunterXP || 0) + reward.hunterXP,
-    'activeTrial.completed': true,
-    'activeTrial.completedAt': new Date().toISOString(),
-  };
+  const batched = !!pendingUpdates;
+  const updates = batched ? pendingUpdates : {};
 
-  // Grant item if it's better than what they have
-  if (newItem && (!existingItem || grantTier > existingItem.tier)) {
+  // Merge cap — respect any milestone XP already in batch
+  const capKey = `statTrainingXP.${trial.stat}`;
+  const baseCap = updates[capKey] !== undefined ? updates[capKey] : currentCap;
+  updates[capKey] = baseCap + reward.trainingXP;
+
+  // Merge hunterXP
+  const baseXP = updates['hunterXP'] !== undefined ? updates['hunterXP'] : (profile.hunterXP || 0);
+  updates['hunterXP'] = Math.round((baseXP + reward.hunterXP) * 10) / 10;
+
+  updates['activeTrial.completed'] = true;
+  updates['activeTrial.completedAt'] = new Date().toISOString();
+
+  if (newItem && (!existingItem || grantTier > (existingItem.tier || 0))) {
     updates[`inventory.${reward.itemSlot}`] = {
-      ...newItem,
-      condition: 100,
-      earnedFromTrial: true,
-      earnedAt: new Date().toISOString(),
-      lastPolished: new Date().toISOString(),
+      ...newItem, condition:100, earnedFromTrial:true,
+      earnedAt: new Date().toISOString(), lastPolished: new Date().toISOString(),
     };
+    if (!profile.inventory) profile.inventory = {};
+    profile.inventory[reward.itemSlot] = updates[`inventory.${reward.itemSlot}`];
   }
 
-  await setDoc(doc(db, 'users', currentUser.uid), updates, { merge: true });
+  // Mirror into profile
   if (!profile.statTrainingXP) profile.statTrainingXP = {};
-  profile.statTrainingXP[trial.stat] = newCap;
-  profile.hunterXP = (profile.hunterXP || 0) + reward.hunterXP;
+  profile.statTrainingXP[trial.stat] = updates[capKey];
+  profile.hunterXP = updates['hunterXP'];
   if (!profile.activeTrial) profile.activeTrial = {};
   profile.activeTrial.completed = true;
 
-  // Clear trial after brief delay
+  if (!batched) {
+    await writeUserFields(updates);
+  }
+
+  // Clear activeTrial after delay — separate intentional write
   setTimeout(async () => {
-    await setDoc(doc(db, 'users', currentUser.uid), { activeTrial: null }, { merge: true });
+    await writeUserFields({ activeTrial: null });
     profile.activeTrial = null;
     renderQuestFeed();
     renderCharCard();
   }, 3000);
 
-  queueNotif(done => showTrialClearBanner(def, reward, newItem, grantTier, done));
+  return { stat: trial.stat, reward, item: newItem, tier: grantTier };
 }
 
 function showTrialClearBanner(def, reward, item, tier, done) {
@@ -12343,7 +12358,7 @@ async function startVoluntaryTrial(stat) {
     spawned: new Date().toISOString(),
   };
 
-  await setDoc(doc(db, 'users', currentUser.uid), { activeTrial: newTrial }, { merge: true });
+  await writeUserFields({ activeTrial: newTrial });
   profile.activeTrial = newTrial;
   renderQuestFeed();
   showToast(`${def.label} started — ${def.requirement.count} sessions required.`, 'success');
@@ -12364,7 +12379,7 @@ function renderTrialCard() {
   const today = new Date().toISOString().slice(0,10);
   if (trial.expiresDate && trial.expiresDate < today && !trial.completed) {
     // Expired — clear it
-    setDoc(doc(db, 'users', currentUser.uid), { activeTrial: null }, { merge: true });
+    writeUserFields({ activeTrial: null });
     profile.activeTrial = null;
     el.innerHTML = '';
     return;
@@ -12865,11 +12880,11 @@ function renderTrialsTab(el) {
           const newCompleted = [...completedTrials, hunterClass];
           const newTitles = [...(profile.slayerTitles||[])];
           if (!newTitles.includes(trial.title)) newTitles.push(trial.title);
-          await setDoc(doc(db, 'users', currentUser.uid), {
-            auraPoints: increment(100),            completedTrials: newCompleted,
+          await writeUserFields({
+            auraPoints: increment(100), completedTrials: newCompleted,
             slayerTitles: newTitles,
             [`activeTrials.${hunterClass}`]: null,
-          }, { merge: true });
+          });
           logAp(currentUser.uid, 100, `Trial completed: ${trial.name} [${hunterClass}]`, profile.auraPoints || 0);
           profile.auraPoints = newAp;
           profile.completedTrials = newCompleted;
@@ -12978,9 +12993,7 @@ function renderTrialsTab(el) {
   el.querySelector('#start-trial-btn')?.addEventListener('click', async () => {
     try {
       const startDate = todayStr();
-      await setDoc(doc(db, 'users', currentUser.uid), {
-        [`activeTrials.${hunterClass}`]: { startDate },
-      }, { merge: true });
+      await writeUserFields({ [`activeTrials.${hunterClass}`]: { startDate } });
       if (!profile.activeTrials) profile.activeTrials = {};
       profile.activeTrials[hunterClass] = { startDate };
       renderFeats();
@@ -13208,7 +13221,7 @@ function renderGoalsTab(el) {
   el.querySelectorAll('.remove-goal-btn').forEach(btn => btn.addEventListener('click', async () => {
     const goals = [...(profile.personalGoals||[])];
     goals.splice(Number(btn.dataset.gi), 1);
-    await setDoc(doc(db, 'users', currentUser.uid), { personalGoals: goals }, { merge: true });
+    await writeUserFields({ personalGoals: goals });
     profile.personalGoals = goals;
     renderFeats();
   }));
@@ -13311,7 +13324,7 @@ function openAddGoalModal() {
     const goal = { type: goalType, name, target, icon: GOAL_ICONS[goalType], createdAt: todayStr() };
     if (exercise) goal.exercise = exercise;
     const goals = [...(profile.personalGoals||[]), goal];
-    await setDoc(doc(db, 'users', currentUser.uid), { personalGoals: goals }, { merge: true });
+    await writeUserFields({ personalGoals: goals });
     profile.personalGoals = goals;
     overlay.remove();
     renderFeats();
@@ -13747,14 +13760,14 @@ function openWorkoutDetail(workoutId) {
       // 2. reverse AP
       if (apToReverse > 0) {
         const newAp = Math.max(0, (profile.auraPoints || 0) - apToReverse);
-        await setDoc(doc(db, 'users', currentUser.uid), { auraPoints: increment(-apToReverse) }, { merge: true });
+        await writeUserFields({ auraPoints: increment(-apToReverse) });
         logAp(currentUser.uid, -apToReverse, `Workout deleted: AP reversed (${w.date})`, profile.auraPoints || 0);
         profile.auraPoints = newAp;
       }
 
       // 3. clear lastApDate if this was the only workout on that day
       if (wasOnlyWorkout && profile.lastApDate === w.date) {
-        await setDoc(doc(db, 'users', currentUser.uid), { lastApDate: null }, { merge: true });
+        await writeUserFields({ lastApDate: null });
         profile.lastApDate = null;
       }
 
