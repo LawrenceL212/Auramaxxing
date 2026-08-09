@@ -9967,7 +9967,7 @@ async function renderRaidBoss() {
         return es + (ex.sets||[]).filter(s=>s.reps>0).reduce((ss,set) => {
           const rm = Math.log((set.reps||1)+1) / Math.log(13);
           const im = set.rir <= 1 ? 1.3 : set.rir <= 3 ? 1.0 : set.rir <= 5 ? 0.7 : 1.0;
-          return ss + Math.max(3, 5 * rm * im);
+          return ss + Math.max(0.5, 2 * rm * im);
         }, 0);
       }, 0);
     }, 0);
@@ -13061,7 +13061,7 @@ function renderHistoryList() {
           return xs + (ex.sets||[]).filter(s=>s.reps>0).reduce((ss,s) => {
             const rm = Math.log((s.reps||1)+1)/Math.log(13);
             const im = s.rir<=1?1.3:s.rir<=3?1.0:s.rir<=5?0.7:1.0;
-            return ss + Math.max(3, 5*rm*im*tier);
+            return ss + Math.max(0.5, 2*rm*im*tier);
           },0);
         },0));
         return `<div class="card history-card" style="cursor:${isMe?'pointer':'default'};animation-delay:${wi*0.05}s" data-wid="${w.id}">
