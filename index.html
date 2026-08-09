@@ -4444,7 +4444,7 @@ document.getElementById('save-workout-btn')?.addEventListener('click', async () 
       };
     }).filter(s => s.reps > 0);    if (sets.length) exercises.push({ name, sets });
   });
-  if (!exercises.length) { showToast('The System requires effort. Log at least one set before completing your quest.', 'error'); btn.disabled = false; btn.textContent = 'Complete quest'; return; }
+  if (!exercises.length) { showToast('The System requires effort. Log at least one set before completing your quest.', 'error'); return; }
 
   const btn = document.getElementById('save-workout-btn');
   btn.disabled = true; btn.textContent = 'Saving…';
