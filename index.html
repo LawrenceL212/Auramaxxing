@@ -4654,7 +4654,10 @@ function computeStreak(uid) {
 
   return streak;
 }
-function countSince(uid, sinceDate) { return allWorkouts.filter(w => w.uid === uid && new Date(w.date) >= sinceDate).length; }
+function countSince(uid, sinceDate) {
+  const sinceDateStr = todayStr(sinceDate);
+  return allWorkouts.filter(w => w.uid === uid && w.date >= sinceDateStr).length;
+}
 
 // Count how many scheduled training days were completed in the past rolling year.
 // Rest days (days not in the user's schedule) are excluded from both the numerator and denominator.
@@ -10770,14 +10773,16 @@ function renderTrends() {
     const col = [];
     for (let d = 0; d < 7; d++) {
       const day = new Date(startOfWeek(daysAgo(w*7))); day.setDate(day.getDate()+d);
-      col.push(myWorkouts.some(wo => wo.date === todayStr(day)));
+      const dayStr = todayStr(day);
+      col.push(myWorkouts.some(wo => wo.date === dayStr));
     }
     gridCols.push(col);
   }
   let goalsHitWeeks = 0;
   for (let w = 0; w < weeks; w++) {
-    const start = startOfWeek(daysAgo(w*7)); const end = new Date(start); end.setDate(end.getDate()+7);
-    const c = myWorkouts.filter(wo => new Date(wo.date) >= start && new Date(wo.date) < end).length;
+    const startStr = todayStr(startOfWeek(daysAgo(w*7)));
+    const endStr = todayStr(new Date(new Date(startStr).getTime() + 7*86400000));
+    const c = myWorkouts.filter(wo => wo.date >= startStr && wo.date < endStr).length;
     if (c >= goal) goalsHitWeeks++;
   }
   const goalsHitPct = Math.round((goalsHitWeeks/weeks)*100);
