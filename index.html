@@ -12178,11 +12178,329 @@ const RARITY_GLOW = {
   Legendary: { color:'rgba(255,215,0,1.0)',   glow:'0 0 24px rgba(255,215,0,0.7), 0 0 48px rgba(255,215,0,0.3)', label:'Legendary' },
 };
 
-// Infer retroactive inventory from workout history
-// Infer retroactive inventory from workout history
+/* =========================================================================
+   TRIAL KEYS SYSTEM
+   ========================================================================= */
+
+function getItemCondition(item, slot) {
+  if (!item) return 0;
+  if (!item.lastPolished) return item.condition || 100;
+  const daysSince = (Date.now() - new Date(item.lastPolished).getTime()) / 86400000;
+  const decayPerDay = item.tier === 5 ? 8 : item.tier === 4 ? 5 : item.tier === 3 ? 3 : item.tier === 2 ? 2 : 1;
+  return Math.max(0, Math.min(100, (item.condition || 100) - Math.floor(daysSince * decayPerDay)));
+}
+
+async function polishItem(slot, rir) {
+  const inv = profile.inventory || {};
+  const item = inv[slot];
+  if (!item) return;
+  const restore = rir <= 1 ? 35 : rir <= 3 ? 20 : 10;
+  const current = getItemCondition(item, slot);
+  const newCondition = Math.min(100, current + restore);
+  const updates = { [`inventory.${slot}.condition`]: newCondition, [`inventory.${slot}.lastPolished`]: new Date().toISOString() };
+  await writeUserFields(updates);
+  if (!profile.inventory) profile.inventory = {};
+  if (!profile.inventory[slot]) profile.inventory[slot] = item;
+  profile.inventory[slot].condition = newCondition;
+  profile.inventory[slot].lastPolished = new Date().toISOString();
+}
+
+const TRIAL_DEFINITIONS = {
+  strength: {
+    stat: 'strength', icon:'⚔️', label:'Strength Trial',
+    color:'var(--brass)',
+    description:'Prove your strength. Log 3 sessions this week each containing a compound lift.',
+    requirement: { type:'compound_sessions', count:3 },
+    compoundExercises: new Set(['Bench Press','Squat','Deadlift','Overhead Press','Barbell Row',
+      'Front Squat','Romanian Deadlift','Incline Bench Press','Pull Up','Chin Up',
+      'Lat Pulldown','Wide Neutral-Grip Lat Pulldown','Dips','Ring Dips']),
+    reward: { trainingXP:50, hunterXP:300, itemSlot:'weapon', itemKey:'weapon_str' },
+  },
+  endurance: {
+    stat: 'endurance', icon:'🔥', label:'Endurance Trial',
+    color:'#FF3D5A',
+    description:'Prove your endurance. Complete 2 cardio sessions totalling 30+ minutes.',
+    requirement: { type:'cardio_sessions', count:2, minMinutes:30 },
+    reward: { trainingXP:40, hunterXP:250, itemSlot:'armour', itemKey:'armour' },
+  },
+  agility: {
+    stat: 'agility', icon:'⚡', label:'Agility Trial',
+    color:'var(--violet)',
+    description:'Prove your agility. Log 3 sessions containing explosive or skill movements.',
+    requirement: { type:'agility_sessions', count:3 },
+    agilityExercises: new Set(['Pistol Squat','Box Jump','Jump Squat','Hill Sprints','Sprinting',
+      'Burpee','Mountain Climber','Bear Crawl','Top Rope Climbing','Bouldering',
+      'Sport Climbing','Nordic Curl','Ring Dips','Muscle Up']),
+    reward: { trainingXP:45, hunterXP:280, itemSlot:'boots', itemKey:'boots' },
+  },
+  focus: {
+    stat: 'focus', icon:'🎯', label:'Focus Trial',
+    color:'#FFD700',
+    description:'Prove your focus. Log 3 sessions containing skill-tier exercises.',
+    requirement: { type:'skill_sessions', count:3, minTier:1.2 },
+    reward: { trainingXP:55, hunterXP:350, itemSlot:'accessory', itemKey:'accessory' },
+  },
+  flexibility: {
+    stat: 'flexibility', icon:'💫', label:'Flexibility Trial',
+    color:'#27AE60',
+    description:'Prove your flexibility. Complete 3 mobility sessions of 10+ minutes.',
+    requirement: { type:'mobility_sessions', count:3, minMinutes:10 },
+    mobilityExercises: new Set(['Front Splits','Side Splits','Middle Splits','Hip Mobility Routine',
+      'Full Body Stretching','Yoga','Pancake Stretch','Pike Stretch','Thoracic Mobility',
+      'German Hang','German hang','Shoulder Flexibility Training','Hip Flexor Stretch']),
+    reward: { trainingXP:40, hunterXP:250, itemSlot:'boots', itemKey:'boots' },
+  },
+  defence: {
+    stat: 'defence', icon:'🛡️', label:'Defence Trial',
+    color:'var(--growing)',
+    description:'Prove your physique completeness. Log 4 sessions containing isolation/supplementary work.',
+    requirement: { type:'defence_sessions', count:4 },
+    reward: { trainingXP:40, hunterXP:250, itemSlot:'armour', itemKey:'armour' },
+  },
+};
+
+function checkTrialProgress(trial) {
+  if (!trial || !allWorkouts || !currentUser) return { progress:0, required:0, complete:false };
+  const def = TRIAL_DEFINITIONS[trial.stat];
+  if (!def) return { progress:0, required:0, complete:false };
+  const startDate = trial.startDate;
+  const myWOs = allWorkouts.filter(w => w.uid === currentUser.uid && w.date >= startDate);
+  const req = def.requirement;
+  let progress = 0;
+  if (req.type === 'compound_sessions') {
+    progress = myWOs.filter(w =>
+      (w.exercises||[]).some(e => def.compoundExercises.has(e.name) && (e.sets||[]).some(s=>s.reps>0))
+    ).length;
+  } else if (req.type === 'cardio_sessions') {
+    const sessionMins = (w) => {
+      if (w.runSummary?.durationMins) return w.runSummary.durationMins;
+      let mins = 0;
+      (w.exercises||[]).forEach(e => {
+        if (!CARDIO_EXERCISES.has(e.name)) return;
+        (e.sets||[]).forEach(st => { mins += st.durationMins || st.reps || 0; });
+      });
+      return mins;
+    };
+    progress = myWOs.filter(w =>
+      (w.exercises||[]).some(e => CARDIO_EXERCISES.has(e.name) && (e.sets||[]).some(st=>st.reps>0))
+      && sessionMins(w) >= (req.minMinutes || 0)
+    ).length;
+  } else if (req.type === 'agility_sessions') {
+    progress = myWOs.filter(w =>
+      (w.exercises||[]).some(e => def.agilityExercises.has(e.name) && (e.sets||[]).some(s=>s.reps>0))
+    ).length;
+  } else if (req.type === 'skill_sessions') {
+    progress = myWOs.filter(w =>
+      (w.exercises||[]).some(e => (SKILL_TIERS[e.name]||0) >= req.minTier && (e.sets||[]).some(s=>s.reps>0))
+    ).length;
+  } else if (req.type === 'mobility_sessions') {
+    const mobilityMins = (w) => {
+      let mins = 0;
+      (w.exercises||[]).forEach(e => {
+        if (!def.mobilityExercises.has(e.name)) return;
+        const timedMins = (EXERCISES_ALL[e.name]||{}).timedUnit === 'mins';
+        (e.sets||[]).forEach(st => { mins += st.durationMins || (timedMins ? (st.reps||0) : (st.reps||0)/60); });
+      });
+      return mins;
+    };
+    progress = myWOs.filter(w =>
+      (w.exercises||[]).some(e => def.mobilityExercises.has(e.name) && (e.sets||[]).some(st=>st.reps>0))
+      && mobilityMins(w) >= (req.minMinutes || 0)
+    ).length;
+  } else if (req.type === 'defence_sessions') {
+    progress = myWOs.filter(w =>
+      (w.exercises||[]).some(e => DEFENCE_EXERCISES.has(e.name) && (e.sets||[]).some(s=>s.reps>0))
+    ).length;
+  }
+  const required = req.count;
+  return { progress: Math.min(progress, required), required, complete: progress >= required };
+}
+
+
+function resolveItemKey(stat, slot) {
+  if (!allWorkouts || !currentUser) return slot;
+  const myWOs = allWorkouts.filter(w => w.uid === currentUser.uid);
+  const d = buildAssessmentData(myWOs);
+  const dominant = (scores) => {
+    const entries = Object.entries(scores).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]);
+    if (!entries.length) return null;
+    if (entries.length === 1) return entries[0][0];
+    const [topKey, topVal] = entries[0];
+    const [,secondVal] = entries[1];
+    return (topVal - secondVal) / Math.max(topVal,1) > 0.20 ? topKey : null;
+  };
+  const exCounts = {};
+  myWOs.forEach(w => (w.exercises||[]).forEach(ex => {
+    const mult = SKILL_TIERS[ex.name] || 1.0;
+    exCounts[ex.name] = (exCounts[ex.name]||0) + (ex.sets||[]).filter(s=>s.reps>0).length * mult;
+  }));
+  const count = (...names) => names.reduce((t,n)=>t+(exCounts[n]||0),0);
+  if (slot === 'weapon') {
+    if (stat === 'strength') {
+      const power = count('Bench Press','Squat','Deadlift','Overhead Press','Romanian Deadlift','Sumo Deadlift','Incline Bench Press','Front Squat');
+      const cal   = count('Pull Up','Chin Up','Dips','Ring Dips','Inverted Row','Barbell Row','Seated Cable Row','Pendlay Row');
+      if (power + cal === 0) return 'weapon_str';
+      const dom = dominant({ weapon_str_power: power, weapon_str_cal: cal });
+      return dom || (power >= 5 && cal >= 5 ? 'weapon_str_hybrid' : power >= cal ? 'weapon_str_power' : 'weapon_str_cal');
+    }
+    if (stat === 'focus') {
+      const planche = count('Tuck Planche','Advanced Tuck Planche','Full Planche','Planche Lean','Straddle Planche','Freestanding Handstand Hold','Chest-to-Wall Handstand Hold','Handstand Shoulder Taps');
+      const lever   = count('Front Lever','Tuck Front Lever','Advanced Tuck Front Lever','Front Lever Row','Front Lever Raise','Back Lever');
+      if (planche + lever === 0) return 'weapon_foc';
+      const dom = dominant({ weapon_foc_planche: planche, weapon_foc_lever: lever });
+      return dom || (planche >= 3 && lever >= 3 ? 'weapon_foc_hybrid' : planche >= lever ? 'weapon_foc_planche' : 'weapon_foc_lever');
+    }
+    if (stat === 'agility') {
+      if (d.sportSessions.boxing.size + d.sportSessions.court.size === 0) return null;
+      return d.sportSessions.boxing.size >= d.sportSessions.court.size ? 'weapon_boxing' : 'weapon_court';
+    }
+  }
+  if (slot === 'armour') {
+    const scores = { armour_swim: d.swimSessions.size*3, armour_cycling: d.cyclingSessions.size*3, armour_end: d.qualifyingRuns.length*3, armour_iso: d.defenceSetsTotal };
+    return dominant(scores) || 'armour_iso';
+  }
+  if (slot === 'boots') {
+    if (stat === 'flexibility') return 'boots_flex';
+    const scores = { boots_run: d.qualifyingRuns.length*5, boots_climb: d.climbSessions.size*5, boots_exp: d.pistolData.bestReps*3, boots_court: d.sportSessions.court.size*4 };
+    const dom = dominant(scores);
+    if (dom) return dom;
+    const top = Object.entries(scores).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]);
+    if (top.length >= 2) {
+      const pair = [top[0][0].replace('boots_',''), top[1][0].replace('boots_','')].sort().join('_');
+      if ((pair==='climb_run'||pair==='run_climb') && top[1][1]>0) return 'boots_hybrid_trail';
+      if ((pair==='exp_run'||pair==='run_exp') && top[1][1]>0) return 'boots_hybrid_sprint';
+      if (top.length >= 3 && top[2][1]>0) return 'boots_hybrid_all';
+    }
+    return 'boots_run';
+  }
+  if (slot === 'accessory') {
+    if (d.bestHandstandSecs + d.bestLSitSecs === 0) return 'accessory';
+    return d.bestHandstandSecs >= d.bestLSitSecs ? 'accessory_hs' : 'accessory_core';
+  }
+  return slot;
+}
+
+async function completeTrial(pendingUpdates) {
+  if (!profile || !currentUser) return null;
+  const trial = profile.activeTrial;
+  if (!trial || trial.completed) return null;
+  const def = TRIAL_DEFINITIONS[trial.stat];
+  if (!def) return null;
+  const reward = def.reward;
+  const currentCap = (profile.statTrainingXP || {})[trial.stat] || 0;
+  const inv = getEffectiveInventory();
+  let grantTier = 1;
+  const projectedCap = currentCap + reward.trainingXP;
+  if (projectedCap >= 200) grantTier = 5;
+  else if (projectedCap >= 120) grantTier = 4;
+  else if (projectedCap >= 80) grantTier = 3;
+  else if (projectedCap >= 50) grantTier = 2;
+  const resolvedChain = resolveItemKey(trial.stat, reward.itemSlot);
+  const newItemKey = `${resolvedChain}_${grantTier}`;
+  const newItem = ITEM_DEFINITIONS[newItemKey] || ITEM_DEFINITIONS[`${reward.itemKey}_${grantTier}`];
+  const batched = !!pendingUpdates;
+  const updates = batched ? pendingUpdates : {};
+  const capKey = `statTrainingXP.${trial.stat}`;
+  const baseCap = updates[capKey] !== undefined ? updates[capKey] : currentCap;
+  updates[capKey] = baseCap + reward.trainingXP;
+  const baseXP = updates['hunterXP'] !== undefined ? updates['hunterXP'] : (profile.hunterXP || 0);
+  updates['hunterXP'] = Math.round((baseXP + reward.hunterXP) * 10) / 10;
+  updates['activeTrial'] = { ...trial, completed: true };
+  if (newItem) updates[`inventory.${reward.itemSlot}`] = { ...newItem, condition: 100, earnedAt: todayStr() };
+  if (!batched) await writeUserFields(updates);
+  profile.statTrainingXP = { ...(profile.statTrainingXP || {}), [trial.stat]: updates[capKey] };
+  profile.hunterXP = updates['hunterXP'];
+  profile.activeTrial = { ...trial, completed: true };
+  if (newItem) {
+    if (!profile.inventory) profile.inventory = {};
+    profile.inventory[reward.itemSlot] = { ...newItem, condition: 100, earnedAt: todayStr() };
+  }
+  setTimeout(() => { writeUserFields({ activeTrial: null }); profile.activeTrial = null; }, 3000);
+  return { stat: trial.stat, reward, item: newItem, tier: grantTier };
+}
+
+async function maybeSpawnWeaknessTrial() {
+  if (!profile || !currentUser) return;
+  let activeTrial = profile.activeTrial;
+  if (activeTrial?.completed) {
+    await writeUserFields({ activeTrial: null });
+    profile.activeTrial = null;
+    activeTrial = null;
+  }
+  if (activeTrial) return;
+  const today = new Date();
+  if (today.getDay() !== 1) return;
+  const thisMonday = todayStr(startOfWeek(new Date()));
+  if (profile.lastTrialSpawn === thisMonday) return;
+  const caps = profile.statTrainingXP || {};
+  const STATS_LIST = ['strength','endurance','agility','focus','flexibility','defence'];
+  const allAtBaseline = STATS_LIST.every(s => (caps[s]||0) <= 20);
+  if (allAtBaseline) return;
+  const weakest = STATS_LIST.reduce((min, s) => (caps[s]||0) < (caps[min]||0) ? s : min, STATS_LIST[0]);
+  const trialDef = TRIAL_DEFINITIONS[weakest];
+  if (!trialDef) return;
+  const startDate = todayStr();
+  const expiresDate = todayStr(new Date(Date.now() + 7*86400000));
+  const newTrial = { stat: weakest, type: 'weakness', startDate, expiresDate, reward: trialDef.reward, completed: false, spawned: new Date().toISOString() };
+  await writeUserFields({ activeTrial: newTrial, lastTrialSpawn: thisMonday });
+  profile.activeTrial = newTrial;
+}
+
+async function startVoluntaryTrial(stat) {
+  if (!profile || !currentUser) return;
+  if (profile.activeTrial) { showToast('You already have an active trial.', 'error'); return; }
+  const cooldowns = profile.trialCooldowns || {};
+  const lastCompleted = cooldowns[stat];
+  if (lastCompleted) {
+    const daysSince = (Date.now() - new Date(lastCompleted + 'T12:00:00').getTime()) / 86400000;
+    if (daysSince < 28) { showToast(`${stat} trial on cooldown — ${Math.ceil(28-daysSince)} days remaining.`, 'error'); return; }
+  }
+  const expiresDate = todayStr(new Date(Date.now() + 7*86400000));
+  const def = TRIAL_DEFINITIONS[stat];
+  if (!def) return;
+  const newTrial = { stat, type: 'voluntary', startDate: todayStr(), expiresDate, reward: def.reward, completed: false, spawned: new Date().toISOString() };
+  await writeUserFields({ activeTrial: newTrial });
+  profile.activeTrial = newTrial;
+  showToast(`${def.label} started — 7 days. Go.`, 'success');
+  renderFeats();
+}
+
+function renderTrialCard() {
+  const el = document.getElementById('trial-card-slot');
+  if (!el) return;
+  const trial = profile.activeTrial;
+  if (!trial || trial.completed) { el.innerHTML = ''; return; }
+  const def = TRIAL_DEFINITIONS[trial.stat];
+  if (!def) { el.innerHTML = ''; return; }
+  const today = todayStr();
+  if (trial.expiresDate && trial.expiresDate < today && !trial.completed) {
+    writeUserFields({ activeTrial: null });
+    profile.activeTrial = null;
+    el.innerHTML = '';
+    return;
+  }
+  const { progress, required, complete } = checkTrialProgress(trial);
+  const pct = required > 0 ? Math.round((progress / required) * 100) : 0;
+  const daysLeft = daysBetween(today, trial.expiresDate);
+  el.innerHTML = `
+    <div class="card" style="border-color:${def.color}44;background:rgba(5,7,13,0.8);margin-bottom:12px;">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+        <span style="font-size:24px;">${def.icon}</span>
+        <div style="flex:1;">
+          <div style="font-family:var(--font-display);font-size:14px;color:${def.color};">${def.label}</div>
+          <div style="font-size:11px;color:var(--text-faint);">${trial.type === 'weakness' ? '⚠ System Gate' : '⚔ Voluntary'} · ${daysLeft}d remaining</div>
+        </div>
+        <div style="font-family:var(--font-mono);font-size:18px;color:${def.color};">${progress}/${required}</div>
+      </div>
+      <div style="background:rgba(0,0,0,0.4);border-radius:4px;height:6px;overflow:hidden;margin-bottom:8px;">
+        <div style="height:100%;width:${pct}%;background:${def.color};border-radius:4px;transition:width 0.6s;"></div>
+      </div>
+      <div style="font-size:11px;color:var(--text-dim);">${def.description}</div>
+    </div>`;
+}
+
 // ── DUNGEON CHAINS ──
 // Each chain is 5 dungeons. Boss = the test to earn the item.
-// Gates = prerequisites that must exist in workout history first.
 // weekSpread(dates) = how many distinct calendar weeks those dates span.
 const DUNGEON_CHAINS = {
 
@@ -13236,88 +13554,6 @@ function getEffectiveInventory() {
   return result;
 }
 
-// ── resolveItemKey: used at trial completion to pick contextual chain ──
-function resolveItemKey(stat, slot) {
-  if (!allWorkouts || !currentUser) return `${slot}`;
-  const myWOs = allWorkouts.filter(w => w.uid === currentUser.uid);
-  const d = buildAssessmentData(myWOs);
-
-  const dominant = (scores) => {
-    const entries = Object.entries(scores).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]);
-    if (!entries.length) return null;
-    if (entries.length === 1) return entries[0][0];
-    const [topKey, topVal] = entries[0];
-    const [,secondVal] = entries[1];
-    return (topVal - secondVal) / Math.max(topVal,1) > 0.20 ? topKey : null;
-  };
-
-  // Count weighted exercise sets for style detection
-  const exCounts = {};
-  myWOs.forEach(w => (w.exercises||[]).forEach(ex => {
-    const mult = SKILL_TIERS[ex.name] || 1.0;
-    exCounts[ex.name] = (exCounts[ex.name]||0) + (ex.sets||[]).filter(s=>s.reps>0).length * mult;
-  }));
-  const count = (...names) => names.reduce((t,n)=>t+(exCounts[n]||0),0);
-
-  if (slot === 'weapon') {
-    if (stat === 'strength') {
-      const power = count('Bench Press','Squat','Deadlift','Overhead Press','Romanian Deadlift','Sumo Deadlift','Incline Bench Press','Front Squat');
-      const cal   = count('Pull Up','Chin Up','Dips','Ring Dips','Inverted Row','Barbell Row','Seated Cable Row','Pendlay Row');
-      if (power + cal === 0) return 'weapon_str';
-      const dom = dominant({ weapon_str_power: power, weapon_str_cal: cal });
-      return dom || (power >= 5 && cal >= 5 ? 'weapon_str_hybrid' : power >= cal ? 'weapon_str_power' : 'weapon_str_cal');
-    }
-    if (stat === 'focus') {
-      const planche = count('Tuck Planche','Advanced Tuck Planche','Full Planche','Planche Lean','Straddle Planche','Freestanding Handstand Hold','Chest-to-Wall Handstand Hold','Handstand Shoulder Taps');
-      const lever   = count('Front Lever','Tuck Front Lever','Advanced Tuck Front Lever','Front Lever Row','Front Lever Raise','Back Lever');
-      if (planche + lever === 0) return 'weapon_foc';
-      const dom = dominant({ weapon_foc_planche: planche, weapon_foc_lever: lever });
-      return dom || (planche >= 3 && lever >= 3 ? 'weapon_foc_hybrid' : planche >= lever ? 'weapon_foc_planche' : 'weapon_foc_lever');
-    }
-    if (stat === 'agility') {
-      if (d.sportSessions.boxing.size + d.sportSessions.court.size === 0) return null;
-      return d.sportSessions.boxing.size >= d.sportSessions.court.size ? 'weapon_boxing' : 'weapon_court';
-    }
-  }
-  if (slot === 'armour') {
-    const scores = {
-      armour_swim: d.swimSessions.size * 3,
-      armour_cycling: d.cyclingSessions.size * 3,
-      armour_end: d.qualifyingRuns.length * 3,
-      armour_iso: d.defenceSetsTotal,
-    };
-    const dom = dominant(scores);
-    return dom || 'armour_iso';
-  }
-  if (slot === 'boots') {
-    if (stat === 'flexibility') return 'boots_flex';
-    const scores = {
-      boots_run: d.qualifyingRuns.length * 5,
-      boots_climb: d.climbSessions.size * 5,
-      boots_exp: d.pistolData.bestReps * 3,
-      boots_court: d.sportSessions.court.size * 4,
-    };
-    const dom = dominant(scores);
-    if (dom) return dom;
-    const top = Object.entries(scores).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]);
-    if (top.length >= 2) {
-      const pair = [top[0][0].replace('boots_',''), top[1][0].replace('boots_','')].sort().join('_');
-      if ((pair==='climb_run'||pair==='run_climb') && top[1][1]>0) return 'boots_hybrid_trail';
-      if ((pair==='exp_run'||pair==='run_exp') && top[1][1]>0) return 'boots_hybrid_sprint';
-      if (top.length >= 3 && top[2][1]>0) return 'boots_hybrid_all';
-    }
-    return 'boots_run';
-  }
-  if (slot === 'accessory') {
-    if (d.bestHandstandSecs + d.bestLSitSecs === 0) return 'accessory';
-    return d.bestHandstandSecs >= d.bestLSitSecs ? 'accessory_hs' : 'accessory_core';
-  }
-  return slot;
-}
-
-// ── renderInventory ──
-// Shows a dungeon-progress view: each chain = a dungeon corridor,
-// each tier = a door. Earned items glow. Next tier shows the boss requirement.
 function renderInventory() {
   const el = document.getElementById('inventory-content');
   if (!el) return;
@@ -13421,6 +13657,7 @@ function renderInventory() {
 
 
   // Build dungeon chain sections
+  const activeDungeon = profile.activeDungeon ? applyDungeonRegen(profile.activeDungeon) : null;
   const chainHtml = Object.entries(bySlot).map(([slot, chains]) => {
     const slotLabel = SLOT_LABELS[slot] || slot;
     const storedItem = stored[slot];
@@ -13488,7 +13725,6 @@ function renderInventory() {
   }).join('');
 
   // Active dungeon panel
-  const activeDungeon = profile.activeDungeon ? applyDungeonRegen(profile.activeDungeon) : null;
   const activeDungeonHtml = activeDungeon ? (() => {
     const chain = DUNGEON_CHAINS[activeDungeon.chainKey] || {};
     const hpPct = Math.max(0, (activeDungeon.hp / activeDungeon.maxHp) * 100);
