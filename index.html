@@ -12382,13 +12382,14 @@ function renderInventory() {
       }
     });
 
-    // Set crop viewBox
+    // Set crop viewBox — let width:100% + viewBox handle scaling naturally
     const crop = ANATOMY_CROP[bodyType][view];
     clone.setAttribute('viewBox', crop.viewBox);
     clone.setAttribute('width', '100%');
-    clone.setAttribute('height', String(crop.h));
+    clone.removeAttribute('height');
     clone.style.overflow = 'hidden';
     clone.style.display = 'block';
+    clone.style.maxHeight = '70vh';
 
     return clone.outerHTML;
   }
@@ -12478,7 +12479,7 @@ function renderInventory() {
       </div>
 
       <!-- Anatomy SVG display -->
-      <div id="inv-body-wrap" style="width:100%;max-width:280px;margin:0 auto 16px;position:relative;">
+      <div id="inv-body-wrap" style="width:100%;max-width:420px;margin:0 auto 16px;position:relative;">
         ${buildInventorySVG('front')}
       </div>
 
