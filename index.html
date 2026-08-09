@@ -6035,6 +6035,7 @@ function renderCalibrationObservationCard() {
     </div>`;
 }
 
+// Remove the early window assignments (they were too early)
 function checkV2UpgradeGates(statId) {
   const currentRank = (profile.stats || {})[statId] || 'E';
   if (currentRank === 'S') return { ready: false, isMaxed: true };
@@ -13401,6 +13402,11 @@ function openWorkoutDetail(workoutId) {
     }
   });
 }
+// Expose module functions to window for inline onclick handlers
+window.applyCalibrationObservation = applyCalibrationObservation;
+window.disputeCalibrationObservation = disputeCalibrationObservation;
+window.startVoluntaryTrial = startVoluntaryTrial;
+window.completeTrial = completeTrial;
 </script>
 </body>
 </html>
