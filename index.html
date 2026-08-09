@@ -1658,7 +1658,7 @@
   .lib-stat-chip[data-stat="agility"].active{background:rgba(139,107,255,0.1);border-color:var(--violet);color:var(--violet);}
   .lib-stat-chip[data-stat="focus"].active{background:rgba(255,215,0,0.1);border-color:#FFD700;color:#FFD700;}
   .lib-stat-chip[data-stat="flexibility"].active{background:rgba(39,174,96,0.1);border-color:#27AE60;color:#27AE60;}
-  .lib-stat-chip[data-stat="recovery"].active{background:rgba(139,107,255,0.1);border-color:var(--growing);color:var(--growing);}
+  .lib-stat-chip[data-stat="defence"].active{background:rgba(139,107,255,0.1);border-color:var(--growing);color:var(--growing);}
   .ex-grid{display:grid;grid-template-columns:repeat(auto-fill, minmax(140px, 1fr));gap:12px;}
   .ex-card{
     background:var(--card);border:1px solid var(--border);border-radius:8px;padding:12px;position:relative;
@@ -1941,6 +1941,7 @@
 
       <div id="program-card-wrap"></div>
       <div id="program-editor-wrap"></div>
+      <div id="trial-card-slot"></div>
 
       <button class="btn btn-block" id="manual-log-btn" style="margin-top:4px;">+ Log a workout manually</button>
       <button class="btn btn-block" id="log-run-btn" style="margin-top:8px;background:var(--maintaining);color:#fff;">🏃 Log a run</button>
@@ -2141,6 +2142,7 @@
             </div>
           </div>
           <div class="char-divider"></div>
+          <div id="calibration-observation-slot"></div>
           <div id="system-progression-hint" style="
             font-family:var(--font-mono);font-size:9px;color:rgba(93,157,255,0.35);
             letter-spacing:0.08em;text-align:center;padding:8px 12px;
@@ -2207,7 +2209,7 @@
           <button class="lib-stat-chip" data-stat="agility">⚡ Agility</button>
           <button class="lib-stat-chip" data-stat="focus">🎯 Focus</button>
           <button class="lib-stat-chip" data-stat="flexibility">💫 Flexibility</button>
-          <button class="lib-stat-chip" data-stat="recovery">🛡️ Recovery</button>
+          <button class="lib-stat-chip" data-stat="defence">🛡️ Defence</button>
         </div>
       </div>
       <div class="lib-filters">
@@ -2238,6 +2240,11 @@
       <div id="feats-content"></div>
     </section>
 
+    <!-- ---- INVENTORY ---- -->
+    <section class="view" id="view-inventory">
+      <div id="inventory-content"></div>
+    </section>
+
   </main>
 
   <nav class="bottom-nav">
@@ -2259,6 +2266,9 @@
       </button>
       <button data-view="feats">
         <svg viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>Feats
+      </button>
+      <button data-view="inventory">
+        <svg viewBox="0 0 24 24"><path d="M9 3H5a2 2 0 0 0-2 2v4m6-6h10a2 2 0 0 1 2 2v4M9 3v18m0 0h10a2 2 0 0 0 2-2V9M9 21H5a2 2 0 0 0-2-2V9m0 0h18"/></svg>Gear
       </button>
     </div>
   </nav>
@@ -2995,6 +3005,7 @@ function switchView(name) {
   if (name === 'trends') { trendsView = 'dashboard'; renderTrends(); }
   if (name === 'exercises') renderExerciseLibrary();
   if (name === 'feats') renderFeats();
+  if (name === 'inventory') renderInventory();
   if (name === 'history') renderCalendar();
   if (name === 'quest') {
     if (myProgram && myProgram.days && myProgram.days.length) {
@@ -3007,6 +3018,7 @@ function switchView(name) {
       }
     }
     renderQuestFeed();
+    renderTrialCard();
   }
 }
 
@@ -3066,6 +3078,8 @@ async function loadAllData() {
 
   populateExerciseSelects();
   renderQuestFeed();
+  renderTrialCard();
+  maybeSpawnWeaknessTrial().catch(console.warn);
   setTimeout(() => { try { renderBoard(); } catch(e) { console.error(e); } }, 0);
   setTimeout(() => { try { renderTrends(); } catch(e) {} }, 50);
   setTimeout(() => { try { renderExerciseLibrary(); } catch(e) {} }, 100);
@@ -3081,6 +3095,8 @@ function rebuildExercisesAll() {
       // then apply the custom override fields
       muscles: ce.muscles || {},
       equipment: ce.equipment || 'Other',
+      // intent override — custom can override base intent
+      ...(ce.intent ? { intent: ce.intent } : {}),
       // explicitly handle timed — false must override base true, and vice versa
       timed: ce.timed === true ? true : ce.timed === false ? false : undefined,
       timedUnit: ce.timedUnit || undefined,
@@ -3283,8 +3299,8 @@ function buildQuestCardHTML(idx) {
     const totalAP = baseAP + goalBonus;
 
     // stat XP — primary path
-    const STAT_ICONS  = { strength:'⚔️', endurance:'🔥', agility:'⚡', focus:'🎯', recovery:'🛡️', flexibility:'💫' };
-    const STAT_COLORS = { strength:'var(--brass)', endurance:'#FF6B35', agility:'#FFD700', focus:'var(--maintaining)', recovery:'var(--violet)', flexibility:'var(--growing)' };
+    const STAT_ICONS  = { strength:'⚔️', endurance:'🔥', agility:'⚡', focus:'🎯', defence:'🛡️', flexibility:'💫' };
+    const STAT_COLORS = { strength:'var(--brass)', endurance:'#FF6B35', agility:'#FFD700', focus:'var(--maintaining)', defence:'var(--violet)', flexibility:'var(--growing)' };
     const statGains = {};
     const crossGains = {};
     day.exercises.forEach(ex => {
@@ -4700,7 +4716,7 @@ const STAT_BONUS_MAP = {
     'Bouldering','Sport Climbing','Top Rope Climbing','Traditional Climbing',
   ]),
   // Recovery — structured rest, low intensity, bodyweight basics
-  recovery: new Set([
+  defence: new Set([
     'Wall Sit','Dead Hang','Farmers Carry','Superman','Back Extension',
     'Glute Bridge','Single Leg Calf Raise',
   ]),
@@ -4747,7 +4763,7 @@ function intensityMult(rir) {
   if (rir <= 1)  return 1.3;
   if (rir <= 3)  return 1.0;
   if (rir <= 5)  return 0.7;
-  return 0.5; // RIR 6+ = skill/technique work
+  return 0.5;
 }
 
 // Reps multiplier — log scale, caps diminishing returns on high-rep sets
@@ -4762,12 +4778,12 @@ function xpForLevel(level) {
 
 // AP awarded when reaching a level
 function apForLevel(level) {
-  if (level <= 5)   return 8;
-  if (level <= 15)  return 12;
-  if (level <= 30)  return 18;
-  if (level <= 50)  return 25;
-  if (level <= 75)  return 35;
-  if (level <= 100) return 50;
+  if (level <= 5)   return 10;
+  if (level <= 15)  return 15;
+  if (level <= 30)  return 22;
+  if (level <= 50)  return 30;
+  if (level <= 75)  return 40;
+  if (level <= 100) return 55;
   return 70;
 }
 
@@ -4775,7 +4791,7 @@ function apForLevel(level) {
 // Returns { generalXP, trainingXP: { strength, focus, recovery, agility, endurance, flexibility } }
 function computeWorkoutXP(exercises) {
   let generalXP = 0;
-  const trainingXP = { strength:0, focus:0, recovery:0, agility:0, endurance:0, flexibility:0 };
+  const trainingXP = { strength:0, focus:0, defence:0, agility:0, endurance:0, flexibility:0 };
   // Baseline bleed — every session gives a tiny amount to all stats
   Object.keys(trainingXP).forEach(s => trainingXP[s] += 0.5);
 
@@ -4789,7 +4805,7 @@ function computeWorkoutXP(exercises) {
       if (reps <= 0) continue;
       const im = intensityMult(set.rir);
       const rm = repsMult(reps);
-      const setXP = Math.max(3, 5 * rm * im * tier);
+      const setXP = Math.max(0.5, 2 * rm * im * tier);
 
       generalXP += setXP;
 
@@ -4808,6 +4824,190 @@ function computeWorkoutXP(exercises) {
 
 // Award XP after a workout — updates hunterXP, hunterLevel, statTrainingXP
 // Detects level-ups and awards AP for each one
+/* =========================================================================
+   MILESTONE KEYS
+   One-time landmark achievements detected from workout data.
+   Three layers: absolute, improvement rate, PR crossing threshold.
+   ========================================================================= */
+
+const MILESTONES = [
+  // ── STRENGTH — bodyweight ratio thresholds ──
+  { id:'pullup_first',     stat:'strength', label:'First Pull-Up',           icon:'💪', hunterXP:300,  trainingXP:30,  check: (data) => data.pullupReps >= 1 },
+  { id:'pullup_5',         stat:'strength', label:'5 Pull-Ups',              icon:'💪', hunterXP:150,  trainingXP:20,  check: (data) => data.pullupReps >= 5 },
+  { id:'pullup_10',        stat:'strength', label:'10 Pull-Ups',             icon:'💪', hunterXP:300,  trainingXP:40,  check: (data) => data.pullupReps >= 10 },
+  { id:'pullup_15',        stat:'strength', label:'15 Pull-Ups',             icon:'🔥', hunterXP:500,  trainingXP:60,  check: (data) => data.pullupReps >= 15 },
+  { id:'pullup_20',        stat:'strength', label:'20 Pull-Ups',             icon:'👑', hunterXP:800,  trainingXP:80,  check: (data) => data.pullupReps >= 20 },
+  { id:'bw_bench_075',     stat:'strength', label:'Bench 0.75× Bodyweight',  icon:'⚔️', hunterXP:250,  trainingXP:35,  check: (data) => data.benchRatio >= 0.75 },
+  { id:'bw_bench_1',       stat:'strength', label:'Bench 1× Bodyweight',     icon:'⚔️', hunterXP:500,  trainingXP:60,  check: (data) => data.benchRatio >= 1.0 },
+  { id:'bw_bench_125',     stat:'strength', label:'Bench 1.25× Bodyweight',  icon:'⚔️', hunterXP:800,  trainingXP:90,  check: (data) => data.benchRatio >= 1.25 },
+  { id:'bw_bench_15',      stat:'strength', label:'Bench 1.5× Bodyweight',   icon:'👑', hunterXP:1200, trainingXP:120, check: (data) => data.benchRatio >= 1.5 },
+  { id:'bw_squat_1',       stat:'strength', label:'Squat 1× Bodyweight',     icon:'⚔️', hunterXP:500,  trainingXP:60,  check: (data) => data.squatRatio >= 1.0 },
+  { id:'bw_squat_15',      stat:'strength', label:'Squat 1.5× Bodyweight',   icon:'⚔️', hunterXP:800,  trainingXP:90,  check: (data) => data.squatRatio >= 1.5 },
+  { id:'bw_deadlift_1',    stat:'strength', label:'Deadlift 1× Bodyweight',  icon:'⚔️', hunterXP:400,  trainingXP:50,  check: (data) => data.deadliftRatio >= 1.0 },
+  { id:'bw_deadlift_15',   stat:'strength', label:'Deadlift 1.5× Bodyweight',icon:'⚔️', hunterXP:700,  trainingXP:80,  check: (data) => data.deadliftRatio >= 1.5 },
+  { id:'bw_deadlift_2',    stat:'strength', label:'Deadlift 2× Bodyweight',  icon:'👑', hunterXP:1200, trainingXP:120, check: (data) => data.deadliftRatio >= 2.0 },
+  // ── FOCUS — skill milestones ──
+  { id:'tuck_planche_10s', stat:'focus',    label:'Tuck Planche 10s',        icon:'🎯', hunterXP:400,  trainingXP:50,  check: (data) => data.plancheHold >= 10 },
+  { id:'tuck_planche_30s', stat:'focus',    label:'Tuck Planche 30s',        icon:'🎯', hunterXP:700,  trainingXP:80,  check: (data) => data.plancheHold >= 30 },
+  { id:'handstand_10s',    stat:'focus',    label:'Handstand Hold 10s',      icon:'🎯', hunterXP:350,  trainingXP:45,  check: (data) => data.handstandHold >= 10 },
+  { id:'handstand_30s',    stat:'focus',    label:'Handstand Hold 30s',      icon:'🎯', hunterXP:600,  trainingXP:70,  check: (data) => data.handstandHold >= 30 },
+  { id:'muscle_up_first',  stat:'focus',    label:'First Muscle-Up',         icon:'🎯', hunterXP:600,  trainingXP:70,  check: (data) => data.muscleUp >= 1 },
+  { id:'front_lever_hold', stat:'focus',    label:'Front Lever Hold',        icon:'👑', hunterXP:800,  trainingXP:90,  check: (data) => data.frontLeverHold >= 5 },
+  // ── ENDURANCE — distance milestones ──
+  { id:'run_1km',          stat:'endurance',label:'First 1km Run',           icon:'🔥', hunterXP:150,  trainingXP:20,  check: (data) => data.runKm >= 1 },
+  { id:'run_5km',          stat:'endurance',label:'First 5km Run',           icon:'🔥', hunterXP:400,  trainingXP:50,  check: (data) => data.runKm >= 5 },
+  { id:'run_10km',         stat:'endurance',label:'First 10km Run',          icon:'🔥', hunterXP:700,  trainingXP:80,  check: (data) => data.runKm >= 10 },
+  { id:'run_21km',         stat:'endurance',label:'First Half Marathon',     icon:'👑', hunterXP:1200, trainingXP:120, check: (data) => data.runKm >= 21 },
+  // ── FLEXIBILITY — mobility milestones ──
+  { id:'splits_first',     stat:'flexibility',label:'First Splits',          icon:'💫', hunterXP:500,  trainingXP:60,  check: (data) => data.splitsAchieved },
+  { id:'german_hang_10s',  stat:'flexibility',label:'German Hang 10s',       icon:'💫', hunterXP:300,  trainingXP:40,  check: (data) => data.germanHangSecs >= 10 },
+  // ── AGILITY ──
+  { id:'pistol_first',     stat:'agility',  label:'First Pistol Squat',      icon:'⚡', hunterXP:400,  trainingXP:50,  check: (data) => data.pistolAchieved },
+  // ── CONSISTENCY ──
+  { id:'sessions_50',      stat:'strength', label:'50 Sessions Logged',      icon:'📅', hunterXP:500,  trainingXP:30,  check: (data) => data.totalSessions >= 50 },
+  { id:'sessions_100',     stat:'strength', label:'100 Sessions Logged',     icon:'📅', hunterXP:1000, trainingXP:50,  check: (data) => data.totalSessions >= 100 },
+];
+
+function buildMilestoneData() {
+  if (!allWorkouts || !currentUser) return {};
+  const myWOs = allWorkouts.filter(w => w.uid === currentUser.uid);
+  const bw = latestBodyweightKg() || 70;
+  const data = {
+    pullupReps: 0, benchRatio: 0, squatRatio: 0, deadliftRatio: 0,
+    plancheHold: 0, handstandHold: 0, muscleUp: 0, frontLeverHold: 0,
+    runKm: 0, splitsAchieved: false, germanHangSecs: 0,
+    pistolAchieved: false, totalSessions: myWOs.length,
+  };
+
+  myWOs.forEach(w => {
+    (w.exercises||[]).forEach(ex => {
+      const name = ex.name;
+      const validSets = (ex.sets||[]).filter(s=>s.reps>0);
+      validSets.forEach(s => {
+        // Pull-ups
+        if (['Pull Up','Chin Up','Neutral Grip Pull Up','Wide Grip Pull Up'].includes(name)) {
+          if (!s.weight || Math.abs(s.weight-bw)<5) data.pullupReps = Math.max(data.pullupReps, s.reps);
+        }
+        // Bench press ratio
+        if (['Bench Press','Incline Bench Press','Decline Bench Press'].includes(name) && s.weight > 0) {
+          const e = e1rm(s.weight, s.reps);
+          data.benchRatio = Math.max(data.benchRatio, e/bw);
+        }
+        // Squat ratio
+        if (['Squat','Front Squat','Hack Squat'].includes(name) && s.weight > 0) {
+          const e = e1rm(s.weight, s.reps);
+          data.squatRatio = Math.max(data.squatRatio, e/bw);
+        }
+        // Deadlift ratio
+        if (['Deadlift','Romanian Deadlift','Stiff-Leg Deadlift','Sumo Deadlift'].includes(name) && s.weight > 0) {
+          const e = e1rm(s.weight, s.reps);
+          data.deadliftRatio = Math.max(data.deadliftRatio, e/bw);
+        }
+        // Planche hold
+        if (['Tuck Planche','Advanced Tuck Planche','Straddle Planche','Full Planche'].includes(name)) {
+          data.plancheHold = Math.max(data.plancheHold, s.reps); // reps = seconds for timed
+        }
+        // Handstand
+        if (['Freestanding Handstand Hold','Wall Handstand Hold','Chest-to-Wall Handstand Hold'].includes(name)) {
+          data.handstandHold = Math.max(data.handstandHold, s.reps);
+        }
+        // Muscle up
+        if (['Muscle Up'].includes(name)) data.muscleUp = Math.max(data.muscleUp, s.reps);
+        // Front lever
+        if (['Front Lever','Straddle Front Lever'].includes(name)) {
+          data.frontLeverHold = Math.max(data.frontLeverHold, s.reps);
+        }
+        // Running
+        if (CARDIO_EXERCISES.has(name)) {
+          const km = s.reps / 10; // reps logged as distance×10
+          data.runKm = Math.max(data.runKm, km);
+        }
+        // Splits
+        if (['Front Splits','Side Splits','Middle Splits'].includes(name)) data.splitsAchieved = true;
+        // German hang
+        if (['German Hang','German hang'].includes(name)) {
+          data.germanHangSecs = Math.max(data.germanHangSecs, s.reps);
+        }
+        // Pistol squat
+        if (name === 'Pistol Squat') data.pistolAchieved = true;
+      });
+    });
+  });
+
+  return data;
+}
+
+async function checkAndAwardMilestones() {
+  if (!profile || !currentUser) return;
+  const achieved = profile.milestonesAchieved || {};
+  const data = buildMilestoneData();
+  const newlyAchieved = [];
+
+  for (const m of MILESTONES) {
+    if (achieved[m.id]) continue; // already got it
+    if (m.check(data)) {
+      newlyAchieved.push(m);
+    }
+  }
+
+  if (!newlyAchieved.length) return;
+
+  // Award all newly achieved milestones
+  let totalHunterXP = 0;
+  const trainingXPGains = {};
+  const updates = { milestonesAchieved: { ...achieved } };
+
+  for (const m of newlyAchieved) {
+    updates.milestonesAchieved[m.id] = { achievedAt: new Date().toISOString() };
+    totalHunterXP += m.hunterXP;
+    trainingXPGains[m.stat] = (trainingXPGains[m.stat] || 0) + m.trainingXP;
+  }
+
+  // Apply Training XP boosts
+  const currentCaps = profile.statTrainingXP || {};
+  for (const [stat, gain] of Object.entries(trainingXPGains)) {
+    const current = currentCaps[stat] || 0;
+    updates[`statTrainingXP.${stat}`] = current + gain;
+    if (!profile.statTrainingXP) profile.statTrainingXP = {};
+    profile.statTrainingXP[stat] = current + gain;
+  }
+
+  updates.hunterXP = (profile.hunterXP || 0) + totalHunterXP;
+  profile.hunterXP = updates.hunterXP;
+  if (!profile.milestonesAchieved) profile.milestonesAchieved = {};
+  for (const m of newlyAchieved) profile.milestonesAchieved[m.id] = { achievedAt: new Date().toISOString() };
+
+  await setDoc(doc(db, 'users', currentUser.uid), updates, { merge: true });
+
+  // Show milestone cards
+  showMilestonesBanner(newlyAchieved, trainingXPGains, totalHunterXP);
+}
+
+function showMilestonesBanner(milestones, trainingXPGains, totalXP) {
+  if (!milestones.length) return;
+  const banner = document.createElement('div');
+  banner.style.cssText = `position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.93);z-index:9998;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;animation:viewEnter 0.4s cubic-bezier(0.16,1,0.3,1) both;`;
+
+  const cards = milestones.map(m => {
+    const statColor = { strength:'var(--brass)', endurance:'#FF3D5A', agility:'var(--violet)', focus:'#FFD700', flexibility:'#27AE60', defence:'var(--growing)' }[m.stat] || 'var(--brass)';
+    return `<div style="background:rgba(17,27,46,0.95);border:1px solid ${statColor}44;border-radius:8px;padding:12px;margin-bottom:8px;display:flex;align-items:center;gap:12px;">
+      <div style="font-size:24px;">${m.icon}</div>
+      <div style="flex:1;">
+        <div style="font-size:14px;font-weight:700;color:${statColor};">${m.label}</div>
+        <div style="font-size:11px;color:var(--text-faint);">+${m.hunterXP} XP · +${m.trainingXP} ${m.stat} cap</div>
+      </div>
+    </div>`;
+  }).join('');
+
+  banner.innerHTML = `
+    <div style="font-family:var(--font-mono);font-size:10px;color:var(--brass);letter-spacing:0.2em;margin-bottom:12px;">◈ MILESTONE${milestones.length > 1 ? 'S' : ''} ACHIEVED ◈</div>
+    <div style="width:100%;max-width:320px;max-height:60vh;overflow-y:auto;">${cards}</div>
+    <div style="margin-top:12px;font-family:var(--font-mono);font-size:13px;color:var(--brass);">Total: +${totalXP} Hunter XP</div>
+    <button class="btn btn-primary" style="margin-top:16px;min-width:160px;" onclick="this.closest('div[style*=fixed]').remove()">Acknowledge</button>`;
+  document.body.appendChild(banner);
+  setTimeout(() => { try { banner.remove(); } catch(e){} }, 10000);
+}
+
 async function awardWorkoutXP(exercises) {
   if (!profile || !currentUser) return;
 
@@ -4889,7 +5089,21 @@ async function awardWorkoutXP(exercises) {
     logAp(currentUser.uid, apEarned, `Level-up AP: reached level ${newLevel} (${levelUps.map(l=>`Lv${l.level}+${l.ap}AP`).join(', ')})`, (profile.auraPoints || 0) - apEarned);
   }
 
+  // Check milestones after every workout
+  try { await checkAndAwardMilestones(); } catch(e) { console.warn('Milestone check error:', e); }
+  // Check trial progress
+  try { await checkTrialProgressAndComplete(); } catch(e) { console.warn('Trial check error:', e); }
+
   return { generalXP, trainingXP, levelUps, apEarned, newLevel };
+}
+
+async function checkTrialProgressAndComplete() {
+  if (!profile?.activeTrial || profile.activeTrial.completed) return;
+  const { complete } = checkTrialProgress(profile.activeTrial);
+  if (complete) {
+    await completeTrial();
+    renderTrialCard();
+  }
 }
 
 // Legacy: computeApEarned and tryAwardAp kept for backward compat during transition
@@ -5017,7 +5231,7 @@ const STAT_DEFS = [
   { id:'endurance',   label:'Endurance',   desc:'Running pace & distance improvement' },
   { id:'agility',     label:'Agility',     desc:'Explosive & sprint performance improvement' },
   { id:'flexibility', label:'Flexibility', desc:'Core & mobility consistency' },
-  { id:'recovery',    label:'Recovery',    desc:'Weekly goal hit rate over rolling weeks' },
+  { id:'defence',     label:'Defence',    desc:'Weekly goal hit rate over rolling weeks' },
   { id:'focus',       label:'Focus',       desc:'Streak length & session quality' },
 ];
 
@@ -5052,7 +5266,7 @@ const RANK_FLAVOUR = {
     D: "Your body opens.", C: "Movement flows with less resistance.", B: "Your range expands beyond limits.",
     A: "You move like water through cracks.", S: "Perfect fluidity. No resistance."
   },
-  recovery: {
+  defence: {
     D: "Consistency takes root.", C: "Your body knows the schedule.", B: "You show up. Every time.",
     A: "The dungeon cannot break your rhythm.", S: "Unbreakable. Undeniable."
   },
@@ -5070,7 +5284,9 @@ function defaultStats() {
 
 function charRankFromStats(stats) {
   const vals = STAT_DEFS.map(d => RANK_TIERS.indexOf(stats[d.id] || 'E'));
-  return RANK_TIERS[Math.min(...vals)];
+  const min  = Math.min(...vals);
+  const mean = vals.reduce((a,b)=>a+b,0) / vals.length;
+  return RANK_TIERS[Math.round((min + mean) / 2)];
 }
 
 function apCostToUpgrade(currentRank) {
@@ -5309,7 +5525,7 @@ function getStatImprovement(statId) {
     case 'strength': return getStrengthImprovement();
     case 'endurance': return getEnduranceImprovement();
     case 'agility': return getAgilityImprovement();
-    case 'recovery': return getRecoveryRate();
+    case 'defence': return getRecoveryRate();
     case 'focus': return getFocusStreak();
     case 'flexibility': return getFlexibilityScore();
   }
@@ -5415,9 +5631,388 @@ async function logAp(uid, amount, reason, balanceBefore) {
 
 // ── V2 Stat Upgrade System ─────────────────────────────────────────────────
 // AP costs to reach each rank (total AP invested in that stat)
-const STAT_RANK_AP_COST = { E:0, D:50, C:200, B:800, A:3000, S:10000 };
+const STAT_RANK_AP_COST = { E:0, D:100, C:300, B:800, A:1500, S:3500 };
 
 // Check if a stat can be ranked up under the new system
+// ── SYSTEM CALIBRATION ENGINE ─────────────────────────────────────────────
+// Infers Training XP caps from actual workout data.
+// Caps are updated when evidence is strong enough.
+// Observations expire when contradicted by new data.
+
+const CALIBRATION_STANDARDS = {
+  strength: {
+    // BW ratio thresholds from best pulling/compound e1RM
+    elite:        { ratio:1.5,  cap:250, label:'Elite',        desc:'The System recognises exceptional strength output.' },
+    advanced:     { ratio:1.25, cap:180, label:'Advanced',     desc:'Advanced strength confirmed.' },
+    intermediate: { ratio:1.0,  cap:120, label:'Intermediate', desc:'Intermediate strength detected.' },
+    novice:       { ratio:0.75, cap:80,  label:'Novice',       desc:'Solid foundation of strength.' },
+    beginner:     { ratio:0.5,  cap:50,  label:'Beginner',     desc:'Strength training detected.' },
+  },
+  focus: {
+    // Based on skill tier exercises logged
+    elite:        { tierCount:3, minTier:1.7, cap:180, label:'Advanced Skill',     desc:'Multiple elite-tier skill exercises mastered.' },
+    advanced:     { tierCount:1, minTier:1.7, cap:130, label:'Intermediate Skill', desc:'Elite-tier skill work detected.' },
+    intermediate: { tierCount:3, minTier:1.4, cap:100, label:'Novice Skill',       desc:'Consistent advanced skill training.' },
+    novice:       { tierCount:1, minTier:1.4, cap:70,  label:'Basic Skill',        desc:'Skill-tier exercises present.' },
+    beginner:     { tierCount:2, minTier:1.2, cap:45,  label:'Learning',           desc:'Skill fundamentals detected.' },
+  },
+  agility: {
+    pistol_elite:    { cap:120, label:'Advanced Agility',     desc:'Pistol squat + elite skill work detected.' },
+    pistol:          { cap:80,  label:'Intermediate Agility', desc:'Pistol squat confirms single-leg strength and coordination.' },
+    climbing:        { cap:70,  label:'Novice Agility',       desc:'Climbing data confirms agility capacity.' },
+    skill_broad:     { cap:60,  label:'Building Agility',     desc:'Varied movement patterns detected.' },
+  },
+  flexibility: {
+    german_hang: { cap:60, label:'Flexibility Awareness', desc:'German Hang confirms shoulder flexibility and mobility.' },
+    basic:       { cap:30, label:'Basic Flexibility',     desc:'Mobility work detected.' },
+  },
+  defence: {
+    // Based on count of isolation/supplementary exercises
+    high:     { count:10, cap:100, label:'Complete Physique',    desc:'Comprehensive supplementary work detected.' },
+    solid:    { count:6,  cap:70,  label:'Solid Foundation',     desc:'Regular isolation and accessory work.' },
+    moderate: { count:3,  cap:50,  label:'Developing',           desc:'Supplementary work present.' },
+    basic:    { count:1,  cap:35,  label:'Beginning',            desc:'Isolation work detected.' },
+  },
+  endurance: {
+    // Based on cardio sessions
+    high:   { sessions:4, cap:120, label:'Endurance Trained', desc:'Regular cardio detected.' },
+    medium: { sessions:2, cap:70,  label:'Some Cardio',       desc:'Cardio sessions detected.' },
+    low:    { sessions:1, cap:40,  label:'Starting Cardio',   desc:'First cardio session logged.' },
+  },
+};
+
+// Skill tier lookup
+const SKILL_TIERS = {
+  'Advanced Tuck Front Lever':1.7,'Front Lever Raise':1.7,'Front Lever Row':1.7,
+  'Full Planche':2.0,'Straddle Planche':1.7,'Single Leg Planche':1.7,
+  'Ring Dips':1.4,'Nordic Curl':1.4,'Pistol Squat':1.4,'Tuck Planche':1.4,
+  'German Hang':1.4,'German hang':1.4,'Ring triceps extension':1.4,
+  'L-Sit':1.4,'Front Lever':1.7,'Muscle Up':1.7,'Handstand Push Up':1.4,
+  'Dead Hang':1.2,'Planche Lean':1.2,'Pike Push Up':1.2,'Scapula Pull Up':1.1,
+  'Scapula Push Up':1.1,'Pseudo planche push up':1.2,'Frog Stand':1.2,
+  'Tuck Front Lever':1.4,'Advanced Tuck Planche':1.7,
+};
+
+const DEFENCE_EXERCISES = new Set([
+  'Lateral Raise','Standing One-Arm Cable Lateral Raise','Cable Rear Delt Fly',
+  'Cable Standing Supinated Face Pull (Rope)','Face Pull','Rear Delt Fly',
+  'Reverse Pec Deck','Cuban Press','Front Raise','Dumbbell Shrugs',
+  'Alternate Incline Dumbbell Curl','Barbell Curl','Dumbbell Curl','Hammer Curl',
+  'Cable Curl','EZ Bar Curl','Preacher Curl','Spider Curl','Zottman Curl',
+  'Tricep Pushdown','Overhead Tricep Extension','Ring triceps extension',
+  'Cable Kickback','Skull Crusher','Svend Press','Arnold Press',
+  'Standing Calf Raise','Seated Calf Raise','Calf Raise','Single Leg Calf Raise',
+  'Reverse Wrist Curl','Wrist Curl','Dumbbell Shrugs',
+]);
+
+const CARDIO_EXERCISES = new Set([
+  'Running','Easy Run','Long Run','Tempo Run','Hill Sprints','Interval Running',
+  'Cycling','Road Cycling','Stationary Bike','Spin Class','Mountain Biking',
+  'Freestyle Swimming','Breaststroke Swimming','Backstroke Swimming','Butterfly Swimming',
+  'Open Water Swimming','HIIT Swimming','Jump Rope','Bear Crawl','Race',
+]);
+
+function e1rm(weight, reps) { return weight * (1 + reps / 30); }
+
+function runCalibrationInference() {
+  if (!allWorkouts || !allWorkouts.length || !currentUser) return null;
+  
+  const myWOs = allWorkouts.filter(w => w.uid === currentUser.uid);
+  if (myWOs.length < 1) return null;
+  
+  const bw = latestBodyweightKg() || 70;
+  const stats = { strength:20, endurance:20, agility:20, focus:20, flexibility:20, defence:20 };
+  const evidence = {};
+
+  // ── STRENGTH inference ──
+  const e1rms = {};
+  myWOs.forEach(w => {
+    (w.exercises || []).forEach(ex => {
+      (ex.sets || []).filter(s => s.reps > 0 && s.weight > 0).forEach(s => {
+        const val = e1rm(s.weight, s.reps);
+        if (!e1rms[ex.name] || val > e1rms[ex.name].val) {
+          e1rms[ex.name] = { val, weight:s.weight, reps:s.reps, rir:s.rir };
+        }
+      });
+    });
+  });
+
+  // Pull-up BW reps as strength signal
+  let bestPullupReps = 0;
+  myWOs.forEach(w => {
+    (w.exercises || []).forEach(ex => {
+      if (['Pull Up','Chin Up','Neutral Grip Pull Up','Wide Grip Pull Up'].includes(ex.name)) {
+        (ex.sets || []).filter(s => s.reps > 0 && (!s.weight || s.weight === 0 || Math.abs(s.weight - bw) < 5)).forEach(s => {
+          bestPullupReps = Math.max(bestPullupReps, s.reps);
+        });
+      }
+    });
+  });
+
+  let bestStrRatio = 0;
+  let bestStrEvidence = null;
+  Object.entries(e1rms).forEach(([name, data]) => {
+    const ratio = data.val / bw;
+    // Weight different lifts appropriately
+    let adjustedRatio = ratio;
+    if (['Squat','Front Squat','Hack Squat'].includes(name)) adjustedRatio = ratio * 0.85;
+    else if (['Deadlift','Romanian Deadlift','Stiff-Leg Deadlift'].includes(name)) adjustedRatio = ratio * 0.7;
+    else if (['Bench Press','Incline Bench Press','Decline Bench Press'].includes(name)) adjustedRatio = ratio * 0.95;
+    else if (['Barbell Row','Pendlay Row','Meadows Row'].includes(name)) adjustedRatio = ratio * 0.9;
+    else if (['Lat Pulldown','Wide Neutral-Grip Lat Pulldown','Close Grip Lat Pulldown'].includes(name)) adjustedRatio = ratio * 0.85;
+    else if (['Dips'].includes(name)) adjustedRatio = ratio * 0.85;
+    else adjustedRatio = ratio * 0.7; // other exercises
+
+    if (adjustedRatio > bestStrRatio) {
+      bestStrRatio = adjustedRatio;
+      bestStrEvidence = { name, ...data, ratio: ratio.toFixed(2), adjusted: adjustedRatio.toFixed(2) };
+    }
+  });
+
+  // Also factor in pull-up reps
+  const pullupRatio = bestPullupReps >= 20 ? 1.5 : bestPullupReps >= 15 ? 1.3 : bestPullupReps >= 10 ? 1.1 : bestPullupReps >= 5 ? 0.8 : 0;
+  if (pullupRatio > bestStrRatio) {
+    bestStrRatio = pullupRatio;
+    bestStrEvidence = { name:'Pull Up', reps:bestPullupReps, weight:0, note:`${bestPullupReps} reps at bodyweight` };
+  }
+
+  const strStandards = CALIBRATION_STANDARDS.strength;
+  if (bestStrRatio >= strStandards.elite.ratio)        { stats.strength = strStandards.elite.cap;        evidence.strength = { level:'Elite',        ...bestStrEvidence, standard:strStandards.elite }; }
+  else if (bestStrRatio >= strStandards.advanced.ratio)    { stats.strength = strStandards.advanced.cap;    evidence.strength = { level:'Advanced',     ...bestStrEvidence, standard:strStandards.advanced }; }
+  else if (bestStrRatio >= strStandards.intermediate.ratio){ stats.strength = strStandards.intermediate.cap;evidence.strength = { level:'Intermediate', ...bestStrEvidence, standard:strStandards.intermediate }; }
+  else if (bestStrRatio >= strStandards.novice.ratio)      { stats.strength = strStandards.novice.cap;      evidence.strength = { level:'Novice',       ...bestStrEvidence, standard:strStandards.novice }; }
+  else if (bestStrRatio >= strStandards.beginner.ratio)    { stats.strength = strStandards.beginner.cap;    evidence.strength = { level:'Beginner',     ...bestStrEvidence, standard:strStandards.beginner }; }
+
+  // ── FOCUS inference from skill tier exercises ──
+  const skillExercisesLogged = new Map();
+  myWOs.forEach(w => {
+    (w.exercises || []).forEach(ex => {
+      const tier = SKILL_TIERS[ex.name];
+      if (tier && (ex.sets || []).some(s => s.reps > 0)) {
+        const count = (skillExercisesLogged.get(ex.name) || 0) + (ex.sets || []).filter(s=>s.reps>0).length;
+        skillExercisesLogged.set(ex.name, count);
+      }
+    });
+  });
+
+  const eliteTier  = [...skillExercisesLogged.keys()].filter(n => (SKILL_TIERS[n]||0) >= 1.7);
+  const advTier    = [...skillExercisesLogged.keys()].filter(n => (SKILL_TIERS[n]||0) >= 1.4);
+  const noviceTier = [...skillExercisesLogged.keys()].filter(n => (SKILL_TIERS[n]||0) >= 1.2);
+  const focusStd = CALIBRATION_STANDARDS.focus;
+
+  if (eliteTier.length >= focusStd.elite.tierCount)            { stats.focus = focusStd.elite.cap;        evidence.focus = { level:'Advanced Skill',     exercises:eliteTier, standard:focusStd.elite }; }
+  else if (eliteTier.length >= focusStd.advanced.tierCount)    { stats.focus = focusStd.advanced.cap;      evidence.focus = { level:'Intermediate Skill', exercises:eliteTier, standard:focusStd.advanced }; }
+  else if (advTier.length >= focusStd.intermediate.tierCount)  { stats.focus = focusStd.intermediate.cap;  evidence.focus = { level:'Novice Skill',       exercises:advTier.slice(0,3), standard:focusStd.intermediate }; }
+  else if (advTier.length >= focusStd.novice.tierCount)        { stats.focus = focusStd.novice.cap;        evidence.focus = { level:'Basic Skill',        exercises:advTier, standard:focusStd.novice }; }
+  else if (noviceTier.length >= focusStd.beginner.tierCount)   { stats.focus = focusStd.beginner.cap;      evidence.focus = { level:'Learning',           exercises:noviceTier, standard:focusStd.beginner }; }
+
+  // ── AGILITY inference ──
+  const hasPistol   = skillExercisesLogged.has('Pistol Squat');
+  const hasClimbing = myWOs.some(w => (w.exercises||[]).some(e => ['Top Rope Climbing','Bouldering','Sport Climbing'].includes(e.name)));
+  const agStd = CALIBRATION_STANDARDS.agility;
+
+  if (hasPistol && eliteTier.length >= 1) { stats.agility = agStd.pistol_elite.cap;  evidence.agility = { level:'Advanced Agility', note:'Pistol squat + elite skill work' }; }
+  else if (hasPistol)                      { stats.agility = agStd.pistol.cap;        evidence.agility = { level:'Intermediate Agility', note:'Pistol squat confirmed' }; }
+  else if (hasClimbing)                    { stats.agility = agStd.climbing.cap;      evidence.agility = { level:'Novice Agility', note:'Climbing sessions detected' }; }
+  else if (advTier.length >= 2)            { stats.agility = agStd.skill_broad.cap;   evidence.agility = { level:'Building Agility', note:'Varied skill movement patterns' }; }
+
+  // ── FLEXIBILITY inference ──
+  const hasGermanHang = myWOs.some(w => (w.exercises||[]).some(e => ['German Hang','German hang'].includes(e.name)));
+  const hasMobility   = myWOs.some(w => (w.exercises||[]).some(e => ['Front Splits','Side Splits','Hip Mobility Routine','Full Body Stretching','Yoga','Pancake Stretch','Pike Stretch','Thoracic Mobility'].includes(e.name)));
+  const flStd = CALIBRATION_STANDARDS.flexibility;
+
+  if (hasGermanHang)  { stats.flexibility = flStd.german_hang.cap; evidence.flexibility = { level:'Flexibility Awareness', note:'German Hang detected' }; }
+  else if (hasMobility){ stats.flexibility = flStd.basic.cap;       evidence.flexibility = { level:'Basic Flexibility', note:'Mobility work detected' }; }
+
+  // ── DEFENCE inference from isolation/supplementary count ──
+  const defenceExCount = myWOs.reduce((total, w) => {
+    return total + (w.exercises||[]).filter(e => DEFENCE_EXERCISES.has(e.name)).reduce((n,e) => n+(e.sets||[]).filter(s=>s.reps>0).length, 0);
+  }, 0);
+  const defStd = CALIBRATION_STANDARDS.defence;
+
+  if (defenceExCount >= defStd.high.count)     { stats.defence = defStd.high.cap;     evidence.defence = { level:'Complete Physique',  count:defenceExCount }; }
+  else if (defenceExCount >= defStd.solid.count)   { stats.defence = defStd.solid.cap;    evidence.defence = { level:'Solid Foundation',   count:defenceExCount }; }
+  else if (defenceExCount >= defStd.moderate.count){ stats.defence = defStd.moderate.cap; evidence.defence = { level:'Developing',          count:defenceExCount }; }
+  else if (defenceExCount >= defStd.basic.count)   { stats.defence = defStd.basic.cap;    evidence.defence = { level:'Beginning',           count:defenceExCount }; }
+
+  // ── ENDURANCE inference from cardio ──
+  const cardioSessions = myWOs.filter(w => (w.exercises||[]).some(e => CARDIO_EXERCISES.has(e.name))).length;
+  const endStd = CALIBRATION_STANDARDS.endurance;
+
+  if (cardioSessions >= endStd.high.sessions)      { stats.endurance = endStd.high.cap;   evidence.endurance = { level:'Endurance Trained', sessions:cardioSessions }; }
+  else if (cardioSessions >= endStd.medium.sessions){ stats.endurance = endStd.medium.cap; evidence.endurance = { level:'Some Cardio', sessions:cardioSessions }; }
+  else if (cardioSessions >= endStd.low.sessions)  { stats.endurance = endStd.low.cap;    evidence.endurance = { level:'Starting Cardio', sessions:cardioSessions }; }
+
+  return { caps:stats, evidence };
+}
+
+// Check if a calibration observation is still valid
+// Returns false if training pattern has shifted enough to invalidate it
+function isObservationStillValid(observation, currentCaps) {
+  if (!observation || !observation.stat) return false;
+  const stat = observation.stat;
+  const currentCap = (profile.statTrainingXP || {})[stat] || 0;
+  const observedCap = observation.proposedCap || 0;
+  // If raw training XP has dropped significantly below what was observed, invalidate
+  if (currentCap < observedCap * 0.5) return false;
+  return true;
+}
+
+// Generate observation cards from calibration inference
+function generateCalibrationObservations() {
+  const inference = runCalibrationInference();
+  if (!inference) return [];
+
+  const currentCaps = profile.statTrainingXP || {};
+  const existingObs = profile.calibrationObservations || {};
+  const observations = [];
+  const STAT_ICONS_C = { strength:'⚔️', endurance:'🔥', agility:'⚡', focus:'🎯', flexibility:'💫', defence:'🛡️' };
+
+  for (const [stat, proposedCap] of Object.entries(inference.caps)) {
+    const currentCap = currentCaps[stat] || 0;
+    // Only fire if proposed cap is meaningfully higher than current
+    if (proposedCap <= currentCap + 5) continue;
+    // Don't re-fire if already acknowledged
+    const obsKey = `${stat}_${proposedCap}`;
+    if (existingObs[obsKey]?.acknowledged) continue;
+
+    const ev = inference.evidence[stat];
+    if (!ev) continue;
+
+    // Build observation text
+    let evidenceText = '';
+    if (stat === 'strength' && ev.name) {
+      evidenceText = ev.weight > 0
+        ? `${ev.name} — ${ev.weight}kg × ${ev.reps} reps → estimated 1RM ${(ev.val||0).toFixed(1)}kg (${ev.ratio}× bodyweight)`
+        : `${ev.name} — ${ev.reps} reps at bodyweight`;
+    } else if (stat === 'focus' && ev.exercises) {
+      evidenceText = ev.exercises.slice(0,3).join(', ');
+    } else {
+      evidenceText = ev.note || ev.level || '';
+    }
+
+    observations.push({
+      id: obsKey,
+      stat,
+      icon: STAT_ICONS_C[stat],
+      level: ev.level,
+      currentCap: Math.round(currentCap),
+      proposedCap,
+      evidenceText,
+      importance: proposedCap - currentCap, // higher = more important
+    });
+  }
+
+  // Sort by importance, return top observation (queue one per day)
+  return observations.sort((a,b) => b.importance - a.importance);
+}
+
+// Apply a calibration observation
+async function applyCalibrationObservation(obsKey, stat, proposedCap) {
+  if (!currentUser || !profile) return;
+  const currentCap = (profile.statTrainingXP || {})[stat] || 0;
+  const newCap = Math.max(currentCap, proposedCap);
+
+  const updates = {
+    [`statTrainingXP.${stat}`]: newCap,
+    [`calibrationObservations.${obsKey}`]: { acknowledged: true, appliedAt: new Date().toISOString(), cap: newCap },
+    lastCalibrationCheck: new Date().toISOString(),
+  };
+
+  await setDoc(doc(db, 'users', currentUser.uid), updates, { merge: true });
+  if (!profile.statTrainingXP) profile.statTrainingXP = {};
+  profile.statTrainingXP[stat] = newCap;
+  if (!profile.calibrationObservations) profile.calibrationObservations = {};
+  profile.calibrationObservations[obsKey] = { acknowledged:true };
+
+  renderCharCard();
+  showToast(`${stat.charAt(0).toUpperCase()+stat.slice(1)} Training Cap updated to ${newCap} XP`, 'success');
+}
+
+// Dispute a calibration observation — re-analyse, hide if still valid
+async function disputeCalibrationObservation(obsKey, stat) {
+  const inference = runCalibrationInference();
+  const stillValid = inference && (inference.caps[stat] || 0) > ((profile.statTrainingXP||{})[stat]||0) + 5;
+
+  const updates = {
+    [`calibrationObservations.${obsKey}`]: {
+      disputed: true,
+      disputedAt: new Date().toISOString(),
+      systemStillBelieves: stillValid,
+    }
+  };
+  await setDoc(doc(db, 'users', currentUser.uid), updates, { merge: true });
+  if (!profile.calibrationObservations) profile.calibrationObservations = {};
+  profile.calibrationObservations[obsKey] = { disputed:true, systemStillBelieves:stillValid };
+
+  if (stillValid) {
+    showToast('The System maintains its assessment — observation hidden from view.', 'info');
+  } else {
+    showToast('The System agrees. Observation removed.', 'success');
+  }
+  renderCharCard();
+}
+
+// Render the System Observation card on the Rank tab
+function renderCalibrationObservationCard() {
+  const container = document.getElementById('calibration-observation-slot');
+  if (!container) return;
+
+  const observations = generateCalibrationObservations();
+  // Show only the most important one (queue)
+  const obs = observations[0];
+  if (!obs) { container.innerHTML = ''; return; }
+
+  const RANK_COLORS_C = { strength:'var(--brass)', endurance:'#FF3D5A', agility:'var(--violet)', focus:'#FFD700', flexibility:'#27AE60', defence:'var(--growing)' };
+  const col = RANK_COLORS_C[obs.stat] || 'var(--brass)';
+
+  container.innerHTML = `
+    <div style="
+      background:linear-gradient(145deg,rgba(17,27,46,0.98),rgba(9,14,26,0.99));
+      border:1px solid ${col}33;border-radius:8px;padding:16px;margin-bottom:14px;
+      position:relative;overflow:hidden;
+      box-shadow:0 0 20px ${col}11, inset 0 1px 0 ${col}15;
+      animation:viewEnter 0.4s cubic-bezier(0.16,1,0.3,1) both;
+    ">
+      <div style="font-family:var(--font-mono);font-size:9px;color:${col};letter-spacing:0.15em;margin-bottom:8px;">◈ SYSTEM OBSERVATION ◈</div>
+      <div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:12px;">
+        <div style="font-size:28px;flex-shrink:0;">${obs.icon}</div>
+        <div style="flex:1;min-width:0;">
+          <div style="font-family:var(--font-head);font-size:16px;font-weight:800;color:${col};margin-bottom:4px;">
+            ${obs.stat.charAt(0).toUpperCase()+obs.stat.slice(1)} — ${obs.level}
+          </div>
+          <div style="font-size:12px;color:var(--text-dim);line-height:1.6;margin-bottom:8px;">
+            ${obs.evidenceText}
+          </div>
+          <div style="background:rgba(0,0,0,0.3);border-radius:6px;padding:10px;font-family:var(--font-mono);font-size:11px;">
+            <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+              <span style="color:var(--text-faint);">Current cap</span>
+              <span style="color:var(--text-dim);">${obs.currentCap} XP</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;">
+              <span style="color:var(--text-faint);">System proposes</span>
+              <span style="color:${col};font-weight:700;">${obs.proposedCap} XP ↑</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div style="font-size:11px;color:var(--text-faint);font-style:italic;margin-bottom:12px;">
+        "The System does not guess. The iron has spoken."
+      </div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-primary" style="flex:2;font-size:13px;" 
+          onclick="applyCalibrationObservation('${obs.id}','${obs.stat}',${obs.proposedCap})">
+          Acknowledge
+        </button>
+        <button class="btn" style="flex:1;font-size:12px;color:var(--text-faint);"
+          onclick="disputeCalibrationObservation('${obs.id}','${obs.stat}')">
+          Dispute
+        </button>
+      </div>
+      ${observations.length > 1 ? `<div style="font-family:var(--font-mono);font-size:9px;color:var(--text-faint);text-align:center;margin-top:8px;">${observations.length - 1} more observation${observations.length > 2?'s':''} pending</div>` : ''}
+    </div>`;
+}
+
 function checkV2UpgradeGates(statId) {
   const currentRank = (profile.stats || {})[statId] || 'E';
   if (currentRank === 'S') return { ready: false, isMaxed: true };
@@ -5598,7 +6193,20 @@ function openStatInvestPanel(statId) {
         <span style="color:var(--text-faint);">Your AP</span>
         <span style="font-family:var(--font-mono);color:var(--brass);">${ap} AP</span>
       </div>
-      ${maxInvest === 0 ? `<p style="color:var(--excess);font-size:11px;margin:8px 0 0;">Training cap reached — log more ${label.toLowerCase()} exercises to raise your cap before investing.</p>` : ''}
+      ${maxInvest === 0 ? `
+      <div style="margin-top:10px;padding:10px;background:rgba(255,61,90,0.06);border:1px solid rgba(255,61,90,0.2);border-radius:6px;">
+        <p style="color:var(--excess);font-size:12px;font-weight:700;margin:0 0 6px;">Training cap reached</p>
+        <p style="color:var(--text-dim);font-size:11px;margin:0 0 8px;line-height:1.6;">
+          You need <strong style="color:var(--brass);">${Math.max(0, invested + 1 - trainingCap) + (50 - trainingCap > 0 ? 50 - trainingCap : 0)} more Training XP</strong> in ${label} before you can invest further.
+          Log exercises that train ${label.toLowerCase()} to raise your cap.
+        </p>
+        <p style="color:var(--text-faint);font-size:10px;font-family:var(--font-mono);margin:0;">
+          To reach D rank: need 50 XP cap · you have ${trainingCap} XP cap · gap: ${Math.max(0, 50 - trainingCap)} XP
+        </p>
+        <p style="color:var(--text-faint);font-size:10px;margin:6px 0 0;line-height:1.5;">
+          💡 Go to Moves tab → tap <strong>${label}</strong> filter to find exercises that build this stat.
+        </p>
+      </div>` : ''}
     </div>
     ${canInvest > 0 ? `
     <div style="margin-bottom:14px;">
@@ -5662,7 +6270,7 @@ function improvTarget(id, needed, done) {
         need: achieved ? '✓ Achieved' : `${needed} flexibility score needed`,
         example: achieved ? null : `Primary: splits, German hang, yoga, mobility routines\nAlso counts: swimming (shoulder/hip mobility), climbing (hip flexibility), levers and planche skill work, boxing (hip rotation)`,
       };
-    case 'recovery':
+    case 'defence':
       return {
         current: `${done.toFixed(0)}% of recent weeks hit goal`,
         need: achieved ? '✓ Achieved' : `Hit weekly goal in ${needed}% of weeks`,
@@ -5723,6 +6331,9 @@ function renderCharCard() {
   const rankClass = 'rank-' + charRank.toLowerCase();
   const power = calcPowerLevel(stats);
 
+  // Run calibration observation
+  try { renderCalibrationObservationCard(); } catch(e) { console.warn('Calibration error:', e); }
+
   // update identity
   document.getElementById('char-name').textContent = profile.displayName || 'Hunter';
   const hunterClass = profile.hunterClass;
@@ -5763,7 +6374,7 @@ function renderCharCard() {
   }
   // dominant stat — highest ranked stat
   const STAT_ORDER = ['S','A','B','C','D','E'];
-  const STAT_ICONS2 = { strength:'⚔️', endurance:'🔥', agility:'⚡', focus:'🎯', recovery:'🛡️', flexibility:'💫' };
+  const STAT_ICONS2 = { strength:'⚔️', endurance:'🔥', agility:'⚡', focus:'🎯', defence:'🛡️', flexibility:'💫' };
   const dominantEl = document.getElementById('char-dominant-stat');
   if (dominantEl) {
     const statsArr = STAT_DEFS.map(d => ({ id:d.id, rank:(profile.stats||{})[d.id]||'E' }));
@@ -6150,13 +6761,13 @@ function showStatGateModal(statId) {
   const curIdx = RANK_TIERS.indexOf(cur);
   const ap = profile.auraPoints || 0;
 
-  const STAT_ICONS = { strength:'⚔️', endurance:'🔥', agility:'⚡', focus:'🎯', recovery:'🛡️', flexibility:'💫' };
+  const STAT_ICONS = { strength:'⚔️', endurance:'🔥', agility:'⚡', focus:'🎯', defence:'🛡️', flexibility:'💫' };
   const STAT_LORE = {
     strength:    'The System measures your capacity to move iron. Not what you lift today — how far you have come from where you started.',
     endurance:   'The System measures your capacity to sustain effort over distance. Your pace against your first logged run.',
     agility:     'The System measures explosive output. Speed, power, and the ability to generate force in an instant.',
     flexibility: 'The System measures your dedication to core and mobility work. Consistency over weeks, not single sessions.',
-    recovery:    'The System measures your discipline across the calendar. How often you show up when it matters.',
+    defence:     'The System measures your physique completeness across the calendar. How often you show up when it matters.',
     focus:       'The System measures your unbroken commitment. Every day you train, the streak grows. Every day you miss, it resets.',
   };
   const RANK_REAL_MEANING = {
@@ -6192,7 +6803,7 @@ function showStatGateModal(statId) {
       A:'Advanced flexibility. Most gymnasts train years to reach this.',
       S:'Elite. Full splits, German hang mastery, exceptional range of motion.',
     },
-    recovery: {
+    defence: {
       E:'Still finding your rhythm. Consistency is the first battle.',
       D:'Starting to show up reliably. Habits forming.',
       C:'Consistent. You hit your goals most weeks. That matters.',
@@ -6291,7 +6902,7 @@ function showStatGateModal(statId) {
                     endurance: `Run faster, cycle more, swim, box rounds, play court sports, or do high-volume lifting`,
                     agility: `Box jumps, sprints, boxing footwork, court sports, or bouldering dynamic moves`,
                     flexibility: `Splits, German hang, yoga — or supplement with swimming, climbing, and skill work`,
-                    recovery: `Show up. Hit your weekly goal. Every training style counts equally here.`,
+                    defence: `Build your physique foundation. Supplementary and isolation work. Every training style counts equally here.`,
                     focus: `Unbroken streak + heavy RIR 0-1 sets + skill holds + boxing technical work + climbing`,
                   };
                   return paths[statId] || `${rem.toFixed(1)} more improvement needed`;
@@ -6511,7 +7122,7 @@ function getUserClass(user) {
   if (STAT_DEFS.every(d => (stats[d.id]||'E') === 'S')) return '👑 Shadow Monarch';
   if (STAT_DEFS.every(d => s(d.id) >= 4)) return '⚖️ Sovereign';
   if (s('strength') >= 4 && s('agility') >= 4) return '🗡️ Berserker';
-  if (s('strength') >= 4 && s('recovery') >= 4) return '🛡️ Iron Wall';
+  if (s('strength') >= 4 && s('defence') >= 4) return '🛡️ Iron Wall';
   if (s('agility') >= 4 && s('endurance') >= 4) return '⚡ Shadow Runner';
   if (s('focus') >= 4 && s('flexibility') >= 4) return '🧠 Tactician';
   const ranks = STAT_DEFS.map(d => s(d.id));
@@ -7220,7 +7831,7 @@ async function openHunterProfile(targetUid) {
   const myStatAP = profile.statAP || {};
   const theirStatAP = target.statAP || {};
 
-  const STAT_ICONS_H = { strength:'⚔️', focus:'🎯', recovery:'🛡️', agility:'⚡', endurance:'🔥', flexibility:'💫' };
+  const STAT_ICONS_H = { strength:'⚔️', focus:'🎯', defence:'🛡️', agility:'⚡', endurance:'🔥', flexibility:'💫' };
 
   // Top row — level and AP
   const levelWinner = myHunterLevel > theirHunterLevel ? 'you' : myHunterLevel < theirHunterLevel ? 'them' : 'tied';
@@ -7810,32 +8421,32 @@ async function runV2Migration() {
       hunterLevel: 4,
       hunterXP: 424.0,
       auraPoints: 34,
-      statTrainingXP: { strength: 205.8, recovery: 72.8, focus: 18.4, agility: 6.9, endurance: 1.5, flexibility: 1.5 },
-      statAP: { strength: 0, focus: 0, recovery: 0, agility: 0, endurance: 0, flexibility: 0 },
+      statTrainingXP: { strength: 205.8, defence: 72.8, focus: 18.4, agility: 6.9, endurance: 1.5, flexibility: 1.5 },
+      statAP: { strength: 0, focus: 0, defence: 0, agility: 0, endurance: 0, flexibility: 0 },
     },
     'd1W5vTx5aSTIwkR4CIwnO2xW7vf1': {
       name: 'LuChing',
       hunterLevel: 4,
       hunterXP: 637.5,
       auraPoints: 39,
-      statTrainingXP: { strength: 249.2, focus: 99.7, recovery: 74.3, agility: 18.3, endurance: 15.7, flexibility: 5.7 },
-      statAP: { strength: 0, focus: 0, recovery: 0, agility: 0, endurance: 0, flexibility: 0 },
+      statTrainingXP: { strength: 249.2, focus: 99.7, defence: 74.3, agility: 18.3, endurance: 15.7, flexibility: 5.7 },
+      statAP: { strength: 0, focus: 0, defence: 0, agility: 0, endurance: 0, flexibility: 0 },
     },
     'oFFi2hATYARhqcSZQlHwlsYBOge2': {
       name: "I'm just a girl",
       hunterLevel: 3,
       hunterXP: 250.3,
       auraPoints: 22,
-      statTrainingXP: { strength: 87.5, endurance: 29.7, agility: 27.0, recovery: 24.9, focus: 20.1, flexibility: 1.5 },
-      statAP: { strength: 0, focus: 0, recovery: 0, agility: 0, endurance: 0, flexibility: 0 },
+      statTrainingXP: { strength: 87.5, endurance: 29.7, agility: 27.0, defence: 24.9, focus: 20.1, flexibility: 1.5 },
+      statAP: { strength: 0, focus: 0, defence: 0, agility: 0, endurance: 0, flexibility: 0 },
     },
     'rzcznIkNRrSKVXl74LsTaRSdHOk2': {
       name: 'Lucas',
       hunterLevel: 4,
       hunterXP: 377.5,
       auraPoints: 34,
-      statTrainingXP: { strength: 128.5, focus: 67.3, recovery: 59.9, flexibility: 6.1, agility: 1.5, endurance: 1.5 },
-      statAP: { strength: 0, focus: 0, recovery: 0, agility: 0, endurance: 0, flexibility: 0 },
+      statTrainingXP: { strength: 128.5, focus: 67.3, defence: 59.9, flexibility: 6.1, agility: 1.5, endurance: 1.5 },
+      statAP: { strength: 0, focus: 0, defence: 0, agility: 0, endurance: 0, flexibility: 0 },
     },
   };
 
@@ -7854,7 +8465,7 @@ async function runV2Migration() {
           <div style="font-weight:700;margin-bottom:6px;">${escapeHtml(d.name)}</div>
           <div style="font-family:var(--font-mono);color:var(--text-faint);font-size:11px;">
             Level ${d.hunterLevel} · ${d.hunterXP} XP · ${d.auraPoints} AP<br>
-            Str: ${d.statTrainingXP.strength} · Focus: ${d.statTrainingXP.focus} · Rec: ${d.statTrainingXP.recovery}<br>
+            Str: ${d.statTrainingXP.strength} · Focus: ${d.statTrainingXP.focus} · Def: ${d.statTrainingXP.defence}<br>
             Agi: ${d.statTrainingXP.agility} · End: ${d.statTrainingXP.endurance} · Flex: ${d.statTrainingXP.flexibility}
           </div>
         </div>`).join('')}
@@ -8661,7 +9272,7 @@ function showDebriefModal(exercises, apEarned, prs) {
   const prevXpPct = Math.max(0, xpPct - (generalXP / xpNeeded * 100));
 
   // Training XP stat breakdown
-  const STAT_ICONS_D = { strength:'⚔️', focus:'🎯', recovery:'🛡️', agility:'⚡', endurance:'🔥', flexibility:'💫' };
+  const STAT_ICONS_D = { strength:'⚔️', focus:'🎯', defence:'🛡️', agility:'⚡', endurance:'🔥', flexibility:'💫' };
   const statRows = Object.entries(trainingXP)
     .filter(([,v]) => v > 0.5)
     .sort(([,a],[,b]) => b - a)
@@ -9026,7 +9637,7 @@ function renderCompetitionBoard() {
   const rival = myRankIdx > 0 ? rows[myRankIdx - 1] : null;
   const chaser = myRankIdx < rows.length - 1 ? rows[myRankIdx + 1] : null;
 
-  const STAT_ICONS = { strength:'⚔️', endurance:'🔥', agility:'⚡', focus:'🎯', recovery:'🛡️', flexibility:'💫' };
+  const STAT_ICONS = { strength:'⚔️', endurance:'🔥', agility:'⚡', focus:'🎯', defence:'🛡️', flexibility:'💫' };
   const RANK_ORDER = ['S','A','B','C','D','E'];
 
   el.innerHTML = rows.map((r, i) => {
@@ -9241,8 +9852,36 @@ async function renderRaidBoss() {
 
   // ── Boss assignment from LAST WEEK's training (Option E hybrid) ──
   // Find party's weakest stat last week → that becomes this week's boss weakness
+  // Boss special attacks by type
+  const BOSS_SPECIAL_ATTACKS = {
+    strength:    { name:'Crushing Blow',   desc:'The boss\'s raw power overwhelms your defences. AP lost scales with how much you fell short.', icon:'💥' },
+    endurance:   { name:'Attrition',       desc:'The dungeon grinds you down. Penalty scales with days missed this week.', icon:'⏳' },
+    agility:     { name:'Shadow Strike',   desc:'The boss targets your weakest link. Double penalty to the lowest contributor.', icon:'⚡' },
+    focus:       { name:'Mind Break',      desc:'The dungeon fractures your concentration. One stat locked from investment for a week.', icon:'🧠' },
+    flexibility: { name:'Binding Curse',   desc:'Your body seizes. Training XP gain reduced next week.', icon:'⛓️' },
+    defence:     { name:'Armour Pierce',   desc:'The boss ignores all armour. Your physique offers no protection here — full penalty applies.', icon:'🔱' },
+  };
+
+  // Defence reduction rates per rank
+  const DEFENCE_REDUCTION = { E:0, D:0.15, C:0.30, B:0.45, A:0.60, S:0.75 };
+
+  function getDefenceRank(uid) {
+    const userProfile = allUsers.find(u => u.uid === uid);
+    if (!userProfile) return 'E';
+    const stats = userProfile.stats || {};
+    return stats.defence || 'E';
+  }
+
+  function applyDefenceReduction(basePenalty, uid, bossType, isFullFailure) {
+    // Armour Pierce ignores Defence entirely — only on full failure
+    if (bossType === 'defence' && isFullFailure) return basePenalty;
+    const defRank = getDefenceRank(uid);
+    const reduction = DEFENCE_REDUCTION[defRank] || 0;
+    return Math.round(basePenalty * (1 - reduction));
+  }
+
   function getLastWeekPartyStatXP() {
-    const statXP = { strength:0, focus:0, recovery:0, agility:0, endurance:0, flexibility:0 };
+    const statXP = { strength:0, focus:0, defence:0, agility:0, endurance:0, flexibility:0 };
     lastWeekWorkouts.forEach(w => {
       (w.exercises||[]).forEach(ex => {
         const exDef = EXERCISES_ALL[ex.name] || {};
@@ -9259,8 +9898,8 @@ async function renderRaidBoss() {
   const lastWeekStatXP = getLastWeekPartyStatXP();
   const weekNum = Math.floor((Date.now() / 86400000 - 4) / 7);
 
-  // Find weakest trained stat from last week (excluding recovery which isn't a boss weakness)
-  const bossStats = ['strength','agility','endurance','focus','flexibility'];
+  // Find weakest trained stat from last week (include defence as boss weakness now)
+  const bossStats = ['strength','agility','endurance','focus','flexibility','defence'];
   const weakestStat = bossStats.reduce((min, s) =>
     lastWeekStatXP[s] < lastWeekStatXP[min] ? s : min, bossStats[0]);
 
@@ -9408,6 +10047,11 @@ async function renderRaidBoss() {
     return shortfallPenalty;
   };
   const myPenaltyShare = !cleared ? getPenaltyShare(currentUser?.uid) : 0;
+  const bossType = boss.weakness || 'strength';
+  const isFullFailure = !cleared && totalDamage < boss.hp * 0.1; // less than 10% HP dealt
+  const myDefenceReducedPenalty = !cleared
+    ? applyDefenceReduction(myPenaltyShare, currentUser?.uid, bossType, isFullFailure)
+    : 0;
 
   // ── Award raid reward once per week ──
   if (cleared && currentUser) {
@@ -9470,6 +10114,10 @@ async function renderRaidBoss() {
   // ── Raid failure penalty ──
   if (!cleared && currentUser && daysLeft === 0) {
     const penaltyKey = `aura_raid_penalty_${startOfWeek(new Date()).toISOString().slice(0,10)}`;
+    const specialAttack = BOSS_SPECIAL_ATTACKS[bossType] || BOSS_SPECIAL_ATTACKS.strength;
+    const defRank = getDefenceRank(currentUser.uid);
+    const reduction = DEFENCE_REDUCTION[defRank] || 0;
+    const savedAP = myPenaltyShare - myDefenceReducedPenalty;
     try {
       const alreadyPenalized = await runTransaction(db, async (tx) => {
         const userRef = doc(db, 'users', currentUser.uid);
@@ -9477,23 +10125,45 @@ async function renderRaidBoss() {
         const data = snap.data() || {};
         if (data.lastRaidPenaltyWeek === penaltyKey) return true;
         const updates = { lastRaidPenaltyWeek: penaltyKey };
-        if (myPenaltyShare > 0) updates.auraPoints = increment(-myPenaltyShare);
+        if (myDefenceReducedPenalty > 0) updates.auraPoints = increment(-myDefenceReducedPenalty);
+        // Apply special attack effects
+        if (bossType === 'focus' && !isFullFailure === false) {
+          // Mind Break — lock a random stat from investment for one week
+          const STATS_FOR_LOCK = ['strength','endurance','agility','flexibility','defence'];
+          const lockedStat = STATS_FOR_LOCK[Math.floor(Math.random()*STATS_FOR_LOCK.length)];
+          const lockUntil = new Date(Date.now() + 7*86400000).toISOString().slice(0,10);
+          updates.statLock = { stat: lockedStat, until: lockUntil };
+        }
+        if (bossType === 'flexibility' && !isFullFailure === false) {
+          // Binding Curse — reduce Training XP gain next week by 50%
+          const curseUntil = new Date(Date.now() + 7*86400000).toISOString().slice(0,10);
+          updates.trainingXPCurse = { multiplier: 0.5, until: curseUntil };
+        }
         tx.set(userRef, updates, { merge: true });
         return false;
       });
       if (!alreadyPenalized) {
-        if (myPenaltyShare > 0) {
-          logAp(currentUser.uid, -myPenaltyShare, `Raid gate failed: ${boss.name} penalty`, profile.auraPoints || 0);
-          profile.auraPoints = Math.max(0, (profile.auraPoints || 0) - myPenaltyShare);
+        if (myDefenceReducedPenalty > 0) {
+          logAp(currentUser.uid, -myDefenceReducedPenalty, `Raid gate failed: ${boss.name} — ${specialAttack.name}`, profile.auraPoints || 0);
+          profile.auraPoints = Math.max(0, (profile.auraPoints || 0) - myDefenceReducedPenalty);
         }
         profile.lastRaidPenaltyWeek = penaltyKey;
+
+        const defenceText = isFullFailure && bossType === 'defence'
+          ? `<p style="font-size:11px;color:var(--excess);margin-top:8px;">◈ ARMOUR PIERCE — Defence ignored on full failure</p>`
+          : defRank !== 'E' && reduction > 0
+          ? `<p style="font-size:11px;color:var(--growing);margin-top:8px;">🛡️ Defence ${defRank} absorbed ${(reduction*100).toFixed(0)}% — saved ${savedAP} AP</p>`
+          : '';
+
         setTimeout(() => {
           showSystemModal(`<div class="system-window">
             <p class="system-eyebrow" style="color:var(--excess);">◈ Gate Failed ◈</p>
             <div class="system-icon">💀</div>
             <h2 class="system-title" style="color:var(--excess);">${escapeHtml(boss.name)}</h2>
-            <p class="system-body">The dungeon gate held. The party has been judged.</p>
-            <p class="system-detail" style="color:var(--excess);font-size:16px;">Your penalty: -${myPenaltyShare} AP</p>
+            <p class="system-body" style="color:var(--excess);font-weight:700;">${specialAttack.icon} ${specialAttack.name}</p>
+            <p class="system-body" style="font-size:12px;color:var(--text-dim);">${specialAttack.desc}</p>
+            <p class="system-detail" style="color:var(--excess);font-size:16px;">Your penalty: -${myDefenceReducedPenalty} AP</p>
+            ${defenceText}
             <button class="system-btn" style="border-color:var(--excess);color:var(--excess);">Acknowledged</button>
           </div>`);
           renderCharCard();
@@ -9520,7 +10190,7 @@ async function renderRaidBoss() {
   // (Sunday preview hint)
   const isSunday = now.getDay() === 0;
   const sundayPreview = isSunday ? (() => {
-    const thisWeekStatXP = { strength:0, focus:0, recovery:0, agility:0, endurance:0, flexibility:0 };
+    const thisWeekStatXP = { strength:0, focus:0, defence:0, agility:0, endurance:0, flexibility:0 };
     weekWorkouts.forEach(w => {
       (w.exercises||[]).forEach(ex => {
         const exDef = EXERCISES_ALL[ex.name] || {};
@@ -9637,7 +10307,7 @@ async function renderRaidBoss() {
         <p class="${cleared?'raid-cleared-msg':'raid-warning'}" style="margin:0;flex:1;">
           ${cleared
             ? `★ Gate cleared — ${rewardPool} AP shared by contribution.`
-            : `Surrender the gate — penalty scales with absence. Your exposure: <strong style="color:var(--excess);">-${myPenaltyShare} AP</strong>.`}
+            : `Surrender the gate — penalty scales with absence. Your exposure: <strong style="color:var(--excess);">-${myDefenceReducedPenalty} AP</strong>${myPenaltyShare !== myDefenceReducedPenalty ? ` <span style="color:var(--growing);font-size:11px;">(🛡️ Defence saved ${myPenaltyShare - myDefenceReducedPenalty} AP)</span>` : ''}.`}
         </p>
         <div style="font-family:var(--font-mono);font-size:9px;color:var(--text-faint);text-align:right;flex-shrink:0;">
           ${cleared
@@ -10081,7 +10751,7 @@ function renderTrends() {
       ${(() => {
         const caps = profile.statTrainingXP || {};
         const invested = profile.statAP || {};
-        const STAT_ICONS_T = { strength:'⚔️', focus:'🎯', recovery:'🛡️', agility:'⚡', endurance:'🔥', flexibility:'💫' };
+        const STAT_ICONS_T = { strength:'⚔️', focus:'🎯', defence:'🛡️', agility:'⚡', endurance:'🔥', flexibility:'💫' };
         const RANK_COST = 50; // E→D cost
         return Object.entries(caps)
           .sort(([,a],[,b]) => b - a)
@@ -10410,12 +11080,12 @@ function renderExerciseLibrary() {
   const INTENT_COLOR = {
     strength:'var(--brass)', hypertrophy:'var(--violet)', explosive:'var(--excess)',
     endurance:'#2980B9', skill:'#FFD700', mobility:'#27AE60',
-    recovery:'var(--growing)', isometric:'var(--maintaining)', plyometric:'#F97316',
+    defence:'var(--growing)', isometric:'var(--maintaining)', plyometric:'#F97316',
     balance:'#A78BFA', martial:'#E74C3C', sport:'#06B6D4',
   };
   const STAT_COLOR = {
     strength:'var(--brass)', endurance:'#FF3D5A', agility:'var(--violet)',
-    focus:'#FFD700', flexibility:'#27AE60', recovery:'var(--growing)',
+    focus:'#FFD700', flexibility:'#27AE60', defence:'var(--growing)',
   };
 
   document.getElementById('ex-grid').innerHTML = rows.map(([name, def], idx) => {
@@ -10471,21 +11141,70 @@ function renderExerciseLibrary() {
 }
 
 document.getElementById('add-exercise-lib-btn')?.addEventListener('click', openAddExerciseModal);
+// Shared exercise intent definitions — used in both add and edit modals
+const EXERCISE_INTENTS = [
+  { value:'strength',    label:'Strength',    desc:'Heavy lifts, compound movements',        stat:'strength',    color:'var(--brass)' },
+  { value:'hypertrophy', label:'Hypertrophy', desc:'Volume-based muscle building',           stat:'strength',    color:'var(--violet)' },
+  { value:'skill',       label:'Skill',       desc:'Technical mastery, calisthenics skills', stat:'focus',       color:'#FFD700' },
+  { value:'explosive',   label:'Explosive',   desc:'Power, speed, jumping',                  stat:'agility',     color:'var(--excess)' },
+  { value:'endurance',   label:'Endurance',   desc:'Sustained effort, cardio',               stat:'endurance',   color:'#FF3D5A' },
+  { value:'mobility',    label:'Mobility',    desc:'Flexibility, stretching, ROM',           stat:'flexibility', color:'#27AE60' },
+  { value:'defence',    label:'Recovery',    desc:'Accessory, prehab, low intensity',       stat:'defence',    color:'var(--growing)' },
+  { value:'isometric',   label:'Isometric',   desc:'Static holds, planks',                   stat:'strength',    color:'var(--maintaining)' },
+  { value:'plyometric',  label:'Plyometric',  desc:'Explosive bodyweight',                   stat:'agility',     color:'#F97316' },
+  { value:'balance',     label:'Balance',     desc:'Stability, gymnastic balance',           stat:'focus',       color:'#A78BFA' },
+  { value:'martial',     label:'Martial',     desc:'Combat sports, striking, grappling',     stat:'agility',     color:'#E74C3C' },
+  { value:'sport',       label:'Sport',       desc:'Climbing, swimming, team sports etc.',   stat:'varies',      color:'#06B6D4' },
+];
+
+function buildIntentSelect(id, currentValue='') {
+  return `<select id="${id}" style="margin-top:4px;border-color:${currentValue ? 'rgba(61,165,255,0.2)' : 'var(--excess)'};transition:border-color .2s;">
+    <option value="">— Select training type (required) —</option>
+    ${EXERCISE_INTENTS.map(i =>
+      `<option value="${i.value}" ${i.value===currentValue?'selected':''}>${i.label} — ${i.desc} → ${i.stat} cap</option>`
+    ).join('')}
+  </select>
+  <div id="${id}-hint" style="font-size:11px;margin-top:4px;min-height:16px;transition:color .2s;
+    color:${currentValue ? 'var(--text-faint)' : 'var(--excess)'};">
+    ${currentValue
+      ? `Trains: <span style="color:${EXERCISE_INTENTS.find(i=>i.value===currentValue)?.color||'var(--brass)'};">${EXERCISE_INTENTS.find(i=>i.value===currentValue)?.label||''}</span> → raises your <strong>${EXERCISE_INTENTS.find(i=>i.value===currentValue)?.stat||''}</strong> cap`
+      : '⚠ Required — determines which stat Training Cap grows when you log this exercise'}
+  </div>`;
+}
+
 function openAddExerciseModal() {
   const overlay = document.createElement('div');
   overlay.className = 'modal-overlay';
   overlay.innerHTML = `
     <div class="modal">
-      <h3>Add a custom exercise</h3>
-      <div class="field"><label>Name</label><input id="new-ex-name" placeholder="e.g. Cable Pull-Through" /></div>
-      <div class="field"><label>Muscles worked (tap to select)</label>
-        <div class="muscle-checks" id="new-ex-muscles">${MUSCLES.map(m => `<span class="muscle-check" data-m="${m}">${m}</span>`).join('')}</div>
+      <p class="system-eyebrow" style="color:rgba(61,165,255,0.5);font-family:var(--font-mono);font-size:9px;letter-spacing:0.15em;margin-bottom:12px;">◈ NEW EXERCISE ◈</p>
+      <h3 style="margin:0 0 4px;">Add Exercise</h3>
+      <p style="font-size:12px;color:var(--text-faint);margin:0 0 16px;">All fields are required for correct XP and stat tracking.</p>
+
+      <div class="field">
+        <label>Name <span style="color:var(--excess);font-size:10px;">required</span></label>
+        <input id="new-ex-name" placeholder="e.g. Cable Pull-Through" />
+        <div id="new-ex-name-err" style="font-size:11px;color:var(--excess);margin-top:3px;min-height:14px;"></div>
       </div>
-      <div class="field"><label>Equipment</label>
+
+      <div class="field">
+        <label>Muscles worked <span style="color:var(--excess);font-size:10px;">required — tap to select</span></label>
+        <div class="muscle-checks" id="new-ex-muscles">${MUSCLES.map(m => `<span class="muscle-check" data-m="${m}">${m}</span>`).join('')}</div>
+        <div id="new-ex-muscles-err" style="font-size:11px;color:var(--excess);margin-top:3px;min-height:14px;">⚠ Pick at least one muscle</div>
+      </div>
+
+      <div class="field">
+        <label>Equipment <span style="color:var(--excess);font-size:10px;">required</span></label>
         <select id="new-ex-equip">${EQUIPMENT_TYPES.map(e => `<option value="${e}">${e}</option>`).join('')}</select>
       </div>
+
       <div class="field">
-        <label>Exercise type</label>
+        <label>Training type <span style="color:var(--excess);font-size:10px;">required</span></label>
+        ${buildIntentSelect('new-ex-intent', '')}
+      </div>
+
+      <div class="field">
+        <label>Rep / time format <span style="color:var(--excess);font-size:10px;">required</span></label>
         <div style="display:flex;gap:8px;margin-top:4px;">
           <button type="button" class="weekday-chip on" id="new-type-reps" style="flex:1;">Reps</button>
           <button type="button" class="weekday-chip" id="new-type-timed" style="flex:1;">Timed</button>
@@ -10498,19 +11217,63 @@ function openAddExerciseModal() {
           <button type="button" class="weekday-chip" id="new-unit-mins" style="flex:1;">Minutes</button>
         </div>
       </div>
-      <div style="display:flex;gap:10px;margin-top:6px;">
+
+      <div style="display:flex;gap:10px;margin-top:16px;">
         <button class="btn" id="cancel-add-ex" style="flex:1;">Cancel</button>
-        <button class="btn btn-primary" id="save-add-ex" style="flex:2;">Add exercise</button>
+        <button class="btn btn-primary" id="save-add-ex" style="flex:2;" disabled>Add exercise</button>
       </div>
     </div>`;
   document.body.appendChild(overlay);
+
   const selected = new Set();
   let isTimed = false;
   let timedUnit = 'secs';
+
+  function validate() {
+    const name = overlay.querySelector('#new-ex-name').value.trim();
+    const intent = overlay.querySelector('#new-ex-intent').value;
+    const nameErr = overlay.querySelector('#new-ex-name-err');
+    const muscleErr = overlay.querySelector('#new-ex-muscles-err');
+    let valid = true;
+
+    if (!name) { nameErr.textContent = '⚠ Name is required'; valid = false; }
+    else { nameErr.textContent = ''; }
+
+    if (!selected.size) { muscleErr.textContent = '⚠ Pick at least one muscle'; valid = false; }
+    else { muscleErr.textContent = ''; }
+
+    if (!intent) valid = false;
+
+    overlay.querySelector('#save-add-ex').disabled = !valid;
+    overlay.querySelector('#save-add-ex').style.opacity = valid ? '1' : '0.4';
+  }
+
+  overlay.querySelector('#new-ex-name').addEventListener('input', validate);
+
   overlay.querySelectorAll('.muscle-check').forEach(chip => chip.addEventListener('click', () => {
     const m = chip.dataset.m;
-    if (selected.has(m)) { selected.delete(m); chip.classList.remove('on'); } else { selected.add(m); chip.classList.add('on'); }
+    if (selected.has(m)) { selected.delete(m); chip.classList.remove('on'); }
+    else { selected.add(m); chip.classList.add('on'); }
+    validate();
   }));
+
+  overlay.querySelector('#new-ex-intent').addEventListener('change', () => {
+    const val = overlay.querySelector('#new-ex-intent').value;
+    const hint = overlay.querySelector('#new-ex-intent-hint');
+    const sel = overlay.querySelector('#new-ex-intent');
+    if (val) {
+      const intent = EXERCISE_INTENTS.find(i => i.value === val);
+      hint.style.color = 'var(--text-faint)';
+      hint.innerHTML = `Trains: <span style="color:${intent.color};">${intent.label}</span> → raises your <strong>${intent.stat}</strong> cap`;
+      sel.style.borderColor = 'rgba(61,165,255,0.2)';
+    } else {
+      hint.style.color = 'var(--excess)';
+      hint.textContent = '⚠ Required — determines which stat Training Cap grows when you log this exercise';
+      sel.style.borderColor = 'var(--excess)';
+    }
+    validate();
+  });
+
   overlay.querySelector('#new-type-reps').addEventListener('click', () => {
     isTimed = false;
     overlay.querySelector('#new-type-reps').classList.add('on');
@@ -10533,21 +11296,32 @@ function openAddExerciseModal() {
     overlay.querySelector('#new-unit-mins').classList.add('on');
     overlay.querySelector('#new-unit-secs').classList.remove('on');
   });
+
   overlay.querySelector('#cancel-add-ex').addEventListener('click', () => overlay.remove());
   overlay.querySelector('#save-add-ex').addEventListener('click', async () => {
-    const name = document.getElementById('new-ex-name').value.trim();
-    if (!name || !selected.size) { showToast('Give it a name and pick at least one muscle.', 'error'); return; }
+    const name = overlay.querySelector('#new-ex-name').value.trim();
+    const intent = overlay.querySelector('#new-ex-intent').value;
+    if (!name || !selected.size || !intent) { validate(); return; }
+    const btn = overlay.querySelector('#save-add-ex');
+    btn.disabled = true; btn.textContent = 'Saving…';
     const muscles = {}; selected.forEach(m => muscles[m] = 1);
-    const equipment = document.getElementById('new-ex-equip').value;
-    await addDoc(collection(db, 'customExercises'), {
-      name, muscles, equipment,
-      timed: isTimed || null,
-      timedUnit: isTimed ? timedUnit : null,
-      addedBy: currentUser.uid, createdAt: serverTimestamp()
-    });
-    overlay.remove();
-    await loadAllData();
-    switchView('exercises');
+    const equipment = overlay.querySelector('#new-ex-equip').value;
+    try {
+      await addDoc(collection(db, 'customExercises'), {
+        name, muscles, equipment, intent,
+        timed: isTimed,
+        timedUnit: isTimed ? timedUnit : null,
+        addedBy: currentUser.uid, createdAt: serverTimestamp()
+      });
+      overlay.remove();
+      await loadAllData();
+      rebuildExercisesAll();
+      renderExerciseLibrary();
+      showToast(`${name} added to your library.`, 'success');
+    } catch(e) {
+      btn.disabled = false; btn.textContent = 'Add exercise';
+      showToast(`Failed: ${e.message}`, 'error');
+    }
   });
 }
 
@@ -10560,23 +11334,42 @@ function openEditExerciseModal(name) {
   const currentMuscles = new Set(Object.keys(currentDef.muscles || {}));
   const currentTimed = !!currentDef.timed;
   const currentUnit = currentDef.timedUnit || 'secs';
+  const currentIntent = currentDef.intent || '';
+  const isBroken = !currentIntent; // missing intent = broken for XP system
+
   overlay.innerHTML = `
     <div class="modal">
-      <h3>Edit exercise</h3>
-      ${isBaseExercise ? `<p style="font-size:12px;color:var(--text-dim);margin:-8px 0 14px;">This ships with the app by default — your changes are saved as a personal override and only affect your own tracking.</p>` : ''}
+      <p class="system-eyebrow" style="color:rgba(61,165,255,0.5);font-family:var(--font-mono);font-size:9px;letter-spacing:0.15em;margin-bottom:12px;">◈ EDIT EXERCISE ◈</p>
+      <h3 style="margin:0 0 4px;">Edit Exercise</h3>
+      ${isBaseExercise ? `<p style="font-size:12px;color:var(--text-dim);margin:0 0 12px;">Default exercise — changes saved as personal override.</p>` : ''}
+      ${isBroken ? `<div style="background:rgba(255,61,90,0.08);border:1px solid rgba(255,61,90,0.3);border-radius:6px;padding:10px 12px;margin-bottom:14px;font-size:12px;color:var(--excess);">
+        ⚠ This exercise is missing required data and won't contribute XP to your stat caps correctly. Set the training type below to fix it.
+      </div>` : ''}
+
       <div class="field">
         <label>Name</label>
         <input value="${escapeHtml(name)}" disabled style="opacity:0.6;" />
-        <p style="font-size:11.5px;color:var(--text-faint);margin:6px 0 0;">Name can't be changed — it's how your logged workouts and program days reference this exercise.</p>
+        <p style="font-size:11px;color:var(--text-faint);margin:4px 0 0;">Name can't be changed — it links to your logged workouts.</p>
       </div>
-      <div class="field"><label>Muscles worked (tap to select)</label>
+
+      <div class="field">
+        <label>Muscles worked <span style="color:var(--excess);font-size:10px;">required</span></label>
         <div class="muscle-checks" id="edit-ex-muscles">${MUSCLES.map(m => `<span class="muscle-check ${currentMuscles.has(m) ? 'on' : ''}" data-m="${m}">${m}</span>`).join('')}</div>
+        <div id="edit-ex-muscles-err" style="font-size:11px;color:var(--excess);margin-top:3px;min-height:14px;"></div>
       </div>
-      <div class="field"><label>Equipment</label>
+
+      <div class="field">
+        <label>Equipment</label>
         <select id="edit-ex-equip">${EQUIPMENT_TYPES.map(e => `<option value="${e}" ${e===currentDef.equipment?'selected':''}>${e}</option>`).join('')}</select>
       </div>
+
       <div class="field">
-        <label>Exercise type</label>
+        <label>Training type <span style="color:var(--excess);font-size:10px;">required</span></label>
+        ${buildIntentSelect('edit-ex-intent', currentIntent)}
+      </div>
+
+      <div class="field">
+        <label>Rep / time format</label>
         <div style="display:flex;gap:8px;margin-top:4px;">
           <button type="button" class="weekday-chip ${!currentTimed?'on':''}" id="edit-type-reps" style="flex:1;">Reps</button>
           <button type="button" class="weekday-chip ${currentTimed?'on':''}" id="edit-type-timed" style="flex:1;">Timed</button>
@@ -10589,19 +11382,53 @@ function openEditExerciseModal(name) {
           <button type="button" class="weekday-chip ${currentUnit==='mins'?'on':''}" id="edit-unit-mins" style="flex:1;">Minutes</button>
         </div>
       </div>
-      <div style="display:flex;gap:10px;margin-top:6px;">
+
+      <div style="display:flex;gap:10px;margin-top:16px;">
         <button class="btn" id="cancel-edit-ex" style="flex:1;">Cancel</button>
         <button class="btn btn-primary" id="save-edit-ex" style="flex:2;">Save changes</button>
       </div>
-      ${existingOverride ? `<button class="btn" id="delete-edit-ex" style="width:100%;margin-top:10px;color:var(--excess);border-color:var(--excess);">${isBaseExercise ? 'Revert to default' : 'Delete this exercise'}</button>` : ''}
+      ${existingOverride ? `<button class="btn" id="delete-edit-ex" style="width:100%;margin-top:10px;color:var(--excess);border-color:var(--excess);">${isBaseExercise ? 'Revert to default' : 'Delete exercise'}</button>` : ''}
     </div>`;
   document.body.appendChild(overlay);
   const selected = new Set(currentMuscles);
   let isTimed = currentTimed;
   let timedUnit = currentUnit;
+
+  function validateEdit() {
+    const intent = overlay.querySelector('#edit-ex-intent').value;
+    const muscleErr = overlay.querySelector('#edit-ex-muscles-err');
+    let valid = true;
+    if (!selected.size) { muscleErr.textContent = '⚠ Pick at least one muscle'; valid = false; }
+    else { muscleErr.textContent = ''; }
+    if (!intent) valid = false;
+    const btn = overlay.querySelector('#save-edit-ex');
+    btn.disabled = !valid;
+    btn.style.opacity = valid ? '1' : '0.4';
+  }
+
+  overlay.querySelector('#edit-ex-intent').addEventListener('change', () => {
+    const val = overlay.querySelector('#edit-ex-intent').value;
+    const hint = overlay.querySelector('#edit-ex-intent-hint');
+    const sel = overlay.querySelector('#edit-ex-intent');
+    if (val) {
+      const intent = EXERCISE_INTENTS.find(i => i.value === val);
+      hint.style.color = 'var(--text-faint)';
+      hint.innerHTML = `Trains: <span style="color:${intent.color};">${intent.label}</span> → raises your <strong>${intent.stat}</strong> cap`;
+      sel.style.borderColor = 'rgba(61,165,255,0.2)';
+    } else {
+      hint.style.color = 'var(--excess)';
+      hint.textContent = '⚠ Required — determines which stat Training Cap grows when you log this exercise';
+      sel.style.borderColor = 'var(--excess)';
+    }
+    validateEdit();
+  });
+
+  // Run initial validation
+  validateEdit();
   overlay.querySelectorAll('.muscle-check').forEach(chip => chip.addEventListener('click', () => {
     const m = chip.dataset.m;
     if (selected.has(m)) { selected.delete(m); chip.classList.remove('on'); } else { selected.add(m); chip.classList.add('on'); }
+    validateEdit();
   }));
   overlay.querySelector('#edit-type-reps').addEventListener('click', () => {
     isTimed = false;
@@ -10633,11 +11460,11 @@ function openEditExerciseModal(name) {
     btn.disabled = true; btn.textContent = 'Saving…';
     const muscles = {}; selected.forEach(m => muscles[m] = 1);
     const equipment = document.getElementById('edit-ex-equip').value;
-    // Explicitly save timed as boolean false (not null) so rebuildExercisesAll
-    // correctly treats it as non-timed when switching from timed → reps.
+    const intent = document.getElementById('edit-ex-intent').value || null;
     const data = {
       muscles,
       equipment,
+      intent,
       timed: isTimed ? true : false,
       timedUnit: isTimed ? timedUnit : null,
     };
@@ -10757,6 +11584,736 @@ async function checkAndUnlockAchievements() {
 }
 
 let featsActiveTab = 'achievements'; // 'achievements' | 'chains' | 'goals'
+
+/* =========================================================================
+   INVENTORY SYSTEM
+   Items earned through Trial Keys and milestone achievements.
+   Displayed on anatomy SVG as equipment overlay.
+   ========================================================================= */
+
+const ITEM_DEFINITIONS = {
+  // ── WEAPON (Strength/Skill) ──
+  weapon_str_1: { slot:'weapon', stat:'strength', tier:1, rarity:'Common',    name:'Worn Iron Sword',       desc:'The System has acknowledged your first effort.', dmgMult:1.1, polish:{ light:10, normal:20, hard:35, trial:60 } },
+  weapon_str_2: { slot:'weapon', stat:'strength', tier:2, rarity:'Uncommon',  name:'Steel Longsword',       desc:'Forged through consistent effort.', dmgMult:1.2 },
+  weapon_str_3: { slot:'weapon', stat:'strength', tier:3, rarity:'Rare',      name:'Reinforced Greatsword', desc:'Intermediate strength confirmed.', dmgMult:1.35 },
+  weapon_str_4: { slot:'weapon', stat:'strength', tier:4, rarity:'Epic',      name:'Shadow Blade',          desc:'Advanced power — the iron does not lie.', dmgMult:1.5 },
+  weapon_str_5: { slot:'weapon', stat:'strength', tier:5, rarity:'Legendary', name:"Monarch's Edge",        desc:'Elite strength. The dungeon fears this weapon.', dmgMult:1.75 },
+  weapon_foc_1: { slot:'weapon', stat:'focus',    tier:1, rarity:'Common',    name:'Carved Wooden Staff',   desc:'First steps into the skill domain.', dmgMult:1.1 },
+  weapon_foc_2: { slot:'weapon', stat:'focus',    tier:2, rarity:'Uncommon',  name:'Iron Bo Staff',         desc:'The System recognises your commitment to craft.', dmgMult:1.2 },
+  weapon_foc_3: { slot:'weapon', stat:'focus',    tier:3, rarity:'Rare',      name:'Reinforced Combat Staff',desc:'Intermediate skill confirmed.', dmgMult:1.35 },
+  weapon_foc_4: { slot:'weapon', stat:'focus',    tier:4, rarity:'Epic',      name:'Shadow Spear',          desc:'Advanced skill — mastery of what most cannot attempt.', dmgMult:1.5 },
+  weapon_foc_5: { slot:'weapon', stat:'focus',    tier:5, rarity:'Legendary', name:'Void Lance',            desc:'Elite skill. The System recognises true mastery.', dmgMult:1.75 },
+  // ── ARMOUR (Defence/Endurance) ──
+  armour_1: { slot:'armour', stat:'defence',   tier:1, rarity:'Common',    name:'Cloth Wraps',      desc:'Basic protection. The body begins to armour itself.', dmgMult:1.1 },
+  armour_2: { slot:'armour', stat:'defence',   tier:2, rarity:'Uncommon',  name:'Leather Armour',   desc:'Consistent supplementary work detected.', dmgMult:1.2 },
+  armour_3: { slot:'armour', stat:'defence',   tier:3, rarity:'Rare',      name:'Chain Armour',     desc:'A complete physique is beginning to form.', dmgMult:1.35 },
+  armour_4: { slot:'armour', stat:'defence',   tier:4, rarity:'Epic',      name:'Shadow Plate',     desc:'Advanced physique development confirmed.', dmgMult:1.5 },
+  armour_5: { slot:'armour', stat:'defence',   tier:5, rarity:'Legendary', name:"Monarch's Aegis",  desc:'Elite physique. The dungeon cannot pierce this armour.', dmgMult:1.75 },
+  // ── BOOTS (Agility/Flexibility) ──
+  boots_1: { slot:'boots', stat:'agility', tier:1, rarity:'Common',    name:'Worn Running Shoes', desc:'First agility training detected.', dmgMult:1.1 },
+  boots_2: { slot:'boots', stat:'agility', tier:2, rarity:'Uncommon',  name:'Lightweight Boots',  desc:'Consistent movement work confirmed.', dmgMult:1.2 },
+  boots_3: { slot:'boots', stat:'agility', tier:3, rarity:'Rare',      name:'Swift Greaves',      desc:'Intermediate agility — pistol squat or climbing mastered.', dmgMult:1.35 },
+  boots_4: { slot:'boots', stat:'agility', tier:4, rarity:'Epic',      name:'Shadow Steps',       desc:'Advanced movement confirmed.', dmgMult:1.5 },
+  boots_5: { slot:'boots', stat:'agility', tier:5, rarity:'Legendary', name:'Void Treads',        desc:'Elite agility. Faster than the dungeon can track.', dmgMult:1.75 },
+  // ── ACCESSORY (Focus) ──
+  accessory_1: { slot:'accessory', stat:'focus', tier:1, rarity:'Common',    name:'Frayed Bracer',        desc:'First skill awareness detected.', dmgMult:1.1 },
+  accessory_2: { slot:'accessory', stat:'focus', tier:2, rarity:'Uncommon',  name:'Iron Bracer',          desc:'Consistent skill training confirmed.', dmgMult:1.2 },
+  accessory_3: { slot:'accessory', stat:'focus', tier:3, rarity:'Rare',      name:'Reinforced Bracer',    desc:'Intermediate skill mastery.', dmgMult:1.35 },
+  accessory_4: { slot:'accessory', stat:'focus', tier:4, rarity:'Epic',      name:'Shadow Bracer',        desc:'Advanced skill — the System watches with interest.', dmgMult:1.5 },
+  accessory_5: { slot:'accessory', stat:'focus', tier:5, rarity:'Legendary', name:'Void Bracer',          desc:'Elite skill control. The dungeon has no answer for this.', dmgMult:1.75 },
+};
+
+const RARITY_GLOW = {
+  Common:    { color:'rgba(160,160,160,0.6)', glow:'none', label:'Common' },
+  Uncommon:  { color:'rgba(78,205,120,0.8)',  glow:'0 0 8px rgba(78,205,120,0.4)', label:'Uncommon' },
+  Rare:      { color:'rgba(61,165,255,0.9)',  glow:'0 0 12px rgba(61,165,255,0.5)', label:'Rare' },
+  Epic:      { color:'rgba(139,107,255,0.9)', glow:'0 0 16px rgba(139,107,255,0.6)', label:'Epic' },
+  Legendary: { color:'rgba(255,215,0,1.0)',   glow:'0 0 24px rgba(255,215,0,0.7), 0 0 48px rgba(255,215,0,0.3)', label:'Legendary' },
+};
+
+// Infer retroactive inventory from workout history
+function inferInventoryFromWorkouts() {
+  if (!allWorkouts || !currentUser) return {};
+  const myWOs = allWorkouts.filter(w => w.uid === currentUser.uid);
+  if (!myWOs.length) return {};
+
+  const inventory = {};
+
+  // Count skill tier exercises
+  const eliteTier = new Set();
+  const advTier   = new Set();
+  const noviceTier= new Set();
+  let defenceSetCount = 0;
+  let cardioSessions  = 0;
+  let hasClimbing     = false;
+  let hasPistol       = false;
+  let hasGermanHang   = false;
+  let bestPullupReps  = 0;
+
+  const compoundLifts = new Set(['Barbell Row','Deadlift','Squat','Bench Press','Overhead Press',
+    'Front Squat','Lat Pulldown','Wide Neutral-Grip Lat Pulldown','Seated Cable Row','Pendlay Row']);
+  let compoundCount = 0;
+
+  const e1rms = {};
+  const bw = latestBodyweightKg() || 70;
+
+  myWOs.forEach(w => {
+    if ((w.exercises||[]).some(e => CARDIO_EXERCISES.has(e.name))) cardioSessions++;
+    (w.exercises||[]).forEach(ex => {
+      const tier = SKILL_TIERS[ex.name] || 1.0;
+      const validSets = (ex.sets||[]).filter(s=>s.reps>0);
+      if (!validSets.length) return;
+      if (tier >= 1.7) eliteTier.add(ex.name);
+      else if (tier >= 1.4) advTier.add(ex.name);
+      else if (tier >= 1.2) noviceTier.add(ex.name);
+      if (DEFENCE_EXERCISES.has(ex.name)) defenceSetCount += validSets.length;
+      if (['Top Rope Climbing','Bouldering','Sport Climbing'].includes(ex.name)) hasClimbing = true;
+      if (ex.name === 'Pistol Squat') hasPistol = true;
+      if (['German Hang','German hang'].includes(ex.name)) hasGermanHang = true;
+      if (compoundLifts.has(ex.name)) compoundCount++;
+      // track e1RM
+      validSets.filter(s=>s.weight>0).forEach(s => {
+        const val = e1rm(s.weight, s.reps);
+        if (!e1rms[ex.name] || val > e1rms[ex.name]) e1rms[ex.name] = val;
+      });
+      // bodyweight pull-ups
+      if (['Pull Up','Chin Up','Neutral Grip Pull Up'].includes(ex.name)) {
+        validSets.filter(s=>!s.weight||Math.abs(s.weight-bw)<5).forEach(s => {
+          bestPullupReps = Math.max(bestPullupReps, s.reps);
+        });
+      }
+    });
+  });
+
+  // Best strength ratio
+  let bestStrRatio = 0;
+  Object.entries(e1rms).forEach(([name, val]) => {
+    const ratio = val / bw;
+    let adj = ratio * (compoundLifts.has(name) ? 0.9 : 0.65);
+    if (adj > bestStrRatio) bestStrRatio = adj;
+  });
+  if (bestPullupReps >= 15) bestStrRatio = Math.max(bestStrRatio, 1.3);
+  else if (bestPullupReps >= 10) bestStrRatio = Math.max(bestStrRatio, 1.05);
+  else if (bestPullupReps >= 5) bestStrRatio = Math.max(bestStrRatio, 0.75);
+
+  // ── WEAPON ──
+  const isSkillFocused = eliteTier.size >= 1 || advTier.size >= 2;
+  if (isSkillFocused) {
+    let tier = 0;
+    if (eliteTier.size >= 3) tier = 4;
+    else if (eliteTier.size >= 1) tier = 3;
+    else if (advTier.size >= 3) tier = 2;
+    else if (advTier.size >= 1) tier = 1;
+    if (tier > 0) {
+      const key = `weapon_foc_${tier}`;
+      inventory.weapon = { ...ITEM_DEFINITIONS[key], condition:90, earnedFromWorkouts:true };
+    }
+  } else if (compoundCount >= 3 || bestStrRatio > 0.5) {
+    let tier = 0;
+    if (bestStrRatio >= 1.5) tier = 5;
+    else if (bestStrRatio >= 1.25) tier = 4;
+    else if (bestStrRatio >= 1.0)  tier = 3;
+    else if (bestStrRatio >= 0.75) tier = 2;
+    else if (bestStrRatio >= 0.5)  tier = 1;
+    if (tier > 0) {
+      const key = `weapon_str_${tier}`;
+      inventory.weapon = { ...ITEM_DEFINITIONS[key], condition:90, earnedFromWorkouts:true };
+    }
+  } else if (bestPullupReps >= 10) {
+    inventory.weapon = { ...ITEM_DEFINITIONS['weapon_str_2'], condition:85, earnedFromWorkouts:true };
+  } else if (bestPullupReps >= 1 || compoundCount >= 1) {
+    inventory.weapon = { ...ITEM_DEFINITIONS['weapon_str_1'], condition:85, earnedFromWorkouts:true };
+  }
+
+  // ── ARMOUR ──
+  if (defenceSetCount >= 20)     inventory.armour = { ...ITEM_DEFINITIONS['armour_3'], condition:85, earnedFromWorkouts:true };
+  else if (defenceSetCount >= 10) inventory.armour = { ...ITEM_DEFINITIONS['armour_2'], condition:85, earnedFromWorkouts:true };
+  else if (defenceSetCount >= 3)  inventory.armour = { ...ITEM_DEFINITIONS['armour_1'], condition:85, earnedFromWorkouts:true };
+
+  // ── BOOTS ──
+  if (hasPistol && eliteTier.size >= 1)   inventory.boots = { ...ITEM_DEFINITIONS['boots_3'], condition:85, earnedFromWorkouts:true };
+  else if (hasPistol)                      inventory.boots = { ...ITEM_DEFINITIONS['boots_3'], condition:85, earnedFromWorkouts:true };
+  else if (hasClimbing)                    inventory.boots = { ...ITEM_DEFINITIONS['boots_2'], condition:85, earnedFromWorkouts:true };
+  else if (hasGermanHang || advTier.size >= 2) inventory.boots = { ...ITEM_DEFINITIONS['boots_1'], condition:80, earnedFromWorkouts:true };
+
+  // ── ACCESSORY ──
+  if (eliteTier.size >= 3)      inventory.accessory = { ...ITEM_DEFINITIONS['accessory_4'], condition:90, earnedFromWorkouts:true };
+  else if (eliteTier.size >= 1) inventory.accessory = { ...ITEM_DEFINITIONS['accessory_3'], condition:90, earnedFromWorkouts:true };
+  else if (advTier.size >= 3)   inventory.accessory = { ...ITEM_DEFINITIONS['accessory_3'], condition:85, earnedFromWorkouts:true };
+  else if (advTier.size >= 1)   inventory.accessory = { ...ITEM_DEFINITIONS['accessory_2'], condition:85, earnedFromWorkouts:true };
+  else if (bestPullupReps >= 10)inventory.accessory = { ...ITEM_DEFINITIONS['accessory_1'], condition:80, earnedFromWorkouts:true };
+
+  return inventory;
+}
+
+function getEffectiveInventory() {
+  // Merge Firestore inventory with retroactive inference
+  const stored  = profile.inventory || {};
+  const inferred = inferInventoryFromWorkouts();
+  const result   = {};
+  const slots = ['weapon','armour','boots','accessory','ring','aura'];
+  slots.forEach(slot => {
+    // Stored item takes precedence (higher tier wins)
+    const s = stored[slot];
+    const i = inferred[slot];
+    if (s && i) {
+      result[slot] = s.tier >= i.tier ? s : i;
+    } else {
+      result[slot] = s || i || null;
+    }
+  });
+  return result;
+}
+
+// Check item decay
+function getItemCondition(item, slot) {
+  if (!item) return 0;
+  if (!item.lastPolished) return item.condition || 100;
+  const daysSince = (Date.now() - new Date(item.lastPolished).getTime()) / 86400000;
+  const decayPerDay = item.tier === 5 ? 8 : item.tier === 4 ? 5 : item.tier === 3 ? 3 : item.tier === 2 ? 2 : 1;
+  return Math.max(0, Math.min(100, (item.condition || 100) - Math.floor(daysSince * decayPerDay)));
+}
+
+// Polish an item (called after workout targeting that stat)
+async function polishItem(slot, rir) {
+  const inv = profile.inventory || {};
+  const item = inv[slot];
+  if (!item) return;
+  const restore = rir <= 1 ? 35 : rir <= 3 ? 20 : 10;
+  const current = getItemCondition(item, slot);
+  const newCondition = Math.min(100, current + restore);
+  const updates = { [`inventory.${slot}.condition`]: newCondition, [`inventory.${slot}.lastPolished`]: new Date().toISOString() };
+  await setDoc(doc(db, 'users', currentUser.uid), updates, { merge: true });
+  if (!profile.inventory) profile.inventory = {};
+  if (!profile.inventory[slot]) profile.inventory[slot] = item;
+  profile.inventory[slot].condition = newCondition;
+  profile.inventory[slot].lastPolished = new Date().toISOString();
+}
+
+/* =========================================================================
+   TRIAL KEYS SYSTEM
+   Weekly quests proving improvement in a specific stat domain.
+   Completing a trial gives Training XP burst + Hunter XP burst + item grant.
+   ========================================================================= */
+
+const TRIAL_DEFINITIONS = {
+  strength: {
+    stat: 'strength', icon:'⚔️', label:'Strength Trial',
+    color:'var(--brass)',
+    description:'Prove your strength. Log 3 sessions this week each containing a compound lift.',
+    requirement: { type:'compound_sessions', count:3 },
+    compoundExercises: new Set(['Bench Press','Squat','Deadlift','Overhead Press','Barbell Row',
+      'Front Squat','Romanian Deadlift','Incline Bench Press','Pull Up','Chin Up',
+      'Lat Pulldown','Wide Neutral-Grip Lat Pulldown','Dips','Ring Dips']),
+    reward: { trainingXP:50, hunterXP:300, itemSlot:'weapon', itemKey:'weapon_str' },
+  },
+  endurance: {
+    stat: 'endurance', icon:'🔥', label:'Endurance Trial',
+    color:'#FF3D5A',
+    description:'Prove your endurance. Complete 2 cardio sessions totalling 30+ minutes.',
+    requirement: { type:'cardio_sessions', count:2, minMinutes:30 },
+    reward: { trainingXP:40, hunterXP:250, itemSlot:'armour', itemKey:'armour' },
+  },
+  agility: {
+    stat: 'agility', icon:'⚡', label:'Agility Trial',
+    color:'var(--violet)',
+    description:'Prove your agility. Log 3 sessions containing explosive or skill movements.',
+    requirement: { type:'agility_sessions', count:3 },
+    agilityExercises: new Set(['Pistol Squat','Box Jump','Jump Squat','Hill Sprints','Sprinting',
+      'Burpee','Mountain Climber','Bear Crawl','Top Rope Climbing','Bouldering',
+      'Sport Climbing','Nordic Curl','Ring Dips','Muscle Up']),
+    reward: { trainingXP:45, hunterXP:280, itemSlot:'boots', itemKey:'boots' },
+  },
+  focus: {
+    stat: 'focus', icon:'🎯', label:'Focus Trial',
+    color:'#FFD700',
+    description:'Prove your focus. Log 3 sessions containing skill-tier exercises.',
+    requirement: { type:'skill_sessions', count:3, minTier:1.2 },
+    reward: { trainingXP:55, hunterXP:350, itemSlot:'accessory', itemKey:'accessory' },
+  },
+  flexibility: {
+    stat: 'flexibility', icon:'💫', label:'Flexibility Trial',
+    color:'#27AE60',
+    description:'Prove your flexibility. Complete 3 mobility sessions of 10+ minutes.',
+    requirement: { type:'mobility_sessions', count:3, minMinutes:10 },
+    mobilityExercises: new Set(['Front Splits','Side Splits','Middle Splits','Hip Mobility Routine',
+      'Full Body Stretching','Yoga','Pancake Stretch','Pike Stretch','Thoracic Mobility',
+      'German Hang','German hang','Shoulder Flexibility Training','Hip Flexor Stretch']),
+    reward: { trainingXP:40, hunterXP:250, itemSlot:'boots', itemKey:'boots' },
+  },
+  defence: {
+    stat: 'defence', icon:'🛡️', label:'Defence Trial',
+    color:'var(--growing)',
+    description:'Prove your physique completeness. Log 4 sessions containing isolation/supplementary work.',
+    requirement: { type:'defence_sessions', count:4 },
+    reward: { trainingXP:40, hunterXP:250, itemSlot:'armour', itemKey:'armour' },
+  },
+};
+
+// Check trial progress against recent workouts
+function checkTrialProgress(trial) {
+  if (!trial || !allWorkouts || !currentUser) return { progress:0, required:0, complete:false };
+  const def = TRIAL_DEFINITIONS[trial.stat];
+  if (!def) return { progress:0, required:0, complete:false };
+
+  const startDate = trial.startDate;
+  const myWOs = allWorkouts.filter(w =>
+    w.uid === currentUser.uid && w.date >= startDate
+  );
+
+  const req = def.requirement;
+  let progress = 0;
+
+  if (req.type === 'compound_sessions') {
+    progress = myWOs.filter(w =>
+      (w.exercises||[]).some(e => def.compoundExercises.has(e.name) && (e.sets||[]).some(s=>s.reps>0))
+    ).length;
+  } else if (req.type === 'cardio_sessions') {
+    progress = myWOs.filter(w =>
+      (w.exercises||[]).some(e => CARDIO_EXERCISES.has(e.name) && (e.sets||[]).some(s=>s.reps>0))
+    ).length;
+  } else if (req.type === 'agility_sessions') {
+    progress = myWOs.filter(w =>
+      (w.exercises||[]).some(e => def.agilityExercises.has(e.name) && (e.sets||[]).some(s=>s.reps>0))
+    ).length;
+  } else if (req.type === 'skill_sessions') {
+    progress = myWOs.filter(w =>
+      (w.exercises||[]).some(e => (SKILL_TIERS[e.name]||0) >= req.minTier && (e.sets||[]).some(s=>s.reps>0))
+    ).length;
+  } else if (req.type === 'mobility_sessions') {
+    progress = myWOs.filter(w =>
+      (w.exercises||[]).some(e => def.mobilityExercises.has(e.name) && (e.sets||[]).some(s=>s.reps>0))
+    ).length;
+  } else if (req.type === 'defence_sessions') {
+    progress = myWOs.filter(w =>
+      (w.exercises||[]).some(e => DEFENCE_EXERCISES.has(e.name) && (e.sets||[]).some(s=>s.reps>0))
+    ).length;
+  }
+
+  const required = req.count;
+  return { progress: Math.min(progress, required), required, complete: progress >= required };
+}
+
+// Auto-generate weakness trial on Monday
+async function maybeSpawnWeaknessTrial() {
+  if (!profile || !currentUser) return;
+  const activeTrial = profile.activeTrial;
+  if (activeTrial) return; // already has one
+
+  // Only spawn on Monday (or if no trial has ever spawned)
+  const today = new Date();
+  const dayOfWeek = today.getDay(); // 0=Sun, 1=Mon
+  const lastSpawn = profile.lastTrialSpawn;
+  const thisMonday = getMonday(today).toISOString().slice(0,10);
+  if (lastSpawn === thisMonday) return; // already spawned this week
+
+  // Find weakest stat from Training XP caps
+  const caps = profile.statTrainingXP || {};
+  const STATS_LIST = ['strength','endurance','agility','focus','flexibility','defence'];
+  const weakest = STATS_LIST.reduce((min, s) => (caps[s]||0) < (caps[min]||0) ? s : min, STATS_LIST[0]);
+
+  const trialDef = TRIAL_DEFINITIONS[weakest];
+  if (!trialDef) return;
+
+  const startDate = today.toISOString().slice(0,10);
+  const expiresDate = getMonday(new Date(today.getTime() + 7*86400000)).toISOString().slice(0,10);
+
+  const newTrial = {
+    stat: weakest,
+    type: 'weakness',
+    startDate,
+    expiresDate,
+    reward: trialDef.reward,
+    completed: false,
+    spawned: new Date().toISOString(),
+  };
+
+  await setDoc(doc(db, 'users', currentUser.uid), {
+    activeTrial: newTrial,
+    lastTrialSpawn: thisMonday,
+  }, { merge: true });
+  profile.activeTrial = newTrial;
+}
+
+function getMonday(date) {
+  const d = new Date(date);
+  const day = d.getDay();
+  const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+  return new Date(d.setDate(diff));
+}
+
+// Complete a trial — award XP, update cap, grant item
+async function completeTrial() {
+  if (!profile || !currentUser) return;
+  const trial = profile.activeTrial;
+  if (!trial || trial.completed) return;
+
+  const def = TRIAL_DEFINITIONS[trial.stat];
+  if (!def) return;
+
+  const reward = def.reward;
+  const currentCap = (profile.statTrainingXP || {})[trial.stat] || 0;
+  const newCap = currentCap + reward.trainingXP;
+
+  // Determine item to grant
+  const inv = getEffectiveInventory();
+  const existingItem = inv[reward.itemSlot];
+  const currentTier = existingItem ? existingItem.tier : 0;
+  // Grant tier based on current cap level
+  let grantTier = 1;
+  if (newCap >= 200) grantTier = 5;
+  else if (newCap >= 120) grantTier = 4;
+  else if (newCap >= 80) grantTier = 3;
+  else if (newCap >= 50) grantTier = 2;
+
+  const newItemKey = `${reward.itemKey}_${grantTier}`;
+  const newItem = ITEM_DEFINITIONS[newItemKey];
+
+  const updates = {
+    [`statTrainingXP.${trial.stat}`]: newCap,
+    hunterXP: (profile.hunterXP || 0) + reward.hunterXP,
+    'activeTrial.completed': true,
+    'activeTrial.completedAt': new Date().toISOString(),
+  };
+
+  // Grant item if it's better than what they have
+  if (newItem && (!existingItem || grantTier > existingItem.tier)) {
+    updates[`inventory.${reward.itemSlot}`] = {
+      ...newItem,
+      condition: 100,
+      earnedFromTrial: true,
+      earnedAt: new Date().toISOString(),
+      lastPolished: new Date().toISOString(),
+    };
+  }
+
+  await setDoc(doc(db, 'users', currentUser.uid), updates, { merge: true });
+  if (!profile.statTrainingXP) profile.statTrainingXP = {};
+  profile.statTrainingXP[trial.stat] = newCap;
+  profile.hunterXP = (profile.hunterXP || 0) + reward.hunterXP;
+  if (!profile.activeTrial) profile.activeTrial = {};
+  profile.activeTrial.completed = true;
+
+  // Clear trial after brief delay
+  setTimeout(async () => {
+    await setDoc(doc(db, 'users', currentUser.uid), { activeTrial: null }, { merge: true });
+    profile.activeTrial = null;
+    renderQuestFeed();
+    renderCharCard();
+  }, 3000);
+
+  showTrialClearBanner(def, reward, newItem, grantTier);
+}
+
+function showTrialClearBanner(def, reward, item, tier) {
+  const banner = document.createElement('div');
+  banner.style.cssText = `
+    position:fixed;top:0;left:0;right:0;bottom:0;
+    background:rgba(0,0,0,0.92);z-index:9999;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    animation:viewEnter 0.4s cubic-bezier(0.16,1,0.3,1) both;
+  `;
+  const rarityColors = ['','#aaa','#4ecd78','#3da5ff','#8b6bff','#ffd700'];
+  const rarity = ['','Common','Uncommon','Rare','Epic','Legendary'][tier] || 'Common';
+  const col = rarityColors[tier] || '#aaa';
+  banner.innerHTML = `
+    <div style="font-family:var(--font-mono);font-size:10px;color:${def.color};letter-spacing:0.2em;margin-bottom:16px;">◈ GATE CLEARED ◈</div>
+    <div style="font-size:60px;margin-bottom:8px;">${def.icon}</div>
+    <div style="font-family:var(--font-head);font-size:26px;font-weight:900;color:${def.color};margin-bottom:4px;">${def.label}</div>
+    <div style="font-size:13px;color:var(--text-dim);margin-bottom:24px;">The System acknowledges your progress.</div>
+    <div style="background:rgba(5,7,13,0.9);border:1px solid ${def.color}44;border-radius:8px;padding:16px;text-align:center;max-width:280px;margin-bottom:16px;">
+      <div style="font-family:var(--font-mono);font-size:10px;color:var(--text-faint);margin-bottom:8px;">REWARDS</div>
+      <div style="font-size:15px;color:var(--brass);margin-bottom:4px;">+${reward.hunterXP} Hunter XP</div>
+      <div style="font-size:13px;color:${def.color};">+${reward.trainingXP} ${def.stat.charAt(0).toUpperCase()+def.stat.slice(1)} Training XP</div>
+      ${item ? `<div style="margin-top:12px;padding-top:12px;border-top:1px solid rgba(255,255,255,0.08);">
+        <div style="font-size:11px;color:var(--text-faint);margin-bottom:4px;">ITEM GRANTED</div>
+        <div style="font-size:16px;font-weight:700;color:${col};">${item.name}</div>
+        <div style="font-size:10px;color:${col};opacity:0.7;">${rarity}</div>
+      </div>` : ''}
+    </div>
+    <button class="btn btn-primary" style="min-width:160px;" onclick="this.closest('div[style*=fixed]').remove()">Continue</button>
+  `;
+  document.body.appendChild(banner);
+  setTimeout(() => banner.remove(), 8000);
+}
+
+// Start a voluntary trial from Feats tab
+async function startVoluntaryTrial(stat) {
+  if (!profile || !currentUser) return;
+  if (profile.activeTrial) { showToast('You already have an active trial.', 'error'); return; }
+
+  // Check cooldown
+  const cooldowns = profile.trialCooldowns || {};
+  const lastCompleted = cooldowns[stat];
+  if (lastCompleted) {
+    const daysSince = (Date.now() - new Date(lastCompleted).getTime()) / 86400000;
+    if (daysSince < 28) {
+      showToast(`${stat} trial on cooldown — ${Math.ceil(28-daysSince)} days remaining.`, 'error');
+      return;
+    }
+  }
+
+  const today = new Date();
+  const expiresDate = new Date(today.getTime() + 7*86400000).toISOString().slice(0,10);
+  const def = TRIAL_DEFINITIONS[stat];
+
+  const newTrial = {
+    stat,
+    type: 'voluntary',
+    startDate: today.toISOString().slice(0,10),
+    expiresDate,
+    reward: def.reward,
+    completed: false,
+    spawned: new Date().toISOString(),
+  };
+
+  await setDoc(doc(db, 'users', currentUser.uid), { activeTrial: newTrial }, { merge: true });
+  profile.activeTrial = newTrial;
+  renderQuestFeed();
+  showToast(`${def.label} started — ${def.requirement.count} sessions required.`, 'success');
+}
+
+// Render the active trial card on the Quest tab
+function renderTrialCard() {
+  const el = document.getElementById('trial-card-slot');
+  if (!el) return;
+
+  const trial = profile?.activeTrial;
+  if (!trial) {
+    el.innerHTML = '';
+    return;
+  }
+
+  // Check if expired
+  const today = new Date().toISOString().slice(0,10);
+  if (trial.expiresDate && trial.expiresDate < today && !trial.completed) {
+    // Expired — clear it
+    setDoc(doc(db, 'users', currentUser.uid), { activeTrial: null }, { merge: true });
+    profile.activeTrial = null;
+    el.innerHTML = '';
+    return;
+  }
+
+  const def = TRIAL_DEFINITIONS[trial.stat];
+  if (!def) return;
+  const { progress, required, complete } = checkTrialProgress(trial);
+  const pct = Math.round((progress / required) * 100);
+
+  // Auto-complete if done
+  if (complete && !trial.completed) {
+    completeTrial();
+    return;
+  }
+
+  const daysLeft = trial.expiresDate
+    ? Math.max(0, Math.ceil((new Date(trial.expiresDate) - new Date()) / 86400000))
+    : 7;
+
+  el.innerHTML = `
+    <div style="
+      background:linear-gradient(145deg,rgba(17,27,46,0.98),rgba(9,14,26,0.99));
+      border:1px solid ${def.color}44;border-radius:8px;padding:16px;margin-top:12px;
+      box-shadow:0 0 20px ${def.color}11;
+      animation:viewEnter 0.4s cubic-bezier(0.16,1,0.3,1) both;
+    ">
+      <div style="font-family:var(--font-mono);font-size:9px;color:${def.color};letter-spacing:0.15em;margin-bottom:8px;">
+        ◈ SYSTEM TRIAL — ${trial.type === 'weakness' ? 'WEAKNESS DETECTED' : 'VOLUNTARY'} ◈
+      </div>
+      <div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:12px;">
+        <div style="font-size:28px;flex-shrink:0;">${def.icon}</div>
+        <div style="flex:1;min-width:0;">
+          <div style="font-family:var(--font-head);font-size:17px;font-weight:800;color:${def.color};margin-bottom:4px;">${def.label}</div>
+          <div style="font-size:12px;color:var(--text-dim);line-height:1.6;">${def.description}</div>
+        </div>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+        <span style="font-family:var(--font-mono);font-size:10px;color:var(--text-faint);">Progress</span>
+        <span style="font-family:var(--font-mono);font-size:12px;color:${def.color};">${progress} / ${required}</span>
+      </div>
+      <div style="height:6px;background:rgba(61,165,255,0.08);border-radius:3px;overflow:hidden;margin-bottom:8px;">
+        <div style="width:${pct}%;height:100%;background:${def.color};border-radius:3px;transition:width 0.8s ease;box-shadow:0 0 8px ${def.color};"></div>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <div style="font-size:10px;color:var(--text-faint);">
+          Reward: <span style="color:var(--brass);">+${def.reward.hunterXP} XP</span> · <span style="color:${def.color};">+${def.reward.trainingXP} ${def.stat} cap</span>
+        </div>
+        <div style="font-family:var(--font-mono);font-size:9px;color:${daysLeft <= 2 ? 'var(--excess)' : 'var(--text-faint)'};">
+          ${daysLeft}d left
+        </div>
+      </div>
+    </div>`;
+}
+
+function renderInventory() {
+  const el = document.getElementById('inventory-content');
+  if (!el) return;
+  const inv = getEffectiveInventory();
+  const SLOTS = [
+    { key:'weapon',    label:'Weapon',    emoji:'⚔️', bodyRegion:'hands',  stat:'strength/focus',   hint:'Complete a Strength or Skill trial' },
+    { key:'armour',    label:'Armour',    emoji:'🛡️', bodyRegion:'torso',  stat:'defence/endurance', hint:'Complete a Defence trial' },
+    { key:'boots',     label:'Boots',     emoji:'👟', bodyRegion:'feet',   stat:'agility/flexibility',hint:'Complete an Agility trial' },
+    { key:'accessory', label:'Accessory', emoji:'🧠', bodyRegion:'wrist',  stat:'focus',             hint:'Complete a Focus trial' },
+    { key:'ring',      label:'Ring',      emoji:'💍', bodyRegion:'finger', stat:'any',               hint:'Complete an Archetype chain' },
+    { key:'aura',      label:'Aura',      emoji:'✨', bodyRegion:'full',   stat:'legendary',         hint:'Earn a Legendary achievement' },
+  ];
+
+  const STAT_COLORS = { strength:'var(--brass)', focus:'#FFD700', defence:'var(--growing)', agility:'var(--violet)', endurance:'#FF3D5A', flexibility:'#27AE60' };
+
+  // Check for decay warnings
+  const decayWarnings = SLOTS.map(s => {
+    const item = inv[s.key];
+    if (!item) return null;
+    const cond = getItemCondition(item, s.key);
+    if (cond < 50) return { ...s, item, condition:cond };
+    return null;
+  }).filter(Boolean);
+
+  // Anatomy SVG body with equipment overlays
+  const bodyHtml = `
+    <div style="position:relative;width:100%;max-width:320px;margin:0 auto 20px;">
+      <!-- Body silhouette -->
+      <svg viewBox="0 0 200 400" style="width:100%;opacity:0.4;" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <!-- Head -->
+        <ellipse cx="100" cy="45" rx="22" ry="26" fill="rgba(61,165,255,0.15)" stroke="rgba(61,165,255,0.3)" stroke-width="1.5"/>
+        <!-- Neck -->
+        <rect x="91" y="68" width="18" height="14" rx="4" fill="rgba(61,165,255,0.1)" stroke="rgba(61,165,255,0.2)" stroke-width="1"/>
+        <!-- Torso -->
+        <rect x="68" y="80" width="64" height="100" rx="8" fill="rgba(61,165,255,0.1)" stroke="rgba(61,165,255,0.2)" stroke-width="1.5"/>
+        <!-- Left arm -->
+        <rect x="38" y="82" width="28" height="80" rx="10" fill="rgba(61,165,255,0.08)" stroke="rgba(61,165,255,0.2)" stroke-width="1"/>
+        <ellipse cx="48" cy="170" rx="10" ry="12" fill="rgba(61,165,255,0.08)" stroke="rgba(61,165,255,0.2)" stroke-width="1"/>
+        <!-- Right arm -->
+        <rect x="134" y="82" width="28" height="80" rx="10" fill="rgba(61,165,255,0.08)" stroke="rgba(61,165,255,0.2)" stroke-width="1"/>
+        <ellipse cx="152" cy="170" rx="10" ry="12" fill="rgba(61,165,255,0.08)" stroke="rgba(61,165,255,0.2)" stroke-width="1"/>
+        <!-- Left leg -->
+        <rect x="72" y="178" width="24" height="100" rx="8" fill="rgba(61,165,255,0.08)" stroke="rgba(61,165,255,0.2)" stroke-width="1"/>
+        <rect x="72" y="275" width="24" height="50" rx="6" fill="rgba(61,165,255,0.08)" stroke="rgba(61,165,255,0.2)" stroke-width="1"/>
+        <!-- Right leg -->
+        <rect x="104" y="178" width="24" height="100" rx="8" fill="rgba(61,165,255,0.08)" stroke="rgba(61,165,255,0.2)" stroke-width="1"/>
+        <rect x="104" y="275" width="24" height="50" rx="6" fill="rgba(61,165,255,0.08)" stroke="rgba(61,165,255,0.2)" stroke-width="1"/>
+      </svg>
+
+      <!-- Equipment overlays positioned on body -->
+      ${SLOTS.map(s => {
+        const item = inv[s.key];
+        const cond = item ? getItemCondition(item, s.key) : 0;
+        const rarity = item ? RARITY_GLOW[item.rarity] : null;
+        const condAlpha = cond / 100;
+        const POSITIONS = {
+          weapon:    'position:absolute;right:0;top:45%;transform:translateY(-50%)',
+          armour:    'position:absolute;left:50%;top:22%;transform:translateX(-50%)',
+          boots:     'position:absolute;left:50%;bottom:0;transform:translateX(-50%)',
+          accessory: 'position:absolute;left:0;top:45%;transform:translateY(-50%)',
+          ring:      'position:absolute;left:8%;top:38%;transform:translateY(-50%)',
+          aura:      'position:absolute;top:0;left:0;right:0;bottom:0;pointer-events:none',
+        };
+        if (s.key === 'aura') return item
+          ? `<div style="${POSITIONS.aura};border:2px solid ${rarity.color};border-radius:8px;box-shadow:${rarity.glow};animation:awakePulse 2s ease-in-out infinite;opacity:${condAlpha};"></div>`
+          : '';
+
+        return `<div class="inv-slot-overlay" data-slot="${s.key}" style="${POSITIONS[s.key]}">
+          ${item ? `
+            <div style="
+              background:rgba(5,7,13,0.9);
+              border:1px solid ${rarity.color};
+              border-radius:8px;padding:8px;text-align:center;cursor:pointer;
+              box-shadow:${rarity.glow};
+              opacity:${0.5 + condAlpha*0.5};
+              transition:all .2s;
+              ${cond < 25 ? 'animation:timerPulse 1.5s ease-in-out infinite;' : ''}
+            ">
+              <div style="font-size:20px;">${s.emoji}</div>
+              <div style="font-size:8px;font-family:var(--font-mono);color:${rarity.color};letter-spacing:0.04em;margin-top:2px;">${item.rarity}</div>
+              ${cond < 50 ? `<div style="font-size:8px;color:var(--excess);margin-top:2px;">⚠ ${cond}%</div>` : `<div style="font-size:8px;color:var(--text-faint);margin-top:2px;">${cond}%</div>`}
+            </div>
+          ` : `
+            <div style="
+              border:1px dashed rgba(61,165,255,0.2);
+              border-radius:8px;padding:8px;text-align:center;cursor:pointer;
+              opacity:0.4;transition:opacity .2s;
+            " onmouseover="this.style.opacity='0.7'" onmouseout="this.style.opacity='0.4'">
+              <div style="font-size:20px;filter:grayscale(1);">${s.emoji}</div>
+              <div style="font-size:8px;font-family:var(--font-mono);color:var(--text-faint);margin-top:2px;">EMPTY</div>
+            </div>
+          `}
+        </div>`;
+      }).join('')}
+    </div>`;
+
+  // Item detail cards
+  const itemCards = SLOTS.map(s => {
+    const item = inv[s.key];
+    const cond = item ? getItemCondition(item, s.key) : 0;
+    const rarity = item ? RARITY_GLOW[item.rarity] : null;
+    const condColor = cond >= 75 ? 'var(--growing)' : cond >= 50 ? 'var(--brass)' : cond >= 25 ? '#FF9500' : 'var(--excess)';
+    const condLabel = cond >= 75 ? 'Pristine' : cond >= 50 ? 'Worn' : cond >= 25 ? 'Deteriorating' : 'Critical';
+
+    return `<div style="
+      background:linear-gradient(145deg,rgba(17,27,46,0.98),rgba(9,14,26,0.99));
+      border:1px solid ${item ? rarity.color+'44' : 'rgba(61,165,255,0.08)'};
+      border-radius:8px;padding:14px;margin-bottom:10px;
+      box-shadow:${item ? rarity.glow.replace(/rgba/g,'rgba').replace(/0\.[0-9]+\)/g, m => (parseFloat(m.slice(0,-1))*0.3)+')') : 'none'};
+    ">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <div style="font-size:28px;flex-shrink:0;">${s.emoji}</div>
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:10px;font-family:var(--font-mono);color:var(--text-faint);letter-spacing:0.08em;">${s.label.toUpperCase()}</div>
+          ${item ? `
+            <div style="font-size:15px;font-weight:700;color:${rarity.color};margin:2px 0;">${item.name}</div>
+            <div style="font-size:10px;font-family:var(--font-mono);color:${rarity.color};opacity:0.7;">${item.rarity} · Tier ${item.tier}</div>
+          ` : `
+            <div style="font-size:14px;color:var(--text-faint);">Empty slot</div>
+            <div style="font-size:10px;color:var(--text-faint);margin-top:2px;">${s.hint}</div>
+          `}
+        </div>
+        ${item ? `<div style="text-align:right;flex-shrink:0;">
+          <div style="font-size:11px;color:${condColor};font-family:var(--font-mono);">${cond}%</div>
+          <div style="font-size:9px;color:${condColor};">${condLabel}</div>
+          <div style="width:48px;height:3px;background:rgba(61,165,255,0.1);border-radius:2px;margin-top:4px;overflow:hidden;">
+            <div style="width:${cond}%;height:100%;background:${condColor};border-radius:2px;transition:width 0.8s;"></div>
+          </div>
+        </div>` : ''}
+      </div>
+      ${item ? `
+        <div style="margin-top:10px;font-size:11px;color:var(--text-dim);font-style:italic;line-height:1.5;">"${item.desc}"</div>
+        <div style="margin-top:8px;display:flex;justify-content:space-between;font-family:var(--font-mono);font-size:9px;color:var(--text-faint);">
+          <span>Boss weakness bonus: ×${item.dmgMult}</span>
+          ${item.earnedFromWorkouts ? '<span style="color:var(--growing);">◈ Auto-granted from training history</span>' : ''}
+        </div>
+        ${cond < 50 ? `<div style="margin-top:8px;padding:6px 10px;background:rgba(255,61,90,0.08);border:1px solid rgba(255,61,90,0.2);border-radius:4px;font-size:10px;color:var(--excess);">
+          ⚠ This item needs polishing — log a ${item.stat} session to restore it
+        </div>` : ''}
+      ` : ''}
+    </div>`;
+  }).join('');
+
+  // Decay warning card
+  const decayCard = decayWarnings.length ? `
+    <div style="background:rgba(255,61,90,0.06);border:1px solid rgba(255,61,90,0.2);border-radius:8px;padding:14px;margin-bottom:14px;">
+      <div style="font-family:var(--font-mono);font-size:9px;color:var(--excess);letter-spacing:0.1em;margin-bottom:8px;">◈ SYSTEM WARNING — EQUIPMENT DETERIORATING ◈</div>
+      ${decayWarnings.map(w => `
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+          <span style="font-size:12px;">${w.emoji} ${w.item.name}</span>
+          <span style="font-family:var(--font-mono);font-size:11px;color:${w.condition < 25 ? 'var(--excess)' : '#FF9500'};">${w.condition}%</span>
+        </div>
+        <div style="height:3px;background:rgba(255,61,90,0.1);border-radius:2px;margin-bottom:8px;">
+          <div style="width:${w.condition}%;height:100%;background:${w.condition<25?'var(--excess)':'#FF9500'};border-radius:2px;${w.condition<25?'animation:timerPulse 1.5s infinite;':''}"></div>
+        </div>
+      `).join('')}
+      <div style="font-size:11px;color:var(--text-dim);">Log sessions targeting these stats to restore condition.</div>
+    </div>` : '';
+
+  el.innerHTML = `
+    <div style="padding-bottom:8px;">
+      <p class="system-eyebrow" style="color:rgba(61,165,255,0.5);font-family:var(--font-mono);font-size:9px;letter-spacing:0.15em;margin-bottom:4px;">◈ HUNTER INVENTORY ◈</p>
+      <h2 style="font-family:var(--font-head);font-size:22px;font-weight:800;margin:0 0 4px;">Equipment</h2>
+      <p style="font-size:12px;color:var(--text-faint);margin:0 0 16px;">Items earned through trials and achievements. Maintained through consistent training.</p>
+
+      ${decayCard}
+      ${bodyHtml}
+      ${itemCards}
+    </div>`;
+}
 
 function renderFeats() {
   const el = document.getElementById('feats-content');
