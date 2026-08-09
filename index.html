@@ -10817,6 +10817,19 @@ function renderTrends() {
         <input type="number" step="0.1" id="weight-input" placeholder="Log today's weight (kg)" inputmode="decimal" />
         <button class="btn btn-sm" id="weight-save-btn">Save</button>
       </div>
+      <!-- Entry list with edit/delete -->
+      <div id="weight-entries-list" style="margin-top:12px;">
+        ${[...myWeights].reverse().map(e => `
+          <div class="weight-entry-row" data-id="${e.id}" style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid rgba(61,165,255,0.06);">
+            <span style="font-family:var(--font-mono);font-size:10px;color:var(--text-faint);flex-shrink:0;">${e.date}</span>
+            <span class="weight-entry-val" style="font-family:var(--font-mono);font-size:13px;color:var(--text);flex:1;">${e.weight} kg</span>
+            <input class="weight-entry-input hidden" type="number" step="0.1" inputmode="decimal" value="${e.weight}"
+              style="flex:1;background:var(--card-2);border:1px solid var(--brass);border-radius:4px;color:var(--text);padding:4px 8px;font-size:13px;font-family:var(--font-mono);" />
+            <button class="btn btn-sm weight-edit-btn" data-id="${e.id}" style="font-size:11px;padding:3px 8px;">✎</button>
+            <button class="btn btn-sm weight-save-edit-btn hidden" data-id="${e.id}" style="font-size:11px;padding:3px 8px;color:var(--growing);border-color:var(--growing);">✓</button>
+            <button class="btn btn-sm weight-delete-btn" data-id="${e.id}" style="font-size:11px;padding:3px 8px;color:var(--excess);border-color:var(--excess);">🗑</button>
+          </div>`).join('')}
+      </div>
     </div>
 
     <div class="card">
@@ -10854,7 +10867,6 @@ function renderTrends() {
     const val = Number(document.getElementById('weight-input').value);
     if (!val) return;
     const today = todayStr();
-    // Check if there's already an entry for today — overwrite it instead of adding a new one
     const existing = myWeights.find(w => w.date === today && w.uid === currentUser.uid);
     if (existing && existing.id) {
       await setDoc(doc(db, 'bodyweight', existing.id), { uid: currentUser.uid, date: today, weight: val, createdAt: serverTimestamp() });
@@ -10864,6 +10876,48 @@ function renderTrends() {
     await setDoc(doc(db, 'users', currentUser.uid), { bodyweightKg: val }, { merge: true });
     profile.bodyweightKg = val;
     await loadAllData(); trendsView='dashboard'; renderTrends();
+  });
+
+  // Weight entry edit/delete buttons
+  document.querySelectorAll('.weight-edit-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const row = btn.closest('.weight-entry-row');
+      row.querySelector('.weight-entry-val').classList.add('hidden');
+      row.querySelector('.weight-entry-input').classList.remove('hidden');
+      row.querySelector('.weight-save-edit-btn').classList.remove('hidden');
+      btn.classList.add('hidden');
+    });
+  });
+
+  document.querySelectorAll('.weight-save-edit-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const row = btn.closest('.weight-entry-row');
+      const id = btn.dataset.id;
+      const val = Number(row.querySelector('.weight-entry-input').value);
+      if (!val) return;
+      btn.disabled = true; btn.textContent = '…';
+      await setDoc(doc(db, 'bodyweight', id), { uid: currentUser.uid, weight: val }, { merge: true });
+      // If this is the latest entry also update profile bodyweightKg
+      const entry = myWeights.find(e => e.id === id);
+      const isLatest = myWeights[myWeights.length - 1]?.id === id;
+      if (isLatest) {
+        await setDoc(doc(db, 'users', currentUser.uid), { bodyweightKg: val }, { merge: true });
+        profile.bodyweightKg = val;
+      }
+      await loadAllData(); trendsView='dashboard'; renderTrends();
+    });
+  });
+
+  document.querySelectorAll('.weight-delete-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const id = btn.dataset.id;
+      const row = btn.closest('.weight-entry-row');
+      const dateLabel = row.querySelector('span').textContent;
+      if (!confirm(`Delete weight entry for ${dateLabel}?`)) return;
+      btn.disabled = true;
+      await deleteDoc(doc(db, 'bodyweight', id));
+      await loadAllData(); trendsView='dashboard'; renderTrends();
+    });
   });
 }
 
