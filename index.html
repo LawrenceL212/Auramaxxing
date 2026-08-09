@@ -1301,7 +1301,13 @@
   .lib-filters{display:flex;gap:8px;margin-bottom:14px;overflow-x:auto;padding-bottom:4px;}
   .lib-filters select{background:var(--card-2);border:1px solid var(--border);color:var(--brass);padding:9px 12px;border-radius:20px;font-size:12.5px;white-space:nowrap;}
   .ex-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
-  .ex-card{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:12px;position:relative;}
+  .ex-card{
+    background:var(--card);border:1px solid var(--border);border-radius:8px;padding:12px;position:relative;
+    transition:transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+    animation:exCardIn 0.4s cubic-bezier(0.16,1,0.3,1) both;
+  }
+  .ex-card:hover{transform:translateY(-2px);border-color:rgba(93,157,255,0.3);box-shadow:0 4px 20px rgba(93,157,255,0.1);}
+  @keyframes exCardIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
   .ex-card .ex-name{font-size:14px;font-weight:600;margin:0 0 4px;line-height:1.25;}
   .ex-card .ex-muscle{font-size:12px;color:var(--brass);margin:0 0 6px;}
   .ex-card .ex-equip{font-size:10.5px;color:var(--text-faint);background:var(--card-2);display:inline-block;padding:3px 8px;border-radius:4px;}
@@ -1363,11 +1369,21 @@
   .cal-cell{aspect-ratio:1;display:flex;align-items:center;justify-content:center;border-radius:50%;font-size:13px;color:var(--text-dim);position:relative;cursor:pointer;}
   .cal-cell.today{border:1px solid var(--brass);color:var(--text);}
   .cal-cell.selected{background:var(--brass-dim);color:var(--brass);font-weight:700;}
-  .cal-cell .dot{position:absolute;bottom:2px;width:4px;height:4px;border-radius:50%;background:var(--brass);}
+  .cal-cell .dot{position:absolute;bottom:2px;width:4px;height:4px;border-radius:50%;}
+  .cal-cell .dot-trained{background:var(--growing);box-shadow:0 0 4px var(--growing);}
+  .cal-cell .dot-rest{background:rgba(93,157,255,0.4);border-radius:2px;width:6px;height:3px;bottom:2px;}
+  .cal-cell .dot-skipped{background:var(--excess);opacity:0.6;}
   .history-day{margin-bottom:20px;}
-  .history-date{font-size:12px;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:8px;}
+  .history-date{font-size:12px;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:8px;animation:fadeInDown 0.3s ease both;}
   .history-card-header{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;}
   .history-detail-btn{background:none;border:none;color:var(--brass);font-size:13px;cursor:pointer;padding:4px 0;white-space:nowrap;flex-shrink:0;}
+  /* History cards animate in */
+  .card.history-card{
+    animation:historyCardIn 0.4s cubic-bezier(0.16,1,0.3,1) both;
+    transition:transform 0.15s, box-shadow 0.15s;
+  }
+  .card.history-card:hover{transform:translateY(-1px);box-shadow:0 4px 16px rgba(93,157,255,0.08);}
+  @keyframes historyCardIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
   .detail-exercise{margin-bottom:16px;}
   .detail-ex-name{font-size:14px;font-weight:700;margin:0 0 6px;color:var(--text);}
   .detail-sets-head{display:grid;grid-template-columns:22px 1fr 1fr 1fr;gap:8px;padding:0 2px 4px;font-size:10px;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.05em;}
@@ -1380,16 +1396,28 @@
   .feat-card{
     background:var(--card);border:1px solid var(--border);border-radius:8px;
     padding:14px;margin-bottom:10px;display:flex;align-items:center;gap:14px;
-    position:relative;overflow:hidden;transition:border-color 0.2s;
+    position:relative;overflow:hidden;transition:border-color 0.2s, transform 0.2s, box-shadow 0.2s;
+    animation:featCardIn 0.4s cubic-bezier(0.16,1,0.3,1) both;
   }
+  @keyframes featCardIn{from{opacity:0;transform:translateX(-8px)}to{opacity:1;transform:translateX(0)}}
+  .feat-card:hover{transform:translateX(2px);}
   .feat-card.unlocked{border-color:rgba(61,165,255,0.4);}
+  .feat-card.unlocked:hover{box-shadow:0 0 16px rgba(61,165,255,0.1);}
   .feat-card.unlocked::before{
     content:"";position:absolute;inset:0;
     background:linear-gradient(135deg,rgba(61,165,255,0.05),transparent 60%);
     pointer-events:none;
   }
   .feat-card.legendary.unlocked{border-color:rgba(255,215,0,0.5);}
+  .feat-card.legendary.unlocked:hover{box-shadow:0 0 24px rgba(255,215,0,0.15);}
   .feat-card.legendary.unlocked::before{background:linear-gradient(135deg,rgba(255,215,0,0.07),transparent 60%);}
+  /* Shimmer on legendary unlocked */
+  .feat-card.legendary.unlocked::after{
+    content:"";position:absolute;top:0;left:-100%;width:40%;height:100%;
+    background:linear-gradient(90deg,transparent,rgba(255,215,0,0.06),transparent);
+    animation:legendaryShimmer 3s ease-in-out infinite;pointer-events:none;
+  }
+  @keyframes legendaryShimmer{0%{left:-100%}50%{left:150%}100%{left:150%}}
   .feat-icon{
     width:44px;height:44px;border-radius:8px;display:flex;align-items:center;
     justify-content:center;font-size:22px;flex-shrink:0;
@@ -8598,152 +8626,242 @@ async function renderRaidBoss() {
   const now = new Date();
   const weekStart = startOfWeek(now);
   const weekEnd = new Date(weekStart); weekEnd.setDate(weekEnd.getDate()+7);
+  const lastWeekStart = new Date(weekStart); lastWeekStart.setDate(lastWeekStart.getDate()-7);
+
+  // This week's workouts (for damage calculation)
   const weekWorkouts = allWorkouts.filter(w => { const d = new Date(w.date); return d >= weekStart && d < weekEnd; });
+  // Last week's workouts (for boss assignment — boss is determined by last week's training)
+  const lastWeekWorkouts = allWorkouts.filter(w => { const d = new Date(w.date); return d >= lastWeekStart && d < weekStart; });
+
   const allDates = allWorkouts.map(w => w.date).sort();
   const partyStartDate = allDates.length ? new Date(allDates[0]) : now;
-  const weekDaysSinceStart = Math.min(7, Math.max(1, Math.ceil((now - Math.max(weekStart.getTime(), partyStartDate.getTime())) / 86400000)));
   const isFirstWeek = partyStartDate >= weekStart;
-  const totalRaids = weekWorkouts.length;
   const daysLeft = Math.max(0, Math.ceil((weekEnd - now) / 86400000));
   const daysPassed = 7 - daysLeft;
-  const partyPower = allUsers.length ? Math.round(allUsers.reduce((s,u) => s + getUserPowerLevel(u), 0) / allUsers.length) : 0;
-  const bossTier = partyPower > 7500 ? 'S' : partyPower > 4500 ? 'A' : partyPower > 2100 ? 'B' : partyPower > 900 ? 'C' : partyPower > 300 ? 'D' : 'E';
+
+  // ── Boss difficulty from average party hunter level + volume modifier ──
+  const avgHunterLevel = allUsers.length
+    ? allUsers.reduce((s,u) => s + (u.hunterLevel || 1), 0) / allUsers.length
+    : 1;
+  const baseTier = avgHunterLevel >= 200 ? 'S'
+    : avgHunterLevel >= 100 ? 'A'
+    : avgHunterLevel >= 50  ? 'B'
+    : avgHunterLevel >= 25  ? 'C'
+    : avgHunterLevel >= 10  ? 'D'
+    : 'E';
+
+  // Volume modifier — if party trained especially hard this week, upgrade tier
+  const weeklyXP = weekWorkouts.reduce((s,w) => {
+    return s + (w.exercises||[]).reduce((es,ex) =>
+      es + (ex.sets||[]).filter(s=>s.reps>0).length * 5, 0);
+  }, 0);
+  const TIER_XP_THRESHOLD = { E:300, D:900, C:2400, B:6000, A:20000, S:Infinity };
+  const TIER_ORDER = ['E','D','C','B','A','S'];
+  const tierIdx = TIER_ORDER.indexOf(baseTier);
+  let bossTier = baseTier;
+  if (weeklyXP > (TIER_XP_THRESHOLD[baseTier] || 300) * 1.5 && tierIdx < 5) {
+    bossTier = TIER_ORDER[tierIdx + 1]; // upgrade
+  } else if (weeklyXP < (TIER_XP_THRESHOLD[baseTier] || 300) * 0.5 && tierIdx > 0) {
+    bossTier = TIER_ORDER[tierIdx - 1]; // downgrade
+  }
+
   const BOSS_DATA = {
     E: { name:'Goblin Scout',              rank:'E-Rank Gate', desc:'A lone creature from the lowest dungeon. Weak — but a real test for new hunters.',       color:'var(--text-dim)',    weakness:'strength',    weaknessLabel:'⚔️ Strength',    weaknessDesc:'Heavy compound lifts deal bonus damage' },
     D: { name:'Stone Golem',               rank:'D-Rank Gate', desc:'An awakened construct of ancient rock. Brittle at its joints — heavy loads crack it.',    color:'var(--brass)',       weakness:'strength',    weaknessLabel:'⚔️ Strength',    weaknessDesc:'Compound lifts crack its armour for bonus damage' },
     C: { name:'Iron Shadow',               rank:'C-Rank Gate', desc:'A shadow creature that flows through rigid bodies. Only range of motion can catch it.',   color:'#64B5F6',            weakness:'flexibility', weaknessLabel:'🌊 Flexibility', weaknessDesc:'Mobility & stretching work deals bonus damage' },
     B: { name:'Void Warden',               rank:'B-Rank Gate', desc:'A guardian built to outlast. It wins by attrition — endurance is its only weakness.',    color:'var(--violet)',      weakness:'endurance',   weaknessLabel:'🔥 Endurance',   weaknessDesc:'Cardio & sustained effort deals bonus damage' },
-    A: { name:"Monarch's Shadow",         rank:'A-Rank Gate', desc:"A fragment of the Shadow Monarch. Blindingly fast — only agility can match it.",         color:'var(--excess)',      weakness:'agility',     weaknessLabel:'⚡ Agility',     weaknessDesc:'Explosive & speed training deals bonus damage' },
+    A: { name:"Monarch's Shadow",          rank:'A-Rank Gate', desc:"A fragment of the Shadow Monarch. Blindingly fast — only agility can match it.",         color:'var(--excess)',      weakness:'agility',     weaknessLabel:'⚡ Agility',     weaknessDesc:'Explosive & speed training deals bonus damage' },
     S: { name:'Antares the Sovereign Beast',rank:'S-Rank Gate',desc:'The dungeon has recognised your power. This is not a test — this is war.',               color:'#FFD700',            weakness:'all',         weaknessLabel:'💀 No weakness', weaknessDesc:'Full weekly goal required. No damage bonus' },
   };
 
-  // Weekly rotating named boss for E/D tier — different weakness each week
-  const weekNum = Math.floor((Date.now() / 86400000 - 4) / 7);
   const NAMED_BOSSES = [
-    { name:'Cursed Archer',      weakness:'agility',     weaknessLabel:'⚡ Agility',     color:'#F0D000',  desc:'A dungeon archer of supernatural speed. Match it or be overwhelmed.' },
-    { name:'Stone Sentinel',     weakness:'strength',    weaknessLabel:'⚔️ Strength',    color:'#D4A017',  desc:'An immovable guardian. Only raw power can break its stance.' },
-    { name:'Tide Leviathan',     weakness:'endurance',   weaknessLabel:'🔥 Endurance',   color:'#2980B9',  desc:'A creature of the deep that outlasts all challengers. Outlast it back.' },
-    { name:'Mirror Phantom',     weakness:'focus',       weaknessLabel:'🎯 Focus',       color:'#9B59B6',  desc:'A phantom that copies your weaknesses. Precision and skill cut through it.' },
-    { name:'Coiled Serpent',     weakness:'flexibility', weaknessLabel:'🌊 Flexibility', color:'#27AE60',  desc:'A creature of fluid motion. Only those who can bend will not break.' },
-    { name:'Abyssal Titan',      weakness:'strength',    weaknessLabel:'⚔️ Strength',    color:'#C0392B',  desc:'A colossus from the lowest floor. Lift heavy. Hit harder.' },
-    { name:'Storm Specter',      weakness:'agility',     weaknessLabel:'⚡ Agility',     color:'#F97316',  desc:'Moves faster than sight. Explosive training narrows the gap.' },
-    { name:'Void Crawler',       weakness:'endurance',   weaknessLabel:'🔥 Endurance',   color:'#1ABC9C',  desc:'It does not fight. It waits. Your cardio decides who wins.' },
-    { name:'Ancient Warden',     weakness:'focus',       weaknessLabel:'🎯 Focus',       color:'#A78BFA',  desc:'A creature of ancient patience. Skill work is the key.' },
-    { name:'Iron Serpent',       weakness:'flexibility', weaknessLabel:'🌊 Flexibility', color:'#E8D5B7',  desc:'Rigid hunters fall. Mobile hunters survive.' },
-    { name:'Phantom Executioner',weakness:'agility',     weaknessLabel:'⚡ Agility',     color:'#E74C3C',  desc:'A shadow that strikes before you see it. Train your reflexes.' },
-    { name:'Dungeon Colossus',   weakness:'strength',    weaknessLabel:'⚔️ Strength',    color:'#7F8C8D',  desc:'A mountain given form. The only answer is more weight.' },
-    { name:'Abyss Stalker',      weakness:'endurance',   weaknessLabel:'🔥 Endurance',   color:'#06B6D4',  desc:'It hunts through attrition. Build your engine or be consumed.' },
-    { name:'Crystal Wraith',     weakness:'flexibility', weaknessLabel:'🌊 Flexibility', color:'#F0ABFC',  desc:'A creature of brittle beauty. Range of motion shatters it.' },
+    { name:'Cursed Archer',       weakness:'agility',     weaknessLabel:'⚡ Agility',     color:'#F0D000' },
+    { name:'Stone Sentinel',      weakness:'strength',    weaknessLabel:'⚔️ Strength',    color:'#D4A017' },
+    { name:'Tide Leviathan',      weakness:'endurance',   weaknessLabel:'🔥 Endurance',   color:'#2980B9' },
+    { name:'Mirror Phantom',      weakness:'focus',       weaknessLabel:'🎯 Focus',       color:'#9B59B6' },
+    { name:'Coiled Serpent',      weakness:'flexibility', weaknessLabel:'🌊 Flexibility', color:'#27AE60' },
+    { name:'Abyssal Titan',       weakness:'strength',    weaknessLabel:'⚔️ Strength',    color:'#C0392B' },
+    { name:'Storm Specter',       weakness:'agility',     weaknessLabel:'⚡ Agility',     color:'#F97316' },
+    { name:'Void Crawler',        weakness:'endurance',   weaknessLabel:'🔥 Endurance',   color:'#1ABC9C' },
+    { name:'Ancient Warden',      weakness:'focus',       weaknessLabel:'🎯 Focus',       color:'#A78BFA' },
+    { name:'Iron Serpent',        weakness:'flexibility', weaknessLabel:'🌊 Flexibility', color:'#E8D5B7' },
+    { name:'Phantom Executioner', weakness:'agility',     weaknessLabel:'⚡ Agility',     color:'#E74C3C' },
+    { name:'Dungeon Colossus',    weakness:'strength',    weaknessLabel:'⚔️ Strength',    color:'#7F8C8D' },
+    { name:'Abyss Stalker',       weakness:'endurance',   weaknessLabel:'🔥 Endurance',   color:'#06B6D4' },
+    { name:'Crystal Wraith',      weakness:'flexibility', weaknessLabel:'🌊 Flexibility', color:'#F0ABFC' },
   ];
-  const namedBoss = NAMED_BOSSES[weekNum % NAMED_BOSSES.length];
-  // For E and D tier, rotate the named boss weekly so there is variety
+
+  // ── Boss assignment from LAST WEEK's training (Option E hybrid) ──
+  // Find party's weakest stat last week → that becomes this week's boss weakness
+  function getLastWeekPartyStatXP() {
+    const statXP = { strength:0, focus:0, recovery:0, agility:0, endurance:0, flexibility:0 };
+    lastWeekWorkouts.forEach(w => {
+      (w.exercises||[]).forEach(ex => {
+        const exDef = EXERCISES_ALL[ex.name] || {};
+        const weights = exDef.statWeights || {};
+        const sets = (ex.sets||[]).filter(s=>s.reps>0).length;
+        Object.entries(weights).forEach(([stat, w]) => {
+          if (statXP[stat] !== undefined) statXP[stat] += sets * w;
+        });
+      });
+    });
+    return statXP;
+  }
+
+  const lastWeekStatXP = getLastWeekPartyStatXP();
+  const weekNum = Math.floor((Date.now() / 86400000 - 4) / 7);
+
+  // Find weakest trained stat from last week (excluding recovery which isn't a boss weakness)
+  const bossStats = ['strength','agility','endurance','focus','flexibility'];
+  const weakestStat = bossStats.reduce((min, s) =>
+    lastWeekStatXP[s] < lastWeekStatXP[min] ? s : min, bossStats[0]);
+
+  // Option E: rotate through bosses but nudge toward the weakest stat
+  // Don't repeat the same weakness 2 weeks in a row
+  const lastWeekBossIdx = (weekNum - 1 + NAMED_BOSSES.length) % NAMED_BOSSES.length;
+  const lastWeakness = NAMED_BOSSES[lastWeekBossIdx].weakness;
+  const candidates = NAMED_BOSSES.filter((b,i) =>
+    i !== lastWeekBossIdx && // don't repeat last week
+    (b.weakness === weakestStat || Math.floor(i / 2) === weekNum % 7) // prefer weakness or rotation
+  );
+  const thisWeekBoss = candidates.length
+    ? candidates[weekNum % candidates.length]
+    : NAMED_BOSSES[weekNum % NAMED_BOSSES.length];
+
   const boss = (bossTier === 'E' || bossTier === 'D')
-    ? { ...BOSS_DATA[bossTier], name: namedBoss.name, weakness: namedBoss.weakness, weaknessLabel: namedBoss.weaknessLabel, color: namedBoss.color, desc: namedBoss.desc }
+    ? { ...BOSS_DATA[bossTier], name: thisWeekBoss.name, weakness: thisWeekBoss.weakness, weaknessLabel: thisWeekBoss.weaknessLabel, color: thisWeekBoss.color }
     : BOSS_DATA[bossTier];
 
-  // Stat rank → damage multiplier for matching weakness
-  const STAT_RANK_MULTIPLIER = { E:1.0, D:1.25, C:1.5, B:1.75, A:2.0, S:2.5 };
-  const WEAKNESS_STAT_MAP = { strength:'strength', agility:'agility', endurance:'endurance', focus:'focus', flexibility:'flexibility' };
-
-  function getUserStatRank(uid, statId) {
-    const user = allUsers.find(u => u.uid === uid);
-    return (user?.stats || {})[statId] || 'E';
-  }
-
-  function getWorkoutDamage(workout, weakness) {
-    if (weakness === 'all') return 1;
-    const exes = (workout.exercises || []);
-    const STRENGTH_EX    = new Set(['Squat','Deadlift','Bench Press','Overhead Press','Barbell Row','Pull Up','Chin Up','Dips','Romanian Deadlift','Sumo Deadlift','Hip Thrust','Push Press','Pendlay Row','T-Bar Row','Front Squat','Weighted Dip','Weighted Pull Up']);
-    const AGILITY_EX     = new Set(['Hill Sprints','Sprinting','Box Jump','Jump Squat','Burpee','Interval Running','Tempo Run','HIIT Swimming','Bouldering','Boxing — Bag Work','Boxing — Sparring','Boxing — Pad Work','Boxing — Shadow Boxing','Tennis','Tennis Drills','Basketball','Basketball Drills']);
-    const ENDURANCE_EX   = new Set(['Running','Easy Run','Long Run','Treadmill Run','Stair Climb','Jump Rope','Freestyle Swimming','Breaststroke Swimming','Butterfly Swimming','Backstroke Swimming','Open Water Swimming','Sport Climbing','Traditional Climbing','Top Rope Climbing','Football (Soccer)','Football Drills','Cycling','Road Cycling','Stationary Bike','Spin Class','Mountain Biking','Cycling Intervals']);
-    const FOCUS_EX       = new Set(['Lateral Raise','Cable Lateral Raise','Concentration Curl','Preacher Curl','L-Sit','Tuck Planche','Advanced Tuck Planche','Full Planche','Front Lever','Handstand Push Up','Face Pull','Incline Dumbbell Press','Cable Crossover','Single-Arm Cable Crossover']);
-    const FLEXIBILITY_EX = new Set(['Front Splits','Side Splits','Middle Splits','Pike Stretch','Hip Flexor Stretch','Pancake Stretch','Shoulder Flexibility Training','Thoracic Mobility','Hip Mobility Routine','Full Body Stretching','Yoga','German Hang','German Hang Progression']);
-    let totalSets = 0, weakSets = 0;
-    exes.forEach(ex => {
-      const sets = (ex.sets||[]).filter(s=>s.reps>0).length || 1;
-      totalSets += sets;
-      const map = { strength: STRENGTH_EX, agility: AGILITY_EX, endurance: ENDURANCE_EX, focus: FOCUS_EX, flexibility: FLEXIBILITY_EX };
-      if (map[weakness]?.has(ex.name)) weakSets += sets;
-    });
-    if (!totalSets) return 1;
-    const hitsWeakness = (weakSets / totalSets) >= 0.4;
-    if (!hitsWeakness) return 1;
-    const statId = WEAKNESS_STAT_MAP[weakness];
-    const statRank = statId ? getUserStatRank(workout.uid, statId) : 'E';
-    return STAT_RANK_MULTIPLIER[statRank] || 1.0;
-  }
+  // ── V2 Damage formula: absolute XP, personal share, multipliers ──
   const partySize = allUsers.length || 1;
-  // Total damage = sum of each workout's damage (1 base, 1.5 if hits boss weakness)
-  const totalDamage = weekWorkouts.reduce((sum, w) => sum + getWorkoutDamage(w, boss.weakness), 0);
-  const boostedRaids = weekWorkouts.filter(w => getWorkoutDamage(w, boss.weakness) > 1).length;
-  // Sum each member's weekly goal — that's the boss HP for the week
-  // Each workout = 1 raid = 1 damage. Clear when totalRaids >= bossMaxHP
-  const totalWeeklyGoal = Math.max(1, allUsers.reduce((s,u) => s + ((u.weeklyGoal)||3), 0));
-  // First week: scale HP by days remaining so it's always beatable
-  // e.g. started Thursday with 4 days left (Thu-Sun) → HP = round(totalGoal × 4/7)
-  const firstWeekFactor = isFirstWeek ? Math.min(1, (daysLeft + 1) / 7) : 1;
-  const bossMaxHP = Math.max(1, Math.round(totalWeeklyGoal * firstWeekFactor));
-  const bossHP = Math.max(0, bossMaxHP - totalDamage);
-  const bossHPpct = Math.max(0, (bossHP / bossMaxHP) * 100);
+  const PERSONAL_MIN_XP = 3 * 15 * 5; // 3 sessions × 15 sets × 5 XP = 225 XP minimum
+  const bossDisplayHP = 10; // always show out of 10 for clarity
+
+  function getHunterWeeklyXP(uid) {
+    return weekWorkouts.filter(w => w.uid === uid).reduce((s,w) => {
+      return s + (w.exercises||[]).reduce((es,ex) => {
+        return es + (ex.sets||[]).filter(s=>s.reps>0).reduce((ss,set) => {
+          const rm = Math.log((set.reps||1)+1) / Math.log(13);
+          const im = set.rir <= 1 ? 1.3 : set.rir <= 3 ? 1.0 : set.rir <= 5 ? 0.7 : 1.0;
+          return ss + Math.max(3, 5 * rm * im);
+        }, 0);
+      }, 0);
+    }, 0);
+  }
+
+  function getWeaknessMultiplier(uid, weakness) {
+    if (weakness === 'all') return 1.0;
+    const uWorkouts = weekWorkouts.filter(w => w.uid === uid);
+    let totalStatXP = 0, weakStatXP = 0;
+    uWorkouts.forEach(w => {
+      (w.exercises||[]).forEach(ex => {
+        const exDef = EXERCISES_ALL[ex.name] || {};
+        const weights = exDef.statWeights || {};
+        const sets = (ex.sets||[]).filter(s=>s.reps>0).length;
+        Object.entries(weights).forEach(([stat, w]) => {
+          totalStatXP += sets * w;
+          if (stat === weakness) weakStatXP += sets * w;
+        });
+      });
+    });
+    if (!totalStatXP) return 1.0;
+    if (weakStatXP / totalStatXP >= 0.3) return 1.5; // primary hit
+    if (weakStatXP / totalStatXP >= 0.15) return 1.2; // partial hit
+    return 1.0;
+  }
+
+  function getIntensityMultiplier(uid) {
+    const uWorkouts = weekWorkouts.filter(w => w.uid === uid);
+    let totalRIR = 0, count = 0;
+    uWorkouts.forEach(w => {
+      (w.exercises||[]).forEach(ex => {
+        (ex.sets||[]).filter(s=>s.reps>0).forEach(s => {
+          if (s.rir !== null && s.rir !== undefined) { totalRIR += s.rir; count++; }
+        });
+      });
+    });
+    if (!count) return 1.0;
+    const avgRIR = totalRIR / count;
+    return avgRIR <= 1 ? 1.3 : avgRIR <= 2 ? 1.15 : avgRIR <= 3 ? 1.0 : avgRIR <= 4 ? 0.85 : 0.7;
+  }
+
+  function getConsistencyMultiplier(uid) {
+    const u = allUsers.find(u => u.uid === uid);
+    const goal = u?.weeklyGoal || 3;
+    const scheduled = Math.min(goal, daysPassed); // scheduled days so far this week
+    if (!scheduled) return 1.0;
+    const completed = weekWorkouts.filter(w => w.uid === uid).length;
+    const ratio = completed / scheduled;
+    return ratio >= 1.0 ? 1.2 : ratio >= 0.8 ? 1.1 : ratio >= 0.5 ? 1.0 : 0.8;
+  }
+
+  function hasEliteSkill(uid) {
+    return weekWorkouts.filter(w => w.uid === uid).some(w =>
+      (w.exercises||[]).some(ex => (EXERCISES_ALL[ex.name]?.skillTier || 1.0) >= 1.5)
+    );
+  }
+
+  // Calculate final damage per hunter
+  const hunterDamage = {};
+  const hunterDetails = {};
+  allUsers.forEach(u => {
+    const weeklyXPu = getHunterWeeklyXP(u.uid);
+    const personalShare = bossDisplayHP / partySize; // each person owns their slice
+    const baseDamage = (weeklyXPu / PERSONAL_MIN_XP) * personalShare;
+    const weaknessMult = getWeaknessMultiplier(u.uid, boss.weakness);
+    const intensityMult = getIntensityMultiplier(u.uid);
+    const consistencyMult = getConsistencyMultiplier(u.uid);
+    const eliteBonus = hasEliteSkill(u.uid) ? 0.5 : 0;
+    const maxCap = weaknessMult > 1.0 ? personalShare * 2.0 : personalShare * 1.5;
+    const finalDamage = Math.min(maxCap, baseDamage * weaknessMult * intensityMult * consistencyMult) + eliteBonus;
+
+    hunterDamage[u.uid] = Math.max(0, finalDamage);
+    hunterDetails[u.uid] = {
+      weeklyXP: Math.round(weeklyXPu),
+      baseDamage: Math.round(baseDamage * 10) / 10,
+      weaknessMult, intensityMult: Math.round(intensityMult * 10) / 10,
+      consistencyMult: Math.round(consistencyMult * 10) / 10,
+      eliteBonus, finalDamage: Math.round(finalDamage * 10) / 10,
+      hitsWeakness: weaknessMult > 1.0,
+    };
+  });
+
+  const totalDamage = Object.values(hunterDamage).reduce((a,b) => a+b, 0);
+  const totalDamageForShares = totalDamage || 1;
+  const myDamage = hunterDamage[currentUser?.uid] || 0;
+  const mySharePct = (myDamage / totalDamageForShares) * 100;
+
+  // HP: boss has bossDisplayHP, reduce by total damage dealt
+  const bossHP = Math.max(0, bossDisplayHP - totalDamage);
+  const bossHPpct = Math.max(0, (bossHP / bossDisplayHP) * 100);
   const cleared = bossHP <= 0;
 
-  // ── Reward pool scales with boss tier ──
-  const RAID_REWARD_POOL = { E:60, D:80, C:100, B:140, A:200, S:300 };
-  const rewardPool = RAID_REWARD_POOL[bossTier] || 100;
+  // Projected clear indicator
+  const projectedDamage = daysPassed > 0 ? (totalDamage / daysPassed) * 7 : 0;
+  const onTrack = projectedDamage >= bossDisplayHP;
+  const closeCall = projectedDamage >= bossDisplayHP * 0.85;
 
-  // ── Per-hunter damage contribution ──
-  const hunterDamage = {};
-  allUsers.forEach(u => { hunterDamage[u.uid] = 0; });
-  weekWorkouts.forEach(w => {
-    const dmg = getWorkoutDamage(w, boss.weakness);
-    hunterDamage[w.uid] = (hunterDamage[w.uid] || 0) + dmg;
-  });
-  const totalDamageForShares = Object.values(hunterDamage).reduce((a,b)=>a+b,0) || 1;
-  const myDamage = hunterDamage[currentUser?.uid] || 0;
-  const mySharePct = totalDamageForShares > 0 ? (myDamage / totalDamageForShares) * 100 : 0;
+  // ── Reward pool scales with boss tier ──
+  const RAID_REWARD_POOL = { E:40, D:100, C:300, B:800, A:2000, S:5000 };
+  const rewardPool = RAID_REWARD_POOL[bossTier] || 40;
   const myShareAP = cleared ? Math.round((myDamage / totalDamageForShares) * rewardPool) : 0;
 
-  // ── Punishment pool mirrors reward pool — same tier scaling ──
-  const RAID_PENALTY_POOL = rewardPool; // same as reward — symmetric stakes
-  const partyCount = allUsers.length || 1;
-  const expectedShare = 1 / partyCount; // what each person should contribute
-
-  // Shortfall = how much below their fair share each person was
-  // If you contributed more than your fair share, shortfall = 0 (you're protected)
+  // ── Penalty ──
+  const RAID_PENALTY_POOL = rewardPool;
+  const expectedShare = 1 / partySize;
   const hunterShortfall = {};
   allUsers.forEach(u => {
     const actual = (hunterDamage[u.uid] || 0) / totalDamageForShares;
     hunterShortfall[u.uid] = Math.max(0, expectedShare - actual);
   });
   const totalShortfall = Object.values(hunterShortfall).reduce((a,b)=>a+b,0) || 1;
-
-  // Penalty share = your shortfall / total shortfall × penalty pool
-  // Floor protection only for hunters who consciously trained BEYOND their weekly goal
-  // Hitting your goal = shortfall naturally near 0 = fair penalty
-  // Exceeding goal = small floor so the extra effort isn't invisible even in defeat
   const getPenaltyShare = (uid) => {
-    const u = allUsers.find(u => u.uid === uid);
-    const memberGoal = u?.weeklyGoal || 3;
-    const memberWorkouts = weekWorkouts.filter(w => w.uid === uid).length;
-    const overloadRatio = memberWorkouts / memberGoal;
-    // floor only kicks in if you deliberately trained beyond your plan
-    const floor = overloadRatio >= 2
-      ? Math.round(RAID_PENALTY_POOL * 0.05)   // 5% — you went 2× your plan, acknowledged
-      : overloadRatio >= 1.5
-        ? Math.round(RAID_PENALTY_POOL * 0.10)  // 10% — you went 50% beyond plan
-        : 0;                                      // at/below goal — no floor, shortfall decides
-    const shortfallPenalty = totalShortfall > 0
-      ? Math.round((hunterShortfall[uid] / totalShortfall) * RAID_PENALTY_POOL)
-      : Math.round(RAID_PENALTY_POOL / partyCount);
-    return Math.max(floor, shortfallPenalty);
+    const shortfallPenalty = Math.round((hunterShortfall[uid] / totalShortfall) * RAID_PENALTY_POOL);
+    return shortfallPenalty;
   };
   const myPenaltyShare = !cleared ? getPenaltyShare(currentUser?.uid) : 0;
 
   // ── Award raid reward once per week ──
-  // Uses a Firestore transaction as the single source of truth for "already claimed this
-  // week" — NOT localStorage, which can be lost on cache clears, private browsing, or a
-  // different device, causing the exact double-award bug this replaced (56 = 38 + a second
-  // +18 raid credit after localStorage silently reset).
   if (cleared && currentUser) {
     const weekKey = `aura_raid_cleared_${startOfWeek(new Date()).toISOString().slice(0,10)}`;
     try {
@@ -8801,9 +8919,7 @@ async function renderRaidBoss() {
     } catch(e) { console.warn('Raid reward error:', e); }
   }
 
-  // ── Apply raid failure penalty — once per week, contribution-weighted ──
-  // Same Firestore-transaction pattern as the reward above — replaces the localStorage gate
-  // that could reset and double-apply a penalty.
+  // ── Raid failure penalty ──
   if (!cleared && currentUser && daysLeft === 0) {
     const penaltyKey = `aura_raid_penalty_${startOfWeek(new Date()).toISOString().slice(0,10)}`;
     try {
@@ -8823,32 +8939,13 @@ async function renderRaidBoss() {
           profile.auraPoints = Math.max(0, (profile.auraPoints || 0) - myPenaltyShare);
         }
         profile.lastRaidPenaltyWeek = penaltyKey;
-        const penaltyBreakdown = allUsers
-          .map(u => ({
-            name: u.displayName || 'Hunter',
-            dmg: hunterDamage[u.uid] || 0,
-            penalty: getPenaltyShare(u.uid),
-            isMe: u.uid === currentUser.uid,
-          }))
-          .sort((a,b) => b.penalty - a.penalty);
-        const penaltyHtml = penaltyBreakdown.map(h =>
-          `<div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid rgba(255,61,90,0.1);">
-            <span style="font-size:12px;color:${h.isMe?'var(--excess)':'var(--text-dim)'};">${h.isMe?'▶ ':''} ${escapeHtml(h.name)}</span>
-            <div style="display:flex;gap:12px;font-family:var(--font-mono);font-size:11px;">
-              <span style="color:var(--text-faint);">${h.dmg.toFixed(1)} dmg</span>
-              <span style="color:${h.penalty>30?'var(--excess)':h.penalty>15?'#FF9500':'var(--text-faint)'};">${h.penalty > 0 ? '-'+h.penalty+' AP' : 'protected'}</span>
-            </div>
-          </div>`
-        ).join('');
         setTimeout(() => {
           showSystemModal(`<div class="system-window">
             <p class="system-eyebrow" style="color:var(--excess);">◈ Gate Failed ◈</p>
             <div class="system-icon">💀</div>
             <h2 class="system-title" style="color:var(--excess);">${escapeHtml(boss.name)}</h2>
-            <p class="system-body">The dungeon gate held. The party has been judged.<br>Punishment scales with your absence.</p>
-            <div style="margin:12px 0;text-align:left;">${penaltyHtml}</div>
+            <p class="system-body">The dungeon gate held. The party has been judged.</p>
             <p class="system-detail" style="color:var(--excess);font-size:16px;">Your penalty: -${myPenaltyShare} AP</p>
-            ${myPenaltyShare <= Math.round(RAID_PENALTY_POOL * 0.05) ? '<p class="system-detail" style="color:var(--growing);font-size:11px;">You carried — your penalty is minimal.</p>' : ''}
             <button class="system-btn" style="border-color:var(--excess);color:var(--excess);">Acknowledged</button>
           </div>`);
           renderCharCard();
@@ -8856,24 +8953,46 @@ async function renderRaidBoss() {
       }
     } catch(e) { console.warn('Raid penalty error:', e); }
   }
-  const nextBoss = BOSS_DATA[bossTier];
-  const nextMaxHP = totalWeeklyGoal;
-  const bossPhase = cleared ? 'Defeated' : bossHPpct > 66 ? 'Unchallenged' : bossHPpct > 33 ? 'Weakening' : 'Critical — finish it';
-  const bossColor = cleared ? 'var(--growing)' : bossHPpct > 66 ? boss.color : bossHPpct > 33 ? '#FF9500' : 'var(--excess)';
-  const contributors = allUsers.map(u => {
-    const dmg = hunterDamage[u.uid] || 0;
-    const sharePct = totalDamageForShares > 0 ? (dmg / totalDamageForShares * 100) : 0;
-    const shareAP = cleared ? Math.round((dmg / totalDamageForShares) * rewardPool) : Math.round((dmg / totalDamageForShares) * rewardPool);
-    return { name: u.displayName||'Hunter', wCount: weekWorkouts.filter(w=>w.uid===u.uid).length, uid: u.uid, dmg, sharePct, shareAP };
-  }).sort((a,b)=>b.dmg-a.dmg);
 
-  // pre-build weakness badge outside template to avoid nested backtick issue
-  const weaknessBadge = (boss.weakness !== 'all' && !cleared)
-    ? '<div style="margin-top:8px;padding:5px 10px;background:rgba(255,215,0,0.08);border:1px solid rgba(255,215,0,0.25);border-radius:4px;display:inline-flex;align-items:center;gap:6px;"><span style="font-size:10px;font-family:var(--font-mono);color:#FFD700;letter-spacing:0.06em;">WEAKNESS: ' + boss.weaknessLabel + '</span></div>'
-    : '';
-  const boostLine = boostedRaids > 0
-    ? '<div style="font-size:10px;color:var(--growing);font-family:var(--font-mono);margin-top:4px;">⚡ ' + boostedRaids + ' raid' + (boostedRaids>1?'s':'') + ' hit the weakness \u2014 stat rank bonus applied</div>'
-    : '';
+  // ── UI ──
+  const bossPhase = cleared ? 'Defeated'
+    : bossHPpct > 66 ? 'Unchallenged'
+    : bossHPpct > 33 ? 'Weakening'
+    : 'Critical — finish it';
+  const bossColor = cleared ? 'var(--growing)'
+    : bossHPpct > 66 ? boss.color
+    : bossHPpct > 33 ? '#FF9500'
+    : 'var(--excess)';
+
+  const trackColor = onTrack ? 'var(--growing)' : closeCall ? '#FF9500' : 'var(--excess)';
+  const trackText = onTrack ? '✓ ON TRACK' : closeCall ? '⚠ CLOSE — PUSH HARDER' : '⚠ AT RISK — TRAIN MORE';
+
+  // Next week's boss preview (based on this week's training → determines next boss)
+  const nextWeekStatXP = getLastWeekPartyStatXP(); // reuse last week logic with this week's data
+  // (Sunday preview hint)
+  const isSunday = now.getDay() === 0;
+  const sundayPreview = isSunday ? (() => {
+    const thisWeekStatXP = { strength:0, focus:0, recovery:0, agility:0, endurance:0, flexibility:0 };
+    weekWorkouts.forEach(w => {
+      (w.exercises||[]).forEach(ex => {
+        const exDef = EXERCISES_ALL[ex.name] || {};
+        const weights = exDef.statWeights || {};
+        const sets = (ex.sets||[]).filter(s=>s.reps>0).length;
+        Object.entries(weights).forEach(([stat, wt]) => {
+          if (thisWeekStatXP[stat] !== undefined) thisWeekStatXP[stat] += sets * wt;
+        });
+      });
+    });
+    const nextWeakest = bossStats.reduce((min, s) =>
+      thisWeekStatXP[s] < thisWeekStatXP[min] ? s : min, bossStats[0]);
+    const nextCandidates = NAMED_BOSSES.filter(b => b.weakness === nextWeakest);
+    const nextBossPreview = nextCandidates.length ? nextCandidates[0] : NAMED_BOSSES[(weekNum+1) % NAMED_BOSSES.length];
+    return `<div style="background:rgba(255,215,0,0.05);border:1px solid rgba(255,215,0,0.15);border-radius:4px;padding:8px 10px;margin-top:8px;">
+      <div style="font-family:var(--font-mono);font-size:9px;color:rgba(255,215,0,0.5);letter-spacing:0.1em;margin-bottom:3px;">◈ GATE FORMING — NEXT WEEK ◈</div>
+      <div style="font-size:12px;color:#FFD700;">The System detects your weakness: <strong>${nextBossPreview.weaknessLabel}</strong></div>
+      <div style="font-size:11px;color:var(--text-faint);margin-top:2px;">Next week's gate will test this. Train accordingly.</div>
+    </div>`;
+  })() : '';
 
   // inject contrib CSS once
   if (!document.getElementById('raid-contrib-style')) {
@@ -8883,89 +9002,102 @@ async function renderRaidBoss() {
     document.head.appendChild(s);
   }
 
-  const contribHtml = contributors.map(function(c) {
-    var memberGoal = (allUsers.find(function(u){return u.uid===c.uid;})||{}).weeklyGoal || 3;
-    var goalMet = c.wCount >= memberGoal;
-    var overload = c.wCount >= memberGoal * 1.5;
-    var dmgPct = totalDamageForShares > 0 ? (c.dmg / totalDamageForShares * 100) : 0;
-    var penaltyAp = !cleared ? getPenaltyShare(c.uid) : 0;
-    var isMe = c.uid === currentUser.uid;
-    var boosted = weekWorkouts.filter(function(w){return w.uid===c.uid;}).some(function(w){return getWorkoutDamage(w,boss.weakness)>1;});
-    var barColor = boosted ? '#FFD700' : goalMet ? 'var(--growing)' : isMe ? 'var(--brass)' : 'var(--violet)';
-    var goalStr = c.wCount+'/'+memberGoal+(overload?' ⚡':goalMet?' ✓':'');
-    var apStr = cleared ? '+'+c.shareAP+' AP' : '-'+penaltyAp+' AP';
-    var apColor = cleared ? 'var(--growing)' : 'var(--excess)';
-    var nameColor = isMe ? 'var(--brass)' : 'var(--text-dim)';
-    var dmgColor = boosted ? '#FFD700' : 'var(--text-faint)';
-    var goalColor = goalMet ? 'var(--growing)' : 'var(--text-faint)';
-    var wPct = Math.min(100,(c.wCount/memberGoal)*100).toFixed(0);
-    var boostBadge = boosted ? '<div style="font-size:9px;color:#FFD700;font-family:var(--font-mono);">⚡ Hit weakness — stat rank bonus applied</div>' : '';
-    return '<div class="raid-contrib-v2">'
-      + '<div style="display:flex;justify-content:space-between;align-items:center;">'
-        + '<span style="font-size:12px;color:'+nameColor+';font-weight:'+(isMe?700:400)+';overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:140px;">'+(isMe?'▶ ':'')+escapeHtml(c.name)+'</span>'
-        + '<div style="display:flex;align-items:center;gap:10px;flex-shrink:0;">'
-          + '<span style="font-family:var(--font-mono);font-size:10px;color:'+goalColor+';">'+goalStr+'</span>'
-          + '<span style="font-family:var(--font-mono);font-size:10px;color:'+dmgColor+';">'+c.dmg.toFixed(1)+' dmg</span>'
-          + '<span style="font-family:var(--font-mono);font-size:10px;font-weight:700;color:'+apColor+';">'+apStr+'</span>'
-        + '</div>'
-      + '</div>'
-      + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;">'
-        + '<div>'
-          + '<div style="font-size:8px;color:var(--text-faint);font-family:var(--font-mono);margin-bottom:2px;">WORKOUTS</div>'
-          + '<div style="height:3px;background:rgba(93,157,255,0.1);border-radius:2px;">'
-            + '<div style="height:100%;width:'+wPct+'%;background:'+barColor+';border-radius:2px;transition:width .8s;"></div>'
-          + '</div>'
-        + '</div>'
-        + '<div>'
-          + '<div style="font-size:8px;color:var(--text-faint);font-family:var(--font-mono);margin-bottom:2px;">DAMAGE SHARE</div>'
-          + '<div style="height:3px;background:rgba(93,157,255,0.1);border-radius:2px;">'
-            + '<div style="height:100%;width:'+dmgPct.toFixed(0)+'%;background:'+(boosted?'#FFD700':barColor)+';border-radius:2px;transition:width .8s;"></div>'
-          + '</div>'
-        + '</div>'
-      + '</div>'
-      + boostBadge
-      + '</div>';
+  const contribHtml = allUsers.map(u => {
+    const details = hunterDetails[u.uid] || {};
+    const dmg = hunterDamage[u.uid] || 0;
+    const dmgPct = totalDamageForShares > 0 ? (dmg / totalDamageForShares * 100) : 0;
+    const isMe = u.uid === currentUser.uid;
+    const memberGoal = u.weeklyGoal || 3;
+    const wCount = weekWorkouts.filter(w => w.uid === u.uid).length;
+    const goalMet = wCount >= memberGoal;
+    const isRestToday = isRestDayFor(u.uid);
+    const trainedToday = allWorkouts.some(w => w.uid === u.uid && w.date === todayStr());
+    const statusText = trainedToday ? '✓ trained' : isRestToday ? '🌑 rest' : '—';
+    const statusColor = trainedToday ? 'var(--growing)' : isRestToday ? 'rgba(93,157,255,0.5)' : 'var(--text-faint)';
+    const hitsWeakness = details.hitsWeakness;
+    const barColor = hitsWeakness ? '#FFD700' : goalMet ? 'var(--growing)' : isMe ? 'var(--brass)' : 'var(--violet)';
+    const penaltyAp = !cleared ? getPenaltyShare(u.uid) : 0;
+    const apStr = cleared ? `+${Math.round((dmg/totalDamageForShares)*rewardPool)} AP` : `-${penaltyAp} AP`;
+    const apColor = cleared ? 'var(--growing)' : 'var(--excess)';
+    const dmgLabel = hitsWeakness ? `⚡ ${dmg.toFixed(1)} dmg` : `${dmg.toFixed(1)} dmg`;
+    const dmgColor = hitsWeakness ? '#FFD700' : 'var(--text-faint)';
+
+    return `<div class="raid-contrib-v2">
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <span style="font-size:12px;color:${isMe?'var(--brass)':'var(--text-dim)'};font-weight:${isMe?700:400};overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:130px;">${isMe?'▶ ':''}${escapeHtml(u.displayName||'Hunter')}</span>
+        <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
+          <span style="font-family:var(--font-mono);font-size:9px;color:${statusColor};">${statusText}</span>
+          <span style="font-family:var(--font-mono);font-size:10px;color:${dmgColor};">${dmgLabel}</span>
+          <span style="font-family:var(--font-mono);font-size:10px;font-weight:700;color:${apColor};">${apStr}</span>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-top:4px;">
+        <div>
+          <div style="font-size:8px;color:var(--text-faint);font-family:var(--font-mono);margin-bottom:2px;">SESSIONS ${wCount}/${memberGoal}</div>
+          <div style="height:3px;background:rgba(93,157,255,0.1);border-radius:2px;">
+            <div style="height:100%;width:${Math.min(100,(wCount/memberGoal)*100).toFixed(0)}%;background:${barColor};border-radius:2px;transition:width .8s;"></div>
+          </div>
+        </div>
+        <div>
+          <div style="font-size:8px;color:var(--text-faint);font-family:var(--font-mono);margin-bottom:2px;">DAMAGE ${dmgPct.toFixed(0)}%</div>
+          <div style="height:3px;background:rgba(93,157,255,0.1);border-radius:2px;">
+            <div style="height:100%;width:${dmgPct.toFixed(0)}%;background:${hitsWeakness?'#FFD700':barColor};border-radius:2px;transition:width .8s;"></div>
+          </div>
+        </div>
+      </div>
+      ${hitsWeakness ? `<div style="font-size:9px;color:#FFD700;font-family:var(--font-mono);margin-top:2px;">⚡ Weakness hit — bonus damage applied</div>` : ''}
+      ${details.weeklyXP ? `<div style="font-size:9px;color:var(--text-faint);font-family:var(--font-mono);margin-top:1px;">${details.weeklyXP} XP · ×${details.intensityMult} intensity · ×${details.consistencyMult} consistency</div>` : ''}
+    </div>`;
   }).join('');
+
+  const weaknessBadge = (boss.weakness !== 'all' && !cleared)
+    ? `<div style="margin-top:8px;padding:5px 10px;background:rgba(255,215,0,0.08);border:1px solid rgba(255,215,0,0.25);border-radius:4px;display:inline-flex;align-items:center;gap:6px;">
+        <span style="font-size:10px;font-family:var(--font-mono);color:#FFD700;letter-spacing:0.06em;">WEAKNESS: ${boss.weaknessLabel}</span>
+      </div>
+      <div style="font-size:10px;color:var(--text-faint);margin-top:4px;">Determined by last week's training — what the party neglected most.</div>`
+    : '';
 
   el.innerHTML = `
     <div class="raid-boss-card ${cleared?'cleared':''}" style="border-color:${cleared?'rgba(139,107,255,0.3)':`${boss.color}44`};">
       <div class="raid-boss-header">
         <div style="flex:1;min-width:0;">
           <div class="raid-eyebrow" style="color:${boss.color};">⚔ ${boss.rank}${isFirstWeek?' · INITIATION WEEK':''}</div>
-          <div class="raid-boss-name" style="color:${cleared?'var(--growing)':boss.color};">${cleared?'★ ':''} ${boss.name}${cleared?' — Defeated':''}</div>
+          <div class="raid-boss-name" style="color:${cleared?'var(--growing)':boss.color};">${cleared?'★ ':''}${boss.name}${cleared?' — Defeated':''}</div>
           <div class="raid-phase" style="color:${bossColor};">[${bossPhase}]${!cleared?` · ${daysLeft}d remaining`:''}</div>
-          <div style="font-size:10px;color:var(--text-faint);font-family:var(--font-mono);margin-top:5px;line-height:1.5;">${boss.desc}</div>
-          ${boss.weakness !== 'all' && !cleared ? weaknessBadge : ''}
-          ${boostedRaids > 0 ? boostLine : ''}
+          <div style="font-size:10px;color:var(--text-faint);font-family:var(--font-mono);margin-top:5px;line-height:1.5;">${boss.desc || ''}</div>
+          ${!cleared ? weaknessBadge : ''}
         </div>
         <div class="raid-hp-col" style="margin-left:12px;">
-          <div class="raid-hp-value" style="color:${bossColor};">${cleared?'0':Math.ceil(bossHP)}</div>
-          <div class="raid-hp-label">HP REMAINING</div>
-          <div style="font-size:9px;color:var(--growing);font-family:var(--font-mono);margin-top:4px;">⚔ ${totalDamage.toFixed(1)} damage dealt</div>
+          <div class="raid-hp-value" style="color:${bossColor};">${cleared?'0':Math.max(0,bossHP).toFixed(1)}</div>
+          <div class="raid-hp-label">HP LEFT</div>
+          <div style="font-size:9px;color:var(--growing);font-family:var(--font-mono);margin-top:4px;">⚔ ${totalDamage.toFixed(1)} dealt</div>
         </div>
       </div>
+
       <div class="raid-hp-bar-wrap" style="position:relative;">
-        <div class="raid-hp-bar" style="width:${bossHPpct.toFixed(1)}%;background:${bossColor};box-shadow:0 0 8px ${bossColor};"></div>
+        <div class="raid-hp-bar" style="width:${bossHPpct.toFixed(1)}%;background:${bossColor};box-shadow:0 0 8px ${bossColor};transition:width 1s cubic-bezier(0.16,1,0.3,1);"></div>
         ${!cleared?'<div class="raid-hp-bar-stripes"></div>':''}
       </div>
-      <div style="display:flex;justify-content:space-between;font-family:var(--font-mono);font-size:9px;color:var(--text-faint);margin-top:4px;">
-        <span style="color:var(--growing);">0</span>
-        <span>${isFirstWeek?'Initiation week · ':''}${bossMaxHP} HP total</span>
+      <div style="display:flex;justify-content:space-between;font-family:var(--font-mono);font-size:9px;color:var(--text-faint);margin-top:4px;margin-bottom:6px;">
+        <span style="color:${trackColor};">${!cleared?trackText:''}</span>
+        <span>${bossDisplayHP} HP total</span>
       </div>
+
       <div class="raid-contributors" style="margin-bottom:12px;">${contribHtml}</div>
+
       <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-top:10px;gap:12px;">
         <p class="${cleared?'raid-cleared-msg':'raid-warning'}" style="margin:0;flex:1;">
           ${cleared
             ? `★ Gate cleared — ${rewardPool} AP shared by contribution.`
-            : `Surrender the gate — penalty scales with your contribution. Your exposure: <strong style="color:var(--excess);">-${myPenaltyShare} AP</strong>.`}
+            : `Surrender the gate — penalty scales with absence. Your exposure: <strong style="color:var(--excess);">-${myPenaltyShare} AP</strong>.`}
         </p>
         <div style="font-family:var(--font-mono);font-size:9px;color:var(--text-faint);text-align:right;flex-shrink:0;">
           ${cleared
-            ? `Your share<br><span style="color:var(--brass);font-size:13px;">+${myShareAP} AP</span><br><span style="color:var(--text-faint);">${mySharePct.toFixed(0)}% contribution</span>`
-            : `Next week<br><span style="color:${nextBoss.color};">${nextBoss.name}</span><br><span>${nextMaxHP} HP req.</span>`}
+            ? `Your share<br><span style="color:var(--brass);font-size:13px;">+${myShareAP} AP</span><br><span>${mySharePct.toFixed(0)}% contribution</span>`
+            : `Your XP<br><span style="color:var(--brass);font-size:13px;">${hunterDetails[currentUser?.uid]?.weeklyXP||0} XP</span>`}
         </div>
       </div>
-      ${!cleared ? '<div style="font-family:var(--font-mono);font-size:9px;color:var(--text-faint);margin-top:8px;padding:6px 8px;background:rgba(255,61,90,0.05);border-radius:4px;line-height:1.5;">⚡ Hit the boss weakness (' + boss.weaknessLabel + ') for bonus damage · Stat rank increases your multiplier · Exceed your goal for penalty protection</div>' : ''}
+      ${sundayPreview}
     </div>`;
 }
 
@@ -9704,14 +9836,25 @@ function renderExerciseLibrary() {
     return true;
   }).sort((a,b) => a[0].localeCompare(b[0]));
 
-  document.getElementById('ex-grid').innerHTML = rows.map(([name, def]) => {
+  document.getElementById('ex-grid').innerHTML = rows.map(([name, def], idx) => {
     const primary = Object.keys(def.muscles||{})[0] || '';
     const custom = customByName.get(name);
-    return `<div class="ex-card">
+    const intent = def.intent || '';
+    const INTENT_COLOR = {
+      strength:'var(--brass)', hypertrophy:'var(--violet)', explosive:'var(--excess)',
+      endurance:'#2980B9', skill:'#FFD700', mobility:'#27AE60',
+      recovery:'var(--growing)', isometric:'var(--maintaining)', plyometric:'#F97316',
+      balance:'#A78BFA', martial:'#E74C3C', sport:'#06B6D4',
+    };
+    const intentColor = INTENT_COLOR[intent] || 'var(--text-faint)';
+    return `<div class="ex-card" style="animation-delay:${Math.min(idx * 0.02, 0.3)}s">
       ${custom ? '<span class="ex-custom-dot" title="Customized from default"></span>' : ''}
       <p class="ex-name">${escapeHtml(name)}</p>
       <p class="ex-muscle">${primary}</p>
-      <span class="ex-equip">${def.equipment || 'Other'}</span>
+      <div style="display:flex;gap:6px;align-items:center;margin-bottom:6px;">
+        <span class="ex-equip">${def.equipment || 'Other'}</span>
+        ${intent ? `<span style="font-size:9px;font-family:var(--font-mono);color:${intentColor};letter-spacing:0.06em;text-transform:uppercase;">${intent}</span>` : ''}
+      </div>
       <a class="ex-technique-link" href="${techniqueLink(name)}" target="_blank" rel="noopener">▶ Technique</a>
       <button type="button" class="ex-edit-link" data-name="${escapeHtml(name)}">✎ Edit</button>
     </div>`;
@@ -10239,10 +10382,20 @@ function renderAchievementsTab(el) {
   ];
 
   const unlockedCount = achievements.filter(a => unlocked[a.id]).length;
-  let html = `<div style="font-family:var(--font-mono);font-size:10px;color:var(--text-faint);margin-bottom:14px;letter-spacing:0.06em;">
-    ${unlockedCount} / ${achievements.length} FEATS UNLOCKED
-  </div>`;
+  const totalCount = achievements.length;
+  const pct = Math.round((unlockedCount / totalCount) * 100);
+  let html = `
+    <div style="background:linear-gradient(90deg,rgba(255,215,0,0.04),rgba(93,157,255,0.04));border:1px solid rgba(93,157,255,0.12);border-radius:6px;padding:12px 14px;margin-bottom:16px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+        <span style="font-family:var(--font-mono);font-size:9px;color:var(--text-faint);letter-spacing:0.1em;">FEATS UNLOCKED</span>
+        <span style="font-family:var(--font-mono);font-size:12px;color:var(--brass);">${unlockedCount} / ${totalCount}</span>
+      </div>
+      <div style="height:4px;background:rgba(93,157,255,0.08);border-radius:2px;overflow:hidden;">
+        <div style="height:100%;width:0%;background:linear-gradient(90deg,var(--brass),var(--violet));border-radius:2px;transition:width 1s cubic-bezier(0.16,1,0.3,1);" id="feats-progress-bar"></div>
+      </div>
+    </div>`;
 
+  let featIdx = 0;
   categories.forEach(cat => {
     const catAchs = achievements.filter(a => a.category === cat.id);
     const anyUnlocked = catAchs.some(a => unlocked[a.id]);
@@ -10250,7 +10403,9 @@ function renderAchievementsTab(el) {
     catAchs.forEach(ach => {
       const isUnlocked = !!unlocked[ach.id];
       const rarity = RARITY_COLORS[ach.rarity];
-      html += `<div class="feat-card ${isUnlocked?'unlocked':''} ${ach.rarity==='legendary'?'legendary':''}" style="${isUnlocked?'border-color:'+rarity.color+'44;':''}">
+      const delay = Math.min(featIdx * 0.03, 0.4);
+      featIdx++;
+      html += `<div class="feat-card ${isUnlocked?'unlocked':''} ${ach.rarity==='legendary'?'legendary':''}" style="animation-delay:${delay}s;${isUnlocked?'border-color:'+rarity.color+'44;':''}">
         <div class="feat-icon" style="${isUnlocked?'background:'+rarity.bg+';border-color:'+rarity.color+'44;':''}">
           <span style="${isUnlocked?'':'filter:grayscale(1);opacity:0.4;'}">${ach.icon}</span>
         </div>
@@ -10266,6 +10421,11 @@ function renderAchievementsTab(el) {
   });
 
   el.innerHTML = html;
+  // Animate progress bar after render
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    const bar = el.querySelector('#feats-progress-bar');
+    if (bar) bar.style.width = pct + '%';
+  }));
 }
 
 function renderChainsTab(el) {
@@ -10308,7 +10468,7 @@ function renderChainsTab(el) {
         </div>
       </div>
       <div style="height:5px;background:rgba(93,157,255,0.08);border-radius:3px;margin-bottom:12px;overflow:hidden;">
-        <div style="height:100%;background:${chain.color};width:${pct}%;transition:width 0.6s ease;${isComplete?'box-shadow:0 0 8px '+chain.color+';':''}"></div>
+        <div class="chain-progress-bar" data-pct="${pct}" style="height:100%;background:${chain.color};width:0%;transition:width 0.8s cubic-bezier(0.16,1,0.3,1);${isComplete?'box-shadow:0 0 8px '+chain.color+';':''}"></div>
       </div>
       <div class="chain-steps">
         ${chain.steps.map((step, i) => {
@@ -10343,6 +10503,12 @@ function renderChainsTab(el) {
   });
 
   el.innerHTML = html;
+  // Animate chain progress bars
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    el.querySelectorAll('.chain-progress-bar').forEach(bar => {
+      bar.style.width = (bar.dataset.pct || 0) + '%';
+    });
+  }));
 }
 
 function buildChainCard(chain) {
@@ -10541,6 +10707,7 @@ function renderCalendar() {
   const startOffset = (firstDay.getDay() + 6) % 7; // Monday=0
   const daysInMonth = new Date(year, month+1, 0).getDate();
   const myDatesWithWorkout = new Set(myWorkouts.map(w => w.date));
+  const WEEKDAYS_CAL = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
 
   let cells = '';
   for (let i = 0; i < startOffset; i++) cells += '<div></div>';
@@ -10548,8 +10715,27 @@ function renderCalendar() {
     const dateStr = `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
     const isToday = dateStr === todayStr();
     const isSelected = dateStr === selectedHistoryDate;
+    const isFuture = dateStr > todayStr();
     const hasWorkout = myDatesWithWorkout.has(dateStr);
-    cells += `<div class="cal-cell ${isToday?'today':''} ${isSelected?'selected':''}" data-date="${dateStr}">${d}${hasWorkout?'<span class="dot"></span>':''}</div>`;
+
+    // Determine day state for dot
+    let dotHtml = '';
+    if (!isFuture) {
+      const dow = WEEKDAYS_CAL[(new Date(dateStr + 'T12:00:00').getDay() + 6) % 7].slice(0,3);
+      const isScheduledDay = myProgram?.schedule?.includes(dow) ?? true;
+      const isRestDay = myProgram?.schedule?.length > 0 && myProgram.schedule.length < 7 && !isScheduledDay;
+
+      if (hasWorkout) {
+        dotHtml = '<span class="dot dot-trained"></span>';
+      } else if (isRestDay) {
+        dotHtml = '<span class="dot dot-rest"></span>';
+      } else if (dateStr < todayStr()) {
+        // scheduled day, no workout = skipped
+        dotHtml = '<span class="dot dot-skipped"></span>';
+      }
+    }
+
+    cells += `<div class="cal-cell ${isToday?'today':''} ${isSelected?'selected':''}" data-date="${dateStr}">${d}${dotHtml}</div>`;
   }
   document.getElementById('cal-grid').innerHTML = cells;
   document.querySelectorAll('.cal-cell').forEach(cell => cell.addEventListener('click', () => { selectedHistoryDate = cell.dataset.date; renderCalendar(); renderHistoryList(); }));
@@ -10566,13 +10752,27 @@ function renderHistoryList() {
   el.innerHTML = `
     <div class="history-day">
       <div class="history-date">${new Date(selectedHistoryDate).toLocaleDateString(undefined,{weekday:'long', month:'short', day:'numeric'})}</div>
-      ${dayWorkouts.map(w => {
+      ${dayWorkouts.map((w, wi) => {
         const isMe = w.uid === currentUser.uid;
-        return `<div class="card history-card" style="cursor:${isMe?'pointer':'default'}" data-wid="${w.id}">
+        const totalSets = (w.exercises||[]).reduce((n,ex)=>n+(ex.sets||[]).filter(s=>s.reps>0).length,0);
+        const sessionXP = Math.round((w.exercises||[]).reduce((xs,ex) => {
+          const exDef = EXERCISES_ALL[ex.name]||{};
+          const tier = exDef.skillTier||1.0;
+          return xs + (ex.sets||[]).filter(s=>s.reps>0).reduce((ss,s) => {
+            const rm = Math.log((s.reps||1)+1)/Math.log(13);
+            const im = s.rir<=1?1.3:s.rir<=3?1.0:s.rir<=5?0.7:1.0;
+            return ss + Math.max(3, 5*rm*im*tier);
+          },0);
+        },0));
+        return `<div class="card history-card" style="cursor:${isMe?'pointer':'default'};animation-delay:${wi*0.05}s" data-wid="${w.id}">
           <div class="history-card-header">
-            <div>
+            <div style="flex:1;min-width:0;">
               <div class="who">${escapeHtml(w.displayName || allUsers.find(u=>u.uid===w.uid)?.displayName || 'Hunter')}${w.time?` · ${w.time}`:''}</div>
               <div class="exlist">${(w.exercises||[]).map(e => `${escapeHtml(e.name)} · ${e.sets.length} sets`).join('<br/>')}</div>
+              <div style="margin-top:6px;display:flex;gap:10px;font-family:var(--font-mono);font-size:9px;color:var(--text-faint);">
+                <span>${totalSets} sets</span>
+                ${sessionXP > 0 ? `<span style="color:rgba(255,215,0,0.6);">+${sessionXP} XP</span>` : ''}
+              </div>
             </div>
             ${isMe ? `<button type="button" class="history-detail-btn" data-wid="${w.id}">View ›</button>` : ''}
           </div>
