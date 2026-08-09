@@ -3329,12 +3329,6 @@ function buildQuestCardHTML(idx) {
   function buildRewardsPreview() {
     if (allComplete) return '';
     const streak = computeStreak(currentUser.uid);
-    const mult = streak >= 30 ? 2 : streak >= 7 ? 1.5 : 1;
-    const baseAP = Math.round(10 * mult);
-    const weekStart = startOfWeek(new Date());
-    const weekCount = myWorkouts.filter(w => w.uid === currentUser.uid && new Date(w.date) >= weekStart).length;
-    const goalBonus = (weekCount + 1) >= (profile.weeklyGoal || 3) ? 5 : 0;
-    const totalAP = baseAP + goalBonus;
 
     // stat XP — primary path
     const STAT_ICONS  = { strength:'⚔️', endurance:'🔥', agility:'⚡', focus:'🎯', defence:'🛡️', flexibility:'💫' };
@@ -3375,7 +3369,6 @@ function buildQuestCardHTML(idx) {
 
     // PR potential
     const prPotential = day.exercises.filter(ex => myPRs[ex.name]?.e1rm);
-    const apBreakdown = `+${baseAP} base${mult > 1 ? ` (×${mult} streak)` : ''}${goalBonus ? ' +5 weekly goal' : ''}`;
 
     return `
       <div style="border-top:1px solid rgba(61,165,255,0.15);margin:14px 0 16px;padding-top:12px;">
@@ -3962,10 +3955,11 @@ document.getElementById('save-run-btn')?.addEventListener('click', async () => {
       return 3;
     })();
     const runXpResult = await awardWorkoutXP([{ name: selectedRunType, sets: [{ reps: Math.round((distKm||5)*10), rir: runRIR }] }]);
+    profile._lastXpResult = runXpResult;
     document.getElementById('run-modal-overlay').classList.add('hidden');
     document.body.style.overflow = '';
     startDailyTimer();
-    showToast(`Run logged — ${distKm ? distKm.toFixed(2)+'km' : ''} ${paceStr}${runXpResult?.apEarned ? ' · +'+runXpResult.apEarned+' AP' : ''}`, 'success');
+    showToast(`Run logged — ${distKm ? distKm.toFixed(2)+'km' : ''} ${paceStr}${runXpResult?.generalXP ? ' · +'+Math.round(runXpResult.generalXP)+' XP' : ''}`, 'success');
     // reset form
     ['run-distance','run-mins','run-secs','run-notes'].forEach(id => { document.getElementById(id).value = ''; });
     document.getElementById('run-pace-display').textContent = '';
@@ -8159,7 +8153,7 @@ async function fixMissingStreaks() {
       const snap = await getDoc(doc(db, 'users', t.uid));
       const data = snap.data() || {};
       if (!data.lastWorkoutDate || data.lastWorkoutDate < yesterdayStr) {
-        await setDoc(doc(db, 'users', t.uid), { lastWorkoutDate: yesterdayStr }, { merge: true });
+        await updateDoc(doc(db, 'users', t.uid), { lastWorkoutDate: yesterdayStr });
         fixed.push(t.name);
       }
     } catch(e) {}
@@ -8167,45 +8161,9 @@ async function fixMissingStreaks() {
   showToast(fixed.length ? `Fixed streaks for: ${fixed.join(', ')}` : 'All streaks already up to date', 'success');
 }
 
-// Repairs the "debrief shows 0 AP" bug: happens when a workout is written to Firestore
-// (e.g. via a manual/one-time script) without going through tryAwardAp()/the admin logger's
-// AP-award step, so profile.lastApDate never advances to that workout's date.
-// Safe to run repeatedly — only backfills a date that has a real workout but no matching AP award.
+// fixMissingAp — legacy function, no-op since AP now only comes from levelling up
 async function fixMissingAp() {
-  const targets = [
-    { uid: 'eUtGPwQBcCSO0x3xS3ZGYFGXNIT2', name: 'Lawrence' },
-    { uid: 'd1W5vTx5aSTIwkR4CIwnO2xW7vf1', name: 'LuChing' },
-    { uid: 'oFFi2hATYARhqcSZQlHwlsYBOge2', name: "I'm just a girl" },
-    { uid: 'rzcznIkNRrSKVXl74LsTaRSdHOk2', name: 'Lucas' },
-  ];
-  let fixed = [];
-  for (const t of targets) {
-    try {
-      const snap = await getDoc(doc(db, 'users', t.uid));
-      const data = snap.data() || {};
-      const theirWorkouts = allWorkouts.filter(w => w.uid === t.uid).sort((a,b) => a.date.localeCompare(b.date));
-      if (!theirWorkouts.length) continue;
-      const lastApDate = data.lastApDate || null;
-      const mostRecentWorkoutDate = theirWorkouts[theirWorkouts.length - 1].date;
-      // if their most recent logged workout date is more recent than the last date AP was
-      // actually awarded, that day's AP was never credited — backfill it once.
-      if (!lastApDate || lastApDate < mostRecentWorkoutDate) {
-        const dateToAward = mostRecentWorkoutDate;
-        const streak = computeStreak(t.uid);
-        const mult = streak >= 30 ? 2 : streak >= 7 ? 1.5 : 1;
-        const ap = Math.round(10 * mult);
-        const currentAp = data.auraPoints || 0;
-        await setDoc(doc(db, 'users', t.uid), {
-          lastApDate: dateToAward,
-          auraPoints: increment(ap),
-        }, { merge: true });
-        logAp(t.uid, ap, `Admin: backfill missing daily AP (${dateToAward})`, currentAp);
-        fixed.push(`${t.name} (+${ap} AP for ${dateToAward})`);
-      }
-    } catch(e) { console.error(e); }
-  }
-  showToast(fixed.length ? `Fixed AP for: ${fixed.join(', ')}` : 'All AP already up to date', 'success');
-  await loadAllData();
+  showToast('AP now comes from levelling up only — no daily AP to fix.', 'info');
 }
 
 // Diagnostic/repair tool for the "can't edit their own log" bug: openWorkoutDetail() only
@@ -9220,18 +9178,10 @@ function openAdminWorkoutLogger(targetUid, hunterName) {
         targetProgram.currentDayIndex = (adminDayIndex + 1) % targetProgram.days.length;
         await setDoc(doc(db, 'programs', targetUid), targetProgram);
       }
-      // award AP for the day if not already awarded
-      const targetProfile = (await getDoc(doc(db, 'users', targetUid))).data() || {};
-      if (targetProfile.lastApDate !== date) {
-        const streak = computeStreak(targetUid);
-        const mult = streak >= 30 ? 2 : streak >= 7 ? 1.5 : 1;
-        const ap = Math.round(10 * mult);
-        const currentAp = targetProfile.auraPoints || 0;
-        await setDoc(doc(db, 'users', targetUid), {
-          lastApDate: date,
-          auraPoints: increment(ap),
-        }, { merge: true });
-        logAp(targetUid, ap, `Admin workout log: daily AP (${date})`, currentAp);
+      // award XP for the session via proper system
+      const adminXpResult = await awardWorkoutXP(exercises);
+      if (adminXpResult?.generalXP) {
+        logAp(targetUid, 0, `Admin workout log: +${Math.round(adminXpResult.generalXP)} XP (${date})`, profile.auraPoints || 0);
       }
       // check PRs for each exercise
       for (const ex of exercises) {
@@ -13699,41 +13649,23 @@ function openWorkoutDetail(workoutId) {
     // calculate what will be reversed
     const consequences = [];
 
-    // check if this was the only workout on that date (AP was awarded for that day)
-    const workoutsOnDate = myWorkouts.filter(x => x.date === w.date);
-    const wasOnlyWorkout = workoutsOnDate.length === 1 && workoutsOnDate[0].id === workoutId;
-    let apToReverse = 0;
-
-    if (wasOnlyWorkout && profile.lastApDate === w.date) {
-      // AP was awarded for this day — calculate what was earned
-      const streak = computeStreak(currentUser.uid);
-      const mult = streak >= 30 ? 2 : streak >= 7 ? 1.5 : 1;
-      apToReverse = Math.round(10 * mult);
-      const weekStart = startOfWeek(new Date(w.date));
-      const weekCount = myWorkouts.filter(x => x.uid === currentUser.uid && new Date(x.date) >= weekStart && x.id !== workoutId).length;
-      if (weekCount >= (profile.weeklyGoal || 3)) apToReverse += 5;
-      consequences.push(`−${apToReverse} Aura Points (daily workout reward)`);
-    }
-
     // check PRs set in this workout
     const prsFromThis = [];
     (w.exercises || []).forEach(ex => {
       const pr = myPRs[ex.name];
       if (!pr || pr.date !== w.date) return;
-      // check if this workout is the one that set this PR
       const e1rm = Math.max(...(ex.sets || []).filter(s => s.reps && s.weight).map(s => epley1RM(s.weight, s.reps)), 0);
       if (Math.abs(e1rm - pr.e1rm) < 0.5) {
         prsFromThis.push({ name: ex.name, xp: pr.xp || FLAT_PR_XP, tier: pr.tier });
-        apToReverse += pr.xp || FLAT_PR_XP;
       }
     });
     if (prsFromThis.length) {
-      prsFromThis.forEach(p => consequences.push(`−${p.xp} AP + PR removed: ${p.name} [${p.tier || 'Unranked'}]`));
+      prsFromThis.forEach(p => consequences.push(`PR removed: ${p.name} [${p.tier || 'Unranked'}]`));
     }
 
     if (!consequences.length) {
       consequences.push('Remove this workout from your history');
-      consequences.push('No AP or PRs were linked to this session');
+      consequences.push('No PRs were linked to this session');
     }
 
     const list = overlay.querySelector('#delete-consequences');
@@ -13741,37 +13673,19 @@ function openWorkoutDetail(workoutId) {
     overlay.querySelector('#delete-warning-box').style.display = 'block';
     overlay.querySelector('#detail-delete-warn').style.display = 'none';
     overlay.querySelector('#detail-delete-confirm').style.display = 'block';
-    overlay.querySelector('#detail-delete-confirm').dataset.apReverse = apToReverse;
     overlay.querySelector('#detail-delete-confirm').dataset.prs = JSON.stringify(prsFromThis.map(p => p.name));
-    overlay.querySelector('#detail-delete-confirm').dataset.wasOnlyWorkout = wasOnlyWorkout ? '1' : '0';
   });
 
   // Step 2 — actually delete and reverse
   overlay.querySelector('#detail-delete-confirm').addEventListener('click', async () => {
     const btn = overlay.querySelector('#detail-delete-confirm');
-    const apToReverse = Number(btn.dataset.apReverse) || 0;
     const prsToRemove = JSON.parse(btn.dataset.prs || '[]');
-    const wasOnlyWorkout = btn.dataset.wasOnlyWorkout === '1';
     btn.disabled = true; btn.textContent = 'Deleting…';
     try {
       // 1. delete the workout
       await deleteDoc(doc(db, 'workouts', workoutId));
 
-      // 2. reverse AP
-      if (apToReverse > 0) {
-        const newAp = Math.max(0, (profile.auraPoints || 0) - apToReverse);
-        await writeUserFields({ auraPoints: increment(-apToReverse) });
-        logAp(currentUser.uid, -apToReverse, `Workout deleted: AP reversed (${w.date})`, profile.auraPoints || 0);
-        profile.auraPoints = newAp;
-      }
-
-      // 3. clear lastApDate if this was the only workout on that day
-      if (wasOnlyWorkout && profile.lastApDate === w.date) {
-        await writeUserFields({ lastApDate: null });
-        profile.lastApDate = null;
-      }
-
-      // 4. remove PRs set in this workout
+      // 2. remove PRs set in this workout
       if (prsToRemove.length) {
         const newPRs = { ...myPRs };
         prsToRemove.forEach(name => delete newPRs[name]);
