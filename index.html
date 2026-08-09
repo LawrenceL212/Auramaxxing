@@ -2410,7 +2410,22 @@ function drainNotifQueue() {
   if (!notifQueue.length) { notifRunning = false; return; }
   notifRunning = true;
   const fn = notifQueue.shift();
-  fn(drainNotifQueue); // each fn calls its callback when dismissed
+  // Guard the callback: banners call done() from both a click handler and an
+  // auto-dismiss timeout, so without this the queue would advance twice and
+  // skip an item. Also catch throws so a broken notification can't leave
+  // notifRunning stuck true and silently swallow every later notification.
+  let advanced = false;
+  const done = () => {
+    if (advanced) return;
+    advanced = true;
+    drainNotifQueue();
+  };
+  try {
+    fn(done);
+  } catch (e) {
+    console.warn('Notification failed:', e);
+    done();
+  }
 }
 
 function showToast(msg, type = 'info') {
@@ -2523,10 +2538,12 @@ let selectedHistoryDate = todayStr();
    ========================================================================= */
 function todayStr(d = new Date()) { const dt = new Date(d); dt.setMinutes(dt.getMinutes() - dt.getTimezoneOffset()); return dt.toISOString().slice(0, 10); }
 function nowTimeStr() { const d = new Date(); return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0'); }
-// daysAgo must apply the timezone offset before subtracting days, otherwise at 00:00–01:59
-// local time the UTC date is still "yesterday" and daysAgo(1) lands on the wrong date —
-// exactly what caused the false penalty on "I'm just a girl" at 01:32 local time on Saturday.
-function daysAgo(n) { const d = new Date(); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); d.setDate(d.getDate() - n); return d; }
+// daysAgo returns a plain LOCAL date. Do not pre-shift by the timezone offset here:
+// every consumer renders through todayStr() (which applies the offset once) or does
+// local math via startOfWeek()/getDay(). Pre-shifting caused a double shift in
+// todayStr(daysAgo(n)) that rolled dates to tomorrow between 23:00–23:59 local —
+// streaks displayed 0 and the consistency grid jumped a week during that hour.
+function daysAgo(n) { const d = new Date(); d.setDate(d.getDate() - n); return d; }
 const WEEKDAYS = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
 function todayWeekday() { return WEEKDAYS[(new Date().getDay() + 6) % 7]; }
 function migrateProgram(prog) {
@@ -2560,8 +2577,25 @@ function setsLoggedToday(name, dayIndex) {
     .reduce((sum, e) => sum + (e.sets||[]).filter(s => s.reps > 0).length, 0);
 }
 function startOfWeek(d) { const dt = new Date(d); const day = dt.getDay(); const diff = (day === 0 ? -6 : 1) - day; dt.setDate(dt.getDate() + diff); dt.setHours(0,0,0,0); return dt; }
+// Workout dates are stored as local "YYYY-MM-DD" strings. new Date("YYYY-MM-DD")
+// parses as UTC midnight, so comparing it against a local-midnight Date object is
+// off by the timezone offset and puts sessions in the wrong day/week. Compare the
+// strings instead — dStr() normalises either a Date or a date string to "YYYY-MM-DD".
+function dStr(d) { return typeof d === 'string' ? d.slice(0,10) : todayStr(d); }
+function dateInRange(dateStr, startInclusive, endExclusive) {
+  const s = dStr(dateStr);
+  if (startInclusive != null && s < dStr(startInclusive)) return false;
+  if (endExclusive != null && s >= dStr(endExclusive)) return false;
+  return true;
+}
 function initials(name) { return (name || "?").trim().split(/\s+/).map(w => w[0]).slice(0,2).join("").toUpperCase(); }
 function escapeHtml(str) { return String(str || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+// Single source of truth for "is this a run-style exercise" (MM:SS + km logging).
+// Endurance timed work, or explosive minute-timed work (Hill Sprints, Intervals).
+function isRunExercise(name) {
+  const def = EXERCISES_ALL[name] || {};
+  return !!def.timed && (def.intent === 'endurance' || (def.intent === 'explosive' && def.timedUnit === 'mins'));
+}
 function computeWorkoutVolume(exercises) {
   const out = {};
   for (const ex of exercises) {
@@ -2580,7 +2614,7 @@ function computeWorkoutVolume(exercises) {
   }
   return out;
 }
-function daysBetween(a,b){ return Math.round((new Date(b)-new Date(a))/86400000); }
+function daysBetween(a,b){ return Math.round((new Date(b+'T12:00:00')-new Date(a+'T12:00:00'))/86400000); }
 function fmtDaysAgo(dateStr){
   if (!dateStr) return 'Never logged';
   const d = daysBetween(dateStr, todayStr());
@@ -3257,7 +3291,7 @@ function isQuestComplete(idx) {
   if (!day.exercises.length) return false;
 
   if (myProgram.scheduleMode === 'fixed') {
-    const weekStart = startOfWeek(new Date()).toISOString().slice(0,10);
+    const weekStart = todayStr(startOfWeek(new Date()));
     return myWorkouts.some(w =>
       w.uid === currentUser.uid &&
       w.date >= weekStart &&
@@ -3283,7 +3317,7 @@ function buildQuestCardHTML(idx) {
   // find the best matching workout this week for this day (by exercise overlap)
   function getBestMatchWorkout() {
     if (myProgram.scheduleMode !== 'fixed') return null;
-    const weekStart = startOfWeek(new Date()).toISOString().slice(0,10);
+    const weekStart = todayStr(startOfWeek(new Date()));
     return myWorkouts.find(w =>
       w.uid === currentUser.uid &&
       w.date >= weekStart &&
@@ -4370,7 +4404,7 @@ function addExerciseRow(presetName, targetSets, targetReps, prefillSets) {
     const exName = row.dataset.exName || '';
     const exDef = EXERCISES_ALL[exName] || {};
     // Run exercises: timed + endurance/agility stat weight dominant
-    const isRunEx = timed && exDef.intent === 'endurance' || exDef.intent === 'explosive' && exDef.timedUnit === 'mins' && !!(exDef.statWeights?.endurance || exDef.statWeights?.agility);
+    const isRunEx = isRunExercise(exName);
     const repsStep = timed ? (unit === 'mins' ? 1 : 5) : 1;
     const repsLabel = timed ? (unit === 'mins' ? 'Mins' : 'Secs') : 'Reps';
     const suggTag = suggestion ? `<span class="suggest-badge">${suggestion}</span>` : '';
@@ -4445,7 +4479,7 @@ function addExerciseRow(presetName, targetSets, targetReps, prefillSets) {
   function refreshTags() {
     const def = EXERCISES_ALL[row.dataset.exName] || {};
     const map = def.muscles || {};
-    const isRunEx = def.timed && (def.intent === 'endurance' || (def.intent === 'explosive' && def.timedUnit === 'mins'));
+    const isRunEx = isRunExercise(row.dataset.exName);
     tagsEl.innerHTML = Object.keys(map).map(m => `<span class="tag">${m}</span>`).join('');
     const head = row.querySelector('.set-table-head');
     if (head && !head.classList.contains('hidden')) {
@@ -4507,7 +4541,7 @@ document.getElementById('save-workout-btn')?.addEventListener('click', async () 
     // Build runSummary for any run exercises logged in the workout logger
     const runExercise = exercises.find(ex => {
       const def = EXERCISES_ALL[ex.name] || {};
-      return def.timed && (def.intent === 'endurance' || (def.intent === 'explosive' && def.timedUnit === 'mins'));
+      return isRunExercise(ex.name);
     });
     const runSummaryFromLogger = runExercise ? (() => {
       const s = runExercise.sets[0];
@@ -4544,7 +4578,7 @@ document.getElementById('save-workout-btn')?.addEventListener('click', async () 
     await loadAllData();
     const xpResult = await awardWorkoutXP(exercises.map(ex => {
       const def = EXERCISES_ALL[ex.name] || {};
-      const isRun = def.timed && (def.intent === 'endurance' || (def.intent === 'explosive' && def.timedUnit === 'mins'));
+      const isRun = isRunExercise(ex.name);
       if (!isRun) return ex;
       const runRIR = ex.name === 'Hill Sprints' || ex.name === 'Interval Running' || ex.name === 'Race' ? 0
         : ex.name === 'Tempo Run' ? 1
@@ -4570,7 +4604,7 @@ document.getElementById('save-workout-btn')?.addEventListener('click', async () 
       // Queue notifications — debrief first, then anything else (milestones, level-ups) in order
       if (xpResult?.levelUps?.length) {
         for (const lu of xpResult.levelUps) {
-          queueNotif(done => { showLevelUpModal(lu.level, lu.ap); done(); });
+          queueNotif(done => showLevelUpModal(lu.level, lu.ap, done));
         }
       }
       queueNotif(done => showDebriefModal(exercises, xpResult?.apEarned || 0, prs, done));
@@ -4696,7 +4730,7 @@ function countScheduledDaysCompleted(uid) {
 
   const WEEKDAYS_FULL = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
   const workoutDates = new Set(
-    allWorkouts.filter(w => w.uid === uid && new Date(w.date) >= oneYearAgo).map(w => w.date)
+    allWorkouts.filter(w => w.uid === uid && dateInRange(w.date, oneYearAgo, null)).map(w => w.date)
   );
 
   let scheduledDaysCompleted = 0;
@@ -4730,20 +4764,23 @@ function epley1RM(weight, reps) {
 
 // Latest bodyweight from the tracker (kg). Returns null if unavailable.
 function latestBodyweightKg() {
-  if (!myWeights.length) return null;
-  const last = myWeights[myWeights.length - 1];
-  // stored in whatever unit — we need to standardise
-  // bodyweight is stored as { weight, unit } or just { weight } (assumed kg)
-  const bw = Number(last.weight);
-  if (!bw) return null;
-  return bw; // assumed kg throughout the app
+  // Prefer the most recent weight-widget entry; fall back to the profile's
+  // stored bodyweight before letting callers default to a generic 70kg —
+  // otherwise every strength ratio / milestone / item inference is skewed
+  // for anyone who set their weight in settings but never used the widget.
+  if (myWeights.length) {
+    const bw = Number(myWeights[myWeights.length - 1].weight);
+    if (bw) return bw;
+  }
+  const profileBw = Number(profile?.bodyweightKg);
+  return profileBw || null;
 }
 
 // Two-week gate: true once the user's first workout is 14+ days ago
 function prSystemUnlocked() {
   if (!myWorkouts.length) return false;
   const first = myWorkouts.reduce((a,b) => a.date < b.date ? a : b);
-  const daysSince = (new Date() - new Date(first.date)) / 86400000;
+  const daysSince = (new Date() - new Date(first.date + 'T12:00:00')) / 86400000;
   return daysSince >= 14;
 }
 
@@ -4878,6 +4915,19 @@ function repsMult(reps) {
 // XP threshold to reach level n: Math.round(50 × n^1.25)
 function xpForLevel(level) {
   return Math.round(50 * Math.pow(level, 1.25));
+}
+
+// Walk forward from total XP to find the level it corresponds to.
+// Single source of truth — used by awardWorkoutXP, workout edits, and admin tools.
+function levelFromTotalXP(totalXP) {
+  let level = 1, cumulative = 0;
+  while (true) {
+    const needed = xpForLevel(level);
+    if (cumulative + needed > totalXP) return level;
+    cumulative += needed;
+    level++;
+    if (level > 500) return 500; // safety
+  }
 }
 
 // AP awarded when reaching a level
@@ -5017,12 +5067,14 @@ function buildMilestoneData() {
         }
         // Muscle up
         if (['Muscle Up'].includes(name)) data.muscleUp = Math.max(data.muscleUp, s.reps);
-        // Front lever
-        if (['Front Lever','Straddle Front Lever'].includes(name)) {
+        // Front lever — include progression exercises
+        if (['Front Lever','Straddle Front Lever','Tuck Front Lever','Advanced Tuck Front Lever','Single Leg Front Lever'].includes(name)) {
           data.frontLeverHold = Math.max(data.frontLeverHold, s.reps);
         }
         // Running — read from runSummary first, fall back to set reps
-        if (CARDIO_EXERCISES.has(name)) {
+        if (['Running','Easy Run','Long Run','Tempo Run','Hill Sprints','Interval Running',
+             'Cycling','Road Cycling','Stationary Bike','Spin Class','Mountain Biking',
+             'Freestyle Swimming','Breaststroke Swimming','Jump Rope','Race'].includes(name)) {
           const distFromSummary = w.runSummary?.distKm || 0;
           const distFromReps = s.reps / 10;
           const km = distFromSummary || distFromReps;
@@ -5052,16 +5104,23 @@ function buildMilestoneData() {
 async function writeUserFields(fields) {
   if (!currentUser) return;
   await updateDoc(doc(db, 'users', currentUser.uid), fields);
-  // Mirror into profile object
+  // Mirror into profile object — skip Firestore FieldValue sentinels (increment etc.)
+  const isFieldValue = (v) => v && typeof v === 'object' && (
+    v.constructor?.name?.includes('FieldValue') ||
+    typeof v._methodName === 'string' ||
+    typeof v.operand === 'number'
+  );
   for (const [key, val] of Object.entries(fields)) {
+    if (isFieldValue(val)) continue; // can't mirror server-side operations
     if (key.includes('.')) {
-      // dot-notation: statTrainingXP.strength → profile.statTrainingXP.strength
-      const [top, sub] = key.split('.');
-      if (!profile[top]) profile[top] = {};
-      if (val && typeof val === 'object' && val.constructor?.name === 'FieldValueImpl') continue; // skip increment sentinels
-      profile[top][sub] = val;
+      const parts = key.split('.');
+      let obj = profile;
+      for (let i = 0; i < parts.length - 1; i++) {
+        if (!obj[parts[i]]) obj[parts[i]] = {};
+        obj = obj[parts[i]];
+      }
+      obj[parts[parts.length - 1]] = val;
     } else {
-      if (val && typeof val === 'object' && val.constructor?.name === 'FieldValueImpl') continue;
       profile[key] = val;
     }
   }
@@ -5155,23 +5214,14 @@ async function awardWorkoutXP(exercises) {
 
   const currentLevel = profile.hunterLevel || 1;
   const currentXP = profile.hunterXP || 0;
-  let newXP = currentXP + generalXP;
-  let newLevel = 1;
-  let cumulativeXP = 0;
+  const newXP = currentXP + generalXP;
+  const newLevel = levelFromTotalXP(newXP);
   let apEarned = 0;
   const levelUps = [];
-
-  // Walk forward from total XP to find new level
-  while (true) {
-    const needed = xpForLevel(newLevel);
-    if (cumulativeXP + needed > newXP) break;
-    cumulativeXP += needed;
-    newLevel++;
-    if (newLevel > currentLevel) {
-      const ap = apForLevel(newLevel);
-      apEarned += ap;
-      levelUps.push({ level: newLevel, ap });
-    }
+  for (let l = currentLevel + 1; l <= newLevel; l++) {
+    const ap = apForLevel(l);
+    apEarned += ap;
+    levelUps.push({ level: l, ap });
   }
 
   // Build single batch update — all post-workout writes go here
@@ -5193,11 +5243,15 @@ async function awardWorkoutXP(exercises) {
     batch.auraPoints = increment(apEarned);
   }
 
-  // Milestone check — merges into batch, does not write
-  await checkAndAwardMilestones(batch);
+  // Milestone check — merges into batch, does not write.
+  // Non-fatal: if it throws, the core XP write below must still happen.
+  try { await checkAndAwardMilestones(batch); }
+  catch(e) { console.warn('Milestone check failed:', e); }
 
   // Trial check — merges into batch if trial completes
-  const trialComplete = await checkTrialProgressAndComplete(batch);
+  let trialComplete = null;
+  try { trialComplete = await checkTrialProgressAndComplete(batch); }
+  catch(e) { console.warn('Trial check failed:', e); }
 
   // ONE write for everything
   await writeUserFields(batch);
@@ -5481,13 +5535,18 @@ function getStrengthImprovement() {
 function getEnduranceImprovement() {
   // Primary: running pace improvement
   const base = profile.statBaselines?.endurancePace;
-  const parsePace = p => { const [m,s] = (p||'').replace(' /km','').split(':').map(Number); return m*60+(s||0); };
+  const parsePace = p => {
+    const mm = String(p||'').match(/(\d+):(\d{1,2})/);
+    if (!mm) return 0;
+    return Number(mm[1])*60 + Number(mm[2]);
+  };
   let runImprovement = 0;
   if (base) {
     const runWorkouts = myWorkouts.filter(w => w.runSummary?.pace);
     if (runWorkouts.length) {
       const basePaceSecs = parsePace(base);
-      const bestPace = Math.min(...runWorkouts.map(w => parsePace(w.runSummary.pace)));
+      const paces = runWorkouts.map(w => parsePace(w.runSummary.pace)).filter(v => v > 0);
+      const bestPace = paces.length ? Math.min(...paces) : 0;
       if (basePaceSecs && bestPace) runImprovement = ((basePaceSecs - bestPace) / basePaceSecs) * 100;
     }
   }
@@ -5563,7 +5622,7 @@ function getRecoveryRate() {
     const start = startOfWeek(daysAgo(i*7));
     const end = new Date(start); end.setDate(end.getDate()+7);
     const count = myWorkouts.filter(w =>
-      w.uid === currentUser.uid && new Date(w.date) >= start && new Date(w.date) < end
+      w.uid === currentUser.uid && dateInRange(w.date, start, end)
     ).length;
     if (count >= (profile.weeklyGoal||3)) hit++;
   }
@@ -5614,7 +5673,7 @@ function getFlexibilityScore() {
   for (let i = 0; i < 4; i++) {
     const start = startOfWeek(daysAgo(i*7));
     const end = new Date(start); end.setDate(end.getDate()+7);
-    myWorkouts.filter(w => w.uid === currentUser.uid && new Date(w.date) >= start && new Date(w.date) < end)
+    myWorkouts.filter(w => w.uid === currentUser.uid && dateInRange(w.date, start, end))
       .forEach(w => (w.exercises||[]).forEach(ex => {
         if (primaryFlex.has(ex.name)) primarySets += (ex.sets||[]).filter(s=>s.reps>0).length;
       }));
@@ -6072,20 +6131,13 @@ async function applyCalibrationObservation(obsKey, stat, proposedCap) {
   const newCap = Math.max(currentCap, proposedCap);
 
   try {
-    // Use updateDoc with dot-notation for nested field updates
-    const userRef = doc(db, 'users', currentUser.uid);
-    await updateDoc(userRef, {
+    await writeUserFields({
       [`statTrainingXP.${stat}`]: newCap,
       [`calibrationObservations.${obsKey}.acknowledged`]: true,
       [`calibrationObservations.${obsKey}.appliedAt`]: new Date().toISOString(),
       [`calibrationObservations.${obsKey}.cap`]: newCap,
       lastCalibrationCheck: new Date().toISOString(),
     });
-
-    if (!profile.statTrainingXP) profile.statTrainingXP = {};
-    profile.statTrainingXP[stat] = newCap;
-    if (!profile.calibrationObservations) profile.calibrationObservations = {};
-    profile.calibrationObservations[obsKey] = { acknowledged:true };
 
     renderCharCard();
     showToast(`${stat.charAt(0).toUpperCase()+stat.slice(1)} Training Cap raised to ${newCap} XP`, 'success');
@@ -6517,12 +6569,13 @@ function renderCharCard() {
     document.getElementById('char-power-value').textContent = power.toLocaleString();
   }
   // Hunter level banner — prominent, animated
-  const hunterLevel = profile.hunterLevel || 1;
   const hunterXP = profile.hunterXP || 0;
+  // Derive level from XP (not the stored field) so the bar can't desync
+  const hunterLevel = levelFromTotalXP(hunterXP);
   let cumulativeXP = 0;
-  for (let l = 1; l < hunterLevel; l++) cumulativeXP += Math.round(50 * Math.pow(l, 1.25));
+  for (let l = 1; l < hunterLevel; l++) cumulativeXP += xpForLevel(l);
   const xpIntoLevel = Math.max(0, hunterXP - cumulativeXP);
-  const xpNeeded = Math.round(50 * Math.pow(hunterLevel, 1.25));
+  const xpNeeded = xpForLevel(hunterLevel);
   const xpPct = Math.min(100, (xpIntoLevel / xpNeeded) * 100);
 
   const levelNumEl = document.getElementById('hunter-level-number');
@@ -6567,7 +6620,7 @@ function renderCharCard() {
     const classFit = (() => {
       try {
         const recentCutoff = new Date(); recentCutoff.setDate(recentCutoff.getDate() - 30);
-        const recent = allWorkouts.filter(w => w.uid === currentUser.uid && new Date(w.date) >= recentCutoff);
+        const recent = allWorkouts.filter(w => w.uid === currentUser.uid && dateInRange(w.date, recentCutoff, null));
         if (!recent.length) return 50;
         let totalSets = 0;
         const cats = { compound:0, isolation:0, calisthenics:0, cardio:0, explosive:0, skill:0, combat:0, swimming:0, court:0, climbing:0, cycling:0, flexibility:0 };
@@ -7093,7 +7146,7 @@ function showStatGateModal(statId) {
                 <div style="height:100%;background:${gates.apOk?'var(--growing)':'var(--brass)'};width:${Math.min(100,(ap/gates.apCost)*100).toFixed(0)}%;transition:width 0.8s ease;"></div>
               </div>
               <div style="font-size:10px;color:var(--text-faint);margin-top:4px;font-family:var(--font-mono);">
-                ${gates.apOk ? '✓ Aura threshold reached' : `Need ${(gates.apCost-ap).toLocaleString()} more AP — earned by training daily and beating PRs`}
+                ${gates.apOk ? '✓ Aura threshold reached' : `Need ${(gates.apCost-ap).toLocaleString()} more AP — earned by levelling up`}
               </div>
             </div>
           </div>
@@ -7149,7 +7202,7 @@ async function checkStatDecay() {
   if (!myProgram || !myProgram.schedule || !myProgram.schedule.length) return;
   if (!myWorkouts.length) return;
   const lastWorkout = myWorkouts.reduce((a,b) => a.date > b.date ? a : b);
-  const daysSinceLastWorkout = (new Date() - new Date(lastWorkout.date)) / 86400000;
+  const daysSinceLastWorkout = (new Date() - new Date(lastWorkout.date + 'T12:00:00')) / 86400000;
   if (daysSinceLastWorkout < 14) return;
   const lastDecayCheck = profile.lastDecayCheck;
   const today = todayStr();
@@ -7171,9 +7224,8 @@ async function checkStatDecay() {
 // Penalty Zone: dock AP for missed scheduled training days
 async function checkPenalty() {
   if (!myProgram || !myProgram.schedule || !myProgram.schedule.length) return null;
-  const yesterday = new Date(); yesterday.setDate(yesterday.getDate() - 1);
-  const yStr = todayStr(yesterday);
-  const yDow = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][yesterday.getDay()];
+  const yStr = todayStr(daysAgo(1));
+  const yDow = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][new Date(yStr + 'T12:00:00').getDay()];
   const wasScheduled = myProgram.schedule.includes(yDow.slice(0,3));
   if (!wasScheduled) return null;
   const lastPenaltyCheck = profile.lastPenaltyCheck;
@@ -7238,7 +7290,7 @@ async function checkWeeklyGate() {
   const lastWeekStart = new Date(today); lastWeekStart.setDate(today.getDate() - 7);
   const lastWeekEnd = new Date(today); lastWeekEnd.setDate(today.getDate() - 1);
   const lastWeekWorkouts = myWorkouts.filter(w => {
-    const d = new Date(w.date);
+    const d = new Date(w.date + 'T12:00:00');
     return d >= lastWeekStart && d <= lastWeekEnd;
   });
   const goal = profile.weeklyGoal || 3;
@@ -7251,23 +7303,25 @@ async function checkWeeklyGate() {
 
 // Master function: runs all checks in order on login
 async function runSystemChecks() {
-  await checkStatDecay();
-  await evaluateAndSaveClass();
-  await checkAndUnlockAchievements();
-  // silently award AP if they already have a workout today but haven't been awarded yet
-  const silentAp = await tryAwardAp();
-  if (silentAp) {
-    showToast(`+${silentAp} Aura Points earned for today's workout!`, 'success');
-    renderCharCard();
-  }
-  const penalty = await checkPenalty();
+  // Each check is isolated — one failing must not abort the rest.
+  const safe = async (label, fn) => {
+    try { return await fn(); }
+    catch(e) { console.warn(`${label} failed:`, e); return null; }
+  };
+
+  await safe('checkStatDecay', checkStatDecay);
+  await safe('evaluateAndSaveClass', evaluateAndSaveClass);
+  await safe('checkAndUnlockAchievements', checkAndUnlockAchievements);
+
+  const penalty = await safe('checkPenalty', checkPenalty);
   if (penalty) {
     showPenaltyModal(1, penalty.apLost);
     SFX.penalty();
     return;
   }
-  await checkWeeklyGate();
-  checkPendingRankUps();
+
+  await safe('checkWeeklyGate', checkWeeklyGate);
+  await safe('checkPendingRankUps', checkPendingRankUps);
 }
 
 /* =========================================================================
@@ -7557,7 +7611,7 @@ const CLASS_CSS = `
 
 function assignHunterClass(uid) {
   const cutoff = new Date(); cutoff.setDate(cutoff.getDate() - 30);
-  const recent = allWorkouts.filter(w => w.uid === uid && new Date(w.date) >= cutoff);
+  const recent = allWorkouts.filter(w => w.uid === uid && dateInRange(w.date, cutoff, null));
   const allTime = allWorkouts.filter(w => w.uid === uid);
   if (allTime.length < 4) return null;
   const firstDate = allTime.reduce((a,b) => a.date < b.date ? a : b).date;
@@ -7606,14 +7660,14 @@ function assignHunterClass(uid) {
     });
   });
 
-  const recentPRs = Object.values(myPRs||{}).filter(p=>p.date>=cutoff.toISOString().slice(0,10));
+  const recentPRs = Object.values(myPRs||{}).filter(p=>p.date>=todayStr(cutoff));
   totalPRs30 = recentPRs.length;
 
   let weeklyWorkouts = [];
   for (let i=0;i<4;i++){
     const s=startOfWeek(new Date(Date.now()-i*7*86400000));
     const e=new Date(s);e.setDate(e.getDate()+7);
-    weeklyWorkouts.push(recent.filter(w=>new Date(w.date)>=s&&new Date(w.date)<e).length);
+    weeklyWorkouts.push(recent.filter(w=>dateInRange(w.date, s, e)).length);
   }
   const avgWeekly = weeklyWorkouts.reduce((a,b)=>a+b,0)/4;
 
@@ -7906,7 +7960,7 @@ function renderWeeklySuperlatives() {
   const longestStreak = [...allUsers].sort((a,b) => computeStreak(b.uid) - computeStreak(a.uid))[0];
   const highestPower = [...allUsers].sort((a,b) => powerOf(b) - powerOf(a))[0];
   const mostConsistent = [...allUsers].sort((a,b) => {
-    const weeks = w => w.filter(x => new Date(x.date) >= lastWeekStart).length >= (b.weeklyGoal||3) ? 1 : 0;
+    const weeks = w => w.filter(x => dateInRange(x.date, lastWeekStart, null)).length >= (b.weeklyGoal||3) ? 1 : 0;
     return weeks(byUid(b.uid)) - weeks(byUid(a.uid));
   })[0];
   const leastActive = [...allUsers].sort((a,b) => thisWeekCount(a.uid) - thisWeekCount(b.uid))[0];
@@ -7939,7 +7993,7 @@ function renderPartyDashboard() {
 
   const highest = [...allUsers].sort((a,b) => getUserPowerLevel(b) - getUserPowerLevel(a))[0];
   const mostPRsThisWeek = [...allUsers].map(u => {
-    const ws = weekStart.toISOString().slice(0,10);
+    const ws = todayStr(weekStart);
     const userWorkouts = allWorkouts.filter(w => w.uid === u.uid && w.date >= ws);
     const prCount = userWorkouts.reduce((n, w) => n + (w.exercises||[]).reduce((m, ex) => m + (ex.sets||[]).filter(s => s.reps && s.weight).length, 0), 0);
     return { u, prCount };
@@ -8139,8 +8193,7 @@ async function openHunterProfile(targetUid) {
    ADMIN FUNCTIONS
    ========================================================================= */
 async function fixMissingStreaks() {
-  const yesterday = new Date(); yesterday.setDate(yesterday.getDate()-1);
-  const yesterdayStr = yesterday.toISOString().slice(0,10);
+  const yesterdayStr = todayStr(daysAgo(1));
   const targets = [
     { uid: 'eUtGPwQBcCSO0x3xS3ZGYFGXNIT2', name: 'Lawrence' },
     { uid: 'd1W5vTx5aSTIwkR4CIwnO2xW7vf1', name: 'LuChing' },
@@ -9178,10 +9231,34 @@ function openAdminWorkoutLogger(targetUid, hunterName) {
         targetProgram.currentDayIndex = (adminDayIndex + 1) % targetProgram.days.length;
         await setDoc(doc(db, 'programs', targetUid), targetProgram);
       }
-      // award XP for the session via proper system
-      const adminXpResult = await awardWorkoutXP(exercises);
-      if (adminXpResult?.generalXP) {
-        logAp(targetUid, 0, `Admin workout log: +${Math.round(adminXpResult.generalXP)} XP (${date})`, profile.auraPoints || 0);
+      // award XP to the TARGET user's document — awardWorkoutXP is hardwired to
+      // currentUser/profile and would credit the admin instead of the target.
+      const { generalXP: adminGeneralXP, trainingXP: adminTrainingXP } = computeWorkoutXP(exercises);
+      if (adminGeneralXP > 0.05) {
+        const targetSnap = await getDoc(doc(db, 'users', targetUid));
+        const tData = targetSnap.data() || {};
+        const tPrevLevel = tData.hunterLevel || 1;
+        const tNewXP = Math.round(((tData.hunterXP || 0) + adminGeneralXP) * 10) / 10;
+        const tNewLevel = levelFromTotalXP(tNewXP);
+        let tApGain = 0;
+        for (let l = tPrevLevel + 1; l <= tNewLevel; l++) tApGain += apForLevel(l);
+        const tUpdates = { hunterXP: tNewXP, hunterLevel: tNewLevel };
+        const tCaps = tData.statTrainingXP || {};
+        for (const [stat, gain] of Object.entries(adminTrainingXP)) {
+          if (gain > 0.05) tUpdates[`statTrainingXP.${stat}`] = Math.max(10, (tCaps[stat] || 0) + gain);
+        }
+        if (tApGain > 0) tUpdates.auraPoints = increment(tApGain);
+        await updateDoc(doc(db, 'users', targetUid), tUpdates);
+        if (targetUid === currentUser?.uid) {
+          profile.hunterXP = tNewXP;
+          profile.hunterLevel = tNewLevel;
+          if (!profile.statTrainingXP) profile.statTrainingXP = {};
+          for (const [stat, gain] of Object.entries(adminTrainingXP)) {
+            if (gain > 0.05) profile.statTrainingXP[stat] = tUpdates[`statTrainingXP.${stat}`];
+          }
+          if (tApGain > 0) profile.auraPoints = (profile.auraPoints || 0) + tApGain;
+        }
+        logAp(targetUid, tApGain, `Admin workout log: +${Math.round(adminGeneralXP)} XP${tApGain ? `, +${tApGain} AP (level-up)` : ''} (${date})`, tData.auraPoints || 0);
       }
       // check PRs for each exercise
       for (const ex of exercises) {
@@ -9217,7 +9294,7 @@ function openAdminWorkoutLogger(targetUid, hunterName) {
         await setDoc(doc(db, 'users', targetUid), statXpUpdate, { merge: true });
       }
       await loadAllData();
-      showToast(`Workout saved for ${hunterName} — AP, PRs and stat XP processed!`, 'success');
+      showToast(`Workout saved for ${escapeHtml(hunterName)} — PRs and stat XP processed!`, 'success');
       overlay.remove();
     } catch(e) {
       showToast('Error: ' + e.message, 'error');
@@ -9228,7 +9305,7 @@ function openAdminWorkoutLogger(targetUid, hunterName) {
 
 function buildMuscleStats(uid) {
   const sevenDaysAgo = new Date(); sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-  const recentWorkouts = allWorkouts.filter(w => w.uid === uid && new Date(w.date) >= sevenDaysAgo);
+  const recentWorkouts = allWorkouts.filter(w => w.uid === uid && dateInRange(w.date, sevenDaysAgo, null));
   const setCounts = {};
   recentWorkouts.forEach(w => (w.exercises||[]).forEach(ex => {
     const def = EXERCISES_ALL[ex.name];
@@ -9254,7 +9331,7 @@ function buildMuscleStats(uid) {
 }
 
 // Solo Leveling style level-up system alert
-function showLevelUpModal(newLevel, apAwarded) {
+function showLevelUpModal(newLevel, apAwarded, done) {
   // Gold flash across screen
   const flash = document.createElement('div');
   flash.className = 'level-up-flash';
@@ -9274,7 +9351,7 @@ function showLevelUpModal(newLevel, apAwarded) {
       <div style="font-size:11px;color:var(--text-faint);margin-top:4px;">Invest in stats to rank up</div>
     </div>
     <button class="system-btn success" style="animation:fadeInDown 0.4s ease 0.5s both;">Continue →</button>
-  </div>`);
+  </div>`, done);
 
   // Animate level number counting up
   const numEl = document.getElementById('levelup-num');
@@ -9287,16 +9364,23 @@ function showLevelUpModal(newLevel, apAwarded) {
       n++;
     }, 80);
   }
-  // Animate AP counting up
+  // Animate AP counting up.
+  // step must be at least 1 — with apAwarded 0 the old Math.ceil(0/20) gave a
+  // step of 0, so `a` never advanced and the interval ran forever.
   if (apEl) {
-    let a = 0;
-    const step = Math.ceil(apAwarded / 20);
-    const apInterval = setInterval(() => {
-      a = Math.min(a + step, apAwarded);
-      apEl.textContent = a;
-      if (a >= apAwarded) clearInterval(apInterval);
-    }, 40);
+    if (!apAwarded || apAwarded <= 0) {
+      apEl.textContent = '0';
+    } else {
+      let a = 0;
+      const step = Math.max(1, Math.ceil(apAwarded / 20));
+      const apInterval = setInterval(() => {
+        a = Math.min(a + step, apAwarded);
+        apEl.textContent = a;
+        if (a >= apAwarded) clearInterval(apInterval);
+      }, 40);
+    }
   }
+
 }
 
 // Additional keyframes injected once
@@ -9334,7 +9418,7 @@ function showQuestClearBanner(apEarned, prCount, persistent = false, generalXP =
 
   if (!persistent) {
     // save to localStorage so it persists for the rest of the day
-    localStorage.setItem('aura_quest_clear_date', todayStr());
+    localStorage.setItem('aura_quest_clear_date_' + (currentUser?.uid || 'anon'), todayStr());
     // spawn particles
     setTimeout(() => {
       const container = banner.querySelector('#qcb-particles');
@@ -9365,7 +9449,7 @@ function showQuestClearBanner(apEarned, prCount, persistent = false, generalXP =
 }
 
 function checkPersistentQuestBanner() {
-  const savedDate = localStorage.getItem('aura_quest_clear_date');
+  const savedDate = localStorage.getItem('aura_quest_clear_date_' + (currentUser?.uid || 'anon'));
   if (savedDate === todayStr()) {
     setTimeout(() => showQuestClearBanner(0, 0, false), 1200);
   }
@@ -9390,11 +9474,11 @@ function showDebriefModal(exercises, apEarned, prs, done) {
   const generalXP = xpResult?.generalXP || 0;
   const trainingXP = xpResult?.trainingXP || {};
   const levelUps = xpResult?.levelUps || [];
-  const hunterLevel = profile.hunterLevel || 1;
+  const hunterLevel = levelFromTotalXP(profile.hunterXP || 0);
   let cumulativeXP = 0;
-  for (let l = 1; l < hunterLevel; l++) cumulativeXP += Math.round(50 * Math.pow(l, 1.25));
+  for (let l = 1; l < hunterLevel; l++) cumulativeXP += xpForLevel(l);
   const xpIntoLevel = Math.max(0, (profile.hunterXP || 0) - cumulativeXP);
-  const xpNeeded = Math.round(50 * Math.pow(hunterLevel, 1.25));
+  const xpNeeded = xpForLevel(hunterLevel);
   const xpPct = Math.min(100, (xpIntoLevel / xpNeeded) * 100);
   const prevXpPct = Math.max(0, xpPct - (generalXP / xpNeeded * 100));
 
@@ -9478,8 +9562,8 @@ function showDebriefModal(exercises, apEarned, prs, done) {
           <p style="font-size:12px;color:var(--excess);font-weight:700;margin:0 0 6px;">⚠ Missing RIR — add now for better progression</p>
           <p style="font-size:11px;color:var(--text-dim);margin:0 0 10px;">How many reps did you have left? Used to auto-adjust your next session.</p>
           <div id="rir-editor-rows">${missingRIR.map((ex,ei) => `
-            <div class="rir-edit-row" data-ex-name="${ex.name}" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;gap:8px;">
-              <span style="font-size:12px;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${ex.name}</span>
+            <div class="rir-edit-row" data-ex-name="${escapeHtml(ex.name)}" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;gap:8px;">
+              <span style="font-size:12px;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(ex.name)}</span>
               <div class="rir-chips">${[0,1,2,3,4,5].map(n => '<button type="button" class="rir-chip" data-rir="'+n+'" data-ei="'+ei+'">'+n+'</button>').join('')}</div>
             </div>`).join('')}</div>
           <button class="btn btn-sm" id="save-rir-btn" style="margin-top:8px;width:100%;">Save RIR</button>
@@ -9625,7 +9709,7 @@ function renderTodayCard() {
         <div class="today-stat-lbl">Streak</div>
       </div>
     </div>
-    ${todayPRs.length ? `<p style="font-size:12px;color:var(--violet);margin:4px 0 0;">🏆 ${todayPRs.length} PR${todayPRs.length>1?'s':''} beaten today · +${prXP} AP</p>` : ''}
+    ${todayPRs.length ? `<p style="font-size:12px;color:var(--violet);margin:4px 0 0;">🏆 ${todayPRs.length} PR${todayPRs.length>1?'s':''} beaten today · +${prXP} XP</p>` : ''}
     <p style="font-size:11px;color:var(--text-faint);margin:6px 0 0;">Total Aura Points: ${(profile.auraPoints||0).toLocaleString()}</p>
   </div>`;
   document.getElementById('today-debrief-clickable')?.addEventListener('click', () => {
@@ -9633,7 +9717,10 @@ function renderTodayCard() {
     const todayPRList = Object.entries(myPRs)
       .filter(([,pr]) => pr.date === today)
       .map(([exercise, pr]) => ({ exercise, xp: pr.xp||0, tier: pr.tier, e1rm: pr.e1rm }));
-    showDebriefModal(allExercises, apToday, todayPRList);
+    // Recompute XP for the replayed sessions so the debrief bar reflects them
+    const { generalXP, trainingXP } = computeWorkoutXP(allExercises);
+    profile._lastXpResult = { generalXP, trainingXP, levelUps: [], apEarned: 0 };
+    showDebriefModal(allExercises, 0, todayPRList);
   });
 }
 
@@ -9752,8 +9839,8 @@ function renderCompetitionBoard() {
 
   // compute each hunter's data
   const rows = allUsers.map(u => {
-    const thisWeekWOs = allWorkouts.filter(w => w.uid === u.uid && new Date(w.date) >= weekStart);
-    const lastWeekWOs = allWorkouts.filter(w => w.uid === u.uid && new Date(w.date) >= lastWeekStart && new Date(w.date) < lastWeekEnd);
+    const thisWeekWOs = allWorkouts.filter(w => w.uid === u.uid && dateInRange(w.date, weekStart, null));
+    const lastWeekWOs = allWorkouts.filter(w => w.uid === u.uid && dateInRange(w.date, lastWeekStart, lastWeekEnd));
     const thisWeekDays = new Set(thisWeekWOs.map(w => w.date)).size; // distinct training days this week (not raw workout docs — a day logged twice still counts once)
     const power = getUserPowerLevel(u);
     const thisWeekAP = thisWeekWOs.length * 10;
@@ -9937,13 +10024,13 @@ async function renderRaidBoss() {
   const lastWeekStart = new Date(weekStart); lastWeekStart.setDate(lastWeekStart.getDate()-7);
 
   // This week's workouts (for damage calculation)
-  const weekWorkouts = allWorkouts.filter(w => { const d = new Date(w.date); return d >= weekStart && d < weekEnd; });
+  const weekWorkouts = allWorkouts.filter(w => dateInRange(w.date, weekStart, weekEnd));
   // Last week's workouts (for boss assignment — boss is determined by last week's training)
-  const lastWeekWorkouts = allWorkouts.filter(w => { const d = new Date(w.date); return d >= lastWeekStart && d < weekStart; });
+  const lastWeekWorkouts = allWorkouts.filter(w => dateInRange(w.date, lastWeekStart, weekStart));
 
   const allDates = allWorkouts.map(w => w.date).sort();
-  const partyStartDate = allDates.length ? new Date(allDates[0]) : now;
-  const isFirstWeek = partyStartDate >= weekStart;
+  const partyStartDate = allDates.length ? new Date(allDates[0] + 'T12:00:00') : now;
+  const isFirstWeek = allDates.length ? allDates[0] >= dStr(weekStart) : true;
   const daysLeft = Math.max(0, Math.ceil((weekEnd - now) / 86400000));
   // For first week: count days from first workout, not from Monday
   const effectiveStart = isFirstWeek ? partyStartDate : weekStart;
@@ -10206,7 +10293,7 @@ async function renderRaidBoss() {
 
   // ── Award raid reward once per week ──
   if (cleared && currentUser) {
-    const weekKey = `aura_raid_cleared_${startOfWeek(new Date()).toISOString().slice(0,10)}`;
+    const weekKey = `aura_raid_cleared_${todayStr(startOfWeek(new Date()))}`;
     try {
       const alreadyClaimed = await runTransaction(db, async (tx) => {
         const userRef = doc(db, 'users', currentUser.uid);
@@ -10264,7 +10351,7 @@ async function renderRaidBoss() {
 
   // ── Raid failure penalty ──
   if (!cleared && currentUser && daysLeft === 0) {
-    const penaltyKey = `aura_raid_penalty_${startOfWeek(new Date()).toISOString().slice(0,10)}`;
+    const penaltyKey = `aura_raid_penalty_${todayStr(startOfWeek(new Date()))}`;
     const specialAttack = BOSS_SPECIAL_ATTACKS[bossType] || BOSS_SPECIAL_ATTACKS.strength;
     const defRank = getDefenceRank(currentUser.uid);
     const reduction = DEFENCE_REDUCTION[defRank] || 0;
@@ -10282,12 +10369,12 @@ async function renderRaidBoss() {
           // Mind Break — lock a random stat from investment for one week
           const STATS_FOR_LOCK = ['strength','endurance','agility','flexibility','defence'];
           const lockedStat = STATS_FOR_LOCK[Math.floor(Math.random()*STATS_FOR_LOCK.length)];
-          const lockUntil = new Date(Date.now() + 7*86400000).toISOString().slice(0,10);
+          const lockUntil = todayStr(new Date(Date.now() + 7*86400000));
           updates.statLock = { stat: lockedStat, until: lockUntil };
         }
         if (bossType === 'flexibility' && !isFullFailure === false) {
           // Binding Curse — reduce Training XP gain next week by 50%
-          const curseUntil = new Date(Date.now() + 7*86400000).toISOString().slice(0,10);
+          const curseUntil = todayStr(new Date(Date.now() + 7*86400000));
           updates.trainingXPCurse = { multiplier: 0.5, until: curseUntil };
         }
         tx.set(userRef, updates, { merge: true });
@@ -10478,7 +10565,7 @@ function weeklyMuscleVolumes() {
   const weekStarts = [0,1,2,3].map(i => startOfWeek(daysAgo(i*7)));
   const weekVolumes = [0,1,2,3].map(() => ({}));
   for (const w of myWorkouts) {
-    const wd = new Date(w.date);
+    const wd = new Date(w.date + 'T12:00:00');
     for (let i = 0; i < 4; i++) {
       const start = weekStarts[i]; const end = new Date(start); end.setDate(end.getDate() + 7);
       if (wd >= start && wd < end) {
@@ -10816,7 +10903,7 @@ function renderTrends() {
 
   // training days (weekday counts)
   const weekdayCounts = [0,0,0,0,0,0,0];
-  myWorkouts.forEach(w => { const d = new Date(w.date); weekdayCounts[(d.getDay()+6)%7]++; });
+  myWorkouts.forEach(w => { const d = new Date(w.date + 'T12:00:00'); weekdayCounts[(d.getDay()+6)%7]++; });
   const wdLabels = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
   const bestDays = wdLabels.map((l,i)=>({l,c:weekdayCounts[i]})).sort((a,b)=>b.c-a.c).filter(x=>x.c>0).slice(0,3).map(x=>x.l);
   const firstWorkoutDate = myWorkouts.length ? myWorkouts[myWorkouts.length-1].date : todayStr();
@@ -10828,7 +10915,7 @@ function renderTrends() {
   for (let i = 11; i >= 0; i--) {
     const d = new Date(); d.setMonth(d.getMonth()-i);
     const label = d.toLocaleDateString(undefined,{month:'short'});
-    const count = myWorkouts.filter(w => { const wd = new Date(w.date); return wd.getMonth()===d.getMonth() && wd.getFullYear()===d.getFullYear(); }).length;
+    const count = myWorkouts.filter(w => { const wd = new Date(w.date + 'T12:00:00'); return wd.getMonth()===d.getMonth() && wd.getFullYear()===d.getFullYear(); }).length;
     monthLabels.push(label); monthValues.push(count);
   }
   const bestMonthIdx = monthValues.indexOf(Math.max(...monthValues));
@@ -12094,8 +12181,20 @@ function checkTrialProgress(trial) {
       (w.exercises||[]).some(e => def.compoundExercises.has(e.name) && (e.sets||[]).some(s=>s.reps>0))
     ).length;
   } else if (req.type === 'cardio_sessions') {
+    // Enforce the advertised minimum minutes — session minutes come from
+    // runSummary.durationMins, or set durationMins, or reps (mins-timed cardio).
+    const sessionMins = (w) => {
+      if (w.runSummary?.durationMins) return w.runSummary.durationMins;
+      let mins = 0;
+      (w.exercises||[]).forEach(e => {
+        if (!CARDIO_EXERCISES.has(e.name)) return;
+        (e.sets||[]).forEach(st => { mins += st.durationMins || st.reps || 0; });
+      });
+      return mins;
+    };
     progress = myWOs.filter(w =>
-      (w.exercises||[]).some(e => CARDIO_EXERCISES.has(e.name) && (e.sets||[]).some(s=>s.reps>0))
+      (w.exercises||[]).some(e => CARDIO_EXERCISES.has(e.name) && (e.sets||[]).some(st=>st.reps>0))
+      && sessionMins(w) >= (req.minMinutes || 0)
     ).length;
   } else if (req.type === 'agility_sessions') {
     progress = myWOs.filter(w =>
@@ -12106,8 +12205,18 @@ function checkTrialProgress(trial) {
       (w.exercises||[]).some(e => (SKILL_TIERS[e.name]||0) >= req.minTier && (e.sets||[]).some(s=>s.reps>0))
     ).length;
   } else if (req.type === 'mobility_sessions') {
+    const mobilityMins = (w) => {
+      let mins = 0;
+      (w.exercises||[]).forEach(e => {
+        if (!def.mobilityExercises.has(e.name)) return;
+        const timedMins = (EXERCISES_ALL[e.name]||{}).timedUnit === 'mins';
+        (e.sets||[]).forEach(st => { mins += st.durationMins || (timedMins ? (st.reps||0) : (st.reps||0)/60); });
+      });
+      return mins;
+    };
     progress = myWOs.filter(w =>
-      (w.exercises||[]).some(e => def.mobilityExercises.has(e.name) && (e.sets||[]).some(s=>s.reps>0))
+      (w.exercises||[]).some(e => def.mobilityExercises.has(e.name) && (e.sets||[]).some(st=>st.reps>0))
+      && mobilityMins(w) >= (req.minMinutes || 0)
     ).length;
   } else if (req.type === 'defence_sessions') {
     progress = myWOs.filter(w =>
@@ -12122,7 +12231,16 @@ function checkTrialProgress(trial) {
 // Auto-generate weakness trial on Monday
 async function maybeSpawnWeaknessTrial() {
   if (!profile || !currentUser) return;
-  const activeTrial = profile.activeTrial;
+  let activeTrial = profile.activeTrial;
+
+  // Sweep stranded trials: completeTrial() nulls activeTrial via a 3s setTimeout,
+  // so closing the app right after the clear banner leaves completed:true stuck
+  // forever — which would block every future trial spawn. Clear it here.
+  if (activeTrial?.completed) {
+    await writeUserFields({ activeTrial: null });
+    profile.activeTrial = null;
+    activeTrial = null;
+  }
   if (activeTrial) return; // already has one
 
   // Only spawn on Monday
@@ -12131,7 +12249,7 @@ async function maybeSpawnWeaknessTrial() {
   if (dayOfWeek !== 1) return; // only on Monday
 
   const lastSpawn = profile.lastTrialSpawn;
-  const thisMonday = getMonday(today).toISOString().slice(0,10);
+  const thisMonday = todayStr(getMonday(today));
   if (lastSpawn === thisMonday) return; // already spawned this week
 
   // Don't spawn if calibration hasn't happened yet
@@ -12147,8 +12265,8 @@ async function maybeSpawnWeaknessTrial() {
   const trialDef = TRIAL_DEFINITIONS[weakest];
   if (!trialDef) return;
 
-  const startDate = today.toISOString().slice(0,10);
-  const expiresDate = new Date(today.getTime() + 7*86400000).toISOString().slice(0,10);
+  const startDate = todayStr(today);
+  const expiresDate = todayStr(new Date(today.getTime() + 7*86400000));
 
   const newTrial = {
     stat: weakest,
@@ -12295,13 +12413,13 @@ async function startVoluntaryTrial(stat) {
   }
 
   const today = new Date();
-  const expiresDate = new Date(today.getTime() + 7*86400000).toISOString().slice(0,10);
+  const expiresDate = todayStr(new Date(today.getTime() + 7*86400000));
   const def = TRIAL_DEFINITIONS[stat];
 
   const newTrial = {
     stat,
     type: 'voluntary',
-    startDate: today.toISOString().slice(0,10),
+    startDate: todayStr(today),
     expiresDate,
     reward: def.reward,
     completed: false,
@@ -12326,7 +12444,7 @@ function renderTrialCard() {
   }
 
   // Check if expired
-  const today = new Date().toISOString().slice(0,10);
+  const today = todayStr();
   if (trial.expiresDate && trial.expiresDate < today && !trial.completed) {
     // Expired — clear it
     writeUserFields({ activeTrial: null });
@@ -12338,7 +12456,7 @@ function renderTrialCard() {
   const def = TRIAL_DEFINITIONS[trial.stat];
   if (!def) return;
   const { progress, required, complete } = checkTrialProgress(trial);
-  const pct = Math.round((progress / required) * 100);
+  const pct = required > 0 ? Math.round((progress / required) * 100) : 0;
 
   // Auto-complete if done
   if (complete && !trial.completed) {
@@ -12820,7 +12938,7 @@ function renderTrialsTab(el) {
   // Check if active trial is complete
   let trialJustCompleted = false;
   if (trialActive && !trialCompleted) {
-    const trialWorkouts = myWorkouts.filter(w => new Date(w.date) >= new Date(trialActive.startDate));
+    const trialWorkouts = myWorkouts.filter(w => dateInRange(w.date, trialActive.startDate, null));
     if (trial.check(trialWorkouts)) {
       trialJustCompleted = true;
       // Award the trial
@@ -13186,17 +13304,17 @@ function getGoalProgress(goal) {
   }
   if (goal.type === 'sessions') {
     const count = getExerciseSessionCount(goal.exercise, currentUser.uid);
-    const pct = Math.min(100, (count / goal.target) * 100);
+    const pct = goal.target > 0 ? Math.min(100, (count / goal.target) * 100) : 0;
     return { pct, label: `${count} / ${goal.target} sessions of ${goal.exercise}` };
   }
   if (goal.type === 'streak') {
     const streak = computeStreak(currentUser.uid);
-    const pct = Math.min(100, (streak / goal.target) * 100);
+    const pct = goal.target > 0 ? Math.min(100, (streak / goal.target) * 100) : 0;
     return { pct, label: `${streak} / ${goal.target} day streak` };
   }
   if (goal.type === 'workouts') {
     const count = myWorkouts.length;
-    const pct = Math.min(100, (count / goal.target) * 100);
+    const pct = goal.target > 0 ? Math.min(100, (count / goal.target) * 100) : 0;
     return { pct, label: `${count} / ${goal.target} total workouts` };
   }
   return { pct: 0, label: 'No progress data' };
@@ -13353,7 +13471,7 @@ function renderHistoryList() {
               <div class="who">${escapeHtml(w.displayName || allUsers.find(u=>u.uid===w.uid)?.displayName || 'Hunter')}${w.time?` · ${w.time}`:''}</div>
               <div class="exlist">${(w.exercises||[]).map(e => {
                 const def = EXERCISES_ALL[e.name] || {};
-                const isRunEx = def.timed && (def.intent === 'endurance' || (def.intent === 'explosive' && def.timedUnit === 'mins'));
+                const isRunEx = isRunExercise(e.name);
                 if (isRunEx && w.runSummary) {
                   const rs = w.runSummary;
                   const m = Math.floor(rs.durationMins||0);
@@ -13387,7 +13505,7 @@ function openWorkoutDetail(workoutId) {
   if (!w || w.uid !== currentUser.uid) return;
   const overlay = document.createElement('div');
   overlay.className = 'modal-overlay';
-  const dateStr = new Date(w.date).toLocaleDateString(undefined, { weekday:'long', month:'long', day:'numeric' });
+  const dateStr = new Date(w.date + 'T12:00:00').toLocaleDateString(undefined, { weekday:'long', month:'long', day:'numeric' });
 
   function buildReadView() {
     // Use runSummary for the whole workout if it's a run
@@ -13412,7 +13530,7 @@ function openWorkoutDetail(workoutId) {
     return (w.exercises||[]).map(ex => {
       const exDef = EXERCISES_ALL[ex.name] || {};
       const timed = !!exDef.timed;
-      const isRunEx = timed && (exDef.intent === 'endurance' || (exDef.intent === 'explosive' && exDef.timedUnit === 'mins'));
+      const isRunEx = isRunExercise(ex.name);
       const repsLabel = timed ? (exDef.timedUnit==='mins'?'Mins':'Secs') : 'Reps';
       const sets = (ex.sets||[]).map((s,i) => {
         // Format duration as MM:SS for run exercises
@@ -13518,6 +13636,9 @@ function openWorkoutDetail(workoutId) {
   });
 
   let editing = false;
+  // Snapshot of the exercises as they were when the detail opened — used to
+  // compute the XP DELTA on save (old XP was already granted at log time).
+  const originalExercises = structuredCloneLite(w.exercises || []);
   overlay.querySelector('#detail-edit-btn').addEventListener('click', () => {
     editing = !editing;
     const content = overlay.querySelector('#detail-content');
@@ -13532,6 +13653,8 @@ function openWorkoutDetail(workoutId) {
       overlay.querySelector('#detail-edit-btn').textContent = '✕ Cancel';
       wireEditHandlers();
     } else {
+      // Cancel — edits mutate w.exercises live, so restore the snapshot
+      w.exercises = structuredCloneLite(originalExercises);
       content.innerHTML = buildReadView();
       actions.style.display = 'none';
       debrief.style.display = 'block';
@@ -13542,6 +13665,7 @@ function openWorkoutDetail(workoutId) {
 
   overlay.querySelector('#detail-cancel-edit').addEventListener('click', () => {
     editing = false;
+    w.exercises = structuredCloneLite(originalExercises);
     overlay.querySelector('#detail-content').innerHTML = buildReadView();
     overlay.querySelector('#detail-edit-actions').style.display = 'none';
     overlay.querySelector('#detail-debrief-btn').style.display = 'block';
@@ -13624,13 +13748,34 @@ function openWorkoutDetail(workoutId) {
       const cleanedExercises = w.exercises.map(ex => ({
         ...ex, sets: ex.sets.filter(s => s.reps > 0)
       })).filter(ex => ex.sets.length > 0);
+
+      // XP for the OLD version of this session was already granted when it was
+      // first saved. Re-running awardWorkoutXP on the edited exercises would add
+      // the whole session again, so only apply the difference.
+      const before = computeWorkoutXP(originalExercises);
+      const after  = computeWorkoutXP(cleanedExercises);
+
       await updateDoc(doc(db, 'workouts', workoutId), { exercises: cleanedExercises });
       w.exercises = cleanedExercises;
       await loadAllData();
       // reprocess PRs with updated data
       const newPRs = await checkAndAwardPRs(cleanedExercises, w.date);
-      // reprocess stat XP
-      await awardWorkoutXP(cleanedExercises);
+
+      // Apply XP delta and recompute level from the corrected total
+      const xpDelta = after.generalXP - before.generalXP;
+      if (Math.abs(xpDelta) > 0.05) {
+        const newTotalXP = Math.max(0, Math.round(((profile.hunterXP || 0) + xpDelta) * 10) / 10);
+        const editBatch = { hunterXP: newTotalXP, hunterLevel: levelFromTotalXP(newTotalXP) };
+        const caps = profile.statTrainingXP || {};
+        for (const stat of Object.keys(after.trainingXP)) {
+          const d = (after.trainingXP[stat] || 0) - (before.trainingXP[stat] || 0);
+          if (Math.abs(d) > 0.05) {
+            editBatch[`statTrainingXP.${stat}`] = Math.max(10, (caps[stat] || 0) + d);
+          }
+        }
+        await writeUserFields(editBatch);
+      }
+
       // reprocess achievements
       await checkAndUnlockAchievements();
       const prMsg = newPRs.length ? ` · ${newPRs.length} new PR${newPRs.length>1?'s':''}` : '';
@@ -13663,9 +13808,12 @@ function openWorkoutDetail(workoutId) {
       prsFromThis.forEach(p => consequences.push(`PR removed: ${p.name} [${p.tier || 'Unranked'}]`));
     }
 
+    const sessionXP = computeWorkoutXP(w.exercises || []).generalXP;
+    if (sessionXP > 0.05) consequences.unshift(`−${Math.round(sessionXP)} Hunter XP (session reversed)`);
+
     if (!consequences.length) {
       consequences.push('Remove this workout from your history');
-      consequences.push('No PRs were linked to this session');
+      consequences.push('No XP or PRs were linked to this session');
     }
 
     const list = overlay.querySelector('#delete-consequences');
@@ -13685,7 +13833,21 @@ function openWorkoutDetail(workoutId) {
       // 1. delete the workout
       await deleteDoc(doc(db, 'workouts', workoutId));
 
-      // 2. remove PRs set in this workout
+      // 2. reverse the XP this session granted (delete + relog must not double-pay).
+      //    Level and AP are NOT clawed back below the levels already reached —
+      //    levelFromTotalXP naturally handles the level; AP stays (already spent/kept).
+      const rev = computeWorkoutXP(w.exercises || []);
+      if (rev.generalXP > 0.05) {
+        const newTotalXP = Math.max(0, Math.round(((profile.hunterXP || 0) - rev.generalXP) * 10) / 10);
+        const delBatch = { hunterXP: newTotalXP, hunterLevel: levelFromTotalXP(newTotalXP) };
+        const caps = profile.statTrainingXP || {};
+        for (const [stat, gain] of Object.entries(rev.trainingXP)) {
+          if (gain > 0.05) delBatch[`statTrainingXP.${stat}`] = Math.max(10, (caps[stat] || 0) - gain);
+        }
+        await writeUserFields(delBatch);
+      }
+
+      // 3. remove PRs set in this workout
       if (prsToRemove.length) {
         const newPRs = { ...myPRs };
         prsToRemove.forEach(name => delete newPRs[name]);
