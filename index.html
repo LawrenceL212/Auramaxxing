@@ -3928,7 +3928,24 @@ document.getElementById('save-run-btn')?.addEventListener('click', async () => {
       createdAt: serverTimestamp(),
     });
     await loadAllData();
-    const runXpResult = await awardWorkoutXP([{ name: 'Running', sets: [{ reps: Math.round((distKm||5)*10), rir: 2 }] }]);
+    // Infer intensity from run type and pace
+    const runRIR = (() => {
+      if (selectedRunType === 'Hill Sprints' || selectedRunType === 'Interval Running') return 0;
+      if (selectedRunType === 'Race') return 0;
+      if (selectedRunType === 'Tempo Run') return 1;
+      if (selectedRunType === 'Long Run') return 3;
+      if (selectedRunType === 'Easy Run') return 4;
+      // infer from pace if available — sub 5min/km = hard, 5-6 = moderate, 6+ = easy
+      if (distKm && totalMins) {
+        const paceMinKm = totalMins / distKm;
+        if (paceMinKm < 5.0) return 1;
+        if (paceMinKm < 6.0) return 2;
+        if (paceMinKm < 7.0) return 3;
+        return 4;
+      }
+      return 3;
+    })();
+    const runXpResult = await awardWorkoutXP([{ name: selectedRunType, sets: [{ reps: Math.round((distKm||5)*10), rir: runRIR }] }]);
     document.getElementById('run-modal-overlay').classList.add('hidden');
     document.body.style.overflow = '';
     startDailyTimer();
@@ -4939,9 +4956,11 @@ function buildMilestoneData() {
         if (['Front Lever','Straddle Front Lever'].includes(name)) {
           data.frontLeverHold = Math.max(data.frontLeverHold, s.reps);
         }
-        // Running
+        // Running — read from runSummary first, fall back to set reps
         if (CARDIO_EXERCISES.has(name)) {
-          const km = s.reps / 10; // reps logged as distance×10
+          const distFromSummary = w.runSummary?.distKm || 0;
+          const distFromReps = s.reps / 10;
+          const km = distFromSummary || distFromReps;
           data.runKm = Math.max(data.runKm, km);
         }
         // Splits
@@ -5857,13 +5876,47 @@ function runCalibrationInference() {
   else if (defenceExCount >= defStd.moderate.count){ stats.defence = defStd.moderate.cap; evidence.defence = { level:'Developing',          count:defenceExCount }; }
   else if (defenceExCount >= defStd.basic.count)   { stats.defence = defStd.basic.cap;    evidence.defence = { level:'Beginning',           count:defenceExCount }; }
 
-  // ── ENDURANCE inference from cardio ──
+  // ── ENDURANCE inference from cardio sessions + run data ──
   const cardioSessions = myWOs.filter(w => (w.exercises||[]).some(e => CARDIO_EXERCISES.has(e.name))).length;
-  const endStd = CALIBRATION_STANDARDS.endurance;
+  
+  // Also read runSummary for pace and distance evidence
+  const runSessions = myWOs.filter(w => w.isRun && w.runSummary);
+  const bestDistKm = runSessions.reduce((best, w) => Math.max(best, w.runSummary.distKm || 0), 0);
+  const bestPace = runSessions.reduce((best, w) => {
+    const pace = w.runSummary.durationMins && w.runSummary.distKm
+      ? w.runSummary.durationMins / w.runSummary.distKm : 99;
+    return Math.min(best, pace);
+  }, 99);
+  const hasTempoOrHarder = runSessions.some(w =>
+    ['Tempo Run','Hill Sprints','Interval Running','Race'].includes(w.runSummary.type)
+  );
 
-  if (cardioSessions >= endStd.high.sessions)      { stats.endurance = endStd.high.cap;   evidence.endurance = { level:'Endurance Trained', sessions:cardioSessions }; }
-  else if (cardioSessions >= endStd.medium.sessions){ stats.endurance = endStd.medium.cap; evidence.endurance = { level:'Some Cardio', sessions:cardioSessions }; }
-  else if (cardioSessions >= endStd.low.sessions)  { stats.endurance = endStd.low.cap;    evidence.endurance = { level:'Starting Cardio', sessions:cardioSessions }; }
+  const endStd = CALIBRATION_STANDARDS.endurance;
+  let endCap = 20;
+  let endEvidence = null;
+
+  // Distance-based inference
+  if (bestDistKm >= 21)       { endCap = 120; endEvidence = { level:'Half Marathon+', note:`${bestDistKm.toFixed(1)}km distance confirmed` }; }
+  else if (bestDistKm >= 10)  { endCap = 90;  endEvidence = { level:'10km Runner',    note:`${bestDistKm.toFixed(1)}km logged` }; }
+  else if (bestDistKm >= 5)   { endCap = 70;  endEvidence = { level:'5km Runner',     note:`${bestDistKm.toFixed(1)}km logged` }; }
+  else if (bestDistKm >= 2)   { endCap = 50;  endEvidence = { level:'Building Base',  note:`${bestDistKm.toFixed(1)}km logged` }; }
+  else if (cardioSessions >= endStd.high.sessions)   { endCap = endStd.high.cap;   endEvidence = { level:'Endurance Trained', sessions:cardioSessions }; }
+  else if (cardioSessions >= endStd.medium.sessions) { endCap = endStd.medium.cap; endEvidence = { level:'Some Cardio', sessions:cardioSessions }; }
+  else if (cardioSessions >= endStd.low.sessions)    { endCap = endStd.low.cap;    endEvidence = { level:'Starting Cardio', sessions:cardioSessions }; }
+
+  // Pace bonus — fast pace bumps cap upward
+  if (endEvidence && bestPace < 99) {
+    if (bestPace < 4.5 && endCap < 120) { endCap = Math.max(endCap, 120); endEvidence.pace = `${Math.floor(bestPace)}:${String(Math.round((bestPace%1)*60)).padStart(2,'0')}/km — elite pace`; }
+    else if (bestPace < 5.5 && endCap < 90)  { endCap = Math.max(endCap, 90);  endEvidence.pace = `${Math.floor(bestPace)}:${String(Math.round((bestPace%1)*60)).padStart(2,'0')}/km — strong pace`; }
+    else if (bestPace < 6.5 && endCap < 70)  { endCap = Math.max(endCap, 70);  endEvidence.pace = `${Math.floor(bestPace)}:${String(Math.round((bestPace%1)*60)).padStart(2,'0')}/km — solid pace`; }
+  }
+  // Tempo/hard session bonus
+  if (hasTempoOrHarder && endCap < 80) endCap = Math.max(endCap, 80);
+
+  if (endEvidence) {
+    stats.endurance = endCap;
+    evidence.endurance = endEvidence;
+  }
 
   return { caps:stats, evidence };
 }
@@ -9833,7 +9886,9 @@ async function renderRaidBoss() {
   const partyStartDate = allDates.length ? new Date(allDates[0]) : now;
   const isFirstWeek = partyStartDate >= weekStart;
   const daysLeft = Math.max(0, Math.ceil((weekEnd - now) / 86400000));
-  const daysPassed = 7 - daysLeft;
+  // For first week: count days from first workout, not from Monday
+  const effectiveStart = isFirstWeek ? partyStartDate : weekStart;
+  const daysPassed = Math.max(1, Math.ceil((now - effectiveStart) / 86400000));
 
   // ── Boss difficulty from average party hunter level + volume modifier ──
   const avgHunterLevel = allUsers.length
@@ -9851,7 +9906,7 @@ async function renderRaidBoss() {
     return s + (w.exercises||[]).reduce((es,ex) =>
       es + (ex.sets||[]).filter(s=>s.reps>0).length * 5, 0);
   }, 0);
-  const TIER_XP_THRESHOLD = { E:300, D:900, C:2400, B:6000, A:20000, S:Infinity };
+  const TIER_XP_THRESHOLD = { E:60, D:200, C:500, B:1200, A:4000, S:Infinity };
   const TIER_ORDER = ['E','D','C','B','A','S'];
   const tierIdx = TIER_ORDER.indexOf(baseTier);
   let bossTier = baseTier;
@@ -9958,7 +10013,7 @@ async function renderRaidBoss() {
 
   // ── V2 Damage formula: absolute XP, personal share, multipliers ──
   const partySize = allUsers.length || 1;
-  const PERSONAL_MIN_XP = 3 * 15 * 5; // 3 sessions × 15 sets × 5 XP = 225 XP minimum
+  const PERSONAL_MIN_XP = 3 * 15 * 1.8; // 3 sessions × 15 sets × ~1.8 XP (base 2 formula)
   const bossDisplayHP = 10; // always show out of 10 for clarity
 
   function getHunterWeeklyXP(uid) {
