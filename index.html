@@ -10853,8 +10853,14 @@ function renderTrends() {
   if (wBtn) wBtn.addEventListener('click', async () => {
     const val = Number(document.getElementById('weight-input').value);
     if (!val) return;
-    await addDoc(collection(db, 'bodyweight'), { uid: currentUser.uid, date: todayStr(), weight: val, createdAt: serverTimestamp() });
-    // store latest bodyweight on user profile so strength comparisons work for other party members
+    const today = todayStr();
+    // Check if there's already an entry for today — overwrite it instead of adding a new one
+    const existing = myWeights.find(w => w.date === today && w.uid === currentUser.uid);
+    if (existing && existing.id) {
+      await setDoc(doc(db, 'bodyweight', existing.id), { uid: currentUser.uid, date: today, weight: val, createdAt: serverTimestamp() });
+    } else {
+      await addDoc(collection(db, 'bodyweight'), { uid: currentUser.uid, date: today, weight: val, createdAt: serverTimestamp() });
+    }
     await setDoc(doc(db, 'users', currentUser.uid), { bodyweightKg: val }, { merge: true });
     profile.bodyweightKg = val;
     await loadAllData(); trendsView='dashboard'; renderTrends();
