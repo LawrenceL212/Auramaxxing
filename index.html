@@ -2397,6 +2397,22 @@ await loadAnatomyTemplate('male');
    ========================================================================= */
 let currentUser = null, profile = null, authMode = "login";
 
+/* ── Notification Queue — shows post-workout modals one at a time ── */
+const notifQueue = [];
+let notifRunning = false;
+
+function queueNotif(fn) {
+  notifQueue.push(fn);
+  if (!notifRunning) drainNotifQueue();
+}
+
+function drainNotifQueue() {
+  if (!notifQueue.length) { notifRunning = false; return; }
+  notifRunning = true;
+  const fn = notifQueue.shift();
+  fn(drainNotifQueue); // each fn calls its callback when dismissed
+}
+
 function showToast(msg, type = 'info') {
   document.querySelectorAll('.toast').forEach(t => t.remove());
   const t = document.createElement('div');
@@ -4553,22 +4569,18 @@ document.getElementById('save-workout-btn')?.addEventListener('click', async () 
     const prs = await checkAndAwardPRs(exercises, date);
     await checkAndUnlockAchievements();
     startDailyTimer();
-    // Show level-up modal if new levels were gained
-    if (xpResult?.levelUps?.length) {
-      for (const lu of xpResult.levelUps) {
-        await new Promise(resolve => {
-          setTimeout(() => {
-            showLevelUpModal(lu.level, lu.ap);
-            resolve();
-          }, 400);
-        });
-      }
-    }
     setTimeout(() => {
       closeWorkoutModal(false);
       showQuestClearBanner(xpResult?.apEarned || 0, prs.length, false, xpResult?.generalXP || 0);
       SFX.questComplete();
-      setTimeout(() => showDebriefModal(exercises, xpResult?.apEarned || 0, prs), 800);
+      // Queue notifications — debrief first, then anything else (milestones, level-ups) in order
+      if (xpResult?.levelUps?.length) {
+        for (const lu of xpResult.levelUps) {
+          queueNotif(done => { showLevelUpModal(lu.level, lu.ap); done(); });
+        }
+      }
+      queueNotif(done => showDebriefModal(exercises, xpResult?.apEarned || 0, prs, done));
+      // Milestones are queued inside checkAndAwardMilestones already
     }, 600);
   } catch (err) {
     alert('Could not save: ' + err.message);
@@ -5079,12 +5091,14 @@ async function checkAndAwardMilestones() {
 
   await setDoc(doc(db, 'users', currentUser.uid), updates, { merge: true });
 
-  // Show milestone cards
-  showMilestonesBanner(newlyAchieved, trainingXPGains, totalHunterXP);
+  // Queue milestone banner — shown after debrief is dismissed
+  if (newlyAchieved.length) {
+    queueNotif(done => showMilestonesBanner(newlyAchieved, trainingXPGains, totalHunterXP, done));
+  }
 }
 
-function showMilestonesBanner(milestones, trainingXPGains, totalXP) {
-  if (!milestones.length) return;
+function showMilestonesBanner(milestones, trainingXPGains, totalXP, done) {
+  if (!milestones.length) { if (done) done(); return; }
   const banner = document.createElement('div');
   banner.style.cssText = `position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.93);z-index:9998;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;animation:viewEnter 0.4s cubic-bezier(0.16,1,0.3,1) both;`;
 
@@ -5103,9 +5117,13 @@ function showMilestonesBanner(milestones, trainingXPGains, totalXP) {
     <div style="font-family:var(--font-mono);font-size:10px;color:var(--brass);letter-spacing:0.2em;margin-bottom:12px;">◈ MILESTONE${milestones.length > 1 ? 'S' : ''} ACHIEVED ◈</div>
     <div style="width:100%;max-width:320px;max-height:60vh;overflow-y:auto;">${cards}</div>
     <div style="margin-top:12px;font-family:var(--font-mono);font-size:13px;color:var(--brass);">Total: +${totalXP} Hunter XP</div>
-    <button class="btn btn-primary" style="margin-top:16px;min-width:160px;" onclick="this.closest('div[style*=fixed]').remove()">Acknowledge</button>`;
+    <button class="btn btn-primary" id="milestone-ack-btn" style="margin-top:16px;min-width:160px;">Acknowledge</button>`;
   document.body.appendChild(banner);
-  setTimeout(() => { try { banner.remove(); } catch(e){} }, 10000);
+  banner.querySelector('#milestone-ack-btn').addEventListener('click', () => {
+    banner.remove();
+    if (done) done();
+  });
+  setTimeout(() => { try { banner.remove(); if (done) done(); } catch(e){} }, 10000);
 }
 
 async function awardWorkoutXP(exercises) {
@@ -5168,18 +5186,21 @@ async function awardWorkoutXP(exercises) {
     newTrainingXP[stat] = Math.max(FLOOR, (currentTrainingXP[stat] || 0) + trainingXP[stat]);
   }
 
-  // Write to Firestore
+  // Write to Firestore — use updateDoc for atomic field updates
+  const userRef = doc(db, 'users', currentUser.uid);
   const updates = {
     hunterXP: Math.round(newXP * 10) / 10,
     hunterLevel: newLevel,
-    statTrainingXP: newTrainingXP,
   };
-
+  // Write Training XP as individual dot-notation fields to avoid overwriting other stats
+  for (const [stat, val] of Object.entries(newTrainingXP)) {
+    updates[`statTrainingXP.${stat}`] = val;
+  }
   if (apEarned > 0) {
     updates.auraPoints = increment(apEarned);
   }
 
-  await setDoc(doc(db, 'users', currentUser.uid), updates, { merge: true });
+  await updateDoc(userRef, updates);
 
   profile.hunterXP = newXP;
   profile.hunterLevel = newLevel;
@@ -5189,9 +5210,8 @@ async function awardWorkoutXP(exercises) {
     logAp(currentUser.uid, apEarned, `Level-up AP: reached level ${newLevel} (${levelUps.map(l=>`Lv${l.level}+${l.ap}AP`).join(', ')})`, (profile.auraPoints || 0) - apEarned);
   }
 
-  // Check milestones after every workout
+  // Check milestones and trials sequentially to avoid Firestore conflicts
   try { await checkAndAwardMilestones(); } catch(e) { console.warn('Milestone check error:', e); }
-  // Check trial progress
   try { await checkTrialProgressAndComplete(); } catch(e) { console.warn('Trial check error:', e); }
 
   return { generalXP, trainingXP, levelUps, apEarned, newLevel };
@@ -9391,7 +9411,7 @@ function checkPersistentQuestBanner() {
   }
 }
 
-function showDebriefModal(exercises, apEarned, prs) {
+function showDebriefModal(exercises, apEarned, prs, done) {
   const totalSets = exercises.reduce((n, ex) => n + (ex.sets||[]).filter(s=>s.reps>0).length, 0);
   const totalVol = exercises.reduce((n, ex) =>
     n + (ex.sets||[]).filter(s=>s.reps>0 && s.weight>0).reduce((v,s) => v + s.reps * s.weight, 0), 0);
@@ -9565,6 +9585,7 @@ function showDebriefModal(exercises, apEarned, prs) {
     if (document.getElementById('view-board').classList.contains('active')) {
       renderTodayCard(); renderCharCard();
     }
+    if (done) done();
   });
 }
 
@@ -12234,10 +12255,10 @@ async function completeTrial() {
     renderCharCard();
   }, 3000);
 
-  showTrialClearBanner(def, reward, newItem, grantTier);
+  queueNotif(done => showTrialClearBanner(def, reward, newItem, grantTier, done));
 }
 
-function showTrialClearBanner(def, reward, item, tier) {
+function showTrialClearBanner(def, reward, item, tier, done) {
   const banner = document.createElement('div');
   banner.style.cssText = `
     position:fixed;top:0;left:0;right:0;bottom:0;
@@ -12263,10 +12284,14 @@ function showTrialClearBanner(def, reward, item, tier) {
         <div style="font-size:10px;color:${col};opacity:0.7;">${rarity}</div>
       </div>` : ''}
     </div>
-    <button class="btn btn-primary" style="min-width:160px;" onclick="this.closest('div[style*=fixed]').remove()">Continue</button>
+    <button class="btn btn-primary" id="trial-clear-continue" style="min-width:160px;">Continue</button>
   `;
   document.body.appendChild(banner);
-  setTimeout(() => banner.remove(), 8000);
+  banner.querySelector('#trial-clear-continue').addEventListener('click', () => {
+    banner.remove();
+    if (done) done();
+  });
+  setTimeout(() => { banner.remove(); if (done) done(); }, 8000);
 }
 
 // Start a voluntary trial from Feats tab
@@ -13344,7 +13369,18 @@ function renderHistoryList() {
           <div class="history-card-header">
             <div style="flex:1;min-width:0;">
               <div class="who">${escapeHtml(w.displayName || allUsers.find(u=>u.uid===w.uid)?.displayName || 'Hunter')}${w.time?` · ${w.time}`:''}</div>
-              <div class="exlist">${(w.exercises||[]).map(e => `${escapeHtml(e.name)} · ${e.sets.length} sets`).join('<br/>')}</div>
+              <div class="exlist">${(w.exercises||[]).map(e => {
+                const def = EXERCISES_ALL[e.name] || {};
+                const isRunEx = def.timed && (def.intent === 'endurance' || (def.intent === 'explosive' && def.timedUnit === 'mins'));
+                if (isRunEx && w.runSummary) {
+                  const rs = w.runSummary;
+                  const m = Math.floor(rs.durationMins||0);
+                  const s = Math.round(((rs.durationMins||0)-m)*60);
+                  const dur = `${m}:${String(s).padStart(2,'0')}`;
+                  return `${escapeHtml(e.name)}${rs.distKm ? ' · '+rs.distKm.toFixed(2)+'km' : ''}${rs.durationMins ? ' · '+dur : ''}${rs.pace ? ' · '+rs.pace : ''}`;
+                }
+                return `${escapeHtml(e.name)} · ${e.sets.length} sets`;
+              }).join('<br/>')}</div>
               <div style="margin-top:6px;display:flex;gap:10px;font-family:var(--font-mono);font-size:9px;color:var(--text-faint);">
                 <span>${totalSets} sets</span>
                 ${sessionXP > 0 ? `<span style="color:rgba(255,215,0,0.6);">+${sessionXP} XP</span>` : ''}
@@ -13372,20 +13408,49 @@ function openWorkoutDetail(workoutId) {
   const dateStr = new Date(w.date).toLocaleDateString(undefined, { weekday:'long', month:'long', day:'numeric' });
 
   function buildReadView() {
+    // Use runSummary for the whole workout if it's a run
+    if (w.isRun && w.runSummary) {
+      const rs = w.runSummary;
+      const distStr = rs.distKm ? `${rs.distKm.toFixed(2)} km` : '';
+      const durMins = Math.floor(rs.durationMins || 0);
+      const durSecs = Math.round(((rs.durationMins || 0) - durMins) * 60);
+      const durStr = `${durMins}:${String(durSecs).padStart(2,'0')}`;
+      const typeLabel = rs.type || 'Run';
+      return `<div class="detail-exercise">
+        <p class="detail-ex-name">🏃 ${escapeHtml(typeLabel)}</p>
+        <div style="display:flex;gap:16px;font-family:var(--font-mono);font-size:13px;margin-top:6px;flex-wrap:wrap;">
+          ${rs.durationMins ? `<span><span style="color:var(--text-faint);font-size:10px;">DURATION</span><br>${durStr}</span>` : ''}
+          ${distStr ? `<span><span style="color:var(--text-faint);font-size:10px;">DISTANCE</span><br>${distStr}</span>` : ''}
+          ${rs.pace ? `<span><span style="color:var(--text-faint);font-size:10px;">PACE</span><br>${rs.pace}</span>` : ''}
+          ${(w.exercises||[])[0]?.sets?.[0]?.rir != null ? `<span><span style="color:var(--text-faint);font-size:10px;">RPE</span><br>${(w.exercises[0].sets[0].rir)}</span>` : ''}
+        </div>
+      </div>`;
+    }
+
     return (w.exercises||[]).map(ex => {
       const exDef = EXERCISES_ALL[ex.name] || {};
       const timed = !!exDef.timed;
+      const isRunEx = timed && (exDef.intent === 'endurance' || (exDef.intent === 'explosive' && exDef.timedUnit === 'mins'));
       const repsLabel = timed ? (exDef.timedUnit==='mins'?'Mins':'Secs') : 'Reps';
-      const sets = (ex.sets||[]).map((s,i) =>
-        `<div class="detail-set-row">
+      const sets = (ex.sets||[]).map((s,i) => {
+        // Format duration as MM:SS for run exercises
+        let durationStr = '';
+        if (isRunEx) {
+          const dur = s.durationMins || s.reps || 0;
+          const m = Math.floor(dur);
+          const sec = Math.round((dur - m) * 60);
+          durationStr = `${m}:${String(sec).padStart(2,'0')}`;
+        }
+        return `<div class="detail-set-row">
           <span class="set-idx">${i+1}</span>
-          <span>${s.reps} ${repsLabel.toLowerCase()}</span>
-          <span>${s.weight ? s.weight+'kg' : String.fromCharCode(8212)}</span>
+          <span>${isRunEx ? durationStr : s.reps + ' ' + repsLabel.toLowerCase()}</span>
+          <span>${isRunEx ? (s.distKm ? s.distKm.toFixed(2)+' km' : '—') : (s.weight ? s.weight+'kg' : '—')}</span>
           ${s.rir != null ? `<span style="color:var(--text-faint);font-size:11px;">${timed ? 'RPE' : 'RIR'} ${s.rir}</span>` : '<span></span>'}
-        </div>`).join('');
+        </div>`;
+      }).join('');
       return `<div class="detail-exercise">
         <p class="detail-ex-name">${escapeHtml(ex.name)}</p>
-        <div class="detail-sets-head"><span>#</span><span>${repsLabel}</span><span>Weight</span><span></span></div>
+        <div class="detail-sets-head"><span>#</span><span>${isRunEx ? 'MM:SS' : repsLabel}</span><span>${isRunEx ? 'km' : 'Weight'}</span><span></span></div>
         ${sets}
       </div>`;
     }).join('') || '<p class="sub">No exercises logged.</p>';
