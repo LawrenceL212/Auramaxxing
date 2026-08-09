@@ -12254,6 +12254,106 @@ const ITEM_DEFINITIONS = {
   boots_hybrid_all_5: { slot:'boots', stat:'agility', tier:5, rarity:'Legendary', name:'Void All-Terrain',       desc:'Elite complete athlete. The System had to create a new category.', dmgMult:1.85, statBonus:{ agility:18, endurance:9, strength:6, focus:3 } },
 };
 
+// ── Item explanations ──
+// Shown in the detail modal when a hunter taps an item.
+// Tells them what they did to earn it, where they are in the chain, and what comes next.
+const ITEM_EXPLANATIONS = {
+  // ── WEAPON — POWER STRENGTH ──
+  'Bent Barbell':       'You loaded the bar and proved you can move at least half your bodyweight. The form might not be perfect yet. The weight was real. This is tier 1 of 5 on the Powerlifter chain — next you need to hit 0.75× BW across three compound sessions.',
+  'Loaded Longsword':   'Consistent barbell work across multiple weeks. You\'re no longer testing the water — you have a training habit. Next: bench 1.0× BW, squat 1.25× BW, deadlift 1.5× BW across 6+ sessions.',
+  'Deadlift Cleaver':   'Intermediate strength. You\'re moving serious weight relative to your bodyweight and showing up consistently. Next gate requires 1.25× BW across 10+ sessions over 3+ weeks.',
+  'Ironbreaker':        'Advanced. Your e1RM ratios place you in the top tier of natural strength athletes. One more gate: 1.5× BW e1RM, 20+ sessions across 6+ weeks. The Monarch\'s Edge awaits.',
+  'Monarch\'s Edge':    'Legendary. 1.5× BW e1RM across 20+ sessions over 6+ weeks. The System has run out of numbers to test you with. This is the final tier of the Powerlifter chain.',
+
+  // ── WEAPON — CAL STRENGTH ──
+  'Splintered Pull Bar': 'Five pull-ups at bodyweight in a single set. The bar does not negotiate. You passed the first test. Next: 10 reps across 3+ sessions on the Calisthenics chain.',
+  'Ring Sword':          'Ten pull-ups. Your relative strength is real. The chain continues — 15 reps or +10kg across 6+ sessions over 2+ weeks.',
+  'Pull Blade':          'Fifteen bodyweight pull-ups or weighted pulls. Upper body pulling strength that most people never reach. Next: 20 reps or +20kg.',
+  'Resonant Edge':       'Twenty pull-ups or +20kg weighted. Elite calisthenics level. Final gate: +30kg or a muscle-up logged.',
+  'Void Katana':         'Legendary. +30kg pull-up or muscle-up proven across 20+ sessions. The Calisthenics chain is complete.',
+
+  // ── WEAPON — HYBRID STRENGTH ──
+  'Cracked Training Bar': 'You\'ve touched both the barbell and the pull-up bar and proven basic ability in both. Most people choose one. You refused. Next: 10 pull-ups AND 0.75× BW compound e1RM.',
+  'Balanced Blade':       'Both iron and bodyweight developing in parallel. The System respects the refusal to specialise. Next: 15 BW pull-ups or +10kg AND 1.0× BW e1RM.',
+  'Compound Edge':        'Intermediate in both disciplines simultaneously. This is rarer than being elite in one. Keep both developing.',
+  'Equilibrium Blade':    'Advanced dual-domain strength. Very few hunters reach this. Final gate: +30kg pull-up or muscle-up AND 1.5× BW e1RM.',
+  'Sovereign\'s Blade':   'Legendary. Elite in both barbell and calisthenics strength at the same time. The rarest weapon on the strength path.',
+
+  // ── WEAPON — PLANCHE ──
+  'Leaning Stick':   'You held a planche lean or frog stand long enough for the System to register it. This is the hardest part — starting. The lean teaches your wrists and shoulders what\'s coming. Next: Planche Lean 20s AND Tuck Planche 10s.',
+  'Planche Staff':   'Tuck planche for 10 seconds. You\'re in compression, fully inverted load on your shoulders. Most people can\'t get here. Next: Advanced Tuck Planche 8s across 2+ sessions.',
+  'Pressed Spear':   'Advanced tuck planche. Your hips are higher, the lever is longer, the shoulder demand is much greater. Next: Straddle Planche 3s or Adv Tuck 20s across 3+ weeks.',
+  'Shadow Lance':    'Near-elite planche progression. You\'re approaching full horizontal. Next: Full Planche 3s — one of the hardest holds in calisthenics.',
+  'Void Lance':      'Legendary. Full planche for 3 seconds. You have achieved one of the rarest skills in bodyweight training. The Planche chain is complete.',
+
+  // ── WEAPON — LEVER ──
+  'Hanging Rod':    'Dead hang 20s or first tuck front lever. You\'re learning to control your bodyweight horizontally. The lats and rear delts are waking up. Next: Dead Hang 30s AND Tuck Front Lever 10s.',
+  'Tension Blade':  'Tuck front lever for 10 seconds. Scapular control is developing. Next: Advanced Tuck Front Lever 8s across 2+ sessions.',
+  'Lever Blade':    'Advanced tuck front lever. The hips are dropping, the lever is growing. Next: Front Lever 3s — the true test begins.',
+  'Shadow Glaive':  'Front lever for 3 seconds. Elite. You\'re holding your body horizontal from a bar. Next: Front Lever 5s across 2+ weeks.',
+  'Sovereign\'s Glaive': 'Legendary. Front lever for 8 seconds. Complete control of the horizontal plane. The Lever chain is complete.',
+
+  // ── WEAPON — FOCUS HYBRID ──
+  'Rough Balance Rod':    'Both tuck planche and tuck front lever proven in the same window. Training two of the hardest skill progressions simultaneously. Next: both holds at 10s.',
+  'Dual Skill Staff':     'Both holds at 10s. The rarest weapon path — planche and lever require opposing shoulder mechanics. You\'re developing both. Next: advanced variations at 8s.',
+  'Balance Glaive':       'Advanced tuck planche AND advanced tuck front lever. Exceptional focus athlete. Next: Straddle 3s or Adv Tuck 20s AND Front Lever 3s.',
+  'Shadow Balance Glaive':'Near-elite in both. Almost nobody reaches this. Next: Full Planche 3s AND Front Lever 8s.',
+  'Void Balance Glaive':  'Legendary. Full planche AND 8-second front lever. Effectively unique. The Focus Hybrid chain is complete.',
+
+  // ── WEAPON — BOXING / COURT ──
+  'Worn Hand Wraps':       'Two boxing sessions logged at 20+ minutes each. The bag has your name on it now. Next: 4 sessions, 60+ total minutes.',
+  'Fighter\'s Hook Blade': 'Consistent boxing sessions. You\'re building the conditioning base. Next: 8 sessions across 2+ weeks, sparring or pads logged at least once.',
+  'Striker\'s Fist Blade': 'Intermediate boxer. All types of boxing work are on record. Next: 15 sessions, 300+ total minutes, all 4 boxing types logged.',
+  'Shadow Striker':        'Advanced. The System has seen you spar. Next: 30 sessions, 600+ minutes, sparring 5+ times.',
+  'Void Fist':             'Legendary. 30 boxing sessions, 600+ minutes, 5+ sparring sessions across 6+ weeks. The Boxing chain is complete.',
+  'Bent Court Racquet':    'Two court sport sessions logged. First step on the court chain. Next: 4 sessions, 60+ total minutes.',
+  'Field Blade':           'Regular court sport training. Next: 8 sessions across 2+ weeks.',
+  'Court Sabre':           'Intermediate court athlete. Next: 15 sessions, 300+ minutes across 3+ weeks.',
+  'Shadow Racquet':        'Advanced court sport volume. Next: 30 sessions, 600+ minutes across 6+ weeks.',
+  'Void Striker':          'Legendary. 30 court sessions, 600+ minutes across 6+ weeks. The Court chain is complete.',
+
+  // ── ARMOUR ──
+  'Cloth Wraps':        'First supplementary sessions logged — isolation work, accessory movements, the small muscles that compound lifts miss. This is tier 1 of 5 on the Isolation Armour chain. Next: 4 sessions averaging 6+ defence sets.',
+  'Accessory Vest':     'Consistent supplementary work across multiple weeks. The connective tissue is adapting. Next: 8 sessions averaging 8+ sets across 2+ weeks.',
+  'Reinforced Plate':   'Intermediate isolation volume. Physique completeness is showing. Next: 16 sessions averaging 10+ sets across 4+ weeks.',
+  'Shadow Plate':       'Advanced supplementary work volume. The small muscles are as trained as the big ones. Final gate: 36 sessions, 12+ sets avg across 8+ weeks.',
+  'Monarch\'s Aegis':   'Legendary. 36 sessions averaging 12+ defence sets across 8+ weeks. The most complete physique on the isolation path.',
+  'Runner\'s Wrap':     'Two qualifying runs logged — 3km+, pace under 8:00/km. The System noted your pace. Next: 5 qualifying runs across 2+ weeks.',
+  'Endurance Vest':     'Consistent running across multiple weeks. The aerobic base is building. Next: 10 qualifying runs, best pace under 6:30/km.',
+  'Ironhide Vest':      'Intermediate running volume with pace improvement tracked. Next: 20 qualifying runs, best pace sub 5:30, across 4+ weeks.',
+  'Titan\'s Vest':      'Advanced endurance. Sub-5:30 pace across 20+ runs. Next: 40 qualifying runs, sub 4:30/km, across 8+ weeks.',
+  'Void Plate':         'Legendary endurance armour. Sub-4:30 pace across 40+ runs over 8+ weeks. The Endurance Armour chain is complete.',
+
+  // ── BOOTS ──
+  'Worn Road Shoes':    'Two qualifying runs logged — 3km+ at under 8:00/km. You\'re on the Running Boots chain. Next: 5 runs at sub 7:00/km across 2+ weeks.',
+  'Tempo Flats':        'Five runs under 7:00/km pace. Tempo is developing. Next: 8 runs sub 6:00/km with at least one tempo run or hill sprint logged.',
+  'Swift Runners':      'Consistent sub-6:00/km pace. Upper tier recreational runner. Next: 15 runs sub 5:00/km across 3+ weeks.',
+  'Shadow Runners':     'Sub-5:00/km pace across 15+ runs. Elite runner territory. Next: 30 runs sub 4:00/km across 6+ weeks.',
+  'Void Treads':        'Legendary. Sub-4:00/km pace across 30+ runs over 6+ weeks. The Running Boots chain is complete.',
+  'Worn Jump Shoes':    'First explosive session logged — pistol squat rep or 3 explosive sessions. The legs are starting to learn power. Next: Pistol Squat 3 reps across 2+ sessions.',
+  'Jump Trainers':      'Pistol squat for 3 reps. Single-leg strength is developing. Next: 5 reps across 3+ sessions.',
+  'Pistol Greaves':     'Pistol squat for 5 reps in a single set. Unilateral leg strength that most people never develop. Next: 8 reps AND Nordic Curl logged across 3+ weeks.',
+  'Phantom Steps':      'Advanced explosive legs. Next: Pistol Squat 12 reps AND weighted pistol logged.',
+  'Sovereign\'s Stride':'Legendary. 12 pistol squat reps AND weighted pistol proven. The Explosive Boots chain is complete.',
+  'Barefoot Wraps':     'First flexibility work logged — German hang or splits. Range of motion training has begun. Next: German Hang 15s across 2+ sessions.',
+  'Mobility Slippers':  'German Hang 15s. The shoulder is opening. Next: German Hang 30s AND Front Splits logged across 2+ weeks.',
+  'Supple Greaves':     'German Hang 30s and front splits. Real flexibility development. Next: German Hang 45s AND Side Splits across 3+ weeks.',
+  'Shadow Silks':       'Advanced flexibility — German Hang 45s and side splits. Next: German Hang 60s AND Middle Splits across 4+ weeks.',
+  'Void Silks':         'Legendary. German Hang 60s, all three splits logged across 4+ weeks. The Flexibility chain is complete.',
+
+  // ── ACCESSORIES ──
+  'Balance Strap':       'First handstand hold logged — even a 2-second wall hold counts. The System knows you\'re attempting inversion. Next: Chest-to-wall 10s or freestanding 3s across 2+ sessions.',
+  'Handstand Bracer':    'Consistent handstand work. Wall work is becoming freestanding work. Next: Freestanding 10s across 3+ sessions and 2+ weeks.',
+  'Press Bracer':        'Freestanding handstand for 10 seconds. Proprioception and shoulder stability are real. Next: Freestanding 20s across 5+ sessions.',
+  'Shadow Bracer':       'Freestanding 20s. Advanced handstand — most people never get here. Next: Freestanding 45s across 4+ weeks.',
+  'Void Bracer':         'Legendary. 45-second freestanding handstand across 4+ weeks. The Handstand chain is complete.',
+  'Frayed Waist Wrap':   'First L-sit logged — 3 seconds. Hip flexor compression has begun. This is tier 1 of 5 on the Core chain. Next: L-Sit 8s across 2+ sessions.',
+  'Core Wrap':           'L-Sit for 8 seconds. The hip flexors and triceps are holding you. Next: L-Sit 15s AND Dragon Flag logged across 2+ weeks.',
+  'Dragon Belt':         'L-Sit 15s and Dragon Flag logged. Serious core skill development. Next: L-Sit 20s AND Dragon Flag 3 reps across 3+ sessions.',
+  'Shadow Core Wrap':    'Advanced core — L-Sit 20s AND Dragon Flag 3 reps. Next: L-Sit 30s, Dragon Flag 5 reps, AND Toes to Bar logged.',
+  'Sovereign\'s Seal':   'Legendary. L-Sit 30s, Dragon Flag 5 reps, Toes to Bar. Complete core skill development. The Core chain is complete.',
+};
+
 const RARITY_GLOW = {
   Common:    { color:'rgba(160,160,160,0.6)', glow:'none', label:'Common' },
   Uncommon:  { color:'rgba(78,205,120,0.8)',  glow:'0 0 8px rgba(78,205,120,0.4)', label:'Uncommon' },
@@ -13730,10 +13830,15 @@ function renderInventory() {
                 </div>`).join('')}
             </div>
           </div>` : ''}
-          <div style="display:flex;justify-content:space-between;align-items:center;font-size:10px;color:var(--text-faint);margin-bottom:14px;padding:6px 0;border-top:1px solid rgba(61,165,255,0.08);">
+          <div style="display:flex;justify-content:space-between;align-items:center;font-size:10px;color:var(--text-faint);margin-bottom:${ITEM_EXPLANATIONS[item.name] ? '10px' : '14px'};padding:6px 0;border-top:1px solid rgba(61,165,255,0.08);">
             <span>×${item.dmgMult?.toFixed(2)||'1.00'} dungeon damage mult</span>
             ${item.earnedAt ? `<span style="color:var(--growing);">✓ Trial earned</span>` : `<span style="color:rgba(61,165,255,0.3);">Inferred from logs</span>`}
           </div>
+          ${ITEM_EXPLANATIONS[item.name] ? `
+          <div style="background:rgba(61,165,255,0.04);border:1px solid rgba(61,165,255,0.1);border-left:3px solid ${rColor};border-radius:0 6px 6px 0;padding:10px 12px;margin-bottom:14px;">
+            <div style="font-family:var(--font-mono);font-size:8px;color:rgba(61,165,255,0.4);letter-spacing:0.1em;margin-bottom:6px;">WHAT THIS MEANS</div>
+            <div style="font-size:11px;color:var(--text-dim);line-height:1.7;">${ITEM_EXPLANATIONS[item.name]}</div>
+          </div>` : ''}
           <button class="btn btn-sm" style="width:100%;" onclick="document.getElementById('${modalId}').style.display='none'">Close</button>
         </div>
       </div>`;
@@ -13853,10 +13958,24 @@ function renderInventory() {
       <!-- Body model -->
       <div style="background:var(--card);border:1px solid rgba(61,165,255,0.08);border-radius:12px;padding:16px;margin-bottom:20px;">
         <div style="font-family:var(--font-mono);font-size:10px;color:rgba(61,165,255,0.4);letter-spacing:0.15em;margin-bottom:4px;">── CHARACTER ──</div>
-        <p style="font-size:11px;color:var(--text-faint);margin:0 0 12px;">Highlighted muscles show what each equipped item covers. Unlit muscles show training status.</p>
-        <div style="display:flex;gap:8px;justify-content:center;" id="inv-body-wrap">
-          ${bodySvg('front', buildMuscleStats(currentUser.uid), profile.bodyType || 'male', inv)}
-          ${bodySvg('back',  buildMuscleStats(currentUser.uid), profile.bodyType || 'male', inv)}
+        <p style="font-size:11px;color:var(--text-faint);margin:0 0 10px;">Highlighted muscles show what each equipped item covers. Unlit muscles show training status.</p>
+        <div style="display:flex;gap:6px;margin-bottom:12px;">
+          <button id="inv-view-front" class="btn btn-sm" style="flex:1;font-size:11px;" onclick="
+            document.getElementById('inv-body-front').style.display='block';
+            document.getElementById('inv-body-back').style.display='none';
+            this.style.opacity='1'; this.style.borderColor='var(--accent)';
+            document.getElementById('inv-view-back').style.opacity='0.4'; document.getElementById('inv-view-back').style.borderColor='';
+          ">Front</button>
+          <button id="inv-view-back" class="btn btn-sm" style="flex:1;font-size:11px;opacity:0.4;" onclick="
+            document.getElementById('inv-body-back').style.display='block';
+            document.getElementById('inv-body-front').style.display='none';
+            this.style.opacity='1'; this.style.borderColor='var(--accent)';
+            document.getElementById('inv-view-front').style.opacity='0.4'; document.getElementById('inv-view-front').style.borderColor='';
+          ">Back</button>
+        </div>
+        <div id="inv-body-wrap" style="justify-content:center;">
+          <div id="inv-body-front">${bodySvg('front', buildMuscleStats(currentUser.uid), profile.bodyType || 'male', profile.inventory || {})}</div>
+          <div id="inv-body-back" style="display:none;">${bodySvg('back', buildMuscleStats(currentUser.uid), profile.bodyType || 'male', profile.inventory || {})}</div>
         </div>
       </div>
 
