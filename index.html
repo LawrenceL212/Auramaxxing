@@ -4366,17 +4366,24 @@ function addExerciseRow(presetName, targetSets, targetReps, prefillSets) {
     const suggTag = suggestion ? `<span class="suggest-badge">${suggestion}</span>` : '';
     setRow.innerHTML = `
       <span class="set-idx">${idx}</span>
-      ${stepper('set-reps', prefillReps || '', 0, repsStep, repsLabel)}
       ${isRunEx
-        ? `<div style="display:flex;align-items:center;gap:4px;">
-             <input type="number" class="set-dist" step="0.01" min="0" placeholder="km"
-               inputmode="decimal"
-               style="width:64px;background:var(--card-2);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:0 8px;font-size:14px;font-family:var(--font-mono);height:44px;text-align:center;" />
+        ? `<div style="display:flex;align-items:center;gap:3px;">
+             <input type="number" class="set-reps" placeholder="00" min="0" max="999" inputmode="numeric"
+               style="width:48px;background:var(--card-2);border:1px solid var(--border);border-radius:8px 0 0 8px;color:var(--text);padding:0 6px;font-size:15px;font-family:var(--font-mono);height:44px;text-align:center;" />
+             <span style="font-size:12px;color:var(--text-faint);padding:0 1px;">:</span>
+             <input type="number" class="set-secs" placeholder="00" min="0" max="59" inputmode="numeric"
+               style="width:44px;background:var(--card-2);border:1px solid var(--border);border-radius:0 8px 8px 0;color:var(--text);padding:0 6px;font-size:15px;font-family:var(--font-mono);height:44px;text-align:center;" />
+           </div>
+           <div style="display:flex;align-items:center;gap:4px;">
+             <input type="number" class="set-dist" step="0.01" min="0" placeholder="0.00" inputmode="decimal"
+               style="width:72px;background:var(--card-2);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:0 8px;font-size:15px;font-family:var(--font-mono);height:44px;text-align:center;" />
              <span style="font-size:10px;color:var(--text-faint);">km</span>
            </div>`
-        : timed
-          ? '<div class="stepper" style="opacity:0.25;pointer-events:none;"><button>−</button><input type="text" value="BW" readonly style="color:var(--text-faint);font-size:12px;"/><button>+</button></div>'
-          : stepper('set-weight', prefillWeight || '', 0, 2.5, 'kg')
+        : `${stepper('set-reps', prefillReps || '', 0, repsStep, repsLabel)}
+           ${timed
+             ? '<div class="stepper" style="opacity:0.25;pointer-events:none;"><button>−</button><input type="text" value="BW" readonly style="color:var(--text-faint);font-size:12px;"/><button>+</button></div>'
+             : stepper('set-weight', prefillWeight || '', 0, 2.5, 'kg')
+           }`
       }
       <button type="button" class="remove-x set-remove">×</button>
       ${suggTag}
@@ -4432,9 +4439,8 @@ function addExerciseRow(presetName, targetSets, targetReps, prefillSets) {
     tagsEl.innerHTML = Object.keys(map).map(m => `<span class="tag">${m}</span>`).join('');
     const head = row.querySelector('.set-table-head');
     if (head && !head.classList.contains('hidden')) {
-      const unit = timedUnit();
-      head.querySelector('span:nth-child(2)').textContent = isTimed() ? (unit === 'mins' ? 'Mins' : 'Secs') : 'Reps';
-      head.querySelector('.weight-header').textContent = isRunEx ? 'km' : 'Weight (kg)';
+      head.querySelector('span:nth-child(2)').textContent = isRunEx ? 'MM:SS' : isTimed() ? (timedUnit() === 'mins' ? 'Mins' : 'Secs') : 'Reps';
+      head.querySelector('.weight-header').textContent = isRunEx ? 'km' : isTimed() ? 'BW' : 'Weight (kg)';
     }
   }
   function selectExercise(name) {
@@ -4470,13 +4476,18 @@ document.getElementById('save-workout-btn')?.addEventListener('click', async () 
     const sets = [...row.querySelectorAll('.set-row')].map(sr => {
       const selectedRir = sr.querySelector('.rir-chip.selected');
       const distInput = sr.querySelector('.set-dist');
+      const secsInput = sr.querySelector('.set-secs');
+      const mins = Number(sr.querySelector('.set-reps')?.value) || 0;
+      const secs = Number(secsInput?.value) || 0;
+      const totalMins = secsInput ? mins + secs / 60 : mins;
       return {
-        reps: Number(sr.querySelector('.set-reps')?.value) || 0,
+        reps: secsInput ? Math.max(1, Math.round(totalMins)) : (Number(sr.querySelector('.set-reps')?.value) || 0),
         weight: Number(sr.querySelector('.set-weight')?.value) || 0,
         rir: selectedRir ? Number(selectedRir.dataset.rir) : null,
         ...(distInput ? { distKm: parseFloat(distInput.value) || 0 } : {}),
+        ...(secsInput ? { durationMins: Math.round(totalMins * 10) / 10 } : {}),
       };
-    }).filter(s => s.reps > 0);    if (sets.length) exercises.push({ name, sets });
+    }).filter(s => s.reps > 0 || s.durationMins > 0);    if (sets.length) exercises.push({ name, sets });
   });
   if (!exercises.length) { showToast('The System requires effort. Log at least one set before completing your quest.', 'error'); return; }
 
@@ -4491,7 +4502,7 @@ document.getElementById('save-workout-btn')?.addEventListener('click', async () 
     const runSummaryFromLogger = runExercise ? (() => {
       const s = runExercise.sets[0];
       const distKm = s.distKm || 0;
-      const durationMins = s.reps || 0;
+      const durationMins = s.durationMins || s.reps || 0;
       const pace = distKm && durationMins
         ? `${Math.floor(durationMins/distKm)}:${String(Math.round(((durationMins/distKm)%1)*60)).padStart(2,'0')} /km`
         : '';
