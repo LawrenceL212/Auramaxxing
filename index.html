@@ -2372,7 +2372,7 @@ document.getElementById('add-exercise-btn')?.addEventListener('click', () => { S
 addExerciseRow();
 
 document.getElementById('save-workout-btn')?.addEventListener('click', async () => {
-  if (!currentUser) return;
+  if (!currentUser) { alert('DEBUG: No currentUser'); return; }
   const btn = document.getElementById('save-workout-btn');
   btn.disabled = true; btn.textContent = 'Saving…';
   const date = document.getElementById('workout-date').value || todayStr();
@@ -2391,6 +2391,7 @@ document.getElementById('save-workout-btn')?.addEventListener('click', async () 
     }).filter(s => s.reps > 0);
     if (sets.length) exercises.push({ name, sets });
   });
+  alert('DEBUG: exercises found = ' + exercises.length + '\n' + JSON.stringify(exercises.map(e => e.name)));
   if (!exercises.length) {
     showToast('Fill in reps for at least one set before completing.', 'error');
     btn.disabled = false; btn.textContent = 'Complete quest';
