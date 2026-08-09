@@ -12526,20 +12526,27 @@ function resolveItemKey(stat, slot) {
     if (stat === 'strength') {
       const powerSets = count('Bench Press','Squat','Deadlift','Overhead Press','Romanian Deadlift','Sumo Deadlift','Incline Bench Press','Front Squat');
       const calSets   = count('Pull Up','Chin Up','Dips','Ring Dips','Inverted Row','Barbell Row','Seated Cable Row','Pendlay Row');
+      if (powerSets + calSets === 0) return 'weapon_str';
       const d = dominant({ weapon_str_power: powerSets, weapon_str_cal: calSets });
-      return d || 'weapon_str_hybrid';
+      // Only hybrid if BOTH styles have meaningful training (at least 5 sets each)
+      return d || (powerSets >= 5 && calSets >= 5 ? 'weapon_str_hybrid' :
+             powerSets >= calSets ? 'weapon_str_power' : 'weapon_str_cal');
     }
     if (stat === 'focus') {
       const plancheSets = count('Tuck Planche','Advanced Tuck Planche','Full Planche','Planche Lean','Straddle Planche','Pseudo planche push up','Freestanding Handstand Hold','Chest-to-Wall Handstand Hold','Handstand Shoulder Taps','Wall Toe Pull');
       const leverSets   = count('Front Lever','Tuck Front Lever','Advanced Tuck Front Lever','Front Lever Row','Front Lever Raise','Back Lever');
+      if (plancheSets + leverSets === 0) return 'weapon_foc'; // no skill training yet — generic fallback
       const d = dominant({ weapon_foc_planche: plancheSets, weapon_foc_lever: leverSets });
-      return d || 'weapon_foc_hybrid';
+      // Only hybrid if BOTH styles have meaningful training (at least 3 sets each)
+      return d || (plancheSets >= 3 && leverSets >= 3 ? 'weapon_foc_hybrid' : 
+             plancheSets >= leverSets ? 'weapon_foc_planche' : 'weapon_foc_lever');
     }
     if (stat === 'agility') {
       const boxingSets = count('Boxing — Bag Work','Boxing — Sparring','Boxing — Shadow Boxing','Boxing — Pad Work');
       const courtSets  = count('Tennis','Tennis Drills','Basketball','Basketball Drills','Football (Soccer)','Football Drills','American Football');
+      if (boxingSets + courtSets === 0) return null; // no sports training — no weapon from this path
       const d = dominant({ weapon_boxing: boxingSets, weapon_court: courtSets });
-      return d || (boxingSets + courtSets > 0 ? 'weapon_boxing' : 'weapon_str');
+      return d || (boxingSets >= courtSets ? 'weapon_boxing' : 'weapon_court');
     }
   }
 
@@ -12558,27 +12565,34 @@ function resolveItemKey(stat, slot) {
     const climbSets  = count('Bouldering','Sport Climbing','Top Rope Climbing','Traditional Climbing');
     const expSets    = count('Pistol Squat','Box Jump','Jump Squat','Nordic Curl','Bear Crawl');
     const courtSets  = count('Tennis','Tennis Drills','Basketball','Basketball Drills','Football (Soccer)','Football Drills','American Football');
+    const total = runSets + climbSets + expSets + courtSets;
+    if (total === 0) return 'boots'; // no agility training — generic fallback, no boots earned yet
     const d = dominant({ boots_run: runSets, boots_climb: climbSets, boots_exp: expSets, boots_court: courtSets });
     if (d) return d;
-    // Hybrid detection
+    // Hybrid — only if top two BOTH have at least 3 sets
     const topTwo = [
       { key:'run', val:runSets }, { key:'climb', val:climbSets },
       { key:'exp', val:expSets }, { key:'court', val:courtSets }
     ].sort((a,b)=>b.val-a.val);
-    const allEqual = topTwo[0].val > 0 && topTwo[1].val > 0 && topTwo[2].val > 0;
-    if (allEqual) return 'boots_hybrid_all';
+    const allThreeActive = topTwo[0].val >= 3 && topTwo[1].val >= 3 && topTwo[2].val >= 3;
+    if (allThreeActive) return 'boots_hybrid_all';
     const pair = `${topTwo[0].key}_${topTwo[1].key}`;
-    if (topTwo[0].val > 0 && topTwo[1].val > 0) {
+    if (topTwo[0].val >= 3 && topTwo[1].val >= 3) {
       if (pair === 'run_climb' || pair === 'climb_run') return 'boots_hybrid_trail';
       if (pair === 'exp_run'   || pair === 'run_exp')   return 'boots_hybrid_sprint';
       if (pair === 'court_run' || pair === 'run_court') return 'boots_court';
     }
-    return 'boots_run'; // fallback
+    // Single dominant even below threshold — just pick the leader
+    return topTwo[0].key === 'run' ? 'boots_run'
+         : topTwo[0].key === 'climb' ? 'boots_climb'
+         : topTwo[0].key === 'exp' ? 'boots_exp'
+         : 'boots_court';
   }
 
   if (slot === 'accessory') {
     const hsSets   = count('Freestanding Handstand Hold','Chest-to-Wall Handstand Hold','Wall Handstand Hold','Handstand Shoulder Taps','Wall Toe Pull');
     const coreSets = count('L-Sit','Dragon Flag Negatives','Hollow hold','Toes to Bar','Ab Wheel Rollout','Hanging Leg Raise');
+    if (hsSets + coreSets === 0) return 'accessory'; // no skill training — generic fallback
     return hsSets >= coreSets ? 'accessory_hs' : 'accessory_core';
   }
 
@@ -14216,6 +14230,37 @@ window._debugInventory = () => {
   const inv = getEffectiveInventory();
   Object.entries(inv).forEach(([slot, item]) => {
     if (item) console.log(slot+':', item.name, '| tier:', item.tier, '| rarity:', item.rarity, '| earnedFromWorkouts:', item.earnedFromWorkouts);
+  });
+};
+
+window._debugAllInventories = () => {
+  const countFor = (wos, ...names) => wos.reduce((t,w) =>
+    t + (w.exercises||[]).reduce((s,ex) =>
+      s + (names.includes(ex.name) ? (ex.sets||[]).filter(st=>st.reps>0).length : 0), 0), 0);
+
+  allUsers.forEach(u => {
+    const wos = allWorkouts.filter(w => w.uid === u.uid);
+    console.log(`\n====== ${u.displayName} (${wos.length} sessions) ======`);
+    console.log('=== WEAPON ===');
+    console.log('boxing:', countFor(wos,'Boxing — Bag Work','Boxing — Sparring','Boxing — Shadow Boxing','Boxing — Pad Work'));
+    console.log('court:', countFor(wos,'Tennis','Tennis Drills','Basketball','Basketball Drills','Football (Soccer)','Football Drills','American Football'));
+    console.log('planche:', countFor(wos,'Tuck Planche','Advanced Tuck Planche','Full Planche','Planche Lean','Freestanding Handstand Hold','Chest-to-Wall Handstand Hold','Handstand Shoulder Taps'));
+    console.log('lever:', countFor(wos,'Front Lever','Tuck Front Lever','Advanced Tuck Front Lever','Front Lever Row','Front Lever Raise','Back Lever'));
+    console.log('power:', countFor(wos,'Bench Press','Squat','Deadlift','Overhead Press','Romanian Deadlift','Sumo Deadlift','Incline Bench Press'));
+    console.log('cal:', countFor(wos,'Pull Up','Chin Up','Dips','Ring Dips','Inverted Row','Barbell Row','Seated Cable Row'));
+    console.log('=== ARMOUR ===');
+    console.log('swim:', countFor(wos,'Freestyle Swimming','Breaststroke Swimming','Butterfly Swimming','Backstroke Swimming','Open Water Swimming','HIIT Swimming'));
+    console.log('cycling:', countFor(wos,'Cycling','Road Cycling','Mountain Biking','Stationary Bike','Spin Class','Cycling Intervals'));
+    console.log('run/end:', countFor(wos,'Long Run','Easy Run','Tempo Run','Hill Sprints','Interval Running'));
+    console.log('iso:', countFor(wos,'Lateral Raise','Front Raise','Rear Delt Fly','Face Pull','Hammer Curl','Hanging Leg Raise','Hanging Knee Raise'));
+    console.log('=== BOOTS ===');
+    console.log('run:', countFor(wos,'Long Run','Easy Run','Tempo Run','Hill Sprints','Interval Running','Race','Sprinting'));
+    console.log('climb:', countFor(wos,'Bouldering','Sport Climbing','Top Rope Climbing','Traditional Climbing'));
+    console.log('exp:', countFor(wos,'Pistol Squat','Box Jump','Jump Squat','Nordic Curl','Bear Crawl'));
+    console.log('court:', countFor(wos,'Tennis','Basketball','Football (Soccer)'));
+    console.log('=== ACCESSORY ===');
+    console.log('handstand:', countFor(wos,'Freestanding Handstand Hold','Chest-to-Wall Handstand Hold','Wall Handstand Hold','Handstand Shoulder Taps'));
+    console.log('core:', countFor(wos,'L-Sit','Dragon Flag Negatives','Hollow hold','Toes to Bar','Ab Wheel Rollout'));
   });
 };
 </script>
