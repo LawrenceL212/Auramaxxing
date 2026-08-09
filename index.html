@@ -6022,17 +6022,23 @@ function renderCalibrationObservationCard() {
         "The System does not guess. The iron has spoken."
       </div>
       <div style="display:flex;gap:8px;">
-        <button class="btn btn-primary" style="flex:2;font-size:13px;" 
-          onclick="applyCalibrationObservation('${obs.id}','${obs.stat}',${obs.proposedCap})">
+        <button class="btn btn-primary" id="cal-obs-acknowledge" style="flex:2;font-size:13px;">
           Acknowledge
         </button>
-        <button class="btn" style="flex:1;font-size:12px;color:var(--text-faint);"
-          onclick="disputeCalibrationObservation('${obs.id}','${obs.stat}')">
+        <button class="btn" id="cal-obs-dispute" style="flex:1;font-size:12px;color:var(--text-faint);">
           Dispute
         </button>
       </div>
       ${observations.length > 1 ? `<div style="font-family:var(--font-mono);font-size:9px;color:var(--text-faint);text-align:center;margin-top:8px;">${observations.length - 1} more observation${observations.length > 2?'s':''} pending</div>` : ''}
     </div>`;
+
+  // Wire buttons with addEventListener — avoids module scope issues
+  container.querySelector('#cal-obs-acknowledge')?.addEventListener('click', () =>
+    applyCalibrationObservation(obs.id, obs.stat, obs.proposedCap)
+  );
+  container.querySelector('#cal-obs-dispute')?.addEventListener('click', () =>
+    disputeCalibrationObservation(obs.id, obs.stat)
+  );
 }
 
 // Remove the early window assignments (they were too early)
@@ -11939,7 +11945,7 @@ async function maybeSpawnWeaknessTrial() {
   if (!trialDef) return;
 
   const startDate = today.toISOString().slice(0,10);
-  const expiresDate = getMonday(new Date(today.getTime() + 7*86400000)).toISOString().slice(0,10);
+  const expiresDate = new Date(today.getTime() + 7*86400000).toISOString().slice(0,10);
 
   const newTrial = {
     stat: weakest,
