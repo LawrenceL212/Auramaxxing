@@ -2407,8 +2407,8 @@ document.getElementById('save-workout-btn')?.addEventListener('click', async () 
     const sets = [...row.querySelectorAll('.set-row')].map(sr => {
       const selectedRir = sr.querySelector('.rir-chip.selected');
       return {
-        reps: Number(sr.querySelector('.set-reps').value) || 0,
-        weight: Number(sr.querySelector('.set-weight').value) || 0,
+        reps: Number(sr.querySelector('.set-reps')?.value) || 0,
+        weight: Number(sr.querySelector('.set-weight')?.value) || 0,
         rir: selectedRir ? Number(selectedRir.dataset.rir) : null,
       };
     }).filter(s => s.reps > 0);
