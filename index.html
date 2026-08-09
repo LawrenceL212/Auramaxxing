@@ -2871,7 +2871,7 @@ const SFX = {
   // Haptic wrapper
   vibrate(pattern) {
     if (!this.hapticOn()) return;
-    if (navigator.vibrate) navigator.vibrate(pattern);
+    try { if (navigator.vibrate) navigator.vibrate(pattern); } catch(e) {}
   },
 
   // Core tone generator
@@ -13754,6 +13754,8 @@ function renderInventory() {
       <div style="font-size:11px;color:var(--text-dim);padding:8px;background:rgba(0,0,0,0.2);border-radius:6px;">
         Train exercises relevant to <strong style="color:var(--violet);">${escapeHtml(chain.label||'')}</strong> to deal damage. Your item bonus applies automatically.
       </div>
+      <button class="btn btn-sm" style="margin-top:10px;width:100%;color:var(--excess);border-color:rgba(255,61,90,0.3);background:rgba(255,61,90,0.06);" onclick="abandonDungeon()">⛔ Abandon Dungeon</button>
+      </div>
     </div>`;
   })() : '';
 
@@ -14817,6 +14819,13 @@ window.disputeCalibrationObservation = disputeCalibrationObservation;
 window.startVoluntaryTrial = startVoluntaryTrial;
 window.completeTrial = completeTrial;
 window.startDungeon = startDungeon;
+window.abandonDungeon = async () => {
+  if (!confirm('Abandon this dungeon? All progress will be lost.')) return;
+  await writeUserFields({ activeDungeon: null });
+  profile.activeDungeon = null;
+  renderInventory();
+  showToast('Dungeon abandoned.', 'error');
+};
 
 // Debug helper — remove before production
 window._debugInventory = () => {
