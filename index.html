@@ -421,6 +421,19 @@
   .rest-sub{font-size:13.5px;color:var(--text-dim);line-height:1.6;margin:0;}
 
   .rest-note{font-size:12.5px;color:var(--maintaining);text-align:center;margin:0 0 12px;}
+
+  /* ── Rest Day Card ── */
+  .rest-day-card{position:relative;background:linear-gradient(135deg,rgba(5,7,13,0.98) 0%,rgba(17,22,40,0.95) 100%);border:1px solid rgba(93,157,255,0.15);border-radius:4px;padding:32px 24px 24px;text-align:center;margin-bottom:20px;overflow:hidden;}
+  .rest-day-corner-tl,.rest-day-corner-br{content:"";position:absolute;width:14px;height:14px;border-color:rgba(93,157,255,0.3);pointer-events:none;}
+  .rest-day-corner-tl{top:-1px;left:-1px;border-top:1px solid;border-left:1px solid;}
+  .rest-day-corner-br{bottom:-1px;right:-1px;border-bottom:1px solid;border-right:1px solid;}
+  .rest-day-eyebrow{font-family:var(--font-mono);font-size:9px;letter-spacing:0.15em;color:rgba(93,157,255,0.4);margin:0 0 12px;}
+  .rest-day-icon{font-size:40px;margin:0 0 10px;filter:drop-shadow(0 0 12px rgba(93,157,255,0.3));}
+  .rest-day-title{font-family:var(--font-head);font-size:22px;font-weight:800;letter-spacing:0.08em;color:var(--text-dim);margin:0 0 12px;text-shadow:0 0 20px rgba(93,157,255,0.2);}
+  .rest-day-body{font-size:13px;color:var(--text-faint);line-height:1.6;margin:0 0 16px;}
+  .rest-day-streak-shield{display:flex;align-items:center;justify-content:center;gap:10px;background:rgba(61,165,255,0.05);border:1px solid rgba(61,165,255,0.12);border-radius:4px;padding:10px 14px;margin:0 0 16px;}
+  .rest-day-log-btn{font-size:12px;color:rgba(93,157,255,0.5);border-color:rgba(93,157,255,0.15);background:transparent;width:100%;}
+  .rest-day-log-btn:hover{color:var(--text);border-color:rgba(93,157,255,0.4);}
   .quest-carousel{display:flex;align-items:center;gap:8px;overflow:visible;}
   .quest-carousel-card{flex:1;min-width:0;position:relative;}
   .quest-carousel-card .quest-card{will-change:transform,opacity;}
@@ -697,6 +710,8 @@
   .streak-pill{font-family:var(--font-mono);font-size:11px;padding:3px 8px;border-radius:10px;background:var(--card-2);border:1px solid var(--border);color:var(--text-dim);white-space:nowrap;}
   .streak-pill.at-risk{background:rgba(255,61,90,0.1);border-color:var(--excess);color:var(--excess);animation:timerPulse 1.5s ease-in-out infinite;}
   .streak-pill.safe{background:rgba(139,107,255,0.1);border-color:var(--growing);color:var(--growing);}
+  .streak-pill.rest{background:rgba(93,157,255,0.06);border-color:rgba(93,157,255,0.2);color:rgba(93,157,255,0.5);}
+  .status-dot.rest{background:rgba(93,157,255,0.2);border:2px solid rgba(93,157,255,0.3);}
 
   /* ── Raid Boss ── */
   .raid-boss-card{
@@ -2200,6 +2215,12 @@ function startDailyTimer() {
       return;
     }
 
+    // Rest day — no countdown needed
+    if (currentUser && isRestDayFor(currentUser.uid)) {
+      el.innerHTML = `<span class="daily-timer-label">Today</span><span class="daily-timer-time" style="color:rgba(93,157,255,0.6);">🌑 Rest Day</span>`;
+      return;
+    }
+
     // always show countdown — doesn't require a program
     const now = new Date();
     const midnight = new Date(now); midnight.setHours(24, 0, 0, 0);
@@ -2723,7 +2744,21 @@ function renderQuestFeed() {
         <button class="icon-btn" id="edit-program-btn">✎ Edit plan</button>
       </div>
     </div>
-    ${!isScheduledToday ? '<p class="rest-note">Not a scheduled training day — browse or log anyway below.</p>' : ''}
+    ${!isScheduledToday ? `
+    <div class="rest-day-card">
+      <div class="rest-day-corner-tl"></div>
+      <div class="rest-day-corner-br"></div>
+      <p class="rest-day-eyebrow">◈ SYSTEM NOTICE ◈</p>
+      <div class="rest-day-icon">🌑</div>
+      <h2 class="rest-day-title">RECOVERY PHASE</h2>
+      <p class="rest-day-body">The System has granted you a rest interval.<br>Your streak is shielded. Your rank is secure.<br><span style="color:var(--text-faint);font-size:11px;">Even hunters must recover to grow stronger.</span></p>
+      <div class="rest-day-streak-shield">
+        <span style="color:var(--brass);font-size:16px;">🔥</span>
+        <span style="font-family:var(--font-mono);font-size:11px;color:var(--text-faint);">STREAK PROTECTED — NO ACTION REQUIRED</span>
+        <span style="color:var(--brass);font-size:16px;">🔥</span>
+      </div>
+      <button class="btn rest-day-log-btn" id="rest-day-log-btn">+ Log a bonus session anyway</button>
+    </div>` : ''}
     <div class="quest-carousel">
       <button class="carousel-arrow" id="carousel-prev" aria-label="Previous day">‹</button>
       <div class="quest-carousel-card">
@@ -2737,6 +2772,9 @@ function renderQuestFeed() {
   `;
 
   document.getElementById('edit-program-btn')?.addEventListener('click', () => { editingProgram = true; renderQuestFeed(); });
+  document.getElementById('rest-day-log-btn')?.addEventListener('click', () => {
+    document.getElementById('logger-title')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
   document.getElementById('new-program-btn')?.addEventListener('click', () => {
     if (!window.confirm('Start a new plan?\n\nYour current plan will be replaced.')) return;
     myProgram = null; editingProgram = true; renderQuestFeed();
@@ -3970,6 +4008,35 @@ document.getElementById('save-workout-btn')?.addEventListener('click', async () 
 /* =========================================================================
    RANK
    ========================================================================= */
+// Returns true if today is a scheduled rest day for the given user.
+// Works for both the current user (via myProgram) and party members (via allUsers schedule).
+// Rotation-mode programs with explicit off-days (e.g. Mon-Fri selected, Sat/Sun off)
+// are treated the same as fixed-mode — if today isn't in the schedule, it's a rest day.
+function isRestDayFor(uid) {
+  let schedule = null;
+  if (uid === currentUser?.uid && myProgram?.schedule?.length) {
+    schedule = myProgram.schedule;
+  } else {
+    const u = allUsers.find(u => u.uid === uid);
+    if (u?.schedule?.length) schedule = u.schedule;
+  }
+  if (!schedule || schedule.length === 0) return false;
+  if (schedule.length >= 7) return false; // all days selected = no rest days
+  const today = todayWeekday();
+  return !schedule.includes(today);
+}
+
+// Returns one of three states for a hunter today:
+// 'rest'    — today is a scheduled rest day (streak protected)
+// 'trained' — they logged a workout today
+// 'pending' — scheduled training day, not yet logged
+function huntingStateToday(uid) {
+  const trainedToday = allWorkouts.some(w => w.uid === uid && w.date === todayStr());
+  if (trainedToday) return 'trained';
+  if (isRestDayFor(uid)) return 'rest';
+  return 'pending';
+}
+
 function computeStreak(uid) {
   const dates = new Set(allWorkouts.filter(w => w.uid === uid).map(w => w.date));
   // Get this user's schedule so rest days don't break the streak.
@@ -8137,10 +8204,25 @@ function renderTodayCard() {
 
   if (!todayWorkouts.length) {
     const streak = computeStreak(currentUser.uid);
-    el.innerHTML = `<div class="today-debrief-card">
-      <p style="font-size:11px;color:var(--brass);text-transform:uppercase;letter-spacing:.06em;margin:0 0 8px;">Today</p>
-      <p class="today-no-workout">No workout logged yet today.${streak > 0 ? `<br><span style="color:var(--excess);">🔥 ${streak} day streak at risk.</span>` : ''}</p>
-    </div>`;
+    const isRest = isRestDayFor(currentUser.uid);
+    if (isRest) {
+      el.innerHTML = `<div class="today-debrief-card" style="border-color:rgba(93,157,255,0.15);text-align:center;padding:20px 16px;">
+        <p style="font-size:11px;color:var(--text-faint);font-family:var(--font-mono);letter-spacing:.06em;margin:0 0 8px;">◈ SYSTEM NOTICE ◈</p>
+        <div style="font-size:28px;margin:4px 0;">🌑</div>
+        <p style="font-weight:700;font-size:14px;color:var(--text-dim);margin:4px 0;">Recovery Phase</p>
+        <p style="font-size:12px;color:var(--text-faint);margin:4px 0 10px;">Scheduled rest day — streak protected.</p>
+        <div style="display:flex;align-items:center;justify-content:center;gap:8px;background:rgba(61,165,255,0.05);border:1px solid rgba(61,165,255,0.12);border-radius:4px;padding:8px;">
+          <span style="color:var(--brass);">🔥</span>
+          <span style="font-family:var(--font-mono);font-size:10px;color:var(--text-faint);">${streak}d streak · SHIELDED</span>
+          <span style="color:var(--brass);">🔥</span>
+        </div>
+      </div>`;
+    } else {
+      el.innerHTML = `<div class="today-debrief-card">
+        <p style="font-size:11px;color:var(--brass);text-transform:uppercase;letter-spacing:.06em;margin:0 0 8px;">Today</p>
+        <p class="today-no-workout">No workout logged yet today.${streak > 0 ? `<br><span style="color:var(--excess);">🔥 ${streak} day streak at risk.</span>` : ''}</p>
+      </div>`;
+    }
     return;
   }
 
@@ -8251,12 +8333,31 @@ function renderPartyStatus() {
     return bd - ad;
   });
   el.innerHTML = sorted.map(u => {
-    const done = allWorkouts.some(w => w.uid === u.uid && w.date === today);
+    const state = huntingStateToday(u.uid);
+    const done = state === 'trained';
+    const isRest = state === 'rest';
     const streak = computeStreak(u.uid);
-    const streakAtRisk = !done && streak > 0;
+    const streakAtRisk = !done && !isRest && streak > 0;
     const isMe = u.uid === currentUser.uid;
+
+    const statusText = done
+      ? '✓ Quest cleared today'
+      : isRest
+        ? '🌑 Rest day · streak shielded'
+        : streakAtRisk
+          ? `⚠ ${streak}d streak at risk`
+          : 'Not yet logged';
+
+    const statusColor = done
+      ? 'var(--growing)'
+      : isRest
+        ? 'rgba(93,157,255,0.5)'
+        : streakAtRisk
+          ? 'var(--excess)'
+          : 'var(--text-faint)';
+
     return `<div class="today-row ${isMe?'me':''}" data-uid="${u.uid}">
-      <span class="status-dot ${done?'done':'pending'}"></span>
+      <span class="status-dot ${done?'done':isRest?'rest':'pending'}"></span>
       <div style="flex:1;min-width:0;">
         <div style="font-size:14px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(u.displayName||'Hunter')}</div>
         <div style="font-size:11px;color:var(--brass);font-family:var(--font-mono);letter-spacing:0.03em;margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
@@ -8266,12 +8367,10 @@ function renderPartyStatus() {
             return ucls ? ` · <span style="color:${ucls.color};">${ucls.label}</span>` : '';
           })()}
         </div>
-        <div style="font-size:11px;color:${streakAtRisk?'var(--excess)':done?'var(--growing)':'var(--text-faint)'};margin-top:2px;">
-          ${done ? '✓ Quest cleared today' : streakAtRisk ? `⚠ ${streak}d streak at risk` : 'Not yet logged'}
-        </div>
+        <div style="font-size:11px;color:${statusColor};margin-top:2px;">${statusText}</div>
       </div>
       <div style="text-align:right;flex-shrink:0;">
-        <div class="streak-pill ${streakAtRisk?'at-risk':done?'safe':''}">${streak}d</div>
+        <div class="streak-pill ${streakAtRisk?'at-risk':done?'safe':isRest?'rest':''}">${streak}d</div>
       </div>
     </div>`;
   }).join('') || '<p class="empty-state">No hunters yet.</p>';
@@ -8308,6 +8407,7 @@ function renderCompetitionBoard() {
       thisWeekWOs: thisWeekDays,
       weeklyGoal: u.weeklyGoal || 3,
       trainedToday: allWorkouts.some(w => w.uid === u.uid && w.date === today),
+      restToday: isRestDayFor(u.uid),
       momentum, momentumColor, weekDelta,
       stats: u.stats || {},
       hunterClass: u.uid === currentUser.uid ? profile.hunterClass : u.hunterClass,
@@ -8445,7 +8545,7 @@ function renderCompetitionBoard() {
           + '<span style="font-size:9px;color:var(--text-faint);font-family:var(--font-mono);">THIS WEEK</span>'
           + '<span style="font-size:9px;font-family:var(--font-mono);color:' + weekColor + ';">'
             + r.thisWeekWOs + '/' + r.weeklyGoal
-            + (r.trainedToday ? ' · trained today' : !r.trainedToday && r.streak > 0 ? ' · streak at risk' : '')
+            + (r.trainedToday ? ' · trained today' : r.restToday ? ' · 🌑 rest day' : !r.trainedToday && r.streak > 0 ? ' · streak at risk' : '')
           + '</span>'
         + '</div>'
         + '<div style="height:2px;background:rgba(93,157,255,0.1);border-radius:1px;">'
@@ -8455,7 +8555,7 @@ function renderCompetitionBoard() {
       // streak
       + '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px;">'
         + '<span style="font-size:9px;color:var(--text-faint);font-family:var(--font-mono);">' + r.total + ' total sessions</span>'
-        + '<span class="streak-pill ' + (!r.trainedToday&&r.streak>0?'at-risk':r.trainedToday?'safe':'') + '">' + r.streak + 'd</span>'
+        + '<span class="streak-pill ' + (!r.trainedToday&&!r.restToday&&r.streak>0?'at-risk':r.trainedToday?'safe':r.restToday?'rest':'') + '">' + r.streak + 'd</span>'
       + '</div>'
     + '</div>';
   }).join('') || '';
