@@ -4672,13 +4672,16 @@ function computeStreak(uid) {
   // the streak. Previously this only applied to fixed mode, which is why
   // "I'm just a girl"'s Saturday rest day broke her streak even though
   // Sat/Sun were clearly marked off in her rotation-mode schedule.
-  function isRestDay(dateStr) {
+  // Streak: any day with a logged workout counts, regardless of schedule.
+  // Rest days in the schedule are skipped (don't break the streak) but
+  // unscheduled days where the user DID train still count — bonus sessions
+  // should never penalise the streak.
+  function isScheduledRestDay(dateStr) {
     if (!schedule || schedule.length === 0) return false;
-    // if all 7 days are in the schedule, there are no rest days
     if (schedule.length >= 7) return false;
-    const dow = WEEKDAYS_FULL[new Date(dateStr + 'T12:00:00').getDay()];
-    const shortDow = dow.slice(0, 3);
-    return !schedule.includes(shortDow);
+    const dow = WEEKDAYS_FULL[new Date(dateStr + 'T12:00:00').getDay()].slice(0,3);
+    // Only treat as a rest day if it's explicitly off the schedule AND no workout was logged
+    return !schedule.includes(dow) && !dates.has(dateStr);
   }
 
   const hasToday = dates.has(todayStr());
@@ -4688,7 +4691,7 @@ function computeStreak(uid) {
   // Walk backwards, skipping scheduled rest days
   while (true) {
     const dayStr = todayStr(daysAgo(i));
-    if (isRestDay(dayStr)) {
+    if (isScheduledRestDay(dayStr)) {
       // rest day — skip it without breaking the streak, but don't count it
       i++;
       // safety: stop if we've gone back more than 2 years
@@ -9681,6 +9684,7 @@ function renderTodayCard() {
   }, 0);
   const todayPRs = Object.values(myPRs).filter(p => p.date === today);
   const prXP = todayPRs.reduce((s,p) => s+(p.xp||0), 0);
+  const streak = computeStreak(currentUser.uid);
 
   el.innerHTML = `<div class="today-debrief-card" id="today-debrief-clickable" style="cursor:pointer;">
     <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;">
