@@ -11908,95 +11908,103 @@ let featsActiveTab = 'achievements'; // 'achievements' | 'chains' | 'goals'
    ========================================================================= */
 
 const ITEM_DEFINITIONS = {
-  // ── WEAPON — STRENGTH chains ──
-  // Powerlifter: bench/squat/deadlift dominant
-  weapon_str_power_1: { slot:'weapon', stat:'strength', tier:1, rarity:'Common',    name:'Bent Iron Bar',         desc:'Pulled from the rack. The System saw what you loaded.', dmgMult:1.1, statBonus:{ strength:2 } },
-  weapon_str_power_2: { slot:'weapon', stat:'strength', tier:2, rarity:'Uncommon',  name:'Forged Longsword',      desc:'Hammered from compound lifts. Heavy and honest.', dmgMult:1.22, statBonus:{ strength:4 } },
-  weapon_str_power_3: { slot:'weapon', stat:'strength', tier:3, rarity:'Rare',      name:'Tempered War Blade',    desc:'Intermediate strength confirmed. The bar bends for others.', dmgMult:1.38, statBonus:{ strength:7, defence:2 } },
+  // ── WEAPON — STRENGTH / POWERLIFTER ──
+  // Earned by: bench, squat, deadlift, overhead press dominance
+  weapon_str_power_1: { slot:'weapon', stat:'strength', tier:1, rarity:'Common',    name:'Bent Barbell',          desc:'The bar remembers every failed rep. The System does too.', dmgMult:1.1, statBonus:{ strength:2 } },
+  weapon_str_power_2: { slot:'weapon', stat:'strength', tier:2, rarity:'Uncommon',  name:'Loaded Longsword',      desc:'Hammered from compound sets. Heavy and honest like the iron.', dmgMult:1.22, statBonus:{ strength:4 } },
+  weapon_str_power_3: { slot:'weapon', stat:'strength', tier:3, rarity:'Rare',      name:'Deadlift Cleaver',      desc:'Intermediate strength confirmed. The bar bends for others.', dmgMult:1.38, statBonus:{ strength:7, defence:2 } },
   weapon_str_power_4: { slot:'weapon', stat:'strength', tier:4, rarity:'Epic',      name:'Ironbreaker',           desc:'Advanced power. The dungeon floor cracks under its weight.', dmgMult:1.55, statBonus:{ strength:12, defence:4 } },
   weapon_str_power_5: { slot:'weapon', stat:'strength', tier:5, rarity:'Legendary', name:"Monarch's Edge",        desc:'Elite. The System has run out of ways to measure you.', dmgMult:1.80, statBonus:{ strength:20, defence:6, agility:3 } },
-  // Calisthenic strength: pull-ups/dips/rows dominant
-  weapon_str_cal_1: { slot:'weapon', stat:'strength', tier:1, rarity:'Common',    name:'Cracked Wooden Club',     desc:'Bodyweight acknowledged. First reps counted.', dmgMult:1.1, statBonus:{ strength:2 } },
-  weapon_str_cal_2: { slot:'weapon', stat:'strength', tier:2, rarity:'Uncommon',  name:'Hardened Pull Brace',     desc:'The bar is your weapon. You have begun to understand it.', dmgMult:1.22, statBonus:{ strength:3, focus:2 } },
-  weapon_str_cal_3: { slot:'weapon', stat:'strength', tier:3, rarity:'Rare',      name:'Shadow Shortsword',       desc:'Controlled tension. The System sees the difference.', dmgMult:1.38, statBonus:{ strength:5, focus:4 } },
-  weapon_str_cal_4: { slot:'weapon', stat:'strength', tier:4, rarity:'Epic',      name:'Resonant Edge',           desc:'Advanced bodyweight strength — rare to reach without iron.', dmgMult:1.55, statBonus:{ strength:9, focus:7 } },
-  weapon_str_cal_5: { slot:'weapon', stat:'strength', tier:5, rarity:'Legendary', name:'Void Katana',             desc:'Elite. Iron could not teach what the bar taught you.', dmgMult:1.80, statBonus:{ strength:16, focus:10, agility:5 } },
 
-  // ── WEAPON — FOCUS chains ──
-  // Planche/handstand dominant
-  weapon_foc_planche_1: { slot:'weapon', stat:'focus', tier:1, rarity:'Common',    name:'Carved Training Staff',  desc:'First pressed steps into the skill domain.', dmgMult:1.1, statBonus:{ focus:2 } },
-  weapon_foc_planche_2: { slot:'weapon', stat:'focus', tier:2, rarity:'Uncommon',  name:'Balance Staff',           desc:'The planche position demands what machines cannot simulate.', dmgMult:1.22, statBonus:{ focus:4, strength:2 } },
-  weapon_foc_planche_3: { slot:'weapon', stat:'focus', tier:3, rarity:'Rare',      name:'Leaning Spear',           desc:'Intermediate skill. Your lean alone intimidates.', dmgMult:1.38, statBonus:{ focus:7, strength:3 } },
-  weapon_foc_planche_4: { slot:'weapon', stat:'focus', tier:4, rarity:'Epic',      name:'Shadow Lance',            desc:'The dungeon cannot replicate what gravity already denied you.', dmgMult:1.55, statBonus:{ focus:12, strength:5 } },
-  weapon_foc_planche_5: { slot:'weapon', stat:'focus', tier:5, rarity:'Legendary', name:'Void Lance',              desc:'Elite. The System has never seen a body hold this.', dmgMult:1.80, statBonus:{ focus:20, strength:8, agility:4 } },
-  // Front lever/back lever dominant
-  weapon_foc_lever_1: { slot:'weapon', stat:'focus', tier:1, rarity:'Common',    name:'Rough Iron Rod',           desc:'First pulls into the lever domain.', dmgMult:1.1, statBonus:{ focus:2 } },
-  weapon_foc_lever_2: { slot:'weapon', stat:'focus', tier:2, rarity:'Uncommon',  name:'Tension Bar',              desc:'The System recognises what straight-arm pulling demands.', dmgMult:1.22, statBonus:{ focus:3, strength:3 } },
-  weapon_foc_lever_3: { slot:'weapon', stat:'focus', tier:3, rarity:'Rare',      name:'Lever Blade',              desc:'Intermediate: horizontal control confirmed.', dmgMult:1.38, statBonus:{ focus:6, strength:5 } },
-  weapon_foc_lever_4: { slot:'weapon', stat:'focus', tier:4, rarity:'Epic',      name:'Shadow Glaive',            desc:'Advanced. The System acknowledges what most call impossible.', dmgMult:1.55, statBonus:{ focus:11, strength:8 } },
+  // ── WEAPON — STRENGTH / CALISTHENICS ──
+  // Earned by: pull-ups, dips, rows, ring work dominance
+  weapon_str_cal_1: { slot:'weapon', stat:'strength', tier:1, rarity:'Common',    name:'Splintered Pull Bar',     desc:'Bodyweight acknowledged. First reps counted.', dmgMult:1.1, statBonus:{ strength:2 } },
+  weapon_str_cal_2: { slot:'weapon', stat:'strength', tier:2, rarity:'Uncommon',  name:'Ring Sword',              desc:'The rings and the bar are your weapon. You have begun to understand them.', dmgMult:1.22, statBonus:{ strength:3, focus:2 } },
+  weapon_str_cal_3: { slot:'weapon', stat:'strength', tier:3, rarity:'Rare',      name:'Pull Blade',              desc:'Controlled tension. The System sees the difference from grinding iron.', dmgMult:1.38, statBonus:{ strength:5, focus:4 } },
+  weapon_str_cal_4: { slot:'weapon', stat:'strength', tier:4, rarity:'Epic',      name:'Resonant Edge',           desc:'Advanced bodyweight strength — rare to reach without a barbell.', dmgMult:1.55, statBonus:{ strength:9, focus:7 } },
+  weapon_str_cal_5: { slot:'weapon', stat:'strength', tier:5, rarity:'Legendary', name:'Void Katana',             desc:'Elite. The iron could not teach what the bar taught you.', dmgMult:1.80, statBonus:{ strength:16, focus:10, agility:5 } },
+
+  // ── WEAPON — FOCUS / PLANCHE & HANDSTAND ──
+  // Earned by: tuck planche, planche lean, handstand work dominance
+  weapon_foc_planche_1: { slot:'weapon', stat:'focus', tier:1, rarity:'Common',    name:'Leaning Stick',          desc:'First pressed steps into the planche domain.', dmgMult:1.1, statBonus:{ focus:2 } },
+  weapon_foc_planche_2: { slot:'weapon', stat:'focus', tier:2, rarity:'Uncommon',  name:'Planche Staff',          desc:'The lean demands what machines cannot simulate.', dmgMult:1.22, statBonus:{ focus:4, strength:2 } },
+  weapon_foc_planche_3: { slot:'weapon', stat:'focus', tier:3, rarity:'Rare',      name:'Pressed Spear',          desc:'Intermediate skill. Your lean alone unsettles opponents.', dmgMult:1.38, statBonus:{ focus:7, strength:3 } },
+  weapon_foc_planche_4: { slot:'weapon', stat:'focus', tier:4, rarity:'Epic',      name:'Shadow Lance',           desc:'The dungeon cannot replicate what gravity already denied you.', dmgMult:1.55, statBonus:{ focus:12, strength:5 } },
+  weapon_foc_planche_5: { slot:'weapon', stat:'focus', tier:5, rarity:'Legendary', name:'Void Lance',             desc:'Elite. The System has never seen a body hold this position.', dmgMult:1.80, statBonus:{ focus:20, strength:8, agility:4 } },
+
+  // ── WEAPON — FOCUS / FRONT LEVER & BACK LEVER ──
+  // Earned by: front lever, tuck front lever, lever rows, back lever dominance
+  weapon_foc_lever_1: { slot:'weapon', stat:'focus', tier:1, rarity:'Common',    name:'Hanging Rod',              desc:'First pulls into the horizontal domain.', dmgMult:1.1, statBonus:{ focus:2 } },
+  weapon_foc_lever_2: { slot:'weapon', stat:'focus', tier:2, rarity:'Uncommon',  name:'Tension Blade',            desc:'The System recognises what straight-arm pulling demands.', dmgMult:1.22, statBonus:{ focus:3, strength:3 } },
+  weapon_foc_lever_3: { slot:'weapon', stat:'focus', tier:3, rarity:'Rare',      name:'Lever Blade',              desc:'Intermediate: horizontal control confirmed by the System.', dmgMult:1.38, statBonus:{ focus:6, strength:5 } },
+  weapon_foc_lever_4: { slot:'weapon', stat:'focus', tier:4, rarity:'Epic',      name:'Shadow Glaive',            desc:'Advanced. The System acknowledges what most call anatomically impossible.', dmgMult:1.55, statBonus:{ focus:11, strength:8 } },
   weapon_foc_lever_5: { slot:'weapon', stat:'focus', tier:5, rarity:'Legendary', name:"Sovereign's Glaive",       desc:'Elite lever control. The dungeon has no wall you cannot hold.', dmgMult:1.80, statBonus:{ focus:18, strength:12, defence:5 } },
 
-  // ── ARMOUR — DEFENCE chains ──
-  // Isolation/accessory dominant (face pulls, curls, lateral raises)
-  armour_iso_1: { slot:'armour', stat:'defence', tier:1, rarity:'Common',    name:'Cloth Wraps',              desc:'First supplementary work logged. The body is listening.', dmgMult:1.1, statBonus:{ defence:2 } },
-  armour_iso_2: { slot:'armour', stat:'defence', tier:2, rarity:'Uncommon',  name:'Leather Vest',             desc:'Consistent accessory work. The small muscles are no longer small.', dmgMult:1.22, statBonus:{ defence:4, strength:2 } },
-  armour_iso_3: { slot:'armour', stat:'defence', tier:3, rarity:'Rare',      name:'Reinforced Leather',       desc:'Intermediate physique completeness confirmed.', dmgMult:1.38, statBonus:{ defence:7, strength:3 } },
-  armour_iso_4: { slot:'armour', stat:'defence', tier:4, rarity:'Epic',      name:'Shadow Plate',             desc:'Advanced development. Nothing in your physique is an afterthought.', dmgMult:1.55, statBonus:{ defence:12, strength:5 } },
-  armour_iso_5: { slot:'armour', stat:'defence', tier:5, rarity:'Legendary', name:"Monarch's Aegis",          desc:'Elite. The dungeon cannot find a gap in what you have built.', dmgMult:1.80, statBonus:{ defence:20, strength:7, focus:4 } },
-  // Endurance/cardio dominant
-  armour_end_1: { slot:'armour', stat:'defence', tier:1, rarity:'Common',    name:'Runner\'s Wrap',           desc:'First cardio sessions counted. The lungs have begun.', dmgMult:1.1, statBonus:{ defence:2, endurance:1 } },
-  armour_end_2: { slot:'armour', stat:'defence', tier:2, rarity:'Uncommon',  name:'Endurance Vest',           desc:'Consistent cardio builds a different kind of armour.', dmgMult:1.22, statBonus:{ defence:3, endurance:3 } },
-  armour_end_3: { slot:'armour', stat:'defence', tier:3, rarity:'Rare',      name:'Ironhide Vest',            desc:'Intermediate: your recovery rate alone is a defence.', dmgMult:1.38, statBonus:{ defence:5, endurance:6 } },
+  // ── ARMOUR — DEFENCE / ISOLATION & ACCESSORY ──
+  // Earned by: face pulls, lateral raises, curls, rear delt work dominance
+  armour_iso_1: { slot:'armour', stat:'defence', tier:1, rarity:'Common',    name:'Cloth Wraps',              desc:'First supplementary work logged. The small muscles are listening.', dmgMult:1.1, statBonus:{ defence:2 } },
+  armour_iso_2: { slot:'armour', stat:'defence', tier:2, rarity:'Uncommon',  name:'Accessory Vest',           desc:'Consistent isolation work. The gaps in your physique are closing.', dmgMult:1.22, statBonus:{ defence:4, strength:2 } },
+  armour_iso_3: { slot:'armour', stat:'defence', tier:3, rarity:'Rare',      name:'Reinforced Plate',         desc:'Intermediate completeness. Nothing in your physique is an afterthought.', dmgMult:1.38, statBonus:{ defence:7, strength:3 } },
+  armour_iso_4: { slot:'armour', stat:'defence', tier:4, rarity:'Epic',      name:'Shadow Plate',             desc:'Advanced development. The dungeon cannot find a structural gap.', dmgMult:1.55, statBonus:{ defence:12, strength:5 } },
+  armour_iso_5: { slot:'armour', stat:'defence', tier:5, rarity:'Legendary', name:"Monarch's Aegis",          desc:'Elite. Every muscle group answered when the System called.', dmgMult:1.80, statBonus:{ defence:20, strength:7, focus:4 } },
+
+  // ── ARMOUR — DEFENCE / ENDURANCE & CARDIO ──
+  // Earned by: running, cycling, swimming, HIIT dominance
+  armour_end_1: { slot:'armour', stat:'defence', tier:1, rarity:'Common',    name:'Runner\'s Wrap',           desc:'First cardio sessions logged. The lungs have begun adapting.', dmgMult:1.1, statBonus:{ defence:2, endurance:1 } },
+  armour_end_2: { slot:'armour', stat:'defence', tier:2, rarity:'Uncommon',  name:'Endurance Vest',           desc:'Consistent cardio builds armour the gym cannot.', dmgMult:1.22, statBonus:{ defence:3, endurance:3 } },
+  armour_end_3: { slot:'armour', stat:'defence', tier:3, rarity:'Rare',      name:'Ironhide Vest',            desc:'Intermediate: your recovery rate alone is a form of defence.', dmgMult:1.38, statBonus:{ defence:5, endurance:6 } },
   armour_end_4: { slot:'armour', stat:'defence', tier:4, rarity:'Epic',      name:'Titan\'s Vest',            desc:'Advanced conditioning. The dungeon cannot outlast you.', dmgMult:1.55, statBonus:{ defence:8, endurance:10 } },
   armour_end_5: { slot:'armour', stat:'defence', tier:5, rarity:'Legendary', name:'Void Plate',               desc:'Elite endurance armour. The dungeon tires before you do.', dmgMult:1.80, statBonus:{ defence:14, endurance:16, strength:4 } },
 
-  // ── BOOTS — AGILITY chains ──
-  // Running dominant
-  boots_run_1: { slot:'boots', stat:'agility', tier:1, rarity:'Common',    name:'Worn Road Shoes',          desc:'First kilometres logged. The System noted the pace.', dmgMult:1.1, statBonus:{ agility:2 } },
-  boots_run_2: { slot:'boots', stat:'agility', tier:2, rarity:'Uncommon',  name:'Training Flats',            desc:'Consistent running confirmed. Your base pace is no longer a guess.', dmgMult:1.22, statBonus:{ agility:3, endurance:2 } },
-  boots_run_3: { slot:'boots', stat:'agility', tier:3, rarity:'Rare',      name:'Swift Greaves',             desc:'Intermediate: tempo and hills have changed how you move.', dmgMult:1.38, statBonus:{ agility:6, endurance:4 } },
-  boots_run_4: { slot:'boots', stat:'agility', tier:4, rarity:'Epic',      name:'Shadow Runners',            desc:'Advanced. The System clocks your splits automatically now.', dmgMult:1.55, statBonus:{ agility:10, endurance:7 } },
-  boots_run_5: { slot:'boots', stat:'agility', tier:5, rarity:'Legendary', name:'Void Treads',               desc:'Elite. No dungeon was designed for this pace.', dmgMult:1.80, statBonus:{ agility:16, endurance:12, defence:3 } },
-  // Climbing dominant
-  boots_climb_1: { slot:'boots', stat:'agility', tier:1, rarity:'Common',    name:'Cracked Approach Shoes', desc:'First sessions on the wall detected.', dmgMult:1.1, statBonus:{ agility:2 } },
-  boots_climb_2: { slot:'boots', stat:'agility', tier:2, rarity:'Uncommon',  name:'Friction Slippers',       desc:'Consistent climbing builds agility the ground cannot.', dmgMult:1.22, statBonus:{ agility:3, focus:2 } },
-  boots_climb_3: { slot:'boots', stat:'agility', tier:3, rarity:'Rare',      name:'Phantom Climbers',        desc:'Intermediate: the wall has become readable to you.', dmgMult:1.38, statBonus:{ agility:5, focus:4 } },
-  boots_climb_4: { slot:'boots', stat:'agility', tier:4, rarity:'Epic',      name:'Shadow Grippers',         desc:'Advanced. Your footwork is half the problem solved.', dmgMult:1.55, statBonus:{ agility:9, focus:7 } },
-  boots_climb_5: { slot:'boots', stat:'agility', tier:5, rarity:'Legendary', name:'Void Climbers',           desc:'Elite. The dungeon ceiling is your floor.', dmgMult:1.80, statBonus:{ agility:15, focus:10, strength:4 } },
-  // Explosive/pistol dominant
-  boots_exp_1: { slot:'boots', stat:'agility', tier:1, rarity:'Common',    name:'Worn Training Shoes',      desc:'First explosive movements counted.', dmgMult:1.1, statBonus:{ agility:2 } },
-  boots_exp_2: { slot:'boots', stat:'agility', tier:2, rarity:'Uncommon',  name:'Jump Trainers',             desc:'Consistent explosive work. Your reaction time has shifted.', dmgMult:1.22, statBonus:{ agility:4, strength:2 } },
-  boots_exp_3: { slot:'boots', stat:'agility', tier:3, rarity:'Rare',      name:'Power Greaves',             desc:'Intermediate: pistol depth confirmed. One leg. Full control.', dmgMult:1.38, statBonus:{ agility:7, strength:3 } },
-  boots_exp_4: { slot:'boots', stat:'agility', tier:4, rarity:'Epic',      name:'Phantom Steps',             desc:'Advanced explosive agility. The dungeon cannot predict your direction.', dmgMult:1.55, statBonus:{ agility:11, strength:5 } },
-  boots_exp_5: { slot:'boots', stat:'agility', tier:5, rarity:'Legendary', name:'Sovereign\'s Stride',      desc:'Elite. The gap between your first and second step is the dungeon\'s nightmare.', dmgMult:1.80, statBonus:{ agility:18, strength:7, focus:4 } },
+  // ── BOOTS — AGILITY / RUNNING ──
+  // Earned by: long run, tempo run, hill sprints, interval running dominance
+  boots_run_1: { slot:'boots', stat:'agility', tier:1, rarity:'Common',    name:'Worn Road Shoes',          desc:'First kilometres logged. The System noted your pace.', dmgMult:1.1, statBonus:{ agility:2 } },
+  boots_run_2: { slot:'boots', stat:'agility', tier:2, rarity:'Uncommon',  name:'Tempo Flats',              desc:'Consistent running confirmed. Your base pace is measurable now.', dmgMult:1.22, statBonus:{ agility:3, endurance:2 } },
+  boots_run_3: { slot:'boots', stat:'agility', tier:3, rarity:'Rare',      name:'Swift Runners',            desc:'Intermediate: tempo and hills have changed how you move.', dmgMult:1.38, statBonus:{ agility:6, endurance:4 } },
+  boots_run_4: { slot:'boots', stat:'agility', tier:4, rarity:'Epic',      name:'Shadow Runners',           desc:'Advanced. The System clocks your splits automatically now.', dmgMult:1.55, statBonus:{ agility:10, endurance:7 } },
+  boots_run_5: { slot:'boots', stat:'agility', tier:5, rarity:'Legendary', name:'Void Treads',              desc:'Elite. No dungeon was designed for this pace.', dmgMult:1.80, statBonus:{ agility:16, endurance:12, defence:3 } },
 
-  // ── BOOTS — FLEXIBILITY chains ──
-  boots_flex_1: { slot:'boots', stat:'flexibility', tier:1, rarity:'Common',    name:'Barefoot Wraps',         desc:'First mobility sessions counted. The joints are listening.', dmgMult:1.1, statBonus:{ flexibility:2 } },
-  boots_flex_2: { slot:'boots', stat:'flexibility', tier:2, rarity:'Uncommon',  name:'Mobility Slippers',      desc:'Consistent mobility work. German hang has changed your shoulders.', dmgMult:1.22, statBonus:{ flexibility:4, focus:2 } },
-  boots_flex_3: { slot:'boots', stat:'flexibility', tier:3, rarity:'Rare',      name:'Supple Greaves',         desc:'Intermediate: your range of motion is now a weapon.', dmgMult:1.38, statBonus:{ flexibility:7, focus:3 } },
+  // ── BOOTS — AGILITY / CLIMBING ──
+  // Earned by: bouldering, sport climbing, top rope climbing dominance
+  boots_climb_1: { slot:'boots', stat:'agility', tier:1, rarity:'Common',    name:'Cracked Approach Shoes', desc:'First sessions on the wall detected. The rock remembers.', dmgMult:1.1, statBonus:{ agility:2 } },
+  boots_climb_2: { slot:'boots', stat:'agility', tier:2, rarity:'Uncommon',  name:'Friction Slippers',      desc:'Consistent climbing builds agility the ground cannot teach.', dmgMult:1.22, statBonus:{ agility:3, focus:2 } },
+  boots_climb_3: { slot:'boots', stat:'agility', tier:3, rarity:'Rare',      name:'Phantom Climbers',       desc:'Intermediate: the wall has become readable to you.', dmgMult:1.38, statBonus:{ agility:5, focus:4 } },
+  boots_climb_4: { slot:'boots', stat:'agility', tier:4, rarity:'Epic',      name:'Shadow Grippers',        desc:'Advanced. Your footwork solves half the problem before your hands arrive.', dmgMult:1.55, statBonus:{ agility:9, focus:7 } },
+  boots_climb_5: { slot:'boots', stat:'agility', tier:5, rarity:'Legendary', name:'Void Climbers',          desc:'Elite. The dungeon ceiling is your floor.', dmgMult:1.80, statBonus:{ agility:15, focus:10, strength:4 } },
+
+  // ── BOOTS — AGILITY / EXPLOSIVE & PISTOL ──
+  // Earned by: pistol squat, box jump, nordic curl, hill sprints dominance
+  boots_exp_1: { slot:'boots', stat:'agility', tier:1, rarity:'Common',    name:'Worn Jump Shoes',          desc:'First explosive movements logged. The ground registered the impact.', dmgMult:1.1, statBonus:{ agility:2 } },
+  boots_exp_2: { slot:'boots', stat:'agility', tier:2, rarity:'Uncommon',  name:'Jump Trainers',            desc:'Consistent explosive work. Your reaction time has measurably shifted.', dmgMult:1.22, statBonus:{ agility:4, strength:2 } },
+  boots_exp_3: { slot:'boots', stat:'agility', tier:3, rarity:'Rare',      name:'Pistol Greaves',           desc:'Intermediate: single-leg depth confirmed. One leg. Full control.', dmgMult:1.38, statBonus:{ agility:7, strength:3 } },
+  boots_exp_4: { slot:'boots', stat:'agility', tier:4, rarity:'Epic',      name:'Phantom Steps',            desc:'Advanced explosive agility. The dungeon cannot predict your direction.', dmgMult:1.55, statBonus:{ agility:11, strength:5 } },
+  boots_exp_5: { slot:'boots', stat:'agility', tier:5, rarity:'Legendary', name:"Sovereign's Stride",      desc:'Elite. The gap between your first and second step is the dungeon\'s nightmare.', dmgMult:1.80, statBonus:{ agility:18, strength:7, focus:4 } },
+
+  // ── BOOTS — FLEXIBILITY ──
+  // Earned by: German hang, splits, hip mobility, yoga dominance
+  boots_flex_1: { slot:'boots', stat:'flexibility', tier:1, rarity:'Common',    name:'Barefoot Wraps',         desc:'First mobility sessions logged. The joints are paying attention.', dmgMult:1.1, statBonus:{ flexibility:2 } },
+  boots_flex_2: { slot:'boots', stat:'flexibility', tier:2, rarity:'Uncommon',  name:'Mobility Slippers',      desc:'German hang has permanently changed your shoulder range.', dmgMult:1.22, statBonus:{ flexibility:4, focus:2 } },
+  boots_flex_3: { slot:'boots', stat:'flexibility', tier:3, rarity:'Rare',      name:'Supple Greaves',         desc:'Intermediate: your range of motion is now a competitive advantage.', dmgMult:1.38, statBonus:{ flexibility:7, focus:3 } },
   boots_flex_4: { slot:'boots', stat:'flexibility', tier:4, rarity:'Epic',      name:'Shadow Silks',           desc:'Advanced mobility. The dungeon cannot lock what it cannot reach.', dmgMult:1.55, statBonus:{ flexibility:12, focus:5 } },
-  boots_flex_5: { slot:'boots', stat:'flexibility', tier:5, rarity:'Legendary', name:'Void Silks',             desc:'Elite. The System has never seen this range without years of practice.', dmgMult:1.80, statBonus:{ flexibility:20, focus:8, agility:5 } },
+  boots_flex_5: { slot:'boots', stat:'flexibility', tier:5, rarity:'Legendary', name:'Void Silks',             desc:'Elite. The System has not seen this range without decades of practice.', dmgMult:1.80, statBonus:{ flexibility:20, focus:8, agility:5 } },
 
-  // ── ACCESSORY — FOCUS chains ──
-  // Handstand dominant
-  accessory_hs_1: { slot:'accessory', stat:'focus', tier:1, rarity:'Common',    name:'Balance Band',           desc:'First handstand attempts logged. The System is watching.', dmgMult:1.1, statBonus:{ focus:2 } },
-  accessory_hs_2: { slot:'accessory', stat:'focus', tier:2, rarity:'Uncommon',  name:'Wrist Brace',            desc:'Consistent handstand work. Your proprioception has sharpened.', dmgMult:1.22, statBonus:{ focus:4, agility:2 } },
-  accessory_hs_3: { slot:'accessory', stat:'focus', tier:3, rarity:'Rare',      name:'Control Bracer',         desc:'Intermediate: freestanding seconds are no longer accidents.', dmgMult:1.38, statBonus:{ focus:7, agility:3 } },
-  accessory_hs_4: { slot:'accessory', stat:'focus', tier:4, rarity:'Epic',      name:'Shadow Bracer',          desc:'Advanced handstand control. The System stops the timer.', dmgMult:1.55, statBonus:{ focus:12, agility:5 } },
+  // ── ACCESSORY — FOCUS / HANDSTAND ──
+  // Earned by: freestanding handstand, chest-to-wall hold, shoulder taps dominance
+  accessory_hs_1: { slot:'accessory', stat:'focus', tier:1, rarity:'Common',    name:'Balance Strap',          desc:'First handstand attempts logged. The System is already watching.', dmgMult:1.1, statBonus:{ focus:2 } },
+  accessory_hs_2: { slot:'accessory', stat:'focus', tier:2, rarity:'Uncommon',  name:'Handstand Bracer',       desc:'Consistent wall work. Your proprioception has sharpened noticeably.', dmgMult:1.22, statBonus:{ focus:4, agility:2 } },
+  accessory_hs_3: { slot:'accessory', stat:'focus', tier:3, rarity:'Rare',      name:'Press Bracer',           desc:'Intermediate: freestanding seconds are no longer accidents.', dmgMult:1.38, statBonus:{ focus:7, agility:3 } },
+  accessory_hs_4: { slot:'accessory', stat:'focus', tier:4, rarity:'Epic',      name:'Shadow Bracer',          desc:'Advanced handstand control. The System stops the timer in disbelief.', dmgMult:1.55, statBonus:{ focus:12, agility:5 } },
   accessory_hs_5: { slot:'accessory', stat:'focus', tier:5, rarity:'Legendary', name:'Void Bracer',            desc:'Elite. The ground is optional at this point.', dmgMult:1.80, statBonus:{ focus:20, agility:8, strength:4 } },
-  // L-sit/core skill dominant
+
+  // ── ACCESSORY — FOCUS / CORE SKILL ──
+  // Earned by: L-sit, dragon flag, hollow hold, toes-to-bar dominance
   accessory_core_1: { slot:'accessory', stat:'focus', tier:1, rarity:'Common',    name:'Frayed Waist Wrap',    desc:'First L-sit holds counted. The compression has begun.', dmgMult:1.1, statBonus:{ focus:2 } },
-  accessory_core_2: { slot:'accessory', stat:'focus', tier:2, rarity:'Uncommon',  name:'Core Band',             desc:'Consistent core skill work. The tension is no longer foreign.', dmgMult:1.22, statBonus:{ focus:3, strength:2 } },
-  accessory_core_3: { slot:'accessory', stat:'focus', tier:3, rarity:'Rare',      name:'Iron Waist Plate',      desc:'Intermediate: the L-sit is no longer a question of strength.', dmgMult:1.38, statBonus:{ focus:6, strength:4 } },
+  accessory_core_2: { slot:'accessory', stat:'focus', tier:2, rarity:'Uncommon',  name:'Core Wrap',             desc:'Consistent core skill work. The tension is no longer foreign.', dmgMult:1.22, statBonus:{ focus:3, strength:2 } },
+  accessory_core_3: { slot:'accessory', stat:'focus', tier:3, rarity:'Rare',      name:'Dragon Belt',           desc:'Intermediate: the dragon flag is no longer a question of strength.', dmgMult:1.38, statBonus:{ focus:6, strength:4 } },
   accessory_core_4: { slot:'accessory', stat:'focus', tier:4, rarity:'Epic',      name:'Shadow Core Wrap',      desc:'Advanced compression strength. The dungeon cannot fold you.', dmgMult:1.55, statBonus:{ focus:10, strength:7 } },
-  accessory_core_5: { slot:'accessory', stat:'focus', tier:5, rarity:'Legendary', name:"Sovereign's Seal",      desc:'Elite. Your midline is the dungeon\'s worst structural problem.', dmgMult:1.80, statBonus:{ focus:18, strength:11, defence:5 } },
-  // Generic fallbacks (inference-only items, no trial flavour)
-  accessory_1: { slot:'accessory', stat:'focus', tier:1, rarity:'Common',    name:'Frayed Bracer',        desc:'First skill awareness detected.', dmgMult:1.1, statBonus:{ focus:2 } },
-  accessory_2: { slot:'accessory', stat:'focus', tier:2, rarity:'Uncommon',  name:'Iron Bracer',          desc:'Consistent skill training confirmed.', dmgMult:1.22, statBonus:{ focus:4 } },
-  accessory_3: { slot:'accessory', stat:'focus', tier:3, rarity:'Rare',      name:'Reinforced Bracer',    desc:'Intermediate skill mastery.', dmgMult:1.38, statBonus:{ focus:7 } },
-  accessory_4: { slot:'accessory', stat:'focus', tier:4, rarity:'Epic',      name:'Shadow Bracer',        desc:'Advanced skill — the System watches with interest.', dmgMult:1.55, statBonus:{ focus:12 } },
-  accessory_5: { slot:'accessory', stat:'focus', tier:5, rarity:'Legendary', name:'Void Bracer',          desc:'Elite skill control.', dmgMult:1.80, statBonus:{ focus:20 } },
-  // Generic weapon fallbacks
+  accessory_core_5: { slot:'accessory', stat:'focus', tier:5, rarity:'Legendary', name:"Sovereign's Seal",      desc:'Elite. Your midline is structurally superior to the dungeon\'s architecture.', dmgMult:1.80, statBonus:{ focus:18, strength:11, defence:5 } },
+
+  // ── GENERIC FALLBACKS (inference-only, no trial context) ──
   weapon_str_1: { slot:'weapon', stat:'strength', tier:1, rarity:'Common',    name:'Worn Iron Sword',       desc:'The System has acknowledged your first effort.', dmgMult:1.1, statBonus:{ strength:2 } },
   weapon_str_2: { slot:'weapon', stat:'strength', tier:2, rarity:'Uncommon',  name:'Steel Longsword',       desc:'Forged through consistent effort.', dmgMult:1.22, statBonus:{ strength:4 } },
   weapon_str_3: { slot:'weapon', stat:'strength', tier:3, rarity:'Rare',      name:'Reinforced Greatsword', desc:'Intermediate strength confirmed.', dmgMult:1.38, statBonus:{ strength:7 } },
@@ -12004,7 +12012,7 @@ const ITEM_DEFINITIONS = {
   weapon_str_5: { slot:'weapon', stat:'strength', tier:5, rarity:'Legendary', name:"Monarch's Edge",        desc:'Elite strength.', dmgMult:1.80, statBonus:{ strength:20 } },
   weapon_foc_1: { slot:'weapon', stat:'focus', tier:1, rarity:'Common',    name:'Carved Wooden Staff',   desc:'First steps into the skill domain.', dmgMult:1.1, statBonus:{ focus:2 } },
   weapon_foc_2: { slot:'weapon', stat:'focus', tier:2, rarity:'Uncommon',  name:'Iron Bo Staff',         desc:'The System recognises your commitment to craft.', dmgMult:1.22, statBonus:{ focus:4 } },
-  weapon_foc_3: { slot:'weapon', stat:'focus', tier:3, rarity:'Rare',      name:'Reinforced Combat Staff',desc:'Intermediate skill confirmed.', dmgMult:1.38, statBonus:{ focus:7 } },
+  weapon_foc_3: { slot:'weapon', stat:'focus', tier:3, rarity:'Rare',      name:'Combat Staff',          desc:'Intermediate skill confirmed.', dmgMult:1.38, statBonus:{ focus:7 } },
   weapon_foc_4: { slot:'weapon', stat:'focus', tier:4, rarity:'Epic',      name:'Shadow Spear',          desc:'Advanced skill.', dmgMult:1.55, statBonus:{ focus:12 } },
   weapon_foc_5: { slot:'weapon', stat:'focus', tier:5, rarity:'Legendary', name:'Void Lance',            desc:'Elite skill.', dmgMult:1.80, statBonus:{ focus:20 } },
   armour_1: { slot:'armour', stat:'defence', tier:1, rarity:'Common',    name:'Cloth Wraps',      desc:'Basic protection. The body begins to armour itself.', dmgMult:1.1, statBonus:{ defence:2 } },
@@ -12012,11 +12020,93 @@ const ITEM_DEFINITIONS = {
   armour_3: { slot:'armour', stat:'defence', tier:3, rarity:'Rare',      name:'Chain Armour',     desc:'A complete physique is beginning to form.', dmgMult:1.38, statBonus:{ defence:7 } },
   armour_4: { slot:'armour', stat:'defence', tier:4, rarity:'Epic',      name:'Shadow Plate',     desc:'Advanced physique development confirmed.', dmgMult:1.55, statBonus:{ defence:12 } },
   armour_5: { slot:'armour', stat:'defence', tier:5, rarity:'Legendary', name:"Monarch's Aegis",  desc:'Elite physique.', dmgMult:1.80, statBonus:{ defence:20 } },
-  boots_1: { slot:'boots', stat:'agility', tier:1, rarity:'Common',    name:'Worn Running Shoes', desc:'First agility training detected.', dmgMult:1.1, statBonus:{ agility:2 } },
+  boots_1: { slot:'boots', stat:'agility', tier:1, rarity:'Common',    name:'Worn Shoes',         desc:'First agility training detected.', dmgMult:1.1, statBonus:{ agility:2 } },
   boots_2: { slot:'boots', stat:'agility', tier:2, rarity:'Uncommon',  name:'Lightweight Boots',  desc:'Consistent movement work confirmed.', dmgMult:1.22, statBonus:{ agility:4 } },
   boots_3: { slot:'boots', stat:'agility', tier:3, rarity:'Rare',      name:'Swift Greaves',      desc:'Intermediate agility confirmed.', dmgMult:1.38, statBonus:{ agility:7 } },
   boots_4: { slot:'boots', stat:'agility', tier:4, rarity:'Epic',      name:'Shadow Steps',       desc:'Advanced movement confirmed.', dmgMult:1.55, statBonus:{ agility:12 } },
   boots_5: { slot:'boots', stat:'agility', tier:5, rarity:'Legendary', name:'Void Treads',        desc:'Elite agility.', dmgMult:1.80, statBonus:{ agility:20 } },
+  accessory_1: { slot:'accessory', stat:'focus', tier:1, rarity:'Common',    name:'Frayed Bracer',  desc:'First skill awareness detected.', dmgMult:1.1, statBonus:{ focus:2 } },
+  accessory_2: { slot:'accessory', stat:'focus', tier:2, rarity:'Uncommon',  name:'Iron Bracer',    desc:'Consistent skill training confirmed.', dmgMult:1.22, statBonus:{ focus:4 } },
+  accessory_3: { slot:'accessory', stat:'focus', tier:3, rarity:'Rare',      name:'Reinforced Bracer', desc:'Intermediate skill mastery.', dmgMult:1.38, statBonus:{ focus:7 } },
+  accessory_4: { slot:'accessory', stat:'focus', tier:4, rarity:'Epic',      name:'Shadow Bracer',  desc:'Advanced skill.', dmgMult:1.55, statBonus:{ focus:12 } },
+  accessory_5: { slot:'accessory', stat:'focus', tier:5, rarity:'Legendary', name:'Void Bracer',    desc:'Elite skill control.', dmgMult:1.80, statBonus:{ focus:20 } },
+
+  // ── WEAPON — BOXING / MARTIAL ARTS ──
+  // Earned by: bag work, sparring, pad work, shadow boxing dominance
+  weapon_boxing_1: { slot:'weapon', stat:'agility', tier:1, rarity:'Common',    name:'Worn Hand Wraps',        desc:'First rounds logged. The bag remembers every missed combo.', dmgMult:1.1, statBonus:{ agility:2, endurance:1 } },
+  weapon_boxing_2: { slot:'weapon', stat:'agility', tier:2, rarity:'Uncommon',  name:'Fighter\'s Hook Blade',  desc:'Consistent work on the bag. Your hands have learned to think.', dmgMult:1.22, statBonus:{ agility:3, endurance:2, focus:1 } },
+  weapon_boxing_3: { slot:'weapon', stat:'agility', tier:3, rarity:'Rare',      name:'Striker\'s Fist Blade',  desc:'Intermediate: your combination speed is now a weapon the System tracks.', dmgMult:1.38, statBonus:{ agility:5, endurance:4, focus:2 } },
+  weapon_boxing_4: { slot:'weapon', stat:'agility', tier:4, rarity:'Epic',      name:'Shadow Striker',         desc:'Advanced. The dungeon cannot read your footwork.', dmgMult:1.55, statBonus:{ agility:9, endurance:6, focus:4 } },
+  weapon_boxing_5: { slot:'weapon', stat:'agility', tier:5, rarity:'Legendary', name:'Void Fist',              desc:'Elite. The System stops timing your combinations — they are too fast to count.', dmgMult:1.80, statBonus:{ agility:16, endurance:10, focus:7 } },
+
+  // ── WEAPON — COURT & FIELD SPORTS ──
+  // Earned by: tennis, basketball, football, American football dominance
+  weapon_court_1: { slot:'weapon', stat:'agility', tier:1, rarity:'Common',    name:'Bent Court Racquet',     desc:'First sessions on the court logged. The System clocked your footwork.', dmgMult:1.1, statBonus:{ agility:2, endurance:1 } },
+  weapon_court_2: { slot:'weapon', stat:'agility', tier:2, rarity:'Uncommon',  name:'Field Blade',            desc:'Consistent sport sessions. Your lateral movement has become instinct.', dmgMult:1.22, statBonus:{ agility:3, endurance:2, focus:1 } },
+  weapon_court_3: { slot:'weapon', stat:'agility', tier:3, rarity:'Rare',      name:'Court Sabre',            desc:'Intermediate: your reaction time is now measurably faster than when you started.', dmgMult:1.38, statBonus:{ agility:5, endurance:4, focus:2 } },
+  weapon_court_4: { slot:'weapon', stat:'agility', tier:4, rarity:'Epic',      name:'Shadow Racquet',         desc:'Advanced sport athlete. The dungeon cannot defend against court-trained instinct.', dmgMult:1.55, statBonus:{ agility:9, endurance:7, focus:4 } },
+  weapon_court_5: { slot:'weapon', stat:'agility', tier:5, rarity:'Legendary', name:'Void Striker',           desc:'Elite. The court made you — the dungeon will unmake itself trying to keep up.', dmgMult:1.80, statBonus:{ agility:16, endurance:11, focus:6 } },
+
+  // ── ARMOUR — SWIMMING ──
+  // Earned by: freestyle, breaststroke, butterfly, backstroke, open water dominance
+  armour_swim_1: { slot:'armour', stat:'endurance', tier:1, rarity:'Common',    name:'Soaked Cloth Vest',      desc:'First lengths logged. The water remembers every stroke.', dmgMult:1.1, statBonus:{ endurance:2, defence:1 } },
+  armour_swim_2: { slot:'armour', stat:'endurance', tier:2, rarity:'Uncommon',  name:'Streamlined Vest',       desc:'Consistent pool sessions. The drag is your armour now.', dmgMult:1.22, statBonus:{ endurance:4, defence:2 } },
+  armour_swim_3: { slot:'armour', stat:'endurance', tier:3, rarity:'Rare',      name:'Hydrodynamic Shell',     desc:'Intermediate: your breath control alone is a form of protection.', dmgMult:1.38, statBonus:{ endurance:7, defence:3, strength:2 } },
+  armour_swim_4: { slot:'armour', stat:'endurance', tier:4, rarity:'Epic',      name:'Shadow Wetsuit',         desc:'Advanced swimmer. The dungeon cannot drown what already lives in the water.', dmgMult:1.55, statBonus:{ endurance:11, defence:5, strength:4 } },
+  armour_swim_5: { slot:'armour', stat:'endurance', tier:5, rarity:'Legendary', name:'Void Current',           desc:'Elite. The System ran out of laps to count.', dmgMult:1.80, statBonus:{ endurance:18, defence:8, strength:6 } },
+
+  // ── ARMOUR — CYCLING ──
+  // Earned by: road cycling, mountain biking, stationary bike, spin dominance
+  armour_cycling_1: { slot:'armour', stat:'endurance', tier:1, rarity:'Common',    name:'Road Kit',             desc:'First kilometres on the saddle logged. The cadence has begun.', dmgMult:1.1, statBonus:{ endurance:2, defence:1 } },
+  armour_cycling_2: { slot:'armour', stat:'endurance', tier:2, rarity:'Uncommon',  name:'Cyclist\'s Vest',      desc:'Consistent cycling builds a different kind of endurance to running.', dmgMult:1.22, statBonus:{ endurance:4, defence:2 } },
+  armour_cycling_3: { slot:'armour', stat:'endurance', tier:3, rarity:'Rare',      name:'Peloton Plate',        desc:'Intermediate: your lactate threshold is your armour.', dmgMult:1.38, statBonus:{ endurance:7, defence:4, agility:2 } },
+  armour_cycling_4: { slot:'armour', stat:'endurance', tier:4, rarity:'Epic',      name:'Shadow Aero Shell',    desc:'Advanced. The dungeon cannot design an incline steep enough.', dmgMult:1.55, statBonus:{ endurance:11, defence:6, agility:3 } },
+  armour_cycling_5: { slot:'armour', stat:'endurance', tier:5, rarity:'Legendary', name:'Void Aero',            desc:'Elite. The System stopped measuring watts — the output exceeded the display.', dmgMult:1.80, statBonus:{ endurance:18, defence:9, agility:5 } },
+
+  // ── BOOTS — COURT SPORTS ──
+  // Earned by: basketball, tennis, football, American football dominance
+  boots_court_1: { slot:'boots', stat:'agility', tier:1, rarity:'Common',    name:'Worn Court Shoes',         desc:'First sessions on the court detected. The pivot left a mark.', dmgMult:1.1, statBonus:{ agility:2 } },
+  boots_court_2: { slot:'boots', stat:'agility', tier:2, rarity:'Uncommon',  name:'Court Trainers',           desc:'Consistent court work. Your lateral cuts have become reflexes.', dmgMult:1.22, statBonus:{ agility:4, endurance:2 } },
+  boots_court_3: { slot:'boots', stat:'agility', tier:3, rarity:'Rare',      name:'Field Greaves',            desc:'Intermediate: your first step speed is now your primary weapon on any surface.', dmgMult:1.38, statBonus:{ agility:7, endurance:3 } },
+  boots_court_4: { slot:'boots', stat:'agility', tier:4, rarity:'Epic',      name:'Shadow Cleats',            desc:'Advanced. The dungeon floor has no court markings — you bring your own geometry.', dmgMult:1.55, statBonus:{ agility:11, endurance:5 } },
+  boots_court_5: { slot:'boots', stat:'agility', tier:5, rarity:'Legendary', name:'Void Cleats',              desc:'Elite. The System ran out of drills to time.', dmgMult:1.80, statBonus:{ agility:18, endurance:9, focus:4 } },
+
+  // ── HYBRID WEAPONS ──
+  // Power + Calisthenics equally (within 20%)
+  weapon_str_hybrid_1: { slot:'weapon', stat:'strength', tier:1, rarity:'Common',    name:'Cracked Training Bar',   desc:'The rack and the pull-up bar both remember you.', dmgMult:1.1, statBonus:{ strength:2 } },
+  weapon_str_hybrid_2: { slot:'weapon', stat:'strength', tier:2, rarity:'Uncommon',  name:'Balanced Blade',         desc:'Iron and bodyweight — you refuse to choose.', dmgMult:1.22, statBonus:{ strength:3, focus:2 } },
+  weapon_str_hybrid_3: { slot:'weapon', stat:'strength', tier:3, rarity:'Rare',      name:'Compound Edge',          desc:'Intermediate: both paths led here. The System respects the refusal to specialise.', dmgMult:1.38, statBonus:{ strength:6, focus:3 } },
+  weapon_str_hybrid_4: { slot:'weapon', stat:'strength', tier:4, rarity:'Epic',      name:'Equilibrium Blade',      desc:'Advanced. The dungeon cannot predict which kind of strong you are.', dmgMult:1.55, statBonus:{ strength:10, focus:6 } },
+  weapon_str_hybrid_5: { slot:'weapon', stat:'strength', tier:5, rarity:'Legendary', name:'Sovereign\'s Blade',     desc:'Elite. Complete strength — the System has never seen both paths mastered equally.', dmgMult:1.82, statBonus:{ strength:18, focus:9, agility:4 } },
+
+  // Planche + Lever equally (within 20%)
+  weapon_foc_hybrid_1: { slot:'weapon', stat:'focus', tier:1, rarity:'Common',    name:'Rough Balance Rod',      desc:'Horizontal and vertical — you pursue both without preference.', dmgMult:1.1, statBonus:{ focus:2 } },
+  weapon_foc_hybrid_2: { slot:'weapon', stat:'focus', tier:2, rarity:'Uncommon',  name:'Dual Skill Staff',       desc:'The press and the pull. The System watches both simultaneously.', dmgMult:1.22, statBonus:{ focus:4, strength:2 } },
+  weapon_foc_hybrid_3: { slot:'weapon', stat:'focus', tier:3, rarity:'Rare',      name:'Balance Glaive',         desc:'Intermediate: planche and lever together — a rare combination the System notes.', dmgMult:1.38, statBonus:{ focus:8, strength:3 } },
+  weapon_foc_hybrid_4: { slot:'weapon', stat:'focus', tier:4, rarity:'Epic',      name:'Shadow Balance Glaive',  desc:'Advanced complete skill control. The dungeon cannot decide which way to fall.', dmgMult:1.55, statBonus:{ focus:13, strength:6 } },
+  weapon_foc_hybrid_5: { slot:'weapon', stat:'focus', tier:5, rarity:'Legendary', name:'Void Balance Glaive',    desc:'Elite. Both skills at their peak. The System has no category for this.', dmgMult:1.85, statBonus:{ focus:22, strength:10, agility:5 } },
+
+  // ── HYBRID BOOTS ──
+  // Run + Climb equally
+  boots_hybrid_trail_1: { slot:'boots', stat:'agility', tier:1, rarity:'Common',    name:'Worn Trail Shoes',       desc:'Road and wall — you find a way up either.', dmgMult:1.1, statBonus:{ agility:2 } },
+  boots_hybrid_trail_2: { slot:'boots', stat:'agility', tier:2, rarity:'Uncommon',  name:'Trail Runners',          desc:'Running and climbing together build agility no single discipline reaches.', dmgMult:1.22, statBonus:{ agility:3, endurance:2, focus:1 } },
+  boots_hybrid_trail_3: { slot:'boots', stat:'agility', tier:3, rarity:'Rare',      name:'Mountain Greaves',       desc:'Intermediate: your movement vocabulary is twice the size of any specialist\'s.', dmgMult:1.38, statBonus:{ agility:6, endurance:3, focus:2 } },
+  boots_hybrid_trail_4: { slot:'boots', stat:'agility', tier:4, rarity:'Epic',      name:'Shadow Trail Boots',     desc:'Advanced. The dungeon cannot design terrain you have not already navigated.', dmgMult:1.55, statBonus:{ agility:10, endurance:5, focus:4 } },
+  boots_hybrid_trail_5: { slot:'boots', stat:'agility', tier:5, rarity:'Legendary', name:'Void Trail Boots',       desc:'Elite. You run what others climb and climb what others cannot run.', dmgMult:1.82, statBonus:{ agility:17, endurance:9, focus:6 } },
+
+  // Explosive + Run equally
+  boots_hybrid_sprint_1: { slot:'boots', stat:'agility', tier:1, rarity:'Common',    name:'Worn Sprint Shoes',    desc:'Distance and power — your legs do not distinguish.', dmgMult:1.1, statBonus:{ agility:2, strength:1 } },
+  boots_hybrid_sprint_2: { slot:'boots', stat:'agility', tier:2, rarity:'Uncommon',  name:'Sprint Trainers',      desc:'Tempo and explosiveness — the two paths rarely share this much training time.', dmgMult:1.22, statBonus:{ agility:4, strength:2 } },
+  boots_hybrid_sprint_3: { slot:'boots', stat:'agility', tier:3, rarity:'Rare',      name:'Acceleration Greaves', desc:'Intermediate: your first step and your last mile are both weapons.', dmgMult:1.38, statBonus:{ agility:7, strength:3, endurance:2 } },
+  boots_hybrid_sprint_4: { slot:'boots', stat:'agility', tier:4, rarity:'Epic',      name:'Shadow Sprint Boots',  desc:'Advanced. The dungeon cannot contain a speed that also has distance.', dmgMult:1.55, statBonus:{ agility:11, strength:5, endurance:4 } },
+  boots_hybrid_sprint_5: { slot:'boots', stat:'agility', tier:5, rarity:'Legendary', name:'Sovereign\'s Sprint',  desc:'Elite sprinter and distance athlete in one. The System has no benchmark.', dmgMult:1.82, statBonus:{ agility:18, strength:8, endurance:7 } },
+
+  // All three boot styles equally — complete athlete
+  boots_hybrid_all_1: { slot:'boots', stat:'agility', tier:1, rarity:'Common',    name:'All-Terrain Shoes',      desc:'Every surface. Every discipline. The System respects the variety.', dmgMult:1.1, statBonus:{ agility:3 } },
+  boots_hybrid_all_2: { slot:'boots', stat:'agility', tier:2, rarity:'Uncommon',  name:'Complete Boots',         desc:'Running, climbing, explosiveness — you pursue all three without choosing.', dmgMult:1.22, statBonus:{ agility:4, endurance:2, strength:1 } },
+  boots_hybrid_all_3: { slot:'boots', stat:'agility', tier:3, rarity:'Rare',      name:'Complete Greaves',       desc:'Intermediate: the System cannot classify your movement profile. Good.', dmgMult:1.38, statBonus:{ agility:7, endurance:3, strength:2 } },
+  boots_hybrid_all_4: { slot:'boots', stat:'agility', tier:4, rarity:'Epic',      name:'Shadow Complete Boots',  desc:'Advanced. No dungeon was designed for every type of athlete at once.', dmgMult:1.55, statBonus:{ agility:11, endurance:5, strength:4 } },
+  boots_hybrid_all_5: { slot:'boots', stat:'agility', tier:5, rarity:'Legendary', name:'Void All-Terrain',       desc:'Elite complete athlete. The System had to create a new category.', dmgMult:1.85, statBonus:{ agility:18, endurance:9, strength:6, focus:3 } },
 };
 
 const RARITY_GLOW = {
@@ -12398,38 +12488,77 @@ function resolveItemKey(stat, slot) {
   }));
   const count = (...names) => names.reduce((t,n) => t + (exCounts[n]||0), 0);
 
+  // Helper: detect dominant style — returns key only if that style is >20% more than runner-up
+  const dominant = (scores) => {
+    const entries = Object.entries(scores).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]);
+    if (!entries.length) return null;
+    if (entries.length === 1) return entries[0][0];
+    const [topKey, topVal] = entries[0];
+    const [,secondVal] = entries[1];
+    // If top is within 20% of second — it's a hybrid
+    return (topVal - secondVal) / Math.max(topVal, 1) > 0.20 ? topKey : null;
+  };
+
   if (slot === 'weapon') {
     if (stat === 'strength') {
-      const powerSets = count('Bench Press','Squat','Deadlift','Overhead Press','Romanian Deadlift','Sumo Deadlift','Incline Bench Press');
-      const calSets   = count('Pull Up','Chin Up','Dips','Ring Dips','Inverted Row','Barbell Row','Seated Cable Row');
-      return powerSets >= calSets ? 'weapon_str_power' : 'weapon_str_cal';
+      const powerSets = count('Bench Press','Squat','Deadlift','Overhead Press','Romanian Deadlift','Sumo Deadlift','Incline Bench Press','Front Squat');
+      const calSets   = count('Pull Up','Chin Up','Dips','Ring Dips','Inverted Row','Barbell Row','Seated Cable Row','Pendlay Row');
+      const d = dominant({ weapon_str_power: powerSets, weapon_str_cal: calSets });
+      return d || 'weapon_str_hybrid';
     }
     if (stat === 'focus') {
       const plancheSets = count('Tuck Planche','Advanced Tuck Planche','Full Planche','Planche Lean','Straddle Planche','Pseudo planche push up','Freestanding Handstand Hold','Chest-to-Wall Handstand Hold','Handstand Shoulder Taps','Wall Toe Pull');
       const leverSets   = count('Front Lever','Tuck Front Lever','Advanced Tuck Front Lever','Front Lever Row','Front Lever Raise','Back Lever');
-      return plancheSets >= leverSets ? 'weapon_foc_planche' : 'weapon_foc_lever';
+      const d = dominant({ weapon_foc_planche: plancheSets, weapon_foc_lever: leverSets });
+      return d || 'weapon_foc_hybrid';
+    }
+    if (stat === 'agility') {
+      const boxingSets = count('Boxing — Bag Work','Boxing — Sparring','Boxing — Shadow Boxing','Boxing — Pad Work');
+      const courtSets  = count('Tennis','Tennis Drills','Basketball','Basketball Drills','Football (Soccer)','Football Drills','American Football');
+      const d = dominant({ weapon_boxing: boxingSets, weapon_court: courtSets });
+      return d || (boxingSets + courtSets > 0 ? 'weapon_boxing' : 'weapon_str');
     }
   }
+
   if (slot === 'armour') {
-    const endSets = count('Long Run','Easy Run','Tempo Run','Hill Sprints','Interval Running','Cycling','Road Cycling','Freestyle Swimming','Stationary Bike');
-    const isoSets = count('Lateral Raise','Front Raise','Rear Delt Fly','Face Pull','Hammer Curl','Calf Raise','Hanging Leg Raise','Hanging Knee Raise');
-    return endSets > isoSets ? 'armour_end' : 'armour_iso';
+    const swimSets    = count('Freestyle Swimming','Breaststroke Swimming','Butterfly Swimming','Backstroke Swimming','Open Water Swimming','HIIT Swimming');
+    const cyclingSets = count('Cycling','Road Cycling','Mountain Biking','Stationary Bike','Spin Class','Cycling Intervals');
+    const endSets     = count('Long Run','Easy Run','Tempo Run','Hill Sprints','Interval Running','Race');
+    const isoSets     = count('Lateral Raise','Front Raise','Rear Delt Fly','Face Pull','Hammer Curl','Hanging Leg Raise','Hanging Knee Raise');
+    const d = dominant({ armour_swim: swimSets, armour_cycling: cyclingSets, armour_end: endSets, armour_iso: isoSets });
+    return d || 'armour_iso'; // default to isolation if all tied
   }
+
   if (slot === 'boots') {
     if (stat === 'flexibility') return 'boots_flex';
-    const runSets   = count('Long Run','Easy Run','Tempo Run','Hill Sprints','Interval Running','Race');
-    const climbSets = count('Bouldering','Sport Climbing','Top Rope Climbing','Traditional Climbing');
-    const expSets   = count('Pistol Squat','Box Jump','Jump Squat','Nordic Curl','Bear Crawl');
-    const max = Math.max(runSets, climbSets, expSets);
-    return max === climbSets && climbSets > 0 ? 'boots_climb'
-         : max === expSets   && expSets   > 0 ? 'boots_exp'
-         : 'boots_run';
+    const runSets    = count('Long Run','Easy Run','Tempo Run','Hill Sprints','Interval Running','Race','Sprinting');
+    const climbSets  = count('Bouldering','Sport Climbing','Top Rope Climbing','Traditional Climbing');
+    const expSets    = count('Pistol Squat','Box Jump','Jump Squat','Nordic Curl','Bear Crawl');
+    const courtSets  = count('Tennis','Tennis Drills','Basketball','Basketball Drills','Football (Soccer)','Football Drills','American Football');
+    const d = dominant({ boots_run: runSets, boots_climb: climbSets, boots_exp: expSets, boots_court: courtSets });
+    if (d) return d;
+    // Hybrid detection
+    const topTwo = [
+      { key:'run', val:runSets }, { key:'climb', val:climbSets },
+      { key:'exp', val:expSets }, { key:'court', val:courtSets }
+    ].sort((a,b)=>b.val-a.val);
+    const allEqual = topTwo[0].val > 0 && topTwo[1].val > 0 && topTwo[2].val > 0;
+    if (allEqual) return 'boots_hybrid_all';
+    const pair = `${topTwo[0].key}_${topTwo[1].key}`;
+    if (topTwo[0].val > 0 && topTwo[1].val > 0) {
+      if (pair === 'run_climb' || pair === 'climb_run') return 'boots_hybrid_trail';
+      if (pair === 'exp_run'   || pair === 'run_exp')   return 'boots_hybrid_sprint';
+      if (pair === 'court_run' || pair === 'run_court') return 'boots_court';
+    }
+    return 'boots_run'; // fallback
   }
+
   if (slot === 'accessory') {
     const hsSets   = count('Freestanding Handstand Hold','Chest-to-Wall Handstand Hold','Wall Handstand Hold','Handstand Shoulder Taps','Wall Toe Pull');
     const coreSets = count('L-Sit','Dragon Flag Negatives','Hollow hold','Toes to Bar','Ab Wheel Rollout','Hanging Leg Raise');
     return hsSets >= coreSets ? 'accessory_hs' : 'accessory_core';
   }
+
   return slot === 'weapon' ? (stat === 'focus' ? 'weapon_foc' : 'weapon_str')
        : slot === 'armour' ? 'armour' : slot === 'boots' ? 'boots' : 'accessory';
 }
