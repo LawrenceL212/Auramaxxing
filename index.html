@@ -10945,9 +10945,10 @@ function renderTrends() {
   `;
   document.getElementById('widget-muscle')?.addEventListener('click', () => { trendsView = 'muscle-detail'; renderTrends(); });
 
-  // Animate bignum count-up
+  // Animate bignum count-up — skip elements with fraction format (e.g. "3 / 7")
   document.querySelectorAll('#trends-widgets .bignum').forEach(el => {
     const text = el.textContent.trim();
+    if (text.includes('/')) return; // skip fraction displays
     const num = parseFloat(text.replace(/[^0-9.]/g, ''));
     if (!isNaN(num) && num > 0) {
       const suffix = text.replace(/[0-9.]/g, '').trim();
