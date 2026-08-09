@@ -495,7 +495,7 @@
   .numpad-sheet{
     background:var(--card-2);border-top:1px solid var(--border);
     border-radius:16px 16px 0 0;
-    padding:0 0 env(safe-area-inset-bottom,0);
+    padding:0 0 max(env(safe-area-inset-bottom, 0px), 16px);
     animation:numpadUp .25s cubic-bezier(0.16,1,0.3,1);
     max-width:640px;width:100%;margin:0 auto;
   }
@@ -517,7 +517,7 @@
   }
   .numpad-key{
     background:var(--card);font-size:22px;font-family:var(--font-mono);
-    color:var(--text);border:none;padding:18px 0;cursor:pointer;
+    color:var(--text);border:none;padding:14px 0;cursor:pointer;
     touch-action:manipulation;transition:background .1s;
   }
   .numpad-key:active{background:var(--card-2);}
@@ -2094,15 +2094,15 @@
           <button class="numpad-step-btn" id="numpad-plus">+</button>
         </div>
         <div class="numpad-grid">
-          <button class="numpad-key" data-key="1">1</button>
-          <button class="numpad-key" data-key="2">2</button>
-          <button class="numpad-key" data-key="3">3</button>
-          <button class="numpad-key" data-key="4">4</button>
-          <button class="numpad-key" data-key="5">5</button>
-          <button class="numpad-key" data-key="6">6</button>
           <button class="numpad-key" data-key="7">7</button>
           <button class="numpad-key" data-key="8">8</button>
           <button class="numpad-key" data-key="9">9</button>
+          <button class="numpad-key" data-key="4">4</button>
+          <button class="numpad-key" data-key="5">5</button>
+          <button class="numpad-key" data-key="6">6</button>
+          <button class="numpad-key" data-key="1">1</button>
+          <button class="numpad-key" data-key="2">2</button>
+          <button class="numpad-key" data-key="3">3</button>
           <button class="numpad-key numpad-dot" data-key=".">.</button>
           <button class="numpad-key numpad-zero" data-key="0">0</button>
           <button class="numpad-key numpad-del" data-key="del">⌫</button>
