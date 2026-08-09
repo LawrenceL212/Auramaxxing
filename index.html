@@ -1524,6 +1524,7 @@
               <div class="char-power-label">POWER</div>
               <div id="char-dominant-stat" style="font-family:var(--font-mono);font-size:9px;color:var(--text-faint);letter-spacing:0.06em;margin-top:2px;"></div>
               <div class="char-ap-row"><span class="char-ap-value" id="ap-amount">0</span><span class="char-ap-label">AP</span></div>
+              <div id="char-hunter-level" style="font-family:var(--font-mono);font-size:9px;color:var(--brass);letter-spacing:0.06em;margin-top:2px;">LVL 1</div>
             </div>
           </div>
           <div class="char-divider"></div>
@@ -3431,11 +3432,11 @@ document.getElementById('save-run-btn')?.addEventListener('click', async () => {
       createdAt: serverTimestamp(),
     });
     await loadAllData();
-    const earned = await tryAwardAp();
+    const runXpResult = await awardWorkoutXP([{ name: 'Running', sets: [{ reps: Math.round((distKm||5)*10), rir: 2 }] }]);
     document.getElementById('run-modal-overlay').classList.add('hidden');
     document.body.style.overflow = '';
     startDailyTimer();
-    showToast(`Run logged — ${distKm ? distKm.toFixed(2)+'km' : ''} ${paceStr}${earned ? ' · +'+earned+' AP' : ''}`, 'success');
+    showToast(`Run logged — ${distKm ? distKm.toFixed(2)+'km' : ''} ${paceStr}${runXpResult?.apEarned ? ' · +'+runXpResult.apEarned+' AP' : ''}`, 'success');
     // reset form
     ['run-distance','run-mins','run-secs','run-notes'].forEach(id => { document.getElementById(id).value = ''; });
     document.getElementById('run-pace-display').textContent = '';
@@ -3938,16 +3939,26 @@ document.getElementById('save-workout-btn')?.addEventListener('click', async () 
     exerciseRows.innerHTML = '';
     addExerciseRow();
     await loadAllData();
-    const earned = await tryAwardAp();
+    const xpResult = await awardWorkoutXP(exercises);
     const prs = await checkAndAwardPRs(exercises, date);
-    await applyWorkoutStatXP(exercises);
     await checkAndUnlockAchievements();
     startDailyTimer();
+    // Show level-up modal if new levels were gained
+    if (xpResult?.levelUps?.length) {
+      for (const lu of xpResult.levelUps) {
+        await new Promise(resolve => {
+          setTimeout(() => {
+            showLevelUpModal(lu.level, lu.ap);
+            resolve();
+          }, 400);
+        });
+      }
+    }
     setTimeout(() => {
       closeWorkoutModal(false);
-      showQuestClearBanner(earned, prs.length);
+      showQuestClearBanner(xpResult?.apEarned || 0, prs.length);
       SFX.questComplete();
-      setTimeout(() => showDebriefModal(exercises, earned, prs), 800);
+      setTimeout(() => showDebriefModal(exercises, xpResult?.apEarned || 0, prs), 800);
     }, 600);
   } catch (err) {
     alert('Could not save: ' + err.message);
@@ -4160,21 +4171,167 @@ function getStatForExercise(exerciseName) {
 }
 
 // Award stat XP based on exercises in a workout — called after every save
-async function applyWorkoutStatXP(exercises) {
-  if (!profile) return;
-  const statXP = { ...(profile.statXP || {}) };
-  let changed = false;
+// ── V2 XP System ────────────────────────────────────────────────────────────
+
+// Intensity multiplier from RIR/RPE
+function intensityMult(rir) {
+  if (rir === null || rir === undefined) return 1.0;
+  if (rir <= 1)  return 1.3;
+  if (rir <= 3)  return 1.0;
+  if (rir <= 5)  return 0.7;
+  return 0.5; // RIR 6+ = skill/technique work
+}
+
+// Reps multiplier — log scale, caps diminishing returns on high-rep sets
+function repsMult(reps) {
+  return Math.log(Math.max(1, reps) + 1) / Math.log(13);
+}
+
+// XP threshold to reach level n: Math.round(50 × n^1.25)
+function xpForLevel(level) {
+  return Math.round(50 * Math.pow(level, 1.25));
+}
+
+// AP awarded when reaching a level
+function apForLevel(level) {
+  if (level <= 5)   return 8;
+  if (level <= 15)  return 12;
+  if (level <= 30)  return 18;
+  if (level <= 50)  return 25;
+  if (level <= 75)  return 35;
+  if (level <= 100) return 50;
+  return 70;
+}
+
+// Compute General XP and Training XP from a list of logged exercises
+// Returns { generalXP, trainingXP: { strength, focus, recovery, agility, endurance, flexibility } }
+function computeWorkoutXP(exercises) {
+  let generalXP = 0;
+  const trainingXP = { strength:0, focus:0, recovery:0, agility:0, endurance:0, flexibility:0 };
+  // Baseline bleed — every session gives a tiny amount to all stats
+  Object.keys(trainingXP).forEach(s => trainingXP[s] += 0.5);
+
   for (const ex of exercises) {
-    const statId = getStatForExercise(ex.name);
-    if (!statId) continue;
-    const completedSets = (ex.sets||[]).filter(s => (Number(s.reps)||0) > 0).length;
-    if (!completedSets) continue;
-    statXP[statId] = (statXP[statId] || 0) + completedSets;
-    changed = true;
+    const exDef = EXERCISES_ALL[ex.name] || {};
+    const weights = exDef.statWeights || null;
+    const tier = exDef.skillTier || 1.0;
+
+    for (const set of (ex.sets || [])) {
+      const reps = Number(set.reps) || 0;
+      if (reps <= 0) continue;
+      const im = intensityMult(set.rir);
+      const rm = repsMult(reps);
+      const setXP = Math.max(3, 5 * rm * im * tier);
+
+      generalXP += setXP;
+
+      if (weights) {
+        for (const [stat, w] of Object.entries(weights)) {
+          if (trainingXP[stat] !== undefined) {
+            trainingXP[stat] += setXP * w;
+          }
+        }
+      }
+    }
   }
-  if (!changed) return;
-  await setDoc(doc(db, 'users', currentUser.uid), { statXP }, { merge: true });
-  profile.statXP = statXP;
+
+  return { generalXP: Math.round(generalXP * 10) / 10, trainingXP };
+}
+
+// Award XP after a workout — updates hunterXP, hunterLevel, statTrainingXP
+// Detects level-ups and awards AP for each one
+async function awardWorkoutXP(exercises) {
+  if (!profile || !currentUser) return;
+
+  const { generalXP, trainingXP } = computeWorkoutXP(exercises);
+
+  const currentLevel = profile.hunterLevel || 1;
+  const currentXP = profile.hunterXP || 0;
+  let newXP = currentXP + generalXP;
+  let newLevel = currentLevel;
+  let apEarned = 0;
+  const levelUps = [];
+
+  // Detect level-ups
+  let threshold = xpForLevel(newLevel);
+  let cumulative = 0;
+  // first calculate cumulative XP already spent on current level
+  for (let l = 1; l < currentLevel; l++) cumulative += xpForLevel(l);
+  let xpIntoCurrentLevel = currentXP - cumulative;
+
+  // Walk forward through any level-ups earned this session
+  while (xpIntoCurrentLevel + generalXP >= xpForLevel(newLevel)) {
+    const needed = xpForLevel(newLevel) - xpIntoCurrentLevel;
+    xpIntoCurrentLevel = 0;
+    generalXP - needed; // consumed
+    newLevel++;
+    const ap = apForLevel(newLevel);
+    apEarned += ap;
+    levelUps.push({ level: newLevel, ap });
+    xpIntoCurrentLevel = 0;
+    // recalculate how much XP is left after this level-up
+    // (simplified: just track new total XP)
+    break; // re-evaluate below with total XP
+  }
+
+  // Simpler recalculation: just walk forward from total XP
+  newLevel = 1;
+  let cumulativeXP = 0;
+  apEarned = 0;
+  levelUps.length = 0;
+  while (true) {
+    const needed = xpForLevel(newLevel);
+    if (cumulativeXP + needed > newXP) break;
+    cumulativeXP += needed;
+    newLevel++;
+    if (newLevel > currentLevel) {
+      // this is a new level-up
+      const ap = apForLevel(newLevel);
+      apEarned += ap;
+      levelUps.push({ level: newLevel, ap });
+    }
+  }
+
+  // Update Training XP caps
+  const currentTrainingXP = profile.statTrainingXP || {};
+  const FLOOR = 10; // baseline floor per stat
+  const newTrainingXP = {};
+  for (const stat of Object.keys(trainingXP)) {
+    newTrainingXP[stat] = Math.max(FLOOR, (currentTrainingXP[stat] || 0) + trainingXP[stat]);
+  }
+
+  // Write to Firestore
+  const updates = {
+    hunterXP: Math.round(newXP * 10) / 10,
+    hunterLevel: newLevel,
+    statTrainingXP: newTrainingXP,
+  };
+
+  if (apEarned > 0) {
+    updates.auraPoints = increment(apEarned);
+  }
+
+  await setDoc(doc(db, 'users', currentUser.uid), updates, { merge: true });
+
+  profile.hunterXP = newXP;
+  profile.hunterLevel = newLevel;
+  profile.statTrainingXP = newTrainingXP;
+  if (apEarned > 0) {
+    profile.auraPoints = (profile.auraPoints || 0) + apEarned;
+    logAp(currentUser.uid, apEarned, `Level-up AP: reached level ${newLevel} (${levelUps.map(l=>`Lv${l.level}+${l.ap}AP`).join(', ')})`, (profile.auraPoints || 0) - apEarned);
+  }
+
+  return { generalXP, trainingXP, levelUps, apEarned, newLevel };
+}
+
+// Legacy: computeApEarned and tryAwardAp kept for backward compat during transition
+// but no longer called by the main workout save flow.
+function computeApEarned() { return 0; }
+async function tryAwardAp() { return 0; }
+
+// Legacy: applyWorkoutStatXP replaced by awardWorkoutXP above
+async function applyWorkoutStatXP(exercises) {
+  return awardWorkoutXP(exercises);
 }
 
 const STRENGTH_STANDARDS = {
@@ -4662,19 +4819,7 @@ async function ensureStatBaselines() {
 
 // Aura Points: 10 base per day, +5 if weekly goal hit, streak multiplier
 // Anti-cheat: only awarded once per real calendar day (checked via lastApDate stored in Firestore)
-function computeApEarned() {
-  const streak = computeStreak(currentUser.uid);
-  let base = 10;
-  let bonus = 0;
-  // streak multiplier (stacks naturally with multiple days)
-  const mult = streak >= 30 ? 2 : streak >= 7 ? 1.5 : 1;
-  base = Math.round(base * mult);
-  // weekly goal bonus
-  const weekStart = startOfWeek(new Date());
-  const weekCount = countSince(currentUser.uid, weekStart);
-  if (weekCount >= (profile.weeklyGoal || 3)) bonus = 5;
-  return base + bonus;
-}
+// (computeApEarned and tryAwardAp are now defined in the V2 XP System block above)
 
 // ── AP Transaction Logger ──────────────────────────────────────────────────
 // Writes every AP movement to `apEvents/{uid}_{timestamp}` so the admin ledger
@@ -4698,61 +4843,150 @@ async function logAp(uid, amount, reason, balanceBefore) {
   }
 }
 
-async function tryAwardAp() {
-  if (!currentUser || !profile) return;
-  const today = todayStr();
-  if (profile.lastApDate === today) return; // already awarded today — anti-cheat
+// (tryAwardAp is now defined in the V2 XP System block above)
 
-  // extra anti-cheat: the workout being logged must have today's actual date
-  const todayWorkouts = myWorkouts.filter(w => w.date === today);
-  if (!todayWorkouts.length) return; // no workout actually logged today
+// ── V2 Stat Upgrade System ─────────────────────────────────────────────────
+// AP costs to reach each rank (total AP invested in that stat)
+const STAT_RANK_AP_COST = { E:0, D:50, C:200, B:800, A:3000, S:10000 };
 
-  const earned = computeApEarned();
-  const newAp = (profile.auraPoints || 0) + earned;
-  await setDoc(doc(db, 'users', currentUser.uid), {
-    auraPoints: increment(earned),
-    lastApDate: today,
-  }, { merge: true });
-  logAp(currentUser.uid, earned, `Daily workout AP (${today})`, profile.auraPoints || 0);
-  profile.auraPoints = newAp;
-  profile.lastApDate = today;
-  return earned;
+// Check if a stat can be ranked up under the new system
+function checkV2UpgradeGates(statId) {
+  const currentRank = (profile.stats || {})[statId] || 'E';
+  if (currentRank === 'S') return { ready: false, isMaxed: true };
+  const nextRank = RANK_TIERS[RANK_TIERS.indexOf(currentRank) + 1];
+  const apInvested = (profile.statAP || {})[statId] || 0;
+  const apNeeded = STAT_RANK_AP_COST[nextRank];
+  const trainingCap = (profile.statTrainingXP || {})[statId] || 0;
+  const ap = profile.auraPoints || 0;
+  // how much more AP can be invested in this stat
+  const maxInvestable = Math.max(0, Math.floor(trainingCap) - apInvested);
+  // can rank up when invested AP reaches the threshold
+  const ready = apInvested >= apNeeded;
+  return { ready, isMaxed: false, currentRank, nextRank, apInvested, apNeeded, trainingCap, maxInvestable, ap };
 }
 
-async function upgradeStatWithAp(statId) {
-  if (!profile) return;
-  const gates = checkUpgradeGates(statId);
-  if (!gates.ready) {
-    const reasons = [];
-    if (!gates.timeOk) reasons.push(`${gates.weeksNeeded - gates.weeksDone} more week${gates.weeksNeeded - gates.weeksDone !== 1 ? 's' : ''} needed`);
-    if (!gates.improvOk) reasons.push(`${gates.improvNeeded - gates.improvDone}% more improvement needed`);
-    if (!gates.apOk) reasons.push(`${gates.apCost - gates.ap} more AP needed`);
-    showToast(`Not ready: ${reasons.join(' · ')}`, 'error'); return;
+// Invest AP into a stat — gated by Training XP cap
+async function investApInStat(statId, amount) {
+  if (!profile || !currentUser) return;
+  const gates = checkV2UpgradeGates(statId);
+  if (gates.isMaxed) { showToast('Already at S rank — maximum power achieved.', 'error'); return; }
+  if (amount <= 0) { showToast('Enter a valid amount.', 'error'); return; }
+  if (amount > (profile.auraPoints || 0)) { showToast(`Not enough AP — you have ${profile.auraPoints || 0} AP.`, 'error'); return; }
+  if (amount > gates.maxInvestable) {
+    showToast(`Training cap reached — max investable in ${statId}: ${gates.maxInvestable} AP. Train more ${statId} exercises to raise your cap.`, 'error');
+    return;
   }
-  const currentRank = (profile.stats || {})[statId] || 'E';
-  const newRank = gates.nextRank;
-  const newStats = { ...(profile.stats || defaultStats()), [statId]: newRank };
-  const newAp = (profile.auraPoints || 0) - gates.apCost;
 
-  // record when this rank was achieved for future time gate
+  const statAP = { ...(profile.statAP || {}) };
+  statAP[statId] = (statAP[statId] || 0) + amount;
+  const newAp = (profile.auraPoints || 0) - amount;
+
+  await setDoc(doc(db, 'users', currentUser.uid), {
+    statAP,
+    auraPoints: increment(-amount),
+  }, { merge: true });
+  logAp(currentUser.uid, -amount, `AP invested in ${statId} (total: ${statAP[statId]})`, profile.auraPoints || 0);
+
+  profile.statAP = statAP;
+  profile.auraPoints = newAp;
+
+  // check if this investment triggers a rank-up
+  const updatedGates = checkV2UpgradeGates(statId);
+  if (updatedGates.ready && !updatedGates.isMaxed) {
+    await triggerStatRankUp(statId, gates.currentRank, updatedGates.nextRank);
+  } else {
+    renderCharCard();
+    showToast(`+${amount} AP invested in ${statId.charAt(0).toUpperCase()+statId.slice(1)}. ${Math.max(0, updatedGates.apNeeded - updatedGates.apInvested)} AP to D rank.`, 'success');
+  }
+}
+
+// Trigger stat rank-up when AP threshold is reached
+async function triggerStatRankUp(statId, oldRank, newRank) {
+  const newStats = { ...(profile.stats || defaultStats()), [statId]: newRank };
   const statTimeAtRank = { ...(profile.statTimeAtRank || {}) };
   statTimeAtRank[statId] = { rank: newRank, sinceDate: todayStr() };
-
-  const pending = [...(profile.pendingRankUpModals || []), { stat: statId, oldRank: currentRank, newRank }];
+  const pending = [...(profile.pendingRankUpModals || []), { stat: statId, oldRank, newRank }];
   await setDoc(doc(db, 'users', currentUser.uid), {
-    auraPoints: increment(-gates.apCost), stats: newStats,
-    statTimeAtRank, pendingRankUpModals: pending,
+    stats: newStats, statTimeAtRank, pendingRankUpModals: pending,
   }, { merge: true });
-  logAp(currentUser.uid, -gates.apCost, `Stat upgrade: ${statId} ${currentRank}→${newRank}`, profile.auraPoints || 0);
-  profile.auraPoints = newAp;
   profile.stats = newStats;
   profile.statTimeAtRank = statTimeAtRank;
   profile.pendingRankUpModals = pending;
-
   const def = STAT_DEFS.find(d => d.id === statId);
-  showAwakeningModal(def?.label || statId, currentRank, newRank, profile.displayName);
+  showAwakeningModal(def?.label || statId, oldRank, newRank, profile.displayName);
   SFX.awakening();
   renderCharCard();
+}
+
+// Legacy upgradeStatWithAp — now opens the invest panel instead
+async function upgradeStatWithAp(statId) {
+  openStatInvestPanel(statId);
+}
+
+// Open stat investment panel
+function openStatInvestPanel(statId) {
+  const gates = checkV2UpgradeGates(statId);
+  const def = STAT_DEFS.find(d => d.id === statId);
+  const label = def?.label || statId;
+  const trainingCap = Math.floor(gates.trainingCap || 0);
+  const invested = gates.apInvested || 0;
+  const maxInvest = gates.maxInvestable || 0;
+  const ap = profile.auraPoints || 0;
+  const canInvest = Math.min(maxInvest, ap);
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.innerHTML = `<div class="modal" style="max-height:85vh;overflow-y:auto;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+      <h3>Invest AP — ${label}</h3>
+      <button class="icon-btn" id="invest-close" style="font-size:20px;">✕</button>
+    </div>
+    ${gates.isMaxed ? `<p style="color:#FFD700;font-family:var(--font-mono);font-size:12px;">◈ S RANK — MAXIMUM POWER ACHIEVED ◈</p>` : `
+    <div style="background:var(--card-2);border-radius:6px;padding:12px;margin-bottom:14px;font-size:12px;">
+      <div style="display:flex;justify-content:space-between;margin-bottom:6px;">
+        <span style="color:var(--text-faint);">AP invested</span>
+        <span style="font-family:var(--font-mono);color:var(--text);">${invested} / ${STAT_RANK_AP_COST[gates.nextRank]} AP</span>
+      </div>
+      <div style="height:4px;background:rgba(93,157,255,0.1);border-radius:2px;margin-bottom:10px;overflow:hidden;">
+        <div style="height:100%;width:${Math.min(100,(invested/STAT_RANK_AP_COST[gates.nextRank]*100)).toFixed(0)}%;background:var(--brass);border-radius:2px;transition:width 0.6s ease;box-shadow:0 0 6px var(--brass);"></div>
+      </div>
+      <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+        <span style="color:var(--text-faint);">Training cap</span>
+        <span style="font-family:var(--font-mono);color:var(--text);">${trainingCap} XP</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+        <span style="color:var(--text-faint);">Max investable</span>
+        <span style="font-family:var(--font-mono);color:${maxInvest > 0 ? 'var(--growing)' : 'var(--excess)'};">${maxInvest} AP</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;">
+        <span style="color:var(--text-faint);">Your AP</span>
+        <span style="font-family:var(--font-mono);color:var(--brass);">${ap} AP</span>
+      </div>
+      ${maxInvest === 0 ? `<p style="color:var(--excess);font-size:11px;margin:8px 0 0;">Training cap reached — log more ${label.toLowerCase()} exercises to raise your cap before investing.</p>` : ''}
+    </div>
+    ${canInvest > 0 ? `
+    <div style="margin-bottom:14px;">
+      <label style="font-size:12px;color:var(--text-faint);display:block;margin-bottom:6px;">Amount to invest (max ${canInvest} AP)</label>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <input type="number" id="invest-amount" min="1" max="${canInvest}" value="${Math.min(canInvest, STAT_RANK_AP_COST[gates.nextRank] - invested)}"
+          style="flex:1;background:var(--card-2);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:8px;font-size:14px;" />
+        <button class="btn btn-sm" id="invest-max" style="font-size:11px;">Max</button>
+      </div>
+    </div>
+    <button class="btn btn-primary" id="invest-confirm" style="width:100%;">Invest AP</button>
+    ` : ''}
+    `}
+  </div>`;
+  document.body.appendChild(overlay);
+  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+  overlay.querySelector('#invest-close').addEventListener('click', () => overlay.remove());
+  overlay.querySelector('#invest-max')?.addEventListener('click', () => {
+    overlay.querySelector('#invest-amount').value = canInvest;
+  });
+  overlay.querySelector('#invest-confirm')?.addEventListener('click', async () => {
+    const amount = Number(overlay.querySelector('#invest-amount').value) || 0;
+    overlay.remove();
+    await investApInStat(statId, amount);
+  });
 }
 
 function improvTarget(id, needed, done) {
@@ -4852,6 +5086,25 @@ function renderCharCard() {
   document.getElementById('ap-amount').textContent = ap.toLocaleString();
   if (document.getElementById('char-power-value')) {
     document.getElementById('char-power-value').textContent = power.toLocaleString();
+  }
+  // Hunter level display
+  const levelEl = document.getElementById('char-hunter-level');
+  if (levelEl) {
+    const hunterLevel = profile.hunterLevel || 1;
+    const hunterXP = profile.hunterXP || 0;
+    // XP progress within current level
+    let cumulativeXP = 0;
+    for (let l = 1; l < hunterLevel; l++) cumulativeXP += Math.round(50 * Math.pow(l, 1.25));
+    const xpIntoLevel = hunterXP - cumulativeXP;
+    const xpNeeded = Math.round(50 * Math.pow(hunterLevel, 1.25));
+    const xpPct = Math.min(100, (xpIntoLevel / xpNeeded) * 100);
+    levelEl.innerHTML = `
+      <div style="font-family:var(--font-mono);font-size:9px;color:var(--brass);letter-spacing:0.06em;">LVL ${hunterLevel}</div>
+      <div style="height:2px;background:rgba(255,215,0,0.15);border-radius:1px;margin-top:2px;width:60px;overflow:hidden;">
+        <div style="height:100%;width:${xpPct.toFixed(0)}%;background:var(--brass);border-radius:1px;box-shadow:0 0 3px var(--brass);"></div>
+      </div>
+      <div style="font-size:8px;color:var(--text-faint);margin-top:1px;">${Math.round(xpIntoLevel)}/${xpNeeded} XP</div>
+    `;
   }
   // dominant stat — highest ranked stat
   const STAT_ORDER = ['S','A','B','C','D','E'];
@@ -4985,43 +5238,41 @@ function renderCharCard() {
     const barColor = RANK_COLORS[cur];
     const isMaxed = cur === 'S';
     const rankCls = 'rank-' + cur.toLowerCase();
-    const gates = isMaxed ? null : checkUpgradeGates(def.id);
-    const allReady = gates?.ready;
+    const gates = checkV2UpgradeGates(def.id);
 
-    // gate progress indicators
-    let gateHtml = '';
-    if (!isMaxed && gates) {
-      gateHtml = buildGateHtml(def.id, gates, ap);
-    }
+    // Training XP cap bar
+    const trainingCap = Math.floor((profile.statTrainingXP || {})[def.id] || 0);
+    const invested = (profile.statAP || {})[def.id] || 0;
+    const nextRankCost = STAT_RANK_AP_COST[RANK_TIERS[curIdx + 1]] || 0;
+    const investPct = nextRankCost > 0 ? Math.min(100, (invested / nextRankCost) * 100) : 100;
+    const capPct = nextRankCost > 0 ? Math.min(100, (trainingCap / nextRankCost) * 100) : 100;
 
-    const btnLabel = isMaxed ? 'MAX' : allReady ? '⚡ AWAKEN' : `${gates?.apCost||0} AP`;
-    const btnCls = isMaxed ? 'stat-upgrade-btn maxed' : allReady ? 'stat-upgrade-btn can-upgrade awakening' : 'stat-upgrade-btn';
-    const statXP = (profile.statXP || {})[def.id] || 0;
-    // statXP accumulates from sets logged + PR bonuses — show as "Stat XP" not "AP from PRs"
-    // The XP bar shows progress within the current rank tier toward the next meaningful milestone.
-    // We use 100 XP as a soft milestone (roughly 10 full workout sessions worth of sets in this stat).
-    const XP_MILESTONE = 100;
-    const xpPct = Math.min(100, (statXP % XP_MILESTONE) / XP_MILESTONE * 100);
-    const xpLevel = Math.floor(statXP / XP_MILESTONE);
-    const xpTag = statXP > 0 ? `
-      <div style="margin-top:4px;">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2px;">
-          <span style="font-size:9px;font-family:var(--font-mono);color:var(--text-faint);">STAT XP${xpLevel > 0 ? ` · LVL ${xpLevel}` : ''}</span>
-          <span style="font-size:9px;font-family:var(--font-mono);color:var(--growing);">+${statXP} xp</span>
+    const xpTag = `
+      <div style="margin-top:5px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px;">
+          <span style="font-size:9px;font-family:var(--font-mono);color:var(--text-faint);">AP INVESTED</span>
+          <span style="font-size:9px;font-family:var(--font-mono);color:var(--brass);">${invested}${!isMaxed ? ` / ${nextRankCost}` : ''}</span>
         </div>
-        <div style="height:3px;background:rgba(93,157,255,0.1);border-radius:2px;overflow:hidden;">
-          <div style="height:100%;width:${xpPct.toFixed(0)}%;background:var(--growing);border-radius:2px;transition:width 0.6s ease;box-shadow:0 0 4px var(--growing);"></div>
+        <div style="height:3px;background:rgba(93,157,255,0.08);border-radius:2px;overflow:visible;position:relative;">
+          <div style="position:absolute;top:0;left:0;height:100%;width:${capPct.toFixed(0)}%;background:rgba(93,157,255,0.15);border-radius:2px;" title="Training cap: ${trainingCap} AP"></div>
+          <div style="position:absolute;top:0;left:0;height:100%;width:${investPct.toFixed(0)}%;background:var(--brass);border-radius:2px;box-shadow:0 0 4px var(--brass);transition:width 0.6s ease;"></div>
         </div>
-      </div>` : '';
+        <div style="font-size:9px;font-family:var(--font-mono);color:var(--text-faint);margin-top:2px;">
+          Training cap: ${trainingCap} XP ${trainingCap < nextRankCost && !isMaxed ? `· need ${nextRankCost - trainingCap} more XP to unlock D rank` : ''}
+        </div>
+      </div>`;
 
-    return `<div class="stat-row ${allReady?'gate-ready':''}" style="cursor:pointer;" data-stat-detail="${def.id}">
+    const canInvest = gates.maxInvestable > 0 && ap > 0;
+    const btnLabel = isMaxed ? 'MAX' : gates.ready ? '⚡ RANK UP' : canInvest ? `Invest AP →` : `Train ${def.label}`;
+    const btnCls = isMaxed ? 'stat-upgrade-btn maxed' : gates.ready ? 'stat-upgrade-btn can-upgrade awakening' : 'stat-upgrade-btn';
+
+    return `<div class="stat-row" style="cursor:pointer;" data-stat-detail="${def.id}">
       <span class="stat-label" title="${def.desc}">${def.label}</span>
       <div style="flex:1;min-width:0;">
         <div class="stat-bar-wrap">
           <div class="stat-bar" style="width:${pct}%;background:${barColor};"></div>
           <div class="stat-tiers">${RANK_TIERS.map(()=>'<div class="stat-tier-seg"></div>').join('')}</div>
         </div>
-        ${gateHtml}
         ${xpTag}
       </div>
       <span class="stat-rank ${rankCls}">${cur}</span>
@@ -5032,7 +5283,7 @@ function renderCharCard() {
   }).join('');
 
   statsEl.querySelectorAll('.stat-upgrade-btn:not([disabled])').forEach(btn =>
-    btn.addEventListener('click', () => upgradeStatWithAp(btn.dataset.stat)));
+    btn.addEventListener('click', () => openStatInvestPanel(btn.dataset.stat)));
 
   // tap stat row to open gate detail
   statsEl.querySelectorAll('.stat-row[data-stat-detail]').forEach(row => {
@@ -7694,6 +7945,22 @@ function buildMuscleStats(uid) {
     stats[m] = { status: ratio === 0 ? 'Stalled' : ratio < 0.25 ? 'Maintaining' : ratio < 0.6 ? 'Growing' : ratio < 0.9 ? 'Focusing' : 'Excess' };
   });
   return stats;
+}
+
+// Solo Leveling style level-up system alert
+function showLevelUpModal(newLevel, apAwarded) {
+  showSystemModal(`<div class="system-window levelup">
+    <p class="system-eyebrow" style="color:var(--brass);letter-spacing:0.2em;">◈ LEVEL UP ◈</p>
+    <div class="system-icon" style="font-size:48px;margin:8px 0;">⚡</div>
+    <h2 class="system-title" style="font-size:28px;color:#FFD700;">LEVEL ${newLevel}</h2>
+    <p class="system-body" style="color:var(--text-dim);">The System acknowledges your growth.<br>Your potential expands.</p>
+    <div style="background:rgba(255,215,0,0.08);border:1px solid rgba(255,215,0,0.2);border-radius:4px;padding:12px;margin:12px 0;">
+      <div style="font-family:var(--font-mono);font-size:11px;color:var(--text-faint);margin-bottom:4px;">REWARD</div>
+      <div style="font-size:22px;color:var(--brass);font-family:var(--font-display);font-weight:700;">+${apAwarded} AP</div>
+      <div style="font-size:11px;color:var(--text-faint);margin-top:2px;">Spend on stat upgrades</div>
+    </div>
+    <button class="system-btn success">Continue</button>
+  </div>`);
 }
 
 function showQuestClearBanner(apEarned, prCount, persistent = false) {
@@ -10734,7 +11001,7 @@ function openWorkoutDetail(workoutId) {
       // reprocess PRs with updated data
       const newPRs = await checkAndAwardPRs(cleanedExercises, w.date);
       // reprocess stat XP
-      await applyWorkoutStatXP(cleanedExercises);
+      await awardWorkoutXP(cleanedExercises);
       // reprocess achievements
       await checkAndUnlockAchievements();
       const prMsg = newPRs.length ? ` · ${newPRs.length} new PR${newPRs.length>1?'s':''}` : '';
