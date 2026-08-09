@@ -357,7 +357,7 @@
     display:grid;grid-template-columns:28px 1fr auto auto;
     align-items:center;gap:8px;
     padding:10px 6px;border-bottom:1px solid rgba(93,157,255,0.07);
-    transition:background 0.2s, border-color 0.2s;
+    transition:background 0.3s, border-color 0.3s, transform 0.2s;
     cursor:default;
   }
   .quest-check-row:last-child{border-bottom:none;}
@@ -383,13 +383,37 @@
     background:rgba(139,107,255,0.06);
     border-color:rgba(139,107,255,0.15);
     border-radius:4px;margin:0 -6px;padding:10px 12px;
+    animation:questRowComplete 0.4s cubic-bezier(0.16,1,0.3,1) both;
+  }
+  @keyframes questRowComplete{
+    0%{transform:scaleX(0.97);background:rgba(139,107,255,0.2);}
+    60%{transform:scaleX(1.01);}
+    100%{transform:scaleX(1);background:rgba(139,107,255,0.06);}
   }
   .quest-check-row.complete .qc-name{color:var(--violet);text-decoration:line-through;text-decoration-color:rgba(139,107,255,0.4);}
   .quest-check-row.complete .qc-box{
     background:rgba(139,107,255,0.2);border-color:var(--violet);
     color:var(--violet);text-shadow:0 0 8px var(--violet);
+    animation:qcBoxPop 0.35s cubic-bezier(0.16,1,0.3,1) both;
+  }
+  @keyframes qcBoxPop{
+    0%{transform:scale(0.6);opacity:0;}
+    70%{transform:scale(1.2);}
+    100%{transform:scale(1);opacity:1;}
   }
   .quest-check-row.complete .qc-sets,.quest-check-row.complete .qc-reps{color:rgba(139,107,255,0.6);}
+
+  /* ── Quest progress bar ── */
+  .quest-progress-bar-wrap{
+    height:3px;background:rgba(93,157,255,0.08);border-radius:2px;
+    margin-bottom:14px;overflow:hidden;
+  }
+  .quest-progress-bar{
+    height:100%;border-radius:2px;
+    background:linear-gradient(90deg,var(--brass),var(--violet));
+    transition:width 0.6s cubic-bezier(0.16,1,0.3,1);
+    box-shadow:0 0 6px var(--violet);
+  }
   .quest-warning{
     display:flex;align-items:center;justify-content:center;gap:6px;
     font-family:var(--font-mono);font-size:10px;letter-spacing:0.06em;
@@ -1245,8 +1269,30 @@
   .stat-grid-3 .val{font-family:var(--font-display);font-size:18px;margin-top:2px;}
   .bar-chart-row{display:flex;align-items:flex-end;gap:6px;height:90px;margin-top:10px;}
   .bar-chart-col{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;gap:4px;}
-  .bar-chart-bar{width:100%;border-radius:4px 4px 0 0;background:var(--brass);min-height:2px;}
+  .bar-chart-bar{
+    width:100%;border-radius:4px 4px 0 0;background:var(--brass);min-height:2px;
+    transform-origin:bottom;animation:barChartRise 0.6s cubic-bezier(0.16,1,0.3,1) both;
+  }
+  @keyframes barChartRise{from{transform:scaleY(0);opacity:0}to{transform:scaleY(1);opacity:1}}
+  .bar-chart-col:nth-child(1) .bar-chart-bar{animation-delay:0.02s}
+  .bar-chart-col:nth-child(2) .bar-chart-bar{animation-delay:0.04s}
+  .bar-chart-col:nth-child(3) .bar-chart-bar{animation-delay:0.06s}
+  .bar-chart-col:nth-child(4) .bar-chart-bar{animation-delay:0.08s}
+  .bar-chart-col:nth-child(5) .bar-chart-bar{animation-delay:0.10s}
+  .bar-chart-col:nth-child(6) .bar-chart-bar{animation-delay:0.12s}
+  .bar-chart-col:nth-child(7) .bar-chart-bar{animation-delay:0.14s}
+  .bar-chart-col:nth-child(8) .bar-chart-bar{animation-delay:0.16s}
+  .bar-chart-col:nth-child(9) .bar-chart-bar{animation-delay:0.18s}
+  .bar-chart-col:nth-child(10) .bar-chart-bar{animation-delay:0.20s}
   .bar-chart-lbl{font-size:10px;color:var(--text-faint);}
+
+  /* ── Trends stat cap bars animate in ── */
+  @keyframes trainingCapIn{from{width:0!important;opacity:0}to{opacity:1}}
+  .training-cap-bar{animation:trainingCapIn 0.8s cubic-bezier(0.16,1,0.3,1) both;}
+
+  /* ── Trends number counter ── */
+  .trend-count-up{display:inline-block;animation:countUpPop 0.5s cubic-bezier(0.16,1,0.3,1) both;}
+  @keyframes countUpPop{from{transform:scale(0.8);opacity:0}to{transform:scale(1);opacity:1}}
   .weight-input-row{display:flex;gap:8px;margin-top:12px;}
   .weight-input-row input{flex:1;}
 
@@ -2833,10 +2879,20 @@ function buildQuestCardHTML(idx) {
       </div>`;
   }
 
+  const totalExercises = day.exercises.length;
+  const completedExercises = day.exercises.filter(ex => {
+    const done = setsForChecklist(ex.name);
+    return allComplete || done >= ex.sets;
+  }).length;
+  const progressPct = totalExercises > 0 ? (completedExercises / totalExercises * 100).toFixed(0) : 0;
+
   return `
     <div class="quest-eyebrow">⚠ QUEST INFO</div>
     <p class="quest-flavor">${flavor}</p>
     <div class="quest-goal-label">GOAL</div>
+    <div class="quest-progress-bar-wrap" title="${completedExercises}/${totalExercises} exercises complete">
+      <div class="quest-progress-bar" style="width:${progressPct}%"></div>
+    </div>
     <div class="quest-checklist">${checklist}</div>
     <p class="quest-warning">${warning}</p>
     ${buildRewardsPreview()}
@@ -9340,6 +9396,34 @@ function renderTrends() {
     </div>
 
     <div class="card">
+      <div class="card-title"><h3>⚡ Training Caps</h3></div>
+      <p class="sub" style="margin:0 0 10px;">How much AP you can invest per stat — grows as you train.</p>
+      ${(() => {
+        const caps = profile.statTrainingXP || {};
+        const invested = profile.statAP || {};
+        const STAT_ICONS_T = { strength:'⚔️', focus:'🎯', recovery:'🛡️', agility:'⚡', endurance:'🔥', flexibility:'💫' };
+        const RANK_COST = 50; // E→D cost
+        return Object.entries(caps)
+          .sort(([,a],[,b]) => b - a)
+          .map(([stat, cap]) => {
+            const inv = invested[stat] || 0;
+            const capPct = Math.min(100, (cap / RANK_COST) * 100).toFixed(0);
+            const invPct = cap > 0 ? Math.min(100, (inv / cap) * 100).toFixed(0) : 0;
+            return `<div style="margin-bottom:10px;">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px;">
+                <span style="font-size:12px;color:var(--text-dim);">${STAT_ICONS_T[stat]||'·'} ${stat.charAt(0).toUpperCase()+stat.slice(1)}</span>
+                <span style="font-family:var(--font-mono);font-size:10px;color:var(--text-faint);">${Math.floor(cap)} XP cap · ${inv} AP invested</span>
+              </div>
+              <div style="height:6px;background:rgba(93,157,255,0.08);border-radius:3px;position:relative;overflow:hidden;">
+                <div class="training-cap-bar" style="position:absolute;top:0;left:0;height:100%;width:${capPct}%;background:rgba(61,165,255,0.2);border-radius:3px;"></div>
+                <div class="training-cap-bar" style="position:absolute;top:0;left:0;height:100%;width:${invPct}%;background:var(--brass);border-radius:3px;box-shadow:0 0 4px var(--brass);animation-delay:0.2s;"></div>
+              </div>
+            </div>`;
+          }).join('');
+      })()}
+    </div>
+
+    <div class="card">
       <div class="card-title"><h3>◐ Weight</h3></div>
       ${weightLineChart(myWeights)}
       <div class="weight-input-row">
@@ -9355,6 +9439,29 @@ function renderTrends() {
     </div>
   `;
   document.getElementById('widget-muscle')?.addEventListener('click', () => { trendsView = 'muscle-detail'; renderTrends(); });
+
+  // Animate bignum count-up
+  document.querySelectorAll('#trends-widgets .bignum').forEach(el => {
+    const text = el.textContent.trim();
+    const num = parseFloat(text.replace(/[^0-9.]/g, ''));
+    if (!isNaN(num) && num > 0) {
+      const suffix = text.replace(/[0-9.]/g, '').trim();
+      const small = el.querySelector('small');
+      const smallText = small ? small.outerHTML : '';
+      let start = 0;
+      const duration = 600;
+      const startTime = performance.now();
+      const isFloat = text.includes('.');
+      const update = (now) => {
+        const pct = Math.min(1, (now - startTime) / duration);
+        const ease = 1 - Math.pow(1 - pct, 3);
+        const current = num * ease;
+        el.innerHTML = (isFloat ? current.toFixed(1) : Math.round(current).toLocaleString()) + (suffix ? ' ' + suffix : '') + smallText;
+        if (pct < 1) requestAnimationFrame(update);
+      };
+      requestAnimationFrame(update);
+    }
+  });
   const wBtn = document.getElementById('weight-save-btn');
   if (wBtn) wBtn.addEventListener('click', async () => {
     const val = Number(document.getElementById('weight-input').value);
