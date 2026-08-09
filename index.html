@@ -4358,7 +4358,9 @@ function addExerciseRow(presetName, targetSets, targetReps, prefillSets) {
     const timed = isTimed();
     const unit = timedUnit();
     const exName = row.dataset.exName || '';
-    const isRunEx = CARDIO_EXERCISES.has(exName);
+    const exDef = EXERCISES_ALL[exName] || {};
+    // Run exercises: timed + endurance/agility stat weight dominant
+    const isRunEx = timed && exDef.intent === 'endurance' || exDef.intent === 'explosive' && exDef.timedUnit === 'mins' && !!(exDef.statWeights?.endurance || exDef.statWeights?.agility);
     const repsStep = timed ? (unit === 'mins' ? 1 : 5) : 1;
     const repsLabel = timed ? (unit === 'mins' ? 'Mins' : 'Secs') : 'Reps';
     const suggTag = suggestion ? `<span class="suggest-badge">${suggestion}</span>` : '';
@@ -4426,9 +4428,8 @@ function addExerciseRow(presetName, targetSets, targetReps, prefillSets) {
   function refreshTags() {
     const def = EXERCISES_ALL[row.dataset.exName] || {};
     const map = def.muscles || {};
-    const isRunEx = CARDIO_EXERCISES.has(row.dataset.exName);
+    const isRunEx = def.timed && (def.intent === 'endurance' || (def.intent === 'explosive' && def.timedUnit === 'mins'));
     tagsEl.innerHTML = Object.keys(map).map(m => `<span class="tag">${m}</span>`).join('');
-    // update table header
     const head = row.querySelector('.set-table-head');
     if (head && !head.classList.contains('hidden')) {
       const unit = timedUnit();
@@ -4483,7 +4484,10 @@ document.getElementById('save-workout-btn')?.addEventListener('click', async () 
   btn.disabled = true; btn.textContent = 'Saving…';
   try {
     // Build runSummary for any run exercises logged in the workout logger
-    const runExercise = exercises.find(ex => CARDIO_EXERCISES.has(ex.name));
+    const runExercise = exercises.find(ex => {
+      const def = EXERCISES_ALL[ex.name] || {};
+      return def.timed && (def.intent === 'endurance' || (def.intent === 'explosive' && def.timedUnit === 'mins'));
+    });
     const runSummaryFromLogger = runExercise ? (() => {
       const s = runExercise.sets[0];
       const distKm = s.distKm || 0;
@@ -4518,8 +4522,9 @@ document.getElementById('save-workout-btn')?.addEventListener('click', async () 
     addExerciseRow();
     await loadAllData();
     const xpResult = await awardWorkoutXP(exercises.map(ex => {
-      if (!CARDIO_EXERCISES.has(ex.name)) return ex;
-      // Infer RIR from run type for XP calculation
+      const def = EXERCISES_ALL[ex.name] || {};
+      const isRun = def.timed && (def.intent === 'endurance' || (def.intent === 'explosive' && def.timedUnit === 'mins'));
+      if (!isRun) return ex;
       const runRIR = ex.name === 'Hill Sprints' || ex.name === 'Interval Running' || ex.name === 'Race' ? 0
         : ex.name === 'Tempo Run' ? 1
         : ex.name === 'Long Run' ? 3
