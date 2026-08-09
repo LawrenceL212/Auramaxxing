@@ -2300,6 +2300,13 @@ function addExerciseRow(presetName, targetSets, targetReps, prefillSets) {
       input.dispatchEvent(new Event('input'));
       checkComplete(setRow);
     }));
+    // mark prefilled reps as confirmed — the system provided them intentionally so the user
+    // shouldn't need to manually touch every prefilled value before the set counts as logged.
+    // Prefilled weight is NOT pre-confirmed since the user should actively verify it.
+    if (prefillReps) {
+      const repsInput = setRow.querySelector('.set-reps');
+      if (repsInput) repsInput.dataset.confirmed = '1';
+    }
     setRow.querySelectorAll('.step-up').forEach(btn => btn.addEventListener('click', () => {
       SFX.numpadKey();
       const input = btn.parentElement.querySelector('input');
@@ -2381,7 +2388,7 @@ document.getElementById('save-workout-btn')?.addEventListener('click', async () 
       };
     }).filter(s => s.reps > 0);    if (sets.length) exercises.push({ name, sets });
   });
-  if (!exercises.length) { showToast('Add at least one exercise with a completed set first.', 'error'); return; return; }
+  if (!exercises.length) { showToast('Fill in reps for at least one set before completing.', 'error'); btn.disabled = false; btn.textContent = 'Complete quest'; return; }
 
   const btn = document.getElementById('save-workout-btn');
   btn.disabled = true; btn.textContent = 'Saving…';
