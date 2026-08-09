@@ -5935,20 +5935,28 @@ async function applyCalibrationObservation(obsKey, stat, proposedCap) {
   const currentCap = (profile.statTrainingXP || {})[stat] || 0;
   const newCap = Math.max(currentCap, proposedCap);
 
-  const updates = {
-    [`statTrainingXP.${stat}`]: newCap,
-    [`calibrationObservations.${obsKey}`]: { acknowledged: true, appliedAt: new Date().toISOString(), cap: newCap },
-    lastCalibrationCheck: new Date().toISOString(),
-  };
+  try {
+    // Use updateDoc with dot-notation for nested field updates
+    const userRef = doc(db, 'users', currentUser.uid);
+    await updateDoc(userRef, {
+      [`statTrainingXP.${stat}`]: newCap,
+      [`calibrationObservations.${obsKey}.acknowledged`]: true,
+      [`calibrationObservations.${obsKey}.appliedAt`]: new Date().toISOString(),
+      [`calibrationObservations.${obsKey}.cap`]: newCap,
+      lastCalibrationCheck: new Date().toISOString(),
+    });
 
-  await setDoc(doc(db, 'users', currentUser.uid), updates, { merge: true });
-  if (!profile.statTrainingXP) profile.statTrainingXP = {};
-  profile.statTrainingXP[stat] = newCap;
-  if (!profile.calibrationObservations) profile.calibrationObservations = {};
-  profile.calibrationObservations[obsKey] = { acknowledged:true };
+    if (!profile.statTrainingXP) profile.statTrainingXP = {};
+    profile.statTrainingXP[stat] = newCap;
+    if (!profile.calibrationObservations) profile.calibrationObservations = {};
+    profile.calibrationObservations[obsKey] = { acknowledged:true };
 
-  renderCharCard();
-  showToast(`${stat.charAt(0).toUpperCase()+stat.slice(1)} Training Cap updated to ${newCap} XP`, 'success');
+    renderCharCard();
+    showToast(`${stat.charAt(0).toUpperCase()+stat.slice(1)} Training Cap raised to ${newCap} XP`, 'success');
+  } catch(e) {
+    console.error('applyCalibrationObservation failed:', e);
+    showToast('Failed to save — ' + e.message, 'error');
+  }
 }
 
 // Dispute a calibration observation — re-analyse, hide if still valid
