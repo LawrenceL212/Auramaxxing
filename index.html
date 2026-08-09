@@ -12192,16 +12192,40 @@ function inferInventoryFromWorkouts() {
   else if (bestPullupReps >= 5) bestStrRatio = Math.max(bestStrRatio, 0.75);
 
   // ── WEAPON ──
+  // Count sessions per major category to determine weapon chain
+  const exCounts = {};
+  myWOs.forEach(w => (w.exercises||[]).forEach(ex => {
+    exCounts[ex.name] = (exCounts[ex.name]||0) + (ex.sets||[]).filter(s=>s.reps>0).length;
+  }));
+  const exCount = (...names) => names.reduce((t,n) => t+(exCounts[n]||0), 0);
+
+  const boxingSets  = exCount('Boxing — Bag Work','Boxing — Sparring','Boxing — Shadow Boxing','Boxing — Pad Work');
+  const courtSets   = exCount('Tennis','Tennis Drills','Basketball','Basketball Drills','Football (Soccer)','Football Drills','American Football');
+  const plancheSets = exCount('Tuck Planche','Advanced Tuck Planche','Full Planche','Planche Lean','Straddle Planche','Pseudo planche push up','Freestanding Handstand Hold','Chest-to-Wall Handstand Hold','Handstand Shoulder Taps');
+  const leverSets   = exCount('Front Lever','Tuck Front Lever','Advanced Tuck Front Lever','Front Lever Row','Front Lever Raise','Back Lever');
+  const powerSets   = exCount('Bench Press','Squat','Deadlift','Overhead Press','Romanian Deadlift','Sumo Deadlift','Incline Bench Press','Front Squat');
+  const calSets     = exCount('Pull Up','Chin Up','Dips','Ring Dips','Inverted Row','Barbell Row','Seated Cable Row','Pendlay Row');
+
   const isSkillFocused = eliteTier.size >= 1 || advTier.size >= 2;
-  if (isSkillFocused) {
+  const isSportFocused = boxingSets >= 5 || courtSets >= 5;
+
+  if (isSportFocused) {
+    // Sports athletes get a weapon based on sport type, tier from session count
+    const sportCount = Math.max(boxingSets, courtSets);
+    const chain = boxingSets >= courtSets ? 'weapon_boxing' : 'weapon_court';
+    const tier = sportCount >= 40 ? 4 : sportCount >= 20 ? 3 : sportCount >= 10 ? 2 : 1;
+    inventory.weapon = { ...ITEM_DEFINITIONS[`${chain}_${tier}`], condition:85, earnedFromWorkouts:true };
+  } else if (isSkillFocused) {
+    // Skill athletes — planche or lever or hybrid
     let tier = 0;
     if (eliteTier.size >= 3) tier = 4;
     else if (eliteTier.size >= 1) tier = 3;
     else if (advTier.size >= 3) tier = 2;
     else if (advTier.size >= 1) tier = 1;
     if (tier > 0) {
-      const key = `weapon_foc_${tier}`;
-      inventory.weapon = { ...ITEM_DEFINITIONS[key], condition:90, earnedFromWorkouts:true };
+      const chain = resolveItemKey('focus', 'weapon');
+      const item = ITEM_DEFINITIONS[`${chain}_${tier}`] || ITEM_DEFINITIONS[`weapon_foc_${tier}`];
+      inventory.weapon = { ...item, condition:90, earnedFromWorkouts:true };
     }
   } else if (compoundCount >= 3 || bestStrRatio > 0.5) {
     let tier = 0;
@@ -12212,8 +12236,7 @@ function inferInventoryFromWorkouts() {
     else if (bestStrRatio >= 0.5)  tier = 1;
     if (tier > 0) {
       const chain = resolveItemKey('strength', 'weapon');
-      const key = `${chain}_${tier}`;
-      const item = ITEM_DEFINITIONS[key] || ITEM_DEFINITIONS[`weapon_str_${tier}`];
+      const item = ITEM_DEFINITIONS[`${chain}_${tier}`] || ITEM_DEFINITIONS[`weapon_str_${tier}`];
       inventory.weapon = { ...item, condition:90, earnedFromWorkouts:true };
     }
   } else if (bestPullupReps >= 10) {
@@ -14151,6 +14174,50 @@ window.applyCalibrationObservation = applyCalibrationObservation;
 window.disputeCalibrationObservation = disputeCalibrationObservation;
 window.startVoluntaryTrial = startVoluntaryTrial;
 window.completeTrial = completeTrial;
+
+// Debug helper — remove before production
+window._debugInventory = () => {
+  const myWOs = allWorkouts.filter(w => w.uid === currentUser.uid);
+  const exCounts = {};
+  myWOs.forEach(w => (w.exercises||[]).forEach(ex => {
+    exCounts[ex.name] = (exCounts[ex.name]||0) + (ex.sets||[]).filter(s=>s.reps>0).length;
+  }));
+  const count = (...names) => names.reduce((t,n) => t+(exCounts[n]||0), 0);
+
+  console.log('=== WEAPON ===');
+  console.log('boxing:', count('Boxing — Bag Work','Boxing — Sparring','Boxing — Shadow Boxing','Boxing — Pad Work'));
+  console.log('court:', count('Tennis','Tennis Drills','Basketball','Basketball Drills','Football (Soccer)','Football Drills','American Football'));
+  console.log('planche:', count('Tuck Planche','Advanced Tuck Planche','Full Planche','Planche Lean','Freestanding Handstand Hold','Chest-to-Wall Handstand Hold'));
+  console.log('lever:', count('Front Lever','Tuck Front Lever','Advanced Tuck Front Lever','Front Lever Row','Front Lever Raise','Back Lever'));
+  console.log('power:', count('Bench Press','Squat','Deadlift','Overhead Press','Romanian Deadlift','Sumo Deadlift','Incline Bench Press'));
+  console.log('cal:', count('Pull Up','Chin Up','Dips','Ring Dips','Inverted Row','Barbell Row','Seated Cable Row'));
+
+  console.log('=== ARMOUR ===');
+  console.log('swim:', count('Freestyle Swimming','Breaststroke Swimming','Butterfly Swimming','Backstroke Swimming','Open Water Swimming','HIIT Swimming'));
+  console.log('cycling:', count('Cycling','Road Cycling','Mountain Biking','Stationary Bike','Spin Class','Cycling Intervals'));
+  console.log('run/end:', count('Long Run','Easy Run','Tempo Run','Hill Sprints','Interval Running'));
+  console.log('iso:', count('Lateral Raise','Front Raise','Rear Delt Fly','Face Pull','Hammer Curl'));
+
+  console.log('=== BOOTS ===');
+  console.log('run:', count('Long Run','Easy Run','Tempo Run','Hill Sprints','Interval Running','Race','Sprinting'));
+  console.log('climb:', count('Bouldering','Sport Climbing','Top Rope Climbing','Traditional Climbing'));
+  console.log('exp:', count('Pistol Squat','Box Jump','Jump Squat','Nordic Curl'));
+  console.log('court:', count('Tennis','Basketball','Football (Soccer)'));
+
+  console.log('=== RESOLVED CHAINS ===');
+  console.log('weapon(str):', resolveItemKey('strength','weapon'));
+  console.log('weapon(foc):', resolveItemKey('focus','weapon'));
+  console.log('weapon(agi):', resolveItemKey('agility','weapon'));
+  console.log('armour:', resolveItemKey('defence','armour'));
+  console.log('boots:', resolveItemKey('agility','boots'));
+  console.log('accessory:', resolveItemKey('focus','accessory'));
+
+  console.log('=== EFFECTIVE INVENTORY ===');
+  const inv = getEffectiveInventory();
+  Object.entries(inv).forEach(([slot, item]) => {
+    if (item) console.log(slot+':', item.name, '| tier:', item.tier, '| rarity:', item.rarity, '| earnedFromWorkouts:', item.earnedFromWorkouts);
+  });
+};
 </script>
 </body>
 </html>
