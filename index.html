@@ -848,6 +848,28 @@
   .char-rank-badge.rank-c{border-color:#2FB8C6;color:#2FB8C6;}
   .char-rank-badge.rank-d{border-color:#3DA5FF;color:#3DA5FF;}
   @keyframes sRankGlow{0%,100%{box-shadow:0 0 24px rgba(255,215,0,0.6);}50%{box-shadow:0 0 40px rgba(255,215,0,1);}}
+
+  /* ── Inventory item rarity animations — applied to SVG muscle groups ── */
+  /* Common: barely visible, no animation */
+  @keyframes invCommon{0%,100%{filter:drop-shadow(0 0 2px rgba(160,160,160,0.4));}50%{filter:drop-shadow(0 0 4px rgba(160,160,160,0.6));}}
+  /* Uncommon: slow gentle green breathe */
+  @keyframes invUncommon{0%,100%{filter:drop-shadow(0 0 4px rgba(78,205,120,0.5));}50%{filter:drop-shadow(0 0 10px rgba(78,205,120,0.9));}}
+  /* Rare: medium blue pulse, slightly faster */
+  @keyframes invRare{0%,100%{filter:drop-shadow(0 0 6px rgba(61,165,255,0.6));}50%{filter:drop-shadow(0 0 16px rgba(61,165,255,1.0));}}
+  /* Epic: violet strobe with double pulse */
+  @keyframes invEpic{0%{filter:drop-shadow(0 0 8px rgba(139,107,255,0.6));}30%{filter:drop-shadow(0 0 20px rgba(139,107,255,1.0));}50%{filter:drop-shadow(0 0 12px rgba(139,107,255,0.7));}80%{filter:drop-shadow(0 0 24px rgba(139,107,255,1.0));}100%{filter:drop-shadow(0 0 8px rgba(139,107,255,0.6));}}
+  /* Legendary: gold shimmer with extra spread */
+  @keyframes invLegendary{0%{filter:drop-shadow(0 0 10px rgba(255,215,0,0.7)) drop-shadow(0 0 20px rgba(255,215,0,0.3));}40%{filter:drop-shadow(0 0 24px rgba(255,215,0,1.0)) drop-shadow(0 0 40px rgba(255,215,0,0.6));}60%{filter:drop-shadow(0 0 16px rgba(255,215,0,0.8)) drop-shadow(0 0 28px rgba(255,215,0,0.4));}100%{filter:drop-shadow(0 0 10px rgba(255,215,0,0.7)) drop-shadow(0 0 20px rgba(255,215,0,0.3));}}
+  /* Decay flicker — for items under 25% condition */
+  @keyframes invDecay{0%,100%{opacity:1;}45%{opacity:0.5;}50%{opacity:0.9;}55%{opacity:0.4;}60%{opacity:1;}}
+
+  /* SVG group elements with rarity class */
+  .inv-rarity-common   { animation:invCommon    3.0s ease-in-out infinite; }
+  .inv-rarity-uncommon { animation:invUncommon  2.5s ease-in-out infinite; }
+  .inv-rarity-rare     { animation:invRare      2.0s ease-in-out infinite; }
+  .inv-rarity-epic     { animation:invEpic      1.8s ease-in-out infinite; }
+  .inv-rarity-legendary{ animation:invLegendary 1.5s ease-in-out infinite; }
+  .inv-rarity-decay    { animation:invDecay     0.8s ease-in-out infinite; }
   .char-info{flex:1;min-width:0;}
   .char-name{font-family:var(--font-display);font-size:17px;margin:0 0 3px;letter-spacing:0.02em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
   .char-title{font-size:11.5px;color:var(--brass);text-transform:uppercase;letter-spacing:0.06em;margin:0;}
@@ -12148,171 +12170,253 @@ function renderInventory() {
   const el = document.getElementById('inventory-content');
   if (!el) return;
   const inv = getEffectiveInventory();
+
   const SLOTS = [
-    { key:'weapon',    label:'Weapon',    emoji:'⚔️', bodyRegion:'hands',  stat:'strength/focus',   hint:'Complete a Strength or Skill trial' },
-    { key:'armour',    label:'Armour',    emoji:'🛡️', bodyRegion:'torso',  stat:'defence/endurance', hint:'Complete a Defence trial' },
-    { key:'boots',     label:'Boots',     emoji:'👟', bodyRegion:'feet',   stat:'agility/flexibility',hint:'Complete an Agility trial' },
-    { key:'accessory', label:'Accessory', emoji:'🧠', bodyRegion:'wrist',  stat:'focus',             hint:'Complete a Focus trial' },
-    { key:'ring',      label:'Ring',      emoji:'💍', bodyRegion:'finger', stat:'any',               hint:'Complete an Archetype chain' },
-    { key:'aura',      label:'Aura',      emoji:'✨', bodyRegion:'full',   stat:'legendary',         hint:'Earn a Legendary achievement' },
+    { key:'weapon',    label:'Weapon',    emoji:'⚔️', stat:'strength/focus',    hint:'Complete a Strength or Skill trial' },
+    { key:'armour',    label:'Armour',    emoji:'🛡️', stat:'defence/endurance',  hint:'Complete a Defence trial' },
+    { key:'boots',     label:'Boots',     emoji:'👟', stat:'agility/flexibility', hint:'Complete an Agility trial' },
+    { key:'accessory', label:'Accessory', emoji:'🧠', stat:'focus',              hint:'Complete a Focus trial' },
+    { key:'ring',      label:'Ring',      emoji:'💍', stat:'any',                hint:'Complete an Archetype chain' },
+    { key:'aura',      label:'Aura',      emoji:'✨', stat:'legendary',          hint:'Earn a Legendary achievement' },
   ];
 
-  const STAT_COLORS = { strength:'var(--brass)', focus:'#FFD700', defence:'var(--growing)', agility:'var(--violet)', endurance:'#FF3D5A', flexibility:'#27AE60' };
+  // Which muscle groups light up per slot (front view / back view)
+  const SLOT_MUSCLES = {
+    weapon: {
+      strength: { front:['Upper Chest','Middle Chest','Lower Chest','Front Shoulders','Triceps','Forearms'], back:['Lats','Upper Back','Lower Back','Rear Shoulders','Traps'] },
+      focus:    { front:['Upper Abs','Middle Abs','Biceps','Forearms'], back:['Upper Back','Lats','Rear Shoulders'] },
+    },
+    armour:    { front:['Upper Chest','Middle Chest','Lower Chest','Upper Abs','Middle Abs'], back:['Upper Back','Lower Back','Traps','Rear Shoulders'] },
+    boots:     { front:['Quads','Hip Flexors','Calves'], back:['Hamstrings','Glutes','Calves'] },
+    accessory: { front:['Upper Abs','Middle Abs','Lower Abs','Obliques'], back:['Lower Back'] },
+    ring:      { front:['Front Shoulders','Lateral Shoulders','Biceps'], back:['Rear Shoulders','Traps'] },
+    aura:      { front:['Upper Chest','Middle Chest','Lower Chest','Front Shoulders','Lateral Shoulders','Triceps','Biceps','Upper Abs','Middle Abs','Lower Abs','Obliques','Quads','Hip Flexors','Calves','Forearms'], back:['Lats','Upper Back','Lower Back','Rear Shoulders','Traps','Hamstrings','Glutes','Calves'] },
+  };
 
-  // Check for decay warnings
-  const decayWarnings = SLOTS.map(s => {
-    const item = inv[s.key];
-    if (!item) return null;
-    const cond = getItemCondition(item, s.key);
-    if (cond < 50) return { ...s, item, condition:cond };
-    return null;
-  }).filter(Boolean);
+  const RARITY_COLORS = {
+    Common:    'rgba(160,160,160,0.7)',
+    Uncommon:  'rgba(78,205,120,0.9)',
+    Rare:      'rgba(61,165,255,0.9)',
+    Epic:      'rgba(139,107,255,0.9)',
+    Legendary: 'rgba(255,215,0,1.0)',
+  };
 
-  // Anatomy SVG body with equipment overlays
-  const bodyHtml = `
-    <div style="position:relative;width:100%;max-width:320px;margin:0 auto 20px;">
-      <!-- Body silhouette -->
-      <svg viewBox="0 0 200 400" style="width:100%;opacity:0.4;" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <!-- Head -->
-        <ellipse cx="100" cy="45" rx="22" ry="26" fill="rgba(61,165,255,0.15)" stroke="rgba(61,165,255,0.3)" stroke-width="1.5"/>
-        <!-- Neck -->
-        <rect x="91" y="68" width="18" height="14" rx="4" fill="rgba(61,165,255,0.1)" stroke="rgba(61,165,255,0.2)" stroke-width="1"/>
-        <!-- Torso -->
-        <rect x="68" y="80" width="64" height="100" rx="8" fill="rgba(61,165,255,0.1)" stroke="rgba(61,165,255,0.2)" stroke-width="1.5"/>
-        <!-- Left arm -->
-        <rect x="38" y="82" width="28" height="80" rx="10" fill="rgba(61,165,255,0.08)" stroke="rgba(61,165,255,0.2)" stroke-width="1"/>
-        <ellipse cx="48" cy="170" rx="10" ry="12" fill="rgba(61,165,255,0.08)" stroke="rgba(61,165,255,0.2)" stroke-width="1"/>
-        <!-- Right arm -->
-        <rect x="134" y="82" width="28" height="80" rx="10" fill="rgba(61,165,255,0.08)" stroke="rgba(61,165,255,0.2)" stroke-width="1"/>
-        <ellipse cx="152" cy="170" rx="10" ry="12" fill="rgba(61,165,255,0.08)" stroke="rgba(61,165,255,0.2)" stroke-width="1"/>
-        <!-- Left leg -->
-        <rect x="72" y="178" width="24" height="100" rx="8" fill="rgba(61,165,255,0.08)" stroke="rgba(61,165,255,0.2)" stroke-width="1"/>
-        <rect x="72" y="275" width="24" height="50" rx="6" fill="rgba(61,165,255,0.08)" stroke="rgba(61,165,255,0.2)" stroke-width="1"/>
-        <!-- Right leg -->
-        <rect x="104" y="178" width="24" height="100" rx="8" fill="rgba(61,165,255,0.08)" stroke="rgba(61,165,255,0.2)" stroke-width="1"/>
-        <rect x="104" y="275" width="24" height="50" rx="6" fill="rgba(61,165,255,0.08)" stroke="rgba(61,165,255,0.2)" stroke-width="1"/>
-      </svg>
+  // Build the anatomy SVG with equipment overlay
+  function buildInventorySVG(view) {
+    const bodyType = (profile && profile.bodyType === 'female') ? 'female' : 'male';
+    const template = ANATOMY_TEMPLATES[bodyType];
+    if (!template) return '<div style="padding:40px;text-align:center;color:var(--text-faint);">Loading anatomy…</div>';
 
-      <!-- Equipment overlays positioned on body -->
-      ${SLOTS.map(s => {
-        const item = inv[s.key];
-        const cond = item ? getItemCondition(item, s.key) : 0;
-        const rarity = item ? RARITY_GLOW[item.rarity] : null;
-        const condAlpha = cond / 100;
-        const POSITIONS = {
-          weapon:    'position:absolute;right:0;top:45%;transform:translateY(-50%)',
-          armour:    'position:absolute;left:50%;top:22%;transform:translateX(-50%)',
-          boots:     'position:absolute;left:50%;bottom:0;transform:translateX(-50%)',
-          accessory: 'position:absolute;left:0;top:45%;transform:translateY(-50%)',
-          ring:      'position:absolute;left:8%;top:38%;transform:translateY(-50%)',
-          aura:      'position:absolute;top:0;left:0;right:0;bottom:0;pointer-events:none',
-        };
-        if (s.key === 'aura') return item
-          ? `<div style="${POSITIONS.aura};border:2px solid ${rarity.color};border-radius:8px;box-shadow:${rarity.glow};animation:awakePulse 2s ease-in-out infinite;opacity:${condAlpha};"></div>`
-          : '';
+    const clone = template.cloneNode(true);
 
-        return `<div class="inv-slot-overlay" data-slot="${s.key}" style="${POSITIONS[s.key]}">
-          ${item ? `
-            <div style="
-              background:rgba(5,7,13,0.9);
-              border:1px solid ${rarity.color};
-              border-radius:8px;padding:8px;text-align:center;cursor:pointer;
-              box-shadow:${rarity.glow};
-              opacity:${0.5 + condAlpha*0.5};
-              transition:all .2s;
-              ${cond < 25 ? 'animation:timerPulse 1.5s ease-in-out infinite;' : ''}
-            ">
-              <div style="font-size:20px;">${s.emoji}</div>
-              <div style="font-size:8px;font-family:var(--font-mono);color:${rarity.color};letter-spacing:0.04em;margin-top:2px;">${item.rarity}</div>
-              ${cond < 50 ? `<div style="font-size:8px;color:var(--excess);margin-top:2px;">⚠ ${cond}%</div>` : `<div style="font-size:8px;color:var(--text-faint);margin-top:2px;">${cond}%</div>`}
-            </div>
-          ` : `
-            <div style="
-              border:1px dashed rgba(61,165,255,0.2);
-              border-radius:8px;padding:8px;text-align:center;cursor:pointer;
-              opacity:0.4;transition:opacity .2s;
-            " onmouseover="this.style.opacity='0.7'" onmouseout="this.style.opacity='0.4'">
-              <div style="font-size:20px;filter:grayscale(1);">${s.emoji}</div>
-              <div style="font-size:8px;font-family:var(--font-mono);color:var(--text-faint);margin-top:2px;">EMPTY</div>
-            </div>
-          `}
-        </div>`;
-      }).join('')}
-    </div>`;
+    // Strip background rect
+    clone.querySelectorAll('path[id="Vector"]').forEach(el => {
+      const fill = (el.getAttribute('fill') || '').toLowerCase();
+      if (fill === '#1f1f1f' || fill === '#1e1e1e' || fill === 'black' || fill === '#000000') el.remove();
+    });
 
-  // Item detail cards
-  const itemCards = SLOTS.map(s => {
+    // Build muscle overlay map: muscle name → { color, rarityClass, slot, condition, tier }
+    const muscleOverlay = {};
+
+    SLOTS.forEach(s => {
+      const item = inv[s.key];
+      if (!item) return;
+      const cond = getItemCondition(item, s.key);
+      if (cond <= 0) return;
+
+      const FILL_COLORS = {
+        Common:    'rgba(180,180,180,0.55)',
+        Uncommon:  'rgba(78,205,120,0.65)',
+        Rare:      'rgba(61,165,255,0.70)',
+        Epic:      'rgba(139,107,255,0.75)',
+        Legendary: 'rgba(255,215,0,0.80)',
+      };
+      const fillColor = FILL_COLORS[item.rarity] || 'rgba(61,165,255,0.5)';
+      // Dim fill proportional to condition
+      const condFactor = 0.3 + (cond / 100) * 0.7;
+      const dimmedFill = fillColor.replace(/[\d.]+\)$/, m => `${(parseFloat(m)*condFactor).toFixed(2)})`);
+
+      const rarityClass = cond < 25
+        ? 'inv-rarity-decay'
+        : `inv-rarity-${item.rarity.toLowerCase()}`;
+
+      // Resolve muscle list for this slot
+      let muscles = SLOT_MUSCLES[s.key];
+      if (s.key === 'weapon' && item.stat) {
+        muscles = item.stat === 'focus'
+          ? SLOT_MUSCLES.weapon.focus
+          : SLOT_MUSCLES.weapon.strength;
+      }
+      if (!muscles) return;
+      const muscleList = muscles[view] || [];
+
+      muscleList.forEach(m => {
+        // Higher tier wins if multiple slots overlap
+        if (!muscleOverlay[m] || item.tier > (muscleOverlay[m].tier || 0)) {
+          muscleOverlay[m] = { fill: dimmedFill, rarityClass, slot: s.key, condition: cond, tier: item.tier };
+        }
+      });
+    });
+
+    // Apply to SVG elements
+    clone.querySelectorAll('[id]').forEach(el => {
+      const muscleId = el.id.replace(/_\d+$/, '');
+      const overlay = muscleOverlay[muscleId];
+
+      if (overlay) {
+        // Equipped muscle — rarity fill + animation class
+        [el, ...el.querySelectorAll('*')].forEach(shape => {
+          if (shape.getAttribute('fill') === 'none') return;
+          shape.setAttribute('fill', overlay.fill);
+          shape.style.fill = overlay.fill;
+        });
+        el.classList.add(overlay.rarityClass);
+        el.dataset.slot = overlay.slot;
+        el.style.cursor = 'pointer';
+
+      } else if (['Head','misc'].includes(muscleId)) {
+        // Structural — muted holographic slate
+        [el, ...el.querySelectorAll('*')].forEach(shape => {
+          if (shape.getAttribute('fill') === 'none') return;
+          shape.setAttribute('fill', 'rgba(61,165,255,0.10)');
+          shape.style.fill = 'rgba(61,165,255,0.10)';
+        });
+
+      } else if (['Groin','Hip Flexors'].includes(muscleId)) {
+        // Non-tracked fillers — very dim
+        [el, ...el.querySelectorAll('*')].forEach(shape => {
+          if (shape.getAttribute('fill') === 'none') return;
+          shape.setAttribute('fill', 'rgba(61,165,255,0.04)');
+          shape.style.fill = 'rgba(61,165,255,0.04)';
+        });
+
+      } else if (MUSCLES.includes(muscleId)) {
+        // Unequipped tracked muscle — ghost dim
+        [el, ...el.querySelectorAll('*')].forEach(shape => {
+          if (shape.getAttribute('fill') === 'none') return;
+          shape.setAttribute('fill', 'rgba(61,165,255,0.07)');
+          shape.style.fill = 'rgba(61,165,255,0.07)';
+        });
+      }
+    });
+
+    // Set crop viewBox
+    const crop = ANATOMY_CROP[bodyType][view];
+    clone.setAttribute('viewBox', crop.viewBox);
+    clone.setAttribute('width', '100%');
+    clone.setAttribute('height', String(crop.h));
+    clone.style.overflow = 'hidden';
+    clone.style.display = 'block';
+
+    return clone.outerHTML;
+  }
+
+  // Item detail card
+  function itemCard(s) {
     const item = inv[s.key];
     const cond = item ? getItemCondition(item, s.key) : 0;
-    const rarity = item ? RARITY_GLOW[item.rarity] : null;
+    const rarity = item ? RARITY_COLORS[item.rarity] : null;
     const condColor = cond >= 75 ? 'var(--growing)' : cond >= 50 ? 'var(--brass)' : cond >= 25 ? '#FF9500' : 'var(--excess)';
     const condLabel = cond >= 75 ? 'Pristine' : cond >= 50 ? 'Worn' : cond >= 25 ? 'Deteriorating' : 'Critical';
 
-    return `<div style="
+    return `<div data-inv-slot="${s.key}" style="
       background:linear-gradient(145deg,rgba(17,27,46,0.98),rgba(9,14,26,0.99));
-      border:1px solid ${item ? rarity.color+'44' : 'rgba(61,165,255,0.08)'};
-      border-radius:8px;padding:14px;margin-bottom:10px;
-      box-shadow:${item ? rarity.glow.replace(/rgba/g,'rgba').replace(/0\.[0-9]+\)/g, m => (parseFloat(m.slice(0,-1))*0.3)+')') : 'none'};
+      border:1px solid ${item ? rarity+'44' : 'rgba(61,165,255,0.08)'};
+      border-radius:8px;padding:12px;margin-bottom:8px;cursor:pointer;
+      box-shadow:${item ? `0 0 12px ${rarity}22` : 'none'};
+      transition:border-color .2s, box-shadow .2s;
     ">
-      <div style="display:flex;align-items:center;gap:12px;">
-        <div style="font-size:28px;flex-shrink:0;">${s.emoji}</div>
+      <div style="display:flex;align-items:center;gap:10px;">
+        <div style="font-size:24px;flex-shrink:0;">${s.emoji}</div>
         <div style="flex:1;min-width:0;">
-          <div style="font-size:10px;font-family:var(--font-mono);color:var(--text-faint);letter-spacing:0.08em;">${s.label.toUpperCase()}</div>
-          ${item ? `
-            <div style="font-size:15px;font-weight:700;color:${rarity.color};margin:2px 0;">${item.name}</div>
-            <div style="font-size:10px;font-family:var(--font-mono);color:${rarity.color};opacity:0.7;">${item.rarity} · Tier ${item.tier}</div>
-          ` : `
-            <div style="font-size:14px;color:var(--text-faint);">Empty slot</div>
-            <div style="font-size:10px;color:var(--text-faint);margin-top:2px;">${s.hint}</div>
-          `}
+          <div style="font-size:9px;font-family:var(--font-mono);color:var(--text-faint);letter-spacing:0.08em;">${s.label.toUpperCase()}</div>
+          ${item
+            ? `<div style="font-size:14px;font-weight:700;color:${rarity};margin:2px 0;">${item.name}</div>
+               <div style="font-size:9px;font-family:var(--font-mono);color:${rarity};opacity:0.7;">${item.rarity} · Tier ${item.tier}</div>`
+            : `<div style="font-size:12px;color:var(--text-faint);">Empty</div>
+               <div style="font-size:9px;color:var(--text-faint);margin-top:1px;">${s.hint}</div>`
+          }
         </div>
         ${item ? `<div style="text-align:right;flex-shrink:0;">
-          <div style="font-size:11px;color:${condColor};font-family:var(--font-mono);">${cond}%</div>
+          <div style="font-size:12px;color:${condColor};font-family:var(--font-mono);">${cond}%</div>
           <div style="font-size:9px;color:${condColor};">${condLabel}</div>
-          <div style="width:48px;height:3px;background:rgba(61,165,255,0.1);border-radius:2px;margin-top:4px;overflow:hidden;">
-            <div style="width:${cond}%;height:100%;background:${condColor};border-radius:2px;transition:width 0.8s;"></div>
+          <div style="width:40px;height:2px;background:rgba(61,165,255,0.1);border-radius:2px;margin-top:3px;overflow:hidden;">
+            <div style="width:${cond}%;height:100%;background:${condColor};border-radius:2px;${cond<25?'animation:timerPulse 1.5s infinite;':''}"></div>
           </div>
         </div>` : ''}
       </div>
       ${item ? `
-        <div style="margin-top:10px;font-size:11px;color:var(--text-dim);font-style:italic;line-height:1.5;">"${item.desc}"</div>
-        <div style="margin-top:8px;display:flex;justify-content:space-between;font-family:var(--font-mono);font-size:9px;color:var(--text-faint);">
-          <span>Boss weakness bonus: ×${item.dmgMult}</span>
-          ${item.earnedFromWorkouts ? '<span style="color:var(--growing);">◈ Auto-granted from training history</span>' : ''}
+        <div style="margin-top:8px;font-size:10px;color:var(--text-dim);font-style:italic;">"${item.desc}"</div>
+        <div style="margin-top:6px;display:flex;justify-content:space-between;font-family:var(--font-mono);font-size:9px;color:var(--text-faint);">
+          <span>Boss bonus: ×${item.dmgMult}</span>
+          ${item.earnedFromWorkouts ? '<span style="color:var(--growing);">◈ Auto-granted</span>' : ''}
         </div>
-        ${cond < 50 ? `<div style="margin-top:8px;padding:6px 10px;background:rgba(255,61,90,0.08);border:1px solid rgba(255,61,90,0.2);border-radius:4px;font-size:10px;color:var(--excess);">
-          ⚠ This item needs polishing — log a ${item.stat} session to restore it
-        </div>` : ''}
+        ${cond < 50 ? `<div style="margin-top:6px;font-size:10px;color:var(--excess);">⚠ Log a ${item.stat} session to polish this item</div>` : ''}
       ` : ''}
     </div>`;
-  }).join('');
+  }
 
-  // Decay warning card
-  const decayCard = decayWarnings.length ? `
-    <div style="background:rgba(255,61,90,0.06);border:1px solid rgba(255,61,90,0.2);border-radius:8px;padding:14px;margin-bottom:14px;">
-      <div style="font-family:var(--font-mono);font-size:9px;color:var(--excess);letter-spacing:0.1em;margin-bottom:8px;">◈ SYSTEM WARNING — EQUIPMENT DETERIORATING ◈</div>
-      ${decayWarnings.map(w => `
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
-          <span style="font-size:12px;">${w.emoji} ${w.item.name}</span>
-          <span style="font-family:var(--font-mono);font-size:11px;color:${w.condition < 25 ? 'var(--excess)' : '#FF9500'};">${w.condition}%</span>
-        </div>
-        <div style="height:3px;background:rgba(255,61,90,0.1);border-radius:2px;margin-bottom:8px;">
-          <div style="width:${w.condition}%;height:100%;background:${w.condition<25?'var(--excess)':'#FF9500'};border-radius:2px;${w.condition<25?'animation:timerPulse 1.5s infinite;':''}"></div>
-        </div>
-      `).join('')}
-      <div style="font-size:11px;color:var(--text-dim);">Log sessions targeting these stats to restore condition.</div>
-    </div>` : '';
+  // Decay warnings
+  const decayWarnings = SLOTS.map(s => {
+    const item = inv[s.key];
+    if (!item) return null;
+    const cond = getItemCondition(item, s.key);
+    if (cond < 50) return { ...s, item, condition: cond };
+    return null;
+  }).filter(Boolean);
+
+  let currentView = 'front';
 
   el.innerHTML = `
     <div style="padding-bottom:8px;">
-      <p class="system-eyebrow" style="color:rgba(61,165,255,0.5);font-family:var(--font-mono);font-size:9px;letter-spacing:0.15em;margin-bottom:4px;">◈ HUNTER INVENTORY ◈</p>
+      <p style="font-family:var(--font-mono);font-size:9px;color:rgba(61,165,255,0.5);letter-spacing:0.15em;margin-bottom:4px;">◈ HUNTER INVENTORY ◈</p>
       <h2 style="font-family:var(--font-head);font-size:22px;font-weight:800;margin:0 0 4px;">Equipment</h2>
-      <p style="font-size:12px;color:var(--text-faint);margin:0 0 16px;">Items earned through trials and achievements. Maintained through consistent training.</p>
+      <p style="font-size:12px;color:var(--text-faint);margin:0 0 12px;">Items earned through trials and achievements. Maintained through consistent training.</p>
 
-      ${decayCard}
-      ${bodyHtml}
-      ${itemCards}
+      ${decayWarnings.length ? `
+        <div style="background:rgba(255,61,90,0.06);border:1px solid rgba(255,61,90,0.2);border-radius:8px;padding:12px;margin-bottom:12px;">
+          <div style="font-family:var(--font-mono);font-size:9px;color:var(--excess);letter-spacing:0.1em;margin-bottom:8px;">◈ SYSTEM WARNING — EQUIPMENT DETERIORATING ◈</div>
+          ${decayWarnings.map(w => `
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+              <span style="font-size:12px;">${w.emoji} ${w.item.name}</span>
+              <span style="font-family:var(--font-mono);font-size:11px;color:${w.condition<25?'var(--excess)':'#FF9500'};">${w.condition}%</span>
+            </div>
+            <div style="height:2px;background:rgba(255,61,90,0.1);border-radius:2px;margin-bottom:6px;">
+              <div style="width:${w.condition}%;height:100%;background:${w.condition<25?'var(--excess)':'#FF9500'};border-radius:2px;"></div>
+            </div>
+          `).join('')}
+          <div style="font-size:10px;color:var(--text-dim);">Log sessions targeting these stats to restore condition.</div>
+        </div>
+      ` : ''}
+
+      <!-- Body view toggle -->
+      <div style="display:flex;gap:8px;margin-bottom:12px;">
+        <button class="weekday-chip on" id="inv-view-front" style="flex:1;font-size:12px;">Front</button>
+        <button class="weekday-chip" id="inv-view-back" style="flex:1;font-size:12px;">Back</button>
+      </div>
+
+      <!-- Anatomy SVG display -->
+      <div id="inv-body-wrap" style="width:100%;max-width:280px;margin:0 auto 16px;position:relative;">
+        ${buildInventorySVG('front')}
+      </div>
+
+      <!-- Item cards -->
+      <div id="inv-item-cards">
+        ${SLOTS.map(s => itemCard(s)).join('')}
+      </div>
     </div>`;
+
+  // Wire view toggle
+  el.querySelector('#inv-view-front').addEventListener('click', () => {
+    el.querySelector('#inv-view-front').classList.add('on');
+    el.querySelector('#inv-view-back').classList.remove('on');
+    el.querySelector('#inv-body-wrap').innerHTML = buildInventorySVG('front');
+  });
+  el.querySelector('#inv-view-back').addEventListener('click', () => {
+    el.querySelector('#inv-view-back').classList.add('on');
+    el.querySelector('#inv-view-front').classList.remove('on');
+    el.querySelector('#inv-body-wrap').innerHTML = buildInventorySVG('back');
+  });
 }
 
 function renderFeats() {
