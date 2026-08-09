@@ -4608,19 +4608,30 @@ document.getElementById('save-workout-btn')?.addEventListener('click', async () 
     }
     const prs = await checkAndAwardPRs(exercises, date);
     await checkAndUnlockAchievements();
+
+    // ── Check dungeon damage ──
+    let dungeonResult = null;
+    try {
+      dungeonResult = await checkDungeonClear(exercises, runSummaryFromLogger);
+    } catch(e) { console.warn('Dungeon check failed:', e); }
+
     startDailyTimer();
     setTimeout(() => {
       closeWorkoutModal(false);
       showQuestClearBanner(xpResult?.apEarned || 0, prs.length, false, xpResult?.generalXP || 0);
       SFX.questComplete();
-      // Queue notifications — debrief first, then anything else (milestones, level-ups) in order
       if (xpResult?.levelUps?.length) {
         for (const lu of xpResult.levelUps) {
           queueNotif(done => showLevelUpModal(lu.level, lu.ap, done));
         }
       }
       queueNotif(done => showDebriefModal(exercises, xpResult?.apEarned || 0, prs, done));
-      // Milestones are queued inside checkAndAwardMilestones already
+      // Dungeon clear notification
+      if (dungeonResult?.cleared && dungeonResult?.item) {
+        queueNotif(done => showDungeonClearModal(dungeonResult.item, done));
+      } else if (dungeonResult?.damage > 0) {
+        queueNotif(done => showDungeonDamageNotif(dungeonResult, done));
+      }
     }, 600);
   } catch (err) {
     alert('Could not save: ' + err.message);
@@ -6825,6 +6836,50 @@ function renderCharCard() {
 /* =========================================================================
    SYSTEM MODALS — Penalty Zone, Boss Defeated, Rank-Up Awakening
    ========================================================================= */
+
+// ── Dungeon damage notification ──
+function showDungeonDamageNotif(result, done) {
+  const dungeon = profile.activeDungeon || {};
+  const hpPct = Math.max(0, (result.newHp / result.maxHp) * 100);
+  const hpColor = hpPct > 60 ? 'var(--growing)' : hpPct > 30 ? 'var(--brass)' : 'var(--excess)';
+  const banner = document.createElement('div');
+  banner.style.cssText = 'position:fixed;bottom:80px;left:50%;transform:translateX(-50%);z-index:9000;background:var(--card);border:1px solid rgba(139,107,255,0.4);border-radius:12px;padding:16px 20px;max-width:320px;width:90vw;box-shadow:0 0 30px rgba(139,107,255,0.2);';
+  banner.innerHTML = `
+    <div style="font-family:var(--font-mono);font-size:9px;color:var(--violet);letter-spacing:0.12em;margin-bottom:8px;">⚔ DUNGEON DAMAGE DEALT</div>
+    <div style="font-size:14px;font-weight:700;margin-bottom:4px;">${escapeHtml(dungeon.bossName||'Boss')}</div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+      <span style="font-size:20px;color:var(--excess);font-family:var(--font-head);">-${result.damage.toLocaleString()}</span>
+      <span style="font-size:12px;color:var(--text-dim);">${Math.round(result.newHp).toLocaleString()} HP remaining</span>
+    </div>
+    <div style="background:rgba(0,0,0,0.3);border-radius:4px;height:6px;overflow:hidden;margin-bottom:10px;">
+      <div style="height:100%;width:${hpPct.toFixed(1)}%;background:${hpColor};border-radius:4px;"></div>
+    </div>
+    <button class="btn btn-sm" style="width:100%;">Continue</button>`;
+  document.body.appendChild(banner);
+  banner.querySelector('button').addEventListener('click', () => { banner.remove(); if(done) done(); }, { once:true });
+  setTimeout(() => { try { banner.remove(); if(done) done(); } catch(e){} }, 6000);
+}
+
+// ── Dungeon clear modal ──
+function showDungeonClearModal(item, done) {
+  const rColor = ({Common:'rgba(160,160,160,0.9)',Uncommon:'rgba(78,205,120,0.9)',Rare:'rgba(61,165,255,0.9)',Epic:'rgba(139,107,255,0.9)',Legendary:'rgba(255,215,0,1.0)'})[item.rarity] || 'rgba(61,165,255,0.9)';
+  const statBonusHtml = item.statBonus
+    ? Object.entries(item.statBonus).map(([s,v])=>`<span style="background:rgba(61,165,255,0.1);border:1px solid rgba(61,165,255,0.2);border-radius:4px;padding:2px 8px;font-family:var(--font-mono);font-size:11px;color:${rColor};">+${v} ${s}</span>`).join('')
+    : '';
+  showSystemModal(`<div class="system-window levelup">
+    <p class="system-eyebrow" style="color:${rColor};letter-spacing:0.2em;">◈ DUNGEON CLEARED ◈</p>
+    <div class="system-icon" style="font-size:48px;margin:8px 0;">⚔</div>
+    <h2 class="system-title" style="color:${rColor};">Boss Defeated</h2>
+    <p class="system-body" style="color:var(--text-dim);">The dungeon has fallen.<br>The System acknowledges what you have proven.</p>
+    <div style="background:rgba(61,165,255,0.06);border:1px solid ${rColor};border-radius:8px;padding:14px;margin:14px 0;text-align:left;">
+      <div style="font-family:var(--font-mono);font-size:9px;color:${rColor};letter-spacing:0.1em;margin-bottom:6px;">${item.rarity?.toUpperCase()} · TIER ${item.tier} · ${item.slot?.toUpperCase()}</div>
+      <div style="font-size:18px;font-weight:700;color:${rColor};margin-bottom:6px;">${escapeHtml(item.name)}</div>
+      <div style="font-size:12px;color:var(--text-dim);line-height:1.6;margin-bottom:10px;">${escapeHtml(item.desc)}</div>
+      ${statBonusHtml ? `<div style="display:flex;flex-wrap:wrap;gap:6px;">${statBonusHtml}</div>` : ''}
+    </div>
+    <button class="system-btn success">Claim Item</button>
+  </div>`, done);
+}
 
 function showSystemModal(html, onClose) {
   const overlay = document.createElement('div');
@@ -12124,238 +12179,1069 @@ const RARITY_GLOW = {
 };
 
 // Infer retroactive inventory from workout history
+// Infer retroactive inventory from workout history
+// ── DUNGEON CHAINS ──
+// Each chain is 5 dungeons. Boss = the test to earn the item.
+// Gates = prerequisites that must exist in workout history first.
+// weekSpread(dates) = how many distinct calendar weeks those dates span.
+const DUNGEON_CHAINS = {
+
+  // ══ WEAPON — STRENGTH ══
+
+  weapon_str_power: {
+    slot:'weapon', stat:'strength', label:'Powerlifter',
+    icon:'🏋️', color:'var(--brass)',
+    desc:'Barbell compound lifts. The weight does not lie.',
+    dungeons: [
+      { tier:1, name:'Iron Initiation',
+        boss: (d) => d.bestStrRatio >= 0.5 && d.compoundDates.size >= 1,
+        bossDesc: 'Hit 0.5× bodyweight e1RM on any compound lift.' },
+      { tier:2, name:'Loaded Trial',
+        boss: (d) => d.bestStrRatio >= 0.75 && d.compoundDates.size >= 3,
+        bossDesc: '0.75× BW e1RM AND 3+ compound sessions logged.' },
+      { tier:3, name:'Deadlift Gate',
+        boss: (d) => d.bestStrRatio >= 1.0 && d.weekSpread(d.compoundDates) >= 2 && d.compoundDates.size >= 6,
+        bossDesc: '1.0× BW e1RM, 6+ compound sessions across 2+ weeks.' },
+      { tier:4, name:'Iron Throne',
+        boss: (d) => d.bestStrRatio >= 1.25 && d.weekSpread(d.compoundDates) >= 3 && d.compoundDates.size >= 10,
+        bossDesc: '1.25× BW e1RM, 10+ sessions across 3+ weeks.' },
+      { tier:5, name:'Monarch\'s Trial',
+        boss: (d) => d.bestStrRatio >= 1.5 && d.weekSpread(d.compoundDates) >= 6 && d.compoundDates.size >= 20,
+        bossDesc: '1.5× BW e1RM, 20+ sessions across 6+ weeks.' },
+    ]
+  },
+
+  weapon_str_cal: {
+    slot:'weapon', stat:'strength', label:'Calisthenics',
+    icon:'⬆️', color:'var(--violet)',
+    desc:'The bar is honest. Pull your bodyweight or it does not count.',
+    dungeons: [
+      { tier:1, name:'First Pull',
+        boss: (d) => d.bestPullupReps >= 5 && d.pullupDates.size >= 1,
+        bossDesc: '5 pull-ups at bodyweight in a single set.' },
+      { tier:2, name:'Double Digits',
+        boss: (d) => d.bestPullupReps >= 10 && d.pullupDates.size >= 3,
+        bossDesc: '10 pull-ups bodyweight, 3+ sessions logged.' },
+      { tier:3, name:'Fifteen Gate',
+        boss: (d) => (d.bestPullupReps >= 15 || d.bestWeightedPullup >= 10) && d.weekSpread(d.pullupDates) >= 2 && d.pullupDates.size >= 6,
+        bossDesc: '15 pull-ups BW OR +10kg pull-up, 6+ sessions across 2+ weeks.' },
+      { tier:4, name:'Iron Pull',
+        boss: (d) => (d.bestPullupReps >= 20 || d.bestWeightedPullup >= 20) && d.weekSpread(d.pullupDates) >= 3 && d.pullupDates.size >= 10,
+        bossDesc: '20 pull-ups BW OR +20kg, 10+ sessions across 3+ weeks.' },
+      { tier:5, name:'Void Pull',
+        boss: (d) => (d.bestWeightedPullup >= 30 || d.muscleUpLogged) && d.weekSpread(d.pullupDates) >= 6 && d.pullupDates.size >= 20,
+        bossDesc: '+30kg pull-up OR muscle-up, 20+ sessions across 6+ weeks.' },
+    ]
+  },
+
+  weapon_str_hybrid: {
+    slot:'weapon', stat:'strength', label:'Balanced Strength',
+    icon:'⚖️', color:'var(--growing)',
+    desc:'Iron and bodyweight equally. You refuse to choose.',
+    dungeons: [
+      { tier:1, name:'Double Domain',
+        boss: (d) => d.bestPullupReps >= 5 && d.bestStrRatio >= 0.5,
+        bossDesc: '5 pull-ups AND 0.5× BW compound e1RM, both within 4 weeks.' },
+      { tier:2, name:'Balanced Trial',
+        boss: (d) => d.bestPullupReps >= 10 && d.bestStrRatio >= 0.75 && d.compoundDates.size >= 3 && d.pullupDates.size >= 3,
+        bossDesc: '10 pull-ups AND 0.75× BW e1RM, 3+ sessions each.' },
+      { tier:3, name:'Compound Gate',
+        boss: (d) => (d.bestPullupReps >= 15 || d.bestWeightedPullup >= 10) && d.bestStrRatio >= 1.0 && d.weekSpread(d.compoundDates) >= 2 && d.weekSpread(d.pullupDates) >= 2,
+        bossDesc: '15 BW pull-ups OR +10kg AND 1.0× BW e1RM, both across 2+ weeks.' },
+      { tier:4, name:'Equilibrium Trial',
+        boss: (d) => (d.bestPullupReps >= 20 || d.bestWeightedPullup >= 20) && d.bestStrRatio >= 1.25 && d.weekSpread(d.compoundDates) >= 3 && d.weekSpread(d.pullupDates) >= 3,
+        bossDesc: '20 BW OR +20kg AND 1.25× BW, both across 3+ weeks.' },
+      { tier:5, name:'Sovereign\'s Proof',
+        boss: (d) => (d.bestWeightedPullup >= 30 || d.muscleUpLogged) && d.bestStrRatio >= 1.5 && d.weekSpread(d.compoundDates) >= 6 && d.weekSpread(d.pullupDates) >= 6,
+        bossDesc: '+30kg pull-up OR muscle-up AND 1.5× BW, both across 6+ weeks.' },
+    ]
+  },
+
+  weapon_foc_planche: {
+    slot:'weapon', stat:'focus', label:'Planche',
+    icon:'🤸', color:'#A78BFA',
+    desc:'Pressed against gravity. Duration is the only proof.',
+    dungeons: [
+      { tier:1, name:'First Lean',
+        boss: (d) => (d.skillBestSecs['Planche Lean']||0) >= 10 || (d.skillBestSecs['Frog Stand']||0) >= 5,
+        bossDesc: 'Planche Lean 10s OR Frog Stand 5s logged.' },
+      { tier:2, name:'Tuck Gate',
+        boss: (d) => (d.skillBestSecs['Planche Lean']||0) >= 20 && (d.skillBestSecs['Tuck Planche']||0) >= 10,
+        bossDesc: 'Planche Lean 20s AND Tuck Planche 10s.' },
+      { tier:3, name:'Advanced Trial',
+        boss: (d) => (d.skillBestSecs['Tuck Planche']||0) >= 15 && (d.skillBestSecs['Advanced Tuck Planche']||0) >= 8 && (d.skillSessionDates['Tuck Planche']||new Set()).size >= 2,
+        bossDesc: 'Tuck Planche 15s AND Advanced Tuck Planche 8s, 2+ sessions.' },
+      { tier:4, name:'Shadow Press',
+        boss: (d) => (d.skillBestSecs['Advanced Tuck Planche']||0) >= 15 && ((d.skillBestSecs['Straddle Planche']||0) >= 3 || (d.skillBestSecs['Advanced Tuck Planche']||0) >= 20) && d.weekSpread(d.skillSessionDates['Advanced Tuck Planche']||new Set()) >= 3,
+        bossDesc: 'Advanced Tuck 15s AND (Straddle 3s OR Adv Tuck 20s), 3+ weeks.' },
+      { tier:5, name:'Void Planche',
+        boss: (d) => (d.skillBestSecs['Straddle Planche']||0) >= 5 && (d.skillBestSecs['Full Planche']||0) >= 3,
+        bossDesc: 'Straddle Planche 5s AND Full Planche 3s.' },
+    ]
+  },
+
+  weapon_foc_lever: {
+    slot:'weapon', stat:'focus', label:'Lever',
+    icon:'📐', color:'#38BDF8',
+    desc:'Horizontal control. Gravity is the dungeon.',
+    dungeons: [
+      { tier:1, name:'First Hang',
+        boss: (d) => (d.skillBestSecs['Dead Hang']||0) >= 20 || (d.skillBestSecs['Tuck Front Lever']||0) >= 5,
+        bossDesc: 'Dead Hang 20s OR Tuck Front Lever 5s.' },
+      { tier:2, name:'Tuck Trial',
+        boss: (d) => (d.skillBestSecs['Dead Hang']||0) >= 30 && (d.skillBestSecs['Tuck Front Lever']||0) >= 10,
+        bossDesc: 'Dead Hang 30s AND Tuck Front Lever 10s.' },
+      { tier:3, name:'Advanced Gate',
+        boss: (d) => (d.skillBestSecs['Tuck Front Lever']||0) >= 15 && (d.skillBestSecs['Advanced Tuck Front Lever']||0) >= 8 && (d.skillSessionDates['Tuck Front Lever']||new Set()).size >= 2,
+        bossDesc: 'Tuck Lever 15s AND Advanced Tuck Lever 8s, 2+ sessions.' },
+      { tier:4, name:'Shadow Lever',
+        boss: (d) => (d.skillBestSecs['Advanced Tuck Front Lever']||0) >= 12 && (d.skillBestSecs['Front Lever']||0) >= 3 && d.weekSpread(d.skillSessionDates['Advanced Tuck Front Lever']||new Set()) >= 3,
+        bossDesc: 'Advanced Tuck Lever 12s AND Front Lever 3s, 3+ weeks.' },
+      { tier:5, name:'Sovereign\'s Hold',
+        boss: (d) => (d.skillBestSecs['Front Lever']||0) >= 5 && d.weekSpread(d.skillSessionDates['Front Lever']||new Set()) >= 2,
+        bossDesc: 'Front Lever 5s across 2+ weeks.' },
+    ]
+  },
+
+  weapon_foc_hybrid: {
+    slot:'weapon', stat:'focus', label:'Complete Skill',
+    icon:'🌀', color:'#F0ABFC',
+    desc:'Planche AND lever equally. The rarest weapon.',
+    dungeons: [
+      { tier:1, name:'Dual Discipline',
+        boss: (d) => (d.skillBestSecs['Tuck Planche']||0) >= 5 && (d.skillBestSecs['Tuck Front Lever']||0) >= 5,
+        bossDesc: 'Tuck Planche 5s AND Tuck Front Lever 5s logged.' },
+      { tier:2, name:'Balance Trial',
+        boss: (d) => (d.skillBestSecs['Tuck Planche']||0) >= 10 && (d.skillBestSecs['Tuck Front Lever']||0) >= 10 && (d.skillSessionDates['Tuck Planche']||new Set()).size >= 2 && (d.skillSessionDates['Tuck Front Lever']||new Set()).size >= 2,
+        bossDesc: 'Both holds 10s, 2+ sessions each.' },
+      { tier:3, name:'Advanced Balance',
+        boss: (d) => (d.skillBestSecs['Advanced Tuck Planche']||0) >= 8 && (d.skillBestSecs['Advanced Tuck Front Lever']||0) >= 8 && d.weekSpread(d.skillSessionDates['Advanced Tuck Planche']||new Set()) >= 2,
+        bossDesc: 'Both advanced holds 8s, across 2+ weeks.' },
+      { tier:4, name:'Shadow Balance',
+        boss: (d) => ((d.skillBestSecs['Straddle Planche']||0) >= 3 || (d.skillBestSecs['Advanced Tuck Planche']||0) >= 20) && (d.skillBestSecs['Front Lever']||0) >= 3 && d.weekSpread(d.skillSessionDates['Advanced Tuck Front Lever']||new Set()) >= 3,
+        bossDesc: '(Straddle 3s OR Adv Tuck 20s) AND Front Lever 3s, 3+ weeks.' },
+      { tier:5, name:'Void Balance',
+        boss: (d) => (d.skillBestSecs['Full Planche']||0) >= 3 && (d.skillBestSecs['Front Lever']||0) >= 8,
+        bossDesc: 'Full Planche 3s AND Front Lever 8s. Elite in both.' },
+    ]
+  },
+
+  weapon_boxing: {
+    slot:'weapon', stat:'agility', label:'Boxing',
+    icon:'🥊', color:'#EF4444',
+    desc:'Round count and time on the bags. The combinations do not lie.',
+    dungeons: [
+      { tier:1, name:'First Round',
+        boss: (d) => d.sportSessions.boxing.size >= 2 && d.sportMins.boxing >= 40,
+        bossDesc: '2 boxing sessions, 20+ mins each.' },
+      { tier:2, name:'Bag Work Trial',
+        boss: (d) => d.sportSessions.boxing.size >= 4 && d.sportMins.boxing >= 80,
+        bossDesc: '4 sessions, 60+ total boxing minutes.' },
+      { tier:3, name:'Sparring Gate',
+        boss: (d) => d.sportSessions.boxing.size >= 8 && d.sportMins.boxing >= 160 && d.weekSpread(d.sportSessions.boxing) >= 2 && d.sparringLogged,
+        bossDesc: '8 sessions, 160+ mins, 2+ weeks, sparring or pads logged once.' },
+      { tier:4, name:'Shadow Kombat',
+        boss: (d) => d.sportSessions.boxing.size >= 15 && d.sportMins.boxing >= 300 && d.weekSpread(d.sportSessions.boxing) >= 3 && d.allBoxingTypesLogged,
+        bossDesc: '15 sessions, 300+ mins, 3+ weeks, all 4 boxing types logged.' },
+      { tier:5, name:'Void Kombat',
+        boss: (d) => d.sportSessions.boxing.size >= 30 && d.sportMins.boxing >= 600 && d.weekSpread(d.sportSessions.boxing) >= 6 && d.sparringCount >= 5,
+        bossDesc: '30 sessions, 600+ mins, 6+ weeks, sparring 5+ times.' },
+    ]
+  },
+
+  weapon_court: {
+    slot:'weapon', stat:'agility', label:'Court Sports',
+    icon:'🎾', color:'#F59E0B',
+    desc:'Lateral speed. Reaction time. Court-trained instinct.',
+    dungeons: [
+      { tier:1, name:'Court Entry',
+        boss: (d) => d.sportSessions.court.size >= 2 && d.sportMins.court >= 40,
+        bossDesc: '2 court sessions, 20+ mins each.' },
+      { tier:2, name:'Field Trial',
+        boss: (d) => d.sportSessions.court.size >= 4 && d.sportMins.court >= 80,
+        bossDesc: '4 sessions, 60+ total minutes.' },
+      { tier:3, name:'Court Gate',
+        boss: (d) => d.sportSessions.court.size >= 8 && d.sportMins.court >= 160 && d.weekSpread(d.sportSessions.court) >= 2,
+        bossDesc: '8 sessions, 160+ mins, 2+ weeks.' },
+      { tier:4, name:'Shadow Court',
+        boss: (d) => d.sportSessions.court.size >= 15 && d.sportMins.court >= 300 && d.weekSpread(d.sportSessions.court) >= 3,
+        bossDesc: '15 sessions, 300+ mins, 3+ weeks.' },
+      { tier:5, name:'Void Court',
+        boss: (d) => d.sportSessions.court.size >= 30 && d.sportMins.court >= 600 && d.weekSpread(d.sportSessions.court) >= 6,
+        bossDesc: '30 sessions, 600+ mins, 6+ weeks.' },
+    ]
+  },
+
+  // ══ ARMOUR ══
+
+  armour_iso: {
+    slot:'armour', stat:'defence', label:'Isolation Work',
+    icon:'🛡️', color:'var(--brass)',
+    desc:'Supplementary work builds the armour compound lifts miss.',
+    dungeons: [
+      { tier:1, name:'Accessory Start',
+        boss: (d) => d.defenceSessions.size >= 2 && d.avgDefenceSets >= 4,
+        bossDesc: '2 sessions with 4+ defence sets each.' },
+      { tier:2, name:'Volume Trial',
+        boss: (d) => d.defenceSessions.size >= 4 && d.avgDefenceSets >= 6,
+        bossDesc: '4 sessions averaging 6+ defence sets.' },
+      { tier:3, name:'Consistency Gate',
+        boss: (d) => d.defenceSessions.size >= 8 && d.avgDefenceSets >= 8 && d.weekSpread(d.defenceSessions) >= 2,
+        bossDesc: '8 sessions, 8+ sets avg, 2+ weeks.' },
+      { tier:4, name:'Shadow Plate',
+        boss: (d) => d.defenceSessions.size >= 16 && d.avgDefenceSets >= 10 && d.weekSpread(d.defenceSessions) >= 4,
+        bossDesc: '16 sessions, 10+ sets avg, 4+ weeks.' },
+      { tier:5, name:'Monarch\'s Proof',
+        boss: (d) => d.defenceSessions.size >= 36 && d.avgDefenceSets >= 12 && d.weekSpread(d.defenceSessions) >= 8,
+        bossDesc: '36 sessions, 12+ sets avg, 8+ weeks.' },
+    ]
+  },
+
+  armour_end: {
+    slot:'armour', stat:'endurance', label:'Endurance',
+    icon:'🫁', color:'#10B981',
+    desc:'Cardio volume builds a different kind of armour.',
+    dungeons: [
+      { tier:1, name:'First Miles',
+        boss: (d) => d.qualifyingRuns.length >= 2,
+        bossDesc: '2 runs, 3km+, pace under 8:00/km.' },
+      { tier:2, name:'Running Trial',
+        boss: (d) => d.qualifyingRuns.length >= 5 && d.weekSpread(new Set(d.qualifyingRuns.map(r=>r.date))) >= 2,
+        bossDesc: '5 qualifying runs across 2+ weeks.' },
+      { tier:3, name:'Pace Gate',
+        boss: (d) => d.qualifyingRuns.length >= 10 && d.bestPace <= 390,
+        bossDesc: '10 qualifying runs, best pace sub 6:30/km.' },
+      { tier:4, name:'Ironhide Trial',
+        boss: (d) => d.qualifyingRuns.length >= 20 && d.bestPace <= 330 && d.weekSpread(new Set(d.qualifyingRuns.map(r=>r.date))) >= 4,
+        bossDesc: '20 qualifying runs, best pace sub 5:30, 4+ weeks.' },
+      { tier:5, name:'Void Endurance',
+        boss: (d) => d.qualifyingRuns.length >= 40 && d.bestPace <= 270 && d.weekSpread(new Set(d.qualifyingRuns.map(r=>r.date))) >= 8,
+        bossDesc: '40 qualifying runs, sub 4:30/km, 8+ weeks.' },
+    ]
+  },
+
+  armour_swim: {
+    slot:'armour', stat:'endurance', label:'Swimming',
+    icon:'🏊', color:'#0EA5E9',
+    desc:'The water remembers every stroke. Session duration is the proof.',
+    dungeons: [
+      { tier:1, name:'First Lengths',
+        boss: (d) => d.swimSessions.size >= 2 && d.swimTotalMins >= 40,
+        bossDesc: '2 swim sessions, 20+ mins each.' },
+      { tier:2, name:'Pool Trial',
+        boss: (d) => d.swimSessions.size >= 5 && d.swimTotalMins >= 100 && d.weekSpread(d.swimSessions) >= 2,
+        bossDesc: '5 sessions, 100+ total mins, 2+ weeks.' },
+      { tier:3, name:'Endurance Gate',
+        boss: (d) => d.swimSessions.size >= 10 && d.swimTotalMins >= 240 && d.weekSpread(d.swimSessions) >= 3,
+        bossDesc: '10 sessions, 240+ mins, 3+ weeks.' },
+      { tier:4, name:'Shadow Wetsuit',
+        boss: (d) => d.swimSessions.size >= 20 && d.swimTotalMins >= 500 && d.weekSpread(d.swimSessions) >= 4,
+        bossDesc: '20 sessions, 500+ mins, 4+ weeks.' },
+      { tier:5, name:'Void Current',
+        boss: (d) => d.swimSessions.size >= 40 && d.swimStrokeTypes >= 2 && d.weekSpread(d.swimSessions) >= 8,
+        bossDesc: '40 sessions, 2+ stroke types, 8+ weeks.' },
+    ]
+  },
+
+  armour_cycling: {
+    slot:'armour', stat:'endurance', label:'Cycling',
+    icon:'🚴', color:'#F97316',
+    desc:'Cadence and sustained output. The watts do not lie.',
+    dungeons: [
+      { tier:1, name:'First Ride',
+        boss: (d) => d.cyclingSessions.size >= 2 && d.cyclingTotalMins >= 40,
+        bossDesc: '2 cycling sessions, 20+ mins each.' },
+      { tier:2, name:'Cycling Trial',
+        boss: (d) => d.cyclingSessions.size >= 5 && d.cyclingTotalMins >= 100 && d.weekSpread(d.cyclingSessions) >= 2,
+        bossDesc: '5 sessions across 2+ weeks.' },
+      { tier:3, name:'Peloton Gate',
+        boss: (d) => d.cyclingSessions.size >= 10 && d.cyclingTotalMins >= 250 && d.weekSpread(d.cyclingSessions) >= 3,
+        bossDesc: '10 sessions, 250+ mins, 3+ weeks.' },
+      { tier:4, name:'Aero Trial',
+        boss: (d) => d.cyclingSessions.size >= 20 && d.weekSpread(d.cyclingSessions) >= 4,
+        bossDesc: '20 sessions across 4+ weeks.' },
+      { tier:5, name:'Void Aero',
+        boss: (d) => d.cyclingSessions.size >= 40 && d.cyclingIntervalsLogged >= 5 && d.weekSpread(d.cyclingSessions) >= 8,
+        bossDesc: '40 sessions, intervals logged 5+ times, 8+ weeks.' },
+    ]
+  },
+
+  // ══ BOOTS ══
+
+  boots_run: {
+    slot:'boots', stat:'agility', label:'Running',
+    icon:'🏃', color:'#10B981',
+    desc:'Pace is everything. Distance logged at honest speed.',
+    dungeons: [
+      { tier:1, name:'Road Start',
+        boss: (d) => d.qualifyingRuns.length >= 2,
+        bossDesc: '2 runs, 3km+, pace under 8:00/km.' },
+      { tier:2, name:'Tempo Trial',
+        boss: (d) => d.qualifyingRuns.length >= 5 && d.bestPace <= 420 && d.weekSpread(new Set(d.qualifyingRuns.map(r=>r.date))) >= 2,
+        bossDesc: '5 runs, pace sub 7:00/km, 2+ weeks.' },
+      { tier:3, name:'Swift Gate',
+        boss: (d) => d.qualifyingRuns.length >= 8 && d.bestPace <= 360 && d.tempoOrHillsLogged,
+        bossDesc: '8 runs, sub 6:00/km, tempo or hills logged.' },
+      { tier:4, name:'Shadow Run',
+        boss: (d) => d.qualifyingRuns.length >= 15 && d.bestPace <= 300 && d.weekSpread(new Set(d.qualifyingRuns.map(r=>r.date))) >= 3,
+        bossDesc: '15 runs, sub 5:00/km, 3+ weeks.' },
+      { tier:5, name:'Void Pace',
+        boss: (d) => d.qualifyingRuns.length >= 30 && d.bestPace <= 240 && d.weekSpread(new Set(d.qualifyingRuns.map(r=>r.date))) >= 6,
+        bossDesc: '30 runs, sub 4:00/km, 6+ weeks.' },
+    ]
+  },
+
+  boots_climb: {
+    slot:'boots', stat:'agility', label:'Climbing',
+    icon:'🧗', color:'#84CC16',
+    desc:'Session duration and frequency. The wall remembers.',
+    dungeons: [
+      { tier:1, name:'Wall Start',
+        boss: (d) => d.climbSessions.size >= 2 && d.climbTotalMins >= 40,
+        bossDesc: '2 climbing sessions, 20+ mins each.' },
+      { tier:2, name:'Friction Trial',
+        boss: (d) => d.climbSessions.size >= 5 && d.climbTotalMins >= 120 && d.weekSpread(d.climbSessions) >= 2,
+        bossDesc: '5 sessions, 120+ mins, 2+ weeks.' },
+      { tier:3, name:'Phantom Gate',
+        boss: (d) => d.climbSessions.size >= 10 && d.climbTotalMins >= 280 && d.weekSpread(d.climbSessions) >= 3,
+        bossDesc: '10 sessions, 280+ mins, 3+ weeks.' },
+      { tier:4, name:'Shadow Grip',
+        boss: (d) => d.climbSessions.size >= 20 && d.climbTotalMins >= 600 && d.weekSpread(d.climbSessions) >= 4,
+        bossDesc: '20 sessions, 600+ mins, 4+ weeks.' },
+      { tier:5, name:'Void Climb',
+        boss: (d) => d.climbSessions.size >= 40 && d.weekSpread(d.climbSessions) >= 8,
+        bossDesc: '40 sessions across 8+ weeks.' },
+    ]
+  },
+
+  boots_exp: {
+    slot:'boots', stat:'agility', label:'Explosive',
+    icon:'💥', color:'#EF4444',
+    desc:'Pistol squat reps are honest. One leg. Full control.',
+    dungeons: [
+      { tier:1, name:'First Explosion',
+        boss: (d) => d.pistolData.bestReps >= 1 || d.explosiveSessions.size >= 3,
+        bossDesc: 'Pistol Squat 1 rep OR 3 explosive sessions logged.' },
+      { tier:2, name:'Jump Trial',
+        boss: (d) => d.pistolData.bestReps >= 3 && d.pistolData.sessionDates.size >= 2,
+        bossDesc: 'Pistol Squat 3 reps, 2+ sessions.' },
+      { tier:3, name:'Pistol Gate',
+        boss: (d) => d.pistolData.bestReps >= 5 && d.pistolData.sessionDates.size >= 3,
+        bossDesc: 'Pistol Squat 5 reps in one set, 3+ sessions.' },
+      { tier:4, name:'Phantom Leap',
+        boss: (d) => d.pistolData.bestReps >= 8 && d.nordicCurlLogged && d.weekSpread(d.pistolData.sessionDates) >= 3,
+        bossDesc: 'Pistol 8 reps AND Nordic Curl logged, 3+ weeks.' },
+      { tier:5, name:'Sovereign\'s Leap',
+        boss: (d) => d.pistolData.bestReps >= 12 && d.weightedPistolLogged,
+        bossDesc: 'Pistol Squat 12 reps AND weighted pistol logged.' },
+    ]
+  },
+
+  boots_flex: {
+    slot:'boots', stat:'flexibility', label:'Flexibility',
+    icon:'🤸', color:'#A78BFA',
+    desc:'German hang duration and splits progression. Range is earned.',
+    dungeons: [
+      { tier:1, name:'First Hang',
+        boss: (d) => d.bestGermanHangSecs >= 5 || d.splitsLogged,
+        bossDesc: 'German Hang 5s OR any splits logged.' },
+      { tier:2, name:'Shoulder Trial',
+        boss: (d) => d.bestGermanHangSecs >= 15 && (d.skillSessionDates['German Hang']||d.skillSessionDates['German hang']||new Set()).size >= 2,
+        bossDesc: 'German Hang 15s across 2+ sessions.' },
+      { tier:3, name:'Supple Gate',
+        boss: (d) => d.bestGermanHangSecs >= 30 && d.frontSplitsLogged && d.weekSpread(d.skillSessionDates['German Hang']||d.skillSessionDates['German hang']||new Set()) >= 2,
+        bossDesc: 'German Hang 30s AND Front Splits logged, 2+ weeks.' },
+      { tier:4, name:'Shadow Silk',
+        boss: (d) => d.bestGermanHangSecs >= 45 && d.sideSplitsLogged && d.weekSpread(d.skillSessionDates['German Hang']||d.skillSessionDates['German hang']||new Set()) >= 3,
+        bossDesc: 'German Hang 45s AND Side Splits, 3+ weeks.' },
+      { tier:5, name:'Void Silk',
+        boss: (d) => d.bestGermanHangSecs >= 60 && d.middleSplitsLogged && d.weekSpread(d.skillSessionDates['German Hang']||d.skillSessionDates['German hang']||new Set()) >= 4,
+        bossDesc: 'German Hang 60s AND Middle Splits, 4+ weeks.' },
+    ]
+  },
+
+  boots_court: {
+    slot:'boots', stat:'agility', label:'Court Sports',
+    icon:'🏀', color:'#F59E0B',
+    desc:'Lateral cuts. First step speed. Court-trained feet.',
+    dungeons: [
+      { tier:1, name:'Court Entry',
+        boss: (d) => d.sportSessions.court.size >= 2 && d.sportMins.court >= 40,
+        bossDesc: '2 court sessions, 20+ mins each.' },
+      { tier:2, name:'Field Trial',
+        boss: (d) => d.sportSessions.court.size >= 5 && d.sportMins.court >= 100 && d.weekSpread(d.sportSessions.court) >= 2,
+        bossDesc: '5 sessions, 100+ mins, 2+ weeks.' },
+      { tier:3, name:'Court Gate',
+        boss: (d) => d.sportSessions.court.size >= 10 && d.sportMins.court >= 220 && d.weekSpread(d.sportSessions.court) >= 3,
+        bossDesc: '10 sessions, 220+ mins, 3+ weeks.' },
+      { tier:4, name:'Shadow Cleat',
+        boss: (d) => d.sportSessions.court.size >= 20 && d.sportMins.court >= 480 && d.weekSpread(d.sportSessions.court) >= 4,
+        bossDesc: '20 sessions, 480+ mins, 4+ weeks.' },
+      { tier:5, name:'Void Court',
+        boss: (d) => d.sportSessions.court.size >= 40 && d.sportMins.court >= 1000 && d.weekSpread(d.sportSessions.court) >= 8,
+        bossDesc: '40 sessions, 1000+ mins, 8+ weeks.' },
+    ]
+  },
+
+  boots_hybrid_trail: {
+    slot:'boots', stat:'agility', label:'Trail (Run+Climb)',
+    icon:'⛰️', color:'#78716C',
+    desc:'Road and wall equally. You find a way up anything.',
+    dungeons: [
+      { tier:1, name:'Trail Start',
+        boss: (d) => d.qualifyingRuns.length >= 2 && d.climbSessions.size >= 2,
+        bossDesc: '2 qualifying runs AND 2 climbing sessions within 4 weeks.' },
+      { tier:2, name:'Trail Trial',
+        boss: (d) => d.qualifyingRuns.length >= 4 && d.climbSessions.size >= 4 && d.weekSpread(new Set(d.qualifyingRuns.map(r=>r.date))) >= 2,
+        bossDesc: '4 qualifying runs AND 4 climb sessions, 2+ weeks each.' },
+      { tier:3, name:'Mountain Gate',
+        boss: (d) => d.qualifyingRuns.length >= 8 && d.bestPace <= 390 && d.climbSessions.size >= 8 && d.climbTotalMins >= 200,
+        bossDesc: '8 runs (sub 6:30) AND 8 climbs (200+ mins).' },
+      { tier:4, name:'Shadow Trail',
+        boss: (d) => d.qualifyingRuns.length >= 15 && d.bestPace <= 330 && d.climbSessions.size >= 15 && d.weekSpread(d.climbSessions) >= 4,
+        bossDesc: '15 runs (sub 5:30) AND 15 climbs, 4+ weeks.' },
+      { tier:5, name:'Void Trail',
+        boss: (d) => d.qualifyingRuns.length >= 30 && d.bestPace <= 270 && d.climbSessions.size >= 30 && d.weekSpread(d.climbSessions) >= 8,
+        bossDesc: '30 runs (sub 4:30) AND 30 climbs, 8+ weeks.' },
+    ]
+  },
+
+  boots_hybrid_sprint: {
+    slot:'boots', stat:'agility', label:'Sprint (Explosive+Run)',
+    icon:'⚡', color:'#FBBF24',
+    desc:'Speed AND distance. Your legs do not distinguish.',
+    dungeons: [
+      { tier:1, name:'Sprint Start',
+        boss: (d) => d.pistolData.bestReps >= 1 && d.qualifyingRuns.length >= 2,
+        bossDesc: 'Pistol Squat 1 rep AND 2 qualifying runs, both within 4 weeks.' },
+      { tier:2, name:'Sprint Trial',
+        boss: (d) => d.pistolData.bestReps >= 3 && d.qualifyingRuns.length >= 4 && d.bestPace <= 420,
+        bossDesc: 'Pistol 3 reps AND 4 runs sub 7:00/km.' },
+      { tier:3, name:'Acceleration Gate',
+        boss: (d) => d.pistolData.bestReps >= 5 && d.qualifyingRuns.length >= 8 && d.bestPace <= 360 && d.weekSpread(d.pistolData.sessionDates) >= 2,
+        bossDesc: 'Pistol 5 reps AND 8 runs sub 6:00, 2+ weeks each.' },
+      { tier:4, name:'Shadow Sprint',
+        boss: (d) => d.pistolData.bestReps >= 8 && d.qualifyingRuns.length >= 15 && d.bestPace <= 300 && d.weekSpread(d.pistolData.sessionDates) >= 3,
+        bossDesc: 'Pistol 8 reps AND 15 runs sub 5:00, 3+ weeks.' },
+      { tier:5, name:'Sovereign\'s Sprint',
+        boss: (d) => d.pistolData.bestReps >= 12 && d.qualifyingRuns.length >= 30 && d.bestPace <= 240 && d.weekSpread(d.pistolData.sessionDates) >= 6,
+        bossDesc: 'Pistol 12 reps AND 30 runs sub 4:00, 6+ weeks.' },
+    ]
+  },
+
+  boots_hybrid_all: {
+    slot:'boots', stat:'agility', label:'All-Terrain',
+    icon:'🌍', color:'#8B5CF6',
+    desc:'Running, climbing, explosive — all three. The rarest boots.',
+    dungeons: [
+      { tier:1, name:'All-Terrain Start',
+        boss: (d) => d.qualifyingRuns.length >= 2 && d.climbSessions.size >= 2 && d.pistolData.bestReps >= 1,
+        bossDesc: '2 runs AND 2 climbs AND Pistol 1 rep, all within 4 weeks.' },
+      { tier:2, name:'Complete Trial',
+        boss: (d) => d.qualifyingRuns.length >= 4 && d.climbSessions.size >= 4 && d.pistolData.bestReps >= 3 && d.bestPace <= 420,
+        bossDesc: '4 runs (sub 7:00) AND 4 climbs AND Pistol 3 reps.' },
+      { tier:3, name:'Complete Gate',
+        boss: (d) => d.qualifyingRuns.length >= 8 && d.climbSessions.size >= 8 && d.pistolData.bestReps >= 5 && d.bestPace <= 360 && d.weekSpread(d.climbSessions) >= 3,
+        bossDesc: '8 runs (sub 6:00) AND 8 climbs AND Pistol 5 reps, 3+ weeks.' },
+      { tier:4, name:'Shadow Terrain',
+        boss: (d) => d.qualifyingRuns.length >= 15 && d.climbSessions.size >= 15 && d.pistolData.bestReps >= 8 && d.bestPace <= 300 && d.weekSpread(d.climbSessions) >= 4,
+        bossDesc: '15 runs (sub 5:00) AND 15 climbs AND Pistol 8 reps, 4+ weeks.' },
+      { tier:5, name:'Void All-Terrain',
+        boss: (d) => d.qualifyingRuns.length >= 30 && d.climbSessions.size >= 30 && d.pistolData.bestReps >= 12 && d.bestPace <= 240 && d.weekSpread(d.climbSessions) >= 8,
+        bossDesc: '30 runs (sub 4:00) AND 30 climbs AND Pistol 12 reps, 8+ weeks.' },
+    ]
+  },
+
+  // ══ ACCESSORIES ══
+
+  accessory_hs: {
+    slot:'accessory', stat:'focus', label:'Handstand',
+    icon:'🖐️', color:'#EC4899',
+    desc:'Hold duration. The ground is optional.',
+    dungeons: [
+      { tier:1, name:'First Balance',
+        boss: (d) => d.bestHandstandSecs >= 2,
+        bossDesc: 'Any handstand hold 2s (wall counts).' },
+      { tier:2, name:'Wall Trial',
+        boss: (d) => ((d.skillBestSecs['Chest-to-Wall Handstand Hold']||0) >= 10 || d.bestHandstandSecs >= 3) && d.handstandDates.size >= 2,
+        bossDesc: 'Chest-to-wall 10s OR freestanding 3s, 2+ sessions.' },
+      { tier:3, name:'Freestanding Gate',
+        boss: (d) => d.bestHandstandSecs >= 10 && d.handstandDates.size >= 3 && d.weekSpread(d.handstandDates) >= 2,
+        bossDesc: 'Freestanding 10s, 3+ sessions, 2+ weeks.' },
+      { tier:4, name:'Shadow Press',
+        boss: (d) => d.bestHandstandSecs >= 20 && d.handstandDates.size >= 5 && d.weekSpread(d.handstandDates) >= 3,
+        bossDesc: 'Freestanding 20s, 5+ sessions, 3+ weeks.' },
+      { tier:5, name:'Void Stand',
+        boss: (d) => d.bestHandstandSecs >= 45 && d.weekSpread(d.handstandDates) >= 4,
+        bossDesc: 'Freestanding 45s across 4+ weeks.' },
+    ]
+  },
+
+  accessory_core: {
+    slot:'accessory', stat:'focus', label:'Core Skill',
+    icon:'🔩', color:'#F59E0B',
+    desc:'L-sit seconds and dragon flag reps. Compression strength.',
+    dungeons: [
+      { tier:1, name:'First Hold',
+        boss: (d) => d.bestLSitSecs >= 3,
+        bossDesc: 'L-Sit 3s logged once.' },
+      { tier:2, name:'Compression Trial',
+        boss: (d) => d.bestLSitSecs >= 8 && (d.skillSessionDates['L-Sit']||new Set()).size >= 2,
+        bossDesc: 'L-Sit 8s, 2+ sessions.' },
+      { tier:3, name:'Dragon Gate',
+        boss: (d) => d.bestLSitSecs >= 15 && d.dragonflagReps >= 1 && d.weekSpread(d.skillSessionDates['L-Sit']||new Set()) >= 2,
+        bossDesc: 'L-Sit 15s AND Dragon Flag logged, 2+ weeks.' },
+      { tier:4, name:'Shadow Core',
+        boss: (d) => d.bestLSitSecs >= 20 && d.dragonflagReps >= 3 && (d.skillSessionDates['L-Sit']||new Set()).size >= 3,
+        bossDesc: 'L-Sit 20s AND Dragon Flag 3 reps, 3+ sessions.' },
+      { tier:5, name:'Sovereign\'s Seal',
+        boss: (d) => d.bestLSitSecs >= 30 && d.dragonflagReps >= 5 && d.toestoBarLogged,
+        bossDesc: 'L-Sit 30s AND Dragon Flag 5 reps AND Toes to Bar logged.' },
+    ]
+  },
+};
+
+// ══════════════════════════════════════════════════════════════════
+// DUNGEON RUNTIME SYSTEM
+// Active dungeons are stored in profile.activeDungeon:
+// { chainKey, tier, hp, maxHp, startDate, lastDamageDate, totalDamage }
+// ══════════════════════════════════════════════════════════════════
+
+const DUNGEON_BOSS_HP = { 1:1000, 2:2500, 3:6000, 4:15000, 5:40000 };
+const DUNGEON_REGEN_RATE = { 1:0, 2:0, 3:0.05, 4:0.08, 5:0.12 };
+
+function computeSetDungeonDamage(dungeon, exName, set, bw) {
+  if (!dungeon) return 0;
+  const chain = DUNGEON_CHAINS[dungeon.chainKey];
+  if (!chain) return 0;
+  const tier = dungeon.tier;
+  const BASE = [0, 250, 200, 300, 400, 500][tier] || 200;
+
+  const skillTargets = {
+    weapon_foc_planche: {
+      1: { exs:new Set(['Planche Lean','Frog Stand']),                targetSecs:10 },
+      2: { exs:new Set(['Tuck Planche']),                              targetSecs:10 },
+      3: { exs:new Set(['Tuck Planche','Advanced Tuck Planche']),     targetSecs:12 },
+      4: { exs:new Set(['Advanced Tuck Planche','Straddle Planche']), targetSecs:15 },
+      5: { exs:new Set(['Straddle Planche','Full Planche']),          targetSecs:5  },
+    },
+    weapon_foc_lever: {
+      1: { exs:new Set(['Dead Hang','Tuck Front Lever']),                         targetSecs:15 },
+      2: { exs:new Set(['Tuck Front Lever']),                                     targetSecs:10 },
+      3: { exs:new Set(['Tuck Front Lever','Advanced Tuck Front Lever']),         targetSecs:12 },
+      4: { exs:new Set(['Advanced Tuck Front Lever','Front Lever']),              targetSecs:10 },
+      5: { exs:new Set(['Front Lever']),                                          targetSecs:5  },
+    },
+    weapon_foc_hybrid: {
+      1: { exs:new Set(['Tuck Planche','Tuck Front Lever']),                     targetSecs:5  },
+      2: { exs:new Set(['Tuck Planche','Tuck Front Lever']),                     targetSecs:10 },
+      3: { exs:new Set(['Advanced Tuck Planche','Advanced Tuck Front Lever']),  targetSecs:8  },
+      4: { exs:new Set(['Straddle Planche','Advanced Tuck Planche','Front Lever']), targetSecs:8 },
+      5: { exs:new Set(['Full Planche','Front Lever']),                          targetSecs:5  },
+    },
+    accessory_hs: {
+      1: { exs:new Set(['Freestanding Handstand Hold','Chest-to-Wall Handstand Hold','Wall Handstand Hold']), targetSecs:2  },
+      2: { exs:new Set(['Freestanding Handstand Hold','Chest-to-Wall Handstand Hold']),                      targetSecs:5  },
+      3: { exs:new Set(['Freestanding Handstand Hold']),                                                     targetSecs:10 },
+      4: { exs:new Set(['Freestanding Handstand Hold']),                                                     targetSecs:20 },
+      5: { exs:new Set(['Freestanding Handstand Hold']),                                                     targetSecs:45 },
+    },
+    accessory_core: {
+      1: { exs:new Set(['L-Sit']),                                           targetSecs:3  },
+      2: { exs:new Set(['L-Sit']),                                           targetSecs:8  },
+      3: { exs:new Set(['L-Sit','Dragon Flag Negatives']),                   targetSecs:10 },
+      4: { exs:new Set(['L-Sit','Dragon Flag Negatives']),                   targetSecs:15 },
+      5: { exs:new Set(['L-Sit','Dragon Flag Negatives','Toes to Bar']),     targetSecs:20 },
+    },
+  };
+
+  const skillDef = skillTargets[dungeon.chainKey]?.[tier];
+  if (skillDef && skillDef.exs.has(exName)) {
+    const holdSecs = set.reps || 0;
+    if (holdSecs <= 0) return 0;
+    const ratio = Math.min(2.0, holdSecs / skillDef.targetSecs);
+    const mult = 0.5 + (ratio * 0.75);
+    return Math.round(BASE * mult);
+  }
+
+  const compoundLifts = new Set(['Deadlift','Squat','Bench Press','Overhead Press',
+    'Front Squat','Romanian Deadlift','Sumo Deadlift','Incline Bench Press','Barbell Row','Pendlay Row']);
+  const strTargets = { 1:0.5, 2:0.75, 3:1.0, 4:1.25, 5:1.5 };
+  if ((dungeon.chainKey === 'weapon_str_power' || dungeon.chainKey === 'weapon_str_hybrid') && compoundLifts.has(exName)) {
+    if (!set.weight || !set.reps || !bw) return 0;
+    const e1rmVal = set.weight * (1 + set.reps / 30);
+    const actualRatio = e1rmVal / bw;
+    const targetRatio = strTargets[tier] || 0.5;
+    const ratio = Math.min(2.0, actualRatio / targetRatio);
+    const rirMult = set.rir === 0 ? 1.3 : set.rir <= 2 ? 1.1 : set.rir <= 5 ? 1.0 : 0.85;
+    return Math.round(BASE * ratio * rirMult);
+  }
+
+  const pullupExs = new Set(['Pull Up','Chin Up','Neutral Grip Pull Up']);
+  const calTargets = { 1:5, 2:10, 3:15, 4:20, 5:25 };
+  if ((dungeon.chainKey === 'weapon_str_cal' || dungeon.chainKey === 'weapon_str_hybrid') && pullupExs.has(exName)) {
+    if (!set.reps) return 0;
+    const targetReps = calTargets[tier] || 5;
+    const ratio = Math.min(2.0, set.reps / targetReps);
+    const extraWeight = (set.weight && set.weight > (bw||0) + 3) ? set.weight - (bw||0) : 0;
+    const weightBonus = extraWeight > 0 ? 1.0 + (extraWeight / 20) : 1.0;
+    return Math.round(BASE * ratio * weightBonus);
+  }
+
+  const expTargets = { 1:1, 2:3, 3:5, 4:8, 5:12 };
+  if (['boots_exp','boots_hybrid_sprint','boots_hybrid_all'].includes(dungeon.chainKey) && exName === 'Pistol Squat') {
+    if (!set.reps) return 0;
+    const ratio = Math.min(2.0, set.reps / (expTargets[tier] || 1));
+    return Math.round(BASE * ratio);
+  }
+
+  const flexExs = new Set(['German Hang','German hang']);
+  const splitsExs = new Set(['Front Splits','Side Splits','Middle Splits','Hip Mobility Routine','Yoga']);
+  if (dungeon.chainKey === 'boots_flex') {
+    if (flexExs.has(exName)) {
+      const secs = set.reps || 0;
+      const targetSecs = { 1:5, 2:15, 3:30, 4:45, 5:60 }[tier] || 5;
+      const ratio = Math.min(2.0, secs / targetSecs);
+      return Math.round(BASE * (0.5 + ratio * 0.75));
+    }
+    if (splitsExs.has(exName) && tier >= 3) return Math.round(BASE * 0.5);
+  }
+
+  if (dungeon.chainKey === 'armour_iso' && DEFENCE_EXERCISES.has(exName)) {
+    return set.reps > 0 ? Math.round(BASE * 0.8) : 0;
+  }
+
+  const boxingExs = new Set(['Boxing — Bag Work','Boxing — Sparring','Boxing — Shadow Boxing','Boxing — Pad Work']);
+  const courtExs  = new Set(['Tennis','Tennis Drills','Basketball','Basketball Drills','Football (Soccer)','Football Drills','American Football']);
+  const sportTargetMins = { 1:20, 2:30, 3:40, 4:50, 5:60 };
+  if (dungeon.chainKey === 'weapon_boxing' && boxingExs.has(exName)) {
+    const mins = set.reps || 0;
+    const ratio = Math.min(2.0, mins / (sportTargetMins[tier] || 20));
+    const sparringBonus = (exName === 'Boxing — Sparring' || exName === 'Boxing — Pad Work') ? 1.3 : 1.0;
+    return Math.round(BASE * ratio * sparringBonus);
+  }
+  if ((dungeon.chainKey === 'weapon_court' || dungeon.chainKey === 'boots_court') && courtExs.has(exName)) {
+    const mins = set.reps || 0;
+    const ratio = Math.min(2.0, mins / (sportTargetMins[tier] || 20));
+    return Math.round(BASE * ratio);
+  }
+
+  const climbExs = new Set(['Bouldering','Sport Climbing','Top Rope Climbing','Traditional Climbing']);
+  if (['boots_climb','boots_hybrid_trail','boots_hybrid_all'].includes(dungeon.chainKey) && climbExs.has(exName)) {
+    const mins = set.reps || 0;
+    const ratio = Math.min(2.0, mins / ([0,20,25,30,35,40][tier] || 20));
+    return Math.round(BASE * ratio);
+  }
+
+  const swimExs = new Set(['Freestyle Swimming','Breaststroke Swimming','Butterfly Swimming','Backstroke Swimming','Open Water Swimming','HIIT Swimming']);
+  if (dungeon.chainKey === 'armour_swim' && swimExs.has(exName)) {
+    const mins = set.reps || 0;
+    const ratio = Math.min(2.0, mins / ([0,20,25,30,35,40][tier] || 20));
+    return Math.round(BASE * ratio);
+  }
+
+  const cycleExs = new Set(['Cycling','Road Cycling','Mountain Biking','Stationary Bike','Spin Class','Cycling Intervals']);
+  if (dungeon.chainKey === 'armour_cycling' && cycleExs.has(exName)) {
+    const mins = set.reps || 0;
+    const ratio = Math.min(2.0, mins / ([0,20,25,30,35,40][tier] || 20));
+    const intervalBonus = exName === 'Cycling Intervals' ? 1.2 : 1.0;
+    return Math.round(BASE * ratio * intervalBonus);
+  }
+
+  return 0;
+}
+
+function computeSessionDungeonDamage(dungeon, exercises, runSummary) {
+  if (!dungeon) return 0;
+  const bw = latestBodyweightKg() || 70;
+  const inv = getEffectiveInventory();
+  const chain = DUNGEON_CHAINS[dungeon.chainKey];
+  if (!chain) return 0;
+  const equippedItem = inv[chain.slot];
+  const itemBoost = (equippedItem?.stat === chain.stat) ? (equippedItem.dmgMult || 1.0) : 1.0;
+
+  let totalDamage = 0;
+  (exercises || []).forEach(ex => {
+    (ex.sets || []).filter(s => s.reps > 0).forEach(set => {
+      totalDamage += computeSetDungeonDamage(dungeon, ex.name, set, bw);
+    });
+  });
+
+  const runChains = new Set(['boots_run','armour_end','boots_hybrid_trail','boots_hybrid_sprint','boots_hybrid_all']);
+  if (runChains.has(dungeon.chainKey) && runSummary?.distKm && runSummary?.pace) {
+    const pm = String(runSummary.pace).match(/(\d+):(\d{1,2})/);
+    const paceSecs = pm ? Number(pm[1])*60 + Number(pm[2]) : 0;
+    if (paceSecs > 0 && runSummary.distKm >= 1) {
+      const targetPace = [0,480,420,360,300,240][dungeon.tier] || 480;
+      const paceRatio = Math.min(2.0, targetPace / paceSecs);
+      const distBonus  = Math.min(2.0, runSummary.distKm / 5);
+      const runBase    = [0,300,400,500,700,1000][dungeon.tier] || 300;
+      totalDamage += Math.round(runBase * paceRatio * distBonus);
+    }
+  }
+
+  return Math.round(totalDamage * itemBoost);
+}
+
+function applyDungeonRegen(dungeon) {
+  if (!dungeon || !dungeon.lastDamageDate) return dungeon;
+  const daysSinceDamage = daysBetween(dungeon.lastDamageDate, todayStr());
+  const regenRate = DUNGEON_REGEN_RATE[dungeon.tier] || 0;
+  if (daysSinceDamage < 2 || regenRate === 0) return dungeon;
+  const idleDays = daysSinceDamage - 1;
+  const regenAmount = Math.round(dungeon.maxHp * regenRate * idleDays);
+  return { ...dungeon, hp: Math.min(dungeon.maxHp, dungeon.hp + regenAmount) };
+}
+
+async function startDungeon(chainKey, tier) {
+  if (!profile || !currentUser) return;
+  if (profile.activeDungeon) {
+    showToast('Abandon current dungeon first before entering a new one.', 'error');
+    return;
+  }
+  const chain = DUNGEON_CHAINS[chainKey];
+  if (!chain) return;
+  const maxHp = DUNGEON_BOSS_HP[tier] || 1000;
+  const dungeon = {
+    chainKey, tier,
+    bossName: chain.dungeons[tier-1]?.name || 'Unknown Boss',
+    slot: chain.slot, stat: chain.stat,
+    hp: maxHp, maxHp,
+    startDate: todayStr(), lastDamageDate: null, totalDamage: 0,
+  };
+  await writeUserFields({ activeDungeon: dungeon });
+  profile.activeDungeon = dungeon;
+  renderInventory();
+  showToast(`⚔ ${chain.dungeons[tier-1]?.name} dungeon entered. Train to deal damage.`, 'success');
+}
+
+async function checkDungeonClear(exercises, runSummary) {
+  const dungeon = profile.activeDungeon;
+  if (!dungeon || dungeon.cleared) return null;
+  const regenedDungeon = applyDungeonRegen(dungeon);
+  const damage = computeSessionDungeonDamage(regenedDungeon, exercises, runSummary);
+  if (damage <= 0) {
+    if (regenedDungeon.hp !== dungeon.hp) {
+      await writeUserFields({ activeDungeon: regenedDungeon });
+      profile.activeDungeon = regenedDungeon;
+    }
+    return { damage: 0, cleared: false };
+  }
+  const newHp = Math.max(0, regenedDungeon.hp - damage);
+  const cleared = newHp <= 0;
+  const updatedDungeon = { ...regenedDungeon, hp: newHp, lastDamageDate: todayStr(), totalDamage: (regenedDungeon.totalDamage||0) + damage, cleared };
+  if (cleared) {
+    const itemKey = `${dungeon.chainKey}_${dungeon.tier}`;
+    const item = ITEM_DEFINITIONS[itemKey];
+    if (item) {
+      const invUpdate = { [`inventory.${dungeon.slot}`]: { ...item, condition: 100, earnedAt: todayStr() } };
+      await writeUserFields({ activeDungeon: null, ...invUpdate });
+      if (!profile.inventory) profile.inventory = {};
+      profile.inventory[dungeon.slot] = { ...item, condition: 100, earnedAt: todayStr() };
+      profile.activeDungeon = null;
+    }
+  } else {
+    await writeUserFields({ activeDungeon: updatedDungeon });
+    profile.activeDungeon = updatedDungeon;
+  }
+  return { damage, cleared, newHp, maxHp: dungeon.maxHp, item: cleared ? ITEM_DEFINITIONS[`${dungeon.chainKey}_${dungeon.tier}`] : null };
+}
+
+function buildAssessmentData(myWOs) {
+  const bw = latestBodyweightKg() || 70;
+  const data = {
+    bw,
+    e1rms: {},
+    bestPullupReps: 0,
+    bestWeightedPullup: 0,
+    muscleUpLogged: false,
+    pullupDates: new Set(),
+    compoundDates: new Set(),
+    bestStrRatio: 0,
+    skillBestSecs: {},
+    skillSessionDates: {},
+    defenceSessions: new Set(),
+    defenceSetsTotal: 0,
+    defenceSetsPerSession: {},
+    avgDefenceSets: 0,
+    qualifyingRuns: [],
+    bestPace: 9999,
+    tempoOrHillsLogged: false,
+    swimSessions: new Set(),
+    swimTotalMins: 0,
+    swimStrokeTypes: 0,
+    cyclingSessions: new Set(),
+    cyclingTotalMins: 0,
+    cyclingIntervalsLogged: 0,
+    climbSessions: new Set(),
+    climbTotalMins: 0,
+    pistolData: { bestReps: 0, sessionDates: new Set() },
+    explosiveSessions: new Set(),
+    nordicCurlLogged: false,
+    weightedPistolLogged: false,
+    bestGermanHangSecs: 0,
+    bestLSitSecs: 0,
+    bestHandstandSecs: 0,
+    handstandDates: new Set(),
+    dragonflagReps: 0,
+    toestoBarLogged: false,
+    splitsLogged: false,
+    frontSplitsLogged: false,
+    sideSplitsLogged: false,
+    middleSplitsLogged: false,
+    sportSessions: { boxing: new Set(), court: new Set() },
+    sportMins: { boxing: 0, court: 0 },
+    sparringLogged: false,
+    sparringCount: 0,
+    allBoxingTypesLogged: false,
+    // weekSpread helper — how many distinct calendar weeks a date set spans
+    weekSpread: (dates) => {
+      if (!dates || !dates.size) return 0;
+      const weeks = new Set([...dates].map(d => todayStr(startOfWeek(new Date(d + 'T12:00:00')))));
+      return weeks.size;
+    },
+  };
+
+  const compoundLifts = new Set(['Deadlift','Squat','Bench Press','Overhead Press',
+    'Front Squat','Romanian Deadlift','Sumo Deadlift','Incline Bench Press',
+    'Barbell Row','Pendlay Row','Lat Pulldown']);
+  const strExclude = new Set(['Crunch','Sit Up','Leg Raise','Hanging Leg Raise',
+    'Flutter Kicks','Plank','Dragon Flag Negatives','Hollow hold','Ab Rollout',
+    'Russian Twist','Bicycle Crunch','Lateral Raise','Front Raise','Rear Delt Fly',
+    'Face Pull','Calf Raise','Standing Calf Raise','Wrist Curl','Reverse Wrist Curl',
+    'Goblet Squat','Dumbbell Pullover','Arnold Press','Dumbbell Fly']);
+  const timedSkills = new Set(['Tuck Planche','Advanced Tuck Planche','Full Planche',
+    'Planche Lean','Straddle Planche','Single Leg Planche','Frog Stand','Pseudo planche push up',
+    'Freestanding Handstand Hold','Chest-to-Wall Handstand Hold','Wall Handstand Hold','Handstand Shoulder Taps',
+    'Front Lever','Tuck Front Lever','Advanced Tuck Front Lever','Back Lever',
+    'L-Sit','German Hang','German hang','Dead Hang']);
+  const boxingExs = new Set(['Boxing — Bag Work','Boxing — Sparring','Boxing — Shadow Boxing','Boxing — Pad Work']);
+  const courtExs  = new Set(['Tennis','Tennis Drills','Basketball','Basketball Drills',
+    'Football (Soccer)','Football Drills','American Football']);
+  const strokeTypes = new Set(['Freestyle Swimming','Breaststroke Swimming',
+    'Butterfly Swimming','Backstroke Swimming','Open Water Swimming','HIIT Swimming']);
+  let strokeTypesLogged = new Set();
+
+  myWOs.forEach(w => {
+    const date = w.date;
+
+    // Run sessions via runSummary
+    if (w.runSummary?.distKm && w.runSummary?.pace) {
+      const pm = String(w.runSummary.pace).match(/(\d+):(\d{1,2})/);
+      const paceSecs = pm ? Number(pm[1])*60 + Number(pm[2]) : 0;
+      if (w.runSummary.distKm >= 3 && paceSecs > 0 && paceSecs <= 480) {
+        data.qualifyingRuns.push({ date, distKm: w.runSummary.distKm, paceSecs });
+        data.bestPace = Math.min(data.bestPace, paceSecs);
+      }
+    }
+
+    const hasCompound = (w.exercises||[]).some(e => compoundLifts.has(e.name) && (e.sets||[]).some(s=>s.reps>0&&s.weight>0));
+    if (hasCompound) data.compoundDates.add(date);
+
+    const hasPullup = (w.exercises||[]).some(e => ['Pull Up','Chin Up','Neutral Grip Pull Up'].includes(e.name) && (e.sets||[]).some(s=>s.reps>0));
+    if (hasPullup) data.pullupDates.add(date);
+
+    (w.exercises||[]).forEach(ex => {
+      const validSets = (ex.sets||[]).filter(s=>s.reps>0);
+      if (!validSets.length) return;
+      const name = ex.name;
+
+      // e1RM
+      if (!strExclude.has(name)) {
+        validSets.filter(s=>s.weight>0).forEach(s => {
+          const val = e1rm(s.weight, s.reps);
+          if (!data.e1rms[name] || val > data.e1rms[name]) data.e1rms[name] = val;
+        });
+      }
+
+      // Pull-ups
+      if (['Pull Up','Chin Up','Neutral Grip Pull Up'].includes(name)) {
+        validSets.forEach(s => {
+          if (s.weight && s.weight > bw + 3) data.bestWeightedPullup = Math.max(data.bestWeightedPullup, s.weight - bw);
+          else data.bestPullupReps = Math.max(data.bestPullupReps, s.reps);
+        });
+      }
+      if (name === 'Muscle Up') data.muscleUpLogged = true;
+
+      // Timed skills — reps = seconds
+      if (timedSkills.has(name)) {
+        const best = Math.max(...validSets.map(s=>s.reps));
+        if (!data.skillBestSecs[name] || best > data.skillBestSecs[name]) data.skillBestSecs[name] = best;
+        if (!data.skillSessionDates[name]) data.skillSessionDates[name] = new Set();
+        data.skillSessionDates[name].add(date);
+      }
+
+      // Handstand specifically
+      if (['Freestanding Handstand Hold','Chest-to-Wall Handstand Hold','Wall Handstand Hold','Handstand Shoulder Taps'].includes(name)) {
+        const best = Math.max(...validSets.map(s=>s.reps));
+        data.bestHandstandSecs = Math.max(data.bestHandstandSecs, best);
+        data.handstandDates.add(date);
+      }
+
+      // German hang / flexibility
+      if (['German Hang','German hang'].includes(name)) {
+        data.bestGermanHangSecs = Math.max(data.bestGermanHangSecs, ...validSets.map(s=>s.reps));
+      }
+
+      // L-Sit
+      if (name === 'L-Sit') data.bestLSitSecs = Math.max(data.bestLSitSecs, ...validSets.map(s=>s.reps));
+
+      // Dragon flag
+      if (name === 'Dragon Flag Negatives') data.dragonflagReps = Math.max(data.dragonflagReps, ...validSets.map(s=>s.reps));
+
+      // Toes to bar
+      if (name === 'Toes to Bar') data.toestoBarLogged = true;
+
+      // Splits
+      if (['Front Splits'].includes(name)) { data.splitsLogged = true; data.frontSplitsLogged = true; }
+      if (['Side Splits'].includes(name)) { data.splitsLogged = true; data.sideSplitsLogged = true; }
+      if (['Middle Splits'].includes(name)) { data.splitsLogged = true; data.middleSplitsLogged = true; }
+      if (['Yoga','Hip Mobility Routine','Full Body Stretching','Pike Stretch'].includes(name)) data.splitsLogged = true;
+
+      // Defence
+      if (DEFENCE_EXERCISES.has(name)) {
+        data.defenceSessions.add(date);
+        data.defenceSetsTotal += validSets.length;
+        data.defenceSetsPerSession[date] = (data.defenceSetsPerSession[date]||0) + validSets.length;
+      }
+
+      // Climbing
+      if (['Bouldering','Sport Climbing','Top Rope Climbing','Traditional Climbing'].includes(name)) {
+        data.climbSessions.add(date);
+        data.climbTotalMins += validSets.reduce((t,s)=>t+(s.reps||0),0);
+      }
+
+      // Pistol squat
+      if (name === 'Pistol Squat') {
+        const best = Math.max(...validSets.map(s=>s.reps));
+        data.pistolData.bestReps = Math.max(data.pistolData.bestReps, best);
+        data.pistolData.sessionDates.add(date);
+        // Weighted pistol: if set has weight field > 0
+        if (validSets.some(s=>s.weight>0)) data.weightedPistolLogged = true;
+      }
+      if (name === 'Nordic Curl') data.nordicCurlLogged = true;
+      if (['Box Jump','Jump Squat','Hill Sprints','Pistol Squat'].includes(name)) data.explosiveSessions.add(date);
+
+      // Tempo / hills for running
+      if (['Tempo Run','Hill Sprints'].includes(name)) data.tempoOrHillsLogged = true;
+
+      // Swimming
+      if (strokeTypes.has(name)) {
+        data.swimSessions.add(date);
+        strokeTypesLogged.add(name);
+        data.swimTotalMins += validSets.reduce((t,s)=>t+(s.reps||0),0);
+      }
+
+      // Cycling
+      if (['Cycling','Road Cycling','Mountain Biking','Stationary Bike','Spin Class'].includes(name)) {
+        data.cyclingSessions.add(date);
+        data.cyclingTotalMins += validSets.reduce((t,s)=>t+(s.reps||0),0);
+      }
+      if (name === 'Cycling Intervals') data.cyclingIntervalsLogged++;
+
+      // Boxing
+      if (boxingExs.has(name)) {
+        data.sportSessions.boxing.add(date);
+        data.sportMins.boxing += validSets.reduce((t,s)=>t+(s.reps||0),0);
+        if (['Boxing — Sparring'].includes(name)) { data.sparringLogged = true; data.sparringCount++; }
+      }
+
+      // Court
+      if (courtExs.has(name)) {
+        data.sportSessions.court.add(date);
+        data.sportMins.court += validSets.reduce((t,s)=>t+(s.reps||0),0);
+      }
+    });
+  });
+
+  // Derived
+  data.swimStrokeTypes = strokeTypesLogged.size;
+  data.avgDefenceSets = data.defenceSessions.size > 0 ? data.defenceSetsTotal / data.defenceSessions.size : 0;
+  data.allBoxingTypesLogged = [...boxingExs].every(ex => myWOs.some(w => (w.exercises||[]).some(e=>e.name===ex)));
+
+  // Best strength ratio from e1RM
+  Object.entries(data.e1rms).forEach(([name, val]) => {
+    const ratio = val / bw;
+    const adj = compoundLifts.has(name) ? ratio * 0.9 : ratio * 0.6;
+    if (adj > data.bestStrRatio) data.bestStrRatio = adj;
+  });
+  // Pull-ups boost strength ratio
+  if (data.bestPullupReps >= 15) data.bestStrRatio = Math.max(data.bestStrRatio, 1.3);
+  else if (data.bestPullupReps >= 10) data.bestStrRatio = Math.max(data.bestStrRatio, 1.05);
+  else if (data.bestPullupReps >= 5)  data.bestStrRatio = Math.max(data.bestStrRatio, 0.75);
+
+  return data;
+}
+
+// ── Core inference function ──
+// Returns { slot: item } for each earned item, plus metadata for the UI.
 function inferInventoryFromWorkouts() {
   if (!allWorkouts || !currentUser) return {};
   const myWOs = allWorkouts.filter(w => w.uid === currentUser.uid);
   if (!myWOs.length) return {};
 
+  const d = buildAssessmentData(myWOs);
   const inventory = {};
-  const bw = latestBodyweightKg() || 70;
 
-  // ── SHARED DATA PASS ──
-  // One loop to extract everything we need across all slots.
-  const e1rms = {};
-  let bestPullupReps = 0;
-  let bestWeightedPullup = 0; // extra weight on top of BW
-  const skillBestSecs = {}; // exercise → best hold in seconds across all sets
-  const skillSessionDates = {}; // exercise → Set of dates logged
-  const defenceSessions = new Set(); // dates with defence work
-  let defenceSetsTotal = 0;
-  let defenceSetsPerSession = {}; // date → count
-  const runSessions = []; // { date, distKm, paceSecs, durationMins }
-  const climbSessions = new Set();
-  let climbTotalMins = 0;
-  const pistolData = { bestReps: 0, sessionDates: new Set() };
-  const explosiveSessions = new Set();
-  let bestGermanHangSecs = 0;
-  let bestLSitSecs = 0;
-  let bestHandstandSecs = 0;
-  const sportSessions = { boxing: new Set(), court: new Set() };
-  const sportMins = { boxing: 0, court: 0 };
+  // Evaluate every chain — find the highest tier dungeon cleared per slot
+  const slotBest = {}; // slot → { chain, tier, item }
 
-  const strExclude = new Set(['Crunch','Sit Up','Leg Raise','Hanging Leg Raise','Hanging Knee Raise',
-    'Flutter Kicks','Plank','Dragon Flag Negatives','Hollow hold','Ab Rollout',
-    'Russian Twist','Bicycle Crunch','Lateral Raise','Front Raise','Rear Delt Fly',
-    'Face Pull','Calf Raise','Standing Calf Raise','Wrist Curl','Reverse Wrist Curl',
-    'Goblet Squat','Dumbbell Pullover','Arnold Press','Dumbbell Fly',
-  ]);
-  const compoundLifts = new Set(['Deadlift','Squat','Bench Press','Overhead Press',
-    'Front Squat','Romanian Deadlift','Sumo Deadlift','Incline Bench Press',
-    'Barbell Row','Pendlay Row','Lat Pulldown']);
-  const boxingExs = new Set(['Boxing — Bag Work','Boxing — Sparring','Boxing — Shadow Boxing','Boxing — Pad Work']);
-  const courtExs  = new Set(['Tennis','Tennis Drills','Basketball','Basketball Drills','Football (Soccer)','Football Drills','American Football']);
-  const timedSkills = new Set(['Tuck Planche','Advanced Tuck Planche','Full Planche','Planche Lean',
-    'Straddle Planche','Single Leg Planche','Frog Stand','Pseudo planche push up',
-    'Freestanding Handstand Hold','Chest-to-Wall Handstand Hold','Wall Handstand Hold','Handstand Shoulder Taps',
-    'Front Lever','Tuck Front Lever','Advanced Tuck Front Lever','Back Lever',
-    'L-Sit','German Hang','German hang','Dead Hang']);
-
-  myWOs.forEach(w => {
-    const date = w.date;
-
-    // Run sessions
-    if (w.runSummary?.distKm && w.runSummary?.pace) {
-      const paceParts = String(w.runSummary.pace).match(/(\d+):(\d{1,2})/);
-      const paceSecs = paceParts ? Number(paceParts[1])*60 + Number(paceParts[2]) : 0;
-      if (w.runSummary.distKm >= 1 && paceSecs > 0) {
-        runSessions.push({ date, distKm: w.runSummary.distKm, paceSecs, durationMins: w.runSummary.durationMins || 0 });
+  Object.entries(DUNGEON_CHAINS).forEach(([chainKey, chain]) => {
+    let highestTier = 0;
+    for (let i = chain.dungeons.length - 1; i >= 0; i--) {
+      const dungeon = chain.dungeons[i];
+      // Must have cleared all previous tiers first
+      let allPrevCleared = true;
+      for (let j = 0; j < i; j++) {
+        if (!chain.dungeons[j].boss(d)) { allPrevCleared = false; break; }
+      }
+      if (allPrevCleared && dungeon.boss(d)) {
+        highestTier = dungeon.tier;
+        break;
       }
     }
-
-    (w.exercises||[]).forEach(ex => {
-      const validSets = (ex.sets||[]).filter(s=>s.reps>0);
-      if (!validSets.length) return;
-
-      // e1RM for barbell strength
-      if (!strExclude.has(ex.name)) {
-        validSets.filter(s=>s.weight>0).forEach(s => {
-          const val = e1rm(s.weight, s.reps);
-          if (!e1rms[ex.name] || val > e1rms[ex.name]) e1rms[ex.name] = val;
-        });
+    if (highestTier > 0) {
+      const itemKey = `${chainKey}_${highestTier}`;
+      const item = ITEM_DEFINITIONS[itemKey];
+      if (item) {
+        const slot = chain.slot;
+        // Higher tier wins; on tie prefer the more specialised chain
+        if (!slotBest[slot] || highestTier > slotBest[slot].tier) {
+          slotBest[slot] = { chain: chainKey, tier: highestTier, item };
+        }
       }
-
-      // Pull-up tracking
-      if (['Pull Up','Chin Up','Neutral Grip Pull Up'].includes(ex.name)) {
-        validSets.forEach(s => {
-          const extraWeight = s.weight && s.weight > 5 ? s.weight : 0;
-          bestWeightedPullup = Math.max(bestWeightedPullup, extraWeight);
-          if (!s.weight || Math.abs(s.weight - bw) < 5) {
-            bestPullupReps = Math.max(bestPullupReps, s.reps);
-          }
-        });
-      }
-
-      // Timed skill holds — reps = seconds
-      if (timedSkills.has(ex.name)) {
-        const bestSecs = Math.max(...validSets.map(s => s.reps));
-        if (!skillBestSecs[ex.name] || bestSecs > skillBestSecs[ex.name]) skillBestSecs[ex.name] = bestSecs;
-        if (!skillSessionDates[ex.name]) skillSessionDates[ex.name] = new Set();
-        skillSessionDates[ex.name].add(date);
-      }
-
-      // Defence
-      if (DEFENCE_EXERCISES.has(ex.name)) {
-        defenceSessions.add(date);
-        defenceSetsTotal += validSets.length;
-        defenceSetsPerSession[date] = (defenceSetsPerSession[date] || 0) + validSets.length;
-      }
-
-      // Climbing
-      if (['Bouldering','Sport Climbing','Top Rope Climbing','Traditional Climbing'].includes(ex.name)) {
-        climbSessions.add(date);
-        climbTotalMins += validSets.reduce((t,s) => t + (s.reps || 0), 0);
-      }
-
-      // Pistol squat
-      if (ex.name === 'Pistol Squat') {
-        pistolData.bestReps = Math.max(pistolData.bestReps, ...validSets.map(s=>s.reps));
-        pistolData.sessionDates.add(date);
-      }
-
-      // Explosive
-      if (['Box Jump','Jump Squat','Nordic Curl','Bear Crawl','Pistol Squat','Hill Sprints'].includes(ex.name)) {
-        explosiveSessions.add(date);
-      }
-
-      // Flexibility
-      if (['German Hang','German hang'].includes(ex.name)) {
-        bestGermanHangSecs = Math.max(bestGermanHangSecs, ...validSets.map(s=>s.reps));
-      }
-
-      // Core skill
-      if (['L-Sit'].includes(ex.name)) {
-        bestLSitSecs = Math.max(bestLSitSecs, ...validSets.map(s=>s.reps));
-      }
-
-      // Handstand
-      if (['Freestanding Handstand Hold','Chest-to-Wall Handstand Hold','Wall Handstand Hold'].includes(ex.name)) {
-        bestHandstandSecs = Math.max(bestHandstandSecs, ...validSets.map(s=>s.reps));
-      }
-
-      // Sports
-      if (boxingExs.has(ex.name)) {
-        sportSessions.boxing.add(date);
-        sportMins.boxing += validSets.reduce((t,s) => t + (s.reps||0), 0);
-      }
-      if (courtExs.has(ex.name)) {
-        sportSessions.court.add(date);
-        sportMins.court += validSets.reduce((t,s) => t + (s.reps||0), 0);
-      }
-    });
+    }
   });
 
-  // Helper: how many distinct calendar weeks does a set of dates span?
-  const weekSpread = (dates) => {
-    const weeks = new Set([...dates].map(d => todayStr(startOfWeek(new Date(d + 'T12:00:00')))));
-    return weeks.size;
-  };
-
-  // ── WEAPON — POWER STRENGTH ──
-  // Must hit real strength standards relative to bodyweight.
-  // The System does not award iron to someone who touched the bar once.
-  let bestStrRatio = 0;
-  Object.entries(e1rms).forEach(([name, val]) => {
-    const ratio = val / bw;
-    const adj = compoundLifts.has(name) ? ratio * 0.9 : ratio * 0.6;
-    if (adj > bestStrRatio) bestStrRatio = adj;
+  Object.entries(slotBest).forEach(([slot, { item }]) => {
+    inventory[slot] = { ...item, condition: 90, earnedFromWorkouts: true };
   });
-  // Gate: must have a real strength ratio AND have logged compounds across 2+ weeks
-  const compoundDates = new Set(myWOs.filter(w =>
-    (w.exercises||[]).some(e => compoundLifts.has(e.name) && (e.sets||[]).some(s=>s.reps>0&&s.weight>0))
-  ).map(w => w.date));
-  const powerWeaponTier =
-    bestStrRatio >= 1.5 && weekSpread(compoundDates) >= 3 ? 5 :
-    bestStrRatio >= 1.25 && weekSpread(compoundDates) >= 2 ? 4 :
-    bestStrRatio >= 1.0  && weekSpread(compoundDates) >= 2 ? 3 :
-    bestStrRatio >= 0.75 && compoundDates.size >= 3 ? 2 :
-    bestStrRatio >= 0.5  && compoundDates.size >= 2 ? 1 : 0;
 
-  // ── WEAPON — CAL STRENGTH ──
-  // Pull-up reps at bodyweight + progression to weighted pulls.
-  // 3 reps is not a weapon. The bar is honest.
-  const calDates = new Set(myWOs.filter(w =>
-    (w.exercises||[]).some(e => ['Pull Up','Chin Up','Dips','Ring Dips'].includes(e.name) && (e.sets||[]).some(s=>s.reps>0))
-  ).map(w => w.date));
-  const calWeaponTier =
-    bestWeightedPullup >= 20 && weekSpread(calDates) >= 3 ? 5 :
-    bestWeightedPullup >= 10 && weekSpread(calDates) >= 2 ? 4 :
-    bestPullupReps >= 15     && weekSpread(calDates) >= 2 ? 3 :
-    bestPullupReps >= 10     && calDates.size >= 3 ? 2 :
-    bestPullupReps >= 5      && calDates.size >= 2 ? 1 : 0;
+  return inventory;
+}
 
-  // ── WEAPON — PLANCHE ──
-  // Hold durations are the truth. 1 second tuck planche is not a weapon.
-  const tuckPlancheSecs  = skillBestSecs['Tuck Planche'] || 0;
-  const advTuckSecs      = skillBestSecs['Advanced Tuck Planche'] || 0;
-  const straddleSecs     = skillBestSecs['Straddle Planche'] || 0;
-  const fullPlancheSecs  = skillBestSecs['Full Planche'] || 0;
-  const plancheDates     = new Set([
-    ...Object.keys(skillSessionDates).filter(k => k.includes('Planche') || k.includes('planche'))
-      .flatMap(k => [...skillSessionDates[k]])
-  ]);
-  const plancheWeaponTier =
-    fullPlancheSecs >= 3  && weekSpread(plancheDates) >= 3 ? 5 :
-    straddleSecs >= 5     && weekSpread(plancheDates) >= 2 ? 4 :
-    advTuckSecs >= 10     && weekSpread(plancheDates) >= 2 ? 3 :
-    advTuckSecs >= 5      && plancheDates.size >= 3 ? 2 :
-    tuckPlancheSecs >= 10 && plancheDates.size >= 2 ? 1 : 0;
+function getEffectiveInventory() {
+  // Firestore-stored items (from trial completions) take precedence over inferred items.
+  // Higher tier always wins on conflict.
+  const stored   = profile.inventory || {};
+  const inferred = inferInventoryFromWorkouts();
+  const result   = {};
+  const slots    = ['weapon','armour','boots','accessory','ring','aura'];
+  slots.forEach(slot => {
+    const s = stored[slot];
+    const i = inferred[slot];
+    if (s && i) result[slot] = (s.tier||0) >= (i.tier||0) ? s : i;
+    else result[slot] = s || i || null;
+  });
+  return result;
+}
 
-  // ── WEAPON — LEVER ──
-  const tuckLeverSecs    = skillBestSecs['Tuck Front Lever'] || 0;
-  const advTuckLeverSecs = skillBestSecs['Advanced Tuck Front Lever'] || 0;
-  const frontLeverSecs   = skillBestSecs['Front Lever'] || 0;
-  const backLeverSecs    = skillBestSecs['Back Lever'] || 0;
-  const leverDates       = new Set([
-    ...(skillSessionDates['Front Lever'] ? [...skillSessionDates['Front Lever']] : []),
-    ...(skillSessionDates['Tuck Front Lever'] ? [...skillSessionDates['Tuck Front Lever']] : []),
-    ...(skillSessionDates['Advanced Tuck Front Lever'] ? [...skillSessionDates['Advanced Tuck Front Lever']] : []),
-    ...(skillSessionDates['Back Lever'] ? [...skillSessionDates['Back Lever']] : []),
-  ]);
-  const leverWeaponTier =
-    frontLeverSecs >= 5  && weekSpread(leverDates) >= 3 ? 5 :
-    frontLeverSecs >= 3  && weekSpread(leverDates) >= 2 ? 4 :
-    advTuckLeverSecs >= 10 && weekSpread(leverDates) >= 2 ? 3 :
-    advTuckLeverSecs >= 5  && leverDates.size >= 3 ? 2 :
-    tuckLeverSecs >= 10   && leverDates.size >= 2 ? 1 : 0;
+// ── resolveItemKey: used at trial completion to pick contextual chain ──
+function resolveItemKey(stat, slot) {
+  if (!allWorkouts || !currentUser) return `${slot}`;
+  const myWOs = allWorkouts.filter(w => w.uid === currentUser.uid);
+  const d = buildAssessmentData(myWOs);
 
-  // ── WEAPON — BOXING / COURT ──
-  // Minimum 30 min per session, at least 4 sessions across 2+ weeks.
-  const boxingWeaponTier =
-    sportMins.boxing >= 300 && weekSpread(sportSessions.boxing) >= 4 ? 5 :
-    sportMins.boxing >= 180 && weekSpread(sportSessions.boxing) >= 3 ? 4 :
-    sportMins.boxing >= 120 && weekSpread(sportSessions.boxing) >= 2 ? 3 :
-    sportMins.boxing >= 60  && sportSessions.boxing.size >= 4 ? 2 :
-    sportMins.boxing >= 30  && sportSessions.boxing.size >= 2 ? 1 : 0;
-  const courtWeaponTier =
-    sportMins.court >= 300 && weekSpread(sportSessions.court) >= 4 ? 5 :
-    sportMins.court >= 180 && weekSpread(sportSessions.court) >= 3 ? 4 :
-    sportMins.court >= 120 && weekSpread(sportSessions.court) >= 2 ? 3 :
-    sportMins.court >= 60  && sportSessions.court.size >= 4 ? 2 :
-    sportMins.court >= 30  && sportSessions.court.size >= 2 ? 1 : 0;
-
-  // ── RESOLVE WEAPON ──
-  // Pick the best earned weapon across all categories. Hybrids form when two
-  // styles reach the same tier within 1 of each other.
   const dominant = (scores) => {
     const entries = Object.entries(scores).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]);
     if (!entries.length) return null;
@@ -12365,1071 +13251,296 @@ function inferInventoryFromWorkouts() {
     return (topVal - secondVal) / Math.max(topVal,1) > 0.20 ? topKey : null;
   };
 
-  (() => {
-    // Skill weapons take priority if earned
-    const skillTiers = { planche: plancheWeaponTier, lever: leverWeaponTier };
-    const dSkill = dominant({ planche: plancheWeaponTier, lever: leverWeaponTier });
-    const maxSkillTier = Math.max(plancheWeaponTier, leverWeaponTier);
-    if (maxSkillTier > 0) {
-      let chain, tier;
-      if (!dSkill && plancheWeaponTier >= 1 && leverWeaponTier >= 1) {
-        chain = 'weapon_foc_hybrid';
-        tier = Math.max(plancheWeaponTier, leverWeaponTier);
-      } else {
-        chain = dSkill === 'planche' ? 'weapon_foc_planche' : 'weapon_foc_lever';
-        tier = dSkill === 'planche' ? plancheWeaponTier : leverWeaponTier;
-      }
-      const item = ITEM_DEFINITIONS[`${chain}_${tier}`];
-      if (item) { inventory.weapon = { ...item, condition:90, earnedFromWorkouts:true }; return; }
-    }
-
-    // Sports weapons
-    const maxSportTier = Math.max(boxingWeaponTier, courtWeaponTier);
-    if (maxSportTier > 0) {
-      const chain = boxingWeaponTier >= courtWeaponTier ? 'weapon_boxing' : 'weapon_court';
-      const tier  = Math.max(boxingWeaponTier, courtWeaponTier);
-      const item = ITEM_DEFINITIONS[`${chain}_${tier}`];
-      if (item) { inventory.weapon = { ...item, condition:85, earnedFromWorkouts:true }; return; }
-    }
-
-    // Strength weapons — power vs cal
-    const maxStrTier = Math.max(powerWeaponTier, calWeaponTier);
-    if (maxStrTier > 0) {
-      let chain, tier;
-      const dStr = dominant({ power: powerWeaponTier, cal: calWeaponTier });
-      if (!dStr && powerWeaponTier >= 1 && calWeaponTier >= 1) {
-        chain = 'weapon_str_hybrid';
-        tier  = maxStrTier;
-      } else {
-        chain = (dStr === 'power' || powerWeaponTier >= calWeaponTier) ? 'weapon_str_power' : 'weapon_str_cal';
-        tier  = Math.max(powerWeaponTier, calWeaponTier);
-      }
-      const item = ITEM_DEFINITIONS[`${chain}_${tier}`] || ITEM_DEFINITIONS[`weapon_str_${tier}`];
-      if (item) { inventory.weapon = { ...item, condition:90, earnedFromWorkouts:true }; }
-    }
-  })();
-
-  // ── ARMOUR ──
-  // Requires real sustained supplementary work — minimum 3 separate sessions,
-  // at least 8 sets per session on average, across 2+ different weeks.
-  const avgDefenceSetsPerSession = defenceSessions.size > 0
-    ? defenceSetsTotal / defenceSessions.size : 0;
-  const defenceWeeks = weekSpread(defenceSessions);
-  const armourTier =
-    avgDefenceSetsPerSession >= 12 && defenceWeeks >= 4 && defenceSessions.size >= 8 ? 5 :
-    avgDefenceSetsPerSession >= 10 && defenceWeeks >= 3 && defenceSessions.size >= 5 ? 4 :
-    avgDefenceSetsPerSession >= 8  && defenceWeeks >= 2 && defenceSessions.size >= 4 ? 3 :
-    avgDefenceSetsPerSession >= 6  && defenceSessions.size >= 3 ? 2 :
-    avgDefenceSetsPerSession >= 4  && defenceSessions.size >= 2 ? 1 : 0;
-
-  if (armourTier > 0) {
-    const chain = resolveItemKey('defence', 'armour');
-    const item = ITEM_DEFINITIONS[`${chain}_${armourTier}`] || ITEM_DEFINITIONS[`armour_${armourTier}`];
-    if (item) inventory.armour = { ...item, condition:85, earnedFromWorkouts:true };
-  }
-
-  // ── BOOTS — RUNNING ──
-  // Must have real runs — minimum 3km, pace under 8:00/km, across multiple weeks.
-  const qualifyingRuns = runSessions.filter(r => r.distKm >= 3 && r.paceSecs <= 480);
-  const runWeeks = weekSpread(new Set(qualifyingRuns.map(r => r.date)));
-  const bestPace = qualifyingRuns.length ? Math.min(...qualifyingRuns.map(r => r.paceSecs)) : 9999;
-  const runBootsTier =
-    bestPace <= 240 && runWeeks >= 4 && qualifyingRuns.length >= 8 ? 5 : // sub 4:00/km
-    bestPace <= 300 && runWeeks >= 3 && qualifyingRuns.length >= 5 ? 4 : // sub 5:00/km
-    bestPace <= 360 && runWeeks >= 2 && qualifyingRuns.length >= 4 ? 3 : // sub 6:00/km
-    bestPace <= 420 && qualifyingRuns.length >= 3 ? 2 :                  // sub 7:00/km
-    bestPace <= 480 && qualifyingRuns.length >= 2 ? 1 : 0;               // sub 8:00/km
-
-  // ── BOOTS — CLIMBING ──
-  // Minimum 4 sessions, 30+ mins each, across 2+ weeks.
-  const climbBootsTier =
-    climbSessions.size >= 12 && weekSpread(climbSessions) >= 4 && climbTotalMins >= 400 ? 5 :
-    climbSessions.size >= 8  && weekSpread(climbSessions) >= 3 && climbTotalMins >= 240 ? 4 :
-    climbSessions.size >= 6  && weekSpread(climbSessions) >= 2 && climbTotalMins >= 150 ? 3 :
-    climbSessions.size >= 4  && climbTotalMins >= 80 ? 2 :
-    climbSessions.size >= 2  && climbTotalMins >= 30 ? 1 : 0;
-
-  // ── BOOTS — EXPLOSIVE ──
-  // Pistol squat reps are honest. Multiple sessions across weeks.
-  const expBootsTier =
-    pistolData.bestReps >= 10 && weekSpread(pistolData.sessionDates) >= 3 ? 5 :
-    pistolData.bestReps >= 7  && weekSpread(pistolData.sessionDates) >= 2 ? 4 :
-    pistolData.bestReps >= 5  && pistolData.sessionDates.size >= 3 ? 3 :
-    pistolData.bestReps >= 3  && pistolData.sessionDates.size >= 2 ? 2 :
-    pistolData.bestReps >= 1  && explosiveSessions.size >= 3 ? 1 : 0;
-
-  // ── BOOTS — COURT ──
-  const courtBootsTier =
-    sportMins.court >= 300 && weekSpread(sportSessions.court) >= 4 ? 5 :
-    sportMins.court >= 180 && weekSpread(sportSessions.court) >= 3 ? 4 :
-    sportMins.court >= 120 && weekSpread(sportSessions.court) >= 2 ? 3 :
-    sportMins.court >= 60  && sportSessions.court.size >= 4 ? 2 :
-    sportMins.court >= 30  && sportSessions.court.size >= 2 ? 1 : 0;
-
-  // ── BOOTS — FLEXIBILITY ──
-  const flexBootsTier =
-    bestGermanHangSecs >= 60 && weekSpread(skillSessionDates['German Hang'] || skillSessionDates['German hang'] || new Set()) >= 3 ? 5 :
-    bestGermanHangSecs >= 30 ? 4 :
-    bestGermanHangSecs >= 20 ? 3 :
-    bestGermanHangSecs >= 10 ? 2 :
-    bestGermanHangSecs >= 5  ? 1 : 0;
-
-  // ── RESOLVE BOOTS ──
-  (() => {
-    const tiers = {
-      boots_run: runBootsTier, boots_climb: climbBootsTier,
-      boots_exp: expBootsTier, boots_court: courtBootsTier,
-      boots_flex: flexBootsTier,
-    };
-    const entries = Object.entries(tiers).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]);
-    if (!entries.length) return;
-
-    const [[topChain, topTier], second] = entries;
-    // Hybrid if top two are within 1 tier of each other and both meaningful
-    if (second && second[1] >= topTier - 1 && second[1] >= 2) {
-      const pair = [topChain.replace('boots_',''), second[0].replace('boots_','')].sort().join('_');
-      const hybridChain =
-        pair === 'climb_run' || pair === 'run_climb' ? 'boots_hybrid_trail' :
-        pair === 'exp_run'   || pair === 'run_exp'   ? 'boots_hybrid_sprint' :
-        pair === 'climb_exp' || pair === 'exp_climb' ? 'boots_hybrid_all' : null;
-      if (hybridChain) {
-        const tier = topTier;
-        const item = ITEM_DEFINITIONS[`${hybridChain}_${tier}`];
-        if (item) { inventory.boots = { ...item, condition:85, earnedFromWorkouts:true }; return; }
-      }
-    }
-    const item = ITEM_DEFINITIONS[`${topChain}_${topTier}`] || ITEM_DEFINITIONS[`boots_${topTier}`];
-    if (item) inventory.boots = { ...item, condition:85, earnedFromWorkouts:true };
-  })();
-
-  // ── ACCESSORY — HANDSTAND ──
-  // Freestanding hold duration. Wall work doesn't count the same.
-  const hsDates = new Set([
-    ...(skillSessionDates['Freestanding Handstand Hold'] ? [...skillSessionDates['Freestanding Handstand Hold']] : []),
-    ...(skillSessionDates['Chest-to-Wall Handstand Hold'] ? [...skillSessionDates['Chest-to-Wall Handstand Hold']] : []),
-  ]);
-  const hsAccessoryTier =
-    bestHandstandSecs >= 60 && weekSpread(hsDates) >= 3 ? 5 :
-    bestHandstandSecs >= 30 && weekSpread(hsDates) >= 2 ? 4 :
-    bestHandstandSecs >= 15 && hsDates.size >= 3 ? 3 :
-    bestHandstandSecs >= 5  && hsDates.size >= 2 ? 2 :
-    bestHandstandSecs >= 2  && hsDates.size >= 1 ? 1 : 0;
-
-  // ── ACCESSORY — CORE SKILL ──
-  // L-sit hold duration is the truth. Dragon flag reps are a bonus gate.
-  const dragonflagReps = myWOs.reduce((best, w) =>
-    Math.max(best, ...(w.exercises||[])
-      .filter(e => e.name === 'Dragon Flag Negatives')
-      .flatMap(e => (e.sets||[]).filter(s=>s.reps>0).map(s=>s.reps))), 0);
-  const coreDates = skillSessionDates['L-Sit'] || new Set();
-  const coreAccessoryTier =
-    bestLSitSecs >= 30 && dragonflagReps >= 5 && weekSpread(coreDates) >= 3 ? 5 :
-    bestLSitSecs >= 20 && weekSpread(coreDates) >= 2 ? 4 :
-    bestLSitSecs >= 12 && coreDates.size >= 3 ? 3 :
-    bestLSitSecs >= 7  && coreDates.size >= 2 ? 2 :
-    bestLSitSecs >= 3  && coreDates.size >= 1 ? 1 : 0;
-
-  // ── RESOLVE ACCESSORY ──
-  const maxAccTier = Math.max(hsAccessoryTier, coreAccessoryTier);
-  if (maxAccTier > 0) {
-    let chain, tier;
-    if (hsAccessoryTier > 0 && coreAccessoryTier > 0 && Math.abs(hsAccessoryTier - coreAccessoryTier) <= 1) {
-      // Both skills developed — give the better item
-      chain = hsAccessoryTier >= coreAccessoryTier ? 'accessory_hs' : 'accessory_core';
-    } else {
-      chain = hsAccessoryTier >= coreAccessoryTier ? 'accessory_hs' : 'accessory_core';
-    }
-    tier = chain === 'accessory_hs' ? hsAccessoryTier : coreAccessoryTier;
-    const item = ITEM_DEFINITIONS[`${chain}_${tier}`] || ITEM_DEFINITIONS[`accessory_${tier}`];
-    if (item) inventory.accessory = { ...item, condition:85, earnedFromWorkouts:true };
-  }
-
-  return inventory;
-}
-
-function getEffectiveInventory() {
-  // Merge Firestore inventory with retroactive inference
-  const stored  = profile.inventory || {};
-  const inferred = inferInventoryFromWorkouts();
-  const result   = {};
-  const slots = ['weapon','armour','boots','accessory','ring','aura'];
-  slots.forEach(slot => {
-    // Stored item takes precedence (higher tier wins)
-    const s = stored[slot];
-    const i = inferred[slot];
-    if (s && i) {
-      result[slot] = s.tier >= i.tier ? s : i;
-    } else {
-      result[slot] = s || i || null;
-    }
-  });
-  return result;
-}
-
-// Check item decay
-function getItemCondition(item, slot) {
-  if (!item) return 0;
-  if (!item.lastPolished) return item.condition || 100;
-  const daysSince = (Date.now() - new Date(item.lastPolished).getTime()) / 86400000;
-  const decayPerDay = item.tier === 5 ? 8 : item.tier === 4 ? 5 : item.tier === 3 ? 3 : item.tier === 2 ? 2 : 1;
-  return Math.max(0, Math.min(100, (item.condition || 100) - Math.floor(daysSince * decayPerDay)));
-}
-
-// Polish an item (called after workout targeting that stat)
-async function polishItem(slot, rir) {
-  const inv = profile.inventory || {};
-  const item = inv[slot];
-  if (!item) return;
-  const restore = rir <= 1 ? 35 : rir <= 3 ? 20 : 10;
-  const current = getItemCondition(item, slot);
-  const newCondition = Math.min(100, current + restore);
-  const updates = { [`inventory.${slot}.condition`]: newCondition, [`inventory.${slot}.lastPolished`]: new Date().toISOString() };
-  await writeUserFields(updates);
-  if (!profile.inventory) profile.inventory = {};
-  if (!profile.inventory[slot]) profile.inventory[slot] = item;
-  profile.inventory[slot].condition = newCondition;
-  profile.inventory[slot].lastPolished = new Date().toISOString();
-}
-
-/* =========================================================================
-   TRIAL KEYS SYSTEM
-   Weekly quests proving improvement in a specific stat domain.
-   Completing a trial gives Training XP burst + Hunter XP burst + item grant.
-   ========================================================================= */
-
-const TRIAL_DEFINITIONS = {
-  strength: {
-    stat: 'strength', icon:'⚔️', label:'Strength Trial',
-    color:'var(--brass)',
-    description:'Prove your strength. Log 3 sessions this week each containing a compound lift.',
-    requirement: { type:'compound_sessions', count:3 },
-    compoundExercises: new Set(['Bench Press','Squat','Deadlift','Overhead Press','Barbell Row',
-      'Front Squat','Romanian Deadlift','Incline Bench Press','Pull Up','Chin Up',
-      'Lat Pulldown','Wide Neutral-Grip Lat Pulldown','Dips','Ring Dips']),
-    reward: { trainingXP:50, hunterXP:300, itemSlot:'weapon', itemKey:'weapon_str' },
-  },
-  endurance: {
-    stat: 'endurance', icon:'🔥', label:'Endurance Trial',
-    color:'#FF3D5A',
-    description:'Prove your endurance. Complete 2 cardio sessions totalling 30+ minutes.',
-    requirement: { type:'cardio_sessions', count:2, minMinutes:30 },
-    reward: { trainingXP:40, hunterXP:250, itemSlot:'armour', itemKey:'armour' },
-  },
-  agility: {
-    stat: 'agility', icon:'⚡', label:'Agility Trial',
-    color:'var(--violet)',
-    description:'Prove your agility. Log 3 sessions containing explosive or skill movements.',
-    requirement: { type:'agility_sessions', count:3 },
-    agilityExercises: new Set(['Pistol Squat','Box Jump','Jump Squat','Hill Sprints','Sprinting',
-      'Burpee','Mountain Climber','Bear Crawl','Top Rope Climbing','Bouldering',
-      'Sport Climbing','Nordic Curl','Ring Dips','Muscle Up']),
-    reward: { trainingXP:45, hunterXP:280, itemSlot:'boots', itemKey:'boots' },
-  },
-  focus: {
-    stat: 'focus', icon:'🎯', label:'Focus Trial',
-    color:'#FFD700',
-    description:'Prove your focus. Log 3 sessions containing skill-tier exercises.',
-    requirement: { type:'skill_sessions', count:3, minTier:1.2 },
-    reward: { trainingXP:55, hunterXP:350, itemSlot:'accessory', itemKey:'accessory' },
-  },
-  flexibility: {
-    stat: 'flexibility', icon:'💫', label:'Flexibility Trial',
-    color:'#27AE60',
-    description:'Prove your flexibility. Complete 3 mobility sessions of 10+ minutes.',
-    requirement: { type:'mobility_sessions', count:3, minMinutes:10 },
-    mobilityExercises: new Set(['Front Splits','Side Splits','Middle Splits','Hip Mobility Routine',
-      'Full Body Stretching','Yoga','Pancake Stretch','Pike Stretch','Thoracic Mobility',
-      'German Hang','German hang','Shoulder Flexibility Training','Hip Flexor Stretch']),
-    reward: { trainingXP:40, hunterXP:250, itemSlot:'boots', itemKey:'boots' },
-  },
-  defence: {
-    stat: 'defence', icon:'🛡️', label:'Defence Trial',
-    color:'var(--growing)',
-    description:'Prove your physique completeness. Log 4 sessions containing isolation/supplementary work.',
-    requirement: { type:'defence_sessions', count:4 },
-    reward: { trainingXP:40, hunterXP:250, itemSlot:'armour', itemKey:'armour' },
-  },
-};
-
-// Check trial progress against recent workouts
-function checkTrialProgress(trial) {
-  if (!trial || !allWorkouts || !currentUser) return { progress:0, required:0, complete:false };
-  const def = TRIAL_DEFINITIONS[trial.stat];
-  if (!def) return { progress:0, required:0, complete:false };
-
-  const startDate = trial.startDate;
-  const myWOs = allWorkouts.filter(w =>
-    w.uid === currentUser.uid && w.date >= startDate
-  );
-
-  const req = def.requirement;
-  let progress = 0;
-
-  if (req.type === 'compound_sessions') {
-    progress = myWOs.filter(w =>
-      (w.exercises||[]).some(e => def.compoundExercises.has(e.name) && (e.sets||[]).some(s=>s.reps>0))
-    ).length;
-  } else if (req.type === 'cardio_sessions') {
-    // Enforce the advertised minimum minutes — session minutes come from
-    // runSummary.durationMins, or set durationMins, or reps (mins-timed cardio).
-    const sessionMins = (w) => {
-      if (w.runSummary?.durationMins) return w.runSummary.durationMins;
-      let mins = 0;
-      (w.exercises||[]).forEach(e => {
-        if (!CARDIO_EXERCISES.has(e.name)) return;
-        (e.sets||[]).forEach(st => { mins += st.durationMins || st.reps || 0; });
-      });
-      return mins;
-    };
-    progress = myWOs.filter(w =>
-      (w.exercises||[]).some(e => CARDIO_EXERCISES.has(e.name) && (e.sets||[]).some(st=>st.reps>0))
-      && sessionMins(w) >= (req.minMinutes || 0)
-    ).length;
-  } else if (req.type === 'agility_sessions') {
-    progress = myWOs.filter(w =>
-      (w.exercises||[]).some(e => def.agilityExercises.has(e.name) && (e.sets||[]).some(s=>s.reps>0))
-    ).length;
-  } else if (req.type === 'skill_sessions') {
-    progress = myWOs.filter(w =>
-      (w.exercises||[]).some(e => (SKILL_TIERS[e.name]||0) >= req.minTier && (e.sets||[]).some(s=>s.reps>0))
-    ).length;
-  } else if (req.type === 'mobility_sessions') {
-    const mobilityMins = (w) => {
-      let mins = 0;
-      (w.exercises||[]).forEach(e => {
-        if (!def.mobilityExercises.has(e.name)) return;
-        const timedMins = (EXERCISES_ALL[e.name]||{}).timedUnit === 'mins';
-        (e.sets||[]).forEach(st => { mins += st.durationMins || (timedMins ? (st.reps||0) : (st.reps||0)/60); });
-      });
-      return mins;
-    };
-    progress = myWOs.filter(w =>
-      (w.exercises||[]).some(e => def.mobilityExercises.has(e.name) && (e.sets||[]).some(st=>st.reps>0))
-      && mobilityMins(w) >= (req.minMinutes || 0)
-    ).length;
-  } else if (req.type === 'defence_sessions') {
-    progress = myWOs.filter(w =>
-      (w.exercises||[]).some(e => DEFENCE_EXERCISES.has(e.name) && (e.sets||[]).some(s=>s.reps>0))
-    ).length;
-  }
-
-  const required = req.count;
-  return { progress: Math.min(progress, required), required, complete: progress >= required };
-}
-
-// Auto-generate weakness trial on Monday
-async function maybeSpawnWeaknessTrial() {
-  if (!profile || !currentUser) return;
-  let activeTrial = profile.activeTrial;
-
-  // Sweep stranded trials: completeTrial() nulls activeTrial via a 3s setTimeout,
-  // so closing the app right after the clear banner leaves completed:true stuck
-  // forever — which would block every future trial spawn. Clear it here.
-  if (activeTrial?.completed) {
-    await writeUserFields({ activeTrial: null });
-    profile.activeTrial = null;
-    activeTrial = null;
-  }
-  if (activeTrial) return; // already has one
-
-  // Only spawn on Monday
-  const today = new Date();
-  const dayOfWeek = today.getDay(); // 0=Sun, 1=Mon
-  if (dayOfWeek !== 1) return; // only on Monday
-
-  const lastSpawn = profile.lastTrialSpawn;
-  const thisMonday = todayStr(getMonday(today));
-  if (lastSpawn === thisMonday) return; // already spawned this week
-
-  // Don't spawn if calibration hasn't happened yet
-  // (all caps still at baseline means we don't know the real weakest stat)
-  const caps = profile.statTrainingXP || {};
-  const STATS_LIST = ['strength','endurance','agility','focus','flexibility','defence'];
-  const allAtBaseline = STATS_LIST.every(s => (caps[s]||0) <= 20);
-  if (allAtBaseline) return; // wait for calibration first
-
-  // Find genuinely weakest stat — lowest cap that has a trial definition
-  const weakest = STATS_LIST.reduce((min, s) => (caps[s]||0) < (caps[min]||0) ? s : min, STATS_LIST[0]);
-
-  const trialDef = TRIAL_DEFINITIONS[weakest];
-  if (!trialDef) return;
-
-  const startDate = todayStr(today);
-  const expiresDate = todayStr(new Date(today.getTime() + 7*86400000));
-
-  const newTrial = {
-    stat: weakest,
-    type: 'weakness',
-    startDate,
-    expiresDate,
-    reward: trialDef.reward,
-    completed: false,
-    spawned: new Date().toISOString(),
-  };
-
-  await writeUserFields({ activeTrial: newTrial, lastTrialSpawn: thisMonday });
-  profile.activeTrial = newTrial;
-}
-
-function getMonday(date) {
-  const d = new Date(date);
-  const day = d.getDay();
-  const diff = d.getDate() - day + (day === 0 ? -6 : 1);
-  return new Date(d.setDate(diff));
-}
-
-// Determine which item chain to use based on what the hunter actually trained.
-function resolveItemKey(stat, slot) {
-  const myWOs = myWorkouts || [];
-
-  // Build weighted set counts — harder exercises count for more than easier ones.
-  // A Front Lever set (tier 1.7) counts 21% more than a Tuck Front Lever set (tier 1.4).
-  const exWeightedCounts = {};
+  // Count weighted exercise sets for style detection
+  const exCounts = {};
   myWOs.forEach(w => (w.exercises||[]).forEach(ex => {
-    const skillMult = SKILL_TIERS[ex.name] || 1.0;
-    const completedSets = (ex.sets||[]).filter(s=>s.reps>0).length;
-    exWeightedCounts[ex.name] = (exWeightedCounts[ex.name] || 0) + completedSets * skillMult;
+    const mult = SKILL_TIERS[ex.name] || 1.0;
+    exCounts[ex.name] = (exCounts[ex.name]||0) + (ex.sets||[]).filter(s=>s.reps>0).length * mult;
   }));
-  const count = (...names) => names.reduce((t,n) => t + (exWeightedCounts[n]||0), 0);
-
-  // Helper: detect dominant style — returns key only if that style is >20% more than runner-up
-  const dominant = (scores) => {
-    const entries = Object.entries(scores).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]);
-    if (!entries.length) return null;
-    if (entries.length === 1) return entries[0][0];
-    const [topKey, topVal] = entries[0];
-    const [,secondVal] = entries[1];
-    // If top is within 20% of second — it's a hybrid
-    return (topVal - secondVal) / Math.max(topVal, 1) > 0.20 ? topKey : null;
-  };
+  const count = (...names) => names.reduce((t,n)=>t+(exCounts[n]||0),0);
 
   if (slot === 'weapon') {
     if (stat === 'strength') {
-      const powerSets = count('Bench Press','Squat','Deadlift','Overhead Press','Romanian Deadlift','Sumo Deadlift','Incline Bench Press','Front Squat');
-      const calSets   = count('Pull Up','Chin Up','Dips','Ring Dips','Inverted Row','Barbell Row','Seated Cable Row','Pendlay Row');
-      if (powerSets + calSets === 0) return 'weapon_str';
-      const d = dominant({ weapon_str_power: powerSets, weapon_str_cal: calSets });
-      // Only hybrid if BOTH styles have meaningful training (at least 5 sets each)
-      return d || (powerSets >= 5 && calSets >= 5 ? 'weapon_str_hybrid' :
-             powerSets >= calSets ? 'weapon_str_power' : 'weapon_str_cal');
+      const power = count('Bench Press','Squat','Deadlift','Overhead Press','Romanian Deadlift','Sumo Deadlift','Incline Bench Press','Front Squat');
+      const cal   = count('Pull Up','Chin Up','Dips','Ring Dips','Inverted Row','Barbell Row','Seated Cable Row','Pendlay Row');
+      if (power + cal === 0) return 'weapon_str';
+      const dom = dominant({ weapon_str_power: power, weapon_str_cal: cal });
+      return dom || (power >= 5 && cal >= 5 ? 'weapon_str_hybrid' : power >= cal ? 'weapon_str_power' : 'weapon_str_cal');
     }
     if (stat === 'focus') {
-      const plancheSets = count('Tuck Planche','Advanced Tuck Planche','Full Planche','Planche Lean','Straddle Planche','Pseudo planche push up','Freestanding Handstand Hold','Chest-to-Wall Handstand Hold','Handstand Shoulder Taps','Wall Toe Pull');
-      const leverSets   = count('Front Lever','Tuck Front Lever','Advanced Tuck Front Lever','Front Lever Row','Front Lever Raise','Back Lever');
-      if (plancheSets + leverSets === 0) return 'weapon_foc';
-      const d = dominant({ weapon_foc_planche: plancheSets, weapon_foc_lever: leverSets });
-      // Hybrid if neither dominates AND both have real training
-      return d || (plancheSets >= 3 && leverSets >= 3 ? 'weapon_foc_hybrid' :
-             plancheSets >= leverSets ? 'weapon_foc_planche' : 'weapon_foc_lever');
+      const planche = count('Tuck Planche','Advanced Tuck Planche','Full Planche','Planche Lean','Straddle Planche','Freestanding Handstand Hold','Chest-to-Wall Handstand Hold','Handstand Shoulder Taps');
+      const lever   = count('Front Lever','Tuck Front Lever','Advanced Tuck Front Lever','Front Lever Row','Front Lever Raise','Back Lever');
+      if (planche + lever === 0) return 'weapon_foc';
+      const dom = dominant({ weapon_foc_planche: planche, weapon_foc_lever: lever });
+      return dom || (planche >= 3 && lever >= 3 ? 'weapon_foc_hybrid' : planche >= lever ? 'weapon_foc_planche' : 'weapon_foc_lever');
     }
     if (stat === 'agility') {
-      const boxingSets = count('Boxing — Bag Work','Boxing — Sparring','Boxing — Shadow Boxing','Boxing — Pad Work');
-      const courtSets  = count('Tennis','Tennis Drills','Basketball','Basketball Drills','Football (Soccer)','Football Drills','American Football');
-      if (boxingSets + courtSets === 0) return null; // no sports training — no weapon from this path
-      const d = dominant({ weapon_boxing: boxingSets, weapon_court: courtSets });
-      return d || (boxingSets >= courtSets ? 'weapon_boxing' : 'weapon_court');
+      if (d.sportSessions.boxing.size + d.sportSessions.court.size === 0) return null;
+      return d.sportSessions.boxing.size >= d.sportSessions.court.size ? 'weapon_boxing' : 'weapon_court';
     }
   }
-
   if (slot === 'armour') {
-    const swimSets    = count('Freestyle Swimming','Breaststroke Swimming','Butterfly Swimming','Backstroke Swimming','Open Water Swimming','HIIT Swimming');
-    const cyclingSets = count('Cycling','Road Cycling','Mountain Biking','Stationary Bike','Spin Class','Cycling Intervals');
-    const endSets     = count('Long Run','Easy Run','Tempo Run','Hill Sprints','Interval Running','Race');
-    const isoSets     = count('Lateral Raise','Front Raise','Rear Delt Fly','Face Pull','Hammer Curl','Hanging Leg Raise','Hanging Knee Raise');
-    const d = dominant({ armour_swim: swimSets, armour_cycling: cyclingSets, armour_end: endSets, armour_iso: isoSets });
-    return d || 'armour_iso'; // default to isolation if all tied
+    const scores = {
+      armour_swim: d.swimSessions.size * 3,
+      armour_cycling: d.cyclingSessions.size * 3,
+      armour_end: d.qualifyingRuns.length * 3,
+      armour_iso: d.defenceSetsTotal,
+    };
+    const dom = dominant(scores);
+    return dom || 'armour_iso';
   }
-
   if (slot === 'boots') {
     if (stat === 'flexibility') return 'boots_flex';
-    const runSets    = count('Long Run','Easy Run','Tempo Run','Hill Sprints','Interval Running','Race','Sprinting');
-    const climbSets  = count('Bouldering','Sport Climbing','Top Rope Climbing','Traditional Climbing');
-    const expSets    = count('Pistol Squat','Box Jump','Jump Squat','Nordic Curl','Bear Crawl');
-    const courtSets  = count('Tennis','Tennis Drills','Basketball','Basketball Drills','Football (Soccer)','Football Drills','American Football');
-    const total = runSets + climbSets + expSets + courtSets;
-    if (total === 0) return 'boots'; // no agility training — generic fallback, no boots earned yet
-    const d = dominant({ boots_run: runSets, boots_climb: climbSets, boots_exp: expSets, boots_court: courtSets });
-    if (d) return d;
-    // Hybrid — only if top two BOTH have at least 3 sets
-    const topTwo = [
-      { key:'run', val:runSets }, { key:'climb', val:climbSets },
-      { key:'exp', val:expSets }, { key:'court', val:courtSets }
-    ].sort((a,b)=>b.val-a.val);
-    const allThreeActive = topTwo[0].val >= 3 && topTwo[1].val >= 3 && topTwo[2].val >= 3;
-    if (allThreeActive) return 'boots_hybrid_all';
-    const pair = `${topTwo[0].key}_${topTwo[1].key}`;
-    if (topTwo[0].val >= 3 && topTwo[1].val >= 3) {
-      if (pair === 'run_climb' || pair === 'climb_run') return 'boots_hybrid_trail';
-      if (pair === 'exp_run'   || pair === 'run_exp')   return 'boots_hybrid_sprint';
-      if (pair === 'court_run' || pair === 'run_court') return 'boots_court';
-    }
-    // Single dominant even below threshold — just pick the leader
-    return topTwo[0].key === 'run' ? 'boots_run'
-         : topTwo[0].key === 'climb' ? 'boots_climb'
-         : topTwo[0].key === 'exp' ? 'boots_exp'
-         : 'boots_court';
-  }
-
-  if (slot === 'accessory') {
-    const hsSets   = count('Freestanding Handstand Hold','Chest-to-Wall Handstand Hold','Wall Handstand Hold','Handstand Shoulder Taps','Wall Toe Pull');
-    const coreSets = count('L-Sit','Dragon Flag Negatives','Hollow hold','Toes to Bar','Ab Wheel Rollout','Hanging Leg Raise');
-    if (hsSets + coreSets === 0) return 'accessory'; // no skill training — generic fallback
-    return hsSets >= coreSets ? 'accessory_hs' : 'accessory_core';
-  }
-
-  return slot === 'weapon' ? (stat === 'focus' ? 'weapon_foc' : 'weapon_str')
-       : slot === 'armour' ? 'armour' : slot === 'boots' ? 'boots' : 'accessory';
-}
-
-// Complete a trial — award XP, update cap, grant item
-// If pendingUpdates passed, merges into batch — caller does the single write
-async function completeTrial(pendingUpdates) {
-  if (!profile || !currentUser) return null;
-  const trial = profile.activeTrial;
-  if (!trial || trial.completed) return null;
-
-  const def = TRIAL_DEFINITIONS[trial.stat];
-  if (!def) return null;
-
-  const reward = def.reward;
-  const currentCap = (profile.statTrainingXP || {})[trial.stat] || 0;
-
-  const inv = getEffectiveInventory();
-  const existingItem = inv[reward.itemSlot];
-  let grantTier = 1;
-  const projectedCap = currentCap + reward.trainingXP;
-  if (projectedCap >= 200) grantTier = 5;
-  else if (projectedCap >= 120) grantTier = 4;
-  else if (projectedCap >= 80) grantTier = 3;
-  else if (projectedCap >= 50) grantTier = 2;
-
-  // Resolve contextual item chain based on training style
-  const resolvedChain = resolveItemKey(trial.stat, reward.itemSlot);
-  const newItemKey = `${resolvedChain}_${grantTier}`;
-  // Fallback to base key if contextual variant doesn't exist
-  const newItem = ITEM_DEFINITIONS[newItemKey] || ITEM_DEFINITIONS[`${reward.itemKey}_${grantTier}`];
-
-  const batched = !!pendingUpdates;
-  const updates = batched ? pendingUpdates : {};
-
-  // Merge cap — respect any milestone XP already in batch
-  const capKey = `statTrainingXP.${trial.stat}`;
-  const baseCap = updates[capKey] !== undefined ? updates[capKey] : currentCap;
-  updates[capKey] = baseCap + reward.trainingXP;
-
-  // Merge hunterXP
-  const baseXP = updates['hunterXP'] !== undefined ? updates['hunterXP'] : (profile.hunterXP || 0);
-  updates['hunterXP'] = Math.round((baseXP + reward.hunterXP) * 10) / 10;
-
-  updates['activeTrial.completed'] = true;
-  updates['activeTrial.completedAt'] = new Date().toISOString();
-
-  if (newItem && (!existingItem || grantTier > (existingItem.tier || 0))) {
-    updates[`inventory.${reward.itemSlot}`] = {
-      ...newItem, condition:100, earnedFromTrial:true,
-      earnedAt: new Date().toISOString(), lastPolished: new Date().toISOString(),
+    const scores = {
+      boots_run: d.qualifyingRuns.length * 5,
+      boots_climb: d.climbSessions.size * 5,
+      boots_exp: d.pistolData.bestReps * 3,
+      boots_court: d.sportSessions.court.size * 4,
     };
-    if (!profile.inventory) profile.inventory = {};
-    profile.inventory[reward.itemSlot] = updates[`inventory.${reward.itemSlot}`];
-  }
-
-  // Mirror into profile
-  if (!profile.statTrainingXP) profile.statTrainingXP = {};
-  profile.statTrainingXP[trial.stat] = updates[capKey];
-  profile.hunterXP = updates['hunterXP'];
-  if (!profile.activeTrial) profile.activeTrial = {};
-  profile.activeTrial.completed = true;
-
-  if (!batched) {
-    await writeUserFields(updates);
-  }
-
-  // Clear activeTrial after delay — separate intentional write
-  setTimeout(async () => {
-    await writeUserFields({ activeTrial: null });
-    profile.activeTrial = null;
-    renderQuestFeed();
-    renderCharCard();
-  }, 3000);
-
-  return { stat: trial.stat, reward, item: newItem, tier: grantTier };
-}
-
-function showTrialClearBanner(def, reward, item, tier, done) {
-  const banner = document.createElement('div');
-  banner.style.cssText = `
-    position:fixed;top:0;left:0;right:0;bottom:0;
-    background:rgba(0,0,0,0.92);z-index:9999;
-    display:flex;flex-direction:column;align-items:center;justify-content:center;
-    animation:viewEnter 0.4s cubic-bezier(0.16,1,0.3,1) both;
-  `;
-  const rarityColors = ['','#aaa','#4ecd78','#3da5ff','#8b6bff','#ffd700'];
-  const rarity = ['','Common','Uncommon','Rare','Epic','Legendary'][tier] || 'Common';
-  const col = rarityColors[tier] || '#aaa';
-  banner.innerHTML = `
-    <div style="font-family:var(--font-mono);font-size:10px;color:${def.color};letter-spacing:0.2em;margin-bottom:16px;">◈ GATE CLEARED ◈</div>
-    <div style="font-size:60px;margin-bottom:8px;">${def.icon}</div>
-    <div style="font-family:var(--font-head);font-size:26px;font-weight:900;color:${def.color};margin-bottom:4px;">${def.label}</div>
-    <div style="font-size:13px;color:var(--text-dim);margin-bottom:24px;">The System acknowledges your progress.</div>
-    <div style="background:rgba(5,7,13,0.9);border:1px solid ${def.color}44;border-radius:8px;padding:16px;text-align:center;max-width:280px;margin-bottom:16px;">
-      <div style="font-family:var(--font-mono);font-size:10px;color:var(--text-faint);margin-bottom:8px;">REWARDS</div>
-      <div style="font-size:15px;color:var(--brass);margin-bottom:4px;">+${reward.hunterXP} Hunter XP</div>
-      <div style="font-size:13px;color:${def.color};">+${reward.trainingXP} ${def.stat.charAt(0).toUpperCase()+def.stat.slice(1)} Training XP</div>
-      ${item ? `<div style="margin-top:12px;padding-top:12px;border-top:1px solid rgba(255,255,255,0.08);">
-        <div style="font-size:11px;color:var(--text-faint);margin-bottom:4px;">ITEM GRANTED</div>
-        <div style="font-size:16px;font-weight:700;color:${col};">${item.name}</div>
-        <div style="font-size:10px;color:${col};opacity:0.7;">${rarity}</div>
-      </div>` : ''}
-    </div>
-    <button class="btn btn-primary" id="trial-clear-continue" style="min-width:160px;">Continue</button>
-  `;
-  document.body.appendChild(banner);
-  banner.querySelector('#trial-clear-continue').addEventListener('click', () => {
-    banner.remove();
-    if (done) done();
-  });
-  setTimeout(() => { banner.remove(); if (done) done(); }, 8000);
-}
-
-// Start a voluntary trial from Feats tab
-async function startVoluntaryTrial(stat) {
-  if (!profile || !currentUser) return;
-  if (profile.activeTrial) { showToast('You already have an active trial.', 'error'); return; }
-
-  // Check cooldown
-  const cooldowns = profile.trialCooldowns || {};
-  const lastCompleted = cooldowns[stat];
-  if (lastCompleted) {
-    const daysSince = (Date.now() - new Date(lastCompleted).getTime()) / 86400000;
-    if (daysSince < 28) {
-      showToast(`${stat} trial on cooldown — ${Math.ceil(28-daysSince)} days remaining.`, 'error');
-      return;
+    const dom = dominant(scores);
+    if (dom) return dom;
+    const top = Object.entries(scores).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]);
+    if (top.length >= 2) {
+      const pair = [top[0][0].replace('boots_',''), top[1][0].replace('boots_','')].sort().join('_');
+      if ((pair==='climb_run'||pair==='run_climb') && top[1][1]>0) return 'boots_hybrid_trail';
+      if ((pair==='exp_run'||pair==='run_exp') && top[1][1]>0) return 'boots_hybrid_sprint';
+      if (top.length >= 3 && top[2][1]>0) return 'boots_hybrid_all';
     }
+    return 'boots_run';
   }
-
-  const today = new Date();
-  const expiresDate = todayStr(new Date(today.getTime() + 7*86400000));
-  const def = TRIAL_DEFINITIONS[stat];
-
-  const newTrial = {
-    stat,
-    type: 'voluntary',
-    startDate: todayStr(today),
-    expiresDate,
-    reward: def.reward,
-    completed: false,
-    spawned: new Date().toISOString(),
-  };
-
-  await writeUserFields({ activeTrial: newTrial });
-  profile.activeTrial = newTrial;
-  renderQuestFeed();
-  showToast(`${def.label} started — ${def.requirement.count} sessions required.`, 'success');
+  if (slot === 'accessory') {
+    if (d.bestHandstandSecs + d.bestLSitSecs === 0) return 'accessory';
+    return d.bestHandstandSecs >= d.bestLSitSecs ? 'accessory_hs' : 'accessory_core';
+  }
+  return slot;
 }
 
-// Render the active trial card on the Quest tab
-function renderTrialCard() {
-  const el = document.getElementById('trial-card-slot');
-  if (!el) return;
-
-  const trial = profile?.activeTrial;
-  if (!trial) {
-    el.innerHTML = '';
-    return;
-  }
-
-  // Check if expired
-  const today = todayStr();
-  if (trial.expiresDate && trial.expiresDate < today && !trial.completed) {
-    // Expired — clear it
-    writeUserFields({ activeTrial: null });
-    profile.activeTrial = null;
-    el.innerHTML = '';
-    return;
-  }
-
-  const def = TRIAL_DEFINITIONS[trial.stat];
-  if (!def) return;
-  const { progress, required, complete } = checkTrialProgress(trial);
-  const pct = required > 0 ? Math.round((progress / required) * 100) : 0;
-
-  // Auto-complete if done
-  if (complete && !trial.completed) {
-    completeTrial();
-    return;
-  }
-
-  const daysLeft = trial.expiresDate
-    ? Math.max(0, Math.ceil((new Date(trial.expiresDate) - new Date()) / 86400000))
-    : 7;
-
-  el.innerHTML = `
-    <div style="
-      background:linear-gradient(145deg,rgba(17,27,46,0.98),rgba(9,14,26,0.99));
-      border:1px solid ${def.color}44;border-radius:8px;padding:16px;margin-top:12px;
-      box-shadow:0 0 20px ${def.color}11;
-      animation:viewEnter 0.4s cubic-bezier(0.16,1,0.3,1) both;
-    ">
-      <div style="font-family:var(--font-mono);font-size:9px;color:${def.color};letter-spacing:0.15em;margin-bottom:8px;">
-        ◈ SYSTEM TRIAL — ${trial.type === 'weakness' ? 'WEAKNESS DETECTED' : 'VOLUNTARY'} ◈
-      </div>
-      <div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:12px;">
-        <div style="font-size:28px;flex-shrink:0;">${def.icon}</div>
-        <div style="flex:1;min-width:0;">
-          <div style="font-family:var(--font-head);font-size:17px;font-weight:800;color:${def.color};margin-bottom:4px;">${def.label}</div>
-          <div style="font-size:12px;color:var(--text-dim);line-height:1.6;">${def.description}</div>
-        </div>
-      </div>
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
-        <span style="font-family:var(--font-mono);font-size:10px;color:var(--text-faint);">Progress</span>
-        <span style="font-family:var(--font-mono);font-size:12px;color:${def.color};">${progress} / ${required}</span>
-      </div>
-      <div style="height:6px;background:rgba(61,165,255,0.08);border-radius:3px;overflow:hidden;margin-bottom:8px;">
-        <div style="width:${pct}%;height:100%;background:${def.color};border-radius:3px;transition:width 0.8s ease;box-shadow:0 0 8px ${def.color};"></div>
-      </div>
-      <div style="display:flex;justify-content:space-between;align-items:center;">
-        <div style="font-size:10px;color:var(--text-faint);">
-          Reward: <span style="color:var(--brass);">+${def.reward.hunterXP} XP</span> · <span style="color:${def.color};">+${def.reward.trainingXP} ${def.stat} cap</span>
-        </div>
-        <div style="font-family:var(--font-mono);font-size:9px;color:${daysLeft <= 2 ? 'var(--excess)' : 'var(--text-faint)'};">
-          ${daysLeft}d left
-        </div>
-      </div>
-    </div>`;
-}
-
+// ── renderInventory ──
+// Shows a dungeon-progress view: each chain = a dungeon corridor,
+// each tier = a door. Earned items glow. Next tier shows the boss requirement.
 function renderInventory() {
   const el = document.getElementById('inventory-content');
   if (!el) return;
-  const inv = getEffectiveInventory();
 
-  const SLOTS = [
-    { key:'weapon',    label:'Weapon',    emoji:'⚔️', stat:'strength/focus',    hint:'Complete a Strength or Skill trial' },
-    { key:'armour',    label:'Armour',    emoji:'🛡️', stat:'defence/endurance',  hint:'Complete a Defence trial' },
-    { key:'boots',     label:'Boots',     emoji:'👟', stat:'agility/flexibility', hint:'Complete an Agility trial' },
-    { key:'accessory', label:'Accessory', emoji:'🧠', stat:'focus',              hint:'Complete a Focus trial' },
-    { key:'ring',      label:'Ring',      emoji:'💍', stat:'any',                hint:'Complete an Archetype chain' },
-    { key:'aura',      label:'Aura',      emoji:'✨', stat:'legendary',          hint:'Earn a Legendary achievement' },
-  ];
+  if (!allWorkouts || !currentUser) { el.innerHTML = '<p style="color:var(--text-faint);padding:20px;">Loading…</p>'; return; }
+  const myWOs = allWorkouts.filter(w => w.uid === currentUser.uid);
+  const d = buildAssessmentData(myWOs);
+  const stored = profile.inventory || {};
 
-  // Which muscle groups light up per slot (front view / back view)
-  const SLOT_MUSCLES = {
-    weapon: {
-      strength: { front:['Upper Chest','Middle Chest','Lower Chest','Front Shoulders','Triceps','Forearms'], back:['Lats','Upper Back','Lower Back','Rear Shoulders','Traps'] },
-      focus:    { front:['Upper Abs','Middle Abs','Biceps','Forearms'], back:['Upper Back','Lats','Rear Shoulders'] },
-    },
-    armour:    { front:['Upper Chest','Middle Chest','Lower Chest','Upper Abs','Middle Abs'], back:['Upper Back','Lower Back','Traps','Rear Shoulders'] },
-    boots:     { front:['Quads','Hip Flexors','Calves'], back:['Hamstrings','Glutes','Calves'] },
-    accessory: { front:['Upper Abs','Middle Abs','Lower Abs','Obliques'], back:['Lower Back'] },
-    ring:      { front:['Front Shoulders','Lateral Shoulders','Biceps'], back:['Rear Shoulders','Traps'] },
-    aura:      { front:['Upper Chest','Middle Chest','Lower Chest','Front Shoulders','Lateral Shoulders','Triceps','Biceps','Upper Abs','Middle Abs','Lower Abs','Obliques','Quads','Hip Flexors','Calves','Forearms'], back:['Lats','Upper Back','Lower Back','Rear Shoulders','Traps','Hamstrings','Glutes','Calves'] },
-  };
-
-  const RARITY_COLORS = {
-    Common:    'rgba(160,160,160,0.7)',
+  const RARITY_GLOW_COLORS = {
+    Common:    'rgba(160,160,160,0.6)',
     Uncommon:  'rgba(78,205,120,0.9)',
     Rare:      'rgba(61,165,255,0.9)',
     Epic:      'rgba(139,107,255,0.9)',
     Legendary: 'rgba(255,215,0,1.0)',
   };
 
-  // Build the anatomy SVG with equipment overlay
-  function buildInventorySVG(view) {
-    const bodyType = (profile && profile.bodyType === 'female') ? 'female' : 'male';
-    const template = ANATOMY_TEMPLATES[bodyType];
-    if (!template) return '<div style="padding:40px;text-align:center;color:var(--text-faint);">Loading anatomy…</div>';
+  const SLOT_LABELS = { weapon:'Weapon', armour:'Armour', boots:'Boots', accessory:'Accessory', ring:'Ring', aura:'Aura' };
 
-    const clone = template.cloneNode(true);
+  // Group chains by slot
+  const bySlot = {};
+  Object.entries(DUNGEON_CHAINS).forEach(([key, chain]) => {
+    if (!bySlot[chain.slot]) bySlot[chain.slot] = [];
+    bySlot[chain.slot].push({ key, ...chain });
+  });
 
-    // Strip background rect
-    clone.querySelectorAll('path[id="Vector"]').forEach(el => {
-      const fill = (el.getAttribute('fill') || '').toLowerCase();
-      if (fill === '#1f1f1f' || fill === '#1e1e1e' || fill === 'black' || fill === '#000000') el.remove();
-    });
-
-    // Build muscle overlay map: muscle name → { color, rarityClass, slot, condition, tier }
-    const muscleOverlay = {};
-
-    SLOTS.forEach(s => {
-      const item = inv[s.key];
-      if (!item) return;
-      const cond = getItemCondition(item, s.key);
-      if (cond <= 0) return;
-
-      const FILL_COLORS = {
-        Common:    'rgba(180,180,180,0.55)',
-        Uncommon:  'rgba(78,205,120,0.65)',
-        Rare:      'rgba(61,165,255,0.70)',
-        Epic:      'rgba(139,107,255,0.75)',
-        Legendary: 'rgba(255,215,0,0.80)',
-      };
-      const fillColor = FILL_COLORS[item.rarity] || 'rgba(61,165,255,0.5)';
-      // Dim fill proportional to condition
-      const condFactor = 0.3 + (cond / 100) * 0.7;
-      const dimmedFill = fillColor.replace(/[\d.]+\)$/, m => `${(parseFloat(m)*condFactor).toFixed(2)})`);
-
-      const rarityClass = cond < 25
-        ? 'inv-rarity-decay'
-        : `inv-rarity-${item.rarity.toLowerCase()}`;
-
-      // Resolve muscle list for this slot
-      let muscles = SLOT_MUSCLES[s.key];
-      if (s.key === 'weapon' && item.stat) {
-        muscles = item.stat === 'focus'
-          ? SLOT_MUSCLES.weapon.focus
-          : SLOT_MUSCLES.weapon.strength;
-      }
-      if (!muscles) return;
-      const muscleList = muscles[view] || [];
-
-      muscleList.forEach(m => {
-        // Higher tier wins if multiple slots overlap
-        if (!muscleOverlay[m] || item.tier > (muscleOverlay[m].tier || 0)) {
-          muscleOverlay[m] = { fill: dimmedFill, rarityClass, slot: s.key, condition: cond, tier: item.tier };
-        }
-      });
-    });
-
-    // Apply to SVG elements
-    clone.querySelectorAll('[id]').forEach(el => {
-      const muscleId = el.id.replace(/_\d+$/, '');
-      const overlay = muscleOverlay[muscleId];
-
-      if (overlay) {
-        // Equipped muscle — rarity fill + animation class
-        [el, ...el.querySelectorAll('*')].forEach(shape => {
-          if (shape.getAttribute('fill') === 'none') return;
-          shape.setAttribute('fill', overlay.fill);
-          shape.style.fill = overlay.fill;
-        });
-        el.classList.add(overlay.rarityClass);
-        el.dataset.slot = overlay.slot;
-        el.style.cursor = 'pointer';
-
-      } else if (['Head','misc'].includes(muscleId)) {
-        // Structural — muted holographic slate
-        [el, ...el.querySelectorAll('*')].forEach(shape => {
-          if (shape.getAttribute('fill') === 'none') return;
-          shape.setAttribute('fill', 'rgba(61,165,255,0.10)');
-          shape.style.fill = 'rgba(61,165,255,0.10)';
-        });
-
-      } else if (['Groin','Hip Flexors'].includes(muscleId)) {
-        // Non-tracked fillers — very dim
-        [el, ...el.querySelectorAll('*')].forEach(shape => {
-          if (shape.getAttribute('fill') === 'none') return;
-          shape.setAttribute('fill', 'rgba(61,165,255,0.04)');
-          shape.style.fill = 'rgba(61,165,255,0.04)';
-        });
-
-      } else if (MUSCLES.includes(muscleId)) {
-        // Unequipped tracked muscle — ghost dim
-        [el, ...el.querySelectorAll('*')].forEach(shape => {
-          if (shape.getAttribute('fill') === 'none') return;
-          shape.setAttribute('fill', 'rgba(61,165,255,0.07)');
-          shape.style.fill = 'rgba(61,165,255,0.07)';
-        });
-      }
-    });
-
-    // Set crop viewBox — let width:100% + viewBox handle scaling naturally
-    const crop = ANATOMY_CROP[bodyType][view];
-    clone.setAttribute('viewBox', crop.viewBox);
-    clone.setAttribute('width', '100%');
-    clone.removeAttribute('height');
-    clone.style.overflow = 'hidden';
-    clone.style.display = 'block';
-
-    return clone.outerHTML;
-  }
-
-  // Item detail card
-  // Progression chains per slot — all tiers in order
-  const PROGRESSION_CHAINS = {
-    weapon_strength: [
-      { tier:1, rarity:'Common',    name:'Worn Iron Sword',        color:'rgba(160,160,160,0.8)' },
-      { tier:2, rarity:'Uncommon',  name:'Steel Longsword',        color:'rgba(78,205,120,0.9)' },
-      { tier:3, rarity:'Rare',      name:'Reinforced Greatsword',  color:'rgba(61,165,255,0.9)' },
-      { tier:4, rarity:'Epic',      name:'Shadow Blade',           color:'rgba(139,107,255,0.9)' },
-      { tier:5, rarity:'Legendary', name:"Monarch's Edge",         color:'rgba(255,215,0,1.0)' },
-    ],
-    weapon_focus: [
-      { tier:1, rarity:'Common',    name:'Carved Wooden Staff',    color:'rgba(160,160,160,0.8)' },
-      { tier:2, rarity:'Uncommon',  name:'Iron Bo Staff',          color:'rgba(78,205,120,0.9)' },
-      { tier:3, rarity:'Rare',      name:'Reinforced Combat Staff',color:'rgba(61,165,255,0.9)' },
-      { tier:4, rarity:'Epic',      name:'Shadow Spear',           color:'rgba(139,107,255,0.9)' },
-      { tier:5, rarity:'Legendary', name:'Void Lance',             color:'rgba(255,215,0,1.0)' },
-    ],
-    armour: [
-      { tier:1, rarity:'Common',    name:'Cloth Wraps',            color:'rgba(160,160,160,0.8)' },
-      { tier:2, rarity:'Uncommon',  name:'Leather Armour',         color:'rgba(78,205,120,0.9)' },
-      { tier:3, rarity:'Rare',      name:'Chain Armour',           color:'rgba(61,165,255,0.9)' },
-      { tier:4, rarity:'Epic',      name:'Shadow Plate',           color:'rgba(139,107,255,0.9)' },
-      { tier:5, rarity:'Legendary', name:"Monarch's Aegis",        color:'rgba(255,215,0,1.0)' },
-    ],
-    boots: [
-      { tier:1, rarity:'Common',    name:'Worn Running Shoes',     color:'rgba(160,160,160,0.8)' },
-      { tier:2, rarity:'Uncommon',  name:'Lightweight Boots',      color:'rgba(78,205,120,0.9)' },
-      { tier:3, rarity:'Rare',      name:'Swift Greaves',          color:'rgba(61,165,255,0.9)' },
-      { tier:4, rarity:'Epic',      name:'Shadow Steps',           color:'rgba(139,107,255,0.9)' },
-      { tier:5, rarity:'Legendary', name:'Void Treads',            color:'rgba(255,215,0,1.0)' },
-    ],
-    accessory: [
-      { tier:1, rarity:'Common',    name:'Frayed Bracer',          color:'rgba(160,160,160,0.8)' },
-      { tier:2, rarity:'Uncommon',  name:'Iron Bracer',            color:'rgba(78,205,120,0.9)' },
-      { tier:3, rarity:'Rare',      name:'Reinforced Bracer',      color:'rgba(61,165,255,0.9)' },
-      { tier:4, rarity:'Epic',      name:'Shadow Bracer',          color:'rgba(139,107,255,0.9)' },
-      { tier:5, rarity:'Legendary', name:'Void Bracer',            color:'rgba(255,215,0,1.0)' },
-    ],
+  // Build equipped items section
+  const inv = getEffectiveInventory();
+  const SLOT_ICONS = {
+    weapon: `<svg viewBox="0 0 40 40" width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.8"><line x1="8" y1="32" x2="32" y2="8"/><line x1="28" y1="4" x2="36" y2="12"/><line x1="4" y1="28" x2="10" y2="34"/><line x1="14" y1="26" x2="26" y2="14"/></svg>`,
+    armour: `<svg viewBox="0 0 40 40" width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20 4 L34 10 L34 22 C34 30 27 36 20 38 C13 36 6 30 6 22 L6 10 Z"/><path d="M20 12 L27 15 L27 22 C27 27 24 30 20 32 C16 30 13 27 13 22 L13 15 Z" stroke-width="1"/></svg>`,
+    boots: `<svg viewBox="0 0 40 40" width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M8 32 L8 16 C8 12 11 10 14 10 L18 10 L18 20 L28 20 L32 24 L32 32 Z"/><line x1="8" y1="32" x2="32" y2="32"/></svg>`,
+    accessory: `<svg viewBox="0 0 40 40" width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="20" cy="20" r="12"/><circle cx="20" cy="20" r="4"/><line x1="20" y1="4" x2="20" y2="8"/><line x1="20" y1="32" x2="20" y2="36"/><line x1="4" y1="20" x2="8" y2="20"/><line x1="32" y1="20" x2="36" y2="20"/></svg>`,
+    ring: `<svg viewBox="0 0 40 40" width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="20" cy="23" r="10"/><circle cx="20" cy="23" r="5"/><path d="M14 13 L20 6 L26 13"/></svg>`,
+    aura: `<svg viewBox="0 0 40 40" width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="20" cy="20" r="7"/><line x1="20" y1="4" x2="20" y2="10"/><line x1="20" y1="30" x2="20" y2="36"/><line x1="4" y1="20" x2="10" y2="20"/><line x1="30" y1="20" x2="36" y2="20"/><line x1="8.5" y1="8.5" x2="13" y2="13"/><line x1="27" y1="27" x2="31.5" y2="31.5"/><line x1="31.5" y1="8.5" x2="27" y2="13"/><line x1="13" y1="27" x2="8.5" y2="31.5"/></svg>`,
   };
 
-  function getChainForSlot(slot, item) {
-    if (slot === 'weapon') {
-      return item?.stat === 'focus' ? PROGRESSION_CHAINS.weapon_focus : PROGRESSION_CHAINS.weapon_strength;
-    }
-    return PROGRESSION_CHAINS[slot] || null;
-  }
+  const equippedHtml = ['weapon','armour','boots','accessory','ring','aura'].map(slot => {
+    const item = inv[slot];
+    const icon = SLOT_ICONS[slot] || '';
+    const rColor = item ? (RARITY_GLOW_COLORS[item.rarity] || 'rgba(61,165,255,0.5)') : null;
+    const glowColor = rColor ? rColor.replace(/[\d.]+\)$/, m => `${(parseFloat(m)*0.35).toFixed(2)})`) : '';
+    const modalId = `inv-modal-${slot}`;
 
-  function itemCard(s) {
-    const item = inv[s.key];
-    const cond = item ? getItemCondition(item, s.key) : 0;
-    const rarity = item ? RARITY_COLORS[item.rarity] : null;
-    const condColor = cond >= 75 ? 'var(--growing)' : cond >= 50 ? 'var(--brass)' : cond >= 25 ? '#FF9500' : 'var(--excess)';
-    const condLabel = cond >= 75 ? 'Pristine' : cond >= 50 ? 'Worn' : cond >= 25 ? 'Deteriorating' : 'Critical';
-    const chain = getChainForSlot(s.key, item);
-    const currentTier = item?.tier || 0;
-
-    // Build progression trail
-    const progressionHtml = chain ? `
-      <div style="margin-top:10px;padding-top:10px;border-top:1px solid rgba(61,165,255,0.08);">
-        <div style="font-family:var(--font-mono);font-size:8px;color:var(--text-faint);letter-spacing:0.1em;margin-bottom:8px;">PROGRESSION</div>
-        <div style="display:flex;flex-direction:column;gap:4px;">
-          ${chain.map(step => {
-            const unlocked = step.tier <= currentTier;
-            const isCurrent = step.tier === currentTier;
-            const isNext = step.tier === currentTier + 1;
-            return `<div style="display:flex;align-items:center;gap:8px;opacity:${unlocked ? '1' : isNext ? '0.5' : '0.25'};">
-              <div style="
-                width:18px;height:18px;border-radius:50%;flex-shrink:0;
-                background:${unlocked ? step.color : 'rgba(61,165,255,0.05)'};
-                border:1px solid ${unlocked ? step.color : 'rgba(61,165,255,0.15)'};
-                display:flex;align-items:center;justify-content:center;
-                font-size:9px;
-                ${isCurrent ? `box-shadow:0 0 8px ${step.color};` : ''}
-              ">${unlocked ? '✓' : isNext ? '○' : '·'}</div>
-              <div style="flex:1;min-width:0;">
-                <span style="font-size:11px;color:${unlocked ? step.color : 'var(--text-faint)'};">
-                  ${step.name}
-                </span>
-                ${isCurrent ? `<span style="font-family:var(--font-mono);font-size:8px;color:${step.color};margin-left:6px;">← current</span>` : ''}
-                ${isNext ? `<span style="font-family:var(--font-mono);font-size:8px;color:var(--text-faint);margin-left:6px;">next</span>` : ''}
-              </div>
-              <span style="font-family:var(--font-mono);font-size:8px;color:${unlocked ? step.color : 'var(--text-faint)'};">${step.rarity}</span>
-            </div>`;
-          }).join('')}
+    if (!item) return `
+      <div style="display:flex;flex-direction:column;align-items:center;gap:5px;">
+        <div style="width:58px;height:74px;border:1px dashed rgba(61,165,255,0.1);border-radius:10px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;background:rgba(0,0,0,0.25);">
+          <div style="color:rgba(61,165,255,0.12);">${icon}</div>
+          <div style="font-family:var(--font-mono);font-size:6px;color:rgba(61,165,255,0.1);letter-spacing:0.1em;">EMPTY</div>
         </div>
-      </div>` : '';
+        <div style="font-family:var(--font-mono);font-size:7px;color:rgba(61,165,255,0.18);letter-spacing:0.05em;">${SLOT_LABELS[slot].toUpperCase()}</div>
+      </div>`;
 
-    return `<div data-inv-slot="${s.key}" style="
-      background:linear-gradient(145deg,rgba(17,27,46,0.98),rgba(9,14,26,0.99));
-      border:1px solid ${item ? rarity+'44' : 'rgba(61,165,255,0.08)'};
-      border-radius:8px;padding:12px;margin-bottom:8px;
-      box-shadow:${item ? `0 0 12px ${rarity}22` : 'none'};
-    ">
-      <div style="display:flex;align-items:center;gap:10px;">
-        <div style="font-size:24px;flex-shrink:0;">${s.emoji}</div>
-        <div style="flex:1;min-width:0;">
-          <div style="font-size:9px;font-family:var(--font-mono);color:var(--text-faint);letter-spacing:0.08em;">${s.label.toUpperCase()}</div>
-          ${item
-            ? `<div style="font-size:14px;font-weight:700;color:${rarity};margin:2px 0;">${item.name}</div>
-               <div style="font-size:9px;font-family:var(--font-mono);color:${rarity};opacity:0.7;">${item.rarity} · Tier ${item.tier}</div>`
-            : `<div style="font-size:12px;color:var(--text-faint);">Empty</div>
-               <div style="font-size:9px;color:var(--text-faint);margin-top:1px;">${s.hint}</div>`
-          }
+    const statLines = item.statBonus
+      ? Object.entries(item.statBonus).slice(0,2).map(([s,v])=>`<span style="font-size:6.5px;color:${rColor};font-family:var(--font-mono);">+${v} ${s}</span>`).join('<br>')
+      : '';
+
+    return `
+      <div style="display:flex;flex-direction:column;align-items:center;gap:5px;cursor:pointer;" onclick="document.getElementById('${modalId}').style.display='flex'">
+        <div style="width:58px;height:74px;border:1px solid ${rColor};border-radius:10px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;background:linear-gradient(160deg,rgba(20,20,30,0.9),rgba(0,0,0,0.95));box-shadow:0 0 12px ${glowColor},inset 0 0 16px ${glowColor};position:relative;overflow:hidden;">
+          <div style="position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,${rColor},transparent);opacity:0.7;"></div>
+          <div style="color:${rColor};opacity:0.95;">${icon}</div>
+          <div style="font-family:var(--font-mono);font-size:7px;color:${rColor};letter-spacing:0.05em;opacity:0.8;">T${item.tier}</div>
+          ${statLines ? `<div style="text-align:center;line-height:1.5;padding:0 2px;">${statLines}</div>` : ''}
+          <div style="position:absolute;bottom:0;left:0;right:0;height:1px;background:${rColor};opacity:0.3;"></div>
         </div>
-        ${item ? `<div style="text-align:right;flex-shrink:0;">
-          <div style="font-size:12px;color:${condColor};font-family:var(--font-mono);">${cond}%</div>
-          <div style="font-size:9px;color:${condColor};">${condLabel}</div>
-          <div style="width:40px;height:2px;background:rgba(61,165,255,0.1);border-radius:2px;margin-top:3px;overflow:hidden;">
-            <div style="width:${cond}%;height:100%;background:${condColor};border-radius:2px;${cond<25?'animation:timerPulse 1.5s infinite;':''}"></div>
-          </div>
-        </div>` : ''}
+        <div style="font-family:var(--font-mono);font-size:7px;color:${rColor};letter-spacing:0.04em;opacity:0.7;">${SLOT_LABELS[slot].toUpperCase()}</div>
+        <div style="font-size:8px;color:${rColor};text-align:center;max-width:62px;line-height:1.3;font-weight:600;">${escapeHtml(item.name)}</div>
       </div>
-      ${item ? `
-        <div style="margin-top:8px;font-size:10px;color:var(--text-dim);font-style:italic;">"${item.desc}"</div>
-        <div style="margin-top:6px;display:flex;justify-content:space-between;font-family:var(--font-mono);font-size:9px;color:var(--text-faint);">
-          <span>Boss bonus: ×${item.dmgMult}</span>
-          ${item.earnedFromWorkouts ? '<span style="color:var(--growing);">◈ Auto-granted</span>' : ''}
+
+      <div id="${modalId}" style="display:none;position:fixed;inset:0;z-index:9999;align-items:center;justify-content:center;background:rgba(0,0,0,0.75);backdrop-filter:blur(6px);" onclick="if(event.target===this)this.style.display='none'">
+        <div style="background:var(--card);border:1px solid ${rColor};border-radius:16px;padding:24px;max-width:320px;width:90vw;box-shadow:0 0 60px ${glowColor};position:relative;overflow:hidden;">
+          <div style="position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,transparent,${rColor},transparent);"></div>
+          <div style="display:flex;align-items:center;gap:14px;margin-bottom:16px;">
+            <div style="width:52px;height:52px;border:1px solid ${rColor};border-radius:10px;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.5);box-shadow:0 0 16px ${glowColor};color:${rColor};flex-shrink:0;">${icon}</div>
+            <div>
+              <div style="font-family:var(--font-mono);font-size:9px;color:${rColor};letter-spacing:0.1em;margin-bottom:4px;">${(item.rarity||'').toUpperCase()} · TIER ${item.tier}</div>
+              <div style="font-size:17px;font-weight:800;color:${rColor};line-height:1.2;">${escapeHtml(item.name)}</div>
+            </div>
+          </div>
+          <div style="font-size:12px;color:var(--text-dim);line-height:1.7;margin-bottom:14px;font-style:italic;padding:10px;background:rgba(0,0,0,0.2);border-radius:8px;">"${escapeHtml(item.desc)}"</div>
+          ${item.statBonus ? `
+          <div style="background:rgba(0,0,0,0.25);border-radius:8px;padding:10px;margin-bottom:12px;">
+            <div style="font-family:var(--font-mono);font-size:8px;color:rgba(61,165,255,0.35);letter-spacing:0.1em;margin-bottom:8px;">STAT BONUSES</div>
+            <div style="display:flex;flex-wrap:wrap;gap:6px;">
+              ${Object.entries(item.statBonus).map(([s,v])=>`
+                <div style="background:rgba(61,165,255,0.06);border:1px solid ${rColor.replace(/[\d.]+\)$/, '0.2)')};border-radius:6px;padding:5px 8px;text-align:center;min-width:48px;">
+                  <div style="font-size:15px;font-weight:800;color:${rColor};line-height:1;">+${v}</div>
+                  <div style="font-family:var(--font-mono);font-size:7px;color:var(--text-faint);margin-top:2px;">${s.toUpperCase()}</div>
+                </div>`).join('')}
+            </div>
+          </div>` : ''}
+          <div style="display:flex;justify-content:space-between;align-items:center;font-size:10px;color:var(--text-faint);margin-bottom:14px;padding:6px 0;border-top:1px solid rgba(61,165,255,0.08);">
+            <span>×${item.dmgMult?.toFixed(2)||'1.00'} dungeon damage mult</span>
+            ${item.earnedAt ? `<span style="color:var(--growing);">✓ Trial earned</span>` : `<span style="color:rgba(61,165,255,0.3);">Inferred from logs</span>`}
+          </div>
+          <button class="btn btn-sm" style="width:100%;" onclick="document.getElementById('${modalId}').style.display='none'">Close</button>
         </div>
-        ${cond < 50 ? `<div style="margin-top:6px;font-size:10px;color:var(--excess);">⚠ Log a ${item.stat} session to polish this item</div>` : ''}
-      ` : chain ? `
-        <div style="margin-top:8px;font-size:9px;color:var(--text-faint);">Complete a trial to earn your first item in this slot.</div>
-      ` : ''}
-      ${progressionHtml}
+      </div>`;
+  }).join('');
+
+
+  // Build dungeon chain sections
+  const chainHtml = Object.entries(bySlot).map(([slot, chains]) => {
+    const slotLabel = SLOT_LABELS[slot] || slot;
+    const storedItem = stored[slot];
+
+    const chainsHtml = chains.map(chain => {
+      // Find highest cleared tier for this chain
+      let highestCleared = 0;
+      chain.dungeons.forEach((dungeon, i) => {
+        let allPrev = true;
+        for (let j = 0; j < i; j++) if (!chain.dungeons[j].boss(d)) { allPrev = false; break; }
+        if (allPrev && dungeon.boss(d)) highestCleared = dungeon.tier;
+      });
+
+      const nextTier = highestCleared + 1;
+      const nextDungeon = nextTier <= 5 ? chain.dungeons[nextTier - 1] : null;
+
+      const tiersHtml = chain.dungeons.map((dungeon, i) => {
+        const tier = dungeon.tier;
+        const cleared = tier <= highestCleared;
+        const isNext = tier === nextTier;
+        const itemKey = `${chain.key}_${tier}`;
+        const item = ITEM_DEFINITIONS[itemKey];
+        const rColor = item ? (RARITY_GLOW_COLORS[item.rarity] || 'rgba(61,165,255,0.5)') : 'rgba(61,165,255,0.3)';
+        const isActiveDungeon = activeDungeon?.chainKey === chain.key && activeDungeon?.tier === tier;
+        const canEnter = isNext && !activeDungeon; // can only enter if no active dungeon
+
+        return `<div style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;background:${cleared?`rgba(${item?.rarity==='Legendary'?'255,215,0':'61,165,255'},0.06)`:isActiveDungeon?'rgba(139,107,255,0.08)':'rgba(0,0,0,0.2)'};border:1px solid ${cleared?rColor:isActiveDungeon?'rgba(139,107,255,0.5)':'rgba(61,165,255,0.08)'};margin-bottom:4px;${isNext&&!cleared?'border-style:dashed;':''}">
+          <div style="font-family:var(--font-mono);font-size:10px;color:${cleared?rColor:isActiveDungeon?'var(--violet)':'rgba(61,165,255,0.2)'};min-width:16px;">T${tier}</div>
+          <div style="flex:1;">
+            <div style="font-size:12px;font-weight:600;color:${cleared?rColor:isActiveDungeon?'var(--violet)':'var(--text-faint)'};">${cleared?'✓ ':isActiveDungeon?'⚔ ACTIVE — ':isNext?'⚔ ':''} ${escapeHtml(item?.name||dungeon.name)}</div>
+            ${isNext&&!cleared?`<div style="font-size:10px;color:var(--text-dim);margin-top:2px;line-height:1.5;">${escapeHtml(dungeon.bossDesc)}</div>`:''}
+            ${isActiveDungeon?`<div style="font-size:10px;color:var(--violet);margin-top:2px;">${Math.round(activeDungeon.hp).toLocaleString()} HP remaining · ${Math.round((activeDungeon.hp/activeDungeon.maxHp)*100)}%</div>`:''}
+          </div>
+          ${canEnter?`<button class="btn btn-sm" style="font-size:10px;padding:4px 10px;white-space:nowrap;" onclick="startDungeon('${chain.key}',${tier})">Enter</button>`:''}
+          ${isActiveDungeon?`<div style="font-size:10px;color:var(--violet);">Active</div>`:''}
+          ${!isNext&&!cleared&&!isActiveDungeon?`<div style="font-size:10px;color:rgba(61,165,255,0.2);">${item?.rarity||''}</div>`:''}
+          ${cleared?`<div style="font-size:10px;color:${rColor};">${item?.rarity||''}</div>`:''}
+        </div>`;
+      }).join('');
+
+      const isFullyCleared = highestCleared === 5;
+      const storedOverride = storedItem && storedItem.name;
+      const chainColor = chain.color || 'var(--brass)';
+
+      return `<div style="background:var(--card);border:1px solid ${highestCleared>0?chainColor:'rgba(61,165,255,0.08)'};border-radius:12px;padding:14px;margin-bottom:12px;">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
+          <div style="font-size:20px;">${chain.icon}</div>
+          <div style="flex:1;">
+            <div style="font-family:var(--font-display);font-size:14px;letter-spacing:0.04em;color:${highestCleared>0?chainColor:'var(--text-faint)'};">${chain.label}</div>
+            <div style="font-size:11px;color:var(--text-faint);margin-top:2px;">${chain.desc}</div>
+          </div>
+          <div style="font-family:var(--font-mono);font-size:11px;color:${highestCleared>0?chainColor:'rgba(61,165,255,0.2)'};">
+            ${isFullyCleared?'★ COMPLETE':highestCleared>0?`T${highestCleared}/5`:'Locked'}
+          </div>
+        </div>
+        ${tiersHtml}
+        ${storedOverride?`<div style="font-size:10px;color:var(--brass);margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,215,0,0.1);">⭐ Trial item: ${escapeHtml(storedItem.name)}</div>`:''}
+      </div>`;
+    }).join('');
+
+    return `<div style="margin-bottom:24px;">
+      <div style="font-family:var(--font-mono);font-size:10px;color:rgba(61,165,255,0.4);letter-spacing:0.15em;margin-bottom:10px;">── ${slotLabel.toUpperCase()} ──</div>
+      ${chainsHtml}
     </div>`;
-  }
+  }).join('');
 
-  // Decay warnings
-  const decayWarnings = SLOTS.map(s => {
-    const item = inv[s.key];
-    if (!item) return null;
-    const cond = getItemCondition(item, s.key);
-    if (cond < 50) return { ...s, item, condition: cond };
-    return null;
-  }).filter(Boolean);
-
-  let currentView = 'front';
+  // Active dungeon panel
+  const activeDungeon = profile.activeDungeon ? applyDungeonRegen(profile.activeDungeon) : null;
+  const activeDungeonHtml = activeDungeon ? (() => {
+    const chain = DUNGEON_CHAINS[activeDungeon.chainKey] || {};
+    const hpPct = Math.max(0, (activeDungeon.hp / activeDungeon.maxHp) * 100);
+    const hpColor = hpPct > 60 ? 'var(--growing)' : hpPct > 30 ? 'var(--brass)' : 'var(--excess)';
+    const daysLeft = 7 - daysBetween(activeDungeon.startDate, todayStr());
+    const regenRate = DUNGEON_REGEN_RATE[activeDungeon.tier] || 0;
+    return `<div style="background:rgba(139,107,255,0.06);border:1px solid rgba(139,107,255,0.3);border-radius:12px;padding:16px;margin-bottom:20px;">
+      <div style="font-family:var(--font-mono);font-size:9px;color:var(--violet);letter-spacing:0.15em;margin-bottom:10px;">⚔ ACTIVE DUNGEON</div>
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
+        <div style="font-size:24px;">${chain.icon||'⚔️'}</div>
+        <div style="flex:1;">
+          <div style="font-size:15px;font-weight:700;color:var(--violet);">${escapeHtml(activeDungeon.bossName||'Unknown Boss')}</div>
+          <div style="font-size:11px;color:var(--text-dim);">${escapeHtml(chain.label||'')} · Tier ${activeDungeon.tier} · ${daysLeft}d remaining</div>
+        </div>
+        <div style="text-align:right;">
+          <div style="font-family:var(--font-mono);font-size:13px;color:${hpColor};">${Math.round(activeDungeon.hp).toLocaleString()}</div>
+          <div style="font-size:9px;color:var(--text-faint);">HP left</div>
+        </div>
+      </div>
+      <div style="background:rgba(0,0,0,0.3);border-radius:4px;height:8px;overflow:hidden;margin-bottom:8px;">
+        <div style="height:100%;width:${hpPct.toFixed(1)}%;background:${hpColor};border-radius:4px;transition:width 0.6s;box-shadow:0 0 8px ${hpColor};"></div>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text-faint);margin-bottom:10px;">
+        <span>${Math.round(activeDungeon.totalDamage||0).toLocaleString()} damage dealt</span>
+        <span>${regenRate > 0 ? `Regen: ${(regenRate*100).toFixed(0)}%/idle day` : 'No regen'}</span>
+      </div>
+      <div style="font-size:11px;color:var(--text-dim);padding:8px;background:rgba(0,0,0,0.2);border-radius:6px;">
+        Train exercises relevant to <strong style="color:var(--violet);">${escapeHtml(chain.label||'')}</strong> to deal damage. Your item bonus applies automatically.
+      </div>
+    </div>`;
+  })() : '';
 
   el.innerHTML = `
-    <div style="padding-bottom:8px;">
-      <p style="font-family:var(--font-mono);font-size:9px;color:rgba(61,165,255,0.5);letter-spacing:0.15em;margin-bottom:4px;">◈ HUNTER INVENTORY ◈</p>
-      <h2 style="font-family:var(--font-head);font-size:22px;font-weight:800;margin:0 0 4px;">Equipment</h2>
-      <p style="font-size:12px;color:var(--text-faint);margin:0 0 12px;">Items earned through trials and achievements. Maintained through consistent training.</p>
+    <div style="padding-bottom:20px;">
+      <div style="font-family:var(--font-display);font-size:22px;letter-spacing:0.04em;margin:0 0 4px;">INVENTORY</div>
+      <p style="font-size:13px;color:var(--text-dim);margin:0 0 20px;">Items are earned by proving ability. The System has seen your logs.</p>
 
-      ${decayWarnings.length ? `
-        <div style="background:rgba(255,61,90,0.06);border:1px solid rgba(255,61,90,0.2);border-radius:8px;padding:12px;margin-bottom:12px;">
-          <div style="font-family:var(--font-mono);font-size:9px;color:var(--excess);letter-spacing:0.1em;margin-bottom:8px;">◈ SYSTEM WARNING — EQUIPMENT DETERIORATING ◈</div>
-          ${decayWarnings.map(w => `
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
-              <span style="font-size:12px;">${w.emoji} ${w.item.name}</span>
-              <span style="font-family:var(--font-mono);font-size:11px;color:${w.condition<25?'var(--excess)':'#FF9500'};">${w.condition}%</span>
-            </div>
-            <div style="height:2px;background:rgba(255,61,90,0.1);border-radius:2px;margin-bottom:6px;">
-              <div style="width:${w.condition}%;height:100%;background:${w.condition<25?'var(--excess)':'#FF9500'};border-radius:2px;"></div>
-            </div>
-          `).join('')}
-          <div style="font-size:10px;color:var(--text-dim);">Log sessions targeting these stats to restore condition.</div>
+      ${activeDungeonHtml}
+
+      <!-- Equipped loadout -->
+      <div style="background:var(--card);border:1px solid rgba(61,165,255,0.12);border-radius:12px;padding:16px;margin-bottom:24px;">
+        <div style="font-family:var(--font-mono);font-size:10px;color:rgba(61,165,255,0.4);letter-spacing:0.15em;margin-bottom:14px;">── CURRENT LOADOUT ──</div>
+        <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:8px;text-align:center;">
+          ${equippedHtml}
         </div>
-      ` : ''}
-
-      <!-- Body view toggle -->
-      <div style="display:flex;gap:8px;margin-bottom:12px;">
-        <button class="weekday-chip on" id="inv-view-front" style="flex:1;font-size:12px;">Front</button>
-        <button class="weekday-chip" id="inv-view-back" style="flex:1;font-size:12px;">Back</button>
       </div>
 
-      <!-- Anatomy SVG display -->
-      <div id="inv-body-wrap" style="width:100%;max-width:420px;margin:0 auto 16px;position:relative;">
-        ${buildInventorySVG('front')}
-      </div>
-
-      <!-- Item cards -->
-      <div id="inv-item-cards">
-        ${SLOTS.map(s => itemCard(s)).join('')}
-      </div>
+      <!-- Dungeon chains -->
+      <div style="font-family:var(--font-mono);font-size:10px;color:rgba(61,165,255,0.4);letter-spacing:0.15em;margin-bottom:16px;">── DUNGEON CHAINS ──</div>
+      <p style="font-size:12px;color:var(--text-dim);margin:0 0 16px;line-height:1.6;">Each chain is a series of dungeons. Clear them to earn items. ⚔ marks your next boss fight. Tap <em>Enter</em> to make it active.</p>
+      ${chainHtml}
     </div>`;
-
-  // Wire view toggle
-  el.querySelector('#inv-view-front').addEventListener('click', () => {
-    el.querySelector('#inv-view-front').classList.add('on');
-    el.querySelector('#inv-view-back').classList.remove('on');
-    el.querySelector('#inv-body-wrap').innerHTML = buildInventorySVG('front');
-  });
-  el.querySelector('#inv-view-back').addEventListener('click', () => {
-    el.querySelector('#inv-view-back').classList.add('on');
-    el.querySelector('#inv-view-front').classList.remove('on');
-    el.querySelector('#inv-body-wrap').innerHTML = buildInventorySVG('back');
-  });
 }
 
 function renderFeats() {
@@ -14469,6 +14580,7 @@ window.applyCalibrationObservation = applyCalibrationObservation;
 window.disputeCalibrationObservation = disputeCalibrationObservation;
 window.startVoluntaryTrial = startVoluntaryTrial;
 window.completeTrial = completeTrial;
+window.startDungeon = startDungeon;
 
 // Debug helper — remove before production
 window._debugInventory = () => {
