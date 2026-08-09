@@ -2373,6 +2373,8 @@ addExerciseRow();
 
 document.getElementById('save-workout-btn')?.addEventListener('click', async () => {
   if (!currentUser) return;
+  const btn = document.getElementById('save-workout-btn');
+  btn.disabled = true; btn.textContent = 'Saving…';
   const date = document.getElementById('workout-date').value || todayStr();
   const time = document.getElementById('workout-time').value || nowTimeStr();
   const exercises = [];
@@ -2386,12 +2388,14 @@ document.getElementById('save-workout-btn')?.addEventListener('click', async () 
         weight: Number(sr.querySelector('.set-weight').value) || 0,
         rir: selectedRir ? Number(selectedRir.dataset.rir) : null,
       };
-    }).filter(s => s.reps > 0);    if (sets.length) exercises.push({ name, sets });
+    }).filter(s => s.reps > 0);
+    if (sets.length) exercises.push({ name, sets });
   });
-  if (!exercises.length) { showToast('Fill in reps for at least one set before completing.', 'error'); btn.disabled = false; btn.textContent = 'Complete quest'; return; }
-
-  const btn = document.getElementById('save-workout-btn');
-  btn.disabled = true; btn.textContent = 'Saving…';
+  if (!exercises.length) {
+    showToast('Fill in reps for at least one set before completing.', 'error');
+    btn.disabled = false; btn.textContent = 'Complete quest';
+    return;
+  }
   try {
     await addDoc(collection(db, 'workouts'), { uid: currentUser.uid, displayName: profile.displayName, date, time, exercises, programDayIndex: activeDayIndex ?? null, createdAt: serverTimestamp() });
     await setDoc(doc(db, 'users', currentUser.uid), { lastWorkoutDate: date }, { merge: true });
