@@ -1655,6 +1655,11 @@
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { BASE_EXERCISES } from "./exercises.js";
+import { HUNTER_CLASSES } from "./hunter-classes.js";
+import { PROGRESSION_CHAINS } from "./progression-chains.js";
+import { getArchetypeChains } from "./archetype-chains.js";
+import { getAutoAchievements } from "./auto-achievements.js";
 import {
   getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword,
   onAuthStateChanged, signOut, updateProfile
@@ -1690,235 +1695,6 @@ try {
 /* =========================================================================
    EXERCISE DATABASE
    ========================================================================= */
-const BASE_EXERCISES = {
-  "Bench Press": { muscles: { "Middle Chest": 1, "Triceps": 0.6, "Front Shoulders": 0.3 }, equipment: "Barbell" },
-  "Incline Bench Press": { muscles: { "Upper Chest": 1, "Front Shoulders": 0.6, "Triceps": 0.3 }, equipment: "Barbell" },
-  "Incline Dumbbell Press": { muscles: { "Upper Chest": 1, "Front Shoulders": 0.6, "Triceps": 0.3 }, equipment: "Dumbbell" },
-  "Dumbbell Fly": { muscles: { "Middle Chest": 1, "Front Shoulders": 0.2 }, equipment: "Dumbbell" },
-  "Push Up": { bwPercent: 0.67, muscles: { "Middle Chest": 1, "Triceps": 0.6, "Front Shoulders": 0.3 }, equipment: "Bodyweight" },
-  "Dips": { bwPercent: 0.85, muscles: { "Lower Chest": 1, "Triceps": 0.6, "Front Shoulders": 0.3 }, equipment: "Bodyweight" },
-  "Decline Bench Press": { muscles: { "Lower Chest": 1, "Triceps": 0.6, "Front Shoulders": 0.2 }, equipment: "Barbell" },
-  "Decline Dumbbell Press": { muscles: { "Lower Chest": 1, "Triceps": 0.6, "Front Shoulders": 0.2 }, equipment: "Dumbbell" },
-  "Incline Dumbbell Fly": { muscles: { "Upper Chest": 1, "Front Shoulders": 0.3 }, equipment: "Dumbbell" },
-  "Decline Dumbbell Fly": { muscles: { "Lower Chest": 1, "Front Shoulders": 0.2 }, equipment: "Dumbbell" },
-  "Cable Crossover": { muscles: { "Middle Chest": 1, "Front Shoulders": 0.2 }, equipment: "Cable" },
-  "Cable Fly Low-to-High": { muscles: { "Upper Chest": 1, "Front Shoulders": 0.3 }, equipment: "Cable" },
-  "Cable Fly High-to-Low": { muscles: { "Lower Chest": 1, "Front Shoulders": 0.2 }, equipment: "Cable" },
-  "Pec Deck Machine": { muscles: { "Middle Chest": 1 }, equipment: "Machine" },
-  "Svend Press": { muscles: { "Middle Chest": 1, "Front Shoulders": 0.2 }, equipment: "Dumbbell" },
-  "Dumbbell Pullover": { muscles: { "Lats": 1, "Middle Chest": 0.3, "Triceps": 0.2 }, equipment: "Dumbbell" },
-  "Incline Push Up": { bwPercent: 0.55, muscles: { "Lower Chest": 1, "Triceps": 0.3, "Front Shoulders": 0.2 }, equipment: "Bodyweight" },
-  "Decline Push Up": { bwPercent: 0.75, muscles: { "Upper Chest": 1, "Front Shoulders": 0.6, "Triceps": 0.3 }, equipment: "Bodyweight" },
-  "Diamond Push Up": { bwPercent: 0.75, muscles: { "Triceps": 1, "Middle Chest": 0.6, "Front Shoulders": 0.3 }, equipment: "Bodyweight" },
-  "Wide Push Up": { bwPercent: 0.67, muscles: { "Middle Chest": 1, "Front Shoulders": 0.3 }, equipment: "Bodyweight" },
-  "Archer Push Up": { bwPercent: 0.67, muscles: { "Middle Chest": 1, "Triceps": 0.6, "Front Shoulders": 0.3 }, equipment: "Bodyweight" },
-  "Ring Dips": { bwPercent: 0.85, muscles: { "Lower Chest": 1, "Triceps": 0.6, "Front Shoulders": 0.3 }, equipment: "Bodyweight" },
-  "Overhead Press": { muscles: { "Front Shoulders": 1, "Lateral Shoulders": 0.6, "Triceps": 0.6, "Upper Abs": 0.2 }, equipment: "Barbell" },
-  "Lateral Raise": { muscles: { "Lateral Shoulders": 1, "Traps": 0.2 }, equipment: "Dumbbell" },
-  "Front Raise": { muscles: { "Front Shoulders": 1, "Upper Chest": 0.2 }, equipment: "Dumbbell" },
-  "Rear Delt Fly": { muscles: { "Rear Shoulders": 1, "Upper Back": 0.6, "Traps": 0.2 }, equipment: "Dumbbell" },
-  "Arnold Press": { muscles: { "Front Shoulders": 1, "Lateral Shoulders": 0.6, "Triceps": 0.3 }, equipment: "Dumbbell" },
-  "Dumbbell Shoulder Press": { muscles: { "Front Shoulders": 1, "Lateral Shoulders": 0.6, "Triceps": 0.6 }, equipment: "Dumbbell" },
-  "Machine Shoulder Press": { muscles: { "Front Shoulders": 1, "Lateral Shoulders": 0.3, "Triceps": 0.6 }, equipment: "Machine" },
-  "Push Press": { muscles: { "Front Shoulders": 1, "Lateral Shoulders": 0.6, "Triceps": 0.6, "Quads": 0.3, "Hip Flexors": 0.2 }, equipment: "Barbell" },
-  "Cable Lateral Raise": { muscles: { "Lateral Shoulders": 1, "Traps": 0.2 }, equipment: "Cable" },
-  "Plate Front Raise": { muscles: { "Front Shoulders": 1, "Upper Chest": 0.2, "Lateral Shoulders": 0.2 }, equipment: "Barbell" },
-  "Upright Row": { muscles: { "Lateral Shoulders": 1, "Traps": 0.6, "Biceps": 0.2 }, equipment: "Barbell" },
-  "Cuban Press": { muscles: { "Lateral Shoulders": 0.7, "Rear Shoulders": 0.7, "Front Shoulders": 0.4, "Traps": 0.2 }, equipment: "Dumbbell" },
-  "Cable Rear Delt Fly": { muscles: { "Rear Shoulders": 1, "Upper Back": 0.3 }, equipment: "Cable" },
-  "Face Pull": { muscles: { "Rear Shoulders": 1, "Upper Back": 0.6, "Traps": 0.3 }, equipment: "Cable" },
-  "Reverse Pec Deck": { muscles: { "Rear Shoulders": 1, "Upper Back": 0.3 }, equipment: "Machine" },
-  "Pike Push Up": { bwPercent: 0.7, muscles: { "Front Shoulders": 1, "Lateral Shoulders": 0.3, "Triceps": 0.6 }, equipment: "Bodyweight" },
-  "Handstand Push Up": { bwPercent: 1.0, muscles: { "Front Shoulders": 1, "Lateral Shoulders": 0.6, "Triceps": 0.6 }, equipment: "Bodyweight" },
-  "Wall Walk": { muscles: { "Front Shoulders": 1, "Upper Abs": 0.6, "Lats": 0.2 }, equipment: "Bodyweight" },
-  "Deadlift": { muscles: { "Lower Back": 1, "Glutes": 1, "Hamstrings": 0.6, "Lats": 0.6, "Traps": 0.6, "Quads": 0.3, "Forearms": 0.3 }, equipment: "Barbell" },
-  "Pull Up": { bwPercent: 1.0, muscles: { "Lats": 1, "Upper Back": 0.6, "Biceps": 0.6, "Forearms": 0.3 }, equipment: "Bodyweight" },
-  "Lat Pulldown": { muscles: { "Lats": 1, "Upper Back": 0.3, "Biceps": 0.6 }, equipment: "Cable" },
-  "Barbell Row": { muscles: { "Upper Back": 1, "Lats": 0.6, "Biceps": 0.6, "Traps": 0.3, "Lower Back": 0.2 }, equipment: "Barbell" },
-  "Seated Cable Row": { muscles: { "Upper Back": 1, "Lats": 0.6, "Biceps": 0.6 }, equipment: "Cable" },
-  "T-Bar Row": { muscles: { "Upper Back": 1, "Lats": 0.6, "Biceps": 0.6, "Lower Back": 0.2 }, equipment: "Machine" },
-  "One-Arm Dumbbell Row": { muscles: { "Lats": 1, "Upper Back": 0.6, "Biceps": 0.6 }, equipment: "Dumbbell" },
-  "Sumo Deadlift": { muscles: { "Glutes": 1, "Quads": 0.6, "Hamstrings": 0.6, "Lower Back": 0.4, "Traps": 0.3 }, equipment: "Barbell" },
-  "Stiff-Leg Deadlift": { muscles: { "Hamstrings": 1, "Lower Back": 0.6, "Glutes": 0.3 }, equipment: "Barbell" },
-  "Rack Pull": { muscles: { "Traps": 1, "Upper Back": 0.6, "Lower Back": 0.6, "Forearms": 0.3 }, equipment: "Barbell" },
-  "Chin Up": { bwPercent: 1.0, muscles: { "Lats": 1, "Biceps": 1, "Upper Back": 0.3, "Forearms": 0.2 }, equipment: "Bodyweight" },
-  "Wide Grip Pull Up": { bwPercent: 1.0, muscles: { "Lats": 1, "Upper Back": 0.6, "Biceps": 0.3 }, equipment: "Bodyweight" },
-  "Neutral Grip Pull Up": { bwPercent: 1.0, muscles: { "Lats": 1, "Biceps": 0.6, "Upper Back": 0.3, "Forearms": 0.2 }, equipment: "Bodyweight" },
-  "Commando Pull Up": { bwPercent: 1.0, muscles: { "Lats": 1, "Biceps": 0.6, "Upper Back": 0.3, "Obliques": 0.2 }, equipment: "Bodyweight" },
-  "Muscle Up": { bwPercent: 1.0, muscles: { "Lats": 1, "Triceps": 1, "Upper Back": 0.6, "Biceps": 0.6, "Middle Chest": 0.3 }, equipment: "Bodyweight" },
-  "Inverted Row": { bwPercent: 0.7, muscles: { "Upper Back": 1, "Lats": 0.6, "Biceps": 0.6, "Rear Shoulders": 0.3 }, equipment: "Bodyweight" },
-  "Close Grip Lat Pulldown": { muscles: { "Lats": 1, "Biceps": 0.6, "Upper Back": 0.3 }, equipment: "Cable" },
-  "Straight Arm Pulldown": { muscles: { "Lats": 1, "Triceps": 0.3 }, equipment: "Cable" },
-  "Pendlay Row": { muscles: { "Upper Back": 1, "Lats": 0.6, "Biceps": 0.6, "Lower Back": 0.2 }, equipment: "Barbell" },
-  "Chest Supported Row": { muscles: { "Upper Back": 1, "Lats": 0.3, "Biceps": 0.6, "Rear Shoulders": 0.3 }, equipment: "Machine" },
-  "Meadows Row": { muscles: { "Lats": 1, "Upper Back": 0.6, "Biceps": 0.6 }, equipment: "Barbell" },
-  "Good Morning": { muscles: { "Hamstrings": 1, "Lower Back": 1, "Glutes": 0.6 }, equipment: "Barbell" },
-  "Back Extension": { muscles: { "Lower Back": 1, "Glutes": 0.6, "Hamstrings": 0.6 }, equipment: "Bodyweight" },
-  "Superman": { muscles: { "Lower Back": 1, "Glutes": 0.6, "Rear Shoulders": 0.2 }, equipment: "Bodyweight" },
-  "Dumbbell Shrugs": { muscles: { "Traps": 1, "Forearms": 0.2 }, equipment: "Dumbbell" },
-  "Farmers Carry": { timed: true, muscles: { "Traps": 1, "Forearms": 1 }, equipment: "Dumbbell" },
-  "Barbell Curl": { muscles: { "Biceps": 1, "Forearms": 0.3 }, equipment: "Barbell" },
-  "Dumbbell Curl": { muscles: { "Biceps": 1, "Forearms": 0.3 }, equipment: "Dumbbell" },
-  "Alternate Incline Dumbbell Curl": { muscles: { "Biceps": 1, "Forearms": 0.2 }, equipment: "Dumbbell" },
-  "Hammer Curl": { muscles: { "Biceps": 0.6, "Forearms": 1 }, equipment: "Dumbbell" },
-  "Preacher Curl": { muscles: { "Biceps": 1 }, equipment: "Barbell" },
-  "EZ Bar Curl": { muscles: { "Biceps": 1, "Forearms": 0.3 }, equipment: "Barbell" },
-  "Cable Curl": { muscles: { "Biceps": 1, "Forearms": 0.2 }, equipment: "Cable" },
-  "Concentration Curl": { muscles: { "Biceps": 1 }, equipment: "Dumbbell" },
-  "Spider Curl": { muscles: { "Biceps": 1 }, equipment: "Barbell" },
-  "Zottman Curl": { muscles: { "Biceps": 0.6, "Forearms": 1 }, equipment: "Dumbbell" },
-  "Tricep Pushdown": { muscles: { "Triceps": 1 }, equipment: "Cable" },
-  "Skull Crusher": { muscles: { "Triceps": 1 }, equipment: "Barbell" },
-  "Overhead Tricep Extension": { muscles: { "Triceps": 1 }, equipment: "Dumbbell" },
-  "Close Grip Bench Press": { muscles: { "Triceps": 1, "Middle Chest": 0.6, "Front Shoulders": 0.3 }, equipment: "Barbell" },
-  "Tricep Kickback": { muscles: { "Triceps": 1 }, equipment: "Dumbbell" },
-  "JM Press": { muscles: { "Triceps": 1, "Middle Chest": 0.3 }, equipment: "Barbell" },
-  "Bench Dip": { bwPercent: 0.75, muscles: { "Triceps": 1, "Lower Chest": 0.3, "Front Shoulders": 0.3 }, equipment: "Bodyweight" },
-  "Wrist Curl": { muscles: { "Forearms": 1 }, equipment: "Dumbbell" },
-  "Reverse Wrist Curl": { muscles: { "Forearms": 1 }, equipment: "Dumbbell" },
-  "Dead Hang": { timed: true, bwPercent: 1.0, muscles: { "Forearms": 1, "Lats": 0.3 }, equipment: "Bodyweight" },
-  "Scapula Push Up": { muscles: { "Traps": 0.6, "Upper Back": 1, "Rear Shoulders": 0.4 }, equipment: "Bodyweight" },
-  "Scapular Push Up": { muscles: { "Traps": 0.6, "Upper Back": 1, "Rear Shoulders": 0.4 }, equipment: "Bodyweight" },
-  "Scapula Pull Up": { muscles: { "Traps": 1, "Upper Back": 0.6, "Lats": 0.4 }, equipment: "Bodyweight" },
-  "Crunch": { muscles: { "Upper Abs": 1 }, equipment: "Bodyweight" },
-  "Plank": { timed: true, muscles: { "Upper Abs": 0.6, "Lower Abs": 0.6, "Obliques": 0.3, "Front Shoulders": 0.2 }, equipment: "Bodyweight" },
-  "Hanging Leg Raise": { muscles: { "Lower Abs": 1, "Hip Flexors": 0.6, "Forearms": 0.2 }, equipment: "Bodyweight" },
-  "Cable Crunch": { muscles: { "Upper Abs": 1, "Middle Abs": 0.3 }, equipment: "Cable" },
-  "Russian Twist": { muscles: { "Obliques": 1, "Upper Abs": 0.3 }, equipment: "Bodyweight" },
-  "Reverse Crunch": { muscles: { "Lower Abs": 1, "Hip Flexors": 0.3 }, equipment: "Bodyweight" },
-  "Bicycle Crunch": { muscles: { "Obliques": 1, "Upper Abs": 0.6 }, equipment: "Bodyweight" },
-  "Side Plank": { timed: true, muscles: { "Obliques": 1, "Lateral Shoulders": 0.2 }, equipment: "Bodyweight" },
-  "Hanging Knee Raise": { muscles: { "Lower Abs": 1, "Hip Flexors": 0.6, "Forearms": 0.2 }, equipment: "Bodyweight" },
-  "Toes to Bar": { muscles: { "Lower Abs": 1, "Hip Flexors": 0.6, "Forearms": 0.3 }, equipment: "Bodyweight" },
-  "Cable Woodchopper": { muscles: { "Obliques": 1, "Upper Abs": 0.3, "Lats": 0.2 }, equipment: "Cable" },
-  "V-Up": { muscles: { "Upper Abs": 1, "Lower Abs": 1, "Hip Flexors": 0.6 }, equipment: "Bodyweight" },
-  "Mountain Climber": { timed: true, muscles: { "Lower Abs": 1, "Hip Flexors": 0.6, "Front Shoulders": 0.3 }, equipment: "Bodyweight" },
-  "Ab Wheel Rollout": { muscles: { "Upper Abs": 1, "Lower Abs": 0.6, "Lats": 0.3, "Triceps": 0.2 }, equipment: "Bodyweight" },
-  "Dragon Flag": { muscles: { "Lower Abs": 1, "Upper Abs": 0.6, "Hip Flexors": 0.3, "Lats": 0.2 }, equipment: "Bodyweight" },
-  "Sit Up": { muscles: { "Upper Abs": 1, "Hip Flexors": 0.6, "Middle Abs": 0.3 }, equipment: "Bodyweight" },
-  "Decline Sit Up": { muscles: { "Upper Abs": 1, "Hip Flexors": 0.6, "Middle Abs": 0.3 }, equipment: "Bodyweight" },
-  "Flutter Kicks": { timed: true, muscles: { "Lower Abs": 1, "Hip Flexors": 0.6 }, equipment: "Bodyweight" },
-  "L-Sit": { timed: true, muscles: { "Lower Abs": 1, "Hip Flexors": 1, "Triceps": 0.3, "Front Shoulders": 0.2 }, equipment: "Bodyweight" },
-  "Lying Leg Raise": { muscles: { "Lower Abs": 1, "Hip Flexors": 0.6 }, equipment: "Bodyweight" },
-  "Squat": { muscles: { "Quads": 1, "Glutes": 1, "Hamstrings": 0.3, "Lower Back": 0.2, "Hip Flexors": 0.2 }, equipment: "Barbell" },
-  "Front Squat": { muscles: { "Quads": 1, "Glutes": 0.6, "Hip Flexors": 0.2, "Upper Back": 0.2 }, equipment: "Barbell" },
-  "Leg Press": { muscles: { "Quads": 1, "Glutes": 0.6, "Hamstrings": 0.2 }, equipment: "Machine" },
-  "Lunges": { bwPercent: 0.5, muscles: { "Quads": 1, "Glutes": 1, "Hamstrings": 0.3, "Hip Flexors": 0.2 }, equipment: "Dumbbell" },
-  "Leg Extension": { muscles: { "Quads": 1 }, equipment: "Machine" },
-  "Leg Curl": { muscles: { "Hamstrings": 1 }, equipment: "Machine" },
-  "Romanian Deadlift": { muscles: { "Hamstrings": 1, "Glutes": 0.6, "Lower Back": 0.6 }, equipment: "Barbell" },
-  "Hip Thrust": { muscles: { "Glutes": 1, "Hamstrings": 0.6 }, equipment: "Barbell" },
-  "Calf Raise": { muscles: { "Calves": 1 }, equipment: "Machine" },
-  "Hack Squat": { muscles: { "Quads": 1, "Glutes": 0.6, "Hamstrings": 0.2 }, equipment: "Machine" },
-  "Bulgarian Split Squat": { muscles: { "Quads": 1, "Glutes": 1, "Hamstrings": 0.3, "Hip Flexors": 0.2 }, equipment: "Dumbbell" },
-  "Goblet Squat": { muscles: { "Quads": 1, "Glutes": 0.6, "Upper Back": 0.2 }, equipment: "Dumbbell" },
-  "Pistol Squat": { bwPercent: 0.72, muscles: { "Quads": 1, "Glutes": 0.6, "Hip Flexors": 0.3 }, equipment: "Bodyweight" },
-  "Jump Squat": { bwPercent: 0.56, muscles: { "Quads": 1, "Glutes": 1, "Calves": 0.6 }, equipment: "Bodyweight" },
-  "Wall Sit": { timed: true, muscles: { "Quads": 1, "Glutes": 0.3 }, equipment: "Bodyweight" },
-  "Bodyweight Squat": { bwPercent: 0.56, muscles: { "Quads": 1, "Glutes": 0.6 }, equipment: "Bodyweight" },
-  "Walking Lunge": { bwPercent: 0.5, muscles: { "Quads": 1, "Glutes": 1, "Hamstrings": 0.3, "Calves": 0.2 }, equipment: "Dumbbell" },
-  "Reverse Lunge": { bwPercent: 0.5, muscles: { "Quads": 1, "Glutes": 1, "Hip Flexors": 0.2 }, equipment: "Dumbbell" },
-  "Step Up": { bwPercent: 0.8, muscles: { "Quads": 1, "Glutes": 1, "Hamstrings": 0.2, "Hip Flexors": 0.2 }, equipment: "Dumbbell" },
-  "Nordic Curl": { bwPercent: 0.8, muscles: { "Hamstrings": 1, "Lower Back": 0.3, "Glutes": 0.2 }, equipment: "Bodyweight" },
-  "Glute Bridge": { bwPercent: 0.5, muscles: { "Glutes": 1, "Hamstrings": 0.6 }, equipment: "Bodyweight" },
-  "Cable Kickback": { muscles: { "Glutes": 1, "Hamstrings": 0.3 }, equipment: "Cable" },
-  "Seated Calf Raise": { muscles: { "Calves": 1 }, equipment: "Machine" },
-  "Standing Calf Raise": { muscles: { "Calves": 1 }, equipment: "Machine" },
-  "Donkey Calf Raise": { muscles: { "Calves": 1 }, equipment: "Machine" },
-  "Single Leg Calf Raise": { muscles: { "Calves": 1 }, equipment: "Bodyweight" },
-  "Burpee": { muscles: { "Quads": 0.6, "Glutes": 0.6, "Front Shoulders": 0.6, "Triceps": 0.3, "Upper Abs": 0.3 }, equipment: "Bodyweight" },
-  "Bear Crawl": { timed: true, muscles: { "Front Shoulders": 0.6, "Upper Abs": 0.6, "Triceps": 0.3, "Hip Flexors": 0.3 }, equipment: "Bodyweight" },
-  "Box Jump": { muscles: { "Quads": 1, "Glutes": 1, "Calves": 0.6 }, equipment: "Bodyweight" },
-
-  /* ---- Running & cardio ---- */
-  "Running": { timed: true, timedUnit: "mins", muscles: { "Quads": 0.6, "Hamstrings": 0.6, "Glutes": 0.6, "Calves": 1, "Hip Flexors": 0.3 }, equipment: "Bodyweight" },
-  "Easy Run": { timed: true, timedUnit: "mins", muscles: { "Quads": 0.6, "Hamstrings": 0.6, "Glutes": 0.6, "Calves": 1, "Hip Flexors": 0.3 }, equipment: "Bodyweight" },
-  "Tempo Run": { timed: true, timedUnit: "mins", muscles: { "Quads": 0.6, "Hamstrings": 0.6, "Glutes": 0.6, "Calves": 1, "Hip Flexors": 0.3 }, equipment: "Bodyweight" },
-  "Long Run": { timed: true, timedUnit: "mins", muscles: { "Quads": 0.6, "Hamstrings": 0.6, "Glutes": 0.6, "Calves": 1, "Hip Flexors": 0.3 }, equipment: "Bodyweight" },
-  "Race": { timed: true, timedUnit: "mins", muscles: { "Quads": 0.6, "Hamstrings": 0.6, "Glutes": 0.6, "Calves": 1, "Hip Flexors": 0.3 }, equipment: "Bodyweight" },
-  "Sprinting": { muscles: { "Quads": 1, "Hamstrings": 1, "Glutes": 1, "Calves": 0.6, "Hip Flexors": 0.6 }, equipment: "Bodyweight" },
-  "Interval Running": { timed: true, timedUnit: "mins", muscles: { "Quads": 0.6, "Hamstrings": 0.6, "Glutes": 0.6, "Calves": 1, "Hip Flexors": 0.3 }, equipment: "Bodyweight" },
-  "Hill Sprints": { timed: true, timedUnit: "mins", muscles: { "Quads": 1, "Glutes": 1, "Hamstrings": 0.6, "Calves": 0.6, "Hip Flexors": 0.6 }, equipment: "Bodyweight" },
-  "Treadmill Run": { timed: true, timedUnit: "mins", muscles: { "Quads": 0.6, "Hamstrings": 0.6, "Glutes": 0.6, "Calves": 1, "Hip Flexors": 0.3 }, equipment: "Machine" },
-  "Stair Climb": { timed: true, timedUnit: "mins", muscles: { "Quads": 1, "Glutes": 1, "Calves": 0.6, "Hamstrings": 0.3 }, equipment: "Machine" },
-  "Jump Rope": { timed: true, timedUnit: "mins", muscles: { "Calves": 1, "Quads": 0.3, "Front Shoulders": 0.2 }, equipment: "Bodyweight" },
-
-  // ── Rock Climbing ──
-  "Bouldering": { timed: true, timedUnit: "mins", muscles: { "Forearms": 1, "Lats": 0.9, "Upper Back": 0.7, "Biceps": 0.7, "Front Shoulders": 0.5, "Upper Abs": 0.4, "Quads": 0.3 }, equipment: "Bodyweight" },
-  "Sport Climbing": { timed: true, timedUnit: "mins", muscles: { "Forearms": 1, "Lats": 0.9, "Upper Back": 0.6, "Biceps": 0.6, "Quads": 0.5, "Calves": 0.4, "Upper Abs": 0.3 }, equipment: "Bodyweight" },
-  "Top Rope Climbing": { timed: true, timedUnit: "mins", muscles: { "Forearms": 0.9, "Lats": 0.8, "Upper Back": 0.6, "Biceps": 0.5, "Quads": 0.4, "Calves": 0.3 }, equipment: "Bodyweight" },
-  "Traditional Climbing": { timed: true, timedUnit: "mins", muscles: { "Forearms": 1, "Lats": 0.9, "Upper Back": 0.7, "Biceps": 0.6, "Quads": 0.5, "Calves": 0.4, "Upper Abs": 0.3 }, equipment: "Bodyweight" },
-
-  // ── Swimming ──
-  "Freestyle Swimming": { timed: true, timedUnit: "mins", muscles: { "Lats": 1, "Front Shoulders": 0.9, "Triceps": 0.7, "Upper Back": 0.6, "Glutes": 0.4, "Quads": 0.3, "Calves": 0.3 }, equipment: "Bodyweight" },
-  "Breaststroke Swimming": { timed: true, timedUnit: "mins", muscles: { "Front Shoulders": 0.9, "Lats": 0.7, "Quads": 0.7, "Inner Thighs": 0.6, "Triceps": 0.5, "Glutes": 0.4 }, equipment: "Bodyweight" },
-  "Butterfly Swimming": { timed: true, timedUnit: "mins", muscles: { "Lats": 1, "Front Shoulders": 1, "Triceps": 0.8, "Upper Back": 0.7, "Glutes": 0.6, "Lower Back": 0.5, "Upper Abs": 0.5 }, equipment: "Bodyweight" },
-  "Backstroke Swimming": { timed: true, timedUnit: "mins", muscles: { "Lats": 1, "Upper Back": 0.8, "Rear Shoulders": 0.7, "Biceps": 0.6, "Glutes": 0.4, "Quads": 0.3 }, equipment: "Bodyweight" },
-  "Open Water Swimming": { timed: true, timedUnit: "mins", muscles: { "Lats": 1, "Front Shoulders": 0.8, "Upper Back": 0.6, "Triceps": 0.6, "Glutes": 0.4, "Quads": 0.3 }, equipment: "Bodyweight" },
-  "HIIT Swimming": { timed: true, timedUnit: "mins", muscles: { "Lats": 1, "Front Shoulders": 1, "Triceps": 0.8, "Upper Back": 0.7, "Glutes": 0.5, "Quads": 0.4 }, equipment: "Bodyweight" },
-
-  // ── Splits & Flexibility Training ──
-  "German Hang": { timed: true, timedUnit: "secs", muscles: { "Front Shoulders": 1, "Biceps": 0.8, "Forearms": 0.6, "Upper Back": 0.5, "Chest": 0.4 }, equipment: "Bodyweight" },
-  "German Hang Progression": { timed: true, timedUnit: "secs", muscles: { "Front Shoulders": 1, "Biceps": 0.9, "Forearms": 0.7, "Upper Back": 0.5, "Chest": 0.5 }, equipment: "Bodyweight" },
-  "Front Splits": { timed: true, timedUnit: "secs", muscles: { "Hip Flexors": 1, "Hamstrings": 1, "Quads": 0.6, "Glutes": 0.4, "Inner Thighs": 0.3 }, equipment: "Bodyweight" },
-  "Side Splits": { timed: true, timedUnit: "secs", muscles: { "Inner Thighs": 1, "Hip Flexors": 0.8, "Hamstrings": 0.7, "Glutes": 0.4 }, equipment: "Bodyweight" },
-  "Middle Splits": { timed: true, timedUnit: "secs", muscles: { "Inner Thighs": 1, "Hip Flexors": 0.9, "Hamstrings": 0.6, "Glutes": 0.3 }, equipment: "Bodyweight" },
-  "Pike Stretch": { timed: true, timedUnit: "secs", muscles: { "Hamstrings": 1, "Lower Back": 0.5, "Calves": 0.4 }, equipment: "Bodyweight" },
-  "Hip Flexor Stretch": { timed: true, timedUnit: "secs", muscles: { "Hip Flexors": 1, "Quads": 0.5, "Glutes": 0.3 }, equipment: "Bodyweight" },
-  "Pancake Stretch": { timed: true, timedUnit: "secs", muscles: { "Inner Thighs": 1, "Hamstrings": 0.9, "Lower Back": 0.4 }, equipment: "Bodyweight" },
-  "Shoulder Flexibility Training": { timed: true, timedUnit: "secs", muscles: { "Front Shoulders": 0.8, "Rear Shoulders": 0.8, "Triceps": 0.4, "Upper Back": 0.4 }, equipment: "Bodyweight" },
-  "Thoracic Mobility": { timed: true, timedUnit: "secs", muscles: { "Upper Back": 1, "Rear Shoulders": 0.6, "Lower Back": 0.4 }, equipment: "Bodyweight" },
-  "Hip Mobility Routine": { timed: true, timedUnit: "mins", muscles: { "Hip Flexors": 1, "Inner Thighs": 0.8, "Glutes": 0.6, "Hamstrings": 0.5 }, equipment: "Bodyweight" },
-  "Full Body Stretching": { timed: true, timedUnit: "mins", muscles: { "Hamstrings": 0.6, "Hip Flexors": 0.6, "Inner Thighs": 0.5, "Upper Back": 0.5, "Front Shoulders": 0.4, "Calves": 0.4 }, equipment: "Bodyweight" },
-  "Yoga": { timed: true, timedUnit: "mins", muscles: { "Hip Flexors": 0.8, "Hamstrings": 0.7, "Upper Back": 0.6, "Inner Thighs": 0.6, "Front Shoulders": 0.5, "Lower Back": 0.5 }, equipment: "Bodyweight" },
-
-  // ── Cycling ──
-  "Cycling": { timed: true, timedUnit: "mins", muscles: { "Quads": 1, "Hamstrings": 0.7, "Glutes": 0.8, "Calves": 0.7, "Hip Flexors": 0.4 }, equipment: "Bodyweight" },
-  "Road Cycling": { timed: true, timedUnit: "mins", muscles: { "Quads": 1, "Hamstrings": 0.7, "Glutes": 0.8, "Calves": 0.7, "Hip Flexors": 0.4 }, equipment: "Bodyweight" },
-  "Mountain Biking": { timed: true, timedUnit: "mins", muscles: { "Quads": 1, "Hamstrings": 0.7, "Glutes": 0.8, "Calves": 0.6, "Upper Back": 0.4, "Front Shoulders": 0.4, "Forearms": 0.5, "Upper Abs": 0.3 }, equipment: "Bodyweight" },
-  "Stationary Bike": { timed: true, timedUnit: "mins", muscles: { "Quads": 1, "Hamstrings": 0.6, "Glutes": 0.7, "Calves": 0.6, "Hip Flexors": 0.3 }, equipment: "Machine" },
-  "Spin Class": { timed: true, timedUnit: "mins", muscles: { "Quads": 1, "Hamstrings": 0.7, "Glutes": 0.8, "Calves": 0.6, "Hip Flexors": 0.4 }, equipment: "Machine" },
-  "Cycling Intervals": { timed: true, timedUnit: "mins", muscles: { "Quads": 1, "Hamstrings": 0.8, "Glutes": 0.8, "Calves": 0.6, "Hip Flexors": 0.4 }, equipment: "Bodyweight" },
-  "Tennis": { timed: true, timedUnit: "mins", muscles: { "Forearms": 1, "Front Shoulders": 0.8, "Lateral Shoulders": 0.6, "Obliques": 0.7, "Quads": 0.6, "Calves": 0.6, "Upper Back": 0.4 }, equipment: "Bodyweight" },
-  "Tennis Drills": { timed: true, timedUnit: "mins", muscles: { "Forearms": 0.9, "Front Shoulders": 0.7, "Obliques": 0.6, "Quads": 0.7, "Calves": 0.6, "Hip Flexors": 0.4 }, equipment: "Bodyweight" },
-
-  // ── Football ──
-  "Football (Soccer)": { timed: true, timedUnit: "mins", muscles: { "Quads": 1, "Hamstrings": 0.9, "Calves": 0.8, "Glutes": 0.6, "Hip Flexors": 0.5, "Upper Abs": 0.2 }, equipment: "Bodyweight" },
-  "Football Drills": { timed: true, timedUnit: "mins", muscles: { "Quads": 1, "Hamstrings": 0.8, "Calves": 0.7, "Glutes": 0.5, "Hip Flexors": 0.6 }, equipment: "Bodyweight" },
-  "American Football": { timed: true, timedUnit: "mins", muscles: { "Quads": 1, "Hamstrings": 0.8, "Glutes": 0.7, "Front Shoulders": 0.5, "Upper Back": 0.5, "Triceps": 0.4, "Calves": 0.5 }, equipment: "Bodyweight" },
-
-  // ── Basketball ──
-  "Basketball": { timed: true, timedUnit: "mins", muscles: { "Quads": 1, "Calves": 0.9, "Glutes": 0.7, "Hamstrings": 0.6, "Front Shoulders": 0.4, "Forearms": 0.3, "Upper Abs": 0.3 }, equipment: "Bodyweight" },
-  "Basketball Drills": { timed: true, timedUnit: "mins", muscles: { "Quads": 1, "Calves": 0.8, "Glutes": 0.6, "Hamstrings": 0.5, "Hip Flexors": 0.5, "Front Shoulders": 0.3 }, equipment: "Bodyweight" },
-
-  // ── Boxing ──
-  "Boxing — Bag Work": { timed: true, timedUnit: "mins", muscles: { "Front Shoulders": 1, "Triceps": 0.8, "Obliques": 0.8, "Upper Abs": 0.7, "Forearms": 0.7, "Quads": 0.4, "Calves": 0.4 }, equipment: "Bodyweight" },
-  "Boxing — Sparring": { timed: true, timedUnit: "mins", muscles: { "Front Shoulders": 1, "Triceps": 0.8, "Obliques": 0.8, "Upper Abs": 0.7, "Forearms": 0.7, "Quads": 0.5, "Calves": 0.5, "Hip Flexors": 0.4 }, equipment: "Bodyweight" },
-  "Boxing — Shadow Boxing": { timed: true, timedUnit: "mins", muscles: { "Front Shoulders": 0.9, "Triceps": 0.7, "Obliques": 0.7, "Upper Abs": 0.6, "Forearms": 0.5, "Quads": 0.3, "Calves": 0.3 }, equipment: "Bodyweight" },
-  "Boxing — Pad Work": { timed: true, timedUnit: "mins", muscles: { "Front Shoulders": 1, "Triceps": 0.9, "Obliques": 0.8, "Upper Abs": 0.7, "Forearms": 0.8, "Quads": 0.4, "Calves": 0.4 }, equipment: "Bodyweight" },
-  "Tuck Front Lever": { timed: true, bwPercent: 1.00, muscles: { "Lats": 1, "Upper Abs": 0.6, "Biceps": 0.3, "Forearms": 0.3 }, equipment: "Bodyweight" },
-  "Advanced Tuck Front Lever": { timed: true, bwPercent: 1.00, muscles: { "Lats": 1, "Upper Abs": 0.6, "Lower Abs": 0.3, "Biceps": 0.3, "Forearms": 0.3 }, equipment: "Bodyweight" },
-  "Single Leg Front Lever": { timed: true, bwPercent: 1.00, muscles: { "Lats": 1, "Lower Abs": 0.6, "Upper Abs": 0.6, "Biceps": 0.3, "Forearms": 0.3 }, equipment: "Bodyweight" },
-  "Straddle Front Lever": { timed: true, bwPercent: 1.00, muscles: { "Lats": 1, "Lower Abs": 0.6, "Upper Abs": 0.6, "Biceps": 0.3, "Forearms": 0.3 }, equipment: "Bodyweight" },
-  "Front Lever": { timed: true, bwPercent: 1.00, muscles: { "Lats": 1, "Lower Abs": 1, "Upper Abs": 0.6, "Biceps": 0.3, "Forearms": 0.6 }, equipment: "Bodyweight" },
-  "Front Lever Row": { muscles: { "Lats": 1, "Upper Back": 0.6, "Biceps": 0.6 }, equipment: "Bodyweight" },
-  "Front Lever Raise": { muscles: { "Lats": 1, "Lower Abs": 0.6, "Upper Abs": 0.6 }, equipment: "Bodyweight" },
-  "Ice Cream Makers": { muscles: { "Lats": 1, "Upper Abs": 0.6, "Triceps": 0.3 }, equipment: "Bodyweight" },
-  "Skin The Cat": { timed: true, muscles: { "Lats": 0.6, "Front Shoulders": 0.6, "Upper Abs": 0.3, "Biceps": 0.3 }, equipment: "Bodyweight" },
-  "Wall Handstand Hold": { timed: true, muscles: { "Front Shoulders": 1, "Lateral Shoulders": 0.6, "Triceps": 0.2, "Upper Abs": 0.3, "Forearms": 0.2 }, equipment: "Bodyweight" },
-  "Freestanding Handstand Hold": { timed: true, muscles: { "Front Shoulders": 1, "Lateral Shoulders": 0.6, "Upper Abs": 0.6, "Forearms": 0.3 }, equipment: "Bodyweight" },
-  "Chest-to-Wall Handstand Hold": { timed: true, muscles: { "Front Shoulders": 1, "Lateral Shoulders": 0.3, "Upper Abs": 0.6, "Lower Back": 0.2 }, equipment: "Bodyweight" },
-  "Handstand Shoulder Taps": { timed: true, muscles: { "Front Shoulders": 1, "Lateral Shoulders": 0.6, "Upper Abs": 0.6, "Obliques": 0.3 }, equipment: "Bodyweight" },
-  "Deficit Handstand Push Up": { bwPercent: 1.0, muscles: { "Front Shoulders": 1, "Lateral Shoulders": 0.6, "Triceps": 1 }, equipment: "Bodyweight" },
-  "Handstand Push Up Negative": { bwPercent: 1.0, muscles: { "Front Shoulders": 1, "Lateral Shoulders": 0.6, "Triceps": 0.6 }, equipment: "Bodyweight" },
-  "Frog Stand": { timed: true, muscles: { "Front Shoulders": 1, "Upper Abs": 0.6, "Forearms": 0.3, "Triceps": 0.3 }, equipment: "Bodyweight" },
-  "Tuck Planche": { timed: true, bwPercent: 1.00, muscles: { "Front Shoulders": 1, "Lower Abs": 0.6, "Middle Chest": 0.3, "Triceps": 0.6, "Forearms": 0.3 }, equipment: "Bodyweight" },
-  "Advanced Tuck Planche": { timed: true, bwPercent: 1.00, muscles: { "Front Shoulders": 1, "Lower Abs": 0.6, "Middle Chest": 0.3, "Triceps": 0.6, "Forearms": 0.3 }, equipment: "Bodyweight" },
-  "Straddle Planche": { timed: true, bwPercent: 1.00, muscles: { "Front Shoulders": 1, "Lower Abs": 0.6, "Middle Chest": 0.6, "Triceps": 0.6, "Forearms": 0.6 }, equipment: "Bodyweight" },
-  "Full Planche": { timed: true, bwPercent: 1.00, muscles: { "Front Shoulders": 1, "Lower Abs": 0.6, "Middle Chest": 0.6, "Triceps": 0.6, "Forearms": 0.6 }, equipment: "Bodyweight" },
-  "Planche Lean": { timed: true, bwPercent: 1.00, muscles: { "Front Shoulders": 1, "Middle Chest": 0.6, "Forearms": 0.6, "Lower Abs": 0.3 }, equipment: "Bodyweight" },
-  "Planche Push Up": { muscles: { "Front Shoulders": 1, "Middle Chest": 0.6, "Triceps": 0.6 }, equipment: "Bodyweight" },
-};
 const MUSCLES = [
   "Upper Chest","Middle Chest","Lower Chest","Front Shoulders","Lateral Shoulders","Rear Shoulders",
   "Biceps","Triceps","Forearms","Upper Abs","Middle Abs","Lower Abs","Obliques","Hip Flexors",
@@ -6173,172 +5949,6 @@ function renderStrengthRankings() {
 /* =========================================================================
    CLASS SYSTEM — 7 Hunter Classes with cinematic reveal
    ========================================================================= */
-const HUNTER_CLASSES = {
-  Berserker: {
-    color: '#C0392B', colorDim: 'rgba(192,57,43,0.15)', label: 'Berserker',
-    tagline: 'Iron does not yield. Neither do you.',
-    desc: 'High intensity, heavy compounds, relentless PR attempts. Your training forges raw strength through neural dominance.',
-    sigil: `<svg viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg" class="class-sigil"><path d="M40 8 L52 30 L74 32 L58 48 L62 70 L40 58 L18 70 L22 48 L6 32 L28 30 Z" stroke="#C0392B" stroke-width="2.5" fill="none" stroke-linejoin="round"/><path d="M40 20 L47 34 L62 36 L51 46 L54 61 L40 54 L26 61 L29 46 L18 36 L33 34 Z" stroke="#C0392B" stroke-width="1.5" fill="rgba(192,57,43,0.1)" stroke-linejoin="round"/><circle cx="40" cy="40" r="4" fill="#C0392B"/></svg>`,
-    particleColor: '#C0392B', particleShape: 'shard',
-  },
-  Assassin: {
-    color: '#F0D000', colorDim: 'rgba(240,208,0,0.12)', label: 'Assassin',
-    tagline: 'Speed is the only truth.',
-    desc: 'Explosive, fast-tempo, agility-dominant. Your training rewires fast-twitch dominance and raw power output.',
-    sigil: `<svg viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg" class="class-sigil"><path d="M40 6 L44 36 L72 32 L46 42 L60 72 L38 48 L16 72 L32 42 L8 32 L36 36 Z" stroke="#F0D000" stroke-width="2.5" fill="none" stroke-linejoin="round"/><path d="M40 18 L42 34 L56 32 L43 38 L50 58 L39 44 L28 58 L35 38 L24 32 L38 34 Z" stroke="#F0D000" stroke-width="1.5" fill="rgba(240,208,0,0.08)" stroke-linejoin="round"/><line x1="40" y1="10" x2="40" y2="70" stroke="#F0D000" stroke-width="1" stroke-dasharray="3 4" opacity="0.4"/></svg>`,
-    particleColor: '#F0D000', particleShape: 'streak',
-  },
-  Monk: {
-    color: '#A8D8EA', colorDim: 'rgba(168,216,234,0.12)', label: 'Monk',
-    tagline: 'Stillness is its own kind of strength.',
-    desc: 'Control, stability, high focus. Handstands, levers, slow eccentrics. Your training builds tendon strength and motor mastery.',
-    sigil: `<svg viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg" class="class-sigil"><circle cx="40" cy="40" r="30" stroke="#A8D8EA" stroke-width="2" fill="none"/><circle cx="40" cy="40" r="20" stroke="#A8D8EA" stroke-width="1.5" fill="none" opacity="0.5"/><circle cx="40" cy="40" r="10" stroke="#A8D8EA" stroke-width="1" fill="rgba(168,216,234,0.1)"/><line x1="40" y1="10" x2="40" y2="70" stroke="#A8D8EA" stroke-width="1" opacity="0.3"/><line x1="10" y1="40" x2="70" y2="40" stroke="#A8D8EA" stroke-width="1" opacity="0.3"/><circle cx="40" cy="40" r="3" fill="#A8D8EA"/></svg>`,
-    particleColor: '#A8D8EA', particleShape: 'orb',
-  },
-  Warlord: {
-    color: '#D4A017', colorDim: 'rgba(212,160,23,0.12)', label: 'Warlord',
-    tagline: 'Volume is the language of dominance.',
-    desc: 'High volume, hypertrophy-dominant, relentless sets. Your training maximises muscle adaptation through total accumulated work.',
-    sigil: `<svg viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg" class="class-sigil"><rect x="12" y="12" width="56" height="56" rx="4" stroke="#D4A017" stroke-width="2.5" fill="none"/><rect x="22" y="22" width="36" height="36" rx="2" stroke="#D4A017" stroke-width="1.5" fill="rgba(212,160,23,0.08)"/><rect x="32" y="32" width="16" height="16" fill="#D4A017" opacity="0.6"/><line x1="12" y1="40" x2="22" y2="40" stroke="#D4A017" stroke-width="1.5"/><line x1="58" y1="40" x2="68" y2="40" stroke="#D4A017" stroke-width="1.5"/><line x1="40" y1="12" x2="40" y2="22" stroke="#D4A017" stroke-width="1.5"/><line x1="40" y1="58" x2="40" y2="68" stroke="#D4A017" stroke-width="1.5"/></svg>`,
-    particleColor: '#D4A017', particleShape: 'square',
-  },
-  Ranger: {
-    color: '#1ABC9C', colorDim: 'rgba(26,188,156,0.12)', label: 'Ranger',
-    tagline: 'The road and the iron. Both are yours.',
-    desc: 'Hybrid endurance and strength. Runs and lifts combined. Your training builds VO2 max and work capacity simultaneously.',
-    sigil: `<svg viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg" class="class-sigil"><path d="M40 8 L68 60 L12 60 Z" stroke="#1ABC9C" stroke-width="2.5" fill="none" stroke-linejoin="round"/><path d="M40 22 L58 56 L22 56 Z" stroke="#1ABC9C" stroke-width="1.5" fill="rgba(26,188,156,0.1)" stroke-linejoin="round"/><circle cx="40" cy="44" r="5" fill="#1ABC9C" opacity="0.8"/><line x1="40" y1="8" x2="40" y2="22" stroke="#1ABC9C" stroke-width="1.5"/></svg>`,
-    particleColor: '#1ABC9C', particleShape: 'orb',
-  },
-  Shadowblade: {
-    color: '#9B59B6', colorDim: 'rgba(155,89,182,0.12)', label: 'Shadowblade',
-    tagline: 'Your body is the weapon.',
-    desc: 'Calisthenics and strength combined. Pull-ups, dips, levers. Your training dominates the strength-to-weight ratio.',
-    sigil: `<svg viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg" class="class-sigil"><path d="M40 6 L46 34 L74 40 L46 46 L40 74 L34 46 L6 40 L34 34 Z" stroke="#9B59B6" stroke-width="2.5" fill="none" stroke-linejoin="round"/><path d="M40 18 L44 36 L62 40 L44 44 L40 62 L36 44 L18 40 L36 36 Z" stroke="#9B59B6" stroke-width="1.5" fill="rgba(155,89,182,0.1)" stroke-linejoin="round"/><circle cx="40" cy="40" r="5" fill="#9B59B6"/></svg>`,
-    particleColor: '#9B59B6', particleShape: 'wisp',
-  },
-  Titan: {
-    color: '#FFD700', colorDim: 'rgba(255,215,0,0.12)', label: 'Titan',
-    tagline: 'Consistency is the only cheat code.',
-    desc: 'High frequency, disciplined progression, daily training. Your commitment to the process sets you apart from every other hunter.',
-    sigil: `<svg viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg" class="class-sigil"><path d="M40 6 L50 30 L76 30 L56 46 L64 70 L40 56 L16 70 L24 46 L4 30 L30 30 Z" stroke="#FFD700" stroke-width="2.5" fill="none" stroke-linejoin="round"/><path d="M40 18 L47 34 L64 34 L50 44 L56 60 L40 50 L24 60 L30 44 L16 34 L33 34 Z" stroke="#FFD700" stroke-width="1.5" fill="rgba(255,215,0,0.12)" stroke-linejoin="round"/><path d="M40 28 L43 36 L52 36 L45 41 L48 50 L40 45 L32 50 L35 41 L28 36 L37 36 Z" fill="#FFD700" opacity="0.6"/></svg>`,
-    particleColor: '#FFD700', particleShape: 'shard',
-  },
-  Striker: {
-    color: '#E74C3C', colorDim: 'rgba(231,76,60,0.12)', label: 'Striker',
-    tagline: 'Every strike is intent made physical.',
-    desc: 'Combat sports dominant. Boxing, bag work, sparring. Your training sharpens reflexes, explosive power, and mental resilience.',
-    sigil: `<svg viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg" class="class-sigil"><path d="M20 60 L40 10 L60 60" stroke="#E74C3C" stroke-width="2.5" fill="none" stroke-linejoin="round"/><path d="M26 44 L54 44" stroke="#E74C3C" stroke-width="2"/><circle cx="40" cy="10" r="4" fill="#E74C3C"/><path d="M32 60 L40 50 L48 60" stroke="#E74C3C" stroke-width="1.5" fill="none" stroke-linejoin="round"/></svg>`,
-    particleColor: '#E74C3C', particleShape: 'shard',
-  },
-  Ironclad: {
-    color: '#7F8C8D', colorDim: 'rgba(127,140,141,0.12)', label: 'Ironclad',
-    tagline: 'Built to last. Built for everything.',
-    desc: 'Endurance and strength in equal measure. Cycling and lifting. No weakness, no ceiling — your engine never stops.',
-    sigil: `<svg viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg" class="class-sigil"><rect x="10" y="10" width="60" height="60" rx="6" stroke="#7F8C8D" stroke-width="2.5" fill="none"/><path d="M10 40 L70 40" stroke="#7F8C8D" stroke-width="1.5" opacity="0.5"/><path d="M40 10 L40 70" stroke="#7F8C8D" stroke-width="1.5" opacity="0.5"/><circle cx="40" cy="40" r="12" stroke="#7F8C8D" stroke-width="2" fill="rgba(127,140,141,0.1)"/><circle cx="40" cy="40" r="4" fill="#7F8C8D"/></svg>`,
-    particleColor: '#7F8C8D', particleShape: 'square',
-  },
-  AquaHunter: {
-    color: '#2980B9', colorDim: 'rgba(41,128,185,0.12)', label: 'Aqua Hunter',
-    tagline: 'The water reveals what the gym cannot.',
-    desc: 'Swimming dominant. Every stroke builds full-body endurance and shoulder strength most athletes never develop.',
-    sigil: `<svg viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg" class="class-sigil"><path d="M10 50 Q20 35 30 50 Q40 65 50 50 Q60 35 70 50" stroke="#2980B9" stroke-width="2.5" fill="none"/><path d="M10 38 Q20 23 30 38 Q40 53 50 38 Q60 23 70 38" stroke="#2980B9" stroke-width="1.5" fill="none" opacity="0.6"/><circle cx="40" cy="28" r="8" stroke="#2980B9" stroke-width="2" fill="rgba(41,128,185,0.1)"/><circle cx="40" cy="28" r="3" fill="#2980B9"/></svg>`,
-    particleColor: '#2980B9', particleShape: 'orb',
-  },
-  CourtKing: {
-    color: '#F39C12', colorDim: 'rgba(243,156,18,0.12)', label: 'Court King',
-    tagline: 'The arena is your domain.',
-    desc: 'Court and field sports dominant. Basketball, tennis, football. Agility, court vision, and competitive instinct define your training.',
-    sigil: `<svg viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg" class="class-sigil"><circle cx="40" cy="40" r="28" stroke="#F39C12" stroke-width="2.5" fill="none"/><path d="M12 40 L68 40" stroke="#F39C12" stroke-width="1.5"/><path d="M40 12 L40 68" stroke="#F39C12" stroke-width="1.5"/><circle cx="40" cy="40" r="8" stroke="#F39C12" stroke-width="1.5" fill="rgba(243,156,18,0.08)"/></svg>`,
-    particleColor: '#F39C12', particleShape: 'streak',
-  },
-  Alpinist: {
-    color: '#27AE60', colorDim: 'rgba(39,174,96,0.12)', label: 'Alpinist',
-    tagline: 'The summit does not care about your excuses.',
-    desc: 'Rock climbing dominant. Bouldering, sport climbing, traditional routes. Grip strength, problem solving, and fearlessness.',
-    sigil: `<svg viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg" class="class-sigil"><path d="M40 8 L65 65 L15 65 Z" stroke="#27AE60" stroke-width="2.5" fill="none" stroke-linejoin="round"/><path d="M40 25 L55 62 L25 62 Z" stroke="#27AE60" stroke-width="1.5" fill="rgba(39,174,96,0.08)" stroke-linejoin="round"/><path d="M28 48 L40 25 L52 48" stroke="#27AE60" stroke-width="1.5" fill="none" opacity="0.5"/><circle cx="40" cy="8" r="3" fill="#27AE60"/></svg>`,
-    particleColor: '#27AE60', particleShape: 'orb',
-  },
-  Centurion: {
-    color: '#8E44AD', colorDim: 'rgba(142,68,173,0.12)', label: 'Centurion',
-    tagline: 'No discipline owns you. All of them serve you.',
-    desc: 'True all-round athlete. High volume across every domain — lifting, cardio, sports, calisthenics. The System cannot classify you into one category.',
-    sigil: `<svg viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg" class="class-sigil"><circle cx="40" cy="40" r="30" stroke="#8E44AD" stroke-width="2.5" fill="none"/><path d="M40 10 L40 70" stroke="#8E44AD" stroke-width="1" opacity="0.4"/><path d="M10 40 L70 40" stroke="#8E44AD" stroke-width="1" opacity="0.4"/><path d="M19 19 L61 61" stroke="#8E44AD" stroke-width="1" opacity="0.4"/><path d="M61 19 L19 61" stroke="#8E44AD" stroke-width="1" opacity="0.4"/><circle cx="40" cy="40" r="10" stroke="#8E44AD" stroke-width="2" fill="rgba(142,68,173,0.12)"/><circle cx="40" cy="40" r="4" fill="#8E44AD"/></svg>`,
-    particleColor: '#8E44AD', particleShape: 'wisp',
-  },
-  Phantom: {
-    color: '#1A1A2E', colorDim: 'rgba(155,89,182,0.08)', label: 'Phantom',
-    tagline: 'No weight. No rules. Just mastery.',
-    desc: 'Calisthenics and combat sports combined. Bodyweight skill work meets boxing intensity. You need nothing but your own body.',
-    sigil: `<svg viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg" class="class-sigil"><path d="M40 6 L46 34 L74 40 L46 46 L40 74 L34 46 L6 40 L34 34 Z" stroke="#9B59B6" stroke-width="2" fill="none" stroke-linejoin="round"/><path d="M40 6 L50 30 L76 30 L56 46 L64 70 L40 56 L16 70 L24 46 L4 30 L30 30 Z" stroke="#E74C3C" stroke-width="1" fill="none" stroke-linejoin="round" opacity="0.5"/><circle cx="40" cy="40" r="5" fill="#9B59B6"/></svg>`,
-    particleColor: '#9B59B6', particleShape: 'wisp',
-  },
-  Sovereign: {
-    color: '#E8D5B7', colorDim: 'rgba(232,213,183,0.08)', label: 'Sovereign',
-    tagline: 'Tension is the enemy. You have made peace with your limits — and surpassed them.',
-    desc: 'Flexibility and mobility dominant. Splits, German hangs, deep stretching. Your range of motion is a weapon most hunters never develop.',
-    sigil: `<svg viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg" class="class-sigil"><circle cx="40" cy="40" r="28" stroke="#E8D5B7" stroke-width="2" fill="none"/><path d="M40 12 C60 20 68 40 60 60 C52 68 28 68 20 60 C12 40 20 20 40 12Z" stroke="#E8D5B7" stroke-width="1.5" fill="rgba(232,213,183,0.06)"/><path d="M40 22 C52 28 56 40 52 52 C44 60 36 60 28 52 C24 40 28 28 40 22Z" stroke="#E8D5B7" stroke-width="1" fill="rgba(232,213,183,0.04)" opacity="0.6"/><circle cx="40" cy="40" r="4" fill="#E8D5B7"/></svg>`,
-    particleColor: '#E8D5B7', particleShape: 'orb',
-  },
-  // ── Pure versions ──
-  Sprinter: {
-    color: '#F97316', colorDim: 'rgba(249,115,22,0.12)', label: 'Sprinter',
-    tagline: 'You do not run. You detonate.',
-    desc: 'Pure running and explosive cardio. No gym, no weights — just distance, pace, and the road. Your engine is built on miles.',
-    sigil: `<svg viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg" class="class-sigil"><path d="M15 60 Q30 20 50 35 Q65 45 65 20" stroke="#F97316" stroke-width="2.5" fill="none" stroke-linecap="round"/><circle cx="65" cy="18" r="5" fill="#F97316"/><path d="M10 68 Q35 50 60 55" stroke="#F97316" stroke-width="1.5" fill="none" opacity="0.5" stroke-linecap="round"/></svg>`,
-    particleColor: '#F97316', particleShape: 'streak',
-  },
-  Yogi: {
-    color: '#A78BFA', colorDim: 'rgba(167,139,250,0.12)', label: 'Yogi',
-    tagline: 'The body follows where the mind leads.',
-    desc: 'Recovery, mobility, and mindful movement. Yoga, stretching, breathwork. Your training is a practice — not a performance.',
-    sigil: `<svg viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg" class="class-sigil"><circle cx="40" cy="22" r="8" stroke="#A78BFA" stroke-width="2" fill="rgba(167,139,250,0.08)"/><path d="M40 30 L40 55" stroke="#A78BFA" stroke-width="2.5" stroke-linecap="round"/><path d="M20 42 L60 42" stroke="#A78BFA" stroke-width="2" stroke-linecap="round"/><path d="M40 55 L25 70" stroke="#A78BFA" stroke-width="2" stroke-linecap="round"/><path d="M40 55 L55 70" stroke="#A78BFA" stroke-width="2" stroke-linecap="round"/></svg>`,
-    particleColor: '#A78BFA', particleShape: 'orb',
-  },
-  // ── Combination classes ──
-  Merman: {
-    color: '#06B6D4', colorDim: 'rgba(6,182,212,0.12)', label: 'Merman',
-    tagline: 'Two worlds. One hunter.',
-    desc: 'Swimming and calisthenics combined. Water and air. Your upper body is built from both resistance and bodyweight mastery.',
-    sigil: `<svg viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg" class="class-sigil"><path d="M10 45 Q20 30 30 45 Q40 60 50 45 Q60 30 70 45" stroke="#06B6D4" stroke-width="2" fill="none"/><path d="M40 6 L46 28 L68 34 L46 40 L40 62 L34 40 L12 34 L34 28 Z" stroke="#06B6D4" stroke-width="1.5" fill="rgba(6,182,212,0.06)" stroke-linejoin="round"/></svg>`,
-    particleColor: '#06B6D4', particleShape: 'orb',
-  },
-  Vanguard: {
-    color: '#10B981', colorDim: 'rgba(16,185,129,0.12)', label: 'Vanguard',
-    tagline: 'The climb sharpens what the gym cannot.',
-    desc: 'Rock climbing and flexibility combined. Vertical strength meets open range of motion. Every route demands both.',
-    sigil: `<svg viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg" class="class-sigil"><path d="M40 8 L62 65 L18 65 Z" stroke="#10B981" stroke-width="2.5" fill="none" stroke-linejoin="round"/><circle cx="40" cy="40" r="12" stroke="#10B981" stroke-width="1.5" fill="rgba(16,185,129,0.06)"/><path d="M33 47 Q40 28 47 47" stroke="#10B981" stroke-width="1.5" fill="none"/></svg>`,
-    particleColor: '#10B981', particleShape: 'orb',
-  },
-  Gladiator: {
-    color: '#DC2626', colorDim: 'rgba(220,38,38,0.12)', label: 'Gladiator',
-    tagline: 'Fight. Run. Repeat.',
-    desc: 'Boxing and running combined. Combat conditioning at its purest. You build cardio in the ring and finish it on the road.',
-    sigil: `<svg viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg" class="class-sigil"><circle cx="40" cy="40" r="28" stroke="#DC2626" stroke-width="2.5" fill="none"/><path d="M26 30 L40 54 L54 30" stroke="#DC2626" stroke-width="2" fill="none" stroke-linejoin="round"/><line x1="26" y1="30" x2="54" y2="30" stroke="#DC2626" stroke-width="2"/><circle cx="40" cy="22" r="4" fill="#DC2626"/></svg>`,
-    particleColor: '#DC2626', particleShape: 'shard',
-  },
-  Warlord2: {
-    color: '#B45309', colorDim: 'rgba(180,83,9,0.12)', label: 'Athletic Warlord',
-    tagline: 'The court makes you stronger. The iron makes you dangerous.',
-    desc: 'Court sports and strength training combined. Sport-specific power built on a foundation of heavy lifting.',
-    sigil: `<svg viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg" class="class-sigil"><rect x="12" y="12" width="56" height="56" rx="4" stroke="#B45309" stroke-width="2.5" fill="none"/><circle cx="40" cy="40" r="15" stroke="#B45309" stroke-width="2" fill="rgba(180,83,9,0.06)"/><line x1="12" y1="40" x2="68" y2="40" stroke="#B45309" stroke-width="1.5"/><line x1="40" y1="12" x2="40" y2="68" stroke="#B45309" stroke-width="1.5"/></svg>`,
-    particleColor: '#B45309', particleShape: 'square',
-  },
-  Triathlete: {
-    color: '#0EA5E9', colorDim: 'rgba(14,165,233,0.12)', label: 'Triathlete',
-    tagline: 'Swim. Cycle. Run. Never stop.',
-    desc: 'Cycling and swimming combined with running. The complete endurance machine. Three disciplines, one relentless engine.',
-    sigil: `<svg viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg" class="class-sigil"><path d="M10 55 Q20 40 30 55 Q40 70 50 55 Q60 40 70 55" stroke="#0EA5E9" stroke-width="2" fill="none"/><circle cx="40" cy="28" r="14" stroke="#0EA5E9" stroke-width="2" fill="none"/><path d="M40 14 L40 28 L50 35" stroke="#0EA5E9" stroke-width="1.5" stroke-linecap="round"/></svg>`,
-    particleColor: '#0EA5E9', particleShape: 'streak',
-  },
-  // ── Legend-tier class ──
-  Transcendent: {
-    color: '#F8FAFC', colorDim: 'rgba(248,250,252,0.06)', label: 'Transcendent',
-    tagline: 'The System has observed everything you have done. It has no further category for you.',
-    desc: 'Achieved only by those who have trained consistently across every discipline for years. Strength, endurance, skill, flexibility, sport — all developed. The System recognises no higher classification.',
-    sigil: `<svg viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg" class="class-sigil"><circle cx="40" cy="40" r="30" stroke="#F8FAFC" stroke-width="2" fill="none"/><path d="M40 10 L40 70" stroke="#F8FAFC" stroke-width="1" opacity="0.3"/><path d="M10 40 L70 40" stroke="#F8FAFC" stroke-width="1" opacity="0.3"/><path d="M18 18 L62 62" stroke="#F8FAFC" stroke-width="1" opacity="0.3"/><path d="M62 18 L18 62" stroke="#F8FAFC" stroke-width="1" opacity="0.3"/><circle cx="40" cy="40" r="18" stroke="#F8FAFC" stroke-width="1.5" fill="none" opacity="0.5"/><circle cx="40" cy="40" r="8" stroke="#F8FAFC" stroke-width="1.5" fill="rgba(248,250,252,0.06)"/><circle cx="40" cy="40" r="3" fill="#F8FAFC"/></svg>`,
-    particleColor: '#F8FAFC', particleShape: 'orb',
-  },
-};
 
 // CSS for class sigil draw-on animation
 const CLASS_CSS = `
@@ -7775,17 +7385,17 @@ async function openAdminTester() {
         return `${count} classes defined`;
       }],
       ['Archetype chains defined', () => {
-        if (typeof ARCHETYPE_CHAINS === 'undefined') throw new Error('ARCHETYPE_CHAINS not defined');
-        if (ARCHETYPE_CHAINS.length < 9) throw new Error(`Only ${ARCHETYPE_CHAINS.length} chains`);
-        return `${ARCHETYPE_CHAINS.length} archetype chains`;
+        const chains = getArchetypeChains({ profile, myPRs, currentUser, myWorkouts, getExerciseSessionCount });
+        if (chains.length < 9) throw new Error(`Only ${chains.length} chains`);
+        return `${chains.length} archetype chains`;
       }],
       ['Progression chains defined', () => {
         if (typeof PROGRESSION_CHAINS === 'undefined') throw new Error('PROGRESSION_CHAINS not defined');
         return `${PROGRESSION_CHAINS.length} progression chains`;
       }],
       ['Auto achievements defined', () => {
-        if (typeof AUTO_ACHIEVEMENTS === 'undefined') throw new Error('AUTO_ACHIEVEMENTS not defined');
-        return `${AUTO_ACHIEVEMENTS.length} achievements`;
+        const achs = getAutoAchievements({ profile, myPRs, currentUser, myWorkouts, computeStreak });
+        return `${achs.length} achievements`;
       }],
       ['Exercise library loaded', () => {
         if (typeof EXERCISES_ALL === 'undefined') throw new Error('EXERCISES_ALL not defined');
@@ -7805,10 +7415,6 @@ async function openAdminTester() {
         const s2 = getStatForExercise('Front Splits');
         if (s2 !== 'flexibility') throw new Error(`Front Splits → expected flexibility, got ${s2}`);
         return 'Stat mapping correct';
-      }],
-      ['Raid boss data defined', () => {
-        if (typeof BOSS_DATA === 'undefined' && typeof NAMED_BOSSES === 'undefined') throw new Error('Boss data not in scope — check renderRaidBoss');
-        return 'Boss data present (inside renderRaidBoss scope)';
       }],
       ['Profile loaded', () => {
         if (!profile) throw new Error('profile is null/undefined');
@@ -9963,385 +9569,12 @@ function openEditExerciseModal(name) {
 // Progression chains — each step requires MIN_SESSIONS sessions before
 // the next step counts as a legitimate progression
 const MIN_CHAIN_SESSIONS = 3;
-const PROGRESSION_CHAINS = [
-  // ── Calisthenics Skills ──
-  {
-    id:'planche', name:'Planche Mastery', icon:'🤸', category:'calisthenics',
-    steps:['Frog Stand','Tuck Planche','Advanced Tuck Planche','Straddle Planche','Full Planche'],
-  },
-  {
-    id:'front_lever', name:'Front Lever Mastery', icon:'🔩', category:'calisthenics',
-    steps:['Tuck Front Lever','Advanced Tuck Front Lever','Single Leg Front Lever','Straddle Front Lever','Front Lever'],
-  },
-  {
-    id:'back_lever', name:'Back Lever Mastery', icon:'🔗', category:'calisthenics',
-    steps:['Skin The Cat','Tuck Back Lever','Advanced Tuck Back Lever','Straddle Back Lever','Back Lever'],
-  },
-  {
-    id:'handstand', name:'Handstand Mastery', icon:'🙆', category:'calisthenics',
-    steps:['Wall Handstand Hold','Chest-to-Wall Handstand Hold','Freestanding Handstand Hold','Handstand Push Up','Deficit Handstand Push Up'],
-  },
-  {
-    id:'pull_progression', name:'Pull Progression', icon:'💪', category:'calisthenics',
-    steps:['Inverted Row','Pull Up','Chin Up','Neutral Grip Pull Up','Muscle Up'],
-  },
-  {
-    id:'push_up', name:'Push Up Progression', icon:'💥', category:'calisthenics',
-    steps:['Incline Push Up','Push Up','Wide Push Up','Archer Push Up','Diamond Push Up'],
-  },
-  {
-    id:'dip', name:'Dip Progression', icon:'🔱', category:'calisthenics',
-    steps:['Bench Dip','Dips','Ring Dips','Weighted Dip','Muscle Up'],
-  },
-  {
-    id:'core_progression', name:'Core Mastery', icon:'⚡', category:'calisthenics',
-    steps:['Plank','Hanging Knee Raise','Hanging Leg Raise','Toes to Bar','Dragon Flag'],
-  },
-  // ── Strength Progressions ──
-  {
-    id:'squat_prog', name:'Squat Progression', icon:'🏋️', category:'strength',
-    steps:['Bodyweight Squat','Goblet Squat','Squat','Front Squat','Pistol Squat'],
-  },
-  {
-    id:'deadlift_prog', name:'Deadlift Progression', icon:'⚓', category:'strength',
-    steps:['Romanian Deadlift','Stiff-Leg Deadlift','Deadlift','Sumo Deadlift','Rack Pull'],
-  },
-  {
-    id:'press_prog', name:'Press Progression', icon:'🔨', category:'strength',
-    steps:['Push Up','Dips','Bench Press','Incline Bench Press','Close Grip Bench Press'],
-  },
-  {
-    id:'overhead_prog', name:'Overhead Progression', icon:'🏹', category:'strength',
-    steps:['Pike Push Up','Dumbbell Shoulder Press','Overhead Press','Push Press','Handstand Push Up'],
-  },
-  {
-    id:'row_prog', name:'Row Progression', icon:'🚣', category:'strength',
-    steps:['Inverted Row','One-Arm Dumbbell Row','Barbell Row','Pendlay Row','T-Bar Row'],
-  },
-  // ── Endurance Progressions ──
-  {
-    id:'run_type', name:"Runner's Path", icon:'🏃', category:'endurance',
-    steps:['Easy Run','Tempo Run','Interval Running','Hill Sprints','Race'],
-  },
-  // ── Explosive / Agility ──
-  {
-    id:'explosive_prog', name:'Explosive Power', icon:'💨', category:'agility',
-    steps:['Burpee','Jump Squat','Box Jump','Hill Sprints','Interval Running'],
-  },
-  // ── Mobility / Recovery ──
-  {
-    id:'mobility_prog', name:'Mobility Mastery', icon:'🌊', category:'flexibility',
-    steps:['Side Plank','Dead Hang','L-Sit','Skin The Cat','Front Lever'],
-  },
-];
 
 // ── Archetype Chains — multi-discipline achievement paths ──
 // Steps here use check() functions instead of session counts
-const ARCHETYPE_CHAINS = [
-  {
-    id:'iron_sovereign',
-    name:'Iron Sovereign',
-    icon:'⚔️',
-    color:'#D4A017',
-    desc:'Master the iron. Pure strength dominance.',
-    steps:[
-      { name:'Bench Press 1× bodyweight',       check:(bw)=>{ const m=profile.bodyType==='female'?0.7:1.0;   return myPRs['Bench Press']?.e1rm >= bw*m; },    label:(bw)=>{ const m=profile.bodyType==='female'?0.7:1.0;   return `Bench Press ${m}× bodyweight (${Math.round(bw*m)}kg)`; } },
-      { name:'Squat 1.5× bodyweight',           check:(bw)=>{ const m=profile.bodyType==='female'?1.1:1.5;   return myPRs['Squat']?.e1rm >= bw*m; },          label:(bw)=>{ const m=profile.bodyType==='female'?1.1:1.5;   return `Squat ${m}× bodyweight (${Math.round(bw*m)}kg)`; } },
-      { name:'Deadlift 2× bodyweight',          check:(bw)=>{ const m=profile.bodyType==='female'?1.5:2.0;   return myPRs['Deadlift']?.e1rm >= bw*m; },        label:(bw)=>{ const m=profile.bodyType==='female'?1.5:2.0;   return `Deadlift ${m}× bodyweight (${Math.round(bw*m)}kg)`; } },
-      { name:'Overhead Press 0.75× bodyweight', check:(bw)=>{ const m=profile.bodyType==='female'?0.5:0.75;  return myPRs['Overhead Press']?.e1rm >= bw*m; },  label:(bw)=>{ const m=profile.bodyType==='female'?0.5:0.75;  return `OHP ${m}× bodyweight (${Math.round(bw*m)}kg)`; } },
-      { name:'Bench Press 1.5× bodyweight',     check:(bw)=>{ const m=profile.bodyType==='female'?1.0:1.5;   return myPRs['Bench Press']?.e1rm >= bw*m; },    label:(bw)=>{ const m=profile.bodyType==='female'?1.0:1.5;   return `Bench Press ${m}× bodyweight (${Math.round(bw*m)}kg)`; } },
-      { name:'Squat 2× bodyweight',             check:(bw)=>{ const m=profile.bodyType==='female'?1.5:2.0;   return myPRs['Squat']?.e1rm >= bw*m; },          label:(bw)=>{ const m=profile.bodyType==='female'?1.5:2.0;   return `Squat ${m}× bodyweight (${Math.round(bw*m)}kg)`; } },
-      { name:'Deadlift 2.5× bodyweight',        check:(bw)=>{ const m=profile.bodyType==='female'?1.85:2.5;  return myPRs['Deadlift']?.e1rm >= bw*m; },        label:(bw)=>{ const m=profile.bodyType==='female'?1.85:2.5;  return `Deadlift ${m}× bodyweight (${Math.round(bw*m)}kg)`; } },
-    ],
-    title:'[Iron Sovereign]',
-  },
-  {
-    id:'shadow_athlete',
-    name:'Shadow Athlete',
-    icon:'🐉',
-    color:'#9B59B6',
-    desc:'Master your own body. The iron needs no bar.',
-    steps:[
-      { name:'Muscle Up (5 sessions)',                 check:()=>getExerciseSessionCount('Muscle Up', currentUser.uid)>=5 },
-      { name:'Tuck Planche (3 sessions)',              check:()=>getExerciseSessionCount('Tuck Planche', currentUser.uid)>=3 },
-      { name:'Tuck Front Lever (3 sessions)',          check:()=>getExerciseSessionCount('Tuck Front Lever', currentUser.uid)>=3 },
-      { name:'Advanced Tuck Planche (3 sessions)',     check:()=>getExerciseSessionCount('Advanced Tuck Planche', currentUser.uid)>=3 },
-      { name:'Straddle Front Lever (3 sessions)',      check:()=>getExerciseSessionCount('Straddle Front Lever', currentUser.uid)>=3 },
-      { name:'Straddle Planche (3 sessions)',          check:()=>getExerciseSessionCount('Straddle Planche', currentUser.uid)>=3 },
-      { name:'Full Planche (3 sessions)',              check:()=>getExerciseSessionCount('Full Planche', currentUser.uid)>=3 },
-      { name:'Front Lever (3 sessions)',               check:()=>getExerciseSessionCount('Front Lever', currentUser.uid)>=3 },
-    ],
-    title:'[Shadow Athlete]',
-  },
-  {
-    id:'endurance_wraith',
-    name:'Endurance Wraith',
-    icon:'🌪️',
-    color:'#1ABC9C',
-    desc:'Distance is not your enemy. It never was.',
-    steps:[
-      { name:'Log first run',            check:()=>myWorkouts.some(w=>w.isRun) },
-      { name:'Run 5km',                  check:()=>myWorkouts.some(w=>w.runSummary?.distKm>=5) },
-      { name:'Run 10km',                 check:()=>myWorkouts.some(w=>w.runSummary?.distKm>=10) },
-      { name:'Sub-30 min 5km',           check:()=>{ const t=profile.bodyType==='female'?34:30; return myWorkouts.some(w=>{ const r=w.runSummary; return r&&r.distKm>=4.9&&r.durationMins<=t; }); }, label:()=>`Sub-${profile.bodyType==='female'?34:30} min 5km` },
-      { name:'Run half marathon (21km)', check:()=>myWorkouts.some(w=>w.runSummary?.distKm>=21) },
-      { name:'Sub-60 min 10km',          check:()=>{ const t=profile.bodyType==='female'?68:60; return myWorkouts.some(w=>{ const r=w.runSummary; return r&&r.distKm>=9.9&&r.durationMins<=t; }); }, label:()=>`Sub-${profile.bodyType==='female'?68:60} min 10km` },
-      { name:'Sub-2hr half marathon',    check:()=>{ const t=profile.bodyType==='female'?135:120; return myWorkouts.some(w=>{ const r=w.runSummary; return r&&r.distKm>=21&&r.durationMins<=t; }); }, label:()=>`Sub-${profile.bodyType==='female'?'2hr 15min':'2hr'} half marathon` },
-      { name:'Run full marathon (42km)', check:()=>myWorkouts.some(w=>w.runSummary?.distKm>=42) },
-    ],
-    title:'[Endurance Wraith]',
-  },
-  {
-    id:'assassin',
-    name:'Assassin',
-    icon:'⚡',
-    color:'#F0D000',
-    desc:'Speed is the only truth. Explosive, reactive, lethal.',
-    steps:[
-      { name:'Box Jump (5 sessions)',          check:()=>getExerciseSessionCount('Box Jump', currentUser.uid)>=5 },
-      { name:'Jump Squat (5 sessions)',        check:()=>getExerciseSessionCount('Jump Squat', currentUser.uid)>=5 },
-      { name:'Hill Sprints (5 sessions)',      check:()=>getExerciseSessionCount('Hill Sprints', currentUser.uid)>=5 },
-      { name:'Interval Running (5 sessions)', check:()=>getExerciseSessionCount('Interval Running', currentUser.uid)>=5 },
-      { name:'Tempo Run (5 sessions)',         check:()=>getExerciseSessionCount('Tempo Run', currentUser.uid)>=5 },
-      { name:'Elite 5km time',                check:()=>{ const t=profile.bodyType==='female'?28:25; return myWorkouts.some(w=>{ const r=w.runSummary; return r&&r.distKm>=4.9&&r.durationMins<=t; }); }, label:()=>`Sub-${profile.bodyType==='female'?28:25} min 5km` },
-    ],
-    title:'[Assassin]',
-  },
-  {
-    id:'hybrid_sovereign',
-    name:'Hybrid Sovereign',
-    icon:'⚖️',
-    color:'#3DA5FF',
-    desc:'Iron and bodyweight. Both bend to you.',
-    steps:[
-      { name:'Deadlift 1.5× bodyweight',     check:(bw)=>{ const m=profile.bodyType==='female'?1.1:1.5;  return myPRs['Deadlift']?.e1rm >= bw*m; },    label:(bw)=>{ const m=profile.bodyType==='female'?1.1:1.5;  return `Deadlift ${m}× bodyweight (${Math.round(bw*m)}kg)`; } },
-      { name:'Pull Up (10 sessions)',         check:()=>getExerciseSessionCount('Pull Up', currentUser.uid)>=10 },
-      { name:'Bench Press 1.25× bodyweight', check:(bw)=>{ const m=profile.bodyType==='female'?0.85:1.25; return myPRs['Bench Press']?.e1rm >= bw*m; }, label:(bw)=>{ const m=profile.bodyType==='female'?0.85:1.25; return `Bench Press ${m}× bodyweight (${Math.round(bw*m)}kg)`; } },
-      { name:'Muscle Up (5 sessions)',        check:()=>getExerciseSessionCount('Muscle Up', currentUser.uid)>=5 },
-      { name:'Squat 1.5× bodyweight',        check:(bw)=>{ const m=profile.bodyType==='female'?1.1:1.5;  return myPRs['Squat']?.e1rm >= bw*m; },       label:(bw)=>{ const m=profile.bodyType==='female'?1.1:1.5;  return `Squat ${m}× bodyweight (${Math.round(bw*m)}kg)`; } },
-      { name:'Tuck Planche (3 sessions)',     check:()=>getExerciseSessionCount('Tuck Planche', currentUser.uid)>=3 },
-      { name:'Deadlift 2× bodyweight',       check:(bw)=>{ const m=profile.bodyType==='female'?1.5:2.0;  return myPRs['Deadlift']?.e1rm >= bw*m; },    label:(bw)=>{ const m=profile.bodyType==='female'?1.5:2.0;  return `Deadlift ${m}× bodyweight (${Math.round(bw*m)}kg)`; } },
-      { name:'Front Lever (3 sessions)',      check:()=>getExerciseSessionCount('Front Lever', currentUser.uid)>=3 },
-    ],
-    title:'[Hybrid Sovereign]',
-  },
-  {
-    id:'ranger',
-    name:'Ranger',
-    icon:'🏹',
-    color:'#2ECC71',
-    desc:'Road and iron. Neither owns you. Both serve you.',
-    steps:[
-      { name:'Deadlift 1× bodyweight',       check:(bw)=>{ const m=profile.bodyType==='female'?0.75:1.0; return myPRs['Deadlift']?.e1rm >= bw*m; },   label:(bw)=>{ const m=profile.bodyType==='female'?0.75:1.0; return `Deadlift ${m}× bodyweight (${Math.round(bw*m)}kg)`; } },
-      { name:'Run 5km',                      check:()=>myWorkouts.some(w=>w.runSummary?.distKm>=5) },
-      { name:'Squat 1× bodyweight',          check:(bw)=>{ const m=profile.bodyType==='female'?0.75:1.0; return myPRs['Squat']?.e1rm >= bw*m; },      label:(bw)=>{ const m=profile.bodyType==='female'?0.75:1.0; return `Squat ${m}× bodyweight (${Math.round(bw*m)}kg)`; } },
-      { name:'Sub-30 min 5km',               check:()=>{ const t=profile.bodyType==='female'?34:30; return myWorkouts.some(w=>{ const r=w.runSummary; return r&&r.distKm>=4.9&&r.durationMins<=t; }); }, label:()=>`Sub-${profile.bodyType==='female'?34:30} min 5km` },
-      { name:'Bench Press 1× bodyweight',    check:(bw)=>{ const m=profile.bodyType==='female'?0.7:1.0;  return myPRs['Bench Press']?.e1rm >= bw*m; }, label:(bw)=>{ const m=profile.bodyType==='female'?0.7:1.0;  return `Bench Press ${m}× bodyweight (${Math.round(bw*m)}kg)`; } },
-      { name:'Run 10km',                     check:()=>myWorkouts.some(w=>w.runSummary?.distKm>=10) },
-      { name:'Deadlift 1.5× bodyweight',     check:(bw)=>{ const m=profile.bodyType==='female'?1.1:1.5;  return myPRs['Deadlift']?.e1rm >= bw*m; },   label:(bw)=>{ const m=profile.bodyType==='female'?1.1:1.5;  return `Deadlift ${m}× bodyweight (${Math.round(bw*m)}kg)`; } },
-      { name:'Sub-60 min 10km',              check:()=>{ const t=profile.bodyType==='female'?68:60; return myWorkouts.some(w=>{ const r=w.runSummary; return r&&r.distKm>=9.9&&r.durationMins<=t; }); }, label:()=>`Sub-${profile.bodyType==='female'?68:60} min 10km` },
-    ],
-    title:'[Ranger]',
-  },
-  {
-    id:'warlord',
-    name:'Warlord',
-    icon:'🏛️',
-    color:'#D4A017',
-    desc:'Volume is the language of dominance. High sets, relentless reps, maximal hypertrophy.',
-    steps:[
-      { name:'Log 50 total workouts',                    check:()=>myWorkouts.length>=50 },
-      { name:'Bench Press — Novice tier PR',             check:()=>['Novice','Intermediate','Advanced','Elite'].includes(myPRs['Bench Press']?.tier) },
-      { name:'Squat — Novice tier PR',                   check:()=>['Novice','Intermediate','Advanced','Elite'].includes(myPRs['Squat']?.tier) },
-      { name:'Log 100 total workouts',                   check:()=>myWorkouts.length>=100 },
-      { name:'Bench Press — Intermediate tier PR',       check:()=>['Intermediate','Advanced','Elite'].includes(myPRs['Bench Press']?.tier) },
-      { name:'Squat — Intermediate tier PR',             check:()=>['Intermediate','Advanced','Elite'].includes(myPRs['Squat']?.tier) },
-      { name:'Deadlift — Intermediate tier PR',          check:()=>['Intermediate','Advanced','Elite'].includes(myPRs['Deadlift']?.tier) },
-      { name:'Log 200 total workouts',                   check:()=>myWorkouts.length>=200 },
-      { name:'Bench Press — Advanced tier PR',           check:()=>['Advanced','Elite'].includes(myPRs['Bench Press']?.tier) },
-      { name:'Deadlift — Advanced tier PR',              check:()=>['Advanced','Elite'].includes(myPRs['Deadlift']?.tier) },
-    ],
-    title:'[Warlord]',
-  },
-  {
-    id:'monk',
-    name:'Monk',
-    icon:'🧘',
-    color:'#A8D8EA',
-    desc:'Stillness is its own kind of strength. Control, precision, mastery of movement.',
-    steps:[
-      { name:'Dead Hang (5 sessions)',                   check:()=>getExerciseSessionCount('Dead Hang', currentUser.uid)>=5 },
-      { name:'L-Sit (5 sessions)',                       check:()=>getExerciseSessionCount('L-Sit', currentUser.uid)>=5 },
-      { name:'Wall Handstand Hold (5 sessions)',         check:()=>getExerciseSessionCount('Wall Handstand Hold', currentUser.uid)>=5 },
-      { name:'Frog Stand (5 sessions)',                  check:()=>getExerciseSessionCount('Frog Stand', currentUser.uid)>=5 },
-      { name:'Plank (20 sessions)',                      check:()=>getExerciseSessionCount('Plank', currentUser.uid)>=20 },
-      { name:'Freestanding Handstand (5 sessions)',      check:()=>getExerciseSessionCount('Freestanding Handstand Hold', currentUser.uid)>=5 },
-      { name:'Tuck Planche (5 sessions)',                check:()=>getExerciseSessionCount('Tuck Planche', currentUser.uid)>=5 },
-      { name:'Tuck Front Lever (5 sessions)',            check:()=>getExerciseSessionCount('Tuck Front Lever', currentUser.uid)>=5 },
-      { name:'Handstand Push Up (5 sessions)',           check:()=>getExerciseSessionCount('Handstand Push Up', currentUser.uid)>=5 },
-      { name:'30-day streak',                            check:()=>computeStreak(currentUser.uid)>=30 },
-    ],
-    title:'[Monk]',
-  },
-  {
-    id:'striker',
-    name:'Striker',
-    icon:'🥊',
-    color:'#E74C3C',
-    desc:'The ring forged you. Combat conditioning defines you.',
-    steps:[
-      { name:'Boxing — Bag Work (10 sessions)',   check:()=>getExerciseSessionCount('Boxing — Bag Work', currentUser.uid)>=10 },
-      { name:'Boxing — Shadow Boxing (10 sessions)', check:()=>getExerciseSessionCount('Boxing — Shadow Boxing', currentUser.uid)>=10 },
-      { name:'Boxing — Pad Work (10 sessions)',   check:()=>getExerciseSessionCount('Boxing — Pad Work', currentUser.uid)>=10 },
-      { name:'Boxing — Sparring (5 sessions)',    check:()=>getExerciseSessionCount('Boxing — Sparring', currentUser.uid)>=5 },
-      { name:'Hill Sprints (10 sessions)',        check:()=>getExerciseSessionCount('Hill Sprints', currentUser.uid)>=10 },
-      { name:'50 total boxing sessions',          check:()=>['Boxing — Bag Work','Boxing — Sparring','Boxing — Pad Work','Boxing — Shadow Boxing'].reduce((t,n)=>t+getExerciseSessionCount(n,currentUser.uid),0)>=50 },
-    ],
-    title:'[Striker]',
-  },
-  {
-    id:'aqua_hunter',
-    name:'Aqua Hunter',
-    icon:'🌊',
-    color:'#2980B9',
-    desc:'The water is your domain.',
-    steps:[
-      { name:'Freestyle Swimming (10 sessions)',    check:()=>getExerciseSessionCount('Freestyle Swimming', currentUser.uid)>=10 },
-      { name:'Breaststroke Swimming (5 sessions)',  check:()=>getExerciseSessionCount('Breaststroke Swimming', currentUser.uid)>=5 },
-      { name:'Backstroke Swimming (5 sessions)',    check:()=>getExerciseSessionCount('Backstroke Swimming', currentUser.uid)>=5 },
-      { name:'Butterfly Swimming (5 sessions)',     check:()=>getExerciseSessionCount('Butterfly Swimming', currentUser.uid)>=5 },
-      { name:'Open Water Swimming (3 sessions)',    check:()=>getExerciseSessionCount('Open Water Swimming', currentUser.uid)>=3 },
-      { name:'50 total swim sessions',             check:()=>['Freestyle Swimming','Breaststroke Swimming','Backstroke Swimming','Butterfly Swimming','Open Water Swimming','HIIT Swimming'].reduce((t,n)=>t+getExerciseSessionCount(n,currentUser.uid),0)>=50 },
-    ],
-    title:'[Aqua Hunter]',
-  },
-  {
-    id:'court_king',
-    name:'Court King',
-    icon:'🏀',
-    color:'#F39C12',
-    desc:'The arena is your domain. Sport defines your movement.',
-    steps:[
-      { name:'Basketball (10 sessions)',           check:()=>getExerciseSessionCount('Basketball', currentUser.uid)>=10 },
-      { name:'Tennis (10 sessions)',               check:()=>getExerciseSessionCount('Tennis', currentUser.uid)>=10 },
-      { name:'Football — Soccer (10 sessions)',    check:()=>getExerciseSessionCount('Football (Soccer)', currentUser.uid)>=10 },
-      { name:'50 total sport sessions',            check:()=>['Tennis','Tennis Drills','Basketball','Basketball Drills','Football (Soccer)','Football Drills','American Football'].reduce((t,n)=>t+getExerciseSessionCount(n,currentUser.uid),0)>=50 },
-      { name:'Bench Press 1× bodyweight',          check:(bw)=>{ const m=profile.bodyType==='female'?0.7:1.0; return myPRs['Bench Press']?.e1rm >= bw*m; }, label:(bw)=>{ const m=profile.bodyType==='female'?0.7:1.0; return `Bench Press ${m}× bodyweight (${Math.round(bw*m)}kg)`; } },
-    ],
-    title:'[Court King]',
-  },
-  {
-    id:'alpinist',
-    name:'Alpinist',
-    icon:'🏔️',
-    color:'#27AE60',
-    desc:'The summit does not care about your excuses.',
-    steps:[
-      { name:'Bouldering (10 sessions)',           check:()=>getExerciseSessionCount('Bouldering', currentUser.uid)>=10 },
-      { name:'Top Rope Climbing (5 sessions)',     check:()=>getExerciseSessionCount('Top Rope Climbing', currentUser.uid)>=5 },
-      { name:'Sport Climbing (10 sessions)',       check:()=>getExerciseSessionCount('Sport Climbing', currentUser.uid)>=10 },
-      { name:'Traditional Climbing (5 sessions)', check:()=>getExerciseSessionCount('Traditional Climbing', currentUser.uid)>=5 },
-      { name:'German Hang (10 sessions)',          check:()=>getExerciseSessionCount('German Hang', currentUser.uid)>=10 },
-      { name:'Front Splits (5 sessions)',          check:()=>getExerciseSessionCount('Front Splits', currentUser.uid)>=5 },
-      { name:'50 total climbing sessions',         check:()=>['Bouldering','Sport Climbing','Top Rope Climbing','Traditional Climbing'].reduce((t,n)=>t+getExerciseSessionCount(n,currentUser.uid),0)>=50 },
-    ],
-    title:'[Alpinist]',
-  },
-  {
-    id:'sovereign_flex',
-    name:'Sovereign of Mobility',
-    icon:'🌊',
-    color:'#E8D5B7',
-    desc:'Range of motion is power most hunters never develop.',
-    steps:[
-      { name:'Front Splits (10 sessions)',                check:()=>getExerciseSessionCount('Front Splits', currentUser.uid)>=10 },
-      { name:'Side Splits (10 sessions)',                 check:()=>getExerciseSessionCount('Side Splits', currentUser.uid)>=10 },
-      { name:'German Hang (10 sessions)',                 check:()=>getExerciseSessionCount('German Hang', currentUser.uid)>=10 },
-      { name:'Pike Stretch (15 sessions)',                check:()=>getExerciseSessionCount('Pike Stretch', currentUser.uid)>=15 },
-      { name:'Hip Mobility Routine (10 sessions)',        check:()=>getExerciseSessionCount('Hip Mobility Routine', currentUser.uid)>=10 },
-      { name:'Yoga (20 sessions)',                        check:()=>getExerciseSessionCount('Yoga', currentUser.uid)>=20 },
-      { name:'Pancake Stretch (10 sessions)',             check:()=>getExerciseSessionCount('Pancake Stretch', currentUser.uid)>=10 },
-    ],
-    title:'[Sovereign of Mobility]',
-  },
-  {
-    id:'triathlete',
-    name:'Triathlete',
-    icon:'🚴',
-    color:'#0EA5E9',
-    desc:'Three disciplines. One relentless engine.',
-    steps:[
-      { name:'Run 10km',                           check:()=>myWorkouts.some(w=>w.runSummary?.distKm>=10) },
-      { name:'Cycling (20 sessions)',              check:()=>['Cycling','Road Cycling','Mountain Biking','Stationary Bike','Spin Class','Cycling Intervals'].reduce((t,n)=>t+getExerciseSessionCount(n,currentUser.uid),0)>=20 },
-      { name:'Freestyle Swimming (20 sessions)',   check:()=>getExerciseSessionCount('Freestyle Swimming', currentUser.uid)>=20 },
-      { name:'Sub-60 min 10km',                   check:()=>{ const t=profile.bodyType==='female'?68:60; return myWorkouts.some(w=>{ const r=w.runSummary; return r&&r.distKm>=9.9&&r.durationMins<=t; }); }, label:()=>`Sub-${profile.bodyType==='female'?68:60} min 10km` },
-      { name:'Cycling (50 sessions)',              check:()=>['Cycling','Road Cycling','Mountain Biking','Stationary Bike','Spin Class','Cycling Intervals'].reduce((t,n)=>t+getExerciseSessionCount(n,currentUser.uid),0)>=50 },
-      { name:'Run half marathon (21km)',           check:()=>myWorkouts.some(w=>w.runSummary?.distKm>=21) },
-    ],
-    title:'[Triathlete]',
-  },
-  {
-    id:'the_one_above_all',
-    name:'The One Above All',
-    icon:'👑',
-    color:'#FFD700',
-    desc:'You pursued everything. Speed. Strength. Skill. Endurance. Flexibility. Sport. The System has no rank for what you are.',
-    steps:[
-      { name:'Deadlift — elite level',             check:(bw)=>{ const m=profile.bodyType==='female'?2.0:2.75; return myPRs['Deadlift']?.e1rm >= bw*m; },        label:(bw)=>{ const m=profile.bodyType==='female'?2.0:2.75; return `Deadlift ${m}× bodyweight (${Math.round(bw*m)}kg e1RM)`; } },
-      { name:'Bench Press — elite level',          check:(bw)=>{ const m=profile.bodyType==='female'?1.35:2.0; return myPRs['Bench Press']?.e1rm >= bw*m; },     label:(bw)=>{ const m=profile.bodyType==='female'?1.35:2.0; return `Bench Press ${m}× bodyweight (${Math.round(bw*m)}kg e1RM)`; } },
-      { name:'Squat — elite level',                check:(bw)=>{ const m=profile.bodyType==='female'?1.75:2.25; return myPRs['Squat']?.e1rm >= bw*m; },          label:(bw)=>{ const m=profile.bodyType==='female'?1.75:2.25; return `Squat ${m}× bodyweight (${Math.round(bw*m)}kg e1RM)`; } },
-      { name:'Overhead Press — elite level',       check:(bw)=>{ const m=profile.bodyType==='female'?0.85:1.25; return myPRs['Overhead Press']?.e1rm >= bw*m; },  label:(bw)=>{ const m=profile.bodyType==='female'?0.85:1.25; return `OHP ${m}× bodyweight (${Math.round(bw*m)}kg e1RM)`; } },
-      { name:'Muscle Up (15 sessions)',             check:()=>getExerciseSessionCount('Muscle Up', currentUser.uid)>=15 },
-      { name:'Full Planche (10 sessions)',          check:()=>getExerciseSessionCount('Full Planche', currentUser.uid)>=10 },
-      { name:'Front Lever (10 sessions)',           check:()=>getExerciseSessionCount('Front Lever', currentUser.uid)>=10 },
-      { name:'Handstand Push Up (10 sessions)',     check:()=>getExerciseSessionCount('Handstand Push Up', currentUser.uid)>=10 },
-      { name:'Front Splits (10 sessions)',          check:()=>getExerciseSessionCount('Front Splits', currentUser.uid)>=10 },
-      { name:'German Hang (10 sessions)',           check:()=>getExerciseSessionCount('German Hang', currentUser.uid)>=10 },
-      { name:'Elite 5km time',                     check:()=>{ const t=profile.bodyType==='female'?25:22; return myWorkouts.some(w=>{ const r=w.runSummary; return r&&r.distKm>=4.9&&r.durationMins<=t; }); },  label:()=>`Sub-${profile.bodyType==='female'?25:22} min 5km` },
-      { name:'Elite 10km time',                    check:()=>{ const t=profile.bodyType==='female'?52:45; return myWorkouts.some(w=>{ const r=w.runSummary; return r&&r.distKm>=9.9&&r.durationMins<=t; }); }, label:()=>`Sub-${profile.bodyType==='female'?52:45} min 10km` },
-      { name:'Elite half marathon',                check:()=>{ const t=profile.bodyType==='female'?120:105; return myWorkouts.some(w=>{ const r=w.runSummary; return r&&r.distKm>=21&&r.durationMins<=t; }); }, label:()=>`Sub-${profile.bodyType==='female'?'2hr':'1hr 45min'} half marathon` },
-      { name:'Boxing (50 sessions)',               check:()=>['Boxing — Bag Work','Boxing — Sparring','Boxing — Pad Work','Boxing — Shadow Boxing'].reduce((t,n)=>t+getExerciseSessionCount(n,currentUser.uid),0)>=50 },
-      { name:'Court/Field sport (50 sessions)',    check:()=>['Tennis','Tennis Drills','Basketball','Basketball Drills','Football (Soccer)','Football Drills','American Football'].reduce((t,n)=>t+getExerciseSessionCount(n,currentUser.uid),0)>=50 },
-      { name:'Swimming (30 sessions)',             check:()=>['Freestyle Swimming','Breaststroke Swimming','Butterfly Swimming','Backstroke Swimming','Open Water Swimming','HIIT Swimming'].reduce((t,n)=>t+getExerciseSessionCount(n,currentUser.uid),0)>=30 },
-      { name:'Climbing (30 sessions)',             check:()=>['Bouldering','Sport Climbing','Top Rope Climbing','Traditional Climbing'].reduce((t,n)=>t+getExerciseSessionCount(n,currentUser.uid),0)>=30 },
-      { name:'Cycling (30 sessions)',              check:()=>['Cycling','Road Cycling','Mountain Biking','Stationary Bike','Spin Class','Cycling Intervals'].reduce((t,n)=>t+getExerciseSessionCount(n,currentUser.uid),0)>=30 },
-      { name:'365 scheduled training days completed', check:()=>countScheduledDaysCompleted(currentUser.uid)>=365 },
-    ],
-    title:'[The One Above All]',
-  },
-];
 
 
 // Automatic achievement definitions
-const AUTO_ACHIEVEMENTS = [
-  // Streak milestones
-  { id:'streak_7',   category:'consistency', icon:'🔥', name:'First Week',        desc:'Maintain a 7-day training streak',       rarity:'common',    check: () => computeStreak(currentUser.uid) >= 7,   ap:0 },
-  { id:'streak_30',  category:'consistency', icon:'🔥', name:'Iron Month',         desc:'Maintain a 30-day training streak',      rarity:'rare',      check: () => computeStreak(currentUser.uid) >= 30,  ap:0 },
-  { id:'streak_60',  category:'consistency', icon:'🔥', name:'The Unyielding',     desc:'Maintain a 60-day training streak',      rarity:'epic',      check: () => computeStreak(currentUser.uid) >= 60,  ap:0 },
-  { id:'streak_100', category:'consistency', icon:'👑', name:'Century Hunter',     desc:'100 consecutive days without missing',   rarity:'legendary', check: () => computeStreak(currentUser.uid) >= 100, ap:0 },
-  { id:'streak_365', category:'consistency', icon:'👑', name:'Absolute Devotion', desc:'Complete 365 scheduled training days in a year. No excuses.', rarity:'legendary', check: () => countScheduledDaysCompleted(currentUser.uid) >= 365, ap:0 },
-  // Total workout milestones
-  { id:'workouts_10',  category:'volume', icon:'⚡', name:'Awakened',       desc:'Complete 10 workouts',   rarity:'common', check: () => myWorkouts.length >= 10,  ap:0 },
-  { id:'workouts_50',  category:'volume', icon:'⚡', name:'Hunter',         desc:'Complete 50 workouts',   rarity:'rare',   check: () => myWorkouts.length >= 50,  ap:0 },
-  { id:'workouts_100', category:'volume', icon:'⚡', name:'Veteran Hunter', desc:'Complete 100 workouts',  rarity:'epic',   check: () => myWorkouts.length >= 100, ap:0 },
-  { id:'workouts_365', category:'volume', icon:'👑', name:'Eternal Grinder',desc:'Complete 365 workouts',  rarity:'legendary', check: () => myWorkouts.length >= 365, ap:0 },
-  // PR tier milestones
-  { id:'pr_novice',       category:'strength', icon:'🗡️', name:'First Blood',       desc:'Reach Novice tier on any PR',        rarity:'common',    check: () => Object.values(myPRs).some(p => ['Novice','Intermediate','Advanced','Elite'].includes(p.tier)), ap:0 },
-  { id:'pr_intermediate', category:'strength', icon:'⚔️', name:'True Hunter',       desc:'Reach Intermediate tier on any PR',  rarity:'rare',      check: () => Object.values(myPRs).some(p => ['Intermediate','Advanced','Elite'].includes(p.tier)),             ap:0 },
-  { id:'pr_advanced',     category:'strength', icon:'💀', name:'Shadow Fighter',    desc:'Reach Advanced tier on any PR',      rarity:'epic',      check: () => Object.values(myPRs).some(p => ['Advanced','Elite'].includes(p.tier)),                              ap:0 },
-  { id:'pr_elite',        category:'strength', icon:'👑', name:'The Elite',         desc:'Reach Elite tier on any PR',         rarity:'legendary', check: () => Object.values(myPRs).some(p => p.tier === 'Elite'),                                                  ap:0 },
-  // Stat rank milestones
-  { id:'rank_d', category:'rank', icon:'🔵', name:'Rank D',    desc:'Upgrade any stat to D rank',  rarity:'common', check: () => Object.values(profile.stats||{}).some(r => ['D','C','B','A','S'].includes(r)), ap:0 },
-  { id:'rank_c', category:'rank', icon:'🩵', name:'Rank C',    desc:'Upgrade any stat to C rank',  rarity:'rare',   check: () => Object.values(profile.stats||{}).some(r => ['C','B','A','S'].includes(r)),     ap:0 },
-  { id:'rank_b', category:'rank', icon:'🟣', name:'Rank B',    desc:'Upgrade any stat to B rank',  rarity:'epic',   check: () => Object.values(profile.stats||{}).some(r => ['B','A','S'].includes(r)),         ap:0 },
-  { id:'rank_a', category:'rank', icon:'🔴', name:'Rank A',    desc:'Upgrade any stat to A rank',  rarity:'legendary', check: () => Object.values(profile.stats||{}).some(r => ['A','S'].includes(r)),          ap:0 },
-  { id:'rank_s', category:'rank', icon:'👑', name:'Absolute Being', desc:'Reach S rank on any stat', rarity:'legendary', check: () => Object.values(profile.stats||{}).some(r => r === 'S'),                   ap:0 },
-  // Class achievement
-  { id:'class_assigned', category:'identity', icon:'⚔️', name:'Identity Confirmed', desc:'The System assigns your Hunter Class', rarity:'rare', check: () => !!profile.hunterClass, ap:0 },
-  // Run milestone
-  { id:'first_run', category:'endurance', icon:'🏃', name:'First Steps',  desc:'Log your first run', rarity:'common', check: () => myWorkouts.some(w => w.isRun), ap:0 },
-  { id:'runs_10',   category:'endurance', icon:'🏃', name:'Road Hunter',  desc:'Log 10 runs',        rarity:'rare',   check: () => myWorkouts.filter(w=>w.isRun).length >= 10, ap:0 },
-];
 
 const RARITY_COLORS = {
   common:    { color:'var(--text-dim)',    bg:'rgba(93,157,255,0.06)',   label:'Common'    },
@@ -10376,7 +9609,7 @@ function evaluateChains() {
 // Evaluate archetype chains
 function evaluateArchetypes() {
   const bw = latestBodyweightKg() || 70;
-  return ARCHETYPE_CHAINS.map(chain => {
+  return getArchetypeChains({ profile, myPRs, currentUser, myWorkouts, getExerciseSessionCount }).map(chain => {
     const steps = chain.steps.map(step => {
       let done = false;
       try { done = step.check(bw); } catch(e) {}
@@ -10395,7 +9628,7 @@ async function checkAndUnlockAchievements() {
   if (!profile || !currentUser) return [];
   const unlocked = profile.unlockedAchievements || {};
   const newlyUnlocked = [];
-  for (const ach of AUTO_ACHIEVEMENTS) {
+  for (const ach of getAutoAchievements({ profile, myPRs, currentUser, myWorkouts, computeStreak })) {
     if (unlocked[ach.id]) continue;
     try {
       if (ach.check()) {
@@ -10651,6 +9884,7 @@ function renderTrialsTab(el) {
 
 function renderAchievementsTab(el) {
   const unlocked = profile.unlockedAchievements || {};
+  const achievements = getAutoAchievements({ profile, myPRs, currentUser, myWorkouts, computeStreak });
   const categories = [
     { id:'consistency', label:'Consistency', icon:'🔥' },
     { id:'strength',    label:'Strength',    icon:'⚔️' },
@@ -10660,13 +9894,13 @@ function renderAchievementsTab(el) {
     { id:'identity',    label:'Identity',    icon:'🌑' },
   ];
 
-  const unlockedCount = AUTO_ACHIEVEMENTS.filter(a => unlocked[a.id]).length;
+  const unlockedCount = achievements.filter(a => unlocked[a.id]).length;
   let html = `<div style="font-family:var(--font-mono);font-size:10px;color:var(--text-faint);margin-bottom:14px;letter-spacing:0.06em;">
-    ${unlockedCount} / ${AUTO_ACHIEVEMENTS.length} FEATS UNLOCKED
+    ${unlockedCount} / ${achievements.length} FEATS UNLOCKED
   </div>`;
 
   categories.forEach(cat => {
-    const catAchs = AUTO_ACHIEVEMENTS.filter(a => a.category === cat.id);
+    const catAchs = achievements.filter(a => a.category === cat.id);
     const anyUnlocked = catAchs.some(a => unlocked[a.id]);
     html += `<div class="feat-section-head">${cat.icon} ${cat.label}</div>`;
     catAchs.forEach(ach => {
