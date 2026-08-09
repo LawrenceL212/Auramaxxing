@@ -12394,19 +12394,97 @@ function renderInventory() {
   }
 
   // Item detail card
+  // Progression chains per slot — all tiers in order
+  const PROGRESSION_CHAINS = {
+    weapon_strength: [
+      { tier:1, rarity:'Common',    name:'Worn Iron Sword',        color:'rgba(160,160,160,0.8)' },
+      { tier:2, rarity:'Uncommon',  name:'Steel Longsword',        color:'rgba(78,205,120,0.9)' },
+      { tier:3, rarity:'Rare',      name:'Reinforced Greatsword',  color:'rgba(61,165,255,0.9)' },
+      { tier:4, rarity:'Epic',      name:'Shadow Blade',           color:'rgba(139,107,255,0.9)' },
+      { tier:5, rarity:'Legendary', name:"Monarch's Edge",         color:'rgba(255,215,0,1.0)' },
+    ],
+    weapon_focus: [
+      { tier:1, rarity:'Common',    name:'Carved Wooden Staff',    color:'rgba(160,160,160,0.8)' },
+      { tier:2, rarity:'Uncommon',  name:'Iron Bo Staff',          color:'rgba(78,205,120,0.9)' },
+      { tier:3, rarity:'Rare',      name:'Reinforced Combat Staff',color:'rgba(61,165,255,0.9)' },
+      { tier:4, rarity:'Epic',      name:'Shadow Spear',           color:'rgba(139,107,255,0.9)' },
+      { tier:5, rarity:'Legendary', name:'Void Lance',             color:'rgba(255,215,0,1.0)' },
+    ],
+    armour: [
+      { tier:1, rarity:'Common',    name:'Cloth Wraps',            color:'rgba(160,160,160,0.8)' },
+      { tier:2, rarity:'Uncommon',  name:'Leather Armour',         color:'rgba(78,205,120,0.9)' },
+      { tier:3, rarity:'Rare',      name:'Chain Armour',           color:'rgba(61,165,255,0.9)' },
+      { tier:4, rarity:'Epic',      name:'Shadow Plate',           color:'rgba(139,107,255,0.9)' },
+      { tier:5, rarity:'Legendary', name:"Monarch's Aegis",        color:'rgba(255,215,0,1.0)' },
+    ],
+    boots: [
+      { tier:1, rarity:'Common',    name:'Worn Running Shoes',     color:'rgba(160,160,160,0.8)' },
+      { tier:2, rarity:'Uncommon',  name:'Lightweight Boots',      color:'rgba(78,205,120,0.9)' },
+      { tier:3, rarity:'Rare',      name:'Swift Greaves',          color:'rgba(61,165,255,0.9)' },
+      { tier:4, rarity:'Epic',      name:'Shadow Steps',           color:'rgba(139,107,255,0.9)' },
+      { tier:5, rarity:'Legendary', name:'Void Treads',            color:'rgba(255,215,0,1.0)' },
+    ],
+    accessory: [
+      { tier:1, rarity:'Common',    name:'Frayed Bracer',          color:'rgba(160,160,160,0.8)' },
+      { tier:2, rarity:'Uncommon',  name:'Iron Bracer',            color:'rgba(78,205,120,0.9)' },
+      { tier:3, rarity:'Rare',      name:'Reinforced Bracer',      color:'rgba(61,165,255,0.9)' },
+      { tier:4, rarity:'Epic',      name:'Shadow Bracer',          color:'rgba(139,107,255,0.9)' },
+      { tier:5, rarity:'Legendary', name:'Void Bracer',            color:'rgba(255,215,0,1.0)' },
+    ],
+  };
+
+  function getChainForSlot(slot, item) {
+    if (slot === 'weapon') {
+      return item?.stat === 'focus' ? PROGRESSION_CHAINS.weapon_focus : PROGRESSION_CHAINS.weapon_strength;
+    }
+    return PROGRESSION_CHAINS[slot] || null;
+  }
+
   function itemCard(s) {
     const item = inv[s.key];
     const cond = item ? getItemCondition(item, s.key) : 0;
     const rarity = item ? RARITY_COLORS[item.rarity] : null;
     const condColor = cond >= 75 ? 'var(--growing)' : cond >= 50 ? 'var(--brass)' : cond >= 25 ? '#FF9500' : 'var(--excess)';
     const condLabel = cond >= 75 ? 'Pristine' : cond >= 50 ? 'Worn' : cond >= 25 ? 'Deteriorating' : 'Critical';
+    const chain = getChainForSlot(s.key, item);
+    const currentTier = item?.tier || 0;
+
+    // Build progression trail
+    const progressionHtml = chain ? `
+      <div style="margin-top:10px;padding-top:10px;border-top:1px solid rgba(61,165,255,0.08);">
+        <div style="font-family:var(--font-mono);font-size:8px;color:var(--text-faint);letter-spacing:0.1em;margin-bottom:8px;">PROGRESSION</div>
+        <div style="display:flex;flex-direction:column;gap:4px;">
+          ${chain.map(step => {
+            const unlocked = step.tier <= currentTier;
+            const isCurrent = step.tier === currentTier;
+            const isNext = step.tier === currentTier + 1;
+            return `<div style="display:flex;align-items:center;gap:8px;opacity:${unlocked ? '1' : isNext ? '0.5' : '0.25'};">
+              <div style="
+                width:18px;height:18px;border-radius:50%;flex-shrink:0;
+                background:${unlocked ? step.color : 'rgba(61,165,255,0.05)'};
+                border:1px solid ${unlocked ? step.color : 'rgba(61,165,255,0.15)'};
+                display:flex;align-items:center;justify-content:center;
+                font-size:9px;
+                ${isCurrent ? `box-shadow:0 0 8px ${step.color};` : ''}
+              ">${unlocked ? '✓' : isNext ? '○' : '·'}</div>
+              <div style="flex:1;min-width:0;">
+                <span style="font-size:11px;color:${unlocked ? step.color : 'var(--text-faint)'};">
+                  ${step.name}
+                </span>
+                ${isCurrent ? `<span style="font-family:var(--font-mono);font-size:8px;color:${step.color};margin-left:6px;">← current</span>` : ''}
+                ${isNext ? `<span style="font-family:var(--font-mono);font-size:8px;color:var(--text-faint);margin-left:6px;">next</span>` : ''}
+              </div>
+              <span style="font-family:var(--font-mono);font-size:8px;color:${unlocked ? step.color : 'var(--text-faint)'};">${step.rarity}</span>
+            </div>`;
+          }).join('')}
+        </div>
+      </div>` : '';
 
     return `<div data-inv-slot="${s.key}" style="
       background:linear-gradient(145deg,rgba(17,27,46,0.98),rgba(9,14,26,0.99));
       border:1px solid ${item ? rarity+'44' : 'rgba(61,165,255,0.08)'};
-      border-radius:8px;padding:12px;margin-bottom:8px;cursor:pointer;
+      border-radius:8px;padding:12px;margin-bottom:8px;
       box-shadow:${item ? `0 0 12px ${rarity}22` : 'none'};
-      transition:border-color .2s, box-shadow .2s;
     ">
       <div style="display:flex;align-items:center;gap:10px;">
         <div style="font-size:24px;flex-shrink:0;">${s.emoji}</div>
@@ -12434,7 +12512,10 @@ function renderInventory() {
           ${item.earnedFromWorkouts ? '<span style="color:var(--growing);">◈ Auto-granted</span>' : ''}
         </div>
         ${cond < 50 ? `<div style="margin-top:6px;font-size:10px;color:var(--excess);">⚠ Log a ${item.stat} session to polish this item</div>` : ''}
+      ` : chain ? `
+        <div style="margin-top:8px;font-size:9px;color:var(--text-faint);">Complete a trial to earn your first item in this slot.</div>
       ` : ''}
+      ${progressionHtml}
     </div>`;
   }
 
