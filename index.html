@@ -4280,7 +4280,7 @@ function addExerciseRow(presetName, targetSets, targetReps, prefillSets) {
       <button type="button" class="remove-x">×</button>
     </div>
     <div class="muscle-tags"></div>
-    <div class="set-table-head hidden" id="set-table-head-${Date.now()}"><span>#</span><span class="reps-header">Reps</span><span>Weight (kg)</span><span></span></div>
+    <div class="set-table-head hidden" id="set-table-head-${Date.now()}"><span>#</span><span class="reps-header">Reps</span><span class="weight-header">Weight (kg)</span><span></span></div>
     <div class="sets-list"></div>
     <button type="button" class="btn add-set-btn">+ Add set</button>
   `;
@@ -4357,18 +4357,30 @@ function addExerciseRow(presetName, targetSets, targetReps, prefillSets) {
     setRow.className = 'set-row';
     const timed = isTimed();
     const unit = timedUnit();
+    const exName = row.dataset.exName || '';
+    const isRunEx = CARDIO_EXERCISES.has(exName);
     const repsStep = timed ? (unit === 'mins' ? 1 : 5) : 1;
     const repsLabel = timed ? (unit === 'mins' ? 'Mins' : 'Secs') : 'Reps';
     const suggTag = suggestion ? `<span class="suggest-badge">${suggestion}</span>` : '';
     setRow.innerHTML = `
       <span class="set-idx">${idx}</span>
       ${stepper('set-reps', prefillReps || '', 0, repsStep, repsLabel)}
-      ${timed ? '<div class="stepper" style="opacity:0.25;pointer-events:none;"><button>−</button><input type="text" value="BW" readonly style="color:var(--text-faint);font-size:12px;"/><button>+</button></div>' : stepper('set-weight', prefillWeight || '', 0, 2.5, 'kg')}
+      ${isRunEx
+        ? `<div style="display:flex;align-items:center;gap:4px;">
+             <input type="number" class="set-dist" step="0.01" min="0" placeholder="km"
+               inputmode="decimal"
+               style="width:64px;background:var(--card-2);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:0 8px;font-size:14px;font-family:var(--font-mono);height:44px;text-align:center;" />
+             <span style="font-size:10px;color:var(--text-faint);">km</span>
+           </div>`
+        : timed
+          ? '<div class="stepper" style="opacity:0.25;pointer-events:none;"><button>−</button><input type="text" value="BW" readonly style="color:var(--text-faint);font-size:12px;"/><button>+</button></div>'
+          : stepper('set-weight', prefillWeight || '', 0, 2.5, 'kg')
+      }
       <button type="button" class="remove-x set-remove">×</button>
       ${suggTag}
       <div class="set-row-rir">
         <span class="set-row-rir-label">${timed ? 'RPE' : 'RIR'}</span>
-        ${timed ? rpeChips(null) : rirChips(null)}
+        ${timed ? rpeChips(prefillRir) : rirChips(prefillRir)}
       </div>`;
     setRow.querySelectorAll('.step-down').forEach(btn => btn.addEventListener('click', () => {
       SFX.numpadKey();
@@ -4414,12 +4426,14 @@ function addExerciseRow(presetName, targetSets, targetReps, prefillSets) {
   function refreshTags() {
     const def = EXERCISES_ALL[row.dataset.exName] || {};
     const map = def.muscles || {};
+    const isRunEx = CARDIO_EXERCISES.has(row.dataset.exName);
     tagsEl.innerHTML = Object.keys(map).map(m => `<span class="tag">${m}</span>`).join('');
-    // update table header if sets already exist
+    // update table header
     const head = row.querySelector('.set-table-head');
     if (head && !head.classList.contains('hidden')) {
       const unit = timedUnit();
       head.querySelector('span:nth-child(2)').textContent = isTimed() ? (unit === 'mins' ? 'Mins' : 'Secs') : 'Reps';
+      head.querySelector('.weight-header').textContent = isRunEx ? 'km' : 'Weight (kg)';
     }
   }
   function selectExercise(name) {
@@ -4454,10 +4468,12 @@ document.getElementById('save-workout-btn')?.addEventListener('click', async () 
     if (!name) return;
     const sets = [...row.querySelectorAll('.set-row')].map(sr => {
       const selectedRir = sr.querySelector('.rir-chip.selected');
+      const distInput = sr.querySelector('.set-dist');
       return {
         reps: Number(sr.querySelector('.set-reps')?.value) || 0,
         weight: Number(sr.querySelector('.set-weight')?.value) || 0,
         rir: selectedRir ? Number(selectedRir.dataset.rir) : null,
+        ...(distInput ? { distKm: parseFloat(distInput.value) || 0 } : {}),
       };
     }).filter(s => s.reps > 0);    if (sets.length) exercises.push({ name, sets });
   });
@@ -4466,7 +4482,23 @@ document.getElementById('save-workout-btn')?.addEventListener('click', async () 
   const btn = document.getElementById('save-workout-btn');
   btn.disabled = true; btn.textContent = 'Saving…';
   try {
-    await addDoc(collection(db, 'workouts'), { uid: currentUser.uid, displayName: profile.displayName, date, time, exercises, programDayIndex: activeDayIndex ?? null, createdAt: serverTimestamp() });
+    // Build runSummary for any run exercises logged in the workout logger
+    const runExercise = exercises.find(ex => CARDIO_EXERCISES.has(ex.name));
+    const runSummaryFromLogger = runExercise ? (() => {
+      const s = runExercise.sets[0];
+      const distKm = s.distKm || 0;
+      const durationMins = s.reps || 0;
+      const pace = distKm && durationMins
+        ? `${Math.floor(durationMins/distKm)}:${String(Math.round(((durationMins/distKm)%1)*60)).padStart(2,'0')} /km`
+        : '';
+      return { distKm, durationMins, pace, type: runExercise.name, unit: 'km' };
+    })() : null;
+
+    await addDoc(collection(db, 'workouts'), {
+      uid: currentUser.uid, displayName: profile.displayName, date, time, exercises,
+      programDayIndex: activeDayIndex ?? null, createdAt: serverTimestamp(),
+      ...(runSummaryFromLogger ? { isRun: true, runSummary: runSummaryFromLogger } : {}),
+    });
     await setDoc(doc(db, 'users', currentUser.uid), { lastWorkoutDate: date }, { merge: true });
     profile.lastWorkoutDate = date;
     if (activeDayIndex !== null && myProgram) {
@@ -4485,7 +4517,15 @@ document.getElementById('save-workout-btn')?.addEventListener('click', async () 
     exerciseRows.innerHTML = '';
     addExerciseRow();
     await loadAllData();
-    const xpResult = await awardWorkoutXP(exercises);
+    const xpResult = await awardWorkoutXP(exercises.map(ex => {
+      if (!CARDIO_EXERCISES.has(ex.name)) return ex;
+      // Infer RIR from run type for XP calculation
+      const runRIR = ex.name === 'Hill Sprints' || ex.name === 'Interval Running' || ex.name === 'Race' ? 0
+        : ex.name === 'Tempo Run' ? 1
+        : ex.name === 'Long Run' ? 3
+        : 4;
+      return { ...ex, sets: ex.sets.map(s => ({ ...s, rir: s.rir ?? runRIR })) };
+    }));
     profile._lastXpResult = xpResult; // stash for debrief XP bar animation
     // Show session XP on the level banner
     const sessionXpEl = document.getElementById('hunter-xp-session');
