@@ -10307,6 +10307,11 @@ async function renderRaidBoss() {
   // ── Award raid reward once per week ──
   if (cleared && currentUser) {
     const weekKey = `aura_raid_cleared_${todayStr(startOfWeek(new Date()))}`;
+    // Guard against concurrent calls — renderRaidBoss fires on every tab switch
+    // and multiple in-flight transactions can each pass the "not yet claimed" check
+    // before any of them write back to Firestore.
+    if (profile._raidClaimInProgress || profile.lastRaidClaimWeek === weekKey) return;
+    profile._raidClaimInProgress = true;
     try {
       const alreadyClaimed = await runTransaction(db, async (tx) => {
         const userRef = doc(db, 'users', currentUser.uid);
@@ -10360,6 +10365,7 @@ async function renderRaidBoss() {
         }, 500);
       }
     } catch(e) { console.warn('Raid reward error:', e); }
+    finally { profile._raidClaimInProgress = false; }
   }
 
   // ── Raid failure penalty ──
@@ -12124,149 +12130,419 @@ function inferInventoryFromWorkouts() {
   if (!myWOs.length) return {};
 
   const inventory = {};
-
-  // Count skill tier exercises
-  const eliteTier = new Set();
-  const advTier   = new Set();
-  const noviceTier= new Set();
-  let defenceSetCount = 0;
-  let cardioSessions  = 0;
-  let hasClimbing     = false;
-  let hasPistol       = false;
-  let hasGermanHang   = false;
-  let bestPullupReps  = 0;
-
-  const compoundLifts = new Set(['Barbell Row','Deadlift','Squat','Bench Press','Overhead Press',
-    'Front Squat','Lat Pulldown','Wide Neutral-Grip Lat Pulldown','Seated Cable Row','Pendlay Row']);
-  // Exclude abs, isolation, and cardio from strength e1RM inference
-  const strExclude = new Set(['Crunch','Sit Up','Leg Raise','Hanging Leg Raise','Hanging Knee Raise',
-    'Flutter Kicks','Plank','Dragon Flag Negatives','Hollow hold','Crucifix crunch','Ab Rollout',
-    'Russian Twist','Bicycle Crunch','Toe Touch','Lateral Raise','Front Raise','Rear Delt Fly',
-    'Face Pull','Calf Raise','Standing Calf Raise','Wrist Curl','Reverse Wrist Curl',
-    'Goblet Squat','Bulgarian Split Squat','Dumbbell Pullover','Arnold Press','Dumbbell Fly',
-  ]);
-  let compoundCount = 0;
-
-  const e1rms = {};
   const bw = latestBodyweightKg() || 70;
 
+  // ── SHARED DATA PASS ──
+  // One loop to extract everything we need across all slots.
+  const e1rms = {};
+  let bestPullupReps = 0;
+  let bestWeightedPullup = 0; // extra weight on top of BW
+  const skillBestSecs = {}; // exercise → best hold in seconds across all sets
+  const skillSessionDates = {}; // exercise → Set of dates logged
+  const defenceSessions = new Set(); // dates with defence work
+  let defenceSetsTotal = 0;
+  let defenceSetsPerSession = {}; // date → count
+  const runSessions = []; // { date, distKm, paceSecs, durationMins }
+  const climbSessions = new Set();
+  let climbTotalMins = 0;
+  const pistolData = { bestReps: 0, sessionDates: new Set() };
+  const explosiveSessions = new Set();
+  let bestGermanHangSecs = 0;
+  let bestLSitSecs = 0;
+  let bestHandstandSecs = 0;
+  const sportSessions = { boxing: new Set(), court: new Set() };
+  const sportMins = { boxing: 0, court: 0 };
+
+  const strExclude = new Set(['Crunch','Sit Up','Leg Raise','Hanging Leg Raise','Hanging Knee Raise',
+    'Flutter Kicks','Plank','Dragon Flag Negatives','Hollow hold','Ab Rollout',
+    'Russian Twist','Bicycle Crunch','Lateral Raise','Front Raise','Rear Delt Fly',
+    'Face Pull','Calf Raise','Standing Calf Raise','Wrist Curl','Reverse Wrist Curl',
+    'Goblet Squat','Dumbbell Pullover','Arnold Press','Dumbbell Fly',
+  ]);
+  const compoundLifts = new Set(['Deadlift','Squat','Bench Press','Overhead Press',
+    'Front Squat','Romanian Deadlift','Sumo Deadlift','Incline Bench Press',
+    'Barbell Row','Pendlay Row','Lat Pulldown']);
+  const boxingExs = new Set(['Boxing — Bag Work','Boxing — Sparring','Boxing — Shadow Boxing','Boxing — Pad Work']);
+  const courtExs  = new Set(['Tennis','Tennis Drills','Basketball','Basketball Drills','Football (Soccer)','Football Drills','American Football']);
+  const timedSkills = new Set(['Tuck Planche','Advanced Tuck Planche','Full Planche','Planche Lean',
+    'Straddle Planche','Single Leg Planche','Frog Stand','Pseudo planche push up',
+    'Freestanding Handstand Hold','Chest-to-Wall Handstand Hold','Wall Handstand Hold','Handstand Shoulder Taps',
+    'Front Lever','Tuck Front Lever','Advanced Tuck Front Lever','Back Lever',
+    'L-Sit','German Hang','German hang','Dead Hang']);
+
   myWOs.forEach(w => {
-    if ((w.exercises||[]).some(e => CARDIO_EXERCISES.has(e.name))) cardioSessions++;
+    const date = w.date;
+
+    // Run sessions
+    if (w.runSummary?.distKm && w.runSummary?.pace) {
+      const paceParts = String(w.runSummary.pace).match(/(\d+):(\d{1,2})/);
+      const paceSecs = paceParts ? Number(paceParts[1])*60 + Number(paceParts[2]) : 0;
+      if (w.runSummary.distKm >= 1 && paceSecs > 0) {
+        runSessions.push({ date, distKm: w.runSummary.distKm, paceSecs, durationMins: w.runSummary.durationMins || 0 });
+      }
+    }
+
     (w.exercises||[]).forEach(ex => {
-      const tier = SKILL_TIERS[ex.name] || 1.0;
       const validSets = (ex.sets||[]).filter(s=>s.reps>0);
       if (!validSets.length) return;
-      if (tier >= 1.7) eliteTier.add(ex.name);
-      else if (tier >= 1.4) advTier.add(ex.name);
-      else if (tier >= 1.2) noviceTier.add(ex.name);
-      if (DEFENCE_EXERCISES.has(ex.name)) defenceSetCount += validSets.length;
-      if (['Top Rope Climbing','Bouldering','Sport Climbing'].includes(ex.name)) hasClimbing = true;
-      if (ex.name === 'Pistol Squat') hasPistol = true;
-      if (['German Hang','German hang'].includes(ex.name)) hasGermanHang = true;
-      if (compoundLifts.has(ex.name)) compoundCount++;
-      // track e1RM — exclude abs/isolation exercises
+
+      // e1RM for barbell strength
       if (!strExclude.has(ex.name)) {
         validSets.filter(s=>s.weight>0).forEach(s => {
           const val = e1rm(s.weight, s.reps);
           if (!e1rms[ex.name] || val > e1rms[ex.name]) e1rms[ex.name] = val;
         });
       }
-      // bodyweight pull-ups
+
+      // Pull-up tracking
       if (['Pull Up','Chin Up','Neutral Grip Pull Up'].includes(ex.name)) {
-        validSets.filter(s=>!s.weight||Math.abs(s.weight-bw)<5).forEach(s => {
-          bestPullupReps = Math.max(bestPullupReps, s.reps);
+        validSets.forEach(s => {
+          const extraWeight = s.weight && s.weight > 5 ? s.weight : 0;
+          bestWeightedPullup = Math.max(bestWeightedPullup, extraWeight);
+          if (!s.weight || Math.abs(s.weight - bw) < 5) {
+            bestPullupReps = Math.max(bestPullupReps, s.reps);
+          }
         });
+      }
+
+      // Timed skill holds — reps = seconds
+      if (timedSkills.has(ex.name)) {
+        const bestSecs = Math.max(...validSets.map(s => s.reps));
+        if (!skillBestSecs[ex.name] || bestSecs > skillBestSecs[ex.name]) skillBestSecs[ex.name] = bestSecs;
+        if (!skillSessionDates[ex.name]) skillSessionDates[ex.name] = new Set();
+        skillSessionDates[ex.name].add(date);
+      }
+
+      // Defence
+      if (DEFENCE_EXERCISES.has(ex.name)) {
+        defenceSessions.add(date);
+        defenceSetsTotal += validSets.length;
+        defenceSetsPerSession[date] = (defenceSetsPerSession[date] || 0) + validSets.length;
+      }
+
+      // Climbing
+      if (['Bouldering','Sport Climbing','Top Rope Climbing','Traditional Climbing'].includes(ex.name)) {
+        climbSessions.add(date);
+        climbTotalMins += validSets.reduce((t,s) => t + (s.reps || 0), 0);
+      }
+
+      // Pistol squat
+      if (ex.name === 'Pistol Squat') {
+        pistolData.bestReps = Math.max(pistolData.bestReps, ...validSets.map(s=>s.reps));
+        pistolData.sessionDates.add(date);
+      }
+
+      // Explosive
+      if (['Box Jump','Jump Squat','Nordic Curl','Bear Crawl','Pistol Squat','Hill Sprints'].includes(ex.name)) {
+        explosiveSessions.add(date);
+      }
+
+      // Flexibility
+      if (['German Hang','German hang'].includes(ex.name)) {
+        bestGermanHangSecs = Math.max(bestGermanHangSecs, ...validSets.map(s=>s.reps));
+      }
+
+      // Core skill
+      if (['L-Sit'].includes(ex.name)) {
+        bestLSitSecs = Math.max(bestLSitSecs, ...validSets.map(s=>s.reps));
+      }
+
+      // Handstand
+      if (['Freestanding Handstand Hold','Chest-to-Wall Handstand Hold','Wall Handstand Hold'].includes(ex.name)) {
+        bestHandstandSecs = Math.max(bestHandstandSecs, ...validSets.map(s=>s.reps));
+      }
+
+      // Sports
+      if (boxingExs.has(ex.name)) {
+        sportSessions.boxing.add(date);
+        sportMins.boxing += validSets.reduce((t,s) => t + (s.reps||0), 0);
+      }
+      if (courtExs.has(ex.name)) {
+        sportSessions.court.add(date);
+        sportMins.court += validSets.reduce((t,s) => t + (s.reps||0), 0);
       }
     });
   });
 
-  // Best strength ratio
+  // Helper: how many distinct calendar weeks does a set of dates span?
+  const weekSpread = (dates) => {
+    const weeks = new Set([...dates].map(d => todayStr(startOfWeek(new Date(d + 'T12:00:00')))));
+    return weeks.size;
+  };
+
+  // ── WEAPON — POWER STRENGTH ──
+  // Must hit real strength standards relative to bodyweight.
+  // The System does not award iron to someone who touched the bar once.
   let bestStrRatio = 0;
   Object.entries(e1rms).forEach(([name, val]) => {
     const ratio = val / bw;
-    let adj = ratio * (compoundLifts.has(name) ? 0.9 : 0.65);
+    const adj = compoundLifts.has(name) ? ratio * 0.9 : ratio * 0.6;
     if (adj > bestStrRatio) bestStrRatio = adj;
   });
-  if (bestPullupReps >= 15) bestStrRatio = Math.max(bestStrRatio, 1.3);
-  else if (bestPullupReps >= 10) bestStrRatio = Math.max(bestStrRatio, 1.05);
-  else if (bestPullupReps >= 5) bestStrRatio = Math.max(bestStrRatio, 0.75);
+  // Gate: must have a real strength ratio AND have logged compounds across 2+ weeks
+  const compoundDates = new Set(myWOs.filter(w =>
+    (w.exercises||[]).some(e => compoundLifts.has(e.name) && (e.sets||[]).some(s=>s.reps>0&&s.weight>0))
+  ).map(w => w.date));
+  const powerWeaponTier =
+    bestStrRatio >= 1.5 && weekSpread(compoundDates) >= 3 ? 5 :
+    bestStrRatio >= 1.25 && weekSpread(compoundDates) >= 2 ? 4 :
+    bestStrRatio >= 1.0  && weekSpread(compoundDates) >= 2 ? 3 :
+    bestStrRatio >= 0.75 && compoundDates.size >= 3 ? 2 :
+    bestStrRatio >= 0.5  && compoundDates.size >= 2 ? 1 : 0;
 
-  // ── WEAPON ──
-  // Count sessions per major category to determine weapon chain
-  const exCounts = {};
-  myWOs.forEach(w => (w.exercises||[]).forEach(ex => {
-    exCounts[ex.name] = (exCounts[ex.name]||0) + (ex.sets||[]).filter(s=>s.reps>0).length;
-  }));
-  const exCount = (...names) => names.reduce((t,n) => t+(exCounts[n]||0), 0);
+  // ── WEAPON — CAL STRENGTH ──
+  // Pull-up reps at bodyweight + progression to weighted pulls.
+  // 3 reps is not a weapon. The bar is honest.
+  const calDates = new Set(myWOs.filter(w =>
+    (w.exercises||[]).some(e => ['Pull Up','Chin Up','Dips','Ring Dips'].includes(e.name) && (e.sets||[]).some(s=>s.reps>0))
+  ).map(w => w.date));
+  const calWeaponTier =
+    bestWeightedPullup >= 20 && weekSpread(calDates) >= 3 ? 5 :
+    bestWeightedPullup >= 10 && weekSpread(calDates) >= 2 ? 4 :
+    bestPullupReps >= 15     && weekSpread(calDates) >= 2 ? 3 :
+    bestPullupReps >= 10     && calDates.size >= 3 ? 2 :
+    bestPullupReps >= 5      && calDates.size >= 2 ? 1 : 0;
 
-  const boxingSets  = exCount('Boxing — Bag Work','Boxing — Sparring','Boxing — Shadow Boxing','Boxing — Pad Work');
-  const courtSets   = exCount('Tennis','Tennis Drills','Basketball','Basketball Drills','Football (Soccer)','Football Drills','American Football');
-  const plancheSets = exCount('Tuck Planche','Advanced Tuck Planche','Full Planche','Planche Lean','Straddle Planche','Pseudo planche push up','Freestanding Handstand Hold','Chest-to-Wall Handstand Hold','Handstand Shoulder Taps');
-  const leverSets   = exCount('Front Lever','Tuck Front Lever','Advanced Tuck Front Lever','Front Lever Row','Front Lever Raise','Back Lever');
-  const powerSets   = exCount('Bench Press','Squat','Deadlift','Overhead Press','Romanian Deadlift','Sumo Deadlift','Incline Bench Press','Front Squat');
-  const calSets     = exCount('Pull Up','Chin Up','Dips','Ring Dips','Inverted Row','Barbell Row','Seated Cable Row','Pendlay Row');
+  // ── WEAPON — PLANCHE ──
+  // Hold durations are the truth. 1 second tuck planche is not a weapon.
+  const tuckPlancheSecs  = skillBestSecs['Tuck Planche'] || 0;
+  const advTuckSecs      = skillBestSecs['Advanced Tuck Planche'] || 0;
+  const straddleSecs     = skillBestSecs['Straddle Planche'] || 0;
+  const fullPlancheSecs  = skillBestSecs['Full Planche'] || 0;
+  const plancheDates     = new Set([
+    ...Object.keys(skillSessionDates).filter(k => k.includes('Planche') || k.includes('planche'))
+      .flatMap(k => [...skillSessionDates[k]])
+  ]);
+  const plancheWeaponTier =
+    fullPlancheSecs >= 3  && weekSpread(plancheDates) >= 3 ? 5 :
+    straddleSecs >= 5     && weekSpread(plancheDates) >= 2 ? 4 :
+    advTuckSecs >= 10     && weekSpread(plancheDates) >= 2 ? 3 :
+    advTuckSecs >= 5      && plancheDates.size >= 3 ? 2 :
+    tuckPlancheSecs >= 10 && plancheDates.size >= 2 ? 1 : 0;
 
-  const isSkillFocused = eliteTier.size >= 1 || advTier.size >= 2;
-  const isSportFocused = boxingSets >= 5 || courtSets >= 5;
+  // ── WEAPON — LEVER ──
+  const tuckLeverSecs    = skillBestSecs['Tuck Front Lever'] || 0;
+  const advTuckLeverSecs = skillBestSecs['Advanced Tuck Front Lever'] || 0;
+  const frontLeverSecs   = skillBestSecs['Front Lever'] || 0;
+  const backLeverSecs    = skillBestSecs['Back Lever'] || 0;
+  const leverDates       = new Set([
+    ...(skillSessionDates['Front Lever'] ? [...skillSessionDates['Front Lever']] : []),
+    ...(skillSessionDates['Tuck Front Lever'] ? [...skillSessionDates['Tuck Front Lever']] : []),
+    ...(skillSessionDates['Advanced Tuck Front Lever'] ? [...skillSessionDates['Advanced Tuck Front Lever']] : []),
+    ...(skillSessionDates['Back Lever'] ? [...skillSessionDates['Back Lever']] : []),
+  ]);
+  const leverWeaponTier =
+    frontLeverSecs >= 5  && weekSpread(leverDates) >= 3 ? 5 :
+    frontLeverSecs >= 3  && weekSpread(leverDates) >= 2 ? 4 :
+    advTuckLeverSecs >= 10 && weekSpread(leverDates) >= 2 ? 3 :
+    advTuckLeverSecs >= 5  && leverDates.size >= 3 ? 2 :
+    tuckLeverSecs >= 10   && leverDates.size >= 2 ? 1 : 0;
 
-  if (isSportFocused) {
-    // Sports athletes get a weapon based on sport type, tier from session count
-    const sportCount = Math.max(boxingSets, courtSets);
-    const chain = boxingSets >= courtSets ? 'weapon_boxing' : 'weapon_court';
-    const tier = sportCount >= 40 ? 4 : sportCount >= 20 ? 3 : sportCount >= 10 ? 2 : 1;
-    inventory.weapon = { ...ITEM_DEFINITIONS[`${chain}_${tier}`], condition:85, earnedFromWorkouts:true };
-  } else if (isSkillFocused) {
-    // Skill athletes — planche or lever or hybrid
-    let tier = 0;
-    if (eliteTier.size >= 3) tier = 4;
-    else if (eliteTier.size >= 1) tier = 3;
-    else if (advTier.size >= 3) tier = 2;
-    else if (advTier.size >= 1) tier = 1;
-    if (tier > 0) {
-      const chain = resolveItemKey('focus', 'weapon');
-      const item = ITEM_DEFINITIONS[`${chain}_${tier}`] || ITEM_DEFINITIONS[`weapon_foc_${tier}`];
-      inventory.weapon = { ...item, condition:90, earnedFromWorkouts:true };
+  // ── WEAPON — BOXING / COURT ──
+  // Minimum 30 min per session, at least 4 sessions across 2+ weeks.
+  const boxingWeaponTier =
+    sportMins.boxing >= 300 && weekSpread(sportSessions.boxing) >= 4 ? 5 :
+    sportMins.boxing >= 180 && weekSpread(sportSessions.boxing) >= 3 ? 4 :
+    sportMins.boxing >= 120 && weekSpread(sportSessions.boxing) >= 2 ? 3 :
+    sportMins.boxing >= 60  && sportSessions.boxing.size >= 4 ? 2 :
+    sportMins.boxing >= 30  && sportSessions.boxing.size >= 2 ? 1 : 0;
+  const courtWeaponTier =
+    sportMins.court >= 300 && weekSpread(sportSessions.court) >= 4 ? 5 :
+    sportMins.court >= 180 && weekSpread(sportSessions.court) >= 3 ? 4 :
+    sportMins.court >= 120 && weekSpread(sportSessions.court) >= 2 ? 3 :
+    sportMins.court >= 60  && sportSessions.court.size >= 4 ? 2 :
+    sportMins.court >= 30  && sportSessions.court.size >= 2 ? 1 : 0;
+
+  // ── RESOLVE WEAPON ──
+  // Pick the best earned weapon across all categories. Hybrids form when two
+  // styles reach the same tier within 1 of each other.
+  const dominant = (scores) => {
+    const entries = Object.entries(scores).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]);
+    if (!entries.length) return null;
+    if (entries.length === 1) return entries[0][0];
+    const [topKey, topVal] = entries[0];
+    const [,secondVal] = entries[1];
+    return (topVal - secondVal) / Math.max(topVal,1) > 0.20 ? topKey : null;
+  };
+
+  (() => {
+    // Skill weapons take priority if earned
+    const skillTiers = { planche: plancheWeaponTier, lever: leverWeaponTier };
+    const dSkill = dominant({ planche: plancheWeaponTier, lever: leverWeaponTier });
+    const maxSkillTier = Math.max(plancheWeaponTier, leverWeaponTier);
+    if (maxSkillTier > 0) {
+      let chain, tier;
+      if (!dSkill && plancheWeaponTier >= 1 && leverWeaponTier >= 1) {
+        chain = 'weapon_foc_hybrid';
+        tier = Math.max(plancheWeaponTier, leverWeaponTier);
+      } else {
+        chain = dSkill === 'planche' ? 'weapon_foc_planche' : 'weapon_foc_lever';
+        tier = dSkill === 'planche' ? plancheWeaponTier : leverWeaponTier;
+      }
+      const item = ITEM_DEFINITIONS[`${chain}_${tier}`];
+      if (item) { inventory.weapon = { ...item, condition:90, earnedFromWorkouts:true }; return; }
     }
-  } else if (compoundCount >= 3 || bestStrRatio > 0.5) {
-    let tier = 0;
-    if (bestStrRatio >= 1.5) tier = 5;
-    else if (bestStrRatio >= 1.25) tier = 4;
-    else if (bestStrRatio >= 1.0)  tier = 3;
-    else if (bestStrRatio >= 0.75) tier = 2;
-    else if (bestStrRatio >= 0.5)  tier = 1;
-    if (tier > 0) {
-      const chain = resolveItemKey('strength', 'weapon');
+
+    // Sports weapons
+    const maxSportTier = Math.max(boxingWeaponTier, courtWeaponTier);
+    if (maxSportTier > 0) {
+      const chain = boxingWeaponTier >= courtWeaponTier ? 'weapon_boxing' : 'weapon_court';
+      const tier  = Math.max(boxingWeaponTier, courtWeaponTier);
+      const item = ITEM_DEFINITIONS[`${chain}_${tier}`];
+      if (item) { inventory.weapon = { ...item, condition:85, earnedFromWorkouts:true }; return; }
+    }
+
+    // Strength weapons — power vs cal
+    const maxStrTier = Math.max(powerWeaponTier, calWeaponTier);
+    if (maxStrTier > 0) {
+      let chain, tier;
+      const dStr = dominant({ power: powerWeaponTier, cal: calWeaponTier });
+      if (!dStr && powerWeaponTier >= 1 && calWeaponTier >= 1) {
+        chain = 'weapon_str_hybrid';
+        tier  = maxStrTier;
+      } else {
+        chain = (dStr === 'power' || powerWeaponTier >= calWeaponTier) ? 'weapon_str_power' : 'weapon_str_cal';
+        tier  = Math.max(powerWeaponTier, calWeaponTier);
+      }
       const item = ITEM_DEFINITIONS[`${chain}_${tier}`] || ITEM_DEFINITIONS[`weapon_str_${tier}`];
-      inventory.weapon = { ...item, condition:90, earnedFromWorkouts:true };
+      if (item) { inventory.weapon = { ...item, condition:90, earnedFromWorkouts:true }; }
     }
-  } else if (bestPullupReps >= 10) {
-    const chain = resolveItemKey('strength', 'weapon');
-    inventory.weapon = { ...ITEM_DEFINITIONS[`${chain}_2`] || ITEM_DEFINITIONS['weapon_str_2'], condition:85, earnedFromWorkouts:true };
-  } else if (bestPullupReps >= 1 || compoundCount >= 1) {
-    const chain = resolveItemKey('strength', 'weapon');
-    inventory.weapon = { ...ITEM_DEFINITIONS[`${chain}_1`] || ITEM_DEFINITIONS['weapon_str_1'], condition:85, earnedFromWorkouts:true };
-  }
+  })();
 
   // ── ARMOUR ──
-  const armourChain = resolveItemKey('defence', 'armour');
-  if (defenceSetCount >= 20)      inventory.armour = { ...ITEM_DEFINITIONS[`${armourChain}_3`] || ITEM_DEFINITIONS['armour_3'], condition:85, earnedFromWorkouts:true };
-  else if (defenceSetCount >= 10) inventory.armour = { ...ITEM_DEFINITIONS[`${armourChain}_2`] || ITEM_DEFINITIONS['armour_2'], condition:85, earnedFromWorkouts:true };
-  else if (defenceSetCount >= 3)  inventory.armour = { ...ITEM_DEFINITIONS[`${armourChain}_1`] || ITEM_DEFINITIONS['armour_1'], condition:85, earnedFromWorkouts:true };
+  // Requires real sustained supplementary work — minimum 3 separate sessions,
+  // at least 8 sets per session on average, across 2+ different weeks.
+  const avgDefenceSetsPerSession = defenceSessions.size > 0
+    ? defenceSetsTotal / defenceSessions.size : 0;
+  const defenceWeeks = weekSpread(defenceSessions);
+  const armourTier =
+    avgDefenceSetsPerSession >= 12 && defenceWeeks >= 4 && defenceSessions.size >= 8 ? 5 :
+    avgDefenceSetsPerSession >= 10 && defenceWeeks >= 3 && defenceSessions.size >= 5 ? 4 :
+    avgDefenceSetsPerSession >= 8  && defenceWeeks >= 2 && defenceSessions.size >= 4 ? 3 :
+    avgDefenceSetsPerSession >= 6  && defenceSessions.size >= 3 ? 2 :
+    avgDefenceSetsPerSession >= 4  && defenceSessions.size >= 2 ? 1 : 0;
 
-  // ── BOOTS ──
-  const bootsChain = resolveItemKey('agility', 'boots');
-  if (hasPistol && eliteTier.size >= 1)        inventory.boots = { ...ITEM_DEFINITIONS[`${bootsChain}_3`] || ITEM_DEFINITIONS['boots_3'], condition:85, earnedFromWorkouts:true };
-  else if (hasPistol)                           inventory.boots = { ...ITEM_DEFINITIONS[`${bootsChain}_3`] || ITEM_DEFINITIONS['boots_3'], condition:85, earnedFromWorkouts:true };
-  else if (hasClimbing)                         inventory.boots = { ...ITEM_DEFINITIONS[`${bootsChain}_2`] || ITEM_DEFINITIONS['boots_2'], condition:85, earnedFromWorkouts:true };
-  else if (hasGermanHang || advTier.size >= 2)  inventory.boots = { ...ITEM_DEFINITIONS[`${bootsChain}_1`] || ITEM_DEFINITIONS['boots_1'], condition:80, earnedFromWorkouts:true };
+  if (armourTier > 0) {
+    const chain = resolveItemKey('defence', 'armour');
+    const item = ITEM_DEFINITIONS[`${chain}_${armourTier}`] || ITEM_DEFINITIONS[`armour_${armourTier}`];
+    if (item) inventory.armour = { ...item, condition:85, earnedFromWorkouts:true };
+  }
 
-  // ── ACCESSORY ──
-  const accChain = resolveItemKey('focus', 'accessory');
-  if (eliteTier.size >= 3)       inventory.accessory = { ...ITEM_DEFINITIONS[`${accChain}_4`] || ITEM_DEFINITIONS['accessory_4'], condition:90, earnedFromWorkouts:true };
-  else if (eliteTier.size >= 1)  inventory.accessory = { ...ITEM_DEFINITIONS[`${accChain}_3`] || ITEM_DEFINITIONS['accessory_3'], condition:90, earnedFromWorkouts:true };
-  else if (advTier.size >= 3)    inventory.accessory = { ...ITEM_DEFINITIONS[`${accChain}_3`] || ITEM_DEFINITIONS['accessory_3'], condition:85, earnedFromWorkouts:true };
-  else if (advTier.size >= 1)    inventory.accessory = { ...ITEM_DEFINITIONS[`${accChain}_2`] || ITEM_DEFINITIONS['accessory_2'], condition:85, earnedFromWorkouts:true };
-  else if (bestPullupReps >= 10) inventory.accessory = { ...ITEM_DEFINITIONS[`${accChain}_1`] || ITEM_DEFINITIONS['accessory_1'], condition:80, earnedFromWorkouts:true };
+  // ── BOOTS — RUNNING ──
+  // Must have real runs — minimum 3km, pace under 8:00/km, across multiple weeks.
+  const qualifyingRuns = runSessions.filter(r => r.distKm >= 3 && r.paceSecs <= 480);
+  const runWeeks = weekSpread(new Set(qualifyingRuns.map(r => r.date)));
+  const bestPace = qualifyingRuns.length ? Math.min(...qualifyingRuns.map(r => r.paceSecs)) : 9999;
+  const runBootsTier =
+    bestPace <= 240 && runWeeks >= 4 && qualifyingRuns.length >= 8 ? 5 : // sub 4:00/km
+    bestPace <= 300 && runWeeks >= 3 && qualifyingRuns.length >= 5 ? 4 : // sub 5:00/km
+    bestPace <= 360 && runWeeks >= 2 && qualifyingRuns.length >= 4 ? 3 : // sub 6:00/km
+    bestPace <= 420 && qualifyingRuns.length >= 3 ? 2 :                  // sub 7:00/km
+    bestPace <= 480 && qualifyingRuns.length >= 2 ? 1 : 0;               // sub 8:00/km
+
+  // ── BOOTS — CLIMBING ──
+  // Minimum 4 sessions, 30+ mins each, across 2+ weeks.
+  const climbBootsTier =
+    climbSessions.size >= 12 && weekSpread(climbSessions) >= 4 && climbTotalMins >= 400 ? 5 :
+    climbSessions.size >= 8  && weekSpread(climbSessions) >= 3 && climbTotalMins >= 240 ? 4 :
+    climbSessions.size >= 6  && weekSpread(climbSessions) >= 2 && climbTotalMins >= 150 ? 3 :
+    climbSessions.size >= 4  && climbTotalMins >= 80 ? 2 :
+    climbSessions.size >= 2  && climbTotalMins >= 30 ? 1 : 0;
+
+  // ── BOOTS — EXPLOSIVE ──
+  // Pistol squat reps are honest. Multiple sessions across weeks.
+  const expBootsTier =
+    pistolData.bestReps >= 10 && weekSpread(pistolData.sessionDates) >= 3 ? 5 :
+    pistolData.bestReps >= 7  && weekSpread(pistolData.sessionDates) >= 2 ? 4 :
+    pistolData.bestReps >= 5  && pistolData.sessionDates.size >= 3 ? 3 :
+    pistolData.bestReps >= 3  && pistolData.sessionDates.size >= 2 ? 2 :
+    pistolData.bestReps >= 1  && explosiveSessions.size >= 3 ? 1 : 0;
+
+  // ── BOOTS — COURT ──
+  const courtBootsTier =
+    sportMins.court >= 300 && weekSpread(sportSessions.court) >= 4 ? 5 :
+    sportMins.court >= 180 && weekSpread(sportSessions.court) >= 3 ? 4 :
+    sportMins.court >= 120 && weekSpread(sportSessions.court) >= 2 ? 3 :
+    sportMins.court >= 60  && sportSessions.court.size >= 4 ? 2 :
+    sportMins.court >= 30  && sportSessions.court.size >= 2 ? 1 : 0;
+
+  // ── BOOTS — FLEXIBILITY ──
+  const flexBootsTier =
+    bestGermanHangSecs >= 60 && weekSpread(skillSessionDates['German Hang'] || skillSessionDates['German hang'] || new Set()) >= 3 ? 5 :
+    bestGermanHangSecs >= 30 ? 4 :
+    bestGermanHangSecs >= 20 ? 3 :
+    bestGermanHangSecs >= 10 ? 2 :
+    bestGermanHangSecs >= 5  ? 1 : 0;
+
+  // ── RESOLVE BOOTS ──
+  (() => {
+    const tiers = {
+      boots_run: runBootsTier, boots_climb: climbBootsTier,
+      boots_exp: expBootsTier, boots_court: courtBootsTier,
+      boots_flex: flexBootsTier,
+    };
+    const entries = Object.entries(tiers).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]);
+    if (!entries.length) return;
+
+    const [[topChain, topTier], second] = entries;
+    // Hybrid if top two are within 1 tier of each other and both meaningful
+    if (second && second[1] >= topTier - 1 && second[1] >= 2) {
+      const pair = [topChain.replace('boots_',''), second[0].replace('boots_','')].sort().join('_');
+      const hybridChain =
+        pair === 'climb_run' || pair === 'run_climb' ? 'boots_hybrid_trail' :
+        pair === 'exp_run'   || pair === 'run_exp'   ? 'boots_hybrid_sprint' :
+        pair === 'climb_exp' || pair === 'exp_climb' ? 'boots_hybrid_all' : null;
+      if (hybridChain) {
+        const tier = topTier;
+        const item = ITEM_DEFINITIONS[`${hybridChain}_${tier}`];
+        if (item) { inventory.boots = { ...item, condition:85, earnedFromWorkouts:true }; return; }
+      }
+    }
+    const item = ITEM_DEFINITIONS[`${topChain}_${topTier}`] || ITEM_DEFINITIONS[`boots_${topTier}`];
+    if (item) inventory.boots = { ...item, condition:85, earnedFromWorkouts:true };
+  })();
+
+  // ── ACCESSORY — HANDSTAND ──
+  // Freestanding hold duration. Wall work doesn't count the same.
+  const hsDates = new Set([
+    ...(skillSessionDates['Freestanding Handstand Hold'] ? [...skillSessionDates['Freestanding Handstand Hold']] : []),
+    ...(skillSessionDates['Chest-to-Wall Handstand Hold'] ? [...skillSessionDates['Chest-to-Wall Handstand Hold']] : []),
+  ]);
+  const hsAccessoryTier =
+    bestHandstandSecs >= 60 && weekSpread(hsDates) >= 3 ? 5 :
+    bestHandstandSecs >= 30 && weekSpread(hsDates) >= 2 ? 4 :
+    bestHandstandSecs >= 15 && hsDates.size >= 3 ? 3 :
+    bestHandstandSecs >= 5  && hsDates.size >= 2 ? 2 :
+    bestHandstandSecs >= 2  && hsDates.size >= 1 ? 1 : 0;
+
+  // ── ACCESSORY — CORE SKILL ──
+  // L-sit hold duration is the truth. Dragon flag reps are a bonus gate.
+  const dragonflagReps = myWOs.reduce((best, w) =>
+    Math.max(best, ...(w.exercises||[])
+      .filter(e => e.name === 'Dragon Flag Negatives')
+      .flatMap(e => (e.sets||[]).filter(s=>s.reps>0).map(s=>s.reps))), 0);
+  const coreDates = skillSessionDates['L-Sit'] || new Set();
+  const coreAccessoryTier =
+    bestLSitSecs >= 30 && dragonflagReps >= 5 && weekSpread(coreDates) >= 3 ? 5 :
+    bestLSitSecs >= 20 && weekSpread(coreDates) >= 2 ? 4 :
+    bestLSitSecs >= 12 && coreDates.size >= 3 ? 3 :
+    bestLSitSecs >= 7  && coreDates.size >= 2 ? 2 :
+    bestLSitSecs >= 3  && coreDates.size >= 1 ? 1 : 0;
+
+  // ── RESOLVE ACCESSORY ──
+  const maxAccTier = Math.max(hsAccessoryTier, coreAccessoryTier);
+  if (maxAccTier > 0) {
+    let chain, tier;
+    if (hsAccessoryTier > 0 && coreAccessoryTier > 0 && Math.abs(hsAccessoryTier - coreAccessoryTier) <= 1) {
+      // Both skills developed — give the better item
+      chain = hsAccessoryTier >= coreAccessoryTier ? 'accessory_hs' : 'accessory_core';
+    } else {
+      chain = hsAccessoryTier >= coreAccessoryTier ? 'accessory_hs' : 'accessory_core';
+    }
+    tier = chain === 'accessory_hs' ? hsAccessoryTier : coreAccessoryTier;
+    const item = ITEM_DEFINITIONS[`${chain}_${tier}`] || ITEM_DEFINITIONS[`accessory_${tier}`];
+    if (item) inventory.accessory = { ...item, condition:85, earnedFromWorkouts:true };
+  }
 
   return inventory;
 }
@@ -12505,11 +12781,16 @@ function getMonday(date) {
 // Determine which item chain to use based on what the hunter actually trained.
 function resolveItemKey(stat, slot) {
   const myWOs = myWorkouts || [];
-  const exCounts = {};
+
+  // Build weighted set counts — harder exercises count for more than easier ones.
+  // A Front Lever set (tier 1.7) counts 21% more than a Tuck Front Lever set (tier 1.4).
+  const exWeightedCounts = {};
   myWOs.forEach(w => (w.exercises||[]).forEach(ex => {
-    exCounts[ex.name] = (exCounts[ex.name] || 0) + (ex.sets||[]).filter(s=>s.reps>0).length;
+    const skillMult = SKILL_TIERS[ex.name] || 1.0;
+    const completedSets = (ex.sets||[]).filter(s=>s.reps>0).length;
+    exWeightedCounts[ex.name] = (exWeightedCounts[ex.name] || 0) + completedSets * skillMult;
   }));
-  const count = (...names) => names.reduce((t,n) => t + (exCounts[n]||0), 0);
+  const count = (...names) => names.reduce((t,n) => t + (exWeightedCounts[n]||0), 0);
 
   // Helper: detect dominant style — returns key only if that style is >20% more than runner-up
   const dominant = (scores) => {
@@ -12535,10 +12816,10 @@ function resolveItemKey(stat, slot) {
     if (stat === 'focus') {
       const plancheSets = count('Tuck Planche','Advanced Tuck Planche','Full Planche','Planche Lean','Straddle Planche','Pseudo planche push up','Freestanding Handstand Hold','Chest-to-Wall Handstand Hold','Handstand Shoulder Taps','Wall Toe Pull');
       const leverSets   = count('Front Lever','Tuck Front Lever','Advanced Tuck Front Lever','Front Lever Row','Front Lever Raise','Back Lever');
-      if (plancheSets + leverSets === 0) return 'weapon_foc'; // no skill training yet — generic fallback
+      if (plancheSets + leverSets === 0) return 'weapon_foc';
       const d = dominant({ weapon_foc_planche: plancheSets, weapon_foc_lever: leverSets });
-      // Only hybrid if BOTH styles have meaningful training (at least 3 sets each)
-      return d || (plancheSets >= 3 && leverSets >= 3 ? 'weapon_foc_hybrid' : 
+      // Hybrid if neither dominates AND both have real training
+      return d || (plancheSets >= 3 && leverSets >= 3 ? 'weapon_foc_hybrid' :
              plancheSets >= leverSets ? 'weapon_foc_planche' : 'weapon_foc_lever');
     }
     if (stat === 'agility') {
