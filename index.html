@@ -2273,6 +2273,7 @@ function openSettingsModal() {
           <button class="btn" id="admin-raw-workout" style="font-size:12px;color:var(--brass);border-color:var(--brass);">🗄 View/Edit Raw Workout</button>
           <button class="btn" id="admin-adjust-ap" style="font-size:12px;color:var(--brass);border-color:var(--brass);">➕ Manual AP Adjustment</button>
           <button class="btn" id="admin-raw-profile" style="font-size:12px;color:var(--brass);border-color:var(--brass);">🗄 View/Edit Raw Profile</button>
+          <button class="btn" id="admin-ap-ledger" style="font-size:12px;color:var(--brass);border-color:var(--brass);">📋 AP Ledger</button>
         </div>
       </div>` : ''}
       <p class="auth-error" id="settings-error" style="margin-top:10px;"></p>
@@ -2305,6 +2306,7 @@ function openSettingsModal() {
   overlay.querySelector('#admin-raw-workout')?.addEventListener('click', () => { overlay.remove(); openRawWorkoutPanel(); });
   overlay.querySelector('#admin-adjust-ap')?.addEventListener('click', () => { overlay.remove(); openApAdjustPanel(); });
   overlay.querySelector('#admin-raw-profile')?.addEventListener('click', () => { overlay.remove(); openRawProfilePanel(); });
+  overlay.querySelector('#admin-ap-ledger')?.addEventListener('click', () => { overlay.remove(); openApLedger(); });
   overlay.querySelector('#save-settings').addEventListener('click', async () => {
     const newName = document.getElementById('settings-name').value.trim();
     const newGoal = Math.max(1, Number(document.getElementById('settings-goal').value) || 3);
@@ -4250,6 +4252,7 @@ async function checkAndAwardPRs(exercises, workoutDate) {
 
   await setDoc(doc(db, 'prs', currentUser.uid), newPRs);
   await setDoc(doc(db, 'users', currentUser.uid), { auraPoints: increment(totalNewXP) }, { merge: true });
+  logAp(currentUser.uid, totalNewXP, `PR XP: ${awarded.map(a=>a.exercise).join(', ')}`, profile.auraPoints || 0);
   myPRs = newPRs;
   profile.auraPoints = newAP;
 
@@ -4671,6 +4674,28 @@ function computeApEarned() {
   return base + bonus;
 }
 
+// ── AP Transaction Logger ──────────────────────────────────────────────────
+// Writes every AP movement to `apEvents/{uid}_{timestamp}` so the admin ledger
+// has a full auditable history instead of just the current balance.
+// Safe to call fire-and-forget (no await needed at call sites) — failures are
+// silently swallowed so a log write never blocks or breaks a real AP award.
+async function logAp(uid, amount, reason, balanceBefore) {
+  try {
+    const balanceAfter = (balanceBefore || 0) + amount;
+    await addDoc(collection(db, 'apEvents'), {
+      uid,
+      amount,
+      reason,
+      balanceBefore: balanceBefore || 0,
+      balanceAfter,
+      timestamp: serverTimestamp(),
+      date: todayStr(),
+    });
+  } catch(e) {
+    console.warn('AP log write failed (non-critical):', e.message);
+  }
+}
+
 async function tryAwardAp() {
   if (!currentUser || !profile) return;
   const today = todayStr();
@@ -4686,6 +4711,7 @@ async function tryAwardAp() {
     auraPoints: increment(earned),
     lastApDate: today,
   }, { merge: true });
+  logAp(currentUser.uid, earned, `Daily workout AP (${today})`, profile.auraPoints || 0);
   profile.auraPoints = newAp;
   profile.lastApDate = today;
   return earned;
@@ -4715,6 +4741,7 @@ async function upgradeStatWithAp(statId) {
     auraPoints: increment(-gates.apCost), stats: newStats,
     statTimeAtRank, pendingRankUpModals: pending,
   }, { merge: true });
+  logAp(currentUser.uid, -gates.apCost, `Stat upgrade: ${statId} ${currentRank}→${newRank}`, profile.auraPoints || 0);
   profile.auraPoints = newAp;
   profile.stats = newStats;
   profile.statTimeAtRank = statTimeAtRank;
@@ -5452,6 +5479,7 @@ async function checkPenalty() {
   const apLost = Math.max(5, Math.round((profile.auraPoints || 0) * 0.05));
   const newAp = Math.max(0, (profile.auraPoints || 0) - apLost);
   await setDoc(doc(db, 'users', currentUser.uid), { auraPoints: increment(-apLost), lastPenaltyCheck: todayStr() }, { merge: true });
+  logAp(currentUser.uid, -apLost, `Missed training day penalty (${yStr})`, profile.auraPoints || 0);
   profile.auraPoints = newAp;
   profile.lastPenaltyCheck = todayStr();
   return { apLost };
@@ -6543,6 +6571,7 @@ async function fixMissingAp() {
           lastApDate: dateToAward,
           auraPoints: increment(ap),
         }, { merge: true });
+        logAp(t.uid, ap, `Admin: backfill missing daily AP (${dateToAward})`, currentAp);
         fixed.push(`${t.name} (+${ap} AP for ${dateToAward})`);
       }
     } catch(e) { console.error(e); }
@@ -6854,6 +6883,8 @@ function openApAdjustPanel() {
     try {
       await setDoc(doc(db, 'users', uid), { auraPoints: increment(amount) }, { merge: true });
       const name = targets.find(t => t.uid === uid)?.name || uid;
+      const currentAp = allUsers.find(u => u.uid === uid)?.auraPoints || 0;
+      logAp(uid, amount, `Admin manual adjustment: ${reason || 'no reason given'} (by ${profile.displayName})`, currentAp);
       result.textContent = `Applied ${amount > 0 ? '+' : ''}${amount} AP to ${name}${reason ? ` (${reason})` : ''}.`;
       result.style.color = 'var(--growing)';
       showToast(`${amount > 0 ? '+' : ''}${amount} AP applied to ${name}.`, 'success');
@@ -6924,6 +6955,75 @@ function openRawProfilePanel() {
           btn.disabled = false; btn.textContent = '💾 Save this profile (full overwrite)';
         }
       });
+    } catch(e) {
+      content.innerHTML = `<p style="color:var(--excess);">Error: ${e.message}</p>`;
+    }
+  });
+}
+
+async function openApLedger() {
+  const targets = [
+    { uid: 'eUtGPwQBcCSO0x3xS3ZGYFGXNIT2', name: 'Lawrence' },
+    { uid: 'd1W5vTx5aSTIwkR4CIwnO2xW7vf1', name: 'LuChing' },
+    { uid: 'oFFi2hATYARhqcSZQlHwlsYBOge2', name: "I'm just a girl" },
+    { uid: 'rzcznIkNRrSKVXl74LsTaRSdHOk2', name: 'Lucas' },
+  ];
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.innerHTML = `<div class="modal" style="max-height:88vh;overflow-y:auto;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+      <h3>📋 AP Ledger</h3>
+      <button class="icon-btn" id="ledger-close" style="font-size:20px;">✕</button>
+    </div>
+    <div style="display:flex;gap:8px;margin-bottom:12px;">
+      <select id="ledger-user" style="flex:1;background:var(--card-2);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:8px;font-size:13px;">
+        ${targets.map(t => `<option value="${t.uid}">${escapeHtml(t.name)}</option>`).join('')}
+      </select>
+      <button class="btn btn-sm" id="ledger-load" style="font-size:12px;">Load</button>
+    </div>
+    <div id="ledger-content" style="color:var(--text-faint);font-size:13px;">Pick a hunter, then Load.</div>
+  </div>`;
+  document.body.appendChild(overlay);
+  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+  overlay.querySelector('#ledger-close').addEventListener('click', () => overlay.remove());
+
+  overlay.querySelector('#ledger-load').addEventListener('click', async () => {
+    const uid = overlay.querySelector('#ledger-user').value;
+    const content = overlay.querySelector('#ledger-content');
+    content.innerHTML = 'Loading…';
+    try {
+      const snap = await getDocs(query(
+        collection(db, 'apEvents'),
+        where('uid', '==', uid),
+        orderBy('timestamp', 'desc'),
+        limit(50)
+      ));
+      const events = snap.docs.map(d => d.data());
+      if (!events.length) {
+        content.innerHTML = '<p style="color:var(--text-faint);">No AP events recorded yet — events are logged going forward from when this feature was deployed.</p>';
+        return;
+      }
+      const currentAp = allUsers.find(u => u.uid === uid)?.auraPoints || 0;
+      content.innerHTML = `
+        <div style="font-family:var(--font-mono);font-size:10px;color:var(--text-faint);margin-bottom:12px;letter-spacing:0.06em;">
+          CURRENT BALANCE: <span style="color:var(--brass);">${currentAp} AP</span> · SHOWING LAST ${events.length} EVENTS
+        </div>
+        ${events.map(e => {
+          const isPositive = e.amount > 0;
+          const ts = e.timestamp?.toDate?.()?.toLocaleString() || e.date || '—';
+          return `<div style="display:flex;align-items:flex-start;gap:10px;padding:8px 0;border-bottom:1px solid rgba(93,157,255,0.08);">
+            <div style="font-family:var(--font-display);font-size:16px;color:${isPositive?'var(--growing)':'var(--excess)'};flex-shrink:0;width:52px;text-align:right;">
+              ${isPositive?'+':''}${e.amount}
+            </div>
+            <div style="flex:1;min-width:0;">
+              <div style="font-size:12px;color:var(--text);margin-bottom:2px;">${escapeHtml(e.reason||'—')}</div>
+              <div style="font-size:10px;font-family:var(--font-mono);color:var(--text-faint);">${ts}</div>
+            </div>
+            <div style="text-align:right;flex-shrink:0;font-family:var(--font-mono);font-size:10px;color:var(--text-faint);">
+              ${e.balanceBefore??'?'} → <span style="color:var(--text-dim);">${e.balanceAfter??'?'}</span>
+            </div>
+          </div>`;
+        }).join('')}`;
     } catch(e) {
       content.innerHTML = `<p style="color:var(--excess);">Error: ${e.message}</p>`;
     }
@@ -7379,6 +7479,7 @@ function openAdminWorkoutLogger(targetUid, hunterName) {
           lastApDate: date,
           auraPoints: increment(ap),
         }, { merge: true });
+        logAp(targetUid, ap, `Admin workout log: daily AP (${date})`, currentAp);
       }
       // check PRs for each exercise
       for (const ex of exercises) {
@@ -8116,8 +8217,10 @@ async function renderRaidBoss() {
         return false;
       });
       if (!alreadyClaimed) {
-        profile.auraPoints = (profile.auraPoints || 0) + myShareAP;
+        const prevAp = profile.auraPoints || 0;
+        profile.auraPoints = prevAp + myShareAP;
         profile.lastRaidClaimWeek = weekKey;
+        logAp(currentUser.uid, myShareAP, `Raid boss cleared: ${boss.name} (${mySharePct.toFixed(0)}% contribution)`, prevAp);
         const slayerTitle = `[${boss.name} Slayer]`;
         const existingTitles = profile.slayerTitles || [];
         if (!existingTitles.includes(slayerTitle)) {
@@ -8176,7 +8279,10 @@ async function renderRaidBoss() {
         return false;
       });
       if (!alreadyPenalized) {
-        if (myPenaltyShare > 0) profile.auraPoints = Math.max(0, (profile.auraPoints || 0) - myPenaltyShare);
+        if (myPenaltyShare > 0) {
+          logAp(currentUser.uid, -myPenaltyShare, `Raid gate failed: ${boss.name} penalty`, profile.auraPoints || 0);
+          profile.auraPoints = Math.max(0, (profile.auraPoints || 0) - myPenaltyShare);
+        }
         profile.lastRaidPenaltyWeek = penaltyKey;
         const penaltyBreakdown = allUsers
           .map(u => ({
@@ -9780,11 +9886,11 @@ function renderTrialsTab(el) {
           const newTitles = [...(profile.slayerTitles||[])];
           if (!newTitles.includes(trial.title)) newTitles.push(trial.title);
           await setDoc(doc(db, 'users', currentUser.uid), {
-            auraPoints: increment(100),
-            completedTrials: newCompleted,
+            auraPoints: increment(100),            completedTrials: newCompleted,
             slayerTitles: newTitles,
             [`activeTrials.${hunterClass}`]: null,
           }, { merge: true });
+          logAp(currentUser.uid, 100, `Trial completed: ${trial.name} [${hunterClass}]`, profile.auraPoints || 0);
           profile.auraPoints = newAp;
           profile.completedTrials = newCompleted;
           profile.slayerTitles = newTitles;
@@ -10564,6 +10670,7 @@ function openWorkoutDetail(workoutId) {
       if (apToReverse > 0) {
         const newAp = Math.max(0, (profile.auraPoints || 0) - apToReverse);
         await setDoc(doc(db, 'users', currentUser.uid), { auraPoints: increment(-apToReverse) }, { merge: true });
+        logAp(currentUser.uid, -apToReverse, `Workout deleted: AP reversed (${w.date})`, profile.auraPoints || 0);
         profile.auraPoints = newAp;
       }
 
