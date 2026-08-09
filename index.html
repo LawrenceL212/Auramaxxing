@@ -2274,6 +2274,7 @@ function openSettingsModal() {
           <button class="btn" id="admin-adjust-ap" style="font-size:12px;color:var(--brass);border-color:var(--brass);">➕ Manual AP Adjustment</button>
           <button class="btn" id="admin-raw-profile" style="font-size:12px;color:var(--brass);border-color:var(--brass);">🗄 View/Edit Raw Profile</button>
           <button class="btn" id="admin-ap-ledger" style="font-size:12px;color:var(--brass);border-color:var(--brass);">📋 AP Ledger</button>
+          <button class="btn" id="admin-migrate-v2" style="font-size:12px;color:#FFD700;border-color:#FFD700;">⚡ Migrate to New XP System</button>
         </div>
       </div>` : ''}
       <p class="auth-error" id="settings-error" style="margin-top:10px;"></p>
@@ -2307,6 +2308,7 @@ function openSettingsModal() {
   overlay.querySelector('#admin-adjust-ap')?.addEventListener('click', () => { overlay.remove(); openApAdjustPanel(); });
   overlay.querySelector('#admin-raw-profile')?.addEventListener('click', () => { overlay.remove(); openRawProfilePanel(); });
   overlay.querySelector('#admin-ap-ledger')?.addEventListener('click', () => { overlay.remove(); openApLedger(); });
+  overlay.querySelector('#admin-migrate-v2')?.addEventListener('click', () => { overlay.remove(); runV2Migration(); });
   overlay.querySelector('#save-settings').addEventListener('click', async () => {
     const newName = document.getElementById('settings-name').value.trim();
     const newGoal = Math.max(1, Number(document.getElementById('settings-goal').value) || 3);
@@ -4995,7 +4997,22 @@ function renderCharCard() {
     const btnLabel = isMaxed ? 'MAX' : allReady ? '⚡ AWAKEN' : `${gates?.apCost||0} AP`;
     const btnCls = isMaxed ? 'stat-upgrade-btn maxed' : allReady ? 'stat-upgrade-btn can-upgrade awakening' : 'stat-upgrade-btn';
     const statXP = (profile.statXP || {})[def.id] || 0;
-    const xpTag = statXP > 0 ? `<span class="stat-xp-bonus">+${Math.floor(statXP/10)} AP from PRs</span>` : '';
+    // statXP accumulates from sets logged + PR bonuses — show as "Stat XP" not "AP from PRs"
+    // The XP bar shows progress within the current rank tier toward the next meaningful milestone.
+    // We use 100 XP as a soft milestone (roughly 10 full workout sessions worth of sets in this stat).
+    const XP_MILESTONE = 100;
+    const xpPct = Math.min(100, (statXP % XP_MILESTONE) / XP_MILESTONE * 100);
+    const xpLevel = Math.floor(statXP / XP_MILESTONE);
+    const xpTag = statXP > 0 ? `
+      <div style="margin-top:4px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2px;">
+          <span style="font-size:9px;font-family:var(--font-mono);color:var(--text-faint);">STAT XP${xpLevel > 0 ? ` · LVL ${xpLevel}` : ''}</span>
+          <span style="font-size:9px;font-family:var(--font-mono);color:var(--growing);">+${statXP} xp</span>
+        </div>
+        <div style="height:3px;background:rgba(93,157,255,0.1);border-radius:2px;overflow:hidden;">
+          <div style="height:100%;width:${xpPct.toFixed(0)}%;background:var(--growing);border-radius:2px;transition:width 0.6s ease;box-shadow:0 0 4px var(--growing);"></div>
+        </div>
+      </div>` : '';
 
     return `<div class="stat-row ${allReady?'gate-ready':''}" style="cursor:pointer;" data-stat-detail="${def.id}">
       <span class="stat-label" title="${def.desc}">${def.label}</span>
@@ -5005,11 +5022,11 @@ function renderCharCard() {
           <div class="stat-tiers">${RANK_TIERS.map(()=>'<div class="stat-tier-seg"></div>').join('')}</div>
         </div>
         ${gateHtml}
+        ${xpTag}
       </div>
       <span class="stat-rank ${rankCls}">${cur}</span>
       <div style="display:flex;flex-direction:column;align-items:flex-end;gap:2px;">
         <button class="${btnCls}" data-stat="${def.id}" ${isMaxed?'disabled':''}>${btnLabel}</button>
-        ${xpTag}
       </div>
     </div>`;
   }).join('');
@@ -6957,6 +6974,134 @@ function openRawProfilePanel() {
       });
     } catch(e) {
       content.innerHTML = `<p style="color:var(--excess);">Error: ${e.message}</p>`;
+    }
+  });
+}
+
+// ── V2 System Migration ─────────────────────────────────────────────────────
+// One-time migration from old AP/statXP system to new hunterXP/hunterLevel/
+// statTrainingXP/statAP system. Safe to run multiple times — checks for
+// v2Migrated flag first so it won't overwrite data if already applied.
+async function runV2Migration() {
+  const MIGRATION_DATA = {
+    'eUtGPwQBcCSO0x3xS3ZGYFGXNIT2': {
+      name: 'Lawrence',
+      hunterLevel: 4,
+      hunterXP: 424.0,
+      auraPoints: 34,
+      statTrainingXP: { strength: 205.8, recovery: 72.8, focus: 18.4, agility: 6.9, endurance: 1.5, flexibility: 1.5 },
+      statAP: { strength: 0, focus: 0, recovery: 0, agility: 0, endurance: 0, flexibility: 0 },
+    },
+    'd1W5vTx5aSTIwkR4CIwnO2xW7vf1': {
+      name: 'LuChing',
+      hunterLevel: 4,
+      hunterXP: 637.5,
+      auraPoints: 39,
+      statTrainingXP: { strength: 249.2, focus: 99.7, recovery: 74.3, agility: 18.3, endurance: 15.7, flexibility: 5.7 },
+      statAP: { strength: 0, focus: 0, recovery: 0, agility: 0, endurance: 0, flexibility: 0 },
+    },
+    'oFFi2hATYARhqcSZQlHwlsYBOge2': {
+      name: "I'm just a girl",
+      hunterLevel: 3,
+      hunterXP: 250.3,
+      auraPoints: 22,
+      statTrainingXP: { strength: 87.5, endurance: 29.7, agility: 27.0, recovery: 24.9, focus: 20.1, flexibility: 1.5 },
+      statAP: { strength: 0, focus: 0, recovery: 0, agility: 0, endurance: 0, flexibility: 0 },
+    },
+    'rzcznIkNRrSKVXl74LsTaRSdHOk2': {
+      name: 'Lucas',
+      hunterLevel: 4,
+      hunterXP: 377.5,
+      auraPoints: 34,
+      statTrainingXP: { strength: 128.5, focus: 67.3, recovery: 59.9, flexibility: 6.1, agility: 1.5, endurance: 1.5 },
+      statAP: { strength: 0, focus: 0, recovery: 0, agility: 0, endurance: 0, flexibility: 0 },
+    },
+  };
+
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.innerHTML = `<div class="modal" style="max-height:88vh;overflow-y:auto;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+      <h3>⚡ V2 System Migration</h3>
+      <button class="icon-btn" id="migrate-close" style="font-size:20px;">✕</button>
+    </div>
+    <p style="font-size:12px;color:var(--text-faint);margin:0 0 6px;">Migrates all 4 hunters to the new XP/AP/Training Cap system based on exact calculations from their real workout history.</p>
+    <p style="font-size:12px;color:var(--excess);margin:0 0 16px;">⚠ This will overwrite auraPoints, statXP, and add new fields. Safe to re-run — won't overwrite if already migrated.</p>
+    <div style="margin-bottom:16px;">
+      ${Object.entries(MIGRATION_DATA).map(([uid, d]) => `
+        <div style="padding:10px;border:1px solid var(--border);border-radius:6px;margin-bottom:8px;font-size:12px;">
+          <div style="font-weight:700;margin-bottom:6px;">${escapeHtml(d.name)}</div>
+          <div style="font-family:var(--font-mono);color:var(--text-faint);font-size:11px;">
+            Level ${d.hunterLevel} · ${d.hunterXP} XP · ${d.auraPoints} AP<br>
+            Str: ${d.statTrainingXP.strength} · Focus: ${d.statTrainingXP.focus} · Rec: ${d.statTrainingXP.recovery}<br>
+            Agi: ${d.statTrainingXP.agility} · End: ${d.statTrainingXP.endurance} · Flex: ${d.statTrainingXP.flexibility}
+          </div>
+        </div>`).join('')}
+    </div>
+    <button class="btn btn-primary" id="migrate-run" style="width:100%;">⚡ Run Migration</button>
+    <div id="migrate-log" style="margin-top:12px;font-size:11px;font-family:var(--font-mono);color:var(--text-faint);"></div>
+  </div>`;
+  document.body.appendChild(overlay);
+  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+  overlay.querySelector('#migrate-close').addEventListener('click', () => overlay.remove());
+
+  overlay.querySelector('#migrate-run').addEventListener('click', async () => {
+    const btn = overlay.querySelector('#migrate-run');
+    const log = overlay.querySelector('#migrate-log');
+    btn.disabled = true; btn.textContent = 'Migrating…';
+    log.innerHTML = '';
+
+    const addLog = (msg, color = 'var(--text-faint)') => {
+      log.innerHTML += `<div style="color:${color};">${msg}</div>`;
+    };
+
+    let successCount = 0;
+    let skipCount = 0;
+
+    for (const [uid, data] of Object.entries(MIGRATION_DATA)) {
+      try {
+        // Check if already migrated
+        const snap = await getDoc(doc(db, 'users', uid));
+        const existing = snap.data() || {};
+
+        if (existing.v2Migrated) {
+          addLog(`⏭ ${data.name} — already migrated, skipping`, 'var(--brass)');
+          skipCount++;
+          continue;
+        }
+
+        // Write new fields, overwrite auraPoints, remove statXP
+        await setDoc(doc(db, 'users', uid), {
+          // New system fields
+          hunterLevel: data.hunterLevel,
+          hunterXP: data.hunterXP,
+          statTrainingXP: data.statTrainingXP,
+          statAP: data.statAP,
+          // Reset AP to calculated value
+          auraPoints: data.auraPoints,
+          // Migration flag
+          v2Migrated: true,
+          v2MigratedAt: todayStr(),
+          // Remove old field
+          statXP: null,
+        }, { merge: true });
+
+        // Log to AP ledger
+        logAp(uid, data.auraPoints, `V2 system migration — converted from old AP system (${todayStr()})`, existing.auraPoints || 0);
+
+        addLog(`✓ ${data.name} — Level ${data.hunterLevel}, ${data.auraPoints} AP, training caps set`, 'var(--growing)');
+        successCount++;
+      } catch(e) {
+        addLog(`✗ ${data.name} — ERROR: ${e.message}`, 'var(--excess)');
+      }
+    }
+
+    addLog(`\nDone — ${successCount} migrated, ${skipCount} skipped.`, successCount > 0 ? 'var(--growing)' : 'var(--text-faint)');
+    btn.textContent = '✓ Migration Complete';
+
+    if (successCount > 0) {
+      showToast(`V2 migration complete — ${successCount} hunters updated.`, 'success');
+      await loadAllData();
     }
   });
 }
