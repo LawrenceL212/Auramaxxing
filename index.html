@@ -4094,6 +4094,46 @@ function computeStreak(uid) {
   return streak;
 }
 function countSince(uid, sinceDate) { return allWorkouts.filter(w => w.uid === uid && new Date(w.date) >= sinceDate).length; }
+
+// Count how many scheduled training days were completed in the past rolling year.
+// Rest days (days not in the user's schedule) are excluded from both the numerator and denominator.
+// This is the correct metric for The One Above All's 365-day requirement — it measures
+// "did you show up every day you were supposed to" rather than "did you train 365 consecutive
+// calendar days" which would be nearly impossible and punish planned rest.
+function countScheduledDaysCompleted(uid) {
+  const oneYearAgo = new Date();
+  oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+
+  // Get this user's schedule
+  let schedule = null;
+  if (uid === currentUser?.uid && myProgram?.schedule?.length) {
+    schedule = myProgram.schedule;
+  } else {
+    const u = allUsers.find(u => u.uid === uid);
+    if (u?.schedule?.length) schedule = u.schedule;
+  }
+
+  const WEEKDAYS_FULL = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  const workoutDates = new Set(
+    allWorkouts.filter(w => w.uid === uid && new Date(w.date) >= oneYearAgo).map(w => w.date)
+  );
+
+  let scheduledDaysCompleted = 0;
+  const cursor = new Date(oneYearAgo);
+  const today = new Date();
+
+  while (cursor <= today) {
+    const dateStr = cursor.toISOString().slice(0, 10);
+    const dow = WEEKDAYS_FULL[cursor.getDay()].slice(0, 3);
+    const isScheduled = !schedule || schedule.length === 0 || schedule.includes(dow);
+    if (isScheduled && workoutDates.has(dateStr)) {
+      scheduledDaysCompleted++;
+    }
+    cursor.setDate(cursor.getDate() + 1);
+  }
+
+  return scheduledDaysCompleted;
+}
 /* =========================================================================
    PERSONAL RECORD (PR) SYSTEM
    — Tracks estimated 1RM per exercise, compares to world strength standards,
@@ -5352,11 +5392,11 @@ function renderCharCard() {
   statsEl.querySelectorAll('.stat-upgrade-btn:not([disabled])').forEach(btn =>
     btn.addEventListener('click', () => openStatInvestPanel(btn.dataset.stat)));
 
-  // tap stat row to open gate detail
+  // tap stat row to open invest panel
   statsEl.querySelectorAll('.stat-row[data-stat-detail]').forEach(row => {
     row.addEventListener('click', e => {
-      if (e.target.closest('button')) return; // don't fire if tapping upgrade btn
-      showStatGateModal(row.dataset.statDetail);
+      if (e.target.closest('button')) return;
+      openStatInvestPanel(row.dataset.statDetail);
     });
   });
 
@@ -6657,7 +6697,7 @@ function getUserTitle(uid) {
   const weekStart = startOfWeek(new Date());
   const thisWeek = countSince(uid, weekStart);
   if (STAT_DEFS.every(d => (user.stats||{})[d.id] === 'S')) return '[Shadow Monarch]';
-  if (streak >= 365) return '[The Unyielding]';
+  if (countScheduledDaysCompleted(uid) >= 365) return '[The Unyielding]';
   if (streak >= 30) return '[Consistent]';
   if (thisWeek > 0 && thisWeek === Math.max(...allUsers.map(u => countSince(u.uid, weekStart)))) return '[Raid Boss]';
   return '';
@@ -8145,10 +8185,9 @@ function showDebriefModal(exercises, apEarned, prs) {
           <button class="btn btn-sm" id="save-rir-btn" style="margin-top:8px;width:100%;">Save RIR</button>
         </div>` : ''}
       ${apEarned ? `
-        <p style="font-size:11px;color:var(--text-faint);margin:0 0 4px;">Daily AP breakdown</p>
+        <p style="font-size:11px;color:var(--text-faint);margin:0 0 4px;">Level-up AP breakdown</p>
         <div style="font-size:12px;color:var(--text-dim);margin-bottom:12px;">
-          10 base${mult > 1 ? ` × ${mult} streak bonus` : ''} = ${Math.round(10*mult)} AP
-          ${apEarned > Math.round(10*mult) ? ` + 5 weekly goal bonus` : ''}
+          +${apEarned} AP from reaching Level ${profile.hunterLevel || 1}
         </div>` : ''}
       <div style="font-size:12px;color:var(--text-faint);margin-bottom:12px;">Total AP: ${(profile.auraPoints||0).toLocaleString()}</div>
       <button class="debrief-close-btn">Back to the Hunt</button>
@@ -10177,7 +10216,7 @@ const ARCHETYPE_CHAINS = [
       { name:'Swimming (30 sessions)',             check:()=>['Freestyle Swimming','Breaststroke Swimming','Butterfly Swimming','Backstroke Swimming','Open Water Swimming','HIIT Swimming'].reduce((t,n)=>t+getExerciseSessionCount(n,currentUser.uid),0)>=30 },
       { name:'Climbing (30 sessions)',             check:()=>['Bouldering','Sport Climbing','Top Rope Climbing','Traditional Climbing'].reduce((t,n)=>t+getExerciseSessionCount(n,currentUser.uid),0)>=30 },
       { name:'Cycling (30 sessions)',              check:()=>['Cycling','Road Cycling','Mountain Biking','Stationary Bike','Spin Class','Cycling Intervals'].reduce((t,n)=>t+getExerciseSessionCount(n,currentUser.uid),0)>=30 },
-      { name:'365-day streak',                     check:()=>computeStreak(currentUser.uid)>=365 },
+      { name:'365 scheduled training days completed', check:()=>countScheduledDaysCompleted(currentUser.uid)>=365 },
     ],
     title:'[The One Above All]',
   },
@@ -10191,7 +10230,7 @@ const AUTO_ACHIEVEMENTS = [
   { id:'streak_30',  category:'consistency', icon:'🔥', name:'Iron Month',         desc:'Maintain a 30-day training streak',      rarity:'rare',      check: () => computeStreak(currentUser.uid) >= 30,  ap:0 },
   { id:'streak_60',  category:'consistency', icon:'🔥', name:'The Unyielding',     desc:'Maintain a 60-day training streak',      rarity:'epic',      check: () => computeStreak(currentUser.uid) >= 60,  ap:0 },
   { id:'streak_100', category:'consistency', icon:'👑', name:'Century Hunter',     desc:'100 consecutive days without missing',   rarity:'legendary', check: () => computeStreak(currentUser.uid) >= 100, ap:0 },
-  { id:'streak_365', category:'consistency', icon:'👑', name:'Absolute Devotion',  desc:'365 consecutive days. A full year.',     rarity:'legendary', check: () => computeStreak(currentUser.uid) >= 365, ap:0 },
+  { id:'streak_365', category:'consistency', icon:'👑', name:'Absolute Devotion', desc:'Complete 365 scheduled training days in a year. No excuses.', rarity:'legendary', check: () => countScheduledDaysCompleted(currentUser.uid) >= 365, ap:0 },
   // Total workout milestones
   { id:'workouts_10',  category:'volume', icon:'⚡', name:'Awakened',       desc:'Complete 10 workouts',   rarity:'common', check: () => myWorkouts.length >= 10,  ap:0 },
   { id:'workouts_50',  category:'volume', icon:'⚡', name:'Hunter',         desc:'Complete 50 workouts',   rarity:'rare',   check: () => myWorkouts.length >= 50,  ap:0 },
@@ -10984,8 +11023,7 @@ function openWorkoutDetail(workoutId) {
       .map(([exercise, pr]) => ({ exercise, xp: pr.xp||0, tier: pr.tier, e1rm: pr.e1rm }));
     const streak = computeStreak(currentUser.uid);
     const mult = streak >= 30 ? 2 : streak >= 7 ? 1.5 : 1;
-    const apEarned = profile.lastApDate === w.date ? Math.round(10*mult) : 0;
-    showDebriefModal(w.exercises||[], apEarned, datePRs);
+    showDebriefModal(w.exercises||[], 0, datePRs);
   });
 
   let editing = false;
