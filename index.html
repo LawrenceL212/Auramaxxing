@@ -655,6 +655,99 @@
   /* Divider */
   .char-divider{height:1px;background:linear-gradient(90deg,transparent,rgba(93,157,255,0.3),transparent);margin:0 0 14px;}
 
+  /* ── Hunter Level Banner ── */
+  .hunter-level-banner{
+    display:flex;align-items:center;gap:14px;
+    background:linear-gradient(90deg,rgba(255,215,0,0.06) 0%,rgba(255,215,0,0.02) 100%);
+    border:1px solid rgba(255,215,0,0.15);border-radius:6px;
+    padding:10px 14px;margin-bottom:14px;
+    position:relative;overflow:hidden;
+  }
+  .hunter-level-banner::before{
+    content:'';position:absolute;top:0;left:-100%;width:60%;height:100%;
+    background:linear-gradient(90deg,transparent,rgba(255,215,0,0.06),transparent);
+    animation:levelBannerShimmer 4s ease-in-out infinite;
+  }
+  @keyframes levelBannerShimmer{
+    0%{left:-100%} 50%{left:150%} 100%{left:150%}
+  }
+  .hunter-level-eyebrow{
+    font-family:var(--font-mono);font-size:8px;letter-spacing:0.15em;
+    color:rgba(255,215,0,0.5);margin-bottom:2px;
+  }
+  .hunter-level-number{
+    font-family:var(--font-head);font-size:32px;font-weight:900;
+    color:#FFD700;line-height:1;letter-spacing:0.02em;
+    text-shadow:0 0 20px rgba(255,215,0,0.6),0 0 40px rgba(255,215,0,0.3);
+    transition:all 0.3s ease;
+  }
+  .hunter-level-xp-col{flex:1;min-width:0;}
+  .hunter-level-xp-label{
+    display:flex;align-items:center;gap:2px;
+    font-family:var(--font-mono);font-size:11px;color:var(--text-dim);
+    margin-bottom:6px;
+  }
+  .hunter-xp-session{
+    font-size:10px;color:var(--growing);margin-left:6px;
+    animation:xpFadeIn 0.5s ease forwards;opacity:0;
+  }
+  @keyframes xpFadeIn{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:translateY(0)}}
+  .hunter-xp-bar-wrap{
+    height:8px;background:rgba(255,215,0,0.08);border-radius:4px;
+    overflow:hidden;position:relative;
+    border:1px solid rgba(255,215,0,0.1);
+  }
+  .hunter-xp-bar{
+    height:100%;background:linear-gradient(90deg,#B8860B,#FFD700,#FFF8DC);
+    border-radius:4px;transition:width 1.2s cubic-bezier(0.16,1,0.3,1);
+    position:relative;
+  }
+  .hunter-xp-bar::after{
+    content:'';position:absolute;top:0;right:0;width:20px;height:100%;
+    background:linear-gradient(90deg,transparent,rgba(255,255,255,0.4));
+    animation:xpBarShine 2s ease-in-out infinite;
+  }
+  @keyframes xpBarShine{0%,100%{opacity:0}50%{opacity:1}}
+  .hunter-xp-bar-glow{
+    position:absolute;top:0;left:0;height:100%;
+    background:linear-gradient(90deg,transparent,rgba(255,215,0,0.3));
+    border-radius:4px;transition:width 1.2s cubic-bezier(0.16,1,0.3,1);
+    filter:blur(4px);
+  }
+
+  /* ── XP Debrief Animation ── */
+  .xp-debrief-bar-wrap{
+    height:6px;background:rgba(255,215,0,0.08);border-radius:3px;
+    overflow:hidden;margin:4px 0 8px;
+    border:1px solid rgba(255,215,0,0.1);
+  }
+  .xp-debrief-bar{
+    height:100%;background:linear-gradient(90deg,#B8860B,#FFD700);
+    border-radius:3px;width:0%;
+    transition:width 1.5s cubic-bezier(0.16,1,0.3,1);
+  }
+
+  /* ── Stat bar animate-in ── */
+  @keyframes statBarIn{from{width:0!important}to{}}
+  .stat-bar{animation:statBarIn 0.8s cubic-bezier(0.16,1,0.3,1) both;}
+  .stat-row:nth-child(1) .stat-bar{animation-delay:0.05s}
+  .stat-row:nth-child(2) .stat-bar{animation-delay:0.1s}
+  .stat-row:nth-child(3) .stat-bar{animation-delay:0.15s}
+  .stat-row:nth-child(4) .stat-bar{animation-delay:0.2s}
+  .stat-row:nth-child(5) .stat-bar{animation-delay:0.25s}
+  .stat-row:nth-child(6) .stat-bar{animation-delay:0.3s}
+
+  /* ── AP invest pulse ── */
+  @keyframes apPulse{0%{transform:scale(1)}50%{transform:scale(1.15)}100%{transform:scale(1)}}
+  .ap-invest-pulse{animation:apPulse 0.4s ease;}
+
+  /* ── Level up screen flash ── */
+  @keyframes levelUpFlash{0%{opacity:0}20%{opacity:0.4}100%{opacity:0}}
+  .level-up-flash{
+    position:fixed;inset:0;background:#FFD700;pointer-events:none;
+    z-index:9999;animation:levelUpFlash 0.6s ease forwards;
+  }
+
   /* Stats — redesigned */
   .stat-row{display:grid;grid-template-columns:72px 1fr auto auto;gap:8px;align-items:start;padding:8px 0;border-bottom:1px solid rgba(93,157,255,0.06);}
   .stat-row:last-child{border-bottom:none;}
@@ -1523,6 +1616,28 @@
       <div class="char-screen" id="char-card">
         <div class="char-screen-bg" id="char-screen-bg"></div>
         <div class="char-screen-inner">
+
+          <!-- Hunter Level Banner — full width, prominent -->
+          <div class="hunter-level-banner" id="hunter-level-banner">
+            <div class="hunter-level-left">
+              <div class="hunter-level-eyebrow">HUNTER LEVEL</div>
+              <div class="hunter-level-number" id="hunter-level-number">1</div>
+            </div>
+            <div class="hunter-level-xp-col">
+              <div class="hunter-level-xp-label">
+                <span id="hunter-xp-current">0</span>
+                <span style="color:var(--text-faint);margin:0 4px;">/</span>
+                <span id="hunter-xp-needed">50</span>
+                <span style="color:var(--text-faint);margin-left:4px;">XP</span>
+                <span id="hunter-xp-session" class="hunter-xp-session"></span>
+              </div>
+              <div class="hunter-xp-bar-wrap">
+                <div class="hunter-xp-bar" id="hunter-xp-bar" style="width:0%"></div>
+                <div class="hunter-xp-bar-glow" id="hunter-xp-bar-glow" style="width:0%"></div>
+              </div>
+            </div>
+          </div>
+
           <div class="char-top-row">
             <div class="char-rank-orb" id="char-rank-badge">
               <div class="char-rank-orb-ring"></div>
@@ -1539,7 +1654,6 @@
               <div class="char-power-label">POWER</div>
               <div id="char-dominant-stat" style="font-family:var(--font-mono);font-size:9px;color:var(--text-faint);letter-spacing:0.06em;margin-top:2px;"></div>
               <div class="char-ap-row"><span class="char-ap-value" id="ap-amount">0</span><span class="char-ap-label">AP</span></div>
-              <div id="char-hunter-level" style="font-family:var(--font-mono);font-size:9px;color:var(--brass);letter-spacing:0.06em;margin-top:2px;">LVL 1</div>
             </div>
           </div>
           <div class="char-divider"></div>
@@ -3763,6 +3877,14 @@ document.getElementById('save-workout-btn')?.addEventListener('click', async () 
     addExerciseRow();
     await loadAllData();
     const xpResult = await awardWorkoutXP(exercises);
+    profile._lastXpResult = xpResult; // stash for debrief XP bar animation
+    // Show session XP on the level banner
+    const sessionXpEl = document.getElementById('hunter-xp-session');
+    if (sessionXpEl && xpResult?.generalXP) {
+      sessionXpEl.textContent = `+${Math.round(xpResult.generalXP)} XP this session`;
+      sessionXpEl.style.opacity = '1';
+      setTimeout(() => { sessionXpEl.style.opacity = '0'; }, 8000);
+    }
     const prs = await checkAndAwardPRs(exercises, date);
     await checkAndUnlockAchievements();
     startDailyTimer();
@@ -3779,7 +3901,7 @@ document.getElementById('save-workout-btn')?.addEventListener('click', async () 
     }
     setTimeout(() => {
       closeWorkoutModal(false);
-      showQuestClearBanner(xpResult?.apEarned || 0, prs.length);
+      showQuestClearBanner(xpResult?.apEarned || 0, prs.length, false, xpResult?.generalXP || 0);
       SFX.questComplete();
       setTimeout(() => showDebriefModal(exercises, xpResult?.apEarned || 0, prs), 800);
     }, 600);
@@ -5056,24 +5178,34 @@ function renderCharCard() {
   if (document.getElementById('char-power-value')) {
     document.getElementById('char-power-value').textContent = power.toLocaleString();
   }
-  // Hunter level display
-  const levelEl = document.getElementById('char-hunter-level');
-  if (levelEl) {
-    const hunterLevel = profile.hunterLevel || 1;
-    const hunterXP = profile.hunterXP || 0;
-    // XP progress within current level
-    let cumulativeXP = 0;
-    for (let l = 1; l < hunterLevel; l++) cumulativeXP += Math.round(50 * Math.pow(l, 1.25));
-    const xpIntoLevel = hunterXP - cumulativeXP;
-    const xpNeeded = Math.round(50 * Math.pow(hunterLevel, 1.25));
-    const xpPct = Math.min(100, (xpIntoLevel / xpNeeded) * 100);
-    levelEl.innerHTML = `
-      <div style="font-family:var(--font-mono);font-size:9px;color:var(--brass);letter-spacing:0.06em;">LVL ${hunterLevel}</div>
-      <div style="height:2px;background:rgba(255,215,0,0.15);border-radius:1px;margin-top:2px;width:60px;overflow:hidden;">
-        <div style="height:100%;width:${xpPct.toFixed(0)}%;background:var(--brass);border-radius:1px;box-shadow:0 0 3px var(--brass);"></div>
-      </div>
-      <div style="font-size:8px;color:var(--text-faint);margin-top:1px;">${Math.round(xpIntoLevel)}/${xpNeeded} XP</div>
-    `;
+  // Hunter level banner — prominent, animated
+  const hunterLevel = profile.hunterLevel || 1;
+  const hunterXP = profile.hunterXP || 0;
+  let cumulativeXP = 0;
+  for (let l = 1; l < hunterLevel; l++) cumulativeXP += Math.round(50 * Math.pow(l, 1.25));
+  const xpIntoLevel = Math.max(0, hunterXP - cumulativeXP);
+  const xpNeeded = Math.round(50 * Math.pow(hunterLevel, 1.25));
+  const xpPct = Math.min(100, (xpIntoLevel / xpNeeded) * 100);
+
+  const levelNumEl = document.getElementById('hunter-level-number');
+  const xpCurrentEl = document.getElementById('hunter-xp-current');
+  const xpNeededEl = document.getElementById('hunter-xp-needed');
+  const xpBarEl = document.getElementById('hunter-xp-bar');
+  const xpBarGlowEl = document.getElementById('hunter-xp-bar-glow');
+
+  if (levelNumEl) levelNumEl.textContent = hunterLevel;
+  if (xpCurrentEl) xpCurrentEl.textContent = Math.round(xpIntoLevel).toLocaleString();
+  if (xpNeededEl) xpNeededEl.textContent = xpNeeded.toLocaleString();
+
+  // Animate bar after a brief delay so transition fires
+  if (xpBarEl) {
+    xpBarEl.style.width = '0%';
+    xpBarEl.style.transition = 'none';
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      xpBarEl.style.transition = 'width 1.2s cubic-bezier(0.16,1,0.3,1)';
+      xpBarEl.style.width = xpPct.toFixed(1) + '%';
+      if (xpBarGlowEl) xpBarGlowEl.style.width = xpPct.toFixed(1) + '%';
+    }));
   }
   // dominant stat — highest ranked stat
   const STAT_ORDER = ['S','A','B','C','D','E'];
@@ -7751,27 +7883,70 @@ function buildMuscleStats(uid) {
 
 // Solo Leveling style level-up system alert
 function showLevelUpModal(newLevel, apAwarded) {
-  showSystemModal(`<div class="system-window levelup">
-    <p class="system-eyebrow" style="color:var(--brass);letter-spacing:0.2em;">◈ LEVEL UP ◈</p>
-    <div class="system-icon" style="font-size:48px;margin:8px 0;">⚡</div>
-    <h2 class="system-title" style="font-size:28px;color:#FFD700;">LEVEL ${newLevel}</h2>
-    <p class="system-body" style="color:var(--text-dim);">The System acknowledges your growth.<br>Your potential expands.</p>
-    <div style="background:rgba(255,215,0,0.08);border:1px solid rgba(255,215,0,0.2);border-radius:4px;padding:12px;margin:12px 0;">
-      <div style="font-family:var(--font-mono);font-size:11px;color:var(--text-faint);margin-bottom:4px;">REWARD</div>
-      <div style="font-size:22px;color:var(--brass);font-family:var(--font-display);font-weight:700;">+${apAwarded} AP</div>
-      <div style="font-size:11px;color:var(--text-faint);margin-top:2px;">Spend on stat upgrades</div>
+  // Gold flash across screen
+  const flash = document.createElement('div');
+  flash.className = 'level-up-flash';
+  document.body.appendChild(flash);
+  setTimeout(() => flash.remove(), 700);
+
+  showSystemModal(`<div class="system-window levelup" id="levelup-modal-inner" style="overflow:hidden;">
+    <p class="system-eyebrow" style="color:#FFD700;letter-spacing:0.2em;animation:fadeInDown 0.4s ease both;">◈ LEVEL UP ◈</p>
+    <div class="system-icon" style="font-size:56px;margin:8px 0;animation:levelUpIconPop 0.5s cubic-bezier(0.16,1,0.3,1) 0.1s both;">⚡</div>
+    <h2 class="system-title" style="font-size:36px;color:#FFD700;animation:levelNumPop 0.6s cubic-bezier(0.16,1,0.3,1) 0.2s both;text-shadow:0 0 30px rgba(255,215,0,0.8),0 0 60px rgba(255,215,0,0.4);">
+      LEVEL <span id="levelup-num">1</span>
+    </h2>
+    <p class="system-body" style="color:var(--text-dim);animation:fadeInDown 0.4s ease 0.3s both;">The System acknowledges your growth.<br>Your potential expands.</p>
+    <div style="background:rgba(255,215,0,0.08);border:1px solid rgba(255,215,0,0.25);border-radius:6px;padding:14px;margin:14px 0;animation:fadeInDown 0.4s ease 0.4s both;">
+      <div style="font-family:var(--font-mono);font-size:10px;color:rgba(255,215,0,0.5);margin-bottom:6px;letter-spacing:0.1em;">AURA POINTS AWARDED</div>
+      <div style="font-size:28px;color:#FFD700;font-family:var(--font-head);font-weight:900;text-shadow:0 0 20px rgba(255,215,0,0.6);">+<span id="levelup-ap">0</span> AP</div>
+      <div style="font-size:11px;color:var(--text-faint);margin-top:4px;">Invest in stats to rank up</div>
     </div>
-    <button class="system-btn success">Continue</button>
+    <button class="system-btn success" style="animation:fadeInDown 0.4s ease 0.5s both;">Continue →</button>
   </div>`);
+
+  // Animate level number counting up
+  const numEl = document.getElementById('levelup-num');
+  const apEl = document.getElementById('levelup-ap');
+  if (numEl) {
+    let n = Math.max(1, newLevel - 3);
+    const interval = setInterval(() => {
+      numEl.textContent = n;
+      if (n >= newLevel) { clearInterval(interval); numEl.textContent = newLevel; }
+      n++;
+    }, 80);
+  }
+  // Animate AP counting up
+  if (apEl) {
+    let a = 0;
+    const step = Math.ceil(apAwarded / 20);
+    const apInterval = setInterval(() => {
+      a = Math.min(a + step, apAwarded);
+      apEl.textContent = a;
+      if (a >= apAwarded) clearInterval(apInterval);
+    }, 40);
+  }
 }
 
-function showQuestClearBanner(apEarned, prCount, persistent = false) {
+// Additional keyframes injected once
+if (!document.getElementById('levelup-keyframes')) {
+  const style = document.createElement('style');
+  style.id = 'levelup-keyframes';
+  style.textContent = `
+    @keyframes levelUpIconPop{from{transform:scale(0) rotate(-20deg);opacity:0}to{transform:scale(1) rotate(0deg);opacity:1}}
+    @keyframes levelNumPop{from{transform:scale(0.5);opacity:0}to{transform:scale(1);opacity:1}}
+    @keyframes fadeInDown{from{opacity:0;transform:translateY(-10px)}to{opacity:1;transform:translateY(0)}}
+  `;
+  document.head.appendChild(style);
+}
+
+function showQuestClearBanner(apEarned, prCount, persistent = false, generalXP = 0) {
   document.querySelectorAll('.quest-clear-banner').forEach(b => b.remove());
 
   const banner = document.createElement('div');
   banner.className = 'quest-clear-banner' + (persistent ? ' persistent' : '');
 
   const apText = apEarned ? `+${apEarned} AP` : '';
+  const xpText = generalXP ? `+${Math.round(generalXP)} XP` : '';
   const prText = prCount ? ` · ${prCount} PR${prCount>1?'s':''}` : '';
 
   banner.innerHTML = `
@@ -7780,7 +7955,7 @@ function showQuestClearBanner(apEarned, prCount, persistent = false) {
       <div class="quest-clear-particles" id="qcb-particles"></div>
       <div class="quest-clear-eyebrow">◈ System Alert ◈</div>
       <div class="quest-clear-title">Quest Complete</div>
-      ${apText ? `<div class="quest-clear-ap">${apText}${prText}</div>` : ''}
+      ${xpText ? `<div class="quest-clear-ap" style="color:#FFD700;">${xpText}${apText ? ` · ${apText}` : ''}${prText}</div>` : apText ? `<div class="quest-clear-ap">${apText}${prText}</div>` : ''}
     </div>`;
 
   document.body.appendChild(banner);
@@ -7838,8 +8013,32 @@ function showDebriefModal(exercises, apEarned, prs) {
     <div class="debrief-pr-row">
       <span class="debrief-pr-name">${escapeHtml(p.exercise)}</span>
       <span style="font-size:11px;color:var(--violet);">${p.tier ? `${tierEmojis[p.tier]||''} ${p.tier}` : ''}</span>
-      <span class="debrief-xp-badge">+${p.xp} AP</span>
+      <span class="debrief-xp-badge">+${p.xp} XP</span>
     </div>`).join('');
+
+  // Compute XP earned this session for display
+  const xpResult = profile._lastXpResult || null;
+  const generalXP = xpResult?.generalXP || 0;
+  const trainingXP = xpResult?.trainingXP || {};
+  const hunterLevel = profile.hunterLevel || 1;
+  let cumulativeXP = 0;
+  for (let l = 1; l < hunterLevel; l++) cumulativeXP += Math.round(50 * Math.pow(l, 1.25));
+  const xpIntoLevel = Math.max(0, (profile.hunterXP || 0) - cumulativeXP);
+  const xpNeeded = Math.round(50 * Math.pow(hunterLevel, 1.25));
+  const xpPct = Math.min(100, (xpIntoLevel / xpNeeded) * 100);
+  const prevXpPct = Math.max(0, xpPct - (generalXP / xpNeeded * 100));
+
+  // Training XP stat breakdown
+  const STAT_ICONS_D = { strength:'⚔️', focus:'🎯', recovery:'🛡️', agility:'⚡', endurance:'🔥', flexibility:'💫' };
+  const statRows = Object.entries(trainingXP)
+    .filter(([,v]) => v > 0.5)
+    .sort(([,a],[,b]) => b - a)
+    .map(([stat, xp]) => `
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+        <span style="font-size:13px;flex-shrink:0;">${STAT_ICONS_D[stat]||'·'}</span>
+        <span style="font-size:11px;color:var(--text-dim);flex:1;text-transform:capitalize;">${stat}</span>
+        <span style="font-family:var(--font-mono);font-size:10px;color:var(--growing);">+${xp.toFixed(1)} cap XP</span>
+      </div>`).join('');
 
   const el = document.createElement('div');
   el.className = 'debrief-overlay';
@@ -7847,27 +8046,52 @@ function showDebriefModal(exercises, apEarned, prs) {
     <div class="debrief-window">
       <p class="debrief-eyebrow">Quest Complete</p>
       <h2 class="debrief-title">⚡ Session Debrief</h2>
-      <div class="debrief-stat-grid">
-        <div class="debrief-stat">
-          <div class="debrief-stat-value">+${totalAP}</div>
-          <div class="debrief-stat-label">Aura Points</div>
+
+      ${generalXP > 0 ? `
+      <!-- XP earned this session -->
+      <div style="background:rgba(255,215,0,0.06);border:1px solid rgba(255,215,0,0.15);border-radius:6px;padding:12px;margin-bottom:14px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+          <span style="font-family:var(--font-mono);font-size:9px;color:rgba(255,215,0,0.5);letter-spacing:0.1em;">HUNTER LEVEL ${hunterLevel}</span>
+          <span style="font-family:var(--font-mono);font-size:11px;color:#FFD700;">+${Math.round(generalXP)} XP</span>
         </div>
+        <div class="xp-debrief-bar-wrap">
+          <div class="xp-debrief-bar" id="debrief-xp-bar" style="width:${prevXpPct.toFixed(1)}%"></div>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-family:var(--font-mono);font-size:9px;color:var(--text-faint);margin-top:3px;">
+          <span>${Math.round(xpIntoLevel)} / ${xpNeeded} XP to Level ${hunterLevel + 1}</span>
+          <span>${xpPct.toFixed(0)}%</span>
+        </div>
+      </div>` : ''}
+
+      <div class="debrief-stat-grid">
         <div class="debrief-stat">
           <div class="debrief-stat-value">${totalSets}</div>
           <div class="debrief-stat-label">Sets Logged</div>
         </div>
         <div class="debrief-stat">
-          <div class="debrief-stat-value">${totalVol > 0 ? (totalVol >= 1000 ? (totalVol/1000).toFixed(1)+'t' : totalVol.toLocaleString()+'kg') : '—'}</div>
+          <div class="debrief-stat-value">${totalVol > 0 ? (totalVol >= 1000 ? (totalVol/1000).toFixed(1)+'t' : Math.round(totalVol).toLocaleString()+'kg') : '—'}</div>
           <div class="debrief-stat-label">Volume</div>
         </div>
         <div class="debrief-stat">
           <div class="debrief-stat-value">${streak}<span style="font-size:13px;">d</span></div>
-          <div class="debrief-stat-label">Streak ${mult > 1 ? '×'+mult : ''}</div>
+          <div class="debrief-stat-label">Streak</div>
+        </div>
+        <div class="debrief-stat">
+          <div class="debrief-stat-value">${(profile.auraPoints||0)}</div>
+          <div class="debrief-stat-label">Total AP</div>
         </div>
       </div>
+
+      ${statRows ? `
+      <div style="margin-bottom:14px;">
+        <p style="font-size:10px;font-family:var(--font-mono);color:var(--text-faint);letter-spacing:0.08em;margin-bottom:8px;">TRAINING CAPS RAISED</p>
+        ${statRows}
+      </div>` : ''}
+
       ${prs.length ? `
         <p style="font-size:11px;color:var(--text-faint);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;">🏆 Personal Records</p>
         <div class="debrief-prs">${prRows}</div>` : ''}
+
       ${missingRIR.length ? `
         <div style="background:rgba(255,61,90,0.08);border:1px solid rgba(255,61,90,0.3);border-radius:8px;padding:12px;margin-bottom:14px;">
           <p style="font-size:12px;color:var(--excess);font-weight:700;margin:0 0 6px;">⚠ Missing RIR — add now for better progression</p>
@@ -7879,16 +8103,29 @@ function showDebriefModal(exercises, apEarned, prs) {
             </div>`).join('')}</div>
           <button class="btn btn-sm" id="save-rir-btn" style="margin-top:8px;width:100%;">Save RIR</button>
         </div>` : ''}
+
       ${apEarned ? `
-        <p style="font-size:11px;color:var(--text-faint);margin:0 0 4px;">Level-up AP breakdown</p>
-        <div style="font-size:12px;color:var(--text-dim);margin-bottom:12px;">
-          +${apEarned} AP from reaching Level ${profile.hunterLevel || 1}
+        <div style="background:rgba(255,215,0,0.06);border:1px solid rgba(255,215,0,0.15);border-radius:6px;padding:10px;margin-bottom:12px;text-align:center;">
+          <div style="font-family:var(--font-mono);font-size:9px;color:rgba(255,215,0,0.5);margin-bottom:4px;">LEVEL-UP REWARD</div>
+          <div style="font-size:20px;color:#FFD700;font-weight:700;">+${apEarned} AP</div>
         </div>` : ''}
-      <div style="font-size:12px;color:var(--text-faint);margin-bottom:12px;">Total AP: ${(profile.auraPoints||0).toLocaleString()}</div>
+
       <button class="debrief-close-btn">Back to the Hunt</button>
     </div>`;
 
   document.body.appendChild(el);
+
+  // Animate the XP bar from previous position to current position
+  const debriefXpBar = el.querySelector('#debrief-xp-bar');
+  if (debriefXpBar) {
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      debriefXpBar.style.transition = 'width 1.5s cubic-bezier(0.16,1,0.3,1)';
+      debriefXpBar.style.width = xpPct.toFixed(1) + '%';
+    }));
+  }
+
+  // Store XP result on profile for debrief access
+  profile._lastXpResult = null;
 
   const rirSelections = {};
   el.querySelectorAll('.rir-chip').forEach(chip => {
