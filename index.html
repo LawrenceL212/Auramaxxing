@@ -9624,11 +9624,17 @@ function renderTodayCard() {
   const totalVol = todayWorkouts.reduce((n, w) =>
     n + (w.exercises||[]).reduce((m, ex) =>
       m + (ex.sets||[]).filter(s=>s.reps>0&&s.weight>0).reduce((v,s) => v+s.reps*s.weight, 0), 0), 0);
-  const streak = computeStreak(currentUser.uid);
-  const apToday = profile.lastApDate === today ? (() => {
-    const mult = streak >= 30 ? 2 : streak >= 7 ? 1.5 : 1;
-    return Math.round(10*mult) + (profile.weeklyGoal && countSince(currentUser.uid, startOfWeek(new Date())) >= profile.weeklyGoal ? 5 : 0);
-  })() : 0;
+  // Calculate XP earned today from all sessions
+  const todayXP = todayWorkouts.reduce((total, w) => {
+    return total + (w.exercises||[]).reduce((es, ex) => {
+      const tier = (EXERCISES_ALL[ex.name]||{}).skillTier || 1.0;
+      return es + (ex.sets||[]).filter(s=>s.reps>0).reduce((ss, s) => {
+        const rm = Math.log((s.reps||1)+1)/Math.log(13);
+        const im = s.rir<=1?1.3:s.rir<=3?1.0:s.rir<=5?0.7:0.5;
+        return ss + Math.max(0.5, 2*rm*im*tier);
+      }, 0);
+    }, 0);
+  }, 0);
   const todayPRs = Object.values(myPRs).filter(p => p.date === today);
   const prXP = todayPRs.reduce((s,p) => s+(p.xp||0), 0);
 
@@ -9639,15 +9645,19 @@ function renderTodayCard() {
     </div>
     <div class="today-debrief-row">
       <div class="today-stat-pill">
-        <div class="today-stat-val">+${apToday + prXP}</div>
-        <div class="today-stat-lbl">AP Earned</div>
+        <div class="today-stat-val">+${Math.round(todayXP)}</div>
+        <div class="today-stat-lbl">XP Earned</div>
       </div>
       <div class="today-stat-pill">
         <div class="today-stat-val">${totalSets}</div>
         <div class="today-stat-lbl">Sets</div>
       </div>
       <div class="today-stat-pill">
-        <div class="today-stat-val">${totalVol > 0 ? (totalVol >= 1000 ? (totalVol/1000).toFixed(1)+'t' : totalVol+'kg') : '—'}</div>
+        <div class="today-stat-val">${(() => {
+          if (totalVol > 0) return totalVol >= 1000 ? (totalVol/1000).toFixed(1)+'t' : Math.round(totalVol)+'kg';
+          const runKm = todayWorkouts.reduce((max, w) => Math.max(max, w.runSummary?.distKm||0), 0);
+          return runKm > 0 ? runKm.toFixed(2)+'km' : '—';
+        })()}</div>
         <div class="today-stat-lbl">Volume</div>
       </div>
       <div class="today-stat-pill">
@@ -11898,6 +11908,13 @@ function inferInventoryFromWorkouts() {
 
   const compoundLifts = new Set(['Barbell Row','Deadlift','Squat','Bench Press','Overhead Press',
     'Front Squat','Lat Pulldown','Wide Neutral-Grip Lat Pulldown','Seated Cable Row','Pendlay Row']);
+  // Exclude abs, isolation, and cardio from strength e1RM inference
+  const strExclude = new Set(['Crunch','Sit Up','Leg Raise','Hanging Leg Raise','Hanging Knee Raise',
+    'Flutter Kicks','Plank','Dragon Flag Negatives','Hollow hold','Crucifix crunch','Ab Rollout',
+    'Russian Twist','Bicycle Crunch','Toe Touch','Lateral Raise','Front Raise','Rear Delt Fly',
+    'Face Pull','Calf Raise','Standing Calf Raise','Wrist Curl','Reverse Wrist Curl',
+    'Goblet Squat','Bulgarian Split Squat','Dumbbell Pullover','Arnold Press','Dumbbell Fly',
+  ]);
   let compoundCount = 0;
 
   const e1rms = {};
@@ -11917,11 +11934,13 @@ function inferInventoryFromWorkouts() {
       if (ex.name === 'Pistol Squat') hasPistol = true;
       if (['German Hang','German hang'].includes(ex.name)) hasGermanHang = true;
       if (compoundLifts.has(ex.name)) compoundCount++;
-      // track e1RM
-      validSets.filter(s=>s.weight>0).forEach(s => {
-        const val = e1rm(s.weight, s.reps);
-        if (!e1rms[ex.name] || val > e1rms[ex.name]) e1rms[ex.name] = val;
-      });
+      // track e1RM — exclude abs/isolation exercises
+      if (!strExclude.has(ex.name)) {
+        validSets.filter(s=>s.weight>0).forEach(s => {
+          const val = e1rm(s.weight, s.reps);
+          if (!e1rms[ex.name] || val > e1rms[ex.name]) e1rms[ex.name] = val;
+        });
+      }
       // bodyweight pull-ups
       if (['Pull Up','Chin Up','Neutral Grip Pull Up'].includes(ex.name)) {
         validSets.filter(s=>!s.weight||Math.abs(s.weight-bw)<5).forEach(s => {
