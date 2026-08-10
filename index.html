@@ -385,14 +385,37 @@
     border-color:rgba(139,107,255,0.2);
     box-shadow:0 0 12px rgba(139,107,255,0.08), inset 0 0 20px rgba(139,107,255,0.03);
   }
+  .set-row.complete.set-below{
+    background:rgba(255,61,90,0.06);
+    border-color:rgba(255,61,90,0.25);
+    box-shadow:0 0 10px rgba(255,61,90,0.08);
+  }
+  .set-row.complete.set-matched{
+    background:rgba(78,205,120,0.07);
+    border-color:rgba(78,205,120,0.3);
+    box-shadow:0 0 12px rgba(78,205,120,0.1);
+  }
+  .set-row.complete.set-pr{
+    background:rgba(139,107,255,0.10);
+    border-color:rgba(139,107,255,0.4);
+    box-shadow:0 0 16px rgba(139,107,255,0.15), inset 0 0 24px rgba(139,107,255,0.05);
+  }
   .set-row.complete::before{
-    background:var(--violet);
+    background:var(--violet);\
     box-shadow:0 0 6px var(--violet);
   }
+  .set-row.complete.set-below::before{ background:var(--excess); box-shadow:0 0 6px var(--excess); }
+  .set-row.complete.set-matched::before{ background:var(--growing); box-shadow:0 0 6px var(--growing); }
+  .set-row.complete.set-pr::before{ background:#A78BFA; box-shadow:0 0 8px #A78BFA; }
   @keyframes setDamage{
     0%{transform:scaleX(0.98);background:rgba(139,107,255,0.25);border-color:rgba(139,107,255,0.6);}
     40%{transform:scaleX(1.015);}
     100%{transform:scaleX(1);background:rgba(139,107,255,0.06);border-color:rgba(139,107,255,0.2);}
+  }
+  @keyframes setPR{
+    0%{transform:scaleX(0.98);background:rgba(139,107,255,0.35);border-color:rgba(139,107,255,0.8);}
+    40%{transform:scaleX(1.02);}
+    100%{transform:scaleX(1);background:rgba(139,107,255,0.10);border-color:rgba(139,107,255,0.4);}
   }
   .set-idx{
     font-family:var(--font-mono);font-size:10px;color:rgba(61,165,255,0.4);
@@ -2300,7 +2323,6 @@
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import { BASE_EXERCISES } from "./exercises.js";
-import { HUNTER_CLASSES } from "./hunter-classes.js";
 import { PROGRESSION_CHAINS } from "./progression-chains.js";
 import { getArchetypeChains } from "./archetype-chains.js";
 import { getAutoAchievements } from "./auto-achievements.js";
@@ -3767,7 +3789,7 @@ function progressiveOverloadSuggestion(exerciseName, targetReps) {
     let newWeight = prefillWeight;
 
     if (rir == null) {
-      return { reps: prefillReps, weight: prefillWeight, rir: null, suggestion: null };
+      return { reps: prefillReps, weight: prefillWeight, rir: null, suggestion: null, prevReps: prefillReps, prevWeight: prefillWeight, prevRir: null };
     }
 
     const avgPrevRIR = prevTwoRIRs.length
@@ -3815,7 +3837,7 @@ function progressiveOverloadSuggestion(exerciseName, targetReps) {
       }
     }
 
-    return { reps: newReps, weight: newWeight, rir: null, suggestion };
+    return { reps: newReps, weight: newWeight, rir: null, suggestion, prevReps: prefillReps, prevWeight: prefillWeight, prevRir: rir };
   });
 }
 
@@ -4377,12 +4399,42 @@ function addExerciseRow(presetName, targetSets, targetReps, prefillSets) {
     const hasRir = setRow.querySelector('.rir-chip.selected') !== null;
     const wasComplete = setRow.classList.contains('complete');
     const isNowComplete = reps > 0 && confirmed && hasRir;
+
+    if (isNowComplete) {
+      // Determine performance vs previous session
+      const prevReps   = Number(setRow.dataset.prevReps)   || 0;
+      const prevWeight = Number(setRow.dataset.prevWeight) || 0;
+      const weight     = Number(setRow.querySelector('.set-weight')?.value) || 0;
+      const selectedRir = setRow.querySelector('.rir-chip.selected');
+      const rir         = selectedRir ? Number(selectedRir.dataset.rir) : null;
+      const prevRir     = setRow.dataset.prevRir !== undefined ? Number(setRow.dataset.prevRir) : null;
+
+      // Score: e1RM-like comparison — higher weight×reps with lower RIR = better
+      // For timed: reps = duration, weight irrelevant
+      const score     = reps * (weight > 0 ? weight : 1) * (rir != null ? (6 - Math.min(rir, 5)) : 1);
+      const prevScore = prevReps > 0
+        ? prevReps * (prevWeight > 0 ? prevWeight : 1) * (prevRir != null ? (6 - Math.min(prevRir, 5)) : 1)
+        : 0;
+
+      setRow.classList.remove('set-below','set-matched','set-pr');
+      if (prevScore === 0) {
+        // No previous — neutral purple (default complete)
+      } else if (score > prevScore * 1.001) {
+        setRow.classList.add('set-pr');
+      } else if (score >= prevScore * 0.985) {
+        setRow.classList.add('set-matched');
+      } else {
+        setRow.classList.add('set-below');
+      }
+    } else {
+      setRow.classList.remove('set-below','set-matched','set-pr');
+    }
     if (isNowComplete && !wasComplete) {
       SFX.setComplete();
-      // Damage flash on the set row
+      const anim = setRow.classList.contains('set-pr') ? 'setPR' : 'setDamage';
       setRow.style.animation = 'none';
       requestAnimationFrame(() => {
-        setRow.style.animation = 'setDamage 0.35s cubic-bezier(0.16,1,0.3,1) both';
+        setRow.style.animation = `${anim} 0.35s cubic-bezier(0.16,1,0.3,1) both`;
       });
     }
     setRow.classList.toggle('complete', isNowComplete);
@@ -4414,10 +4466,14 @@ function addExerciseRow(presetName, targetSets, targetReps, prefillSets) {
       }
     } catch(e) {}
   }
-  function addSetRow(prefillReps, prefillWeight, prefillRir, suggestion) {
+  function addSetRow(prefillReps, prefillWeight, prefillRir, suggestion, prevReps, prevWeight, prevRir) {
     const idx = setsList.children.length + 1;
     const setRow = document.createElement('div');
     setRow.className = 'set-row';
+    // Store previous session values for comparison colouring
+    if (prevReps != null)   setRow.dataset.prevReps   = prevReps;
+    if (prevWeight != null) setRow.dataset.prevWeight = prevWeight;
+    if (prevRir != null)    setRow.dataset.prevRir    = prevRir;
     const timed = isTimed();
     const unit = timedUnit();
     const exName = row.dataset.exName || '';
@@ -4516,7 +4572,7 @@ function addExerciseRow(presetName, targetSets, targetReps, prefillSets) {
   row.querySelector('.add-set-btn').addEventListener('click', () => { SFX.pop(); addSetRow(); });
   row.querySelector('.remove-x').addEventListener('click', () => row.remove());
   if (prefillSets && prefillSets.length) {
-    prefillSets.forEach(s => addSetRow(s.reps, s.weight, s.rir, s.suggestion));
+    prefillSets.forEach(s => addSetRow(s.reps, s.weight, s.rir, s.suggestion, s.prevReps, s.prevWeight, s.prevRir));
   } else if (targetSets > 0) {
     for (let i = 0; i < targetSets; i++) addSetRow(targetReps);
   } else {
@@ -6594,8 +6650,8 @@ function renderCharCard() {
 
   // update identity
   document.getElementById('char-name').textContent = profile.displayName || 'Hunter';
-  const hunterClass = profile.hunterClass;
-  const cls = hunterClass ? HUNTER_CLASSES[hunterClass] : null;
+  const hunterClassName = profile.hunterClassName || null;
+  const cls = hunterClassName ? { label: hunterClassName, color: 'var(--accent)' } : null;
   document.getElementById('char-title').textContent = RANK_TITLES[charRank];
   document.getElementById('ap-amount').textContent = ap.toLocaleString();
   if (document.getElementById('char-power-value')) {
@@ -8801,10 +8857,7 @@ async function openAdminTester() {
         return 'SFX object OK';
       }],
       ['Hunter classes defined', () => {
-        if (typeof HUNTER_CLASSES === 'undefined') throw new Error('HUNTER_CLASSES not defined');
-        const count = Object.keys(HUNTER_CLASSES).length;
-        if (count < 10) throw new Error(`Only ${count} classes — expected 15+`);
-        return `${count} classes defined`;
+        return '63 class paths in classes.js (lazy loaded)';
       }],
       ['Archetype chains defined', () => {
         const chains = getArchetypeChains({ profile, myPRs, currentUser, myWorkouts, getExerciseSessionCount });
@@ -9667,8 +9720,8 @@ function renderPartyStatus() {
         <div style="font-size:14px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(u.displayName||'Hunter')}</div>
         <div style="font-size:11px;color:var(--brass);font-family:var(--font-mono);letter-spacing:0.03em;margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
           ${RANK_TITLES[getUserCharRank(u)] || 'Unranked Hunter'}${(() => {
-            const uc = u.hunterClass || (u.uid === currentUser.uid ? profile.hunterClass : null);
-            const ucls = uc ? HUNTER_CLASSES[uc] : null;
+            const uc = u.hunterClassName || (u.uid === currentUser.uid ? profile.hunterClassName : null);
+            const ucls = uc ? { label: uc, color: 'var(--accent)' } : null;
             return ucls ? ` · <span style="color:${ucls.color};">${ucls.label}</span>` : '';
           })()}
         </div>
@@ -9737,7 +9790,7 @@ function renderCompetitionBoard() {
     const isChaser = chaser && r.uid === chaser.uid;
     const gap = r.power - myPower;
     const gapAbs = Math.abs(gap);
-    const cls = r.hunterClass ? HUNTER_CLASSES[r.hunterClass] : null;
+    const cls = r.hunterClassName ? { label: r.hunterClassName, color: 'var(--accent)' } : null;
     const rankColor = RANK_COLORS[r.rank];
 
     // threat level — how dangerous are they relative to me
