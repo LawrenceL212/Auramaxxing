@@ -10734,7 +10734,7 @@ function muscleFromId(id) {
   const stripped = id.replace(/_\d+$/, ''); // Figma dedupes repeated names as "Name_2", "Name_3"...
   return MUSCLES.includes(stripped) ? stripped : null;
 }
-function bodySvg(view, stats, overrideBodyType, items) {
+function bodySvg(view, stats, overrideBodyType, items, silhouette) {
   const bodyType = overrideBodyType || ((profile && profile.bodyType === 'female') ? 'female' : 'male');
   const template = ANATOMY_TEMPLATES[bodyType];
   if (!template) return '<div class="empty-state" style="padding:20px;">Loading anatomy…</div>';
@@ -10742,12 +10742,11 @@ function bodySvg(view, stats, overrideBodyType, items) {
   clone.querySelectorAll('[id]').forEach(el => {
     const m = muscleFromId(el.id);
     if (!m) return;
-    const status = stats[m]?.status || 'Stalled';
-    const color = STATUS_COLOR[status];
+    // Silhouette mode — all muscles render flat dim, items will light up their zones
+    const color = silhouette ? 'rgba(61,165,255,0.12)' : STATUS_COLOR[stats[m]?.status || 'Stalled'];
     el.classList.add('body-part');
     el.dataset.m = m;
-    el.dataset.status = status;
-    el.style.filter = `drop-shadow(0 0 5px ${color})`;
+    el.style.filter = silhouette ? 'none' : `drop-shadow(0 0 5px ${color})`;
     // Some muscles trace as a single <path>, others as a <g> wrapping several
     // sub-paths (each with its own fill) — recolor the element itself AND
     // every descendant shape, so a child's own color can't win over ours.
@@ -13974,8 +13973,8 @@ function renderInventory() {
           ">Back</button>
         </div>
         <div id="inv-body-wrap" style="justify-content:center;">
-          <div id="inv-body-front">${bodySvg('front', buildMuscleStats(currentUser.uid), profile.bodyType || 'male', profile.inventory || {})}</div>
-          <div id="inv-body-back" style="display:none;">${bodySvg('back', buildMuscleStats(currentUser.uid), profile.bodyType || 'male', profile.inventory || {})}</div>
+          <div id="inv-body-front">${bodySvg('front', {}, profile.bodyType || 'male', profile.inventory || {}, true)}</div>
+          <div id="inv-body-back" style="display:none;">${bodySvg('back', {}, profile.bodyType || 'male', profile.inventory || {}, true)}</div>
         </div>
       </div>
 
