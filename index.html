@@ -3815,7 +3815,7 @@ function progressiveOverloadSuggestion(exerciseName, targetReps) {
       }
     }
 
-    return { reps: newReps, weight: newWeight, rir: rir, suggestion };
+    return { reps: newReps, weight: newWeight, rir: null, suggestion };
   });
 }
 
@@ -4358,22 +4358,25 @@ function addExerciseRow(presetName, targetSets, targetReps, prefillSets) {
     </div>`;
   }
   function rirChips(prefillRir) {
+    // Never pre-select RIR/RPE — the user must make a fresh judgment each session
     return `<div class="rir-chips" title="Reps In Reserve">${[0,1,2,3,4,5].map(n =>
-      `<button type="button" class="rir-chip ${n === prefillRir ? 'selected' : ''}" data-rir="${n}">${n}</button>`
+      `<button type="button" class="rir-chip" data-rir="${n}">${n}</button>`
     ).join('')}</div>`;
   }
 
   function rpeChips(prefillRpe) {
+    // Never pre-select RPE — the user must make a fresh judgment each session
     return `<div class="rir-chips" title="Rate of Perceived Exertion (1=easy, 10=max)">${[6,7,8,9,10].map(n =>
-      `<button type="button" class="rir-chip ${n === prefillRpe ? 'selected' : ''}" data-rir="${n}" style="${n>=9?'border-color:rgba(255,61,90,0.4);':n>=7?'border-color:rgba(212,160,23,0.4);':''}">${n}</button>`
+      `<button type="button" class="rir-chip" data-rir="${n}" style="${n>=9?'border-color:rgba(255,61,90,0.4);':n>=7?'border-color:rgba(212,160,23,0.4);':''}">${n}</button>`
     ).join('')}</div>`;
   }
   function checkComplete(setRow) {
     const repsInput = setRow.querySelector('.set-reps');
     const reps = Number(repsInput?.value) || 0;
     const confirmed = repsInput?.dataset.confirmed === '1';
+    const hasRir = setRow.querySelector('.rir-chip.selected') !== null;
     const wasComplete = setRow.classList.contains('complete');
-    const isNowComplete = reps > 0 && confirmed;
+    const isNowComplete = reps > 0 && confirmed && hasRir;
     if (isNowComplete && !wasComplete) {
       SFX.setComplete();
       // Damage flash on the set row
