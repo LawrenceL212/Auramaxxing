@@ -1777,11 +1777,10 @@
   }
   .workout-modal-header{
     display:flex;align-items:flex-start;justify-content:space-between;
-    padding:16px 16px 12px;flex-shrink:0;
+    padding:16px 20px 14px;flex-shrink:0;
     background:linear-gradient(180deg, rgba(61,165,255,0.06) 0%, transparent 100%);
     border-bottom:1px solid rgba(61,165,255,0.12);
     box-shadow:inset 0 1px 0 rgba(61,165,255,0.08);
-    position:sticky;top:0;z-index:10;background:var(--card);
   }
   .workout-modal-header h3{margin:0;font-size:16px;}
   .workout-modal-body{flex:1;overflow-y:auto;padding:16px 20px calc(100px + env(safe-area-inset-bottom, 0));-webkit-overflow-scrolling:touch;}
@@ -2007,9 +2006,9 @@
               <div id="logger-xp-bar" style="height:100%;width:0%;background:linear-gradient(90deg,var(--brass),#FFD700);border-radius:1px;transition:width 0.6s cubic-bezier(0.16,1,0.3,1);box-shadow:0 0 6px rgba(255,215,0,0.4);"></div>
             </div>
           </div>
-          <div style="display:flex;gap:6px;align-items:flex-start;flex-shrink:0;margin-left:10px;">
-            <button class="icon-btn" id="minimise-workout-modal" title="Continue in background" style="font-size:12px;color:var(--text-dim);padding:8px 10px;border:1px solid rgba(61,165,255,0.15);border-radius:8px;background:rgba(61,165,255,0.05);min-width:44px;min-height:36px;">− Min</button>
-            <button class="icon-btn" id="end-workout-modal" title="End workout" style="font-size:12px;color:var(--excess);padding:8px 10px;border:1px solid rgba(255,61,90,0.25);border-radius:8px;background:rgba(255,61,90,0.06);min-width:44px;min-height:36px;">✕ End</button>
+          <div style="display:flex;gap:8px;align-items:flex-start;flex-shrink:0;margin-left:12px;">
+            <button class="icon-btn" id="minimise-workout-modal" title="Continue in background" style="font-size:13px;color:var(--text-dim);">− Min</button>
+            <button class="icon-btn" id="end-workout-modal" title="End workout" style="font-size:13px;color:var(--excess);">✕</button>
           </div>
         </div>
         <div class="rest-timer-bar">
@@ -3861,6 +3860,39 @@ function openWorkoutModal() {
   document.getElementById('workout-pill').classList.add('hidden');
   document.body.style.overflow = 'hidden';
   refreshCompleteButton();
+
+  // ── Streak freeze notification ──
+  // If the current user is frozen, show a grandiose tribute to Lawrence.
+  const freeze = profile?.streakFreeze;
+  if (freeze?.active) {
+    setTimeout(() => {
+      const modal = document.createElement('div');
+      modal.style.cssText = 'position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.92);backdrop-filter:blur(8px);';
+      modal.innerHTML = `
+        <div style="max-width:340px;width:92vw;text-align:center;padding:32px 24px;background:linear-gradient(160deg,rgba(5,7,13,0.98),rgba(10,15,30,0.98));border:1px solid rgba(255,215,0,0.4);border-radius:20px;box-shadow:0 0 80px rgba(255,215,0,0.15),0 0 200px rgba(255,215,0,0.05);">
+          <div style="font-size:48px;margin-bottom:12px;animation:pulse 1.5s infinite;">👑</div>
+          <div style="font-family:var(--font-mono);font-size:9px;color:rgba(255,215,0,0.6);letter-spacing:0.2em;margin-bottom:10px;">◈ SYSTEM ANNOUNCEMENT ◈</div>
+          <div style="font-family:var(--font-display);font-size:22px;color:rgba(255,215,0,1);letter-spacing:0.05em;margin-bottom:6px;text-shadow:0 0 20px rgba(255,215,0,0.5);">YOUR STREAK IS SAFE</div>
+          <div style="font-family:var(--font-mono);font-size:10px;color:rgba(255,215,0,0.5);letter-spacing:0.1em;margin-bottom:20px;">BY DIVINE INTERVENTION</div>
+          <p style="font-size:13px;color:var(--text-dim);line-height:1.8;margin-bottom:20px;">
+            The all-knowing, all-seeing, supremely humble and breathtakingly intelligent
+            <strong style="color:rgba(255,215,0,0.9);">Lawrence Lechuga</strong>
+            — visionary, architect of this very System, and certified goat —
+            has <em>personally</em> intervened to shield your streak from the ravages of this holiday.
+          </p>
+          <p style="font-size:12px;color:rgba(255,215,0,0.6);line-height:1.7;margin-bottom:20px;">
+            In his boundless wisdom and characteristic humility, he has frozen your streak so that your absence counts for nothing. You owe him. You know you do.
+          </p>
+          <div style="font-family:var(--font-mono);font-size:9px;color:rgba(255,215,0,0.3);letter-spacing:0.1em;margin-bottom:20px;">
+            — THE SYSTEM, on behalf of Lawrence —
+          </div>
+          <button style="width:100%;padding:14px;background:linear-gradient(135deg,rgba(255,215,0,0.15),rgba(255,215,0,0.08));border:1px solid rgba(255,215,0,0.4);border-radius:10px;color:rgba(255,215,0,0.9);font-family:var(--font-display);font-size:14px;letter-spacing:0.08em;cursor:pointer;" onclick="this.closest('div[style*=fixed]').remove()">I AM GRATEFUL. PROCEED.</button>
+        </div>`;
+      document.body.appendChild(modal);
+      modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
+      SFX.classAssigned?.();
+    }, 400);
+  }
 }
 function minimiseWorkoutModal() {
   document.getElementById('workout-modal-overlay').classList.add('hidden');
@@ -4738,10 +4770,6 @@ function huntingStateToday(uid) {
 
 function computeStreak(uid) {
   const dates = new Set(allWorkouts.filter(w => w.uid === uid).map(w => w.date));
-  // Get this user's schedule so rest days don't break the streak.
-  // For the current user we have myProgram; for other party members we read from allUsers
-  // (their program isn't loaded client-side, so we fall back to their profile's schedule
-  // field if present, otherwise assume every day is a training day like the old behaviour).
   let schedule = null;
   if (uid === currentUser?.uid && myProgram?.schedule?.length) {
     schedule = myProgram.schedule;
@@ -4749,6 +4777,18 @@ function computeStreak(uid) {
     const user = allUsers.find(u => u.uid === uid);
     if (user?.schedule?.length) schedule = user.schedule;
   }
+
+  // Streak freeze — admin toggle. While active:true every day is a rest day.
+  // Once unfrozen (active:false), the from→to window stays skipped permanently.
+  const userRecord = allUsers.find(u => u.uid === uid) || (uid === currentUser?.uid ? profile : null);
+  const freeze = userRecord?.streakFreeze;
+  const isFrozen = (dateStr) => {
+    if (!freeze) return false;
+    // Still frozen — any date from freeze.from onwards is a rest day
+    if (freeze.active) return dateStr >= freeze.from;
+    // Unfrozen — only the recorded window is skipped
+    return freeze.to ? (dateStr >= freeze.from && dateStr <= freeze.to) : false;
+  };
 
   const WEEKDAYS_FULL = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 
@@ -4775,13 +4815,11 @@ function computeStreak(uid) {
   let streak = 0;
   let i = hasToday ? 0 : 1;
 
-  // Walk backwards, skipping scheduled rest days
+  // Walk backwards, skipping scheduled rest days and frozen holiday dates
   while (true) {
     const dayStr = todayStr(daysAgo(i));
-    if (isScheduledRestDay(dayStr)) {
-      // rest day — skip it without breaking the streak, but don't count it
+    if (isScheduledRestDay(dayStr) || isFrozen(dayStr)) {
       i++;
-      // safety: stop if we've gone back more than 2 years
       if (i > 730) break;
       continue;
     }
@@ -8749,7 +8787,9 @@ async function openAdminUserPanel() {
           <span>Class: ${cls}</span>
           <span style="color:${streakOk?'var(--growing)':'var(--excess)'};">Last WO: ${lastWO} ${days===0?'(today)':days===1?'(yesterday)':'('+days+'d ago)'}</span>
           <span>UID: ${u.uid.slice(0,8)}…</span>
+          ${u.streakFreeze?.active ? `<span style="color:var(--brass);grid-column:1/-1;">❄ Streak frozen since ${u.streakFreeze.from}</span>` : u.streakFreeze?.to ? `<span style="color:var(--growing);grid-column:1/-1;">✓ Freeze ended ${u.streakFreeze.from}→${u.streakFreeze.to}</span>` : ''}
         </div>
+        <button class="btn btn-sm" style="margin-top:8px;font-size:11px;width:100%;border-color:rgba(61,165,255,0.2);" onclick="openStreakFreezePanel('${u.uid}','${escapeHtml(u.displayName||'?')}')">❄ Streak Freeze</button>
       </div>`;
     }).join('');
     content.innerHTML = html || '<p style="color:var(--text-faint);">No users found.</p>';
@@ -8757,6 +8797,62 @@ async function openAdminUserPanel() {
     content.innerHTML = `<p style="color:var(--excess);">Error: ${e.message}</p>`;
   }
 }
+
+async function openStreakFreezePanel(uid, name) {
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  const userRecord = allUsers.find(u => u.uid === uid);
+  const currentFreeze = userRecord?.streakFreeze;
+  const isFrozenNow = currentFreeze?.active === true;
+
+  overlay.innerHTML = `<div class="modal" style="max-width:380px;">
+    <h3 style="margin-bottom:4px;">❄ Streak Freeze — ${escapeHtml(name)}</h3>
+    <p style="font-size:12px;color:var(--text-dim);margin:0 0 16px;">
+      While frozen, every day is treated as a rest day — the streak pauses.
+      When you unfreeze, normal rules resume from that day forward.
+    </p>
+    <div style="padding:12px;background:rgba(61,165,255,0.04);border:1px solid rgba(61,165,255,0.12);border-radius:8px;margin-bottom:16px;font-size:12px;color:var(--text-dim);">
+      Status: <strong style="color:${isFrozenNow ? 'var(--brass)' : 'var(--growing)'};">
+        ${isFrozenNow ? '❄ Currently frozen since ' + (currentFreeze.from || '?') : '✓ Active — streak running normally'}
+      </strong>
+    </div>
+    <div style="display:flex;gap:8px;">
+      ${isFrozenNow
+        ? `<button class="btn btn-primary" id="freeze-unfreeze" style="flex:2;border-color:rgba(78,205,120,0.4);background:rgba(78,205,120,0.1);color:var(--growing);">✓ Unfreeze Now</button>`
+        : `<button class="btn btn-primary" id="freeze-freeze" style="flex:2;">❄ Freeze Now</button>`
+      }
+      <button class="btn btn-sm" id="freeze-cancel" style="flex:1;color:var(--text-dim);">Cancel</button>
+    </div>
+    ${isFrozenNow ? `<p style="font-size:10px;color:var(--text-faint);margin-top:8px;line-height:1.5;">Unfreezing resumes normal rules today. If they don't train today they will lose their streak.</p>` : ''}
+  </div>`;
+
+  document.body.appendChild(overlay);
+  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+  overlay.querySelector('#freeze-cancel').addEventListener('click', () => overlay.remove());
+
+  overlay.querySelector('#freeze-freeze')?.addEventListener('click', async () => {
+    try {
+      const { doc, updateDoc } = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js');
+      const freeze = { active: true, from: todayStr(), setBy: currentUser.uid };
+      await updateDoc(doc(db, 'users', uid), { streakFreeze: freeze });
+      if (userRecord) userRecord.streakFreeze = freeze;
+      showToast(`❄ Streak frozen for ${escapeHtml(name)}.`, 'success');
+      overlay.remove();
+    } catch(e) { showToast('Error: ' + e.message, 'error'); }
+  });
+
+  overlay.querySelector('#freeze-unfreeze')?.addEventListener('click', async () => {
+    try {
+      const { doc, updateDoc } = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js');
+      const freeze = { active: false, from: currentFreeze.from, to: todayStr(), setBy: currentUser.uid };
+      await updateDoc(doc(db, 'users', uid), { streakFreeze: freeze });
+      if (userRecord) userRecord.streakFreeze = freeze;
+      showToast(`✓ Streak unfrozen for ${escapeHtml(name)}. Normal rules resume today.`, 'success');
+      overlay.remove();
+    } catch(e) { showToast('Error: ' + e.message, 'error'); }
+  });
+}
+window.openStreakFreezePanel = openStreakFreezePanel;
 
 async function openAdminTester() {
   const overlay = document.createElement('div');
@@ -12531,20 +12627,20 @@ const DUNGEON_CHAINS = {
     desc:'Barbell compound lifts. The weight does not lie.',
     dungeons: [
       { tier:1, name:'Iron Initiation',
-        boss: (d) => d.bestStrRatio >= 0.5 && d.compoundDates.size >= 1,
-        bossDesc: 'Hit 0.5× bodyweight e1RM on any compound lift.' },
+        boss: (d) => d.bestStrRatio >= 0.6 && d.compoundDates.size >= 4 && d.weekSpread(d.compoundDates) >= 2,
+        bossDesc: '0.6× BW e1RM, 4+ compound sessions across 2+ weeks.' },
       { tier:2, name:'Loaded Trial',
-        boss: (d) => d.bestStrRatio >= 0.75 && d.compoundDates.size >= 3,
-        bossDesc: '0.75× BW e1RM AND 3+ compound sessions logged.' },
+        boss: (d) => d.bestStrRatio >= 0.85 && d.compoundDates.size >= 12 && d.weekSpread(d.compoundDates) >= 4,
+        bossDesc: '0.85× BW e1RM, 12+ sessions across 4+ weeks.' },
       { tier:3, name:'Deadlift Gate',
-        boss: (d) => d.bestStrRatio >= 1.0 && d.weekSpread(d.compoundDates) >= 2 && d.compoundDates.size >= 6,
-        bossDesc: '1.0× BW e1RM, 6+ compound sessions across 2+ weeks.' },
+        boss: (d) => d.bestStrRatio >= 1.1 && d.weekSpread(d.compoundDates) >= 8 && d.compoundDates.size >= 24,
+        bossDesc: '1.1× BW e1RM, 24+ sessions across 8+ weeks.' },
       { tier:4, name:'Iron Throne',
-        boss: (d) => d.bestStrRatio >= 1.25 && d.weekSpread(d.compoundDates) >= 3 && d.compoundDates.size >= 10,
-        bossDesc: '1.25× BW e1RM, 10+ sessions across 3+ weeks.' },
+        boss: (d) => d.bestStrRatio >= 1.3 && d.weekSpread(d.compoundDates) >= 16 && d.compoundDates.size >= 48,
+        bossDesc: '1.3× BW e1RM, 48+ sessions across 16+ weeks.' },
       { tier:5, name:'Monarch\'s Trial',
-        boss: (d) => d.bestStrRatio >= 1.5 && d.weekSpread(d.compoundDates) >= 6 && d.compoundDates.size >= 20,
-        bossDesc: '1.5× BW e1RM, 20+ sessions across 6+ weeks.' },
+        boss: (d) => d.bestStrRatio >= 1.6 && d.weekSpread(d.compoundDates) >= 30 && d.compoundDates.size >= 90,
+        bossDesc: '1.6× BW e1RM, 90+ sessions across 30+ weeks.' },
     ]
   },
 
@@ -12554,20 +12650,20 @@ const DUNGEON_CHAINS = {
     desc:'The bar is honest. Pull your bodyweight or it does not count.',
     dungeons: [
       { tier:1, name:'First Pull',
-        boss: (d) => d.bestPullupReps >= 5 && d.pullupDates.size >= 1,
-        bossDesc: '5 pull-ups at bodyweight in a single set.' },
+        boss: (d) => d.bestPullupReps >= 5 && d.pullupDates.size >= 4 && d.weekSpread(d.pullupDates) >= 2,
+        bossDesc: '5 pull-ups bodyweight, 4+ sessions across 2+ weeks.' },
       { tier:2, name:'Double Digits',
-        boss: (d) => d.bestPullupReps >= 10 && d.pullupDates.size >= 3,
-        bossDesc: '10 pull-ups bodyweight, 3+ sessions logged.' },
+        boss: (d) => d.bestPullupReps >= 12 && d.pullupDates.size >= 12 && d.weekSpread(d.pullupDates) >= 4,
+        bossDesc: '12 pull-ups bodyweight, 12+ sessions across 4+ weeks.' },
       { tier:3, name:'Fifteen Gate',
-        boss: (d) => (d.bestPullupReps >= 15 || d.bestWeightedPullup >= 10) && d.weekSpread(d.pullupDates) >= 2 && d.pullupDates.size >= 6,
-        bossDesc: '15 pull-ups BW OR +10kg pull-up, 6+ sessions across 2+ weeks.' },
+        boss: (d) => (d.bestPullupReps >= 18 || d.bestWeightedPullup >= 12) && d.weekSpread(d.pullupDates) >= 8 && d.pullupDates.size >= 24,
+        bossDesc: '18 BW pull-ups OR +12kg, 24+ sessions across 8+ weeks.' },
       { tier:4, name:'Iron Pull',
-        boss: (d) => (d.bestPullupReps >= 20 || d.bestWeightedPullup >= 20) && d.weekSpread(d.pullupDates) >= 3 && d.pullupDates.size >= 10,
-        bossDesc: '20 pull-ups BW OR +20kg, 10+ sessions across 3+ weeks.' },
+        boss: (d) => (d.bestPullupReps >= 22 || d.bestWeightedPullup >= 25) && d.weekSpread(d.pullupDates) >= 16 && d.pullupDates.size >= 48,
+        bossDesc: '22 BW OR +25kg, 48+ sessions across 16+ weeks.' },
       { tier:5, name:'Void Pull',
-        boss: (d) => (d.bestWeightedPullup >= 30 || d.muscleUpLogged) && d.weekSpread(d.pullupDates) >= 6 && d.pullupDates.size >= 20,
-        bossDesc: '+30kg pull-up OR muscle-up, 20+ sessions across 6+ weeks.' },
+        boss: (d) => (d.bestWeightedPullup >= 35 || d.muscleUpLogged) && d.weekSpread(d.pullupDates) >= 30 && d.pullupDates.size >= 90,
+        bossDesc: '+35kg pull-up OR muscle-up, 90+ sessions across 30+ weeks.' },
     ]
   },
 
@@ -12577,20 +12673,20 @@ const DUNGEON_CHAINS = {
     desc:'Iron and bodyweight equally. You refuse to choose.',
     dungeons: [
       { tier:1, name:'Double Domain',
-        boss: (d) => d.bestPullupReps >= 5 && d.bestStrRatio >= 0.5,
-        bossDesc: '5 pull-ups AND 0.5× BW compound e1RM, both within 4 weeks.' },
+        boss: (d) => d.bestPullupReps >= 5 && d.bestStrRatio >= 0.6 && d.compoundDates.size >= 4 && d.pullupDates.size >= 4 && d.weekSpread(d.compoundDates) >= 2,
+        bossDesc: '5 pull-ups AND 0.6× BW e1RM, 4+ sessions each across 2+ weeks.' },
       { tier:2, name:'Balanced Trial',
-        boss: (d) => d.bestPullupReps >= 10 && d.bestStrRatio >= 0.75 && d.compoundDates.size >= 3 && d.pullupDates.size >= 3,
-        bossDesc: '10 pull-ups AND 0.75× BW e1RM, 3+ sessions each.' },
+        boss: (d) => d.bestPullupReps >= 12 && d.bestStrRatio >= 0.85 && d.compoundDates.size >= 12 && d.pullupDates.size >= 12 && d.weekSpread(d.compoundDates) >= 4,
+        bossDesc: '12 pull-ups AND 0.85× BW e1RM, 12+ sessions each across 4+ weeks.' },
       { tier:3, name:'Compound Gate',
-        boss: (d) => (d.bestPullupReps >= 15 || d.bestWeightedPullup >= 10) && d.bestStrRatio >= 1.0 && d.weekSpread(d.compoundDates) >= 2 && d.weekSpread(d.pullupDates) >= 2,
-        bossDesc: '15 BW pull-ups OR +10kg AND 1.0× BW e1RM, both across 2+ weeks.' },
+        boss: (d) => (d.bestPullupReps >= 18 || d.bestWeightedPullup >= 12) && d.bestStrRatio >= 1.1 && d.weekSpread(d.compoundDates) >= 8 && d.weekSpread(d.pullupDates) >= 8,
+        bossDesc: '18 BW pull-ups OR +12kg AND 1.1× BW e1RM, both across 8+ weeks.' },
       { tier:4, name:'Equilibrium Trial',
-        boss: (d) => (d.bestPullupReps >= 20 || d.bestWeightedPullup >= 20) && d.bestStrRatio >= 1.25 && d.weekSpread(d.compoundDates) >= 3 && d.weekSpread(d.pullupDates) >= 3,
-        bossDesc: '20 BW OR +20kg AND 1.25× BW, both across 3+ weeks.' },
+        boss: (d) => (d.bestPullupReps >= 22 || d.bestWeightedPullup >= 25) && d.bestStrRatio >= 1.3 && d.weekSpread(d.compoundDates) >= 16 && d.weekSpread(d.pullupDates) >= 16,
+        bossDesc: '22 BW OR +25kg AND 1.3× BW, both across 16+ weeks.' },
       { tier:5, name:'Sovereign\'s Proof',
-        boss: (d) => (d.bestWeightedPullup >= 30 || d.muscleUpLogged) && d.bestStrRatio >= 1.5 && d.weekSpread(d.compoundDates) >= 6 && d.weekSpread(d.pullupDates) >= 6,
-        bossDesc: '+30kg pull-up OR muscle-up AND 1.5× BW, both across 6+ weeks.' },
+        boss: (d) => (d.bestWeightedPullup >= 35 || d.muscleUpLogged) && d.bestStrRatio >= 1.6 && d.weekSpread(d.compoundDates) >= 30 && d.weekSpread(d.pullupDates) >= 30,
+        bossDesc: '+35kg pull-up OR muscle-up AND 1.6× BW, both across 30+ weeks.' },
     ]
   },
 
@@ -12600,20 +12696,20 @@ const DUNGEON_CHAINS = {
     desc:'Pressed against gravity. Duration is the only proof.',
     dungeons: [
       { tier:1, name:'First Lean',
-        boss: (d) => (d.skillBestSecs['Planche Lean']||0) >= 10 || (d.skillBestSecs['Frog Stand']||0) >= 5,
-        bossDesc: 'Planche Lean 10s OR Frog Stand 5s logged.' },
+        boss: (d) => ((d.skillBestSecs['Planche Lean']||0) >= 15 || (d.skillBestSecs['Frog Stand']||0) >= 10) && (d.skillSessionDates['Planche Lean']||d.skillSessionDates['Frog Stand']||new Set()).size >= 3 && d.weekSpread(d.skillSessionDates['Planche Lean']||d.skillSessionDates['Frog Stand']||new Set()) >= 2,
+        bossDesc: 'Planche Lean 15s OR Frog Stand 10s, 3+ sessions across 2+ weeks.' },
       { tier:2, name:'Tuck Gate',
-        boss: (d) => (d.skillBestSecs['Planche Lean']||0) >= 20 && (d.skillBestSecs['Tuck Planche']||0) >= 10,
-        bossDesc: 'Planche Lean 20s AND Tuck Planche 10s.' },
+        boss: (d) => (d.skillBestSecs['Planche Lean']||0) >= 30 && (d.skillBestSecs['Tuck Planche']||0) >= 15 && (d.skillSessionDates['Tuck Planche']||new Set()).size >= 6 && d.weekSpread(d.skillSessionDates['Tuck Planche']||new Set()) >= 4,
+        bossDesc: 'Planche Lean 30s AND Tuck Planche 15s, 6+ sessions across 4+ weeks.' },
       { tier:3, name:'Advanced Trial',
-        boss: (d) => (d.skillBestSecs['Tuck Planche']||0) >= 15 && (d.skillBestSecs['Advanced Tuck Planche']||0) >= 8 && (d.skillSessionDates['Tuck Planche']||new Set()).size >= 2,
-        bossDesc: 'Tuck Planche 15s AND Advanced Tuck Planche 8s, 2+ sessions.' },
+        boss: (d) => (d.skillBestSecs['Tuck Planche']||0) >= 20 && (d.skillBestSecs['Advanced Tuck Planche']||0) >= 12 && d.weekSpread(d.skillSessionDates['Advanced Tuck Planche']||new Set()) >= 8 && (d.skillSessionDates['Advanced Tuck Planche']||new Set()).size >= 12,
+        bossDesc: 'Tuck Planche 20s AND Advanced Tuck 12s, 12+ sessions across 8+ weeks.' },
       { tier:4, name:'Shadow Press',
-        boss: (d) => (d.skillBestSecs['Advanced Tuck Planche']||0) >= 15 && ((d.skillBestSecs['Straddle Planche']||0) >= 3 || (d.skillBestSecs['Advanced Tuck Planche']||0) >= 20) && d.weekSpread(d.skillSessionDates['Advanced Tuck Planche']||new Set()) >= 3,
-        bossDesc: 'Advanced Tuck 15s AND (Straddle 3s OR Adv Tuck 20s), 3+ weeks.' },
+        boss: (d) => (d.skillBestSecs['Advanced Tuck Planche']||0) >= 20 && (d.skillBestSecs['Straddle Planche']||0) >= 5 && d.weekSpread(d.skillSessionDates['Advanced Tuck Planche']||new Set()) >= 16,
+        bossDesc: 'Advanced Tuck 20s AND Straddle 5s, 16+ weeks of training.' },
       { tier:5, name:'Void Planche',
-        boss: (d) => (d.skillBestSecs['Straddle Planche']||0) >= 5 && (d.skillBestSecs['Full Planche']||0) >= 3,
-        bossDesc: 'Straddle Planche 5s AND Full Planche 3s.' },
+        boss: (d) => (d.skillBestSecs['Straddle Planche']||0) >= 10 && (d.skillBestSecs['Full Planche']||0) >= 3 && d.weekSpread(d.skillSessionDates['Full Planche']||new Set()) >= 4,
+        bossDesc: 'Straddle 10s AND Full Planche 3s, 4+ weeks logging full planche.' },
     ]
   },
 
@@ -12623,20 +12719,20 @@ const DUNGEON_CHAINS = {
     desc:'Horizontal control. Gravity is the dungeon.',
     dungeons: [
       { tier:1, name:'First Hang',
-        boss: (d) => (d.skillBestSecs['Dead Hang']||0) >= 20 || (d.skillBestSecs['Tuck Front Lever']||0) >= 5,
-        bossDesc: 'Dead Hang 20s OR Tuck Front Lever 5s.' },
+        boss: (d) => ((d.skillBestSecs['Dead Hang']||0) >= 30 || (d.skillBestSecs['Tuck Front Lever']||0) >= 8) && (d.skillSessionDates['Tuck Front Lever']||d.skillSessionDates['Dead Hang']||new Set()).size >= 3 && d.weekSpread(d.skillSessionDates['Tuck Front Lever']||d.skillSessionDates['Dead Hang']||new Set()) >= 2,
+        bossDesc: 'Dead Hang 30s OR Tuck Front Lever 8s, 3+ sessions across 2+ weeks.' },
       { tier:2, name:'Tuck Trial',
-        boss: (d) => (d.skillBestSecs['Dead Hang']||0) >= 30 && (d.skillBestSecs['Tuck Front Lever']||0) >= 10,
-        bossDesc: 'Dead Hang 30s AND Tuck Front Lever 10s.' },
+        boss: (d) => (d.skillBestSecs['Dead Hang']||0) >= 45 && (d.skillBestSecs['Tuck Front Lever']||0) >= 15 && (d.skillSessionDates['Tuck Front Lever']||new Set()).size >= 6 && d.weekSpread(d.skillSessionDates['Tuck Front Lever']||new Set()) >= 4,
+        bossDesc: 'Dead Hang 45s AND Tuck Front Lever 15s, 6+ sessions across 4+ weeks.' },
       { tier:3, name:'Advanced Gate',
-        boss: (d) => (d.skillBestSecs['Tuck Front Lever']||0) >= 15 && (d.skillBestSecs['Advanced Tuck Front Lever']||0) >= 8 && (d.skillSessionDates['Tuck Front Lever']||new Set()).size >= 2,
-        bossDesc: 'Tuck Lever 15s AND Advanced Tuck Lever 8s, 2+ sessions.' },
+        boss: (d) => (d.skillBestSecs['Tuck Front Lever']||0) >= 20 && (d.skillBestSecs['Advanced Tuck Front Lever']||0) >= 12 && d.weekSpread(d.skillSessionDates['Advanced Tuck Front Lever']||new Set()) >= 8 && (d.skillSessionDates['Advanced Tuck Front Lever']||new Set()).size >= 12,
+        bossDesc: 'Tuck Lever 20s AND Advanced Tuck Lever 12s, 12+ sessions across 8+ weeks.' },
       { tier:4, name:'Shadow Lever',
-        boss: (d) => (d.skillBestSecs['Advanced Tuck Front Lever']||0) >= 12 && (d.skillBestSecs['Front Lever']||0) >= 3 && d.weekSpread(d.skillSessionDates['Advanced Tuck Front Lever']||new Set()) >= 3,
-        bossDesc: 'Advanced Tuck Lever 12s AND Front Lever 3s, 3+ weeks.' },
+        boss: (d) => (d.skillBestSecs['Advanced Tuck Front Lever']||0) >= 20 && (d.skillBestSecs['Front Lever']||0) >= 5 && d.weekSpread(d.skillSessionDates['Advanced Tuck Front Lever']||new Set()) >= 16,
+        bossDesc: 'Advanced Tuck Lever 20s AND Front Lever 5s, 16+ weeks of training.' },
       { tier:5, name:'Sovereign\'s Hold',
-        boss: (d) => (d.skillBestSecs['Front Lever']||0) >= 5 && d.weekSpread(d.skillSessionDates['Front Lever']||new Set()) >= 2,
-        bossDesc: 'Front Lever 5s across 2+ weeks.' },
+        boss: (d) => (d.skillBestSecs['Front Lever']||0) >= 8 && d.weekSpread(d.skillSessionDates['Front Lever']||new Set()) >= 8,
+        bossDesc: 'Front Lever 8s across 8+ weeks logging front lever.' },
     ]
   },
 
@@ -12646,20 +12742,20 @@ const DUNGEON_CHAINS = {
     desc:'Planche AND lever equally. The rarest weapon.',
     dungeons: [
       { tier:1, name:'Dual Discipline',
-        boss: (d) => (d.skillBestSecs['Tuck Planche']||0) >= 5 && (d.skillBestSecs['Tuck Front Lever']||0) >= 5,
-        bossDesc: 'Tuck Planche 5s AND Tuck Front Lever 5s logged.' },
+        boss: (d) => (d.skillBestSecs['Tuck Planche']||0) >= 10 && (d.skillBestSecs['Tuck Front Lever']||0) >= 10 && (d.skillSessionDates['Tuck Planche']||new Set()).size >= 4 && d.weekSpread(d.skillSessionDates['Tuck Planche']||new Set()) >= 2,
+        bossDesc: 'Tuck Planche 10s AND Tuck Front Lever 10s, 4+ sessions across 2+ weeks.' },
       { tier:2, name:'Balance Trial',
-        boss: (d) => (d.skillBestSecs['Tuck Planche']||0) >= 10 && (d.skillBestSecs['Tuck Front Lever']||0) >= 10 && (d.skillSessionDates['Tuck Planche']||new Set()).size >= 2 && (d.skillSessionDates['Tuck Front Lever']||new Set()).size >= 2,
-        bossDesc: 'Both holds 10s, 2+ sessions each.' },
+        boss: (d) => (d.skillBestSecs['Tuck Planche']||0) >= 20 && (d.skillBestSecs['Tuck Front Lever']||0) >= 20 && (d.skillSessionDates['Tuck Planche']||new Set()).size >= 8 && d.weekSpread(d.skillSessionDates['Tuck Planche']||new Set()) >= 4,
+        bossDesc: 'Both tuck holds 20s, 8+ sessions across 4+ weeks.' },
       { tier:3, name:'Advanced Balance',
-        boss: (d) => (d.skillBestSecs['Advanced Tuck Planche']||0) >= 8 && (d.skillBestSecs['Advanced Tuck Front Lever']||0) >= 8 && d.weekSpread(d.skillSessionDates['Advanced Tuck Planche']||new Set()) >= 2,
-        bossDesc: 'Both advanced holds 8s, across 2+ weeks.' },
+        boss: (d) => (d.skillBestSecs['Advanced Tuck Planche']||0) >= 12 && (d.skillBestSecs['Advanced Tuck Front Lever']||0) >= 12 && d.weekSpread(d.skillSessionDates['Advanced Tuck Planche']||new Set()) >= 8,
+        bossDesc: 'Both advanced holds 12s, 8+ weeks training both.' },
       { tier:4, name:'Shadow Balance',
-        boss: (d) => ((d.skillBestSecs['Straddle Planche']||0) >= 3 || (d.skillBestSecs['Advanced Tuck Planche']||0) >= 20) && (d.skillBestSecs['Front Lever']||0) >= 3 && d.weekSpread(d.skillSessionDates['Advanced Tuck Front Lever']||new Set()) >= 3,
-        bossDesc: '(Straddle 3s OR Adv Tuck 20s) AND Front Lever 3s, 3+ weeks.' },
+        boss: (d) => (d.skillBestSecs['Straddle Planche']||0) >= 5 && (d.skillBestSecs['Front Lever']||0) >= 5 && d.weekSpread(d.skillSessionDates['Advanced Tuck Planche']||new Set()) >= 16,
+        bossDesc: 'Straddle 5s AND Front Lever 5s, 16+ weeks of dual training.' },
       { tier:5, name:'Void Balance',
-        boss: (d) => (d.skillBestSecs['Full Planche']||0) >= 3 && (d.skillBestSecs['Front Lever']||0) >= 8,
-        bossDesc: 'Full Planche 3s AND Front Lever 8s. Elite in both.' },
+        boss: (d) => (d.skillBestSecs['Full Planche']||0) >= 3 && (d.skillBestSecs['Front Lever']||0) >= 8 && d.weekSpread(d.skillSessionDates['Full Planche']||new Set()) >= 4,
+        bossDesc: 'Full Planche 3s AND Front Lever 8s, 4+ weeks logging full planche.' },
     ]
   },
 
@@ -12669,20 +12765,20 @@ const DUNGEON_CHAINS = {
     desc:'Round count and time on the bags. The combinations do not lie.',
     dungeons: [
       { tier:1, name:'First Round',
-        boss: (d) => d.sportSessions.boxing.size >= 2 && d.sportMins.boxing >= 40,
-        bossDesc: '2 boxing sessions, 20+ mins each.' },
+        boss: (d) => d.sportSessions.boxing.size >= 6 && d.sportMins.boxing >= 150 && d.weekSpread(d.sportSessions.boxing) >= 3,
+        bossDesc: '6 boxing sessions, 150+ total mins across 3+ weeks.' },
       { tier:2, name:'Bag Work Trial',
-        boss: (d) => d.sportSessions.boxing.size >= 4 && d.sportMins.boxing >= 80,
-        bossDesc: '4 sessions, 60+ total boxing minutes.' },
+        boss: (d) => d.sportSessions.boxing.size >= 15 && d.sportMins.boxing >= 400 && d.weekSpread(d.sportSessions.boxing) >= 5,
+        bossDesc: '15 sessions, 400+ total mins across 5+ weeks.' },
       { tier:3, name:'Sparring Gate',
-        boss: (d) => d.sportSessions.boxing.size >= 8 && d.sportMins.boxing >= 160 && d.weekSpread(d.sportSessions.boxing) >= 2 && d.sparringLogged,
-        bossDesc: '8 sessions, 160+ mins, 2+ weeks, sparring or pads logged once.' },
+        boss: (d) => d.sportSessions.boxing.size >= 30 && d.sportMins.boxing >= 800 && d.weekSpread(d.sportSessions.boxing) >= 8 && d.sparringLogged,
+        bossDesc: '30 sessions, 800+ mins, 8+ weeks, sparring logged.' },
       { tier:4, name:'Shadow Kombat',
-        boss: (d) => d.sportSessions.boxing.size >= 15 && d.sportMins.boxing >= 300 && d.weekSpread(d.sportSessions.boxing) >= 3 && d.allBoxingTypesLogged,
-        bossDesc: '15 sessions, 300+ mins, 3+ weeks, all 4 boxing types logged.' },
+        boss: (d) => d.sportSessions.boxing.size >= 60 && d.sportMins.boxing >= 1600 && d.weekSpread(d.sportSessions.boxing) >= 16 && d.allBoxingTypesLogged,
+        bossDesc: '60 sessions, 1600+ mins, 16+ weeks, all boxing types logged.' },
       { tier:5, name:'Void Kombat',
-        boss: (d) => d.sportSessions.boxing.size >= 30 && d.sportMins.boxing >= 600 && d.weekSpread(d.sportSessions.boxing) >= 6 && d.sparringCount >= 5,
-        bossDesc: '30 sessions, 600+ mins, 6+ weeks, sparring 5+ times.' },
+        boss: (d) => d.sportSessions.boxing.size >= 120 && d.sportMins.boxing >= 3200 && d.weekSpread(d.sportSessions.boxing) >= 30 && d.sparringCount >= 20,
+        bossDesc: '120 sessions, 3200+ mins, 30+ weeks, sparring 20+ times.' },
     ]
   },
 
@@ -12692,20 +12788,20 @@ const DUNGEON_CHAINS = {
     desc:'Lateral speed. Reaction time. Court-trained instinct.',
     dungeons: [
       { tier:1, name:'Court Entry',
-        boss: (d) => d.sportSessions.court.size >= 2 && d.sportMins.court >= 40,
-        bossDesc: '2 court sessions, 20+ mins each.' },
+        boss: (d) => d.sportSessions.court.size >= 6 && d.sportMins.court >= 150 && d.weekSpread(d.sportSessions.court) >= 3,
+        bossDesc: '6 court sessions, 150+ total mins across 3+ weeks.' },
       { tier:2, name:'Field Trial',
-        boss: (d) => d.sportSessions.court.size >= 4 && d.sportMins.court >= 80,
-        bossDesc: '4 sessions, 60+ total minutes.' },
+        boss: (d) => d.sportSessions.court.size >= 15 && d.sportMins.court >= 400 && d.weekSpread(d.sportSessions.court) >= 5,
+        bossDesc: '15 sessions, 400+ mins across 5+ weeks.' },
       { tier:3, name:'Court Gate',
-        boss: (d) => d.sportSessions.court.size >= 8 && d.sportMins.court >= 160 && d.weekSpread(d.sportSessions.court) >= 2,
-        bossDesc: '8 sessions, 160+ mins, 2+ weeks.' },
+        boss: (d) => d.sportSessions.court.size >= 30 && d.sportMins.court >= 800 && d.weekSpread(d.sportSessions.court) >= 8,
+        bossDesc: '30 sessions, 800+ mins across 8+ weeks.' },
       { tier:4, name:'Shadow Court',
-        boss: (d) => d.sportSessions.court.size >= 15 && d.sportMins.court >= 300 && d.weekSpread(d.sportSessions.court) >= 3,
-        bossDesc: '15 sessions, 300+ mins, 3+ weeks.' },
+        boss: (d) => d.sportSessions.court.size >= 60 && d.sportMins.court >= 1600 && d.weekSpread(d.sportSessions.court) >= 16,
+        bossDesc: '60 sessions, 1600+ mins across 16+ weeks.' },
       { tier:5, name:'Void Court',
-        boss: (d) => d.sportSessions.court.size >= 30 && d.sportMins.court >= 600 && d.weekSpread(d.sportSessions.court) >= 6,
-        bossDesc: '30 sessions, 600+ mins, 6+ weeks.' },
+        boss: (d) => d.sportSessions.court.size >= 120 && d.sportMins.court >= 3200 && d.weekSpread(d.sportSessions.court) >= 30,
+        bossDesc: '120 sessions, 3200+ mins across 30+ weeks.' },
     ]
   },
 
@@ -12717,20 +12813,20 @@ const DUNGEON_CHAINS = {
     desc:'Supplementary work builds the armour compound lifts miss.',
     dungeons: [
       { tier:1, name:'Accessory Start',
-        boss: (d) => d.defenceSessions.size >= 2 && d.avgDefenceSets >= 4,
-        bossDesc: '2 sessions with 4+ defence sets each.' },
+        boss: (d) => d.defenceSessions.size >= 6 && d.avgDefenceSets >= 6 && d.weekSpread(d.defenceSessions) >= 3,
+        bossDesc: '6 sessions averaging 6+ defence sets across 3+ weeks.' },
       { tier:2, name:'Volume Trial',
-        boss: (d) => d.defenceSessions.size >= 4 && d.avgDefenceSets >= 6,
-        bossDesc: '4 sessions averaging 6+ defence sets.' },
+        boss: (d) => d.defenceSessions.size >= 16 && d.avgDefenceSets >= 8 && d.weekSpread(d.defenceSessions) >= 5,
+        bossDesc: '16 sessions averaging 8+ sets across 5+ weeks.' },
       { tier:3, name:'Consistency Gate',
-        boss: (d) => d.defenceSessions.size >= 8 && d.avgDefenceSets >= 8 && d.weekSpread(d.defenceSessions) >= 2,
-        bossDesc: '8 sessions, 8+ sets avg, 2+ weeks.' },
+        boss: (d) => d.defenceSessions.size >= 32 && d.avgDefenceSets >= 10 && d.weekSpread(d.defenceSessions) >= 8,
+        bossDesc: '32 sessions, 10+ sets avg across 8+ weeks.' },
       { tier:4, name:'Shadow Plate',
-        boss: (d) => d.defenceSessions.size >= 16 && d.avgDefenceSets >= 10 && d.weekSpread(d.defenceSessions) >= 4,
-        bossDesc: '16 sessions, 10+ sets avg, 4+ weeks.' },
+        boss: (d) => d.defenceSessions.size >= 64 && d.avgDefenceSets >= 12 && d.weekSpread(d.defenceSessions) >= 16,
+        bossDesc: '64 sessions, 12+ sets avg across 16+ weeks.' },
       { tier:5, name:'Monarch\'s Proof',
-        boss: (d) => d.defenceSessions.size >= 36 && d.avgDefenceSets >= 12 && d.weekSpread(d.defenceSessions) >= 8,
-        bossDesc: '36 sessions, 12+ sets avg, 8+ weeks.' },
+        boss: (d) => d.defenceSessions.size >= 120 && d.avgDefenceSets >= 14 && d.weekSpread(d.defenceSessions) >= 30,
+        bossDesc: '120 sessions, 14+ sets avg across 30+ weeks.' },
     ]
   },
 
@@ -12740,20 +12836,20 @@ const DUNGEON_CHAINS = {
     desc:'Cardio volume builds a different kind of armour.',
     dungeons: [
       { tier:1, name:'First Miles',
-        boss: (d) => d.qualifyingRuns.length >= 2,
-        bossDesc: '2 runs, 3km+, pace under 8:00/km.' },
+        boss: (d) => d.qualifyingRuns.length >= 5 && d.weekSpread(new Set(d.qualifyingRuns.map(r=>r.date))) >= 3,
+        bossDesc: '5 qualifying runs across 3+ weeks.' },
       { tier:2, name:'Running Trial',
-        boss: (d) => d.qualifyingRuns.length >= 5 && d.weekSpread(new Set(d.qualifyingRuns.map(r=>r.date))) >= 2,
-        bossDesc: '5 qualifying runs across 2+ weeks.' },
+        boss: (d) => d.qualifyingRuns.length >= 15 && d.bestPace <= 420 && d.weekSpread(new Set(d.qualifyingRuns.map(r=>r.date))) >= 5,
+        bossDesc: '15 qualifying runs, sub 7:00/km across 5+ weeks.' },
       { tier:3, name:'Pace Gate',
-        boss: (d) => d.qualifyingRuns.length >= 10 && d.bestPace <= 390,
-        bossDesc: '10 qualifying runs, best pace sub 6:30/km.' },
+        boss: (d) => d.qualifyingRuns.length >= 30 && d.bestPace <= 360 && d.weekSpread(new Set(d.qualifyingRuns.map(r=>r.date))) >= 8,
+        bossDesc: '30 qualifying runs, sub 6:00/km across 8+ weeks.' },
       { tier:4, name:'Ironhide Trial',
-        boss: (d) => d.qualifyingRuns.length >= 20 && d.bestPace <= 330 && d.weekSpread(new Set(d.qualifyingRuns.map(r=>r.date))) >= 4,
-        bossDesc: '20 qualifying runs, best pace sub 5:30, 4+ weeks.' },
+        boss: (d) => d.qualifyingRuns.length >= 60 && d.bestPace <= 300 && d.weekSpread(new Set(d.qualifyingRuns.map(r=>r.date))) >= 16,
+        bossDesc: '60 qualifying runs, sub 5:00/km across 16+ weeks.' },
       { tier:5, name:'Void Endurance',
-        boss: (d) => d.qualifyingRuns.length >= 40 && d.bestPace <= 270 && d.weekSpread(new Set(d.qualifyingRuns.map(r=>r.date))) >= 8,
-        bossDesc: '40 qualifying runs, sub 4:30/km, 8+ weeks.' },
+        boss: (d) => d.qualifyingRuns.length >= 120 && d.bestPace <= 240 && d.weekSpread(new Set(d.qualifyingRuns.map(r=>r.date))) >= 30,
+        bossDesc: '120 qualifying runs, sub 4:00/km across 30+ weeks.' },
     ]
   },
 
@@ -12763,20 +12859,20 @@ const DUNGEON_CHAINS = {
     desc:'The water remembers every stroke. Session duration is the proof.',
     dungeons: [
       { tier:1, name:'First Lengths',
-        boss: (d) => d.swimSessions.size >= 2 && d.swimTotalMins >= 40,
-        bossDesc: '2 swim sessions, 20+ mins each.' },
+        boss: (d) => d.swimSessions.size >= 6 && d.swimTotalMins >= 150 && d.weekSpread(d.swimSessions) >= 3,
+        bossDesc: '6 swim sessions, 150+ total mins across 3+ weeks.' },
       { tier:2, name:'Pool Trial',
-        boss: (d) => d.swimSessions.size >= 5 && d.swimTotalMins >= 100 && d.weekSpread(d.swimSessions) >= 2,
-        bossDesc: '5 sessions, 100+ total mins, 2+ weeks.' },
+        boss: (d) => d.swimSessions.size >= 16 && d.swimTotalMins >= 400 && d.weekSpread(d.swimSessions) >= 5,
+        bossDesc: '16 sessions, 400+ total mins across 5+ weeks.' },
       { tier:3, name:'Endurance Gate',
-        boss: (d) => d.swimSessions.size >= 10 && d.swimTotalMins >= 240 && d.weekSpread(d.swimSessions) >= 3,
-        bossDesc: '10 sessions, 240+ mins, 3+ weeks.' },
+        boss: (d) => d.swimSessions.size >= 32 && d.swimTotalMins >= 800 && d.weekSpread(d.swimSessions) >= 8,
+        bossDesc: '32 sessions, 800+ mins across 8+ weeks.' },
       { tier:4, name:'Shadow Wetsuit',
-        boss: (d) => d.swimSessions.size >= 20 && d.swimTotalMins >= 500 && d.weekSpread(d.swimSessions) >= 4,
-        bossDesc: '20 sessions, 500+ mins, 4+ weeks.' },
+        boss: (d) => d.swimSessions.size >= 64 && d.swimTotalMins >= 1600 && d.weekSpread(d.swimSessions) >= 16,
+        bossDesc: '64 sessions, 1600+ mins across 16+ weeks.' },
       { tier:5, name:'Void Current',
-        boss: (d) => d.swimSessions.size >= 40 && d.swimStrokeTypes >= 2 && d.weekSpread(d.swimSessions) >= 8,
-        bossDesc: '40 sessions, 2+ stroke types, 8+ weeks.' },
+        boss: (d) => d.swimSessions.size >= 120 && d.swimStrokeTypes >= 2 && d.weekSpread(d.swimSessions) >= 30,
+        bossDesc: '120 sessions, 2+ stroke types, 30+ weeks.' },
     ]
   },
 
@@ -12786,20 +12882,20 @@ const DUNGEON_CHAINS = {
     desc:'Cadence and sustained output. The watts do not lie.',
     dungeons: [
       { tier:1, name:'First Ride',
-        boss: (d) => d.cyclingSessions.size >= 2 && d.cyclingTotalMins >= 40,
-        bossDesc: '2 cycling sessions, 20+ mins each.' },
+        boss: (d) => d.cyclingSessions.size >= 6 && d.cyclingTotalMins >= 150 && d.weekSpread(d.cyclingSessions) >= 3,
+        bossDesc: '6 cycling sessions, 150+ total mins across 3+ weeks.' },
       { tier:2, name:'Cycling Trial',
-        boss: (d) => d.cyclingSessions.size >= 5 && d.cyclingTotalMins >= 100 && d.weekSpread(d.cyclingSessions) >= 2,
-        bossDesc: '5 sessions across 2+ weeks.' },
+        boss: (d) => d.cyclingSessions.size >= 16 && d.cyclingTotalMins >= 400 && d.weekSpread(d.cyclingSessions) >= 5,
+        bossDesc: '16 sessions, 400+ mins across 5+ weeks.' },
       { tier:3, name:'Peloton Gate',
-        boss: (d) => d.cyclingSessions.size >= 10 && d.cyclingTotalMins >= 250 && d.weekSpread(d.cyclingSessions) >= 3,
-        bossDesc: '10 sessions, 250+ mins, 3+ weeks.' },
+        boss: (d) => d.cyclingSessions.size >= 32 && d.cyclingTotalMins >= 800 && d.weekSpread(d.cyclingSessions) >= 8,
+        bossDesc: '32 sessions, 800+ mins across 8+ weeks.' },
       { tier:4, name:'Aero Trial',
-        boss: (d) => d.cyclingSessions.size >= 20 && d.weekSpread(d.cyclingSessions) >= 4,
-        bossDesc: '20 sessions across 4+ weeks.' },
+        boss: (d) => d.cyclingSessions.size >= 64 && d.weekSpread(d.cyclingSessions) >= 16,
+        bossDesc: '64 sessions across 16+ weeks.' },
       { tier:5, name:'Void Aero',
-        boss: (d) => d.cyclingSessions.size >= 40 && d.cyclingIntervalsLogged >= 5 && d.weekSpread(d.cyclingSessions) >= 8,
-        bossDesc: '40 sessions, intervals logged 5+ times, 8+ weeks.' },
+        boss: (d) => d.cyclingSessions.size >= 120 && d.cyclingIntervalsLogged >= 20 && d.weekSpread(d.cyclingSessions) >= 30,
+        bossDesc: '120 sessions, intervals logged 20+ times, 30+ weeks.' },
     ]
   },
 
@@ -12811,20 +12907,20 @@ const DUNGEON_CHAINS = {
     desc:'Pace is everything. Distance logged at honest speed.',
     dungeons: [
       { tier:1, name:'Road Start',
-        boss: (d) => d.qualifyingRuns.length >= 2,
-        bossDesc: '2 runs, 3km+, pace under 8:00/km.' },
+        boss: (d) => d.qualifyingRuns.length >= 5 && d.weekSpread(new Set(d.qualifyingRuns.map(r=>r.date))) >= 3,
+        bossDesc: '5 qualifying runs across 3+ weeks.' },
       { tier:2, name:'Tempo Trial',
-        boss: (d) => d.qualifyingRuns.length >= 5 && d.bestPace <= 420 && d.weekSpread(new Set(d.qualifyingRuns.map(r=>r.date))) >= 2,
-        bossDesc: '5 runs, pace sub 7:00/km, 2+ weeks.' },
+        boss: (d) => d.qualifyingRuns.length >= 15 && d.bestPace <= 390 && d.weekSpread(new Set(d.qualifyingRuns.map(r=>r.date))) >= 5,
+        bossDesc: '15 runs, sub 6:30/km, across 5+ weeks.' },
       { tier:3, name:'Swift Gate',
-        boss: (d) => d.qualifyingRuns.length >= 8 && d.bestPace <= 360 && d.tempoOrHillsLogged,
-        bossDesc: '8 runs, sub 6:00/km, tempo or hills logged.' },
+        boss: (d) => d.qualifyingRuns.length >= 30 && d.bestPace <= 330 && d.tempoOrHillsLogged && d.weekSpread(new Set(d.qualifyingRuns.map(r=>r.date))) >= 8,
+        bossDesc: '30 runs, sub 5:30/km, tempo or hills logged, 8+ weeks.' },
       { tier:4, name:'Shadow Run',
-        boss: (d) => d.qualifyingRuns.length >= 15 && d.bestPace <= 300 && d.weekSpread(new Set(d.qualifyingRuns.map(r=>r.date))) >= 3,
-        bossDesc: '15 runs, sub 5:00/km, 3+ weeks.' },
+        boss: (d) => d.qualifyingRuns.length >= 60 && d.bestPace <= 270 && d.weekSpread(new Set(d.qualifyingRuns.map(r=>r.date))) >= 16,
+        bossDesc: '60 runs, sub 4:30/km, across 16+ weeks.' },
       { tier:5, name:'Void Pace',
-        boss: (d) => d.qualifyingRuns.length >= 30 && d.bestPace <= 240 && d.weekSpread(new Set(d.qualifyingRuns.map(r=>r.date))) >= 6,
-        bossDesc: '30 runs, sub 4:00/km, 6+ weeks.' },
+        boss: (d) => d.qualifyingRuns.length >= 120 && d.bestPace <= 210 && d.weekSpread(new Set(d.qualifyingRuns.map(r=>r.date))) >= 30,
+        bossDesc: '120 runs, sub 3:30/km, across 30+ weeks.' },
     ]
   },
 
@@ -12834,20 +12930,20 @@ const DUNGEON_CHAINS = {
     desc:'Session duration and frequency. The wall remembers.',
     dungeons: [
       { tier:1, name:'Wall Start',
-        boss: (d) => d.climbSessions.size >= 2 && d.climbTotalMins >= 40,
-        bossDesc: '2 climbing sessions, 20+ mins each.' },
+        boss: (d) => d.climbSessions.size >= 6 && d.climbTotalMins >= 150 && d.weekSpread(d.climbSessions) >= 3,
+        bossDesc: '6 climbing sessions, 150+ total mins across 3+ weeks.' },
       { tier:2, name:'Friction Trial',
-        boss: (d) => d.climbSessions.size >= 5 && d.climbTotalMins >= 120 && d.weekSpread(d.climbSessions) >= 2,
-        bossDesc: '5 sessions, 120+ mins, 2+ weeks.' },
+        boss: (d) => d.climbSessions.size >= 16 && d.climbTotalMins >= 400 && d.weekSpread(d.climbSessions) >= 5,
+        bossDesc: '16 sessions, 400+ mins across 5+ weeks.' },
       { tier:3, name:'Phantom Gate',
-        boss: (d) => d.climbSessions.size >= 10 && d.climbTotalMins >= 280 && d.weekSpread(d.climbSessions) >= 3,
-        bossDesc: '10 sessions, 280+ mins, 3+ weeks.' },
+        boss: (d) => d.climbSessions.size >= 32 && d.climbTotalMins >= 800 && d.weekSpread(d.climbSessions) >= 8,
+        bossDesc: '32 sessions, 800+ mins across 8+ weeks.' },
       { tier:4, name:'Shadow Grip',
-        boss: (d) => d.climbSessions.size >= 20 && d.climbTotalMins >= 600 && d.weekSpread(d.climbSessions) >= 4,
-        bossDesc: '20 sessions, 600+ mins, 4+ weeks.' },
+        boss: (d) => d.climbSessions.size >= 64 && d.climbTotalMins >= 1600 && d.weekSpread(d.climbSessions) >= 16,
+        bossDesc: '64 sessions, 1600+ mins across 16+ weeks.' },
       { tier:5, name:'Void Climb',
-        boss: (d) => d.climbSessions.size >= 40 && d.weekSpread(d.climbSessions) >= 8,
-        bossDesc: '40 sessions across 8+ weeks.' },
+        boss: (d) => d.climbSessions.size >= 120 && d.weekSpread(d.climbSessions) >= 30,
+        bossDesc: '120 sessions across 30+ weeks.' },
     ]
   },
 
@@ -12857,20 +12953,20 @@ const DUNGEON_CHAINS = {
     desc:'Pistol squat reps are honest. One leg. Full control.',
     dungeons: [
       { tier:1, name:'First Explosion',
-        boss: (d) => d.pistolData.bestReps >= 1 || d.explosiveSessions.size >= 3,
-        bossDesc: 'Pistol Squat 1 rep OR 3 explosive sessions logged.' },
+        boss: (d) => d.pistolData.bestReps >= 3 && d.explosiveSessions.size >= 6 && d.weekSpread(d.pistolData.sessionDates) >= 3,
+        bossDesc: 'Pistol Squat 3 reps, 6 explosive sessions across 3+ weeks.' },
       { tier:2, name:'Jump Trial',
-        boss: (d) => d.pistolData.bestReps >= 5 && d.pistolData.sessionDates.size >= 2,
-        bossDesc: 'Pistol Squat 5 reps, 2+ sessions.' },
+        boss: (d) => d.pistolData.bestReps >= 8 && d.pistolData.sessionDates.size >= 8 && d.weekSpread(d.pistolData.sessionDates) >= 4,
+        bossDesc: 'Pistol Squat 8 reps, 8+ sessions across 4+ weeks.' },
       { tier:3, name:'Pistol Gate',
-        boss: (d) => d.pistolData.bestReps >= 10 && d.pistolData.sessionDates.size >= 3 && d.weekSpread(d.pistolData.sessionDates) >= 2,
-        bossDesc: 'Pistol Squat 10 reps in one set, 3+ sessions across 2+ weeks.' },
+        boss: (d) => d.pistolData.bestReps >= 12 && d.pistolData.sessionDates.size >= 16 && d.weekSpread(d.pistolData.sessionDates) >= 8,
+        bossDesc: 'Pistol Squat 12 reps, 16+ sessions across 8+ weeks.' },
       { tier:4, name:'Phantom Leap',
-        boss: (d) => d.pistolData.bestReps >= 15 && d.nordicCurlLogged && d.weekSpread(d.pistolData.sessionDates) >= 3,
-        bossDesc: 'Pistol 15 reps AND Nordic Curl logged, 3+ weeks.' },
+        boss: (d) => d.pistolData.bestReps >= 16 && d.nordicCurlLogged && d.weekSpread(d.pistolData.sessionDates) >= 16,
+        bossDesc: 'Pistol 16 reps AND Nordic Curl logged, 16+ weeks.' },
       { tier:5, name:'Sovereign\'s Leap',
-        boss: (d) => d.pistolData.bestReps >= 20 && d.weightedPistolLogged,
-        bossDesc: 'Pistol Squat 20 reps AND weighted pistol logged.' },
+        boss: (d) => d.pistolData.bestReps >= 22 && d.weightedPistolLogged && d.weekSpread(d.pistolData.sessionDates) >= 30,
+        bossDesc: 'Pistol 22 reps AND weighted pistol across 30+ weeks.' },
     ]
   },
 
@@ -12880,20 +12976,20 @@ const DUNGEON_CHAINS = {
     desc:'German hang duration and splits progression. Range is earned.',
     dungeons: [
       { tier:1, name:'First Hang',
-        boss: (d) => d.bestGermanHangSecs >= 5 || d.splitsLogged,
-        bossDesc: 'German Hang 5s OR any splits logged.' },
+        boss: (d) => (d.bestGermanHangSecs >= 10 || d.splitsLogged) && (d.skillSessionDates['German Hang']||d.skillSessionDates['German hang']||new Set()).size >= 4 && d.weekSpread(d.skillSessionDates['German Hang']||d.skillSessionDates['German hang']||new Set()) >= 3,
+        bossDesc: 'German Hang 10s OR splits logged, 4+ sessions across 3+ weeks.' },
       { tier:2, name:'Shoulder Trial',
-        boss: (d) => d.bestGermanHangSecs >= 15 && (d.skillSessionDates['German Hang']||d.skillSessionDates['German hang']||new Set()).size >= 2,
-        bossDesc: 'German Hang 15s across 2+ sessions.' },
+        boss: (d) => d.bestGermanHangSecs >= 25 && (d.skillSessionDates['German Hang']||d.skillSessionDates['German hang']||new Set()).size >= 12 && d.weekSpread(d.skillSessionDates['German Hang']||d.skillSessionDates['German hang']||new Set()) >= 5,
+        bossDesc: 'German Hang 25s, 12+ sessions across 5+ weeks.' },
       { tier:3, name:'Supple Gate',
-        boss: (d) => d.bestGermanHangSecs >= 30 && d.frontSplitsLogged && d.weekSpread(d.skillSessionDates['German Hang']||d.skillSessionDates['German hang']||new Set()) >= 2,
-        bossDesc: 'German Hang 30s AND Front Splits logged, 2+ weeks.' },
+        boss: (d) => d.bestGermanHangSecs >= 40 && d.frontSplitsLogged && d.weekSpread(d.skillSessionDates['German Hang']||d.skillSessionDates['German hang']||new Set()) >= 8,
+        bossDesc: 'German Hang 40s AND Front Splits, 8+ weeks.' },
       { tier:4, name:'Shadow Silk',
-        boss: (d) => d.bestGermanHangSecs >= 45 && d.sideSplitsLogged && d.weekSpread(d.skillSessionDates['German Hang']||d.skillSessionDates['German hang']||new Set()) >= 3,
-        bossDesc: 'German Hang 45s AND Side Splits, 3+ weeks.' },
+        boss: (d) => d.bestGermanHangSecs >= 55 && d.sideSplitsLogged && d.weekSpread(d.skillSessionDates['German Hang']||d.skillSessionDates['German hang']||new Set()) >= 16,
+        bossDesc: 'German Hang 55s AND Side Splits, 16+ weeks.' },
       { tier:5, name:'Void Silk',
-        boss: (d) => d.bestGermanHangSecs >= 60 && d.middleSplitsLogged && d.weekSpread(d.skillSessionDates['German Hang']||d.skillSessionDates['German hang']||new Set()) >= 4,
-        bossDesc: 'German Hang 60s AND Middle Splits, 4+ weeks.' },
+        boss: (d) => d.bestGermanHangSecs >= 75 && d.middleSplitsLogged && d.weekSpread(d.skillSessionDates['German Hang']||d.skillSessionDates['German hang']||new Set()) >= 30,
+        bossDesc: 'German Hang 75s AND Middle Splits, 30+ weeks.' },
     ]
   },
 
@@ -12903,20 +12999,20 @@ const DUNGEON_CHAINS = {
     desc:'Lateral cuts. First step speed. Court-trained feet.',
     dungeons: [
       { tier:1, name:'Court Entry',
-        boss: (d) => d.sportSessions.court.size >= 2 && d.sportMins.court >= 40,
-        bossDesc: '2 court sessions, 20+ mins each.' },
+        boss: (d) => d.sportSessions.court.size >= 6 && d.sportMins.court >= 150 && d.weekSpread(d.sportSessions.court) >= 3,
+        bossDesc: '6 court sessions, 150+ total mins across 3+ weeks.' },
       { tier:2, name:'Field Trial',
-        boss: (d) => d.sportSessions.court.size >= 5 && d.sportMins.court >= 100 && d.weekSpread(d.sportSessions.court) >= 2,
-        bossDesc: '5 sessions, 100+ mins, 2+ weeks.' },
+        boss: (d) => d.sportSessions.court.size >= 16 && d.sportMins.court >= 400 && d.weekSpread(d.sportSessions.court) >= 5,
+        bossDesc: '16 sessions, 400+ mins across 5+ weeks.' },
       { tier:3, name:'Court Gate',
-        boss: (d) => d.sportSessions.court.size >= 10 && d.sportMins.court >= 220 && d.weekSpread(d.sportSessions.court) >= 3,
-        bossDesc: '10 sessions, 220+ mins, 3+ weeks.' },
+        boss: (d) => d.sportSessions.court.size >= 32 && d.sportMins.court >= 800 && d.weekSpread(d.sportSessions.court) >= 8,
+        bossDesc: '32 sessions, 800+ mins across 8+ weeks.' },
       { tier:4, name:'Shadow Cleat',
-        boss: (d) => d.sportSessions.court.size >= 20 && d.sportMins.court >= 480 && d.weekSpread(d.sportSessions.court) >= 4,
-        bossDesc: '20 sessions, 480+ mins, 4+ weeks.' },
+        boss: (d) => d.sportSessions.court.size >= 64 && d.sportMins.court >= 1600 && d.weekSpread(d.sportSessions.court) >= 16,
+        bossDesc: '64 sessions, 1600+ mins across 16+ weeks.' },
       { tier:5, name:'Void Court',
-        boss: (d) => d.sportSessions.court.size >= 40 && d.sportMins.court >= 1000 && d.weekSpread(d.sportSessions.court) >= 8,
-        bossDesc: '40 sessions, 1000+ mins, 8+ weeks.' },
+        boss: (d) => d.sportSessions.court.size >= 120 && d.sportMins.court >= 3200 && d.weekSpread(d.sportSessions.court) >= 30,
+        bossDesc: '120 sessions, 3200+ mins across 30+ weeks.' },
     ]
   },
 
@@ -12926,20 +13022,20 @@ const DUNGEON_CHAINS = {
     desc:'Road and wall equally. You find a way up anything.',
     dungeons: [
       { tier:1, name:'Trail Start',
-        boss: (d) => d.qualifyingRuns.length >= 2 && d.climbSessions.size >= 2,
-        bossDesc: '2 qualifying runs AND 2 climbing sessions within 4 weeks.' },
+        boss: (d) => d.qualifyingRuns.length >= 5 && d.climbSessions.size >= 5 && d.weekSpread(new Set(d.qualifyingRuns.map(r=>r.date))) >= 3,
+        bossDesc: '5 qualifying runs AND 5 climbing sessions across 3+ weeks.' },
       { tier:2, name:'Trail Trial',
-        boss: (d) => d.qualifyingRuns.length >= 4 && d.climbSessions.size >= 4 && d.weekSpread(new Set(d.qualifyingRuns.map(r=>r.date))) >= 2,
-        bossDesc: '4 qualifying runs AND 4 climb sessions, 2+ weeks each.' },
+        boss: (d) => d.qualifyingRuns.length >= 15 && d.climbSessions.size >= 15 && d.bestPace <= 390 && d.weekSpread(d.climbSessions) >= 5,
+        bossDesc: '15 runs (sub 6:30) AND 15 climbs across 5+ weeks.' },
       { tier:3, name:'Mountain Gate',
-        boss: (d) => d.qualifyingRuns.length >= 8 && d.bestPace <= 390 && d.climbSessions.size >= 8 && d.climbTotalMins >= 200,
-        bossDesc: '8 runs (sub 6:30) AND 8 climbs (200+ mins).' },
+        boss: (d) => d.qualifyingRuns.length >= 30 && d.bestPace <= 330 && d.climbSessions.size >= 30 && d.climbTotalMins >= 800 && d.weekSpread(d.climbSessions) >= 8,
+        bossDesc: '30 runs (sub 5:30) AND 30 climbs (800+ mins) across 8+ weeks.' },
       { tier:4, name:'Shadow Trail',
-        boss: (d) => d.qualifyingRuns.length >= 15 && d.bestPace <= 330 && d.climbSessions.size >= 15 && d.weekSpread(d.climbSessions) >= 4,
-        bossDesc: '15 runs (sub 5:30) AND 15 climbs, 4+ weeks.' },
+        boss: (d) => d.qualifyingRuns.length >= 60 && d.bestPace <= 270 && d.climbSessions.size >= 60 && d.weekSpread(d.climbSessions) >= 16,
+        bossDesc: '60 runs (sub 4:30) AND 60 climbs across 16+ weeks.' },
       { tier:5, name:'Void Trail',
-        boss: (d) => d.qualifyingRuns.length >= 30 && d.bestPace <= 270 && d.climbSessions.size >= 30 && d.weekSpread(d.climbSessions) >= 8,
-        bossDesc: '30 runs (sub 4:30) AND 30 climbs, 8+ weeks.' },
+        boss: (d) => d.qualifyingRuns.length >= 120 && d.bestPace <= 210 && d.climbSessions.size >= 120 && d.weekSpread(d.climbSessions) >= 30,
+        bossDesc: '120 runs (sub 3:30) AND 120 climbs across 30+ weeks.' },
     ]
   },
 
@@ -12949,20 +13045,20 @@ const DUNGEON_CHAINS = {
     desc:'Speed AND distance. Your legs do not distinguish.',
     dungeons: [
       { tier:1, name:'Sprint Start',
-        boss: (d) => d.pistolData.bestReps >= 1 && d.qualifyingRuns.length >= 2,
-        bossDesc: 'Pistol Squat 1 rep AND 2 qualifying runs, both within 4 weeks.' },
+        boss: (d) => d.pistolData.bestReps >= 3 && d.qualifyingRuns.length >= 5 && d.weekSpread(new Set(d.qualifyingRuns.map(r=>r.date))) >= 3,
+        bossDesc: 'Pistol 3 reps AND 5 qualifying runs across 3+ weeks.' },
       { tier:2, name:'Sprint Trial',
-        boss: (d) => d.pistolData.bestReps >= 3 && d.qualifyingRuns.length >= 4 && d.bestPace <= 420,
-        bossDesc: 'Pistol 3 reps AND 4 runs sub 7:00/km.' },
+        boss: (d) => d.pistolData.bestReps >= 8 && d.qualifyingRuns.length >= 15 && d.bestPace <= 390 && d.weekSpread(d.pistolData.sessionDates) >= 5,
+        bossDesc: 'Pistol 8 reps AND 15 runs sub 6:30, 5+ weeks.' },
       { tier:3, name:'Acceleration Gate',
-        boss: (d) => d.pistolData.bestReps >= 5 && d.qualifyingRuns.length >= 8 && d.bestPace <= 360 && d.weekSpread(d.pistolData.sessionDates) >= 2,
-        bossDesc: 'Pistol 5 reps AND 8 runs sub 6:00, 2+ weeks each.' },
+        boss: (d) => d.pistolData.bestReps >= 12 && d.qualifyingRuns.length >= 30 && d.bestPace <= 330 && d.weekSpread(d.pistolData.sessionDates) >= 8,
+        bossDesc: 'Pistol 12 reps AND 30 runs sub 5:30, 8+ weeks.' },
       { tier:4, name:'Shadow Sprint',
-        boss: (d) => d.pistolData.bestReps >= 8 && d.qualifyingRuns.length >= 15 && d.bestPace <= 300 && d.weekSpread(d.pistolData.sessionDates) >= 3,
-        bossDesc: 'Pistol 8 reps AND 15 runs sub 5:00, 3+ weeks.' },
+        boss: (d) => d.pistolData.bestReps >= 16 && d.qualifyingRuns.length >= 60 && d.bestPace <= 270 && d.weekSpread(d.pistolData.sessionDates) >= 16,
+        bossDesc: 'Pistol 16 reps AND 60 runs sub 4:30, 16+ weeks.' },
       { tier:5, name:'Sovereign\'s Sprint',
-        boss: (d) => d.pistolData.bestReps >= 12 && d.qualifyingRuns.length >= 30 && d.bestPace <= 240 && d.weekSpread(d.pistolData.sessionDates) >= 6,
-        bossDesc: 'Pistol 12 reps AND 30 runs sub 4:00, 6+ weeks.' },
+        boss: (d) => d.pistolData.bestReps >= 20 && d.qualifyingRuns.length >= 120 && d.bestPace <= 210 && d.weekSpread(d.pistolData.sessionDates) >= 30,
+        bossDesc: 'Pistol 20 reps AND 120 runs sub 3:30, 30+ weeks.' },
     ]
   },
 
@@ -12972,20 +13068,20 @@ const DUNGEON_CHAINS = {
     desc:'Running, climbing, explosive — all three. The rarest boots.',
     dungeons: [
       { tier:1, name:'All-Terrain Start',
-        boss: (d) => d.qualifyingRuns.length >= 2 && d.climbSessions.size >= 2 && d.pistolData.bestReps >= 1,
-        bossDesc: '2 runs AND 2 climbs AND Pistol 1 rep, all within 4 weeks.' },
+        boss: (d) => d.qualifyingRuns.length >= 5 && d.climbSessions.size >= 5 && d.pistolData.bestReps >= 3 && d.weekSpread(d.climbSessions) >= 3,
+        bossDesc: '5 runs AND 5 climbs AND Pistol 3 reps, across 3+ weeks.' },
       { tier:2, name:'Complete Trial',
-        boss: (d) => d.qualifyingRuns.length >= 4 && d.climbSessions.size >= 4 && d.pistolData.bestReps >= 3 && d.bestPace <= 420,
-        bossDesc: '4 runs (sub 7:00) AND 4 climbs AND Pistol 3 reps.' },
+        boss: (d) => d.qualifyingRuns.length >= 15 && d.climbSessions.size >= 15 && d.pistolData.bestReps >= 8 && d.bestPace <= 390 && d.weekSpread(d.climbSessions) >= 5,
+        bossDesc: '15 runs (sub 6:30) AND 15 climbs AND Pistol 8 reps, 5+ weeks.' },
       { tier:3, name:'Complete Gate',
-        boss: (d) => d.qualifyingRuns.length >= 8 && d.climbSessions.size >= 8 && d.pistolData.bestReps >= 5 && d.bestPace <= 360 && d.weekSpread(d.climbSessions) >= 3,
-        bossDesc: '8 runs (sub 6:00) AND 8 climbs AND Pistol 5 reps, 3+ weeks.' },
+        boss: (d) => d.qualifyingRuns.length >= 30 && d.climbSessions.size >= 30 && d.pistolData.bestReps >= 12 && d.bestPace <= 330 && d.weekSpread(d.climbSessions) >= 8,
+        bossDesc: '30 runs (sub 5:30) AND 30 climbs AND Pistol 12 reps, 8+ weeks.' },
       { tier:4, name:'Shadow Terrain',
-        boss: (d) => d.qualifyingRuns.length >= 15 && d.climbSessions.size >= 15 && d.pistolData.bestReps >= 8 && d.bestPace <= 300 && d.weekSpread(d.climbSessions) >= 4,
-        bossDesc: '15 runs (sub 5:00) AND 15 climbs AND Pistol 8 reps, 4+ weeks.' },
+        boss: (d) => d.qualifyingRuns.length >= 60 && d.climbSessions.size >= 60 && d.pistolData.bestReps >= 16 && d.bestPace <= 270 && d.weekSpread(d.climbSessions) >= 16,
+        bossDesc: '60 runs (sub 4:30) AND 60 climbs AND Pistol 16 reps, 16+ weeks.' },
       { tier:5, name:'Void All-Terrain',
-        boss: (d) => d.qualifyingRuns.length >= 30 && d.climbSessions.size >= 30 && d.pistolData.bestReps >= 12 && d.bestPace <= 240 && d.weekSpread(d.climbSessions) >= 8,
-        bossDesc: '30 runs (sub 4:00) AND 30 climbs AND Pistol 12 reps, 8+ weeks.' },
+        boss: (d) => d.qualifyingRuns.length >= 120 && d.climbSessions.size >= 120 && d.pistolData.bestReps >= 20 && d.bestPace <= 210 && d.weekSpread(d.climbSessions) >= 30,
+        bossDesc: '120 runs (sub 3:30) AND 120 climbs AND Pistol 20 reps, 30+ weeks.' },
     ]
   },
 
@@ -12997,20 +13093,20 @@ const DUNGEON_CHAINS = {
     desc:'Hold duration. The ground is optional.',
     dungeons: [
       { tier:1, name:'First Balance',
-        boss: (d) => d.bestHandstandSecs >= 2,
-        bossDesc: 'Any handstand hold 2s (wall counts).' },
+        boss: (d) => ((d.skillBestSecs['Chest-to-Wall Handstand Hold']||0) >= 15 || d.bestHandstandSecs >= 5) && d.handstandDates.size >= 4 && d.weekSpread(d.handstandDates) >= 3,
+        bossDesc: 'Wall 15s OR freestanding 5s, 4+ sessions across 3+ weeks.' },
       { tier:2, name:'Wall Trial',
-        boss: (d) => ((d.skillBestSecs['Chest-to-Wall Handstand Hold']||0) >= 10 || d.bestHandstandSecs >= 3) && d.handstandDates.size >= 2,
-        bossDesc: 'Chest-to-wall 10s OR freestanding 3s, 2+ sessions.' },
+        boss: (d) => ((d.skillBestSecs['Chest-to-Wall Handstand Hold']||0) >= 30 || d.bestHandstandSecs >= 8) && d.handstandDates.size >= 10 && d.weekSpread(d.handstandDates) >= 4,
+        bossDesc: 'Wall 30s OR freestanding 8s, 10+ sessions across 4+ weeks.' },
       { tier:3, name:'Freestanding Gate',
-        boss: (d) => d.bestHandstandSecs >= 10 && d.handstandDates.size >= 3 && d.weekSpread(d.handstandDates) >= 2,
-        bossDesc: 'Freestanding 10s, 3+ sessions, 2+ weeks.' },
+        boss: (d) => d.bestHandstandSecs >= 15 && d.handstandDates.size >= 20 && d.weekSpread(d.handstandDates) >= 8,
+        bossDesc: 'Freestanding 15s, 20+ sessions across 8+ weeks.' },
       { tier:4, name:'Shadow Press',
-        boss: (d) => d.bestHandstandSecs >= 20 && d.handstandDates.size >= 5 && d.weekSpread(d.handstandDates) >= 3,
-        bossDesc: 'Freestanding 20s, 5+ sessions, 3+ weeks.' },
+        boss: (d) => d.bestHandstandSecs >= 30 && d.handstandDates.size >= 40 && d.weekSpread(d.handstandDates) >= 16,
+        bossDesc: 'Freestanding 30s, 40+ sessions across 16+ weeks.' },
       { tier:5, name:'Void Stand',
-        boss: (d) => d.bestHandstandSecs >= 45 && d.weekSpread(d.handstandDates) >= 4,
-        bossDesc: 'Freestanding 45s across 4+ weeks.' },
+        boss: (d) => d.bestHandstandSecs >= 60 && d.weekSpread(d.handstandDates) >= 30,
+        bossDesc: 'Freestanding 60s across 30+ weeks of practice.' },
     ]
   },
 
@@ -13020,14 +13116,14 @@ const DUNGEON_CHAINS = {
     desc:'L-sit seconds and dragon flag reps. Compression strength.',
     dungeons: [
       { tier:1, name:'First Hold',
-        boss: (d) => d.bestLSitSecs >= 3,
-        bossDesc: 'L-Sit 3s logged once.' },
+        boss: (d) => d.bestLSitSecs >= 5 && (d.skillSessionDates['L-Sit']||new Set()).size >= 4 && d.weekSpread(d.skillSessionDates['L-Sit']||new Set()) >= 3,
+        bossDesc: 'L-Sit 5s, 4+ sessions across 3+ weeks.' },
       { tier:2, name:'Compression Trial',
-        boss: (d) => d.bestLSitSecs >= 8 && (d.skillSessionDates['L-Sit']||new Set()).size >= 2,
-        bossDesc: 'L-Sit 8s, 2+ sessions.' },
+        boss: (d) => d.bestLSitSecs >= 12 && (d.skillSessionDates['L-Sit']||new Set()).size >= 10 && d.weekSpread(d.skillSessionDates['L-Sit']||new Set()) >= 4,
+        bossDesc: 'L-Sit 12s, 10+ sessions across 4+ weeks.' },
       { tier:3, name:'Dragon Gate',
-        boss: (d) => d.bestLSitSecs >= 15 && d.dragonflagReps >= 1 && d.weekSpread(d.skillSessionDates['L-Sit']||new Set()) >= 2,
-        bossDesc: 'L-Sit 15s AND Dragon Flag logged, 2+ weeks.' },
+        boss: (d) => d.bestLSitSecs >= 20 && d.dragonflagReps >= 3 && d.weekSpread(d.skillSessionDates['L-Sit']||new Set()) >= 8 && (d.skillSessionDates['L-Sit']||new Set()).size >= 16,
+        bossDesc: 'L-Sit 20s AND Dragon Flag 3 reps, 16+ sessions across 8+ weeks.' },
       { tier:4, name:'Shadow Core',
         boss: (d) => d.bestLSitSecs >= 20 && d.dragonflagReps >= 3 && (d.skillSessionDates['L-Sit']||new Set()).size >= 3,
         bossDesc: 'L-Sit 20s AND Dragon Flag 3 reps, 3+ sessions.' },
