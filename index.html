@@ -3194,6 +3194,7 @@ async function loadAllData() {
   setTimeout(() => { try { renderExerciseLibrary(); } catch(e) {} }, 100);
   setTimeout(() => { try { renderCalendar(); } catch(e) {} }, 150);
   startDailyTimer();
+  setTimeout(() => { try { maybeShowStreakFreezeNotice(); } catch(e) {} }, 600);
   setTimeout(() => { try { maybeShowUpdateNotice(); } catch(e) {} }, 800);
 }
 function rebuildExercisesAll() {
@@ -3860,49 +3861,6 @@ function openWorkoutModal() {
   document.getElementById('workout-pill').classList.add('hidden');
   document.body.style.overflow = 'hidden';
   refreshCompleteButton();
-
-  // ── Streak freeze notification ──
-  // Refresh profile field from Firestore so freeze set by admin shows immediately
-  // without needing a full relog.
-  (async () => {
-    try {
-      const { doc, getDoc } = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js');
-      const snap = await getDoc(doc(db, 'users', currentUser.uid));
-      if (snap.exists()) {
-        const data = snap.data();
-        if (data.streakFreeze) profile.streakFreeze = data.streakFreeze;
-      }
-    } catch(e) {}
-    const freeze = profile?.streakFreeze;
-    if (!freeze?.active) return;
-    setTimeout(() => {
-      const modal = document.createElement('div');
-      modal.style.cssText = 'position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.92);backdrop-filter:blur(8px);';
-      modal.innerHTML = `
-        <div style="max-width:340px;width:92vw;text-align:center;padding:32px 24px;background:linear-gradient(160deg,rgba(5,7,13,0.98),rgba(10,15,30,0.98));border:1px solid rgba(255,215,0,0.4);border-radius:20px;box-shadow:0 0 80px rgba(255,215,0,0.15),0 0 200px rgba(255,215,0,0.05);">
-          <div style="font-size:48px;margin-bottom:12px;animation:pulse 1.5s infinite;">👑</div>
-          <div style="font-family:var(--font-mono);font-size:9px;color:rgba(255,215,0,0.6);letter-spacing:0.2em;margin-bottom:10px;">◈ SYSTEM ANNOUNCEMENT ◈</div>
-          <div style="font-family:var(--font-display);font-size:22px;color:rgba(255,215,0,1);letter-spacing:0.05em;margin-bottom:6px;text-shadow:0 0 20px rgba(255,215,0,0.5);">YOUR STREAK IS SAFE</div>
-          <div style="font-family:var(--font-mono);font-size:10px;color:rgba(255,215,0,0.5);letter-spacing:0.1em;margin-bottom:20px;">BY DIVINE INTERVENTION</div>
-          <p style="font-size:13px;color:var(--text-dim);line-height:1.8;margin-bottom:20px;">
-            The all-knowing, all-seeing, supremely humble and breathtakingly intelligent
-            <strong style="color:rgba(255,215,0,0.9);">Lawrence Lechuga</strong>
-            — visionary, architect of this very System, and certified goat —
-            has <em>personally</em> intervened to shield your streak from the ravages of this holiday.
-          </p>
-          <p style="font-size:12px;color:rgba(255,215,0,0.6);line-height:1.7;margin-bottom:20px;">
-            In his boundless wisdom and characteristic humility, he has frozen your streak so that your absence counts for nothing. You owe him. You know you do.
-          </p>
-          <div style="font-family:var(--font-mono);font-size:9px;color:rgba(255,215,0,0.3);letter-spacing:0.1em;margin-bottom:20px;">
-            — THE SYSTEM, on behalf of Lawrence —
-          </div>
-          <button style="width:100%;padding:14px;background:linear-gradient(135deg,rgba(255,215,0,0.15),rgba(255,215,0,0.08));border:1px solid rgba(255,215,0,0.4);border-radius:10px;color:rgba(255,215,0,0.9);font-family:var(--font-display);font-size:14px;letter-spacing:0.08em;cursor:pointer;" onclick="this.closest('div[style*=fixed]').remove()">I AM GRATEFUL. PROCEED.</button>
-        </div>`;
-      document.body.appendChild(modal);
-      modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
-      SFX.classAssigned?.();
-    }, 400);
-  })();
 }
 function minimiseWorkoutModal() {
   document.getElementById('workout-modal-overlay').classList.add('hidden');
@@ -14924,6 +14882,37 @@ window.abandonDungeon = async () => {
 
 // ── Update notice ──
 const UPDATE_VERSION = 'v20260810';
+
+function maybeShowStreakFreezeNotice() {
+  if (!profile?.streakFreeze?.active) return;
+  // Only show once per session
+  if (sessionStorage.getItem('freeze_notice_shown')) return;
+  sessionStorage.setItem('freeze_notice_shown', '1');
+
+  const modal = document.createElement('div');
+  modal.style.cssText = 'position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.92);backdrop-filter:blur(8px);';
+  modal.innerHTML = `
+    <div style="max-width:340px;width:92vw;text-align:center;padding:32px 24px;background:linear-gradient(160deg,rgba(5,7,13,0.98),rgba(10,15,30,0.98));border:1px solid rgba(255,215,0,0.4);border-radius:20px;box-shadow:0 0 80px rgba(255,215,0,0.15),0 0 200px rgba(255,215,0,0.05);">
+      <div style="font-size:52px;margin-bottom:12px;">👑</div>
+      <div style="font-family:var(--font-mono);font-size:9px;color:rgba(255,215,0,0.6);letter-spacing:0.2em;margin-bottom:10px;">◈ SYSTEM ANNOUNCEMENT ◈</div>
+      <div style="font-family:var(--font-display);font-size:22px;color:rgba(255,215,0,1);letter-spacing:0.05em;margin-bottom:6px;text-shadow:0 0 20px rgba(255,215,0,0.5);">YOUR STREAK IS SAFE</div>
+      <div style="font-family:var(--font-mono);font-size:10px;color:rgba(255,215,0,0.5);letter-spacing:0.1em;margin-bottom:20px;">BY DIVINE INTERVENTION</div>
+      <p style="font-size:13px;color:var(--text-dim);line-height:1.8;margin-bottom:16px;">
+        The all-knowing, all-seeing, supremely humble and breathtakingly intelligent
+        <strong style="color:rgba(255,215,0,0.9);">Lawrence Lechuga</strong>
+        — visionary, architect of this very System, and certified goat —
+        has <em>personally</em> intervened to shield your streak from the ravages of this holiday.
+      </p>
+      <p style="font-size:12px;color:rgba(255,215,0,0.6);line-height:1.7;margin-bottom:20px;">
+        In his boundless wisdom and characteristic humility, he has frozen your streak so that your absence counts for nothing. You owe him. You know you do.
+      </p>
+      <div style="font-family:var(--font-mono);font-size:9px;color:rgba(255,215,0,0.3);letter-spacing:0.1em;margin-bottom:20px;">— THE SYSTEM, on behalf of Lawrence —</div>
+      <button style="width:100%;padding:14px;background:linear-gradient(135deg,rgba(255,215,0,0.15),rgba(255,215,0,0.08));border:1px solid rgba(255,215,0,0.4);border-radius:10px;color:rgba(255,215,0,0.9);font-family:var(--font-display);font-size:14px;letter-spacing:0.08em;cursor:pointer;" onclick="this.closest('div[style*=fixed]').remove()">I AM GRATEFUL. PROCEED.</button>
+    </div>`;
+  document.body.appendChild(modal);
+  modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
+  SFX.classAssigned?.();
+}
 
 function maybeShowUpdateNotice() {
   const key = `aura_update_dismissed_${currentUser?.uid || 'anon'}_${UPDATE_VERSION}`;
