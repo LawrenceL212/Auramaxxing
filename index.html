@@ -3862,9 +3862,19 @@ function openWorkoutModal() {
   refreshCompleteButton();
 
   // ── Streak freeze notification ──
-  // If the current user is frozen, show a grandiose tribute to Lawrence.
-  const freeze = profile?.streakFreeze;
-  if (freeze?.active) {
+  // Refresh profile field from Firestore so freeze set by admin shows immediately
+  // without needing a full relog.
+  (async () => {
+    try {
+      const { doc, getDoc } = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js');
+      const snap = await getDoc(doc(db, 'users', currentUser.uid));
+      if (snap.exists()) {
+        const data = snap.data();
+        if (data.streakFreeze) profile.streakFreeze = data.streakFreeze;
+      }
+    } catch(e) {}
+    const freeze = profile?.streakFreeze;
+    if (!freeze?.active) return;
     setTimeout(() => {
       const modal = document.createElement('div');
       modal.style.cssText = 'position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.92);backdrop-filter:blur(8px);';
@@ -3892,7 +3902,7 @@ function openWorkoutModal() {
       modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
       SFX.classAssigned?.();
     }, 400);
-  }
+  })();
 }
 function minimiseWorkoutModal() {
   document.getElementById('workout-modal-overlay').classList.add('hidden');
