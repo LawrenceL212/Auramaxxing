@@ -14074,10 +14074,10 @@ function getEarnedKeys() {
 }
 
 function renderTrialsTab(el) {
-  const hunterClass = profile.hunterClass;
+  const hunterClass = profile._debugClass || profile.hunterClass;
   const cls = hunterClass ? HUNTER_CLASSES[hunterClass] : null;
   const trial = hunterClass ? CLASS_TRIALS[hunterClass] : null;
-  const keys = getEarnedKeys();
+  const keys = profile._debugUnlockTrial ? [hunterClass] : getEarnedKeys();
   const activeTrials = profile.activeTrials || {};
   const completedTrials = profile.completedTrials || [];
   const hasKey = keys.includes(hunterClass);
@@ -15183,6 +15183,56 @@ window._debugAllInventories = () => {
     console.log('core:', countFor(wos,'L-Sit','Dragon Flag Negatives','Hollow hold','Toes to Bar','Ab Wheel Rollout'));
   });
 };
+
+// ── Class Trial Debug ──
+// Preview the Trials tab as if a specific hunter class is assigned.
+// Usage: _debugClassTrial('Monk')
+// Restore: _debugClassTrial(null)
+window._debugClassTrial = (className) => {
+  if (!profile) { console.warn('Not logged in'); return; }
+  if (!className) {
+    // Restore real class
+    delete profile._debugClass;
+    console.log('Restored real class:', profile.hunterClass || 'none');
+  } else {
+    if (!CLASS_TRIALS[className]) {
+      console.warn('Unknown class. Valid:', Object.keys(CLASS_TRIALS).join(', '));
+      return;
+    }
+    profile._debugClass = className;
+    console.log('Previewing class trial for:', className);
+    console.log('Trial:', CLASS_TRIALS[className].name, '—', CLASS_TRIALS[className].desc);
+  }
+  // Switch to Gates tab and Trials sub-tab so you can see it
+  switchView('feats');
+  featsActiveTab = 'trials';
+  renderFeats();
+};
+
+// ── Class Trial Unlock Debug ──
+// Force a key to appear so you can see the full trial UI with the Start button.
+// Usage: _debugUnlockClassTrial()
+window._debugUnlockClassTrial = () => {
+  if (!profile) { console.warn('Not logged in'); return; }
+  profile._debugUnlockTrial = true;
+  console.log('Class trial unlocked for preview. Call _debugClassTrial(null) to restore.');
+  switchView('feats');
+  featsActiveTab = 'trials';
+  renderFeats();
+};
+
+// ── List all classes ──
+window._debugListClasses = () => {
+  console.log('\n=== HUNTER CLASSES ===');
+  Object.entries(CLASS_TRIALS).forEach(([cls, trial]) => {
+    console.log(`\n${cls}`);
+    console.log('  Trial:', trial.name);
+    console.log('  Desc:', trial.desc);
+    console.log('  Title:', trial.title);
+    console.log('  Color:', trial.color);
+  });
+};
+
 </script>
 </body>
 </html>
