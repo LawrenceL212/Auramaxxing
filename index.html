@@ -10743,7 +10743,7 @@ function bodySvg(view, stats, overrideBodyType, items, silhouette) {
     const m = muscleFromId(el.id);
     if (!m) return;
     // Silhouette mode — all muscles render flat dim, items will light up their zones
-    const color = silhouette ? 'rgba(61,165,255,0.12)' : STATUS_COLOR[stats[m]?.status || 'Stalled'];
+    const color = silhouette ? 'rgba(30,45,65,0.9)' : STATUS_COLOR[stats[m]?.status || 'Stalled'];
     el.classList.add('body-part');
     el.dataset.m = m;
     el.style.filter = silhouette ? 'none' : `drop-shadow(0 0 5px ${color})`;
@@ -10842,7 +10842,6 @@ function bodySvg(view, stats, overrideBodyType, items, silhouette) {
         agility:     ['Quads','Calves','Hip Flexors','Glutes'],
         endurance:   ['Quads','Hamstrings','Calves','Glutes','Hip Flexors'],
         flexibility: ['Hamstrings','Calves','Hip Flexors','Glutes','Lower Back'],
-        default:     ['Quads','Calves','Hamstrings','Glutes'],
       },
       accessory: {
         focus:   ['Front Shoulders','Biceps','Forearms','Upper Abs','Obliques'],
@@ -10859,7 +10858,7 @@ function bodySvg(view, stats, overrideBodyType, items, silhouette) {
     };
 
     const RARITY_COLORS = {
-      Common:    'rgba(160,160,160,0.7)',
+      Common:    'rgba(200,210,220,0.85)',
       Uncommon:  'rgba(78,205,120,0.85)',
       Rare:      'rgba(61,165,255,0.9)',
       Epic:      'rgba(139,107,255,0.9)',
@@ -13973,8 +13972,8 @@ function renderInventory() {
           ">Back</button>
         </div>
         <div id="inv-body-wrap" style="justify-content:center;">
-          <div id="inv-body-front">${bodySvg('front', {}, profile.bodyType || 'male', profile.inventory || {}, true)}</div>
-          <div id="inv-body-back" style="display:none;">${bodySvg('back', {}, profile.bodyType || 'male', profile.inventory || {}, true)}</div>
+          <div id="inv-body-front">${bodySvg('front', {}, profile.bodyType || 'male', getEffectiveInventory(), true)}</div>
+          <div id="inv-body-back" style="display:none;">${bodySvg('back', {}, profile.bodyType || 'male', getEffectiveInventory(), true)}</div>
         </div>
       </div>
 
