@@ -7683,322 +7683,102 @@ const CLASS_CSS = `
   }
 `;
 
-function assignHunterClass(uid) {
-  const cutoff = new Date(); cutoff.setDate(cutoff.getDate() - 30);
-  const recent = allWorkouts.filter(w => w.uid === uid && dateInRange(w.date, cutoff, null));
-  const allTime = allWorkouts.filter(w => w.uid === uid);
-  if (allTime.length < 4) return null;
-  const firstDate = allTime.reduce((a,b) => a.date < b.date ? a : b).date;
-  if ((new Date() - new Date(firstDate)) / 86400000 < 14) return null;
-  if (!recent.length) return null;
-
-  const user = allUsers.find(u => u.uid === uid);
-  const scores = { Berserker:0, Assassin:0, Monk:0, Warlord:0, Ranger:0, Shadowblade:0, Titan:0, Striker:0, Ironclad:0, AquaHunter:0, CourtKing:0, Alpinist:0, Centurion:0, Phantom:0, Sovereign:0, Sprinter:0, Yogi:0, Merman:0, Vanguard:0, Gladiator:0, Warlord2:0, Triathlete:0, Transcendent:0 };
-
-  const COMPOUND    = new Set(['Squat','Deadlift','Bench Press','Overhead Press','Barbell Row','Pull Up','Chin Up','Dips','Romanian Deadlift','Sumo Deadlift','Hip Thrust','Push Press','Pendlay Row','T-Bar Row','Front Squat']);
-  const ISOLATION   = new Set(['Lateral Raise','Bicep Curl','Barbell Curl','Dumbbell Curl','Tricep Pushdown','Skull Crusher','Leg Extension','Leg Curl','Calf Raise','Concentration Curl','Tricep Kickback','Cable Lateral Raise','Rear Delt Fly','Face Pull']);
-  const CALISTHENICS= new Set(['Pull Up','Chin Up','Dips','Push Up','Muscle Up','Tuck Planche','Advanced Tuck Planche','Straddle Planche','Full Planche','Tuck Front Lever','Front Lever','Handstand Push Up','L-Sit','Dragon Flag','Ring Dips','Archer Push Up','Dead Hang','Freestanding Handstand Hold']);
-  const CARDIO      = new Set(['Running','Easy Run','Long Run','Treadmill Run','Stair Climb','Jump Rope','Tempo Run','Interval Running','Freestyle Swimming','Breaststroke Swimming','Backstroke Swimming','Open Water Swimming','Cycling','Road Cycling','Stationary Bike','Spin Class','Football (Soccer)','Football Drills']);
-  const EXPLOSIVE   = new Set(['Hill Sprints','Sprinting','Box Jump','Jump Squat','Burpee','Interval Running','Tempo Run','HIIT Swimming','Bouldering']);
-  const SKILL       = new Set(['Tuck Planche','Advanced Tuck Planche','Straddle Planche','Full Planche','Tuck Front Lever','Front Lever','Wall Handstand Hold','Freestanding Handstand Hold','L-Sit','Dead Hang','Planche Lean','Handstand Push Up']);
-  const COMBAT      = new Set(['Boxing — Bag Work','Boxing — Sparring','Boxing — Pad Work','Boxing — Shadow Boxing']);
-  const SWIMMING    = new Set(['Freestyle Swimming','Breaststroke Swimming','Butterfly Swimming','Backstroke Swimming','Open Water Swimming','HIIT Swimming']);
-  const COURT       = new Set(['Tennis','Tennis Drills','Basketball','Basketball Drills','Football (Soccer)','Football Drills','American Football']);
-  const CLIMBING    = new Set(['Bouldering','Sport Climbing','Top Rope Climbing','Traditional Climbing']);
-  const CYCLING_SET = new Set(['Cycling','Road Cycling','Mountain Biking','Stationary Bike','Spin Class','Cycling Intervals']);
-  const FLEXIBILITY_SET = new Set(['Front Splits','Side Splits','Middle Splits','Pike Stretch','Hip Flexor Stretch','Pancake Stretch','Shoulder Flexibility Training','Thoracic Mobility','Hip Mobility Routine','Full Body Stretching','Yoga','German Hang','German Hang Progression']);
-
-  let totalSets = 0;
-  const cats = { compound:0, isolation:0, calisthenics:0, cardio:0, explosive:0, skill:0, combat:0, swimming:0, court:0, climbing:0, cycling:0, flexibility:0, other:0 };
-  let lowRIRSets = 0, totalRIRSets = 0, highRIRSets = 0, totalPRs30 = 0;
-
-  recent.forEach(w => {
-    (w.exercises||[]).forEach(ex => {
-      const sets = (ex.sets||[]).filter(s=>s.reps>0).length || 1;
-      totalSets += sets;
-      if (COMPOUND.has(ex.name))     cats.compound    += sets;
-      if (ISOLATION.has(ex.name))    cats.isolation   += sets;
-      if (CALISTHENICS.has(ex.name)) cats.calisthenics+= sets;
-      if (CARDIO.has(ex.name))       cats.cardio      += sets;
-      if (EXPLOSIVE.has(ex.name))    cats.explosive   += sets;
-      if (SKILL.has(ex.name))        cats.skill       += sets;
-      if (COMBAT.has(ex.name))       cats.combat      += sets;
-      if (SWIMMING.has(ex.name))     cats.swimming    += sets;
-      if (COURT.has(ex.name))        cats.court       += sets;
-      if (CLIMBING.has(ex.name))     cats.climbing    += sets;
-      if (CYCLING_SET.has(ex.name))    cats.cycling     += sets;
-      if (FLEXIBILITY_SET.has(ex.name)) cats.flexibility += sets;
-      (ex.sets||[]).forEach(s => {
-        if (s.rir != null) { totalRIRSets++; if (s.rir<=1) lowRIRSets++; if (s.rir>=3) highRIRSets++; }
-      });
-    });
-  });
-
-  const recentPRs = Object.values(myPRs||{}).filter(p=>p.date>=todayStr(cutoff));
-  totalPRs30 = recentPRs.length;
-
-  let weeklyWorkouts = [];
-  for (let i=0;i<4;i++){
-    const s=startOfWeek(new Date(Date.now()-i*7*86400000));
-    const e=new Date(s);e.setDate(e.getDate()+7);
-    weeklyWorkouts.push(recent.filter(w=>dateInRange(w.date, s, e)).length);
-  }
-  const avgWeekly = weeklyWorkouts.reduce((a,b)=>a+b,0)/4;
-
-  const pct = k => totalSets ? cats[k]/totalSets : 0;
-  const rirPct = k => totalRIRSets ? (k==='low'?lowRIRSets:highRIRSets)/totalRIRSets : 0;
-
-  // count distinct active categories (>5% of sets)
-  const activeCats = Object.values(cats).filter(v => totalSets && v/totalSets > 0.05).length;
-
-  // ── Score each class ──
-  // BERSERKER — heavy compounds, low RIR, PRs
-  scores.Berserker += pct('compound') * 35;
-  scores.Berserker += rirPct('low') * 30;
-  scores.Berserker += Math.min(totalPRs30*3, 20);
-  scores.Berserker += pct('compound') > 0.5 ? 15 : 0;
-
-  // ASSASSIN — explosive, agility
-  scores.Assassin += pct('explosive') * 50;
-  scores.Assassin += pct('cardio') * 15;
-  scores.Assassin += rirPct('low') * 15;
-  scores.Assassin += pct('explosive') > 0.2 ? 20 : 0;
-
-  // MONK — skill holds, core, controlled
-  scores.Monk += pct('skill') * 50;
-  scores.Monk += rirPct('high') * 20;
-  scores.Monk += pct('skill') > 0.15 ? 20 : 0;
-  scores.Monk += pct('climbing') * 10;
-
-  // WARLORD — high isolation + compound volume
-  scores.Warlord += pct('isolation') * 40;
-  scores.Warlord += totalSets > 80 ? 20 : totalSets > 50 ? 10 : 0;
-  scores.Warlord += avgWeekly >= 4 ? 10 : 0;
-  scores.Warlord += rirPct('high') * 10;
-  scores.Warlord += pct('combat') === 0 && pct('swimming') === 0 && pct('court') === 0 ? 10 : 0;
-
-  // RANGER — cardio + strength hybrid
-  scores.Ranger += pct('cardio') * 30;
-  scores.Ranger += (pct('cardio') > 0.15 && pct('compound') > 0.15) ? 30 : 0;
-  scores.Ranger += pct('cycling') * 15;
-  scores.Ranger += avgWeekly >= 4 ? 10 : 0;
-  scores.Ranger -= pct('explosive') * 10;
-
-  // SHADOWBLADE — calisthenics dominant
-  scores.Shadowblade += pct('calisthenics') * 55;
-  scores.Shadowblade += pct('skill') * 15;
-  scores.Shadowblade += pct('calisthenics') > 0.4 ? 20 : 0;
-  scores.Shadowblade += totalPRs30 > 2 ? 5 : 0;
-
-  // TITAN — high frequency, consistent PRs, all-round gym
-  scores.Titan += (avgWeekly >= 6 ? 35 : avgWeekly >= 5 ? 20 : 0);
-  scores.Titan += Math.min(totalPRs30*2, 20);
-  scores.Titan += totalSets > 100 ? 20 : totalSets > 70 ? 10 : 0;
-  scores.Titan += (pct('compound') > 0.2 && pct('isolation') > 0.15) ? 15 : 0;
-
-  // STRIKER — combat sports dominant
-  scores.Striker += pct('combat') * 60;
-  scores.Striker += pct('combat') > 0.3 ? 25 : 0;
-  scores.Striker += pct('explosive') * 10;
-  scores.Striker += rirPct('low') * 5;
-
-  // IRONCLAD — cycling + strength, endurance + iron
-  scores.Ironclad += pct('cycling') * 40;
-  scores.Ironclad += (pct('cycling') > 0.2 && pct('compound') > 0.15) ? 30 : 0;
-  scores.Ironclad += pct('cardio') * 10;
-  scores.Ironclad += pct('compound') * 10;
-  scores.Ironclad += avgWeekly >= 4 ? 10 : 0;
-
-  // AQUA HUNTER — swimming dominant
-  scores.AquaHunter += pct('swimming') * 65;
-  scores.AquaHunter += pct('swimming') > 0.3 ? 25 : 0;
-  scores.AquaHunter += pct('cardio') * 10;
-
-  // COURT KING — court/field sports dominant
-  scores.CourtKing += pct('court') * 65;
-  scores.CourtKing += pct('court') > 0.3 ? 25 : 0;
-  scores.CourtKing += pct('explosive') * 10;
-
-  // ALPINIST — climbing dominant
-  scores.Alpinist += pct('climbing') * 65;
-  scores.Alpinist += pct('climbing') > 0.3 ? 25 : 0;
-  scores.Alpinist += pct('skill') * 10;
-
-  // CENTURION — genuinely all-round, no dominant category
-  scores.Centurion += activeCats >= 4 ? 30 : activeCats >= 3 ? 15 : 0;
-  scores.Centurion += Object.values(cats).every(v => !totalSets || v/totalSets < 0.4) ? 30 : 0;
-  scores.Centurion += totalSets > 80 ? 20 : 0;
-  scores.Centurion += avgWeekly >= 5 ? 15 : 0;
-  scores.Centurion += activeCats >= 5 ? 15 : 0;
-
-  // PHANTOM — calisthenics + combat hybrid
-  scores.Phantom += pct('combat') * 30;
-  scores.Phantom += pct('calisthenics') * 30;
-  scores.Phantom += (pct('combat') > 0.15 && pct('calisthenics') > 0.2) ? 30 : 0;
-  scores.Phantom += pct('skill') * 10;
-
-  // SOVEREIGN — flexibility and mobility dominant
-  scores.Sovereign = 0;
-  scores.Sovereign += pct('flexibility') * 65;
-  scores.Sovereign += pct('flexibility') > 0.3 ? 25 : 0;
-  scores.Sovereign += pct('skill') * 10;
-  scores.Sovereign += rirPct('high') * 10;
-
-  // SPRINTER — pure running, no gym
-  scores.Sprinter += pct('cardio') * 40;
-  scores.Sprinter += pct('explosive') * 20;
-  scores.Sprinter += (pct('compound') < 0.1 && pct('isolation') < 0.1) ? 25 : 0;
-  scores.Sprinter += pct('cardio') > 0.6 ? 20 : 0;
-  scores.Sprinter -= pct('swimming') * 20;
-
-  // YOGI — recovery, mobility, flexibility, low intensity
-  scores.Yogi += pct('flexibility') * 40;
-  scores.Yogi += rirPct('high') * 30;
-  scores.Yogi += (pct('compound') < 0.1 && pct('combat') < 0.05) ? 20 : 0;
-  scores.Yogi += pct('flexibility') > 0.5 ? 20 : 0;
-
-  // MERMAN — swimming + calisthenics
-  scores.Merman += pct('swimming') * 35;
-  scores.Merman += pct('calisthenics') * 35;
-  scores.Merman += (pct('swimming') > 0.15 && pct('calisthenics') > 0.2) ? 25 : 0;
-  scores.Merman -= pct('cardio') * 5;
-
-  // VANGUARD — climbing + flexibility
-  scores.Vanguard += pct('climbing') * 40;
-  scores.Vanguard += pct('flexibility') * 30;
-  scores.Vanguard += (pct('climbing') > 0.15 && pct('flexibility') > 0.15) ? 25 : 0;
-
-  // GLADIATOR — boxing + running
-  scores.Gladiator += pct('combat') * 35;
-  scores.Gladiator += pct('cardio') * 25;
-  scores.Gladiator += (pct('combat') > 0.15 && pct('cardio') > 0.15) ? 30 : 0;
-  scores.Gladiator += pct('explosive') * 10;
-
-  // ATHLETIC WARLORD — court sports + strength
-  scores.Warlord2 += pct('court') * 35;
-  scores.Warlord2 += pct('compound') * 25;
-  scores.Warlord2 += (pct('court') > 0.15 && pct('compound') > 0.2) ? 30 : 0;
-  scores.Warlord2 += pct('isolation') * 10;
-
-  // TRIATHLETE — cycling + swimming + running
-  scores.Triathlete += pct('cycling') * 25;
-  scores.Triathlete += pct('swimming') * 25;
-  scores.Triathlete += pct('cardio') * 15;
-  scores.Triathlete += (pct('cycling') > 0.1 && pct('swimming') > 0.1 && pct('cardio') > 0.1) ? 30 : 0;
-
-  // TRANSCENDENT — requires everything at high volume across 5+ years equivalent
-  // Extremely hard to achieve — needs 6+ active categories and high total workouts
-  const totalWorkouts = allTime.length;
-  scores.Transcendent += activeCats >= 6 ? 40 : activeCats >= 5 ? 15 : 0;
-  scores.Transcendent += Object.values(cats).every(v => !totalSets || v/totalSets < 0.35) ? 20 : 0;
-  scores.Transcendent += totalWorkouts >= 300 ? 20 : totalWorkouts >= 200 ? 10 : 0;
-  scores.Transcendent += totalSets > 200 ? 15 : 0;
-  scores.Transcendent += avgWeekly >= 5 ? 10 : 0;
-
-  const winner = Object.entries(scores).sort((a,b)=>b[1]-a[1])[0][0];
-  return winner;
-}
-
-function getHunterClass(uid) {
-  const user = allUsers.find(u => u.uid === uid);
-  if (!user) return null;
-  // use stored class if available (re-evaluated weekly)
-  if (user.hunterClass && uid !== currentUser.uid) return user.hunterClass;
-  if (uid === currentUser.uid) return profile.hunterClass || null;
-  return null;
+// ── Class evaluation — lazy loads classes.js ──
+let _classModule = null;
+async function loadClassModule() {
+  if (!_classModule) _classModule = await import('./classes.js');
+  return _classModule;
 }
 
 async function evaluateAndSaveClass() {
   if (!currentUser || !profile) return;
-  const assigned = assignHunterClass(currentUser.uid);
-  if (!assigned) return;
-  const previous = profile.hunterClass;
-  if (previous === assigned) return; // no change
-  // save to Firestore
-  await writeUserFields({ hunterClass: assigned, classAssignedDate: todayStr() });
-  profile.hunterClass = assigned;
-  profile.classAssignedDate = todayStr();
-  // fire the reveal modal
-  showClassRevealModal(assigned, previous);
-  SFX.classAssigned();
-}
+  const mod = await loadClassModule();
 
-function showClassRevealModal(className, previousClass) {
-  const cls = HUNTER_CLASSES[className];
-  if (!cls) return;
-  const isFirst = !previousClass;
-  const isEvolution = !!previousClass;
+  // Build the data object the module needs
+  const myWOs = allWorkouts.filter(w => w.uid === currentUser.uid);
+  const d = buildAssessmentData(myWOs);
 
-  // inject CSS if not already present
-  if (!document.getElementById('class-system-css')) {
-    const style = document.createElement('style');
-    style.id = 'class-system-css';
-    style.textContent = CLASS_CSS;
-    document.head.appendChild(style);
-  }
-
-  const overlay = document.createElement('div');
-  overlay.className = 'class-reveal-overlay';
-  overlay.style.setProperty('--class-color', cls.color);
-  overlay.style.setProperty('--class-color-dim', cls.colorDim);
-
-  overlay.innerHTML = `
-    <div class="class-particles-wrap" id="class-particles"></div>
-    <div class="class-reveal-inner">
-      <div class="class-border-glow"></div>
-      <div class="class-corner tl"></div>
-      <div class="class-corner tr"></div>
-      <div class="class-corner bl"></div>
-      <div class="class-corner br"></div>
-      <div class="class-eyebrow">${isEvolution ? '◈ Class Evolution ◈' : '◈ Class Assigned ◈'}</div>
-      <div class="class-sigil-wrap" style="--class-color:${cls.color};">
-        ${cls.sigil}
-      </div>
-      <div class="class-name">${cls.label}</div>
-      <div class="class-tagline">"${cls.tagline}"</div>
-      <div class="class-desc">${cls.desc}</div>
-      ${isEvolution ? `<div style="font-family:var(--font-mono);font-size:10px;color:var(--text-faint);margin-bottom:20px;animation:classFadeIn 0.8s ease 1.6s both;">${previousClass} → ${className}</div>` : ''}
-      <button class="class-confirm-btn" id="class-confirm">ACKNOWLEDGED</button>
-    </div>`;
-
-  document.body.appendChild(overlay);
-
-  // spawn particles
-  const container = overlay.querySelector('#class-particles');
-  for (let i = 0; i < 40; i++) {
-    const p = document.createElement('div');
-    p.className = 'class-particle';
-    const size = 2 + Math.random() * 5;
-    p.style.cssText = `
-      width:${size}px; height:${size}px;
-      left:${Math.random()*100}%;
-      background:${cls.color};
-      animation-delay:${Math.random()*3}s;
-      animation-duration:${2+Math.random()*3}s;
-      opacity:0;
-      ${cls.particleShape === 'shard' ? 'border-radius:2px;transform:rotate(45deg);' : ''}
-      ${cls.particleShape === 'streak' ? `width:${size}px;height:${size*4}px;border-radius:2px;` : ''}
-      ${cls.particleShape === 'square' ? 'border-radius:0;' : ''}
-      box-shadow: 0 0 ${size*2}px ${cls.color};
-    `;
-    container.appendChild(p);
-  }
-
-  overlay.querySelector('#class-confirm').addEventListener('click', () => {
-    overlay.style.animation = 'classRevealIn 0.4s ease reverse forwards';
-    setTimeout(() => { overlay.remove(); renderCharCard(); }, 400);
+  // Compute weekly data for consistency check
+  const weekMap = {};
+  myWOs.forEach(w => {
+    const wk = todayStr(startOfWeek(new Date(w.date + 'T12:00:00')));
+    if (!weekMap[wk]) weekMap[wk] = [];
+    weekMap[wk].push(w);
   });
+  const weeklyData = Object.entries(weekMap).map(([wk, wos]) => {
+    const wd = buildAssessmentData(wos);
+    return { week: wk, rootScores: mod.scoreRoots(wd) };
+  });
+
+  // Compute max gap between consecutive weeks
+  const sortedWeeks = Object.keys(weekMap).sort();
+  let maxGapWeeks = 0;
+  for (let i = 1; i < sortedWeeks.length; i++) {
+    const gap = (new Date(sortedWeeks[i]) - new Date(sortedWeeks[i-1])) / (7*86400000);
+    if (gap > maxGapWeeks) maxGapWeeks = gap;
+  }
+
+  const rootScores = mod.scoreRoots(d);
+
+  const evaluationData = {
+    totalWorkouts: myWOs.length,
+    distinctWeeks: sortedWeeks.length,
+    weeklyData,
+    maxGapWeeks,
+    rootScores,
+    ...d,
+  };
+
+  const result = mod.evaluateClass(evaluationData, profile.hunterClassKey, profile.hunterTierIndex ?? -1);
+  if (!result || !result.isChange) return;
+
+  // Save to Firestore
+  const previous = profile.hunterClassKey;
+  await writeUserFields({
+    hunterClassKey:   result.pathKey,
+    hunterTierIndex:  result.tierIndex,
+    hunterClassName:  result.tier.name,
+    hunterClassAssignedDate: todayStr(),
+    hunterActiveRoots: result.activeRoots,
+  });
+  profile.hunterClassKey   = result.pathKey;
+  profile.hunterTierIndex  = result.tierIndex;
+  profile.hunterClassName  = result.tier.name;
+  profile.hunterActiveRoots = result.activeRoots;
+
+  showClassRevealModal(result, previous);
+  SFX.classAssigned?.();
 }
 
-// Inject CSS on load
-(function() {
-  if (!document.getElementById('class-system-css')) {
-    const style = document.createElement('style');
-    style.id = 'class-system-css';
-    style.textContent = CLASS_CSS;
-    document.head.appendChild(style);
-  }
-})();
+function showClassRevealModal(result, previousClassName) {
+  const tier2 = result.tier;
+  const isFirst    = !previousClassName;
+  const isEvolution = !!previousClassName;
+  const col = tier2.color || '#61A5FF';
+  showSystemModal(`<div class="system-window levelup">
+    <p class="system-eyebrow" style="color:${col};letter-spacing:0.2em;">
+      ${isEvolution ? '◈ CLASS EVOLVED ◈' : '◈ CLASS ASSIGNED ◈'}
+    </p>
+    <div class="system-icon" style="font-size:52px;margin:8px 0;">
+      ${result.activeRoots.map(r => ({'IRON':'🏋️','SHADOW':'🤸','SWIFT':'🏃','TIDE':'🌊','COURT':'🥊','WILD':'🧗'})[r]||'').join('')}
+    </div>
+    <h2 class="system-title" style="color:${col};">${escapeHtml(tier2.name)}</h2>
+    <p class="system-body" style="color:var(--text-dim);">
+      ${isFirst
+        ? 'The System has watched long enough to be certain.<br>This is who you are.'
+        : `The System has re-evaluated.<br>You are no longer ${escapeHtml(previousClassName)}.`}
+    </p>
+    <div style="background:rgba(0,0,0,0.3);border-radius:8px;padding:10px 14px;margin:12px 0;text-align:left;">
+      <div style="font-family:var(--font-mono);font-size:8px;color:rgba(61,165,255,0.4);letter-spacing:0.1em;margin-bottom:6px;">ACTIVE ROOTS</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        ${result.activeRoots.map(r => `<span style="font-size:11px;color:${col};font-family:var(--font-mono);">${r}</span>`).join(' · ')}
+      </div>
+    </div>
+    <p style="font-size:11px;color:var(--text-faint);margin-top:8px;">Raid affinity: <strong style="color:${col};">${tier2.raidAffinity}</strong> · ×${tier2.affinityMult.toFixed(2)} damage</p>
+    <button class="system-btn success">Acknowledged</button>
+  </div>`);
+}
+
 
 function getUserTitle(uid) {
   const user = allUsers.find(u => u.uid === uid);
@@ -14026,208 +13806,148 @@ function renderFeats() {
    Keys are earned from milestones. Each key unlocks a class-specific trial.
    Complete the trial within 7 days for +100 AP + permanent title.
    ========================================================================= */
-const CLASS_TRIALS = {
-  Berserker:    { name:'Iron Gauntlet',        desc:'Log 5 workouts in 7 days, each with at least 3 compound lifts at RIR 0-1.',  color:'#C0392B', check:(workouts)=>{ const w7=workouts.filter(w=>isWithinDays(w.date,7)); return w7.filter(w=>(w.exercises||[]).filter(ex=>['Squat','Deadlift','Bench Press','Overhead Press','Barbell Row'].includes(ex.name)&&(ex.sets||[]).some(s=>s.rir!=null&&s.rir<=1)).length>=3).length>=5; }, title:'[Iron Gauntlet Cleared]' },
-  Assassin:     { name:'Speed Trial',          desc:'Complete 5 explosive sessions in 7 days — hill sprints, box jumps, or interval runs.',  color:'#F0D000', check:(workouts)=>{ const EXP=new Set(['Hill Sprints','Box Jump','Jump Squat','Interval Running','Tempo Run','HIIT Swimming','Bouldering']); return workouts.filter(w=>isWithinDays(w.date,7)&&(w.exercises||[]).some(ex=>EXP.has(ex.name))).length>=5; }, title:'[Speed Demon]' },
-  Monk:         { name:'Still Water Trial',    desc:'Log 10 skill hold sessions in 7 days — planche, lever, handstand, or German hang.', color:'#A8D8EA', check:(workouts)=>{ const SKILL=new Set(['Tuck Planche','Advanced Tuck Planche','Full Planche','Front Lever','Freestanding Handstand Hold','L-Sit','German Hang','German Hang Progression']); return workouts.filter(w=>isWithinDays(w.date,7)&&(w.exercises||[]).some(ex=>SKILL.has(ex.name))).length>=10; }, title:'[Master of Stillness]' },
-  Warlord:      { name:'Volume War',           desc:'Accumulate 100 total sets across any 5 workouts in 7 days.', color:'#D4A017', check:(workouts)=>{ const w7=workouts.filter(w=>isWithinDays(w.date,7)); const totalSets=w7.reduce((t,w)=>t+(w.exercises||[]).reduce((s,ex)=>s+(ex.sets||[]).filter(s=>s.reps>0).length,0),0); return totalSets>=100&&w7.length>=5; }, title:'[Volume Sovereign]' },
-  Ranger:       { name:'Ranger\'s March',      desc:'Log a strength session and a cardio session on the same day, 3 times in 7 days.', color:'#1ABC9C', check:(workouts)=>{ const CARDIO=new Set(['Running','Easy Run','Long Run','Cycling','Road Cycling','Freestyle Swimming']); const STRENGTH=new Set(['Squat','Deadlift','Bench Press']); const days={}; workouts.filter(w=>isWithinDays(w.date,7)).forEach(w=>{ const exNames=(w.exercises||[]).map(e=>e.name); if(exNames.some(n=>CARDIO.has(n)))days[w.date]=(days[w.date]||0)|1; if(exNames.some(n=>STRENGTH.has(n)))days[w.date]=(days[w.date]||0)|2; }); return Object.values(days).filter(v=>v===3).length>=3; }, title:'[Iron Ranger]' },
-  Shadowblade:  { name:'Shadow Protocol',      desc:'Log 7 calisthenics-only sessions in 7 days — no barbell or machine work.', color:'#9B59B6', check:(workouts)=>{ const GYM=new Set(['Barbell','Machine','Cable','Smith']); return workouts.filter(w=>isWithinDays(w.date,7)&&(w.exercises||[]).length>0&&!(w.exercises||[]).some(ex=>ex.equipment&&GYM.has(ex.equipment)&&!['Bodyweight'].includes(ex.equipment))).length>=7; }, title:'[Shadow Protocol]' },
-  Titan:        { name:'Iron Attendance',      desc:'Train 7 days in a row this week — no rest days.', color:'#FFD700', check:(workouts)=>{ const days=new Set(workouts.filter(w=>isWithinDays(w.date,7)).map(w=>w.date)); return days.size>=7; }, title:'[The Relentless]' },
-  Striker:      { name:'Kombat Trial',         desc:'Log 7 boxing sessions in 7 days — any combination of bag, sparring, pads, or shadow.', color:'#E74C3C', check:(workouts)=>{ const BOX=new Set(['Boxing — Bag Work','Boxing — Sparring','Boxing — Pad Work','Boxing — Shadow Boxing']); return workouts.filter(w=>isWithinDays(w.date,7)&&(w.exercises||[]).some(ex=>BOX.has(ex.name))).length>=7; }, title:'[Battle-Hardened]' },
-  Ironclad:     { name:'Endurance Engine',     desc:'Log 4 cycling sessions and 2 strength sessions in 7 days.', color:'#7F8C8D', check:(workouts)=>{ const CYC=new Set(['Cycling','Road Cycling','Stationary Bike','Spin Class','Mountain Biking']); const STR=new Set(['Squat','Deadlift','Bench Press']); const w7=workouts.filter(w=>isWithinDays(w.date,7)); return w7.filter(w=>(w.exercises||[]).some(ex=>CYC.has(ex.name))).length>=4&&w7.filter(w=>(w.exercises||[]).some(ex=>STR.has(ex.name))).length>=2; }, title:'[Iron Engine]' },
-  AquaHunter:   { name:'Deep Water Trial',     desc:'Log 7 swimming sessions in 7 days — any stroke counts.', color:'#2980B9', check:(workouts)=>{ const SW=new Set(['Freestyle Swimming','Breaststroke Swimming','Butterfly Swimming','Backstroke Swimming','Open Water Swimming','HIIT Swimming']); return workouts.filter(w=>isWithinDays(w.date,7)&&(w.exercises||[]).some(ex=>SW.has(ex.name))).length>=7; }, title:'[Deep Water Hunter]' },
-  CourtKing:    { name:'Court Dominance',      desc:'Log 7 court or field sport sessions in 7 days.', color:'#F39C12', check:(workouts)=>{ const CT=new Set(['Tennis','Tennis Drills','Basketball','Basketball Drills','Football (Soccer)','Football Drills','American Football']); return workouts.filter(w=>isWithinDays(w.date,7)&&(w.exercises||[]).some(ex=>CT.has(ex.name))).length>=7; }, title:'[Court Sovereign]' },
-  Alpinist:     { name:'Summit Trial',         desc:'Log 5 climbing sessions and 5 flexibility sessions in 7 days.', color:'#27AE60', check:(workouts)=>{ const CL=new Set(['Bouldering','Sport Climbing','Traditional Climbing','Top Rope Climbing']); const FL=new Set(['Front Splits','Side Splits','German Hang','Hip Mobility Routine']); const w7=workouts.filter(w=>isWithinDays(w.date,7)); return w7.filter(w=>(w.exercises||[]).some(ex=>CL.has(ex.name))).length>=5&&w7.filter(w=>(w.exercises||[]).some(ex=>FL.has(ex.name))).length>=5; }, title:'[Summit Conqueror]' },
-  Centurion:    { name:'All-Front War',        desc:'Log sessions hitting 5 different stat categories in 7 days.', color:'#8E44AD', check:(workouts)=>{ const cats=new Set(); const w7=workouts.filter(w=>isWithinDays(w.date,7)); w7.forEach(w=>(w.exercises||[]).forEach(ex=>{ const s=getStatForExercise(ex.name); if(s)cats.add(s); })); return cats.size>=5; }, title:'[The Centurion]' },
-  Phantom:      { name:'Ghost Protocol',       desc:'Log 5 boxing sessions and 5 calisthenics sessions in 7 days.', color:'#9B59B6', check:(workouts)=>{ const BOX=new Set(['Boxing — Bag Work','Boxing — Sparring','Boxing — Pad Work','Boxing — Shadow Boxing']); const CAL=new Set(['Pull Up','Muscle Up','Dips','Push Up','Tuck Planche','Advanced Tuck Planche','Full Planche','Front Lever']); const w7=workouts.filter(w=>isWithinDays(w.date,7)); return w7.filter(w=>(w.exercises||[]).some(ex=>BOX.has(ex.name))).length>=5&&w7.filter(w=>(w.exercises||[]).some(ex=>CAL.has(ex.name))).length>=5; }, title:'[Ghost Operative]' },
-  Sovereign:    { name:'Sovereign\'s Grace',   desc:'Log flexibility sessions every day for 7 days.', color:'#E8D5B7', check:(workouts)=>{ const FL=new Set(['Front Splits','Side Splits','Middle Splits','German Hang','Yoga','Hip Mobility Routine','Full Body Stretching','Pike Stretch']); const days=new Set(workouts.filter(w=>isWithinDays(w.date,7)&&(w.exercises||[]).some(ex=>FL.has(ex.name))).map(w=>w.date)); return days.size>=7; }, title:'[Sovereign of Grace]' },
-  Sprinter:     { name:'Wind Sprint Trial',    desc:'Log running sessions 6 out of 7 days.', color:'#F97316', check:(workouts)=>{ const RUN=new Set(['Running','Easy Run','Long Run','Tempo Run','Hill Sprints','Interval Running']); const days=new Set(workouts.filter(w=>isWithinDays(w.date,7)&&(w.exercises||[]).some(ex=>RUN.has(ex.name))).map(w=>w.date)); return days.size>=6; }, title:'[Wind Runner]' },
-  Yogi:         { name:'The Still Mind',       desc:'Log yoga or mobility sessions every day for 7 days.', color:'#A78BFA', check:(workouts)=>{ const YOG=new Set(['Yoga','Hip Mobility Routine','Full Body Stretching','Front Splits','Side Splits','German Hang']); const days=new Set(workouts.filter(w=>isWithinDays(w.date,7)&&(w.exercises||[]).some(ex=>YOG.has(ex.name))).map(w=>w.date)); return days.size>=7; }, title:'[The Still Mind]' },
-  Merman:       { name:'Amphibious Trial',     desc:'Log 4 swimming and 4 calisthenics sessions in 7 days.', color:'#06B6D4', check:(workouts)=>{ const SW=new Set(['Freestyle Swimming','Breaststroke Swimming','Butterfly Swimming','Backstroke Swimming']); const CAL=new Set(['Pull Up','Muscle Up','Dips','Push Up','Tuck Planche','Front Lever']); const w7=workouts.filter(w=>isWithinDays(w.date,7)); return w7.filter(w=>(w.exercises||[]).some(ex=>SW.has(ex.name))).length>=4&&w7.filter(w=>(w.exercises||[]).some(ex=>CAL.has(ex.name))).length>=4; }, title:'[Amphibian]' },
-  Vanguard:     { name:'Vertical Horizon',     desc:'Log 4 climbing and 4 flexibility sessions in 7 days.', color:'#10B981', check:(workouts)=>{ const CL=new Set(['Bouldering','Sport Climbing','Traditional Climbing','Top Rope Climbing']); const FL=new Set(['Front Splits','Side Splits','German Hang','Hip Mobility Routine','Yoga']); const w7=workouts.filter(w=>isWithinDays(w.date,7)); return w7.filter(w=>(w.exercises||[]).some(ex=>CL.has(ex.name))).length>=4&&w7.filter(w=>(w.exercises||[]).some(ex=>FL.has(ex.name))).length>=4; }, title:'[Vanguard Elite]' },
-  Gladiator:    { name:'Arena Trial',          desc:'Log 4 boxing and 4 running sessions in 7 days.', color:'#DC2626', check:(workouts)=>{ const BOX=new Set(['Boxing — Bag Work','Boxing — Sparring','Boxing — Pad Work','Boxing — Shadow Boxing']); const RUN=new Set(['Running','Easy Run','Long Run','Tempo Run','Hill Sprints']); const w7=workouts.filter(w=>isWithinDays(w.date,7)); return w7.filter(w=>(w.exercises||[]).some(ex=>BOX.has(ex.name))).length>=4&&w7.filter(w=>(w.exercises||[]).some(ex=>RUN.has(ex.name))).length>=4; }, title:'[Arena Champion]' },
-  Warlord2:     { name:'Athletic Dominance',   desc:'Log 4 sport sessions and 4 strength sessions in 7 days.', color:'#B45309', check:(workouts)=>{ const SP=new Set(['Tennis','Basketball','Football (Soccer)','American Football']); const STR=new Set(['Squat','Deadlift','Bench Press','Overhead Press']); const w7=workouts.filter(w=>isWithinDays(w.date,7)); return w7.filter(w=>(w.exercises||[]).some(ex=>SP.has(ex.name))).length>=4&&w7.filter(w=>(w.exercises||[]).some(ex=>STR.has(ex.name))).length>=4; }, title:'[Athletic Warlord]' },
-  Triathlete:   { name:'Iron Distance',        desc:'Log cycling, swimming, and running sessions in the same 7-day window.', color:'#0EA5E9', check:(workouts)=>{ const CYC=new Set(['Cycling','Road Cycling','Stationary Bike','Spin Class']); const SW=new Set(['Freestyle Swimming','Breaststroke Swimming','Open Water Swimming']); const RUN=new Set(['Running','Easy Run','Long Run']); const w7=workouts.filter(w=>isWithinDays(w.date,7)); return w7.some(w=>(w.exercises||[]).some(ex=>CYC.has(ex.name)))&&w7.some(w=>(w.exercises||[]).some(ex=>SW.has(ex.name)))&&w7.some(w=>(w.exercises||[]).some(ex=>RUN.has(ex.name))); }, title:'[Iron Distance]' },
-  Transcendent: { name:'Absolute Trial',       desc:'Log 7 sessions in 7 days hitting all 6 stat categories across them.', color:'#F8FAFC', check:(workouts)=>{ const cats=new Set(); const days=new Set(); workouts.filter(w=>isWithinDays(w.date,7)).forEach(w=>{ days.add(w.date); (w.exercises||[]).forEach(ex=>{ const s=getStatForExercise(ex.name); if(s)cats.add(s); }); }); return days.size>=7&&cats.size>=6; }, title:'[Transcendent]' },
-};
+// ── Trials tab — lazy loads classes.js ──
+async function renderTrialsTab(el) {
+  const mod = await loadClassModule();
 
-function isWithinDays(dateStr, days) {
-  // Compare date strings directly — avoids UTC midnight shift
-  const cutoff = todayStr(new Date(Date.now() - days * 86400000));
-  return dateStr >= cutoff;
-}
+  // Check classification
+  const classKey   = profile._debugClass ? 'IRON' : profile.hunterClassKey;  // debug override uses IRON path as example
+  const tierIndex  = profile.hunterTierIndex ?? 0;
+  const className  = profile.hunterClassName || null;
 
-// Keys are earned when milestones are hit — one key per class trial, once per class
-function getEarnedKeys() {
-  const hunterClass = profile.hunterClass;
-  if (!hunterClass) return [];
-  // Key is earned when you've been classified for 7+ days and have 10+ workouts
-  const totalWorkouts = myWorkouts.length;
-  const classAssignedDate = profile.classAssignedDate;
-  const daysSinceClass = classAssignedDate
-    ? (new Date() - new Date(classAssignedDate + 'T12:00:00')) / 86400000 : 0;
-  if (totalWorkouts >= 10 && daysSinceClass >= 7) {
-    return [hunterClass]; // one key per current class
-  }
-  return [];
-}
-
-function renderTrialsTab(el) {
-  const hunterClass = profile._debugClass || profile.hunterClass;
-  const cls = hunterClass ? HUNTER_CLASSES[hunterClass] : null;
-  const trial = hunterClass ? CLASS_TRIALS[hunterClass] : null;
-  const keys = profile._debugUnlockTrial ? [hunterClass] : getEarnedKeys();
-  const activeTrials = profile.activeTrials || {};
-  const completedTrials = profile.completedTrials || [];
-  const hasKey = keys.includes(hunterClass);
-  const trialActive = activeTrials[hunterClass];
-  const trialCompleted = completedTrials.includes(hunterClass);
-
-  if (!hunterClass || !cls) {
+  if (!classKey || !className) {
     el.innerHTML = `<div class="card" style="text-align:center;padding:32px;">
-      <div style="font-size:32px;margin-bottom:12px;">🔑</div>
-      <div style="font-family:var(--font-mono);font-size:11px;color:var(--text-faint);">CLASSIFICATION REQUIRED</div>
-      <p style="font-size:13px;color:var(--text-dim);margin-top:8px;">Train for 14 days to receive your Hunter Class — then your Trial will be revealed.</p>
+      <div style="font-size:32px;margin-bottom:12px;">???</div>
+      <div style="font-family:var(--font-mono);font-size:11px;color:var(--text-faint);letter-spacing:0.1em;">IDENTITY UNCONFIRMED</div>
+      <p style="font-size:13px;color:var(--text-dim);margin-top:8px;line-height:1.7;">
+        The System is watching. It will speak when it is certain.<br>
+        Train consistently. Show it who you are.
+      </p>
+      <div style="margin-top:16px;display:flex;flex-direction:column;gap:6px;">
+        ${Object.entries(mod.ROOTS).map(([key,r]) => `
+          <div style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:rgba(61,165,255,0.04);border-radius:6px;border:1px solid rgba(61,165,255,0.08);">
+            <span style="font-size:16px;">${r.icon}</span>
+            <div>
+              <div style="font-family:var(--font-mono);font-size:10px;color:rgba(61,165,255,0.5);">${key}</div>
+              <div style="font-size:11px;color:var(--text-dim);">${r.desc}</div>
+            </div>
+          </div>`).join('')}
+      </div>
     </div>`;
     return;
   }
 
-  // Check if active trial is complete — guard against re-firing while award is in progress
-  let trialJustCompleted = false;
-  if (trialActive && !trialCompleted && !window._trialAwardInProgress) {
+  const path       = mod.CLASS_PATHS[classKey];
+  const tier2      = path?.tiers[tierIndex];
+  const nextTier   = path?.tiers[tierIndex + 1];
+  const col        = tier2?.color || '#61A5FF';
+
+  // Active trial check
+  const activeTrials    = profile.activeTrials    || {};
+  const completedTrials = profile.completedTrials || [];
+  const hasKey          = profile._debugUnlockTrial || (myWorkouts.length >= 10);
+  const trialActive     = activeTrials[classKey];
+  const trialCompleted  = completedTrials.includes(classKey + '_' + tierIndex);
+
+  // Check completion
+  if (trialActive && !trialCompleted && !window._trialAwardInProgress && tier2) {
     const trialWorkouts = myWorkouts.filter(w => dateInRange(w.date, trialActive.startDate, null));
-    if (trial.check(trialWorkouts)) {
-      trialJustCompleted = true;
-      window._trialAwardInProgress = true;
-      (async () => {
-        try {
-          const newAp = (profile.auraPoints || 0) + 100;
-          const newCompleted = [...completedTrials, hunterClass];
-          const newTitles = [...(profile.slayerTitles||[])];
-          if (!newTitles.includes(trial.title)) newTitles.push(trial.title);
-          await writeUserFields({
-            auraPoints: increment(100), completedTrials: newCompleted,
-            slayerTitles: newTitles,
-            [`activeTrials.${hunterClass}`]: null,
-          });
-          logAp(currentUser.uid, 100, `Trial completed: ${trial.name} [${hunterClass}]`, profile.auraPoints || 0);
-          profile.auraPoints = newAp;
-          profile.completedTrials = newCompleted;
-          profile.slayerTitles = newTitles;
-          await loadAllData();
-          showSystemModal(`<div class="system-window levelup">
-            <p class="system-eyebrow">◈ Trial Complete ◈</p>
-            <div class="system-icon" style="font-size:48px;">${cls.sigil ? '⚔' : '★'}</div>
-            <h2 class="system-title" style="color:${cls.color};">${trial.name}</h2>
-            <p class="system-body">The System acknowledges what you have done.<br>This title is now yours permanently.</p>
-            <p class="system-detail" style="color:#FFD700;font-size:13px;">${trial.title}</p>
-            <p class="system-detail" style="color:var(--brass);">+100 Aura Points</p>
-            <button class="system-btn success">Claim</button>
-          </div>`);
-          renderCharCard();
-          renderFeats();
-        } catch(e) { console.warn('Trial reward error:', e); }
-        finally { window._trialAwardInProgress = false; }
-      })();
-      return;
+    if (tier2.trialDesc && trialWorkouts.length > 0) {
+      // Simple completion check — if they've trained enough in the window
+      const sessionCount = trialWorkouts.length;
+      if (sessionCount >= 5 && !window._trialAwardInProgress) {
+        window._trialAwardInProgress = true;
+        (async () => {
+          try {
+            const apReward = 200 + (tierIndex * 150);
+            const newCompleted = [...completedTrials, classKey + '_' + tierIndex];
+            await writeUserFields({
+              auraPoints: increment(apReward),
+              completedTrials: newCompleted,
+              [`activeTrials.${classKey}`]: null,
+            });
+            profile.auraPoints = (profile.auraPoints||0) + apReward;
+            profile.completedTrials = newCompleted;
+            await loadAllData();
+            showSystemModal(`<div class="system-window levelup">
+              <p class="system-eyebrow" style="color:${col};">◈ TRIAL COMPLETE ◈</p>
+              <div class="system-icon" style="font-size:48px;">⚔</div>
+              <h2 class="system-title" style="color:${col};">${escapeHtml(tier2.trialName)}</h2>
+              <p class="system-body">The System acknowledges what you have proven.</p>
+              <p style="color:var(--brass);font-size:15px;margin-top:8px;">+${apReward} Aura Points</p>
+              <button class="system-btn success">Claim</button>
+            </div>`);
+            renderFeats();
+          } catch(e) { console.warn('Trial award error:', e); window._trialAwardInProgress = false; }
+        })();
+      }
     }
   }
 
-  const daysLeft = trialActive
-    ? Math.max(0, 7 - Math.floor((new Date() - new Date(trialActive.startDate + 'T12:00:00')) / 86400000))
-    : 0;
-  const trialExpired = trialActive && daysLeft <= 0 && !trialCompleted;
-
   el.innerHTML = `
-    <div style="margin-bottom:16px;">
-      <div style="font-family:var(--font-mono);font-size:9px;letter-spacing:0.25em;color:var(--text-faint);margin-bottom:12px;">◈ CLASS TRIALS</div>
-      <p style="font-size:12px;color:var(--text-dim);line-height:1.6;margin-bottom:16px;">
-        Your Hunter Class unlocks a Trial — a 7-day challenge that tests whether your class identity is real. 
-        Complete it for <span style="color:var(--brass);">+100 AP</span> and a permanent title.
-        Trials reflect who you are as a hunter. There are no shortcuts.
-      </p>
-    </div>
-
-    <div class="card" style="border-color:${trialCompleted?'rgba(62,207,142,0.4)':cls.color+'44'};margin-bottom:12px;">
-      <div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:12px;">
-        <div style="width:44px;height:44px;border-radius:6px;background:${cls.colorDim};border:1px solid ${cls.color}44;
-          display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-          <span style="font-size:20px;">${{Berserker:'⚔️',Assassin:'⚡',Monk:'🧘',Warlord:'🏛️',Ranger:'🏹',Shadowblade:'🌑',Titan:'👑',Striker:'🥊',Ironclad:'🔩',AquaHunter:'🌊',CourtKing:'🏀',Alpinist:'🏔️',Centurion:'🔮',Phantom:'👻',Sovereign:'🌊',Sprinter:'🏃',Yogi:'🌸',Merman:'🐬',Vanguard:'🧗',Gladiator:'⚔',Warlord2:'🏟️',Triathlete:'🚴',Transcendent:'✨'}[hunterClass]||'⚔'}</span>
-        </div>
-        <div style="flex:1;">
-          <div style="font-family:var(--font-mono);font-size:9px;letter-spacing:0.15em;color:${cls.color};margin-bottom:2px;">${cls.label} TRIAL</div>
-          <div style="font-family:var(--font-display);font-size:18px;color:${trialCompleted?'var(--growing)':cls.color};">${trial?.name || 'Unknown Trial'}</div>
-          <div style="font-size:12px;color:var(--text-dim);margin-top:4px;line-height:1.5;">${trial?.desc || ''}</div>
-        </div>
-      </div>
-
-      ${trialCompleted ? `
-        <div style="padding:10px;background:rgba(62,207,142,0.08);border:1px solid rgba(62,207,142,0.3);border-radius:6px;text-align:center;">
-          <div style="color:var(--growing);font-family:var(--font-mono);font-size:11px;letter-spacing:0.1em;">✓ TRIAL COMPLETE</div>
-          <div style="color:var(--text-faint);font-size:11px;margin-top:4px;">${trial.title}</div>
-        </div>
-      ` : trialExpired ? `
-        <div style="padding:10px;background:rgba(255,61,90,0.08);border:1px solid rgba(255,61,90,0.2);border-radius:6px;text-align:center;margin-bottom:10px;">
-          <div style="color:var(--excess);font-family:var(--font-mono);font-size:11px;">✗ TRIAL EXPIRED</div>
-          <div style="font-size:11px;color:var(--text-faint);margin-top:4px;">The 7-day window passed. Your key remains — you can start again.</div>
-        </div>
-        <button id="start-trial-btn" class="btn btn-primary" style="width:100%;border-color:${cls.color};color:${cls.color};">🔑 Start Trial Again</button>
-      ` : trialActive ? `
-        <div style="padding:10px;background:${cls.colorDim};border:1px solid ${cls.color}44;border-radius:6px;margin-bottom:10px;">
-          <div style="display:flex;justify-content:space-between;align-items:center;">
-            <div style="font-family:var(--font-mono);font-size:10px;color:${cls.color};">TRIAL IN PROGRESS</div>
-            <div style="font-family:var(--font-display);font-size:18px;color:${daysLeft<=2?'var(--excess)':'var(--growing)'};">${daysLeft}d</div>
-          </div>
-          <div style="font-size:10px;color:var(--text-faint);margin-top:4px;">Started ${trialActive.startDate} · ${daysLeft} days remaining</div>
-        </div>
-      ` : hasKey ? `
-        <div style="padding:8px 12px;background:rgba(255,215,0,0.06);border:1px solid rgba(255,215,0,0.2);border-radius:6px;display:flex;align-items:center;gap:8px;margin-bottom:10px;">
-          <span style="font-size:18px;">🔑</span>
+    <div>
+      <!-- Current class card -->
+      <div style="background:rgba(0,0,0,0.3);border:1px solid ${col};border-radius:12px;padding:16px;margin-bottom:16px;">
+        <div style="font-family:var(--font-mono);font-size:9px;color:${col};letter-spacing:0.15em;margin-bottom:8px;">◈ YOUR CLASS</div>
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px;">
+          <div style="font-size:32px;">${(profile.hunterActiveRoots||['IRON']).map(r=>({'IRON':'🏋️','SHADOW':'🤸','SWIFT':'🏃','TIDE':'🌊','COURT':'🥊','WILD':'🧗'})[r]||'').join('')}</div>
           <div>
-            <div style="font-family:var(--font-mono);font-size:10px;color:#FFD700;letter-spacing:0.1em;">TRIAL KEY EARNED</div>
-            <div style="font-size:11px;color:var(--text-faint);">You have been classified as ${cls.label} for 7+ days. Your trial is ready.</div>
+            <div style="font-size:20px;font-weight:800;color:${col};">${escapeHtml(className)}</div>
+            <div style="font-size:11px;color:var(--text-faint);">Tier ${tierIndex+1}/5 · ${(profile.hunterActiveRoots||[]).join(' + ')} · Raid: ×${tier2?.affinityMult?.toFixed(2)||'1.00'} ${tier2?.raidAffinity||''}</div>
           </div>
         </div>
-        <button id="start-trial-btn" class="btn btn-primary" style="width:100%;border-color:${cls.color};color:${cls.color};">⚔ Begin Trial — 7 Days</button>
-      ` : `
-        <div style="padding:10px;background:var(--card-2);border:1px solid var(--border);border-radius:6px;text-align:center;">
-          <div style="font-family:var(--font-mono);font-size:10px;color:var(--text-faint);">🔒 KEY NOT YET EARNED</div>
-          <div style="font-size:11px;color:var(--text-faint);margin-top:4px;">Keep training as ${cls.label} — your key unlocks after 7 days of this class + 10 total workouts.</div>
-        </div>
-      `}
-
-      ${trial?.title && !trialCompleted ? `<div style="margin-top:8px;font-size:10px;color:var(--text-faint);font-family:var(--font-mono);">Reward: +100 AP · ${trial.title}</div>` : ''}
-    </div>
-
-    ${completedTrials.length > 0 ? `
-      <div style="margin-top:16px;">
-        <div style="font-family:var(--font-mono);font-size:9px;letter-spacing:0.2em;color:var(--text-faint);margin-bottom:8px;">PAST TRIALS</div>
-        ${completedTrials.map(cls => {
-          const t = CLASS_TRIALS[cls];
-          const c = HUNTER_CLASSES[cls];
-          return t ? `<div style="padding:8px 12px;background:var(--card-2);border:1px solid rgba(62,207,142,0.2);border-radius:6px;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center;">
-            <div>
-              <div style="font-size:12px;color:var(--growing);">${t.name}</div>
-              <div style="font-size:10px;color:var(--text-faint);font-family:var(--font-mono);">${t.title}</div>
-            </div>
-            <span style="color:${c?.color||'var(--brass)'};font-size:11px;">${c?.label||cls}</span>
-          </div>` : '';
-        }).join('')}
+        ${nextTier ? `
+        <div style="padding:8px 10px;background:rgba(61,165,255,0.04);border-radius:6px;border:1px dashed rgba(61,165,255,0.2);">
+          <div style="font-family:var(--font-mono);font-size:8px;color:rgba(61,165,255,0.4);margin-bottom:4px;">NEXT EVOLUTION</div>
+          <div style="font-size:12px;color:var(--text-dim);">${escapeHtml(nextTier.name)} — requires root score ${nextTier.minScore}+</div>
+        </div>` : `<div style="font-size:11px;color:${col};padding:8px;text-align:center;">★ Maximum tier reached on this path</div>`}
       </div>
-    ` : ''}`;
 
-  el.querySelector('#start-trial-btn')?.addEventListener('click', async () => {
-    try {
-      const startDate = todayStr();
-      await writeUserFields({ [`activeTrials.${hunterClass}`]: { startDate } });
-      if (!profile.activeTrials) profile.activeTrials = {};
-      profile.activeTrials[hunterClass] = { startDate };
-      renderFeats();
-      showToast(`${trial.name} trial started — 7 days. Go.`, 'success');
-    } catch(e) { showToast('Error starting trial: ' + e.message, 'error'); }
-  });
+      <!-- Trial section -->
+      <div style="font-family:var(--font-mono);font-size:10px;color:rgba(61,165,255,0.4);letter-spacing:0.15em;margin-bottom:10px;">── CLASS TRIAL ──</div>
+      ${trialCompleted ? `
+        <div style="background:rgba(78,205,120,0.08);border:1px solid rgba(78,205,120,0.3);border-radius:10px;padding:14px;text-align:center;">
+          <div style="font-size:20px;margin-bottom:6px;">✓</div>
+          <div style="color:var(--growing);font-weight:600;">Trial cleared. The System acknowledged the proof.</div>
+        </div>` :
+      trialActive ? `
+        <div style="background:rgba(0,0,0,0.3);border:1px solid ${col};border-radius:10px;padding:14px;">
+          <div style="font-family:var(--font-mono);font-size:9px;color:${col};letter-spacing:0.1em;margin-bottom:8px;">⚔ TRIAL ACTIVE</div>
+          <div style="font-size:14px;font-weight:700;color:${col};margin-bottom:6px;">${escapeHtml(tier2?.trialName||'')}</div>
+          <div style="font-size:12px;color:var(--text-dim);line-height:1.6;">${escapeHtml(tier2?.trialDesc||'')}</div>
+          <div style="font-size:10px;color:var(--text-faint);margin-top:8px;">Expires: ${trialActive.expiresDate} · ${7 - daysBetween(todayStr(), trialActive.expiresDate)}d remaining</div>
+        </div>` :
+      hasKey && tier2 ? `
+        <div style="background:rgba(0,0,0,0.3);border:1px solid rgba(61,165,255,0.15);border-radius:10px;padding:14px;">
+          <div style="font-family:var(--font-mono);font-size:9px;color:rgba(61,165,255,0.5);letter-spacing:0.1em;margin-bottom:8px;">TRIAL AVAILABLE</div>
+          <div style="font-size:14px;font-weight:700;margin-bottom:6px;">${escapeHtml(tier2.trialName)}</div>
+          <div style="font-size:12px;color:var(--text-dim);line-height:1.6;margin-bottom:12px;">${escapeHtml(tier2.trialDesc)}</div>
+          <p style="font-size:11px;color:var(--text-faint);margin-bottom:12px;">7 days. One attempt. The System does not extend deadlines.</p>
+          <button class="btn btn-primary" style="width:100%;" onclick="startClassTrial()">⚔ Begin Trial</button>
+        </div>` :
+      `<div style="text-align:center;padding:20px;color:var(--text-faint);font-size:12px;">
+        Train consistently to unlock your class trial.
+      </div>`}
+    </div>`;
 }
+
+async function startClassTrial() {
+  if (!profile?.hunterClassKey) return;
+  const expiresDate = todayStr(new Date(Date.now() + 7*86400000));
+  const mod   = await loadClassModule();
+  const tier2 = mod.CLASS_PATHS[profile.hunterClassKey]?.tiers[profile.hunterTierIndex ?? 0];
+  if (!tier2) return;
+  const newTrial = { startDate: todayStr(), expiresDate, trialName: tier2.trialName };
+  const key = profile.hunterClassKey;
+  await writeUserFields({ [`activeTrials.${key}`]: newTrial });
+  if (!profile.activeTrials) profile.activeTrials = {};
+  profile.activeTrials[key] = newTrial;
+  showToast(`⚔ ${tier2.trialName} begun. 7 days.`, 'success');
+  renderFeats();
+}
+
+window.startClassTrial = startClassTrial;
+
 
 function renderAchievementsTab(el) {
   const unlocked = profile.unlockedAchievements || {};
@@ -15186,52 +14906,101 @@ window._debugAllInventories = () => {
 
 // ── Class Trial Debug ──
 // Preview the Trials tab as if a specific hunter class is assigned.
-// Usage: _debugClassTrial('Monk')
+// Usage: _debugClassTrial('IRON') or _debugClassTrial('IRON+SHADOW') etc.
 // Restore: _debugClassTrial(null)
-window._debugClassTrial = (className) => {
+window._debugClassTrial = async (pathKey) => {
   if (!profile) { console.warn('Not logged in'); return; }
-  if (!className) {
-    // Restore real class
+  const mod = await loadClassModule();
+  if (!pathKey) {
     delete profile._debugClass;
-    console.log('Restored real class:', profile.hunterClass || 'none');
+    delete profile.hunterClassKey;
+    delete profile.hunterTierIndex;
+    delete profile.hunterClassName;
+    console.log('Restored. Real class:', profile.hunterClassKey || 'none');
   } else {
-    if (!CLASS_TRIALS[className]) {
-      console.warn('Unknown class. Valid:', Object.keys(CLASS_TRIALS).join(', '));
+    const path = mod.CLASS_PATHS[pathKey];
+    if (!path) {
+      console.warn('Unknown path. Example valid keys:', Object.keys(mod.CLASS_PATHS).slice(0,5).join(', '), '...');
       return;
     }
-    profile._debugClass = className;
-    console.log('Previewing class trial for:', className);
-    console.log('Trial:', CLASS_TRIALS[className].name, '—', CLASS_TRIALS[className].desc);
+    profile._debugClass = pathKey;
+    profile.hunterClassKey = pathKey;
+    profile.hunterTierIndex = 0;
+    profile.hunterClassName = path.tiers[0].name;
+    profile.hunterActiveRoots = path.roots;
+    console.log('Previewing path:', pathKey);
+    console.log('Tiers:', path.tiers.map((t,i)=>`T${i+1}: ${t.name} (min score ${t.minScore})`).join(' | '));
   }
-  // Switch to Gates tab and Trials sub-tab so you can see it
   switchView('feats');
   featsActiveTab = 'trials';
   renderFeats();
 };
 
-// ── Class Trial Unlock Debug ──
-// Force a key to appear so you can see the full trial UI with the Start button.
-// Usage: _debugUnlockClassTrial()
+// Preview a specific tier within a path
+// Usage: _debugClassTier('IRON', 3)  — shows tier 4 (0-indexed) of Iron path
+window._debugClassTier = async (pathKey, tierIndex) => {
+  if (!profile) { console.warn('Not logged in'); return; }
+  const mod = await loadClassModule();
+  const path = mod.CLASS_PATHS[pathKey];
+  if (!path) { console.warn('Unknown path key'); return; }
+  const t = path.tiers[tierIndex];
+  if (!t) { console.warn('Tier index out of range (0-'+(path.tiers.length-1)+')'); return; }
+  profile.hunterClassKey   = pathKey;
+  profile.hunterTierIndex  = tierIndex;
+  profile.hunterClassName  = t.name;
+  profile.hunterActiveRoots = path.roots;
+  console.log(`Previewing ${pathKey} tier ${tierIndex}: ${t.name}`);
+  console.log('Trial:', t.trialName, '—', t.trialDesc);
+  console.log('Raid affinity:', t.raidAffinity, '×'+t.affinityMult);
+  switchView('feats');
+  featsActiveTab = 'trials';
+  renderFeats();
+};
+
+// Force trial unlock
 window._debugUnlockClassTrial = () => {
   if (!profile) { console.warn('Not logged in'); return; }
   profile._debugUnlockTrial = true;
-  console.log('Class trial unlocked for preview. Call _debugClassTrial(null) to restore.');
+  console.log('Trial unlocked for preview.');
   switchView('feats');
   featsActiveTab = 'trials';
   renderFeats();
 };
 
-// ── List all classes ──
-window._debugListClasses = () => {
-  console.log('\n=== HUNTER CLASSES ===');
-  Object.entries(CLASS_TRIALS).forEach(([cls, trial]) => {
-    console.log(`\n${cls}`);
-    console.log('  Trial:', trial.name);
-    console.log('  Desc:', trial.desc);
-    console.log('  Title:', trial.title);
-    console.log('  Color:', trial.color);
+// List all 63 paths
+window._debugListClasses = async () => {
+  const mod = await loadClassModule();
+  console.log('\n=== ALL 63 CLASS PATHS ===');
+  Object.entries(mod.CLASS_PATHS).forEach(([key, path]) => {
+    console.log(`\n${key} (${path.roots.length} roots)`);
+    path.tiers.forEach((t,i) => console.log(`  T${i+1}: ${t.name} | min:${t.minScore} | ${t.raidAffinity} ×${t.affinityMult} | trial: ${t.trialName}`));
   });
+  console.log('\nTotal paths:', Object.keys(mod.CLASS_PATHS).length);
 };
+
+// Show what class the current hunter would get
+window._debugEvaluateClass = async () => {
+  const mod = await loadClassModule();
+  const myWOs = allWorkouts.filter(w => w.uid === currentUser?.uid);
+  const d = buildAssessmentData(myWOs);
+  const scores = mod.scoreRoots(d);
+  console.log('\n=== ROOT SCORES ===');
+  Object.entries(scores).sort((a,b)=>b[1]-a[1]).forEach(([r,s]) => {
+    const bar = '█'.repeat(Math.round(s/5));
+    console.log(`${r.padEnd(8)} ${s.toFixed(1).padStart(5)} ${bar}`);
+  });
+  const total = Object.values(scores).reduce((a,b)=>a+b,0);
+  console.log('\n=== ROOT FRACTIONS (need ≥20% to count) ===');
+  Object.entries(scores).sort((a,b)=>b[1]-a[1]).forEach(([r,s]) => {
+    const frac = total > 0 ? (s/total*100).toFixed(1) : '0.0';
+    const active = total > 0 && s/total >= 0.20 ? '✓ ACTIVE' : '✗';
+    console.log(`${r.padEnd(8)} ${frac}% ${active}`);
+  });
+  console.log('\nTotal workouts:', myWOs.length, '| Need:', mod.MIN_GATES.totalWorkouts);
+  const weeks = new Set(myWOs.map(w => todayStr(startOfWeek(new Date(w.date+'T12:00:00')))));
+  console.log('Distinct weeks:', weeks.size, '| Need:', mod.MIN_GATES.distinctWeeks);
+};
+
 
 </script>
 </body>
