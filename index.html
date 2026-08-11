@@ -2746,7 +2746,7 @@ function openSettingsModal() {
     <div class="modal">
       <h3>Settings</h3>
       <div class="field">
-        <button class="btn btn-sm" style="width:100%;margin-bottom:4px;" onclick="document.querySelector('.settings-overlay')?.remove();showUpdateNotice();">📋 View What's New (v20260810)</button>
+        <button class="btn btn-sm" style="width:100%;margin-bottom:4px;" onclick="document.querySelector('.settings-overlay')?.remove();showUpdateNotice();">📋 View What's New (v20260811)</button>
       </div>
       <div class="field">
         <label>Hunter name</label>
@@ -3196,6 +3196,7 @@ async function loadAllData() {
   startDailyTimer();
   setTimeout(() => { try { maybeShowStreakFreezeNotice(); } catch(e) {} }, 600);
   setTimeout(() => { try { maybeShowUpdateNotice(); } catch(e) {} }, 800);
+  setTimeout(() => { try { checkPendingDuels(); } catch(e) {} }, 1000);
 }
 function rebuildExercisesAll() {
   EXERCISES_ALL = structuredCloneLite(BASE_EXERCISES);
@@ -9975,11 +9976,32 @@ function renderCompetitionBoard() {
           + '<div style="height:100%;width:' + weekPct + '%;background:' + weekColor + ';border-radius:1px;transition:width .8s;"></div>'
         + '</div>'
       + '</div>'
-      // streak
+      // streak + duel status + challenge button
       + '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px;">'
         + '<span style="font-size:9px;color:var(--text-faint);font-family:var(--font-mono);">' + r.total + ' total sessions</span>'
         + '<span class="streak-pill ' + (!r.trainedToday&&!r.restToday&&r.streak>0?'at-risk':r.trainedToday?'safe':r.restToday?'rest':'') + '">' + r.streak + 'd</span>'
       + '</div>'
+      // Duel record
+      + (() => {
+          const u = allUsers.find(u => u.uid === r.uid);
+          const duels = u?.duels || (r.uid === currentUser.uid ? profile?.duels : null) || {};
+          const wins = duels.wins || 0;
+          const losses = duels.losses || 0;
+          const streak = duels.streak || 0;
+          const title = duels.duelTitle || '';
+          const defeatedBy = duels.defeatedByName;
+          const defeatUntil = duels.defeatUntil;
+          const isDefeated = defeatUntil && defeatUntil >= todayStr();
+          if (!wins && !losses) return '';
+          return '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:4px;padding-top:4px;border-top:1px solid rgba(61,165,255,0.06);">'
+            + '<span style="font-size:9px;font-family:var(--font-mono);color:rgba(61,165,255,0.4);">⚔ ' + wins + 'W ' + losses + 'L' + (streak > 0 ? ' · ' + streak + ' streak' : '') + (title ? ' · ' + title : '') + '</span>'
+            + (isDefeated ? '<span style="font-size:8px;color:var(--excess);">✗ ' + defeatedBy + '</span>' : '')
+          + '</div>';
+        })()
+      // Challenge button — only on other hunters, only if no active duel
+      + (!isMe && !(profile?.duels?.activeDuelId) ? (
+          '<button style="width:100%;margin-top:8px;padding:6px;font-size:11px;font-family:var(--font-mono);letter-spacing:0.05em;color:var(--excess);background:rgba(255,61,90,0.06);border:1px solid rgba(255,61,90,0.2);border-radius:6px;cursor:pointer;" onclick="event.stopPropagation();sendGateDuel(\'' + r.uid + '\')">⚔ GATE DUEL</button>'
+        ) : (!isMe && profile?.duels?.activeDuelId ? '<div style="font-size:9px;color:var(--text-faint);text-align:center;margin-top:6px;font-family:var(--font-mono);">Active duel in progress</div>' : ''))
     + '</div>';
   }).join('') || '';
 
@@ -14890,7 +14912,7 @@ window.abandonDungeon = async () => {
 };
 
 // ── Update notice ──
-const UPDATE_VERSION = 'v20260810';
+const UPDATE_VERSION = 'v20260811';
 
 function maybeShowStreakFreezeNotice() {
   if (!profile?.streakFreeze?.active) return;
@@ -14941,29 +14963,39 @@ function showUpdateNotice() {
 
       <div style="padding:16px 20px;display:flex;flex-direction:column;gap:14px;">
 
+        <div style="background:rgba(255,61,90,0.06);border:1px solid rgba(255,61,90,0.25);border-radius:10px;padding:14px;">
+          <div style="font-size:16px;margin-bottom:6px;">⚔ Gate Duel — 1v1 Challenge System</div>
+          <div style="font-size:12px;color:var(--text-dim);line-height:1.6;">Challenge anyone on the Threat Board to a Gate Duel. <strong>You pick the target. They pick the fight.</strong> The challenged hunter designs everything — the exercise, the metric, the intensity, the duration. Win streaks, public records, AP wagered, and exclusive trophy items for consecutive wins. 100 undefeated wins earns the Shadow Monarch's Proof — Legendary.</div>
+        </div>
+
         <div style="background:rgba(139,107,255,0.06);border:1px solid rgba(139,107,255,0.2);border-radius:10px;padding:14px;">
           <div style="font-size:16px;margin-bottom:6px;">⚔ Dungeon System</div>
-          <div style="font-size:12px;color:var(--text-dim);line-height:1.6;">110 unique dungeons across 22 chains. Open <strong>Inventory</strong> and tap <em>Enter</em> on any dungeon to activate it. Every qualifying set you log deals damage to the boss. Clear the dungeon to earn the item.</div>
+          <div style="font-size:12px;color:var(--text-dim);line-height:1.6;">110 unique dungeons across 22 chains. Open <strong>Inventory</strong> and tap <em>Enter</em> on any dungeon to fight the boss. Every qualifying set deals damage. Stat rank and training XP multiply your damage — higher ranked hunters hit harder. Prerequisites are now much harder — items reflect months of real training.</div>
         </div>
 
         <div style="background:rgba(255,215,0,0.05);border:1px solid rgba(255,215,0,0.15);border-radius:10px;padding:14px;">
-          <div style="font-size:16px;margin-bottom:6px;">🎒 Inventory Overhaul</div>
-          <div style="font-size:12px;color:var(--text-dim);line-height:1.6;">Items are now <strong>earned</strong> — not handed out. Each item has unique stat bonuses based on your actual training style. Power lifter vs calisthenics vs planche vs lever — the System knows the difference. Tap any item in your loadout to see its full stats.</div>
+          <div style="font-size:16px;margin-bottom:6px;">🎒 Inventory & Character Screen</div>
+          <div style="font-size:12px;color:var(--text-dim);line-height:1.6;">Items light up which muscles they cover on your character silhouette. Tap any item for full details including what you proved to earn it and what comes next. Front/back view toggle. Body model is a character screen — not a heat map.</div>
+        </div>
+
+        <div style="background:rgba(139,107,255,0.06);border:1px solid rgba(139,107,255,0.15);border-radius:10px;padding:14px;">
+          <div style="font-size:16px;margin-bottom:6px;">🏆 Hunter Class System</div>
+          <div style="font-size:12px;color:var(--text-dim);line-height:1.6;">63 class paths across 6 root archetypes (Iron, Shadow, Swift, Tide, Court, Wild). The System won't classify you until it's certain — 40+ workouts, 12+ weeks, consistent pattern. Class gives raid affinity bonuses and evolves through 5 tiers. Shadow Monarch requires all 6 roots at elite standards.</div>
         </div>
 
         <div style="background:rgba(61,165,255,0.05);border:1px solid rgba(61,165,255,0.15);border-radius:10px;padding:14px;">
-          <div style="font-size:16px;margin-bottom:6px;">🗺 Tab Rename</div>
-          <div style="font-size:12px;color:var(--text-dim);line-height:1.6;">Tabs are now Solo Leveling themed: <strong>Hunt · Rank · Codex · Arsenal · Shadow Log · Gates · Inventory</strong>. Content has been reorganised — the Threat Board is now the first thing you see on Rank.</div>
+          <div style="font-size:16px;margin-bottom:6px;">❄ Streak Freeze</div>
+          <div style="font-size:12px;color:var(--text-dim);line-height:1.6;">Admin can freeze your streak during unavoidable absences. While frozen every day is a rest day — streak pauses completely. When unfrozen, normal rules resume. Frozen hunters see a notification on login crediting Lawrence for saving their streak.</div>
         </div>
 
         <div style="background:rgba(78,205,120,0.05);border:1px solid rgba(78,205,120,0.15);border-radius:10px;padding:14px;">
-          <div style="font-size:16px;margin-bottom:6px;">🐛 Bug Fixes</div>
-          <div style="font-size:12px;color:var(--text-dim);line-height:1.6;">Streak calculation fixed — unscheduled training days now count. Timezone bugs fixed across 20+ sites. Raid boss double-payout fixed. Editing a workout no longer double-awards XP. Deleting a workout now reverses its XP.</div>
+          <div style="font-size:16px;margin-bottom:6px;">📊 Set Performance Colours</div>
+          <div style="font-size:12px;color:var(--text-dim);line-height:1.6;">When you complete a set, it colours based on performance vs last session. <strong style="color:rgba(78,205,120,0.9);">Green</strong> = matched. <strong style="color:#A78BFA;">Purple</strong> = beat it. <strong style="color:rgba(255,61,90,0.9);">Red</strong> = below. RIR is never pre-filled — you judge every set fresh.</div>
         </div>
 
         <div style="background:rgba(255,61,90,0.05);border:1px solid rgba(255,61,90,0.15);border-radius:10px;padding:14px;">
-          <div style="font-size:16px;margin-bottom:6px;">⚠ Note on XP</div>
-          <div style="font-size:12px;color:var(--text-dim);line-height:1.6;">A bug was live since day one that double-awarded XP whenever you edited a workout. Your current XP has been corrected. If your level looks different — that's why. It now reflects your actual training.</div>
+          <div style="font-size:16px;margin-bottom:6px;">🐛 Bug Fixes</div>
+          <div style="font-size:12px;color:var(--text-dim);line-height:1.6;">Streak calculation fixed. RIR pre-fill from previous sessions removed. Raid boss double-payout fixed. HUNTER_CLASSES reference errors fixed. Workout modal minimize/exit buttons visible on mobile. LuChing's AP corrected.</div>
         </div>
 
       </div>
@@ -15159,6 +15191,580 @@ window._debugEvaluateClass = async () => {
   console.log('Distinct weeks:', weeks.size, '| Need:', mod.MIN_GATES.distinctWeeks);
 };
 
+
+
+// ── GATE DUEL ──
+// ══════════════════════════════════════════════════════════════════
+// GATE DUEL SYSTEM
+// The challenger picks the target. The target designs the fight.
+// ══════════════════════════════════════════════════════════════════
+
+// Duel record stored in Firestore under 'duels' collection:
+// {
+//   id, challengerId, defenderId,
+//   status: 'pending' | 'active' | 'complete' | 'forfeited',
+//   createdAt, startDate, endDate,
+//   spec: {
+//     exercise,        // specific exercise name
+//     metric,          // 'best_e1rm' | 'total_volume' | 'best_hold' | 'total_hold' | 'best_pace' | 'total_distance' | 'total_sets' | 'best_reps'
+//     minRIR,          // max RIR allowed (0=only RIR0, 2=RIR0-2, 5=any)
+//     durationDays,    // 3 or 7
+//     minSessions,     // minimum qualifying sessions required
+//     minWeightPct,    // minimum weight as % of bodyweight (0 = no floor)
+//   },
+//   challengerScore, defenderScore,
+//   winnerId, loserId,
+//   challengerStreak, defenderStreak, // consecutive wins at time of duel
+//   apWager,          // AP transferred from loser to winner
+// }
+
+// ── Consecutive win tracker (stored on profile) ──
+// profile.duels = {
+//   wins: 0, losses: 0, streak: 0,   // current consecutive win streak
+//   record: [{ vs, domain, result, date }], // last 10 duels
+//   trophyTier: 0-5,
+//   activeDuelId: null,
+//   lastChallengeDate: null,          // challenger lockout after loss
+// }
+
+const DUEL_EXERCISES = {
+  strength: ['Bench Press','Squat','Deadlift','Overhead Press','Barbell Row','Incline Bench Press','Romanian Deadlift','Front Squat'],
+  focus:    ['Tuck Planche','Advanced Tuck Planche','Full Planche','Tuck Front Lever','Advanced Tuck Front Lever','Front Lever','Freestanding Handstand Hold','L-Sit'],
+  endurance:['5km Run','10km Run','3km Run','Tempo Run'],
+  agility:  ['Pistol Squat','Box Jump','Nordic Curl','Hill Sprints'],
+  volume:   ['Any Exercise (Total Sets)'],
+  consistency: ['Sessions vs Programme'],
+};
+
+const DUEL_METRICS = {
+  best_e1rm:     { label:'Best e1RM (single set)', desc:'Highest estimated 1-rep max logged in a single set' },
+  total_volume:  { label:'Total Volume (sets×reps×kg)', desc:'Cumulative volume across all qualifying sets' },
+  best_hold:     { label:'Longest Single Hold (seconds)', desc:'Best single hold duration logged' },
+  total_hold:    { label:'Total Hold Volume (seconds)', desc:'All hold time accumulated across sessions' },
+  best_pace:     { label:'Best Pace (mm:ss/km)', desc:'Fastest pace logged on a qualifying run (lower = better)' },
+  total_distance:{ label:'Total Distance (km)', desc:'Total distance run across all qualifying sessions' },
+  total_sets:    { label:'Total Sets Logged', desc:'Raw total sets across all exercises' },
+  best_reps:     { label:'Most Reps (single set)', desc:'Best single set rep count' },
+};
+
+const DUEL_METRIC_OPTIONS = {
+  strength:   ['best_e1rm','total_volume','best_reps'],
+  focus:      ['best_hold','total_hold'],
+  endurance:  ['best_pace','total_distance'],
+  agility:    ['best_reps','total_volume','total_sets'],
+  volume:     ['total_sets','total_volume'],
+  consistency:['total_sets'],
+};
+
+const DUEL_STREAK_REWARDS = [
+  { minStreak:1,  maxStreak:4,  apGain:10,  apLoss:10,  xpMult:1.10, title:'Challenger',      debuffDays:3,  debuffPct:0.10 },
+  { minStreak:5,  maxStreak:14, apGain:25,  apLoss:25,  xpMult:1.20, title:'Victor',           debuffDays:5,  debuffPct:0.15 },
+  { minStreak:15, maxStreak:29, apGain:50,  apLoss:50,  xpMult:1.35, title:'Conqueror',        debuffDays:7,  debuffPct:0.20 },
+  { minStreak:30, maxStreak:59, apGain:100, apLoss:100, xpMult:1.50, title:'Warlord',          debuffDays:7,  debuffPct:0.25 },
+  { minStreak:60, maxStreak:99, apGain:200, apLoss:200, xpMult:1.75, title:'Sovereign',        debuffDays:7,  debuffPct:0.25 },
+  { minStreak:100,maxStreak:999,apGain:500, apLoss:500, xpMult:2.00, title:'Shadow Monarch',   debuffDays:7,  debuffPct:0.30 },
+];
+
+const DUEL_TROPHY_TIERS = [
+  { wins:5,   tier:1, name:'Challenger\'s Mark',    rarity:'Common',    desc:'Five consecutive victories. The System has taken note.' },
+  { wins:15,  tier:2, name:'Victor\'s Seal',         rarity:'Uncommon',  desc:'Fifteen straight. Others have learned to be cautious.' },
+  { wins:30,  tier:3, name:'Conqueror\'s Crest',     rarity:'Rare',      desc:'Thirty without defeat. You are a problem for this party.' },
+  { wins:60,  tier:4, name:'Sovereign\'s Brand',     rarity:'Epic',      desc:'Sixty consecutive victories. The Threat Board fears you.' },
+  { wins:100, tier:5, name:'Shadow Monarch\'s Proof',rarity:'Legendary', desc:'One hundred undefeated. The System has run out of adequate description.' },
+];
+
+function getDuelStreakTier(streak) {
+  return [...DUEL_STREAK_REWARDS].reverse().find(t => streak >= t.minStreak) || DUEL_STREAK_REWARDS[0];
+}
+
+function getDuelTrophyTier(wins) {
+  return [...DUEL_TROPHY_TIERS].reverse().find(t => wins >= t.wins) || null;
+}
+
+function getDuelScore(spec, workouts, uid) {
+  const qualifying = workouts.filter(w => w.uid === uid);
+  if (!qualifying.length) return 0;
+
+  const exName = spec.exercise;
+  const maxRIR  = spec.minRIR ?? 5;
+  const minWPct = spec.minWeightPct || 0;
+
+  // Get all qualifying sets across all sessions
+  const allSets = [];
+  qualifying.forEach(w => {
+    (w.exercises || []).forEach(ex => {
+      if (exName && exName !== 'Any Exercise (Total Sets)' && ex.name !== exName) return;
+      (ex.sets || []).filter(s => {
+        if (!s.reps || s.reps <= 0) return false;
+        if (s.rir == null || s.rir > maxRIR) return false;
+        return true;
+      }).forEach(s => allSets.push({ ...s, exName: ex.name, date: w.date }));
+    });
+  });
+
+  // Check minimum sessions
+  const sessionDates = new Set(qualifying.map(w => w.date));
+  if (sessionDates.size < (spec.minSessions || 1)) return -1; // forfeit — didn't hit minimum
+
+  switch(spec.metric) {
+    case 'best_e1rm': {
+      const bw = latestBodyweightKg() || 70;
+      return Math.max(0, ...allSets
+        .filter(s => s.weight && s.weight >= bw * (minWPct/100))
+        .map(s => e1rm(s.weight, s.reps)));
+    }
+    case 'total_volume': {
+      const bw = latestBodyweightKg() || 70;
+      return allSets
+        .filter(s => !minWPct || (s.weight && s.weight >= bw * (minWPct/100)))
+        .reduce((t, s) => t + (s.reps * (s.weight || 1)), 0);
+    }
+    case 'best_hold':
+      return Math.max(0, ...allSets.map(s => s.reps));
+    case 'total_hold':
+      return allSets.reduce((t, s) => t + s.reps, 0);
+    case 'best_pace': {
+      // Lower is better — return negative so higher score = faster
+      let bestPace = 9999;
+      qualifying.forEach(w => {
+        if (!w.runSummary?.pace) return;
+        const pm = String(w.runSummary.pace).match(/(\d+):(\d{1,2})/);
+        if (pm) {
+          const secs = Number(pm[1])*60 + Number(pm[2]);
+          if (secs < bestPace) bestPace = secs;
+        }
+      });
+      return bestPace === 9999 ? 0 : 10000 - bestPace; // invert so higher = faster
+    }
+    case 'total_distance':
+      return qualifying.reduce((t, w) => t + (w.runSummary?.distKm || 0), 0);
+    case 'total_sets':
+      return allSets.length;
+    case 'best_reps':
+      return Math.max(0, ...allSets.map(s => s.reps));
+    default:
+      return 0;
+  }
+}
+
+// ── Send a challenge ──
+async function sendGateDuel(targetUid) {
+  if (!currentUser || !profile) return;
+  const myDuels = profile.duels || {};
+  if (myDuels.activeDuelId) { showToast('You already have an active Gate Duel.', 'error'); return; }
+
+  // Lockout check — if lost last duel within 7 days, cannot challenge
+  if (myDuels.lastLossDate) {
+    const daysSince = daysBetween(myDuels.lastLossDate, todayStr());
+    if (daysSince < 7) {
+      showToast(`You are locked out from challenging for ${7 - daysSince} more days.`, 'error');
+      return;
+    }
+  }
+
+  const target = allUsers.find(u => u.uid === targetUid);
+  if (!target) return;
+
+  // Confirm challenge
+  const modal = document.createElement('div');
+  modal.className = 'modal-overlay';
+  modal.innerHTML = `<div class="modal" style="max-width:360px;">
+    <div style="font-family:var(--font-mono);font-size:9px;color:var(--excess);letter-spacing:0.2em;margin-bottom:8px;">⚔ GATE DUEL</div>
+    <h3 style="margin-bottom:6px;">Challenge ${escapeHtml(target.displayName||'?')}</h3>
+    <p style="font-size:12px;color:var(--text-dim);line-height:1.7;margin-bottom:16px;">
+      You are calling out <strong>${escapeHtml(target.displayName||'?')}</strong>.<br><br>
+      <strong style="color:var(--excess);">They will choose the exercise, the metric, the intensity, the duration — everything.</strong><br><br>
+      You have no say in the terms. You only decide: is this worth it?
+    </p>
+    <div style="display:flex;gap:8px;">
+      <button class="btn btn-primary" id="duel-confirm" style="flex:2;border-color:rgba(255,61,90,0.4);background:rgba(255,61,90,0.08);color:var(--excess);">⚔ Issue Challenge</button>
+      <button class="btn btn-sm" id="duel-cancel" style="flex:1;">Back Down</button>
+    </div>
+  </div>`;
+  document.body.appendChild(modal);
+  modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
+  modal.querySelector('#duel-cancel').addEventListener('click', () => modal.remove());
+  modal.querySelector('#duel-confirm').addEventListener('click', async () => {
+    modal.remove();
+    try {
+      const { collection, addDoc, updateDoc, doc } = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js');
+      const duelRef = await addDoc(collection(db, 'duels'), {
+        challengerId: currentUser.uid,
+        challengerName: profile.displayName || 'Hunter',
+        defenderId: targetUid,
+        defenderName: target.displayName || 'Hunter',
+        status: 'pending',
+        createdAt: todayStr(),
+        spec: null,
+        challengerScore: null,
+        defenderScore: null,
+        winnerId: null,
+        loserId: null,
+        challengerStreak: myDuels.streak || 0,
+        defenderStreak: (target.duels?.streak || 0),
+      });
+      // Mark challenger as having pending duel
+      await updateDoc(doc(db, 'users', currentUser.uid), { 'duels.activeDuelId': duelRef.id });
+      if (!profile.duels) profile.duels = {};
+      profile.duels.activeDuelId = duelRef.id;
+      showToast(`⚔ Challenge issued to ${escapeHtml(target.displayName||'?')}. The System is watching.`, 'success');
+      renderCompetitionBoard();
+      addDuelNotification('challenged', target.displayName, null, null);
+    } catch(e) { showToast('Error: ' + e.message, 'error'); }
+  });
+}
+
+// ── Defender designs the fight ──
+async function openDuelDesigner(duelId, challengerName) {
+  const DOMAINS = ['strength','focus','endurance','agility','volume','consistency'];
+
+  const modal = document.createElement('div');
+  modal.className = 'modal-overlay';
+  let selectedDomain = 'strength';
+  let selectedExercise = DUEL_EXERCISES.strength[0];
+  let selectedMetric = DUEL_METRIC_OPTIONS.strength[0];
+  let selectedRIR = 2;
+  let selectedDays = 7;
+  let selectedSessions = 2;
+  let selectedWeightPct = 0;
+
+  const renderContent = () => {
+    const exercises = DUEL_EXERCISES[selectedDomain] || [];
+    const metrics = DUEL_METRIC_OPTIONS[selectedDomain] || [];
+    const showWeight = selectedDomain === 'strength';
+    const showRIR = selectedDomain === 'strength' || selectedDomain === 'focus';
+
+    modal.querySelector('.duel-designer-body').innerHTML = `
+      <div style="display:flex;flex-direction:column;gap:14px;">
+        <!-- Domain -->
+        <div>
+          <div style="font-size:11px;color:var(--text-faint);margin-bottom:6px;font-family:var(--font-mono);">DOMAIN</div>
+          <div style="display:flex;flex-wrap:wrap;gap:6px;">
+            ${DOMAINS.map(d => `<button class="btn btn-sm domain-btn ${d===selectedDomain?'btn-primary':''}" data-domain="${d}" style="font-size:11px;">${d.charAt(0).toUpperCase()+d.slice(1)}</button>`).join('')}
+          </div>
+        </div>
+        <!-- Exercise -->
+        ${exercises.length > 1 ? `<div>
+          <div style="font-size:11px;color:var(--text-faint);margin-bottom:6px;font-family:var(--font-mono);">EXERCISE</div>
+          <select id="duel-exercise" style="width:100%;background:var(--card);border:1px solid var(--border);border-radius:6px;padding:8px;color:var(--text);font-size:13px;">
+            ${exercises.map(e => `<option value="${e}" ${e===selectedExercise?'selected':''}>${e}</option>`).join('')}
+          </select>
+        </div>` : ''}
+        <!-- Metric -->
+        <div>
+          <div style="font-size:11px;color:var(--text-faint);margin-bottom:6px;font-family:var(--font-mono);">WHAT IS MEASURED</div>
+          <div style="display:flex;flex-direction:column;gap:4px;">
+            ${metrics.map(m => `<button class="btn btn-sm metric-btn ${m===selectedMetric?'btn-primary':''}" data-metric="${m}" style="font-size:11px;text-align:left;">${DUEL_METRICS[m]?.label || m}</button>`).join('')}
+          </div>
+        </div>
+        <!-- Duration -->
+        <div>
+          <div style="font-size:11px;color:var(--text-faint);margin-bottom:6px;font-family:var(--font-mono);">DURATION</div>
+          <div style="display:flex;gap:8px;">
+            ${[3,7].map(d => `<button class="btn btn-sm dur-btn ${d===selectedDays?'btn-primary':''}" data-days="${d}" style="flex:1;">${d} Days</button>`).join('')}
+          </div>
+        </div>
+        <!-- Minimum sessions -->
+        <div>
+          <div style="font-size:11px;color:var(--text-faint);margin-bottom:6px;font-family:var(--font-mono);">MINIMUM QUALIFYING SESSIONS (forfeit if not met)</div>
+          <div style="display:flex;gap:6px;">
+            ${[1,2,3,4,5].map(n => `<button class="btn btn-sm sess-btn ${n===selectedSessions?'btn-primary':''}" data-sess="${n}" style="flex:1;">${n}</button>`).join('')}
+          </div>
+        </div>
+        ${showRIR ? `<div>
+          <div style="font-size:11px;color:var(--text-faint);margin-bottom:6px;font-family:var(--font-mono);">MAX ALLOWED RIR (sets above this don't count)</div>
+          <div style="display:flex;gap:6px;">
+            ${[0,1,2,3,5].map(n => `<button class="btn btn-sm rir-btn ${n===selectedRIR?'btn-primary':''}" data-rir="${n}" style="flex:1;">${n===5?'Any':n}</button>`).join('')}
+          </div>
+        </div>` : ''}
+        ${showWeight ? `<div>
+          <div style="font-size:11px;color:var(--text-faint);margin-bottom:6px;font-family:var(--font-mono);">MINIMUM WEIGHT (% of bodyweight — 0 = no floor)</div>
+          <div style="display:flex;gap:6px;">
+            ${[0,40,60,80,100].map(n => `<button class="btn btn-sm wt-btn ${n===selectedWeightPct?'btn-primary':''}" data-wt="${n}" style="flex:1;">${n===0?'None':n+'%'}</button>`).join('')}
+          </div>
+        </div>` : ''}
+        <!-- Summary -->
+        <div style="background:rgba(61,165,255,0.04);border:1px solid rgba(61,165,255,0.12);border-radius:8px;padding:10px;font-size:11px;color:var(--text-dim);line-height:1.7;">
+          <strong style="color:var(--accent);">Fight summary:</strong><br>
+          ${selectedDays} days · ${selectedSessions}+ sessions · 
+          ${exercises.length===1?exercises[0]:selectedExercise} · 
+          ${DUEL_METRICS[selectedMetric]?.label||selectedMetric}
+          ${showRIR && selectedRIR < 5 ? ` · RIR ${selectedRIR} or lower` : ''}
+          ${showWeight && selectedWeightPct > 0 ? ` · min ${selectedWeightPct}% bodyweight` : ''}
+        </div>
+        <button class="btn btn-primary" id="duel-set" style="border-color:rgba(255,61,90,0.4);background:rgba(255,61,90,0.08);color:var(--excess);">⚔ Set These Terms</button>
+      </div>`;
+
+    // Bind events
+    modal.querySelectorAll('.domain-btn').forEach(b => b.addEventListener('click', () => {
+      selectedDomain = b.dataset.domain;
+      selectedExercise = (DUEL_EXERCISES[selectedDomain]||[])[0] || '';
+      selectedMetric = (DUEL_METRIC_OPTIONS[selectedDomain]||[])[0] || '';
+      renderContent();
+    }));
+    modal.querySelectorAll('.metric-btn').forEach(b => b.addEventListener('click', () => { selectedMetric = b.dataset.metric; renderContent(); }));
+    modal.querySelectorAll('.dur-btn').forEach(b => b.addEventListener('click', () => { selectedDays = Number(b.dataset.days); renderContent(); }));
+    modal.querySelectorAll('.sess-btn').forEach(b => b.addEventListener('click', () => { selectedSessions = Number(b.dataset.sess); renderContent(); }));
+    modal.querySelectorAll('.rir-btn').forEach(b => b.addEventListener('click', () => { selectedRIR = Number(b.dataset.rir); renderContent(); }));
+    modal.querySelectorAll('.wt-btn').forEach(b => b.addEventListener('click', () => { selectedWeightPct = Number(b.dataset.wt); renderContent(); }));
+    const exSel = modal.querySelector('#duel-exercise');
+    if (exSel) exSel.addEventListener('change', () => { selectedExercise = exSel.value; });
+
+    modal.querySelector('#duel-set')?.addEventListener('click', async () => {
+      modal.remove();
+      try {
+        const { doc, updateDoc } = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js');
+        const startDate = todayStr();
+        const endDate = todayStr(new Date(Date.now() + selectedDays * 86400000));
+        const spec = {
+          domain: selectedDomain,
+          exercise: exercises.length === 1 ? exercises[0] : selectedExercise,
+          metric: selectedMetric,
+          minRIR: selectedRIR,
+          durationDays: selectedDays,
+          minSessions: selectedSessions,
+          minWeightPct: selectedWeightPct,
+        };
+        await updateDoc(doc(db, 'duels', duelId), {
+          status: 'active',
+          startDate,
+          endDate,
+          spec,
+        });
+        // Mark defender as having active duel
+        await updateDoc(doc(db, 'users', currentUser.uid), { 'duels.activeDuelId': duelId });
+        if (!profile.duels) profile.duels = {};
+        profile.duels.activeDuelId = duelId;
+        showToast(`⚔ Terms set. The Gate opens. ${selectedDays} days.`, 'success');
+        renderCompetitionBoard();
+        addDuelNotification('terms_set', challengerName, selectedDomain, spec.exercise);
+      } catch(e) { showToast('Error: ' + e.message, 'error'); }
+    });
+  };
+
+  modal.innerHTML = `<div class="modal" style="max-width:420px;max-height:88vh;overflow-y:auto;">
+    <div style="font-family:var(--font-mono);font-size:9px;color:var(--excess);letter-spacing:0.2em;margin-bottom:8px;">⚔ GATE DUEL — DESIGN THE FIGHT</div>
+    <h3 style="margin-bottom:4px;">You were challenged by ${escapeHtml(challengerName)}</h3>
+    <p style="font-size:12px;color:var(--text-dim);margin-bottom:16px;line-height:1.6;">
+      You control everything — the exercise, the metric, the intensity, the duration. Design a fight you will win.
+    </p>
+    <div class="duel-designer-body"></div>
+  </div>`;
+  document.body.appendChild(modal);
+  modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
+  renderContent();
+}
+
+// ── Resolve a duel at end date ──
+async function resolveGateDuel(duelId, duelData) {
+  if (!currentUser || !profile) return;
+  const { startDate, endDate, spec, challengerId, defenderId, challengerStreak, defenderStreak } = duelData;
+
+  const duelWorkouts = allWorkouts.filter(w => w.date >= startDate && w.date <= endDate);
+  const challengerScore = getDuelScore(spec, duelWorkouts, challengerId);
+  const defenderScore   = getDuelScore(spec, duelWorkouts, defenderId);
+
+  // -1 score means they didn't meet minimum sessions — forfeit
+  const challengerForfeited = challengerScore < 0;
+  const defenderForfeited   = defenderScore < 0;
+
+  let winnerId, loserId;
+  if (challengerForfeited && !defenderForfeited) { loserId = challengerId; winnerId = defenderId; }
+  else if (defenderForfeited && !challengerForfeited) { loserId = defenderId; winnerId = challengerId; }
+  else if (spec.metric === 'best_pace') {
+    // Lower pace = better, but we stored inverted
+    winnerId = challengerScore >= defenderScore ? challengerId : defenderId;
+    loserId  = winnerId === challengerId ? defenderId : challengerId;
+  } else {
+    winnerId = challengerScore >= defenderScore ? challengerId : defenderId;
+    loserId  = winnerId === challengerId ? defenderId : challengerId;
+  }
+
+  const winnerStreak = (winnerId === challengerId ? challengerStreak : defenderStreak) + 1;
+  const loserStreak  = 0; // reset
+
+  const winnerTier = getDuelStreakTier(winnerStreak);
+  const loserTier  = getDuelStreakTier(winnerStreak - 1 || 1); // what they were at
+
+  const apWager = winnerTier.apGain;
+  const trophyTier = getDuelTrophyTier(winnerStreak);
+
+  try {
+    const { doc, updateDoc, increment: fsIncrement } = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js');
+
+    // Update duel record
+    await updateDoc(doc(db, 'duels', duelId), {
+      status: 'complete',
+      winnerId, loserId,
+      challengerScore, defenderScore,
+      apWager,
+      resolvedAt: todayStr(),
+    });
+
+    // Update winner profile
+    await updateDoc(doc(db, 'users', winnerId), {
+      auraPoints: fsIncrement(apWager),
+      'duels.wins': fsIncrement(1),
+      'duels.streak': winnerStreak,
+      'duels.activeDuelId': null,
+      'duels.trophyTier': trophyTier?.tier || 0,
+      'duels.duelTitle': winnerTier.title,
+      'duels.xpBoostMult': winnerTier.xpMult,
+      'duels.xpBoostUntil': todayStr(new Date(Date.now() + 7*86400000)),
+    });
+
+    // Update loser profile
+    await updateDoc(doc(db, 'users', loserId), {
+      auraPoints: fsIncrement(-apWager),
+      'duels.losses': fsIncrement(1),
+      'duels.streak': 0,
+      'duels.activeDuelId': null,
+      'duels.lastLossDate': todayStr(),
+      'duels.defeatedBy': winnerId,
+      'duels.defeatedByName': allUsers.find(u=>u.uid===winnerId)?.displayName || '?',
+      'duels.defeatDomain': spec.domain,
+      'duels.defeatUntil': todayStr(new Date(Date.now() + 7*86400000)),
+      'duels.debuffPct': winnerTier.debuffPct,
+      'duels.trophyTier': 0, // reset trophy progress on loss
+    });
+
+    // Update local profile if current user is involved
+    if (currentUser.uid === winnerId || currentUser.uid === loserId) {
+      const isWinner = currentUser.uid === winnerId;
+      if (!profile.duels) profile.duels = {};
+      profile.duels.activeDuelId = null;
+      if (isWinner) {
+        profile.auraPoints = (profile.auraPoints || 0) + apWager;
+        profile.duels.streak = winnerStreak;
+        profile.duels.wins = (profile.duels.wins || 0) + 1;
+        profile.duels.trophyTier = trophyTier?.tier || 0;
+        profile.duels.duelTitle = winnerTier.title;
+      } else {
+        profile.auraPoints = Math.max(0, (profile.auraPoints || 0) - apWager);
+        profile.duels.streak = 0;
+        profile.duels.losses = (profile.duels.losses || 0) + 1;
+        profile.duels.lastLossDate = todayStr();
+        profile.duels.trophyTier = 0;
+      }
+    }
+
+    showDuelResultModal(duelData, winnerId, loserId, challengerScore, defenderScore, apWager, trophyTier, winnerTier);
+    renderCompetitionBoard();
+    renderBoard();
+
+  } catch(e) { console.warn('Duel resolve error:', e); }
+}
+
+// ── Duel result modal ──
+function showDuelResultModal(duelData, winnerId, loserId, cScore, dScore, apWager, trophyTier, winnerTier) {
+  const isWinner = currentUser.uid === winnerId;
+  const opponentName = isWinner
+    ? (winnerId === duelData.challengerId ? duelData.defenderName : duelData.challengerName)
+    : (loserId === duelData.challengerId ? duelData.defenderName : duelData.challengerName);
+
+  const col = isWinner ? 'rgba(255,215,0,1)' : 'var(--excess)';
+  const trophy = trophyTier && isWinner ? `<div style="margin:12px 0;padding:10px;background:rgba(255,215,0,0.06);border:1px solid rgba(255,215,0,0.2);border-radius:8px;">
+    <div style="font-size:11px;color:rgba(255,215,0,0.6);font-family:var(--font-mono);margin-bottom:4px;">TROPHY UNLOCKED</div>
+    <div style="font-size:14px;font-weight:700;color:rgba(255,215,0,0.9);">${trophyTier.name}</div>
+    <div style="font-size:11px;color:var(--text-dim);">${trophyTier.rarity} · ${trophyTier.desc}</div>
+  </div>` : '';
+
+  showSystemModal(`<div class="system-window levelup">
+    <p class="system-eyebrow" style="color:${col};letter-spacing:0.2em;">◈ GATE DUEL — ${isWinner ? 'VICTORY' : 'DEFEAT'} ◈</p>
+    <div class="system-icon" style="font-size:48px;">${isWinner ? '⚔' : '💀'}</div>
+    <h2 class="system-title" style="color:${col};">${isWinner ? 'You Win' : 'You Lose'}</h2>
+    <p class="system-body" style="color:var(--text-dim);">vs ${escapeHtml(opponentName)} · ${duelData.spec?.exercise} · ${DUEL_METRICS[duelData.spec?.metric]?.label}</p>
+    <div style="display:flex;gap:8px;margin:12px 0;text-align:center;">
+      <div style="flex:1;padding:8px;background:rgba(0,0,0,0.3);border-radius:6px;">
+        <div style="font-size:18px;font-weight:800;color:${currentUser.uid===duelData.challengerId?col:'var(--text-dim)'};">${cScore < 0 ? 'FORFEIT' : Math.round(cScore*10)/10}</div>
+        <div style="font-size:10px;color:var(--text-faint);">${duelData.challengerName}</div>
+      </div>
+      <div style="flex:1;padding:8px;background:rgba(0,0,0,0.3);border-radius:6px;">
+        <div style="font-size:18px;font-weight:800;color:${currentUser.uid===duelData.defenderId?col:'var(--text-dim)'};">${dScore < 0 ? 'FORFEIT' : Math.round(dScore*10)/10}</div>
+        <div style="font-size:10px;color:var(--text-faint);">${duelData.defenderName}</div>
+      </div>
+    </div>
+    <p style="color:${isWinner?'var(--growing)':'var(--excess)'};font-size:14px;font-weight:700;">
+      ${isWinner ? `+${apWager} AP · ×${winnerTier.xpMult} XP for 7 days` : `-${apWager} AP · -${Math.round(winnerTier.debuffPct*100)}% XP for ${winnerTier.debuffDays} days`}
+    </p>
+    ${isWinner ? `<p style="font-size:11px;color:var(--text-dim);">Win streak: ${winnerTier.minStreak <= 1 ? '1' : duelData.challengerId === winnerId ? duelData.challengerStreak+1 : duelData.defenderStreak+1} · Title: ${winnerTier.title}</p>` : '<p style="font-size:11px;color:var(--excess);">Your win streak has been reset to 0. You cannot challenge for 7 days.</p>'}
+    ${trophy}
+    <button class="system-btn ${isWinner?'success':''}">Acknowledged</button>
+  </div>`);
+}
+
+// ── Notification system for duels ──
+function addDuelNotification(type, otherName, domain, exercise) {
+  if (!profile) return;
+  const notifs = profile.duelNotifications || [];
+  const msg = {
+    challenged: `⚔ You challenged ${otherName}. They will set the terms.`,
+    incoming:   `⚔ ${otherName} has challenged you. Open Gates tab to set the terms.`,
+    terms_set:  `⚔ Terms set against ${otherName}. ${domain} · ${exercise}. The Gate is open.`,
+    won:        `✓ Gate Duel won against ${otherName}.`,
+    lost:       `✗ Gate Duel lost to ${otherName} on ${domain}.`,
+  }[type] || '';
+  notifs.unshift({ msg, date: todayStr(), type });
+  if (notifs.length > 20) notifs.length = 20;
+  if (!profile.duelNotifications) profile.duelNotifications = [];
+  profile.duelNotifications = notifs;
+}
+
+// ── Check for pending duels on login ──
+async function checkPendingDuels() {
+  if (!currentUser || !profile) return;
+  try {
+    const { collection, query, where, getDocs } = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js');
+    // Check if I have a pending duel as defender
+    const q = query(collection(db, 'duels'),
+      where('defenderId', '==', currentUser.uid),
+      where('status', '==', 'pending'));
+    const snap = await getDocs(q);
+    if (!snap.empty) {
+      const duelDoc = snap.docs[0];
+      const duel = duelDoc.data();
+      setTimeout(() => showIncomingDuelNotice(duelDoc.id, duel), 1200);
+    }
+    // Check if my active duel has ended
+    const activeDuelId = profile.duels?.activeDuelId;
+    if (activeDuelId) {
+      const { doc: getDoc2, getDoc } = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js');
+      const { doc } = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js');
+      const dSnap = await getDoc(doc(db, 'duels', activeDuelId));
+      if (dSnap.exists()) {
+        const d = dSnap.data();
+        if (d.status === 'active' && d.endDate < todayStr()) {
+          await resolveGateDuel(activeDuelId, d);
+        }
+      }
+    }
+  } catch(e) { console.warn('Duel check error:', e); }
+}
+
+// ── Show incoming challenge notice ──
+function showIncomingDuelNotice(duelId, duel) {
+  const modal = document.createElement('div');
+  modal.style.cssText = 'position:fixed;inset:0;z-index:99990;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.88);backdrop-filter:blur(6px);';
+  modal.innerHTML = `
+    <div style="max-width:340px;width:92vw;text-align:center;padding:28px 22px;background:var(--card);border:1px solid rgba(255,61,90,0.4);border-radius:16px;box-shadow:0 0 60px rgba(255,61,90,0.15);">
+      <div style="font-family:var(--font-mono);font-size:9px;color:var(--excess);letter-spacing:0.2em;margin-bottom:8px;">◈ GATE DUEL — INCOMING ◈</div>
+      <div style="font-size:36px;margin-bottom:8px;">⚔</div>
+      <div style="font-size:18px;font-weight:800;color:var(--excess);margin-bottom:6px;">${escapeHtml(duel.challengerName)} has called you out.</div>
+      <p style="font-size:12px;color:var(--text-dim);line-height:1.7;margin-bottom:18px;">
+        You design the fight. Pick the exercise. Pick the metric. Pick the intensity.<br>
+        <strong style="color:var(--excess);">They get no say.</strong>
+      </p>
+      <button class="btn btn-primary" style="width:100%;border-color:rgba(255,61,90,0.4);background:rgba(255,61,90,0.08);color:var(--excess);margin-bottom:8px;" onclick="this.closest('div[style*=fixed]').remove(); openDuelDesigner('${duelId}','${escapeHtml(duel.challengerName)}')">⚔ Design The Fight</button>
+      <button class="btn btn-sm" style="width:100%;color:var(--text-dim);" onclick="this.closest('div[style*=fixed]').remove()">Later</button>
+    </div>`;
+  document.body.appendChild(modal);
+  modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
+  SFX.classAssigned?.();
+}
+
+window.sendGateDuel = sendGateDuel;
+window.openDuelDesigner = openDuelDesigner;
+window.checkPendingDuels = checkPendingDuels;
 
 </script>
 </body>
