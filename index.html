@@ -4537,6 +4537,7 @@ function addExerciseRow(presetName, targetSets, targetReps, prefillSets) {
       SFX.chipSelect();
       setRow.querySelectorAll('.rir-chip').forEach(c => c.classList.remove('selected'));
       chip.classList.add('selected');
+      checkComplete(setRow);
       refreshCompleteButton();
     }));
     setRow.querySelector('.set-remove').addEventListener('click', () => { SFX.pop(); setRow.remove(); [...setsList.children].forEach((r,i) => r.querySelector('.set-idx').textContent = i+1); });
@@ -11974,6 +11975,44 @@ let featsActiveTab = 'achievements'; // 'achievements' | 'chains' | 'goals'
    ========================================================================= */
 
 const ITEM_DEFINITIONS = {
+
+  // ── EXCALIBUR — GATE DUEL TROPHY WEAPON ──
+  // The only weapon that cannot be earned through training.
+  // It is earned through dominance. 100 consecutive Gate Duel victories, undefeated.
+  // One loss and the streak resets. Nobody in the party is close to this.
+  // The System named it after the only sword worthy of someone who stands above all others.
+  duel_trophy_1: {
+    slot:'weapon', stat:'strength', tier:1, rarity:'Common',
+    name:'Challenger\'s Mark',
+    desc:'The System has registered your aggression. Something has begun.',
+    dmgMult:1.15, statBonus:{ strength:3, agility:2 }
+  },
+  duel_trophy_2: {
+    slot:'weapon', stat:'strength', tier:2, rarity:'Uncommon',
+    name:'Victor\'s Seal',
+    desc:'Others have started watching how you fight.',
+    dmgMult:1.28, statBonus:{ strength:6, agility:4, focus:2 }
+  },
+  duel_trophy_3: {
+    slot:'weapon', stat:'strength', tier:3, rarity:'Rare',
+    name:'Conqueror\'s Crest',
+    desc:'Thirty without defeat. You have become a problem for this party.',
+    dmgMult:1.45, statBonus:{ strength:10, agility:6, focus:4, defence:3 }
+  },
+  duel_trophy_4: {
+    slot:'weapon', stat:'strength', tier:4, rarity:'Epic',
+    name:'Sovereign\'s Brand',
+    desc:'Undefeated. The Threat Board changes when your name appears. The System\'s records mention something further. A weapon without a name. The System will not say more.',
+    dmgMult:1.65, statBonus:{ strength:15, agility:10, focus:8, defence:5, endurance:4 }
+  },
+  duel_trophy_5: {
+    slot:'weapon', stat:'strength', tier:5, rarity:'Legendary',
+    name:'???',
+    _hiddenName:'Excalibur',
+    desc:'The System has no name on record for this weapon. Only that it exists. Only that it has never been held.',
+    dmgMult:2.50, statBonus:{ strength:30, agility:20, focus:20, defence:15, endurance:15, flexibility:10 }
+  },
+
   // ── WEAPON — STRENGTH / POWERLIFTER ──
   // Earned by: bench, squat, deadlift, overhead press dominance
   weapon_str_power_1: { slot:'weapon', stat:'strength', tier:1, rarity:'Common',    name:'Bent Barbell',          desc:'The bar remembers every failed rep. The System does too.', dmgMult:1.1, statBonus:{ strength:2 } },
@@ -12179,7 +12218,13 @@ const ITEM_DEFINITIONS = {
 // Shown in the detail modal when a hunter taps an item.
 // Tells them what they did to earn it, where they are in the chain, and what comes next.
 const ITEM_EXPLANATIONS = {
-  // ── WEAPON — POWER STRENGTH ──
+  // ── GATE DUEL TROPHIES ──
+  'Challenger\'s Mark':  'Gate Duel victories without a single loss. You challenged five people. They each chose the terms. You won regardless. The System has started paying attention.',
+  'Victor\'s Seal':      'Gate Duel victories, unbroken. Your win streak has outlasted most people\'s patience for being beaten. Others have learned to think carefully before accepting your challenge.',
+  'Conqueror\'s Crest':  'Consecutive victories. You have fought on someone else\'s terms thirty times and won every single one. This is not luck. This is dominance.',
+  'Sovereign\'s Brand':  'Undefeated across every fight where your opponent chose the ground. The Threat Board has a different energy when your name appears on it. The System logs mention a weapon beyond this one. No name on file. No hunter on record has ever held it.',
+  'Excalibur':           'The System will not say what this is. You already know.',
+
   'Bent Barbell':       'You loaded the bar and proved you can move at least half your bodyweight. The form might not be perfect yet. The weight was real. This is tier 1 of 5 on the Powerlifter chain — next you need to hit 0.75× BW across three compound sessions.',
   'Loaded Longsword':   'Consistent barbell work across multiple weeks. You\'re no longer testing the water — you have a training habit. Next: bench 1.0× BW, squat 1.25× BW, deadlift 1.5× BW across 6+ sessions.',
   'Deadlift Cleaver':   'Intermediate strength. You\'re moving serious weight relative to your bodyweight and showing up consistently. Next gate requires 1.25× BW across 10+ sessions over 3+ weeks.',
@@ -13711,6 +13756,8 @@ function renderInventory() {
     const rColor = item ? (RARITY_GLOW_COLORS[item.rarity] || 'rgba(61,165,255,0.5)') : null;
     const glowColor = rColor ? rColor.replace(/[\d.]+\)$/, m => `${(parseFloat(m)*0.35).toFixed(2)})`) : '';
     const modalId = `inv-modal-${slot}`;
+    // Reveal the true name only when earned (stored in Firestore with earnedAt)
+    const displayName = (item?._hiddenName && item?.earnedAt) ? item._hiddenName : (item?.name || '');
 
     if (!item) return `
       <div style="display:flex;flex-direction:column;align-items:center;gap:5px;">
@@ -13735,7 +13782,7 @@ function renderInventory() {
           <div style="position:absolute;bottom:0;left:0;right:0;height:1px;background:${rColor};opacity:0.3;"></div>
         </div>
         <div style="font-family:var(--font-mono);font-size:7px;color:${rColor};letter-spacing:0.04em;opacity:0.7;">${SLOT_LABELS[slot].toUpperCase()}</div>
-        <div style="font-size:8px;color:${rColor};text-align:center;max-width:62px;line-height:1.3;font-weight:600;">${escapeHtml(item.name)}</div>
+        <div style="font-size:8px;color:${rColor};text-align:center;max-width:62px;line-height:1.3;font-weight:600;">${escapeHtml(displayName)}</div>
       </div>
 
       <div id="${modalId}" style="display:none;position:fixed;inset:0;z-index:9999;align-items:center;justify-content:center;background:rgba(0,0,0,0.75);backdrop-filter:blur(6px);" onclick="if(event.target===this)this.style.display='none'">
@@ -13745,7 +13792,7 @@ function renderInventory() {
             <div style="width:52px;height:52px;border:1px solid ${rColor};border-radius:10px;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.5);box-shadow:0 0 16px ${glowColor};color:${rColor};flex-shrink:0;">${icon}</div>
             <div>
               <div style="font-family:var(--font-mono);font-size:9px;color:${rColor};letter-spacing:0.1em;margin-bottom:4px;">${(item.rarity||'').toUpperCase()} · TIER ${item.tier}</div>
-              <div style="font-size:17px;font-weight:800;color:${rColor};line-height:1.2;">${escapeHtml(item.name)}</div>
+              <div style="font-size:17px;font-weight:800;color:${rColor};line-height:1.2;">${escapeHtml(displayName)}</div>
             </div>
           </div>
           <div style="font-size:12px;color:var(--text-dim);line-height:1.7;margin-bottom:14px;font-style:italic;padding:10px;background:rgba(0,0,0,0.2);border-radius:8px;">"${escapeHtml(item.desc)}"</div>
@@ -13834,6 +13881,7 @@ function renderInventory() {
         </div>
         ${tiersHtml}
         ${storedOverride?`<div style="font-size:10px;color:var(--brass);margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,215,0,0.1);">⭐ Trial item: ${escapeHtml(storedItem.name)}</div>`:''}
+        ${isFullyCleared && chain.slot === 'weapon' ? `<div style="font-family:var(--font-mono);font-size:8px;color:rgba(61,165,255,0.18);letter-spacing:0.06em;margin-top:8px;padding-top:6px;border-top:1px solid rgba(61,165,255,0.06);">The System acknowledges this chain is complete. There is one weapon it will not discuss here.</div>` : ''}
       </div>`;
     }).join('');
 
@@ -14965,7 +15013,7 @@ function showUpdateNotice() {
 
         <div style="background:rgba(255,61,90,0.06);border:1px solid rgba(255,61,90,0.25);border-radius:10px;padding:14px;">
           <div style="font-size:16px;margin-bottom:6px;">⚔ Gate Duel — 1v1 Challenge System</div>
-          <div style="font-size:12px;color:var(--text-dim);line-height:1.6;">Challenge anyone on the Threat Board to a Gate Duel. <strong>You pick the target. They pick the fight.</strong> The challenged hunter designs everything — the exercise, the metric, the intensity, the duration. Win streaks, public records, AP wagered, and exclusive trophy items for consecutive wins. 100 undefeated wins earns the Shadow Monarch's Proof — Legendary.</div>
+          <div style="font-size:12px;color:var(--text-dim);line-height:1.6;">Challenge anyone on the Threat Board to a Gate Duel. <strong>You pick the target. They pick the fight.</strong> The challenged hunter designs everything — the exercise, the metric, the intensity, the duration. Win streaks, public records, AP wagered, and exclusive trophy items for consecutive wins. The System keeps a record of something beyond the last trophy. No hunter has seen it.</div>
         </div>
 
         <div style="background:rgba(139,107,255,0.06);border:1px solid rgba(139,107,255,0.2);border-radius:10px;padding:14px;">
@@ -15266,11 +15314,11 @@ const DUEL_STREAK_REWARDS = [
 ];
 
 const DUEL_TROPHY_TIERS = [
-  { wins:5,   tier:1, name:'Challenger\'s Mark',    rarity:'Common',    desc:'Five consecutive victories. The System has taken note.' },
-  { wins:15,  tier:2, name:'Victor\'s Seal',         rarity:'Uncommon',  desc:'Fifteen straight. Others have learned to be cautious.' },
-  { wins:30,  tier:3, name:'Conqueror\'s Crest',     rarity:'Rare',      desc:'Thirty without defeat. You are a problem for this party.' },
-  { wins:60,  tier:4, name:'Sovereign\'s Brand',     rarity:'Epic',      desc:'Sixty consecutive victories. The Threat Board fears you.' },
-  { wins:100, tier:5, name:'Shadow Monarch\'s Proof',rarity:'Legendary', desc:'One hundred undefeated. The System has run out of adequate description.' },
+  { wins:5,   tier:1, name:'Challenger\'s Mark',    rarity:'Common',    desc:'The System has taken note of what you are becoming.' },
+  { wins:15,  tier:2, name:'Victor\'s Seal',         rarity:'Uncommon',  desc:'Others have started choosing their challenges more carefully.' },
+  { wins:30,  tier:3, name:'Conqueror\'s Crest',     rarity:'Rare',      desc:'You are a problem for this party. The record is growing.' },
+  { wins:60,  tier:4, name:'Sovereign\'s Brand',     rarity:'Epic',      desc:'The Threat Board changes when your name appears. The System\'s records speak of something beyond this. It will not confirm what.' },
+  { wins:100, tier:5, name:'???',                   rarity:'Legendary', desc:'The record exists. The weapon has no name on file.' },
 ];
 
 function getDuelStreakTier(streak) {
@@ -15376,6 +15424,10 @@ async function sendGateDuel(targetUid) {
       <strong style="color:var(--excess);">They will choose the exercise, the metric, the intensity, the duration — everything.</strong><br><br>
       You have no say in the terms. You only decide: is this worth it?
     </p>
+    <div style="font-family:var(--font-mono);font-size:9px;color:rgba(61,165,255,0.2);letter-spacing:0.08em;margin-bottom:12px;border-top:1px solid rgba(61,165,255,0.06);padding-top:10px;">
+      The System keeps a record of every duel ever fought.<br>
+      Somewhere in that record, there is a weapon with no name.
+    </div>
     <div style="display:flex;gap:8px;">
       <button class="btn btn-primary" id="duel-confirm" style="flex:2;border-color:rgba(255,61,90,0.4);background:rgba(255,61,90,0.08);color:var(--excess);">⚔ Issue Challenge</button>
       <button class="btn btn-sm" id="duel-cancel" style="flex:1;">Back Down</button>
@@ -15611,9 +15663,11 @@ async function resolveGateDuel(duelId, duelData) {
       'duels.duelTitle': winnerTier.title,
       'duels.xpBoostMult': winnerTier.xpMult,
       'duels.xpBoostUntil': todayStr(new Date(Date.now() + 7*86400000)),
+      // Grant trophy item if tier reached
+      ...(trophyTier ? { [`inventory.weapon`]: { ...ITEM_DEFINITIONS[`duel_trophy_${trophyTier.tier}`], condition:100, earnedAt:todayStr() } } : {}),
     });
 
-    // Update loser profile
+    // Update loser profile — streak resets, trophy stripped
     await updateDoc(doc(db, 'users', loserId), {
       auraPoints: fsIncrement(-apWager),
       'duels.losses': fsIncrement(1),
@@ -15625,7 +15679,8 @@ async function resolveGateDuel(duelId, duelData) {
       'duels.defeatDomain': spec.domain,
       'duels.defeatUntil': todayStr(new Date(Date.now() + 7*86400000)),
       'duels.debuffPct': winnerTier.debuffPct,
-      'duels.trophyTier': 0, // reset trophy progress on loss
+      'duels.trophyTier': 0,
+      'inventory.weapon': null, // trophy weapon stripped on loss — they must re-earn it
     });
 
     // Update local profile if current user is involved
@@ -15689,6 +15744,7 @@ function showDuelResultModal(duelData, winnerId, loserId, cScore, dScore, apWage
     </p>
     ${isWinner ? `<p style="font-size:11px;color:var(--text-dim);">Win streak: ${winnerTier.minStreak <= 1 ? '1' : duelData.challengerId === winnerId ? duelData.challengerStreak+1 : duelData.defenderStreak+1} · Title: ${winnerTier.title}</p>` : '<p style="font-size:11px;color:var(--excess);">Your win streak has been reset to 0. You cannot challenge for 7 days.</p>'}
     ${trophy}
+    ${trophyTier?.tier === 4 && isWinner ? `<div style="font-family:var(--font-mono);font-size:9px;color:rgba(61,165,255,0.25);letter-spacing:0.08em;margin-top:8px;border-top:1px solid rgba(61,165,255,0.06);padding-top:8px;">The System records show one entry beyond this.<br>No name. No holder. The record simply says: it exists.</div>` : ''}
     <button class="system-btn ${isWinner?'success':''}">Acknowledged</button>
   </div>`);
 }
