@@ -289,6 +289,30 @@
   /* World view stays rendered — iframe must not be destroyed on tab switch */
   section.view#view-world{display:block;visibility:hidden;pointer-events:none;position:absolute;top:0;left:0;width:100%;height:100%;z-index:-1;}
   section.view#view-world.active{visibility:visible;pointer-events:auto;position:relative;z-index:auto;}
+  #world-layout{display:flex;flex-direction:row;width:100%;height:100%;}
+  #world-map-wrap{flex:1;height:100%;position:relative;overflow:hidden;}
+  #world-map-wrap iframe{width:100%;height:100%;border:none;background:#03050a;display:block;}
+  #world-sidebar{width:180px;min-width:180px;height:100%;background:rgba(2,12,24,0.95);border-left:1px solid rgba(61,165,255,0.12);display:flex;flex-direction:column;overflow-y:auto;overflow-x:hidden;flex-shrink:0;}
+  #world-sidebar::-webkit-scrollbar{width:3px;}
+  #world-sidebar::-webkit-scrollbar-thumb{background:rgba(61,165,255,.2);}
+  .ws-head{font-size:8px;letter-spacing:.2em;color:rgba(61,165,255,.35);padding:8px 10px 4px;border-bottom:1px solid rgba(61,165,255,.06);margin-bottom:4px;}
+  .ws-row{padding:7px 10px;cursor:pointer;transition:background .15s;border-bottom:1px solid rgba(61,165,255,.04);touch-action:manipulation;}
+  .ws-row:hover{background:rgba(61,165,255,.05);}
+  .ws-row:active{background:rgba(61,165,255,.1);}
+  .ws-name{font-size:10px;font-weight:700;display:flex;align-items:center;gap:5px;margin-bottom:3px;}
+  .ws-pool{font-size:9px;color:rgba(61,165,255,.4);margin-bottom:3px;}
+  .ws-pool strong{color:#d4a017;}
+  .ws-bar{height:3px;background:rgba(61,165,255,.08);border-radius:2px;overflow:hidden;display:flex;}
+  .ws-seg{height:100%;}
+  .ws-owned{font-size:9px;margin-top:3px;}
+  @media(max-width:640px){
+    #world-layout{flex-direction:column;}
+    #world-sidebar{width:100%;min-width:0;height:80px;border-left:none;border-bottom:1px solid rgba(61,165,255,.1);flex-direction:row;overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;scrollbar-width:none;order:-1;}
+    #world-sidebar::-webkit-scrollbar{display:none;}
+    .ws-head{display:none;}
+    .ws-row{min-width:110px;flex:0 0 110px;border-bottom:none;border-right:1px solid rgba(61,165,255,.04);}
+    #world-map-wrap{flex:1;}
+  }
   section.view.active{
     display:block;
     animation:viewEnter 0.3s cubic-bezier(0.16,1,0.3,1) both;
@@ -3179,7 +3203,7 @@ function switchView(name) {
   if (name === 'exercises') renderExerciseLibrary();
   if (name === 'feats') { renderFeats(); renderTrialCard(); }
   if (name === 'inventory') renderInventory();
-  if (name === 'world') renderShadowWorld();
+  if (name === 'world') { renderShadowWorld(); renderWorldSidebar(); }
   if (name === 'history') renderCalendar();
   if (name === 'quest') {
     if (myProgram && myProgram.days && myProgram.days.length) {
@@ -13834,13 +13858,99 @@ function getEffectiveInventory() {
 function renderShadowWorld() {
   const el = document.getElementById('view-world');
   if (!el) return;
-  if (el.querySelector('iframe')) return; // already loaded
+  if (el.querySelector('iframe')) return;
   el.innerHTML = `
-    <div style="position:relative;width:100%;height:100%;">
-      <iframe src="./shadow-world.html" style="width:100%;height:100%;border:none;background:#03050a;" allowfullscreen></iframe>
-      <div style="position:absolute;top:8px;left:50%;transform:translateX(-50%);font-family:var(--font-mono);font-size:9px;color:rgba(61,165,255,0.3);letter-spacing:0.15em;pointer-events:none;">◈ SHADOW WORLD — ALPHA</div>
+    <div id="world-layout">
+      <div id="world-map-wrap">
+        <iframe src="./shadow-world.html" allowfullscreen></iframe>
+      </div>
+      <div id="world-sidebar">
+        <div class="ws-head">◈ ARMIES</div>
+        <div id="world-sidebar-continents"></div>
+      </div>
     </div>`;
+  renderWorldSidebar();
 }
+
+function renderWorldSidebar() {
+  const el = document.getElementById('world-sidebar-continents');
+  if (!el) return;
+
+  const PLAYER_COLORS = {
+    'eUtGPwQBcCSO0x3xS3ZGYFGXNIT2': { hex:'#d4a017', name:'Lawrence' },
+    'd1W5vTx5aSTIwkR4CIwnO2xW7vf1': { hex:'#7c3aed', name:'LuChing'  },
+    'rzcznIkNRrSKVXl74LsTaRSdHOk2': { hex:'#0ea5e9', name:'Lucas'    },
+    'oFFi2hATYARhqcSZQlHwlsYBOge2': { hex:'#ff6b9d', name:'Mireyah'  },
+  };
+
+  const CONT_META = [
+    { ckey:'northAmerica', armyKey:'iron',   name:'Iron Highlands',  icon:'🏋️', hex:'#e05555', stat:'Strength'   },
+    { ckey:'southAmerica', armyKey:'wild',   name:'Wild Summit',     icon:'🧗',  hex:'#22c55e', stat:'Flexibility'},
+    { ckey:'europe',       armyKey:'court',  name:'Court Arena',     icon:'🥊',  hex:'#f59e0b', stat:'Combat'     },
+    { ckey:'africa',       armyKey:'swift',  name:'Swift Plains',    icon:'🏃',  hex:'#38bdf8', stat:'Agility'    },
+    { ckey:'asia',         armyKey:'shadow', name:'Shadow Reaches',  icon:'🤸',  hex:'#a78bfa', stat:'Focus'      },
+    { ckey:'australia',    armyKey:'tide',   name:'Tide Depths',     icon:'🏊',  hex:'#2dd4bf', stat:'Endurance'  },
+    { ckey:'antarctica',   armyKey:'gate',   name:'The Gate',        icon:'⚔️',  hex:'#94a3b8', stat:'All'        },
+  ];
+
+  const COUNTRY_IDS = {
+    northAmerica:['na_0','na_1','na_2','na_3','na_4','na_5'],
+    southAmerica:['sa_0','sa_1','sa_2','sa_3','sa_4','sa_5'],
+    europe:      ['eu_0','eu_1','eu_2','eu_3','eu_4','eu_5'],
+    africa:      ['af_0','af_1','af_2','af_3','af_4','af_5'],
+    asia:        ['as_0','as_1','as_2','as_3','as_4','as_5'],
+    australia:   ['au_0','au_1','au_2','au_3','au_4','au_5'],
+    antarctica:  ['an_0','an_1','an_2','an_3','an_4','an_5'],
+  };
+
+  // Build country ownership from all users
+  const countryOwners = {}; // gcId -> ownerUid
+  (allUsers || []).forEach(u => {
+    Object.entries(u.shadowArmy?.countries || {}).forEach(([gcId, data]) => {
+      if (data.ownerUid) countryOwners[gcId] = data.ownerUid;
+    });
+  });
+
+  const myPool = profile?.shadowArmy?.pool || {};
+
+  el.innerHTML = CONT_META.map(m => {
+    const ids = COUNTRY_IDS[m.ckey] || [];
+    const pool = myPool[m.armyKey] || 0;
+
+    // Count holdings
+    const holdMap = {};
+    ids.forEach(id => {
+      const uid = countryOwners[id];
+      if (uid) holdMap[uid] = (holdMap[uid]||0)+1;
+    });
+    const myHeld = holdMap[currentUser?.uid] || 0;
+    const dominated = Object.entries(holdMap).find(([,n]) => n === 6);
+    const leaders = Object.entries(holdMap).sort((a,b)=>b[1]-a[1]);
+
+    const segments = leaders.map(([uid, n]) => {
+      const p = PLAYER_COLORS[uid];
+      return `<div class="ws-seg" style="width:${Math.round(n/6*100)}%;background:${p?.hex||'#fff'};"></div>`;
+    }).join('');
+
+    const holderText = dominated
+      ? `<span style="color:${PLAYER_COLORS[dominated[0]]?.hex}">★ ${PLAYER_COLORS[dominated[0]]?.name}</span>`
+      : leaders.map(([uid,n]) => `<span style="color:${PLAYER_COLORS[uid]?.hex||'#fff'}">${PLAYER_COLORS[uid]?.name||'?'}×${n}</span>`).join(' ');
+
+    return `<div class="ws-row" onclick="focusWorldContinent('${m.ckey}')">
+      <div class="ws-name" style="color:${m.hex}">${m.icon} ${m.name}</div>
+      <div class="ws-pool">Pool: <strong>${pool||'—'}</strong>${pool?` <span style="color:rgba(61,165,255,.3)">${m.armyKey}</span>`:`<span style="color:rgba(61,165,255,.2)"> train ${m.stat}</span>`}</div>
+      <div class="ws-bar">${segments||''}</div>
+      <div class="ws-owned" style="color:rgba(61,165,255,.35)">${holderText||'unclaimed'}${myHeld?` · <span style="color:#d4a017">you: ${myHeld}/6</span>`:''}</div>
+    </div>`;
+  }).join('');
+}
+
+window.focusWorldContinent = (ckey) => {
+  const iframe = document.querySelector('#world-map-wrap iframe');
+  if (iframe?.contentWindow) {
+    iframe.contentWindow.postMessage({ type:'focusContinent', ckey }, '*');
+  }
+};
 
 // ── Handle Shadow World iframe requests ──
 window.addEventListener('message', async (e) => {
