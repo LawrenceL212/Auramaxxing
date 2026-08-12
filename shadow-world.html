@@ -70,13 +70,26 @@ canvas { display:block; }
 .lb { width:200px; height:2px; background:rgba(61,165,255,.1); border-radius:1px; }
 .lf { height:100%; background:#61a5ff; border-radius:1px; transition:width .2s; }
 
-/* Mobile: sidebar becomes bottom strip */
+/* Mobile: sidebar becomes compact horizontal strip at top */
 @media (max-width:600px) {
-  #army-sidebar { width:100%; height:auto; max-height:38vh; top:auto; bottom:0; right:0; left:0; border-left:none; border-top:1px solid rgba(61,165,255,.1); padding:8px 0 60px; flex-direction:row; flex-wrap:wrap; overflow-x:auto; overflow-y:hidden; }
-  .cont-row { min-width:140px; flex:0 0 140px; border-bottom:none; border-right:1px solid rgba(61,165,255,.04); }
-  .asi-head { width:100%; flex:0 0 100%; }
-  #zb { right:8px; bottom:200px; }
-  #panel { right:0; max-height:45vh; }
+  #army-sidebar {
+    width:100%; height:auto; max-height:none;
+    top:36px; bottom:auto; right:0; left:0;
+    border-left:none; border-top:none; border-bottom:1px solid rgba(61,165,255,.08);
+    padding:0; flex-direction:row; flex-wrap:nowrap;
+    overflow-x:auto; overflow-y:hidden;
+    -webkit-overflow-scrolling:touch;
+    scrollbar-width:none;
+  }
+  #army-sidebar::-webkit-scrollbar { display:none; }
+  .asi-head { display:none; }
+  .cont-row {
+    min-width:130px; flex:0 0 130px;
+    border-bottom:none; border-right:1px solid rgba(61,165,255,.04);
+    padding:6px 10px;
+  }
+  #zb { right:8px; bottom:12px; }
+  #panel { right:0; max-height:60vh; }
 }
 </style>
 </head>
@@ -416,7 +429,16 @@ function renderSidebar() {
 // ── PAN + ZOOM ──
 let tx=0,ty=0,sc=1;
 function applyT(){canvas.style.transformOrigin='0 0';canvas.style.transform=`translate(${tx}px,${ty}px) scale(${sc})`;}
-function resetView(){sc=Math.min(innerWidth/W,innerHeight/H);tx=(innerWidth-W*sc)/2;ty=(innerHeight-H*sc)/2;applyT();}
+function resetView(){
+  const sidebarW = window.innerWidth > 600 ? 200 : 0;
+  const topH     = window.innerWidth <= 600 ? 80 : 0; // strip height on mobile
+  const availW   = innerWidth - sidebarW;
+  const availH   = innerHeight - topH;
+  sc = Math.min(availW/W, availH/H);
+  tx = (availW - W*sc)/2;
+  ty = topH + (availH - H*sc)/2;
+  applyT();
+}
 resetView(); window.resetView=resetView;
 window.doZoom=d=>{const ns=Math.max(0.4,Math.min(6,sc+d));tx=innerWidth/2-(innerWidth/2-tx)*(ns/sc);ty=innerHeight/2-(innerHeight/2-ty)*(ns/sc);sc=ns;applyT();};
 
@@ -594,8 +616,10 @@ const CONT_CENTERS = {
 window.focusContinent = (ckey) => {
   const [lat,lon] = CONT_CENTERS[ckey] || [0,0];
   const [cx,cy] = ll2px(lon,lat);
+  const sidebarW = window.innerWidth > 600 ? 200 : 0;
+  const availW = innerWidth - sidebarW;
   sc = 1.8;
-  tx = innerWidth/2 - cx*sc;
+  tx = availW/2 - cx*sc;
   ty = innerHeight/2 - cy*sc;
   applyT();
 };
