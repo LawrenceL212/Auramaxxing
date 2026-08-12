@@ -68,13 +68,19 @@ import { COUNTRIES_GEO } from './countries_embedded.js';
 
 const setP = p => document.getElementById('lf').style.width = p + '%';
 
-// ── PLAYERS ──
-const PLAYERS = {
-  Lawrence: { hex:'#d4a017', r:212, g:160, b:23  },
-  LuChing:  { hex:'#7c3aed', r:124, g:58,  b:237 },
-  Lucas:    { hex:'#0ea5e9', r:14,  g:165, b:233 },
-  Mireyah:  { hex:'#ff6b9d', r:255, g:107, b:157 },
+// ── PLAYERS — colours by uid, populated from Firestore ──
+const PLAYER_COLOR_MAP = {
+  'Lawrence': { hex:'#d4a017', r:212, g:160, b:23  },
+  'LuChing':  { hex:'#7c3aed', r:124, g:58,  b:237 },
+  'Lucas':    { hex:'#0ea5e9', r:14,  g:165, b:233 },
+  'Mireyah':  { hex:'#ff6b9d', r:255, g:107, b:157 },
 };
+// Will be populated from Firestore: uid -> { hex, r, g, b, name }
+let PLAYERS = { ...PLAYER_COLOR_MAP };
+
+// Ownership loaded from Firestore shadowArmy data
+// Format: gameCountryId -> { owner: displayName, soldiers: N }
+let LIVE_OWNERSHIP = {};
 
 // ── CONTINENT METADATA ──
 const CONT = {
@@ -205,17 +211,17 @@ const GAME_COUNTRIES = [
     realCountries:['Philippines'] },
   { id:'as_5', name:'Shadowmere',    ckey:'asia', isCapital:false, owner:'LuChing',  soldiers:190,
     lat:4,  lon:108,
-    realCountries:['China'] },
+    realCountries:[] },
 
   // AUSTRALIA — Tide Depths
   { id:'au_0', name:'Deepholm',      ckey:'australia', isCapital:true,  owner:null, soldiers:0,
     lat:-25,lon:130, realCountries:['Australia'] },
   { id:'au_1', name:'Abyssal',       ckey:'australia', isCapital:false, owner:null, soldiers:0,
-    lat:-40,lon:148, realCountries:['Australia','New Zealand'] },
+    lat:-40,lon:148, realCountries:[] },
   { id:'au_2', name:'Coralspire',    ckey:'australia', isCapital:false, owner:null, soldiers:0,
     lat:-6, lon:147, realCountries:['Papua New Guinea','Solomon Is.','Vanuatu'] },
   { id:'au_3', name:'Drifthaven',    ckey:'australia', isCapital:false, owner:null, soldiers:0,
-    lat:-14,lon:167, realCountries:['Fiji','Samoa','Tonga','Vanuatu','New Caledonia'] },
+    lat:-14,lon:167, realCountries:['Fiji','Samoa','Tonga','New Caledonia'] },
   { id:'au_4', name:'Tidemark',      ckey:'australia', isCapital:false, owner:null, soldiers:0,
     lat:-10,lon:160, realCountries:['Micronesia','Palau','Marshall Is.','Kiribati','Nauru','Tuvalu'] },
   { id:'au_5', name:'Undertow',      ckey:'australia', isCapital:false, owner:null, soldiers:0,
@@ -225,26 +231,137 @@ const GAME_COUNTRIES = [
   { id:'an_0', name:'Gate Prime',    ckey:'antarctica', isCapital:true,  owner:null, soldiers:0,
     lat:-80,lon:0,   realCountries:['Antarctica'] },
   { id:'an_1', name:'The Threshold', ckey:'antarctica', isCapital:false, owner:null, soldiers:0,
-    lat:-80,lon:60,  realCountries:['Antarctica'] },
+    lat:-80,lon:60,  realCountries:[] },
   { id:'an_2', name:'Nexus',         ckey:'antarctica', isCapital:false, owner:null, soldiers:0,
-    lat:-80,lon:120, realCountries:['Antarctica'] },
+    lat:-80,lon:120, realCountries:[] },
   { id:'an_3', name:'The Crossing',  ckey:'antarctica', isCapital:false, owner:null, soldiers:0,
-    lat:-80,lon:175, realCountries:['Antarctica'] },
+    lat:-80,lon:175, realCountries:[] },
   { id:'an_4', name:'Voidgate',      ckey:'antarctica', isCapital:false, owner:null, soldiers:0,
-    lat:-80,lon:-120,realCountries:['Antarctica'] },
+    lat:-80,lon:-120,realCountries:[] },
   { id:'an_5', name:'The Rift',      ckey:'antarctica', isCapital:false, owner:null, soldiers:0,
-    lat:-80,lon:-60, realCountries:['Antarctica'] },
+    lat:-80,lon:-60, realCountries:[] },
 ];
 
 // ── BUILD LOOKUP: real country name → game country ──
 const nameToGame = {};
 GAME_COUNTRIES.forEach(gc => {
   (gc.realCountries || []).forEach(name => {
-    // Some real countries map to multiple game countries — first match wins
-    // (e.g. Canada appears in na_0, na_4, na_5 — we split by other means for now)
     if (!nameToGame[name]) nameToGame[name] = gc;
   });
 });
+
+// ── LOAD OWNERSHIP FROM FIRESTORE ──
+async function loadOwnershipFromFirestore() {
+  try {
+    const { getFirestore, collection, getDocs } = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js');
+    const { getAuth } = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js');
+    const db2 = getFirestore();
+    const auth = getAuth();
+
+    // Load all user profiles to get names, colours, and shadow army data
+    const usersSnap = await getDocs(collection(db2, 'users'));
+    const userMap = {}; // uid -> { name, shadowArmy }
+    usersSnap.docs.forEach(doc => {
+      const d = doc.data();
+      userMap[doc.id] = { name: d.displayName || 'Unknown', shadowArmy: d.shadowArmy || {} };
+    });
+
+    // Build PLAYERS map: displayName -> colour
+    // (already set from PLAYER_COLOR_MAP, just ensure it's populated)
+
+    // Build LIVE_OWNERSHIP from shadowArmy.continents[ckey].countries
+    // For now, distribute game countries based on who has the most soldiers in each continent
+    // Each continent: the player with most soldiers gets the capital, others get remaining slots
+    const CKEY_MAP = {
+      northAmerica: 'iron', southAmerica: 'wild', europe: 'court',
+      africa: 'swift', asia: 'shadow', australia: 'tide', antarctica: 'gate'
+    };
+
+    // Assign game countries to players based on their shadow army continent soldiers
+    const continentSoldiers = {}; // ckey -> [{name, soldiers}] sorted desc
+    Object.entries(userMap).forEach(([uid, user]) => {
+      const armies = user.shadowArmy?.continents || {};
+      Object.entries(CKEY_MAP).forEach(([ckey, armyKey]) => {
+        if (!continentSoldiers[ckey]) continentSoldiers[ckey] = [];
+        const soldiers = armies[armyKey]?.soldiers || 0;
+        if (soldiers > 0) {
+          continentSoldiers[ckey].push({ name: user.name, soldiers, uid });
+        }
+      });
+    });
+
+    // Sort each continent by soldier count
+    Object.keys(continentSoldiers).forEach(ckey => {
+      continentSoldiers[ckey].sort((a,b) => b.soldiers - a.soldiers);
+    });
+
+    // Assign game countries within each continent proportionally
+    GAME_COUNTRIES.forEach(gc => {
+      const players = continentSoldiers[gc.ckey] || [];
+      if (!players.length) return;
+
+      // Get all game countries in this continent sorted by isCapital first
+      const allInCont = GAME_COUNTRIES.filter(g => g.ckey === gc.ckey);
+      const idx = allInCont.indexOf(gc);
+
+      // Distribute: player with most soldiers gets capital + proportional share
+      const totalSoldiers = players.reduce((s,p) => s+p.soldiers, 0);
+      let assigned = null;
+      let cumulative = 0;
+      const fraction = (idx + 0.5) / allInCont.length;
+      for (const player of players) {
+        cumulative += player.soldiers / totalSoldiers;
+        if (fraction <= cumulative) { assigned = player; break; }
+      }
+      if (!assigned && players.length) assigned = players[players.length-1];
+
+      if (assigned) {
+        LIVE_OWNERSHIP[gc.id] = {
+          owner: assigned.name,
+          soldiers: Math.floor(assigned.soldiers / allInCont.length),
+        };
+      }
+    });
+
+    // If no Firestore data exists yet, fall back to demo data
+    const hasAnyOwnership = Object.keys(LIVE_OWNERSHIP).length > 0;
+    if (!hasAnyOwnership) {
+      // Demo: spread across players so map looks populated
+      LIVE_OWNERSHIP = {
+        'na_0': { owner:'Lawrence', soldiers:340 },
+        'na_1': { owner:'Lawrence', soldiers:280 },
+        'na_2': { owner:'Lawrence', soldiers:180 },
+        'na_3': { owner:'Lucas',    soldiers:35  },
+        'na_4': { owner:'Lawrence', soldiers:200 },
+        'as_0': { owner:'LuChing',  soldiers:890 },
+        'as_1': { owner:'LuChing',  soldiers:650 },
+        'as_2': { owner:'LuChing',  soldiers:410 },
+        'as_3': { owner:'LuChing',  soldiers:320 },
+        'as_4': { owner:'LuChing',  soldiers:280 },
+        'eu_0': { owner:'Lucas',    soldiers:60  },
+        'eu_1': { owner:'Lucas',    soldiers:45  },
+        'eu_2': { owner:'Lucas',    soldiers:30  },
+        'eu_4': { owner:'Lucas',    soldiers:25  },
+        'af_0': { owner:'Mireyah',  soldiers:45  },
+        'af_5': { owner:'Mireyah',  soldiers:20  },
+        'sa_0': { owner:'LuChing',  soldiers:80  },
+        'sa_1': { owner:'LuChing',  soldiers:45  },
+      };
+    }
+
+    console.log('Shadow World: loaded ownership for', Object.keys(LIVE_OWNERSHIP).length, 'territories');
+  } catch(e) {
+    console.warn('Shadow World: Firestore load failed, using demo data', e);
+    // Demo fallback
+    LIVE_OWNERSHIP = {
+      'na_0': { owner:'Lawrence', soldiers:340 },
+      'na_1': { owner:'Lawrence', soldiers:280 },
+      'as_0': { owner:'LuChing',  soldiers:890 },
+      'eu_0': { owner:'Lucas',    soldiers:60  },
+      'af_0': { owner:'Mireyah',  soldiers:45  },
+    };
+  }
+}
 
 // ── CANVAS ──
 const canvas = document.getElementById('c');
@@ -294,7 +411,8 @@ function draw(t = 0) {
   // ── Draw every country from GeoJSON ──
   COUNTRIES_GEO.forEach(country => {
     const gc = nameToGame[country.n];
-    const p  = gc?.owner ? PLAYERS[gc.owner] : null;
+    const ownerData = LIVE_OWNERSHIP[gc.id];
+    const p  = ownerData ? (PLAYERS[ownerData.owner] || PLAYER_COLOR_MAP[ownerData.owner] || null) : null;
     const pulse = p ? 0.78 + Math.sin(t * 0.003 + (ll2px(gc.lon,gc.lat)[0]) * 0.001) * 0.1 : 1;
     const fillCol = p
       ? `rgba(${p.r},${p.g},${p.b},${pulse})`
@@ -329,7 +447,8 @@ function draw(t = 0) {
   // ── Country markers ──
   GAME_COUNTRIES.forEach(c => {
     const [x,y] = ll2px(c.lon, c.lat);
-    const p = c.owner ? PLAYERS[c.owner] : null;
+    const ownerData = LIVE_OWNERSHIP[c.id];
+    const p = ownerData?.owner ? (PLAYERS[ownerData.owner] || PLAYER_COLOR_MAP[ownerData.owner] || null) : null;
     const dpulse = p ? 0.85 + Math.sin(t*0.004 + x*0.002)*0.15 : 1;
 
     // Glow
@@ -355,8 +474,9 @@ function draw(t = 0) {
     }
 
     // Soldier bar
-    if (c.soldiers > 0 && p) {
-      const h = Math.min(Math.log10(c.soldiers+1)*9,34);
+    const soldiers = ownerData?.soldiers || 0;
+    if (soldiers > 0 && p) {
+      const h = Math.min(Math.log10(soldiers+1)*9,34);
       ctx.fillStyle = `rgb(${p.r},${p.g},${p.b})`;
       ctx.fillRect(x-2,y-h-10,4,h);
       ctx.strokeStyle='rgba(255,255,255,0.35)';ctx.lineWidth=0.5;
@@ -364,7 +484,7 @@ function draw(t = 0) {
     }
 
     // Label
-    if (p) {
+    if (p && ownerData) {
       ctx.font=`${c.isCapital?'bold 10px':'9px'} Courier New`;
       ctx.textAlign='left';
       ctx.strokeStyle='rgba(0,0,0,0.95)';ctx.lineWidth=3;
@@ -383,7 +503,7 @@ function animate(t) {
   lastT = t;
   draw(t);
 }
-requestAnimationFrame(animate);
+loadOwnershipFromFirestore().then(() => requestAnimationFrame(_animLoop));
 setP(90);
 
 // ── PAN + ZOOM ──
@@ -413,27 +533,31 @@ function onClick(sx,sy){const c=nearest(sx,sy);if(c)openPanel(c);}
 function updateTT(sx,sy){
   const c=nearest(sx,sy);const tt=document.getElementById('tt');
   if(c){tt.style.display='block';tt.style.left=(sx+12)+'px';tt.style.top=(sy-28)+'px';
-    tt.textContent=c.name+(c.owner?' · '+c.owner+' · '+c.soldiers.toLocaleString()+' soldiers':' · Unclaimed');}
+    const _ow2=LIVE_OWNERSHIP[c?.id]; tt.textContent=c.name+(_ow2?' · '+_ow2.owner+' · '+_ow2.soldiers.toLocaleString()+' soldiers':' · Unclaimed');}
   else tt.style.display='none';
 }
 
 function openPanel(c){
-  const m=CONT[c.ckey];const p=c.owner?PLAYERS[c.owner]:null;
-  const owned=GAME_COUNTRIES.filter(x=>x.ckey===c.ckey&&x.owner===c.owner).length;
+  const m=CONT[c.ckey];
+  const ownerData=LIVE_OWNERSHIP[c.id];
+  const p=ownerData?(PLAYERS[ownerData.owner]||PLAYER_COLOR_MAP[ownerData.owner]||null):null;
+  const owned=GAME_COUNTRIES.filter(x=>x.ckey===c.ckey&&LIVE_OWNERSHIP[x.id]?.owner===ownerData?.owner).length;
   document.getElementById('pc').textContent=`◈ ${m.name.toUpperCase()} · ${m.stat.toUpperCase()}`;
   document.getElementById('pc').style.color=m.hex;
   document.getElementById('pn').textContent=(c.isCapital?'★ ':'')+c.name;
   document.getElementById('pn').style.color=p?.hex||'#61a5ff';
-  document.getElementById('po').innerHTML=c.owner
-    ?`<span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${p.hex};box-shadow:0 0 6px ${p.hex};margin-right:6px;vertical-align:middle;"></span><strong style="color:${p.hex};">${c.owner}</strong> — ${owned}/6 in ${m.name}`
+  document.getElementById('po').innerHTML=ownerData
+    ?`<span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${p?.hex||'#61a5ff'};box-shadow:0 0 6px ${p?.hex||'#61a5ff'};margin-right:6px;vertical-align:middle;"></span><strong style="color:${p?.hex||'#61a5ff'};">${ownerData.owner}</strong> — ${owned}/6 in ${m.name}`
     :`Unclaimed — Train ${m.stat} to build your shadow army here`;
   document.getElementById('ps').innerHTML=`
-    <div class="sc"><div class="sn" style="color:${p?.hex||'#61a5ff'};">${c.soldiers>0?c.soldiers.toLocaleString():'-'}</div><div class="sl">SOLDIERS</div></div>
+    <div class="sc"><div class="sn" style="color:${p?.hex||'#61a5ff'};">${ownerData?.soldiers>0?ownerData.soldiers.toLocaleString():'-'}</div><div class="sl">SOLDIERS</div></div>
     <div class="sc"><div class="sn" style="color:${m.hex};">${c.isCapital?'×2':'×1'} AP</div><div class="sl">${c.isCapital?'CAPITAL':'INCOME'}</div></div>
     <div class="sc"><div class="sn" style="color:${m.hex};">${owned}/6</div><div class="sl">CONTINENT</div></div>`;
-  document.getElementById('pa').innerHTML=!c.owner
+  const {getAuth:_ga2}=await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js').catch(()=>({getAuth:()=>({currentUser:null})}));
+  const _myName=_ga2().currentUser?._displayName||'';
+  document.getElementById('pa').innerHTML=!ownerData
     ?`<button class="pb bc" onclick="closePanel()">⚑ Train to Claim</button>`
-    :c.owner==='Lawrence'
+    :ownerData.owner===_myName
     ?`<button class="pb br" onclick="closePanel()">⬆ Reinforce</button>`
     :`<button class="pb ba" onclick="closePanel()">⚔ Declare War</button>`;
   document.getElementById('panel').classList.add('open');
