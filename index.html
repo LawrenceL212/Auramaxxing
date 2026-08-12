@@ -3247,6 +3247,7 @@ async function loadAllData() {
   setTimeout(() => { try { maybeShowStreakFreezeNotice(); } catch(e) {} }, 600);
   setTimeout(() => { try { maybeShowUpdateNotice(); } catch(e) {} }, 800);
   setTimeout(() => { try { checkPendingDuels(); } catch(e) {} }, 1000);
+  setTimeout(() => { try { backfillShadowArmySoldiers(); } catch(e) { console.warn('Backfill failed:', e); } }, 1500);
 }
 function rebuildExercisesAll() {
   EXERCISES_ALL = structuredCloneLite(BASE_EXERCISES);
@@ -15558,6 +15559,76 @@ const CONTINENTS_STAT = {
   iron: 'strength', shadow: 'focus', swift: 'agility',
   tide: 'endurance', court: 'agility', wild: 'flexibility', gate: 'all',
 };
+
+// ── Retroactively generate soldiers from all historical workouts ──
+// Runs once per session — skips if already done (checks a flag in profile)
+async function backfillShadowArmySoldiers() {
+  if (!currentUser || !profile) return;
+  const myWOs = allWorkouts.filter(w => w.uid === currentUser.uid);
+  if (!myWOs.length) return;
+
+  // Check if already backfilled — use workout count as the marker
+  const lastBackfill = profile.shadowArmy?._backfilledCount || 0;
+  if (lastBackfill >= myWOs.length) return; // already up to date
+
+  console.log(`Shadow army: backfilling ${myWOs.length - lastBackfill} unprocessed workouts...`);
+
+  const EXERCISE_CONTINENT = {
+    compound:'iron', isolation:'iron',
+    skill:'shadow', calisthenics:'shadow',
+    cardio:'swift', explosive:'swift',
+    swim:'tide', cycling:'tide', endurance:'tide',
+    boxing:'court', sport:'court', combat:'court',
+    flexibility:'wild', climbing:'wild', mobility:'wild',
+  };
+  const TIER_BASE = { 1:10, 2:25, 3:60, 4:150, 5:400 };
+  const RANK_MULT = { E:1.0, D:1.2, C:1.5, B:2.0, A:3.0, S:5.0 };
+  const RIR_MULT  = r => r === 0 ? 1.3 : r <= 2 ? 1.0 : r <= 4 ? 0.7 : 0.5;
+
+  const totalByContinent = {};
+
+  // Only process workouts not yet counted
+  const toProcess = myWOs.slice(lastBackfill);
+  toProcess.forEach(w => {
+    (w.exercises || []).forEach(ex => {
+      const exDef = EXERCISES_ALL[ex.name] || {};
+      const cat   = exDef.stat || exDef.category || 'compound';
+      const ckey  = EXERCISE_CONTINENT[cat] || 'iron';
+      const statRank = (profile.stats || {})[CONTINENTS_STAT[ckey]] || 'E';
+      const rankMult = RANK_MULT[statRank] || 1.0;
+
+      (ex.sets || []).filter(s => s.reps > 0 && s.rir != null).forEach(s => {
+        const soldiers = Math.floor(10 * rankMult * RIR_MULT(s.rir));
+        totalByContinent[ckey] = (totalByContinent[ckey] || 0) + soldiers;
+      });
+    });
+
+    // Run sessions
+    if (w.runSummary?.distKm > 0) {
+      const rankMult = RANK_MULT[(profile.stats || {}).agility || 'E'] || 1.0;
+      totalByContinent.swift = (totalByContinent.swift || 0) + Math.floor(w.runSummary.distKm * 20 * rankMult);
+    }
+  });
+
+  if (!Object.keys(totalByContinent).length && myWOs.length === lastBackfill) return;
+
+  const { doc, updateDoc, increment: fsInc } = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js');
+  const updates = { 'shadowArmy._backfilledCount': myWOs.length };
+  Object.entries(totalByContinent).forEach(([ckey, count]) => {
+    updates[`shadowArmy.continents.${ckey}.soldiers`] = fsInc(count);
+  });
+  await updateDoc(doc(db, 'users', currentUser.uid), updates);
+
+  // Update local profile
+  if (!profile.shadowArmy) profile.shadowArmy = { continents: {} };
+  profile.shadowArmy._backfilledCount = myWOs.length;
+  Object.entries(totalByContinent).forEach(([ckey, count]) => {
+    if (!profile.shadowArmy.continents[ckey]) profile.shadowArmy.continents[ckey] = { soldiers: 0 };
+    profile.shadowArmy.continents[ckey].soldiers = (profile.shadowArmy.continents[ckey].soldiers || 0) + count;
+  });
+
+  console.log('Shadow army backfill complete:', totalByContinent);
+}
 
 
 // ══════════════════════════════════════════════════════════════════
