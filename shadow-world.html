@@ -34,9 +34,14 @@
   #tooltip { position:fixed; pointer-events:none; background:rgba(5,7,13,0.92); border:1px solid rgba(61,165,255,0.2); border-radius:6px; padding:5px 10px; font-size:11px; color:#61a5ff; z-index:30; display:none; }
   #hint { position:fixed; bottom:16px; left:50%; transform:translateX(-50%); font-size:9px; color:rgba(61,165,255,0.18); letter-spacing:0.1em; pointer-events:none; white-space:nowrap; }
   #loading { position:fixed; inset:0; display:flex; align-items:center; justify-content:center; background:#03050a; z-index:50; flex-direction:column; gap:12px; }
-  #loading-text { font-family:'Courier New',monospace; font-size:12px; color:rgba(61,165,255,0.5); letter-spacing:0.2em; }
+  #loading-text { font-size:12px; color:rgba(61,165,255,0.5); letter-spacing:0.2em; }
   .loading-bar { width:200px; height:2px; background:rgba(61,165,255,0.1); border-radius:1px; }
   .loading-fill { height:100%; background:#61a5ff; border-radius:1px; transition:width 0.3s; }
+
+  /* Legend */
+  #legend { position:fixed; left:12px; bottom:40px; display:flex; flex-direction:column; gap:4px; pointer-events:none; }
+  .legend-row { display:flex; align-items:center; gap:6px; font-size:9px; color:rgba(61,165,255,0.35); }
+  .legend-dot { width:8px; height:8px; border-radius:50%; }
 </style>
 </head>
 <body>
@@ -44,20 +49,19 @@
   <div id="loading-text">◈ INITIALISING SHADOW WORLD</div>
   <div class="loading-bar"><div class="loading-fill" id="load-fill" style="width:0%"></div></div>
 </div>
-
 <canvas id="c"></canvas>
-
 <div id="hud-top">
-  <div>
-    <div id="world-title">◈ SHADOW WORLD</div>
-    <div id="world-sub">TERRITORIAL COMMAND</div>
-  </div>
+  <div><div id="world-title">◈ SHADOW WORLD</div><div id="world-sub">TERRITORIAL COMMAND</div></div>
   <div id="army-hud"></div>
 </div>
-
+<div id="legend">
+  <div class="legend-row"><div class="legend-dot" style="background:#d4a017;"></div>Lawrence</div>
+  <div class="legend-row"><div class="legend-dot" style="background:#7c3aed;"></div>LuChing</div>
+  <div class="legend-row"><div class="legend-dot" style="background:#0ea5e9;"></div>Lucas</div>
+  <div class="legend-row"><div class="legend-dot" style="background:#ff6b9d;"></div>Mireyah</div>
+</div>
 <div id="tooltip"></div>
 <div id="hint">DRAG TO ROTATE · TAP TERRITORY TO COMMAND</div>
-
 <div id="country-panel">
   <div id="panel-handle"></div>
   <button id="panel-close" onclick="closePanel()">✕</button>
@@ -71,22 +75,29 @@
 <script type="module">
 import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.module.min.js';
 
-// ── Progress ──
 const fill = document.getElementById('load-fill');
-const setProgress = p => { fill.style.width = p + '%'; };
+const setP = p => fill.style.width = p + '%';
 
-// ── CONTINENT DEFINITIONS ──
+// ── CONTINENT METADATA ──
 const CONTINENT_META = {
-  northAmerica: { name:'Iron Highlands',  stat:'strength',    hex:'#e05555', threeColor:0xe05555, emissive:0x661515 },
-  southAmerica: { name:'Wild Summit',     stat:'flexibility', hex:'#22c55e', threeColor:0x22c55e, emissive:0x0a3d1a },
-  europe:       { name:'Court Arena',     stat:'combat',      hex:'#f59e0b', threeColor:0xf59e0b, emissive:0x4a2e00 },
-  africa:       { name:'Swift Plains',    stat:'agility',     hex:'#38bdf8', threeColor:0x38bdf8, emissive:0x0c3a50 },
-  asia:         { name:'Shadow Reaches',  stat:'focus',       hex:'#a78bfa', threeColor:0xa78bfa, emissive:0x2d1a60 },
-  australia:    { name:'Tide Depths',     stat:'endurance',   hex:'#2dd4bf', threeColor:0x2dd4bf, emissive:0x0a3530 },
-  antarctica:   { name:'The Gate',        stat:'all',         hex:'#cbd5e1', threeColor:0xcbd5e1, emissive:0x1e2a3a },
+  northAmerica: { name:'Iron Highlands',  stat:'strength',    hex:'#cc4444' },
+  southAmerica: { name:'Wild Summit',     stat:'flexibility', hex:'#16a34a' },
+  europe:       { name:'Court Arena',     stat:'combat',      hex:'#d97706' },
+  africa:       { name:'Swift Plains',    stat:'agility',     hex:'#0ea5e9' },
+  asia:         { name:'Shadow Reaches',  stat:'focus',       hex:'#7c3aed' },
+  australia:    { name:'Tide Depths',     stat:'endurance',   hex:'#0d9488' },
+  antarctica:   { name:'The Gate',        stat:'all',         hex:'#94a3b8' },
 };
 
-// Countries per continent with approximate positions
+// ── PLAYER COLOURS ──
+const PLAYER_COLORS = {
+  Lawrence: { hex:'#d4a017', r:212, g:160, b:23  },
+  LuChing:  { hex:'#7c3aed', r:124, g:58,  b:237 },
+  Lucas:    { hex:'#0ea5e9', r:14,  g:165, b:233 },
+  Mireyah:  { hex:'#ff6b9d', r:255, g:107, b:157 },
+};
+
+// ── COUNTRY DATA ──
 const CONTINENT_COUNTRIES = {
   northAmerica: [
     { name:'Ironforge',    lat:60,  lon:-120, isCapital:true  },
@@ -146,30 +157,30 @@ const CONTINENT_COUNTRIES = {
   ],
 };
 
-// Mock ownership
+// ── OWNERSHIP — owner name maps to player colour ──
 const OWNERSHIP = {
-  northAmerica_0: { owner:'Lawrence', ownerColor:0xd4a017, soldiers:340 },
-  northAmerica_1: { owner:'Lawrence', ownerColor:0xd4a017, soldiers:280 },
-  northAmerica_2: { owner:'Lucas',    ownerColor:0x38bdf8, soldiers:35  },
-  asia_0:         { owner:'LuChing',  ownerColor:0xa78bfa, soldiers:890 },
-  asia_1:         { owner:'LuChing',  ownerColor:0xa78bfa, soldiers:650 },
-  asia_2:         { owner:'Lucas',    ownerColor:0x38bdf8, soldiers:280 },
-  africa_0:       { owner:'Mireyah',  ownerColor:0xff6b9d, soldiers:45  },
+  northAmerica_0: { owner:'Lawrence', soldiers:340 },
+  northAmerica_1: { owner:'Lawrence', soldiers:280 },
+  northAmerica_2: { owner:'Lucas',    soldiers:35  },
+  northAmerica_4: { owner:'Lawrence', soldiers:120 },
+  asia_0:         { owner:'LuChing',  soldiers:890 },
+  asia_1:         { owner:'LuChing',  soldiers:650 },
+  asia_2:         { owner:'Lucas',    soldiers:280 },
+  asia_3:         { owner:'LuChing',  soldiers:410 },
+  africa_0:       { owner:'Mireyah',  soldiers:45  },
+  europe_0:       { owner:'Lucas',    soldiers:60  },
+  southAmerica_0: { owner:'LuChing',  soldiers:80  },
 };
 
-const PLAYER_ARMIES = {
-  Lawrence: { color:'#d4a017', armies:{ northAmerica:1847, southAmerica:48, africa:340, europe:0, asia:12, australia:0, antarctica:0 }},
-};
-
-// ── Continent classifier ──
-function classifyLonLat(lon, lat) {
+// ── CONTINENT CLASSIFIER ──
+function classifyLL(lon, lat) {
   if (lat < -60) return 'antarctica';
   if (lon >= 112 && lat < -10) return 'australia';
-  if (lon >= 60 && lat >= -10) return 'asia';
-  if (lon >= 25 && lon < 60 && lat >= 35) return 'europe';
+  if (lon >= 60  && lat >= -10) return 'asia';
+  if (lon >= 25  && lon < 60 && lat >= 35) return 'europe';
   if (lon >= -20 && lon < 55 && lat < 35) return 'africa';
-  if (lon < -30 && lat >= 8) return 'northAmerica';
-  if (lon < -30 && lat < 8) return 'southAmerica';
+  if (lon < -30  && lat >= 8) return 'northAmerica';
+  if (lon < -30  && lat <  8) return 'southAmerica';
   if (lon >= -20 && lon < 25 && lat >= 35) return 'europe';
   return 'asia';
 }
@@ -181,252 +192,292 @@ renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(42, innerWidth/innerHeight, 0.1, 100);
 camera.position.z = 3.2;
+function resize(){ renderer.setSize(innerWidth,innerHeight); camera.aspect=innerWidth/innerHeight; camera.updateProjectionMatrix(); }
+resize(); window.addEventListener('resize', resize);
 
-function resize() {
-  renderer.setSize(innerWidth, innerHeight);
-  camera.aspect = innerWidth/innerHeight;
-  camera.updateProjectionMatrix();
-}
-resize();
-window.addEventListener('resize', resize);
-
-// Lighting
-scene.add(new THREE.AmbientLight(0x112244, 1.1));
-const sun = new THREE.DirectionalLight(0x6699ff, 1.5);
-sun.position.set(5, 3, 5);
-scene.add(sun);
-const rim = new THREE.DirectionalLight(0x0a1533, 0.8);
-rim.position.set(-4, -2, -4);
-scene.add(rim);
+scene.add(new THREE.AmbientLight(0x112244, 1.2));
+const sun = new THREE.DirectionalLight(0x6699ff, 1.6);
+sun.position.set(5,3,5); scene.add(sun);
+scene.add(Object.assign(new THREE.DirectionalLight(0x0a1533,0.7),{position:{x:-4,y:-2,z:-4}}));
 
 // Stars
-const sp = new Float32Array(3000*3);
-for (let i=0;i<sp.length;i++) sp[i]=(Math.random()-.5)*90;
-const sg = new THREE.BufferGeometry();
-sg.setAttribute('position', new THREE.BufferAttribute(sp,3));
-scene.add(new THREE.Points(sg, new THREE.PointsMaterial({color:0x7788bb, size:0.03, transparent:true, opacity:0.55})));
+const sp=new Float32Array(3000*3);
+for(let i=0;i<sp.length;i++) sp[i]=(Math.random()-.5)*90;
+const sg=new THREE.BufferGeometry();
+sg.setAttribute('position',new THREE.BufferAttribute(sp,3));
+scene.add(new THREE.Points(sg,new THREE.PointsMaterial({color:0x7788bb,size:0.028,transparent:true,opacity:0.5})));
 
 const globeGroup = new THREE.Group();
 scene.add(globeGroup);
 
 // Ocean
 globeGroup.add(new THREE.Mesh(
-  new THREE.SphereGeometry(1, 64, 64),
-  new THREE.MeshStandardMaterial({ color:0x020a18, roughness:0.9, metalness:0.1, emissive:0x040d22, emissiveIntensity:0.6 })
+  new THREE.SphereGeometry(1,64,64),
+  new THREE.MeshStandardMaterial({color:0x020a18,roughness:0.9,metalness:0.1,emissive:0x030c20,emissiveIntensity:0.7})
 ));
 
 // Atmosphere
 scene.add(new THREE.Mesh(
-  new THREE.SphereGeometry(1.07, 32, 32),
-  new THREE.MeshStandardMaterial({ color:0x1144cc, transparent:true, opacity:0.06, side:THREE.FrontSide, depthWrite:false })
+  new THREE.SphereGeometry(1.07,32,32),
+  new THREE.MeshStandardMaterial({color:0x1144cc,transparent:true,opacity:0.055,side:THREE.FrontSide,depthWrite:false})
 ));
 
-// Grid lines
-const gm = new THREE.LineBasicMaterial({ color:0x0d1e36, transparent:true, opacity:0.4 });
-function ll2v(lat, lon, r=1) {
-  const phi = (90-lat)*Math.PI/180, theta=(lon+180)*Math.PI/180;
-  return new THREE.Vector3(-r*Math.sin(phi)*Math.cos(theta), r*Math.cos(phi), r*Math.sin(phi)*Math.sin(theta));
+// Grid
+const gm=new THREE.LineBasicMaterial({color:0x0a1a30,transparent:true,opacity:0.35});
+function ll2v(lat,lon,r=1){
+  const phi=(90-lat)*Math.PI/180,theta=(lon+180)*Math.PI/180;
+  return new THREE.Vector3(-r*Math.sin(phi)*Math.cos(theta),r*Math.cos(phi),r*Math.sin(phi)*Math.sin(theta));
 }
-for (let lat=-75;lat<=75;lat+=15) {
-  const pts=[]; for(let lon=0;lon<=360;lon+=3) pts.push(ll2v(lat,lon,1.001));
-  globeGroup.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),gm));
+for(let lat=-75;lat<=75;lat+=15){const pts=[];for(let lon=0;lon<=360;lon+=3)pts.push(ll2v(lat,lon,1.001));globeGroup.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),gm));}
+for(let lon=0;lon<360;lon+=30){const pts=[];for(let lat=-90;lat<=90;lat+=3)pts.push(ll2v(lat,lon,1.001));globeGroup.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),gm));}
+
+setP(15);
+
+// ── Load GeoJSON ──
+const geoData = await fetch('./ne_110m_land.geojson').then(r=>r.json());
+setP(40);
+
+// ── Build owned country lookup: continent → list of {lat,lon,owner} ──
+const ownedCountries = [];
+Object.entries(CONTINENT_COUNTRIES).forEach(([ckey, countries]) => {
+  countries.forEach((c, i) => {
+    const key = `${ckey}_${i}`;
+    const own = OWNERSHIP[key];
+    if (own) {
+      const pc = PLAYER_COLORS[own.owner];
+      ownedCountries.push({
+        lat: c.lat, lon: c.lon,
+        r: pc?.r || 100, g: pc?.g || 100, b: pc?.b || 100,
+        owner: own.owner,
+        // Influence radius in degrees — capital gets bigger radius
+        radius: c.isCapital ? 28 : 22,
+      });
+    }
+  });
+});
+
+// ── Build land meshes with VERTEX COLOURS ──
+// Each triangle's vertices get coloured based on nearest owned country
+function hexToRgb(hex) {
+  const r=parseInt(hex.slice(1,3),16), g=parseInt(hex.slice(3,5),16), b=parseInt(hex.slice(5,7),16);
+  return [r/255, g/255, b/255];
 }
-for (let lon=0;lon<360;lon+=30) {
-  const pts=[]; for(let lat=-90;lat<=90;lat+=3) pts.push(ll2v(lat,lon,1.001));
-  globeGroup.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),gm));
+
+// Angular distance between two lat/lon points (degrees)
+function angDist(lat1,lon1,lat2,lon2) {
+  const dLat=(lat2-lat1)*Math.PI/180, dLon=(lon2-lon1)*Math.PI/180;
+  const a=Math.sin(dLat/2)**2+Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLon/2)**2;
+  return 2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a))*180/Math.PI;
 }
 
-setProgress(20);
-
-// ── Load GeoJSON and build land meshes ──
-const geoRes = await fetch('./ne_110m_land.geojson');
-const geoData = await geoRes.json();
-setProgress(50);
-
-const countryDots = [];
-
-// Build land meshes from real polygons
-geoData.features.forEach(feature => {
-  const coords = feature.geometry.coordinates[0]; // outer ring
-  if (!coords || coords.length < 3) return;
-
-  // Classify this polygon
-  const lons = coords.map(c=>c[0]);
-  const lats = coords.map(c=>c[1]);
-  const cLon = lons.reduce((a,b)=>a+b,0)/lons.length;
-  const cLat = lats.reduce((a,b)=>a+b,0)/lats.length;
-  const ckey = classifyLonLat(cLon, cLat);
+// Determine vertex colour: nearest owned country within radius colours it, else dark neutral
+function getVertexColor(lat, lon, ckey) {
   const meta = CONTINENT_META[ckey];
-  if (!meta) return;
+  const [br,bg,bb] = hexToRgb(meta.hex); // continent base colour (dim)
 
-  // Build triangle fan from centroid
+  let bestDist = Infinity;
+  let bestOwner = null;
+  let bestR = br*0.25, bestG = bg*0.25, bestB = bb*0.25; // dark base
+
+  for (const oc of ownedCountries) {
+    const d = angDist(lat, lon, oc.lat, oc.lon);
+    if (d < oc.radius && d < bestDist) {
+      bestDist = d;
+      bestOwner = oc;
+    }
+  }
+
+  if (bestOwner) {
+    // Blend: full owner colour near the dot, fading to base at edge
+    const t = 1 - (bestDist / bestOwner.radius);
+    const strength = Math.pow(t, 0.6); // ease in — stays strong near centre
+    bestR = (bestOwner.r/255) * strength + br*0.3 * (1-strength);
+    bestG = (bestOwner.g/255) * strength + bg*0.3 * (1-strength);
+    bestB = (bestOwner.b/255) * strength + bb*0.3 * (1-strength);
+  }
+
+  return [bestR, bestG, bestB];
+}
+
+// Build each land polygon with vertex colours
+const landMeshes = [];
+geoData.features.forEach(feature => {
+  const ring = feature.geometry.coordinates[0];
+  if (!ring || ring.length < 3) return;
+
+  const lons = ring.map(c=>c[0]);
+  const lats  = ring.map(c=>c[1]);
+  const cLon  = lons.reduce((a,b)=>a+b,0)/lons.length;
+  const cLat  = lats.reduce((a,b)=>a+b,0)/lats.length;
+  const ckey  = classifyLL(cLon, cLat);
+
   const R = 1.003;
   const positions = [];
-  const center = ll2v(cLat, cLon, R);
+  const colors    = [];
 
-  for (let i=0; i<coords.length-1; i++) {
-    const a = ll2v(coords[i][1],   coords[i][0],   R);
-    const b = ll2v(coords[i+1][1], coords[i+1][0], R);
-    positions.push(center.x, center.y, center.z);
-    positions.push(a.x, a.y, a.z);
-    positions.push(b.x, b.y, b.z);
+  const center    = ll2v(cLat, cLon, R);
+  const [cr,cg,cb] = getVertexColor(cLat, cLon, ckey);
+
+  for (let i=0; i<ring.length-1; i++) {
+    const aLat=ring[i][1],   aLon=ring[i][0];
+    const bLat=ring[i+1][1], bLon=ring[i+1][0];
+    const a = ll2v(aLat, aLon, R);
+    const b = ll2v(bLat, bLon, R);
+    const [ar,ag,ab] = getVertexColor(aLat, aLon, ckey);
+    const [br2,bg2,bb2] = getVertexColor(bLat, bLon, ckey);
+
+    positions.push(center.x,center.y,center.z, a.x,a.y,a.z, b.x,b.y,b.z);
+    colors.push(cr,cg,cb, ar,ag,ab, br2,bg2,bb2);
   }
 
   const geo = new THREE.BufferGeometry();
-  geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(positions,3));
+  geo.setAttribute('color',    new THREE.Float32BufferAttribute(colors,3));
   geo.computeVertexNormals();
 
-  const mesh = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({
-    color: meta.threeColor,
-    emissive: meta.emissive,
-    emissiveIntensity: 0.45,
+  const mat = new THREE.MeshStandardMaterial({
+    vertexColors: true,
     roughness: 0.65,
     metalness: 0.08,
     side: THREE.DoubleSide,
-  }));
+  });
+
+  const mesh = new THREE.Mesh(geo, mat);
   mesh.userData = { type:'land', ckey };
   globeGroup.add(mesh);
+  landMeshes.push(mesh);
 });
 
-setProgress(75);
+setP(75);
 
-// ── Country dots & capitals ──
+// ── Country dots, capitals, pillars ──
+const countryDots = [];
 Object.entries(CONTINENT_COUNTRIES).forEach(([ckey, countries]) => {
   const meta = CONTINENT_META[ckey];
   countries.forEach((country, i) => {
-    const ownerKey = `${ckey}_${i}`;
-    const ownership = OWNERSHIP[ownerKey];
-    const isOwned = !!ownership;
-    const dotColor = isOwned ? ownership.ownerColor : 0x1a2a44;
-    const size = country.isCapital ? 0.048 : 0.032;
+    const key = `${ckey}_${i}`;
+    const own = OWNERSHIP[key];
+    const pc  = own ? PLAYER_COLORS[own.owner] : null;
+    const dotHex = pc?.hex || '#1a2a44';
+    const dotThree = pc ? parseInt(pc.hex.slice(1),16) : 0x1a2a44;
 
+    const size = country.isCapital ? 0.046 : 0.030;
     const dot = new THREE.Mesh(
-      new THREE.SphereGeometry(size, 10, 10),
+      new THREE.SphereGeometry(size,10,10),
       new THREE.MeshStandardMaterial({
-        color: dotColor,
-        emissive: isOwned ? dotColor : 0x08111e,
-        emissiveIntensity: isOwned ? 1.0 : 0.12,
+        color: dotThree,
+        emissive: dotThree,
+        emissiveIntensity: own ? 1.0 : 0.1,
         roughness: 0.2, metalness: 0.7,
       })
     );
-    dot.position.copy(ll2v(country.lat, country.lon, 1.024));
-    dot.userData = { type:'country', ckey, index:i, ...country, owner:ownership?.owner||null, ownerColor:ownership?.ownerColor||null, soldiers:ownership?.soldiers||0 };
+    dot.position.copy(ll2v(country.lat, country.lon, 1.026));
+    dot.userData = {
+      type:'country', ckey, index:i, ...country,
+      owner: own?.owner || null,
+      ownerHex: pc?.hex || null,
+      soldiers: own?.soldiers || 0,
+    };
     globeGroup.add(dot);
     countryDots.push(dot);
 
     // Capital ring
     if (country.isCapital) {
+      const ringColor = parseInt(meta.hex.slice(1),16);
       const ring = new THREE.Mesh(
-        new THREE.TorusGeometry(0.062, 0.006, 8, 20),
-        new THREE.MeshStandardMaterial({ color:meta.threeColor, emissive:meta.threeColor, emissiveIntensity:1.5 })
+        new THREE.TorusGeometry(0.058,0.006,8,20),
+        new THREE.MeshStandardMaterial({color:ringColor,emissive:ringColor,emissiveIntensity:1.5})
       );
-      ring.position.copy(ll2v(country.lat, country.lon, 1.024));
+      ring.position.copy(ll2v(country.lat,country.lon,1.026));
       ring.lookAt(0,0,0);
       globeGroup.add(ring);
     }
 
     // Soldier pillar
-    if (ownership?.soldiers > 0) {
-      const h = Math.min(Math.log10(ownership.soldiers+1)*0.052, 0.2);
-      const pos = ll2v(country.lat, country.lon, 1.024);
+    if (own?.soldiers > 0) {
+      const h = Math.min(Math.log10(own.soldiers+1)*0.05,0.2);
+      const pos = ll2v(country.lat,country.lon,1.026);
       const norm = pos.clone().normalize();
       const pillar = new THREE.Mesh(
         new THREE.CylinderGeometry(0.009,0.013,h,6),
-        new THREE.MeshStandardMaterial({ color:dotColor, emissive:dotColor, emissiveIntensity:0.8 })
+        new THREE.MeshStandardMaterial({color:dotThree,emissive:dotThree,emissiveIntensity:0.9})
       );
       pillar.position.copy(pos.clone().add(norm.clone().multiplyScalar(h/2)));
-      pillar.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0), norm);
+      pillar.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),norm);
       globeGroup.add(pillar);
     }
   });
 });
 
-setProgress(90);
+setP(90);
 
-// Continent label sprites
+// Continent labels
 function makeLabel(text, hex) {
-  const c2 = document.createElement('canvas');
-  c2.width=256; c2.height=56;
+  const c2=document.createElement('canvas'); c2.width=256; c2.height=56;
   const ctx=c2.getContext('2d');
-  ctx.font='bold 14px Courier New';
-  ctx.fillStyle=hex;
-  ctx.textAlign='center';
-  ctx.shadowColor=hex;
-  ctx.shadowBlur=10;
-  ctx.fillText(text,128,34);
+  ctx.font='bold 13px Courier New'; ctx.fillStyle=hex; ctx.textAlign='center';
+  ctx.shadowColor=hex; ctx.shadowBlur=12; ctx.fillText(text,128,34);
   const sprite=new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(c2),transparent:true,depthWrite:false}));
-  sprite.scale.set(0.55,0.12,1);
-  return sprite;
+  sprite.scale.set(0.52,0.11,1); return sprite;
 }
-
-const CENTERS = { northAmerica:[47,-100], southAmerica:[-15,-58], europe:[50,14], africa:[2,22], asia:[38,82], australia:[-26,134], antarctica:[-78,0] };
-Object.entries(CONTINENT_META).forEach(([ckey, meta]) => {
-  const [lat,lon] = CENTERS[ckey];
-  const label = makeLabel(meta.name, meta.hex);
-  label.position.copy(ll2v(lat, lon, 1.13));
+const CENTERS={northAmerica:[47,-100],southAmerica:[-15,-58],europe:[50,14],africa:[2,22],asia:[38,82],australia:[-26,134],antarctica:[-78,0]};
+Object.entries(CONTINENT_META).forEach(([ckey,meta])=>{
+  const [lat,lon]=CENTERS[ckey];
+  const label=makeLabel(meta.name,meta.hex);
+  label.position.copy(ll2v(lat,lon,1.14));
   globeGroup.add(label);
 });
 
-setProgress(100);
-setTimeout(() => { document.getElementById('loading').style.display='none'; }, 300);
+setP(100);
+setTimeout(()=>document.getElementById('loading').style.display='none',300);
 
 // ── RAYCASTER ──
-const raycaster = new THREE.Raycaster();
-const mouse2 = new THREE.Vector2();
-function getHits(cx, cy) {
-  mouse2.x=(cx/innerWidth)*2-1; mouse2.y=-(cy/innerHeight)*2+1;
-  raycaster.setFromCamera(mouse2, camera);
-  return raycaster.intersectObjects(countryDots);
-}
+const raycaster=new THREE.Raycaster();
+const m2=new THREE.Vector2();
+function getHits(cx,cy){m2.x=(cx/innerWidth)*2-1;m2.y=-(cy/innerHeight)*2+1;raycaster.setFromCamera(m2,camera);return raycaster.intersectObjects(countryDots);}
 
-// ── DRAG / ROTATE ──
-let drag=false, px=0, py=0, vx=0, vy=0, ts=null;
-canvas.addEventListener('mousedown', e=>{drag=true;px=e.clientX;py=e.clientY;vx=vy=0;});
-canvas.addEventListener('mousemove', e=>{
-  if(drag){const dx=e.clientX-px,dy=e.clientY-py; globeGroup.rotation.y+=dx*.005; globeGroup.rotation.x=Math.max(-1.2,Math.min(1.2,globeGroup.rotation.x+dy*.005)); vx=dy*.005;vy=dx*.005;px=e.clientX;py=e.clientY;}
-  // tooltip
+// ── DRAG ──
+let drag=false,px=0,py=0,vx=0,vy=0,ts=null;
+canvas.addEventListener('mousedown',e=>{drag=true;px=e.clientX;py=e.clientY;vx=vy=0;});
+canvas.addEventListener('mousemove',e=>{
+  if(drag){const dx=e.clientX-px,dy=e.clientY-py;globeGroup.rotation.y+=dx*.005;globeGroup.rotation.x=Math.max(-1.2,Math.min(1.2,globeGroup.rotation.x+dy*.005));vx=dy*.005;vy=dx*.005;px=e.clientX;py=e.clientY;}
   const hits=getHits(e.clientX,e.clientY);
   const tt=document.getElementById('tooltip');
-  if(hits.length&&hits[0].object.userData.type==='country'){
-    const d=hits[0].object.userData;
-    tt.style.display='block'; tt.style.left=(e.clientX+12)+'px'; tt.style.top=(e.clientY-28)+'px';
-    tt.textContent=d.name+(d.owner?' · '+d.owner:' · Unclaimed');
-  } else tt.style.display='none';
+  if(hits.length&&hits[0].object.userData.type==='country'){const d=hits[0].object.userData;tt.style.display='block';tt.style.left=(e.clientX+12)+'px';tt.style.top=(e.clientY-28)+'px';tt.textContent=d.name+(d.owner?' · '+d.owner:' · Unclaimed');}
+  else tt.style.display='none';
 });
-canvas.addEventListener('mouseup', e=>{if(!drag)return;drag=false;const hits=getHits(e.clientX,e.clientY);if(hits.length&&hits[0].object.userData.type==='country')openPanel(hits[0].object.userData);});
-
+canvas.addEventListener('mouseup',e=>{if(!drag)return;drag=false;const hits=getHits(e.clientX,e.clientY);if(hits.length&&hits[0].object.userData.type==='country')openPanel(hits[0].object.userData);});
 canvas.addEventListener('touchstart',e=>{e.preventDefault();const t=e.touches[0];drag=true;ts={x:t.clientX,y:t.clientY};px=t.clientX;py=t.clientY;vx=vy=0;},{passive:false});
 canvas.addEventListener('touchmove',e=>{e.preventDefault();if(!drag)return;const t=e.touches[0],dx=t.clientX-px,dy=t.clientY-py;globeGroup.rotation.y+=dx*.005;globeGroup.rotation.x=Math.max(-1.2,Math.min(1.2,globeGroup.rotation.x+dy*.005));vx=dy*.005;vy=dx*.005;px=t.clientX;py=t.clientY;},{passive:false});
 canvas.addEventListener('touchend',e=>{if(!drag)return;drag=false;const t=e.changedTouches[0];if(Math.abs(t.clientX-(ts?.x||0))<8&&Math.abs(t.clientY-(ts?.y||0))<8){const hits=getHits(t.clientX,t.clientY);if(hits.length&&hits[0].object.userData.type==='country')openPanel(hits[0].object.userData);}});
 
 // ── PANEL ──
-function openPanel(d) {
+function openPanel(d){
   const meta=CONTINENT_META[d.ckey];
-  const el=document.getElementById('country-panel');
-  const pc=document.getElementById('panel-continent');
-  pc.textContent=`◈ ${meta.name.toUpperCase()} · ${meta.stat.toUpperCase()}`;
-  pc.style.color=meta.hex;
-  const pco=document.getElementById('panel-country');
-  pco.textContent=(d.isCapital?'★ ':'')+d.name;
-  pco.style.color=d.owner?'#'+((d.ownerColor||0x61a5ff).toString(16).padStart(6,'0')):'#61a5ff';
-  document.getElementById('panel-owner').textContent=d.owner?`Controlled by ${d.owner} · ${d.soldiers.toLocaleString()} soldiers`:`Unclaimed — Train ${meta.stat} to build your army here`;
-  const se=document.getElementById('panel-soldiers');
-  se.innerHTML=d.soldiers>0?`<div class="soldier-card"><div class="soldier-num" style="color:#61a5ff;">${d.soldiers.toLocaleString()}</div><div class="soldier-label">STATIONED</div></div><div class="soldier-card"><div class="soldier-num" style="color:${meta.hex};">${d.isCapital?'×2':'×1'} AP</div><div class="soldier-label">${d.isCapital?'CAPITAL':'INCOME'}</div></div>`:`<div style="font-size:12px;color:rgba(61,165,255,0.4);">No army. Train ${meta.stat} to generate soldiers.</div>`;
-  const ae=document.getElementById('panel-actions');
-  if(!d.owner) ae.innerHTML=`<button class="panel-btn btn-claim" onclick="closePanel()">⚑ Train to Claim</button>`;
-  else if(d.owner==='Lawrence') ae.innerHTML=`<button class="panel-btn btn-reinforce" onclick="closePanel()">⬆ Reinforce</button>`;
-  else ae.innerHTML=`<button class="panel-btn btn-attack" onclick="closePanel()">⚔ Declare War</button>`;
-  el.classList.add('open');
+  document.getElementById('panel-continent').textContent=`◈ ${meta.name.toUpperCase()} · ${meta.stat.toUpperCase()}`;
+  document.getElementById('panel-continent').style.color=meta.hex;
+  document.getElementById('panel-country').textContent=(d.isCapital?'★ ':'')+d.name;
+  document.getElementById('panel-country').style.color=d.ownerHex||'#61a5ff';
+  document.getElementById('panel-owner').textContent=d.owner?`Controlled by ${d.owner} · ${d.soldiers.toLocaleString()} soldiers`:`Unclaimed — Train ${meta.stat} to build your army`;
+  document.getElementById('panel-soldiers').innerHTML=d.soldiers>0
+    ?`<div class="soldier-card"><div class="soldier-num" style="color:${d.ownerHex||'#61a5ff'};">${d.soldiers.toLocaleString()}</div><div class="soldier-label">STATIONED</div></div><div class="soldier-card"><div class="soldier-num" style="color:${meta.hex};">${d.isCapital?'×2':'×1'} AP</div><div class="soldier-label">${d.isCapital?'CAPITAL':'INCOME'}</div></div>`
+    :`<div style="font-size:12px;color:rgba(61,165,255,0.4);">No army. Train ${meta.stat} to generate soldiers.</div>`;
+  document.getElementById('panel-actions').innerHTML=!d.owner
+    ?`<button class="panel-btn btn-claim" onclick="closePanel()">⚑ Train to Claim</button>`
+    :d.owner==='Lawrence'
+    ?`<button class="panel-btn btn-reinforce" onclick="closePanel()">⬆ Reinforce</button>`
+    :`<button class="panel-btn btn-attack" onclick="closePanel()">⚔ Declare War</button>`;
+  document.getElementById('country-panel').classList.add('open');
 }
 window.closePanel=()=>document.getElementById('country-panel').classList.remove('open');
 
 // Army HUD
+const PLAYER_ARMIES={Lawrence:{armies:{northAmerica:1847,southAmerica:0,africa:340,europe:0,asia:12,australia:0,antarctica:0}}};
 const armyHud=document.getElementById('army-hud');
 Object.entries(PLAYER_ARMIES.Lawrence.armies).forEach(([ckey,count])=>{
   if(!count)return;
   const meta=CONTINENT_META[ckey];
-  const pill=document.createElement('div');
-  pill.className='army-pill';
+  const pill=document.createElement('div'); pill.className='army-pill';
   pill.innerHTML=`<div class="army-dot" style="background:${meta.hex};"></div><span style="color:rgba(61,165,255,0.4);font-size:9px;">${meta.name.split(' ')[0]}</span><span class="army-count">${count.toLocaleString()}</span>`;
   armyHud.appendChild(pill);
 });
@@ -436,7 +487,7 @@ let t=0;
 (function animate(){
   requestAnimationFrame(animate); t+=0.012;
   if(!drag){globeGroup.rotation.y+=vy;globeGroup.rotation.x+=vx;vx*=0.94;vy*=0.94;if(Math.abs(vy)<0.0004)globeGroup.rotation.y+=0.0007;}
-  countryDots.forEach((m,i)=>{if(m.userData.owner)m.material.emissiveIntensity=0.7+Math.sin(t*2+i)*0.28;});
+  countryDots.forEach((m,i)=>{if(m.userData.owner)m.material.emissiveIntensity=0.75+Math.sin(t*2+i)*0.25;});
   renderer.render(scene,camera);
 })();
 </script>
