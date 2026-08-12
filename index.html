@@ -4735,8 +4735,9 @@ document.getElementById('save-workout-btn')?.addEventListener('click', async () 
     } catch(e) { console.warn('Dungeon check failed:', e); }
 
     // Generate shadow army soldiers from this workout
+    let soldiersEarned = {};
     try {
-      await generateShadowArmySoldiers(exercises, runSummaryFromLogger);
+      soldiersEarned = await generateShadowArmySoldiers(exercises, runSummaryFromLogger) || {};
     } catch(e) { console.warn('Shadow army generation failed:', e); }
 
     startDailyTimer();
@@ -4749,7 +4750,7 @@ document.getElementById('save-workout-btn')?.addEventListener('click', async () 
           queueNotif(done => showLevelUpModal(lu.level, lu.ap, done));
         }
       }
-      queueNotif(done => showDebriefModal(exercises, xpResult?.apEarned || 0, prs, done));
+      queueNotif(done => showDebriefModal(exercises, xpResult?.apEarned || 0, prs, done, soldiersEarned));
       // Dungeon clear notification
       if (dungeonResult?.cleared && dungeonResult?.item) {
         queueNotif(done => showDungeonClearModal(dungeonResult.item, done));
@@ -9498,7 +9499,7 @@ function checkPersistentQuestBanner() {
   }
 }
 
-function showDebriefModal(exercises, apEarned, prs, done) {
+function showDebriefModal(exercises, apEarned, prs, done, soldiersEarned = {}) {
   const totalSets = exercises.reduce((n, ex) => n + (ex.sets||[]).filter(s=>s.reps>0).length, 0);
   const totalVol = exercises.reduce((n, ex) =>
     n + (ex.sets||[]).filter(s=>s.reps>0 && s.weight>0).reduce((v,s) => v + s.reps * s.weight, 0), 0);
@@ -9595,6 +9596,44 @@ function showDebriefModal(exercises, apEarned, prs, done) {
         <p style="font-size:10px;font-family:var(--font-mono);color:var(--text-faint);letter-spacing:0.08em;margin-bottom:8px;">TRAINING CAPS RAISED</p>
         ${statRows}
       </div>` : ''}
+
+      ${Object.keys(soldiersEarned).length ? (() => {
+        const ARMY_META = {
+          iron:   { name:'Iron Highlands',  icon:'🏋️', hex:'#e05555', stat:'North America' },
+          wild:   { name:'Wild Summit',     icon:'🧗',  hex:'#22c55e', stat:'South America' },
+          court:  { name:'Court Arena',     icon:'🥊',  hex:'#f59e0b', stat:'Europe'        },
+          swift:  { name:'Swift Plains',    icon:'🏃',  hex:'#38bdf8', stat:'Africa'        },
+          shadow: { name:'Shadow Reaches',  icon:'🤸',  hex:'#a78bfa', stat:'Asia'          },
+          tide:   { name:'Tide Depths',     icon:'🏊',  hex:'#2dd4bf', stat:'Australia'     },
+          gate:   { name:'The Gate',        icon:'⚔️',  hex:'#94a3b8', stat:'Antarctica'    },
+        };
+        const total = Object.values(soldiersEarned).reduce((a,b)=>a+b,0);
+        const rows = Object.entries(soldiersEarned)
+          .filter(([,n]) => n > 0)
+          .sort(([,a],[,b]) => b-a)
+          .map(([key, n]) => {
+            const m = ARMY_META[key] || { name:key, icon:'⚔', hex:'#61a5ff', stat:'' };
+            return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+              <span style="font-size:16px;">${m.icon}</span>
+              <div style="flex:1;">
+                <div style="font-size:11px;color:${m.hex};font-weight:700;">${m.name}</div>
+                <div style="font-size:9px;color:rgba(61,165,255,.4);">${m.stat}</div>
+              </div>
+              <div style="text-align:right;">
+                <div style="font-family:var(--font-mono);font-size:14px;color:${m.hex};font-weight:800;">+${n}</div>
+                <div style="font-size:8px;color:rgba(61,165,255,.3);">soldiers</div>
+              </div>
+            </div>`;
+          }).join('');
+        return `<div style="background:rgba(61,165,255,0.04);border:1px solid rgba(61,165,255,0.12);border-radius:10px;padding:12px;margin-bottom:14px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+            <p style="font-size:10px;font-family:var(--font-mono);color:rgba(61,165,255,.5);letter-spacing:0.08em;margin:0;">⚔ SHADOW ARMY</p>
+            <span style="font-family:var(--font-mono);font-size:11px;color:#d4a017;font-weight:700;">+${total} soldiers earned</span>
+          </div>
+          ${rows}
+          <div style="font-size:10px;color:rgba(61,165,255,.3);margin-top:6px;">Deploy in Shadow World → claim territory</div>
+        </div>`;
+      })() : ''}
 
       ${prs.length ? `
         <p style="font-size:11px;color:var(--text-faint);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;">🏆 Personal Records</p>
@@ -15591,6 +15630,7 @@ async function generateShadowArmySoldiers(exercises, runSummary) {
   });
 
   console.log('Shadow army pool updated:', soldiersByContinent);
+  return soldiersByContinent;
 }
 
 // Continent → stat map for soldier generation
