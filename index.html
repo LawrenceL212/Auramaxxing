@@ -504,7 +504,7 @@
   .stepper{display:flex;align-items:center;background:var(--card-2);border:1px solid var(--border);border-radius:8px;overflow:hidden;}
   .stepper button{background:none;border:none;color:var(--brass);font-size:20px;min-width:42px;height:44px;cursor:pointer;flex-shrink:0;touch-action:manipulation;}
   .stepper button:active{background:var(--brass-dim);}
-  .stepper input{width:100%;min-width:0;text-align:center;background:none;border:none;color:var(--text);font-size:16px;padding:0 2px;font-family:var(--font-mono);height:44px;cursor:pointer;caret-color:transparent;}
+  .stepper input{width:100%;min-width:0;text-align:center;background:transparent;border:none;color:var(--text);-webkit-text-fill-color:var(--text);font-size:16px;padding:0 2px;font-family:var(--font-mono);height:44px;cursor:pointer;caret-color:transparent;-webkit-appearance:none;appearance:none;}
   .stepper input::-webkit-outer-spin-button, .stepper input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0;}
   .stepper input:read-only{cursor:pointer;}
 
@@ -4498,14 +4498,14 @@ function addExerciseRow(presetName, targetSets, targetReps, prefillSets) {
       ${isRunEx
         ? `<div style="display:flex;align-items:center;gap:3px;">
              <input type="number" class="set-reps" placeholder="00" min="0" max="999" inputmode="numeric"
-               style="width:48px;background:var(--card-2);border:1px solid var(--border);border-radius:8px 0 0 8px;color:var(--text);padding:0 6px;font-size:15px;font-family:var(--font-mono);height:44px;text-align:center;" />
+               style="width:48px;background:var(--card-2);border:1px solid var(--border);border-radius:8px 0 0 8px;color:var(--text);-webkit-text-fill-color:var(--text);padding:0 6px;font-size:15px;font-family:var(--font-mono);height:44px;text-align:center;-webkit-appearance:none;" />
              <span style="font-size:12px;color:var(--text-faint);padding:0 1px;">:</span>
              <input type="number" class="set-secs" placeholder="00" min="0" max="59" inputmode="numeric"
-               style="width:44px;background:var(--card-2);border:1px solid var(--border);border-radius:0 8px 8px 0;color:var(--text);padding:0 6px;font-size:15px;font-family:var(--font-mono);height:44px;text-align:center;" />
+               style="width:44px;background:var(--card-2);border:1px solid var(--border);border-radius:0 8px 8px 0;color:var(--text);-webkit-text-fill-color:var(--text);padding:0 6px;font-size:15px;font-family:var(--font-mono);height:44px;text-align:center;-webkit-appearance:none;" />
            </div>
            <div style="display:flex;align-items:center;gap:4px;">
              <input type="number" class="set-dist" step="0.01" min="0" placeholder="0.00" inputmode="decimal"
-               style="width:72px;background:var(--card-2);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:0 8px;font-size:15px;font-family:var(--font-mono);height:44px;text-align:center;" />
+               style="width:72px;background:var(--card-2);border:1px solid var(--border);border-radius:8px;color:var(--text);-webkit-text-fill-color:var(--text);padding:0 8px;font-size:15px;font-family:var(--font-mono);height:44px;text-align:center;-webkit-appearance:none;" />
              <span style="font-size:10px;color:var(--text-faint);">km</span>
            </div>`
         : `${stepper('set-reps', prefillReps || '', 0, repsStep, repsLabel)}
