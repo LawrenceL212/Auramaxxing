@@ -286,6 +286,9 @@
   @keyframes timerPulse{0%,100%{opacity:1;}50%{opacity:0.4;}}
   main.view-area{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;padding:20px 20px 100px;max-width:640px;margin:0 auto;width:100%;}
   section.view{display:none;}
+  /* World view stays rendered — iframe must not be destroyed on tab switch */
+  section.view#view-world{display:block;visibility:hidden;pointer-events:none;position:absolute;top:0;left:0;width:100%;height:100%;z-index:-1;}
+  section.view#view-world.active{visibility:visible;pointer-events:auto;position:relative;z-index:auto;}
   section.view.active{
     display:block;
     animation:viewEnter 0.3s cubic-bezier(0.16,1,0.3,1) both;
@@ -3148,6 +3151,16 @@ function switchView(name) {
   if (!viewEl) { console.warn('switchView: no element for view', name); return; }
   viewEl.classList.add('active');
   document.querySelectorAll('.bottom-nav button').forEach(b => b.classList.toggle('active', b.dataset.view === name));
+
+  // Keep the world iframe alive — just show/hide it so it doesn't lose state
+  const worldEl = document.getElementById('view-world');
+  if (worldEl) {
+    const iframe = worldEl.querySelector('iframe');
+    if (iframe) {
+      iframe.style.visibility = name === 'world' ? 'visible' : 'hidden';
+      iframe.style.pointerEvents = name === 'world' ? 'auto' : 'none';
+    }
+  }
 
   if (name === 'board') {
     renderBoard();
