@@ -13781,6 +13781,70 @@ function renderShadowWorld() {
     </div>`;
 }
 
+// ── Handle Shadow World iframe ownership requests ──
+window.addEventListener('message', async (e) => {
+  if (e.data?.type !== 'requestShadowWorldOwnership') return;
+  const iframe = document.querySelector('#view-world iframe');
+  if (!iframe) return;
+
+  try {
+    // Build ownership from all users' shadowArmy data
+    const CKEY_MAP = {
+      northAmerica:'iron', southAmerica:'wild', europe:'court',
+      africa:'swift', asia:'shadow', australia:'tide', antarctica:'gate'
+    };
+
+    // Collect soldier counts per continent per user
+    const continentSoldiers = {}; // ckey -> [{name, soldiers}]
+    (allUsers || []).forEach(u => {
+      const armies = u.shadowArmy?.continents || {};
+      Object.entries(CKEY_MAP).forEach(([ckey, armyKey]) => {
+        if (!continentSoldiers[ckey]) continentSoldiers[ckey] = [];
+        const soldiers = armies[armyKey]?.soldiers || 0;
+        if (soldiers > 0) continentSoldiers[ckey].push({ name: u.displayName, soldiers });
+      });
+    });
+
+    // Sort each continent by soldiers desc
+    Object.keys(continentSoldiers).forEach(ckey =>
+      continentSoldiers[ckey].sort((a,b) => b.soldiers - a.soldiers)
+    );
+
+    // Assign game countries proportionally within each continent
+    const GAME_COUNTRIES_KEYS = {
+      northAmerica: ['na_0','na_1','na_2','na_3','na_4','na_5'],
+      southAmerica: ['sa_0','sa_1','sa_2','sa_3','sa_4','sa_5'],
+      europe:       ['eu_0','eu_1','eu_2','eu_3','eu_4','eu_5'],
+      africa:       ['af_0','af_1','af_2','af_3','af_4','af_5'],
+      asia:         ['as_0','as_1','as_2','as_3','as_4','as_5'],
+      australia:    ['au_0','au_1','au_2','au_3','au_4','au_5'],
+      antarctica:   ['an_0','an_1','an_2','an_3','an_4','an_5'],
+    };
+
+    const ownership = {};
+    Object.entries(GAME_COUNTRIES_KEYS).forEach(([ckey, ids]) => {
+      const players = continentSoldiers[ckey] || [];
+      if (!players.length) return;
+      const total = players.reduce((s,p) => s + p.soldiers, 0);
+      ids.forEach((id, idx) => {
+        const fraction = (idx + 0.5) / ids.length;
+        let cum = 0;
+        let assigned = players[players.length - 1];
+        for (const p of players) {
+          cum += p.soldiers / total;
+          if (fraction <= cum) { assigned = p; break; }
+        }
+        ownership[id] = { owner: assigned.name, soldiers: Math.floor(assigned.soldiers / ids.length) };
+      });
+    });
+
+    iframe.contentWindow.postMessage({ type: 'shadowWorldOwnership', ownership }, '*');
+  } catch(err) {
+    console.warn('Shadow World ownership build failed:', err);
+    iframe.contentWindow.postMessage({ type: 'shadowWorldOwnership', ownership: {} }, '*');
+  }
+});
+
 function renderInventory() {
   const el = document.getElementById('inventory-content');
   if (!el) return;
