@@ -7,74 +7,57 @@
 <style>
   * { margin:0; padding:0; box-sizing:border-box; }
   body { background:#03050a; color:#e0e8ff; font-family:'Courier New',monospace; overflow:hidden; height:100vh; }
-  #globe-wrap { position:relative; width:100vw; height:100vh; }
   canvas { display:block; }
-
-  /* HUD */
-  #hud-top { position:fixed; top:0; left:0; right:0; padding:14px 16px; display:flex; justify-content:space-between; align-items:flex-start; pointer-events:none; z-index:10; }
-  #title-block { }
-  #world-title { font-size:18px; letter-spacing:0.15em; color:#61a5ff; text-shadow:0 0 20px rgba(61,165,255,0.6); }
+  #hud-top { position:fixed; top:0; left:0; right:0; padding:12px 16px; display:flex; justify-content:space-between; align-items:flex-start; pointer-events:none; z-index:10; }
+  #world-title { font-size:16px; letter-spacing:0.15em; color:#61a5ff; text-shadow:0 0 20px rgba(61,165,255,0.6); }
   #world-sub { font-size:9px; color:rgba(61,165,255,0.4); letter-spacing:0.2em; margin-top:2px; }
-
-  #army-hud { display:flex; flex-direction:column; gap:4px; pointer-events:none; }
-  .army-pill { display:flex; align-items:center; gap:6px; padding:4px 8px; background:rgba(5,7,13,0.8); border:1px solid rgba(61,165,255,0.12); border-radius:20px; font-size:10px; }
-  .army-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+  #army-hud { display:flex; flex-direction:column; gap:3px; }
+  .army-pill { display:flex; align-items:center; gap:6px; padding:3px 8px; background:rgba(5,7,13,0.85); border:1px solid rgba(61,165,255,0.1); border-radius:20px; font-size:10px; }
+  .army-dot { width:7px; height:7px; border-radius:50%; flex-shrink:0; }
   .army-count { color:#61a5ff; font-weight:700; }
-
-  /* Country panel */
-  #country-panel { position:fixed; bottom:0; left:0; right:0; transform:translateY(100%); transition:transform 0.3s cubic-bezier(0.16,1,0.3,1); background:rgba(5,7,13,0.97); border-top:1px solid rgba(61,165,255,0.15); border-radius:20px 20px 0 0; padding:20px; z-index:20; max-height:60vh; overflow-y:auto; }
+  #country-panel { position:fixed; bottom:0; left:0; right:0; transform:translateY(100%); transition:transform 0.35s cubic-bezier(0.16,1,0.3,1); background:rgba(5,7,13,0.97); border-top:1px solid rgba(61,165,255,0.15); border-radius:20px 20px 0 0; padding:20px; z-index:20; max-height:55vh; overflow-y:auto; }
   #country-panel.open { transform:translateY(0); }
-  #panel-handle { width:36px; height:3px; background:rgba(61,165,255,0.2); border-radius:2px; margin:0 auto 16px; }
-  #panel-continent { font-size:9px; letter-spacing:0.15em; color:rgba(61,165,255,0.4); margin-bottom:4px; }
+  #panel-handle { width:36px; height:3px; background:rgba(61,165,255,0.2); border-radius:2px; margin:0 auto 14px; }
+  #panel-continent { font-size:9px; letter-spacing:0.15em; margin-bottom:4px; }
   #panel-country { font-size:20px; font-weight:700; margin-bottom:4px; }
   #panel-owner { font-size:11px; color:rgba(61,165,255,0.5); margin-bottom:12px; }
   #panel-soldiers { display:flex; gap:8px; margin-bottom:16px; flex-wrap:wrap; }
-  .soldier-card { padding:8px 12px; background:rgba(61,165,255,0.05); border:1px solid rgba(61,165,255,0.12); border-radius:8px; text-align:center; }
-  .soldier-num { font-size:18px; font-weight:800; }
+  .soldier-card { padding:8px 12px; background:rgba(61,165,255,0.05); border:1px solid rgba(61,165,255,0.1); border-radius:8px; text-align:center; min-width:70px; }
+  .soldier-num { font-size:16px; font-weight:800; }
   .soldier-label { font-size:9px; color:rgba(61,165,255,0.4); margin-top:2px; }
   #panel-actions { display:flex; gap:8px; }
-  .panel-btn { flex:1; padding:12px; border-radius:8px; font-family:'Courier New',monospace; font-size:12px; letter-spacing:0.05em; cursor:pointer; border:none; }
-  .btn-claim { background:rgba(61,165,255,0.15); border:1px solid rgba(61,165,255,0.3); color:#61a5ff; }
-  .btn-attack { background:rgba(255,61,90,0.12); border:1px solid rgba(255,61,90,0.3); color:#ff3d5a; }
-  .btn-reinforce { background:rgba(78,205,120,0.1); border:1px solid rgba(78,205,120,0.25); color:#4ecd78; }
-  #panel-close { position:absolute; top:16px; right:16px; background:none; border:none; color:rgba(61,165,255,0.4); font-size:18px; cursor:pointer; }
-
-  /* Legend */
-  #legend { position:fixed; left:12px; bottom:80px; display:flex; flex-direction:column; gap:4px; pointer-events:none; }
-  .legend-item { display:flex; align-items:center; gap:6px; font-size:9px; color:rgba(61,165,255,0.35); letter-spacing:0.05em; }
-  .legend-dot { width:10px; height:10px; border-radius:2px; flex-shrink:0; }
-
-  /* Rotate hint */
-  #hint { position:fixed; bottom:20px; left:50%; transform:translateX(-50%); font-size:9px; color:rgba(61,165,255,0.2); letter-spacing:0.1em; pointer-events:none; }
+  .panel-btn { flex:1; padding:12px; border-radius:8px; font-family:'Courier New',monospace; font-size:12px; cursor:pointer; border:none; }
+  .btn-claim { background:rgba(61,165,255,0.12); border:1px solid rgba(61,165,255,0.3); color:#61a5ff; }
+  .btn-attack { background:rgba(255,61,90,0.1); border:1px solid rgba(255,61,90,0.3); color:#ff3d5a; }
+  .btn-reinforce { background:rgba(78,205,120,0.08); border:1px solid rgba(78,205,120,0.25); color:#4ecd78; }
+  #panel-close { position:absolute; top:14px; right:16px; background:none; border:none; color:rgba(61,165,255,0.4); font-size:18px; cursor:pointer; }
+  #tooltip { position:fixed; pointer-events:none; background:rgba(5,7,13,0.92); border:1px solid rgba(61,165,255,0.2); border-radius:6px; padding:5px 10px; font-size:11px; color:#61a5ff; z-index:30; display:none; }
+  #hint { position:fixed; bottom:16px; left:50%; transform:translateX(-50%); font-size:9px; color:rgba(61,165,255,0.18); letter-spacing:0.1em; pointer-events:none; white-space:nowrap; }
+  #loading { position:fixed; inset:0; display:flex; align-items:center; justify-content:center; background:#03050a; z-index:50; flex-direction:column; gap:12px; }
+  #loading-text { font-family:'Courier New',monospace; font-size:12px; color:rgba(61,165,255,0.5); letter-spacing:0.2em; }
+  .loading-bar { width:200px; height:2px; background:rgba(61,165,255,0.1); border-radius:1px; }
+  .loading-fill { height:100%; background:#61a5ff; border-radius:1px; transition:width 0.3s; }
 </style>
 </head>
 <body>
-<div id="globe-wrap">
-  <canvas id="globe-canvas"></canvas>
+<div id="loading">
+  <div id="loading-text">◈ INITIALISING SHADOW WORLD</div>
+  <div class="loading-bar"><div class="loading-fill" id="load-fill" style="width:0%"></div></div>
 </div>
 
-<!-- HUD -->
+<canvas id="c"></canvas>
+
 <div id="hud-top">
-  <div id="title-block">
+  <div>
     <div id="world-title">◈ SHADOW WORLD</div>
     <div id="world-sub">TERRITORIAL COMMAND</div>
   </div>
-  <div id="army-hud" id="army-hud"></div>
+  <div id="army-hud"></div>
 </div>
 
-<div id="legend">
-  <div class="legend-item"><div class="legend-dot" style="background:#cc4444;"></div>Iron Highlands</div>
-  <div class="legend-item"><div class="legend-dot" style="background:#7c3aed;"></div>Shadow Reaches</div>
-  <div class="legend-item"><div class="legend-dot" style="background:#0ea5e9;"></div>Swift Plains</div>
-  <div class="legend-item"><div class="legend-dot" style="background:#0d9488;"></div>Tide Depths</div>
-  <div class="legend-item"><div class="legend-dot" style="background:#d97706;"></div>Court Arena</div>
-  <div class="legend-item"><div class="legend-dot" style="background:#16a34a;"></div>Wild Summit</div>
-  <div class="legend-item"><div class="legend-dot" style="background:#e2e8f0;"></div>The Gate</div>
-</div>
+<div id="tooltip"></div>
+<div id="hint">DRAG TO ROTATE · TAP TERRITORY TO COMMAND</div>
 
-<div id="hint">DRAG TO ROTATE · TAP COUNTRY TO COMMAND</div>
-
-<!-- Country panel -->
 <div id="country-panel">
   <div id="panel-handle"></div>
   <button id="panel-close" onclick="closePanel()">✕</button>
@@ -86,426 +69,376 @@
 </div>
 
 <script type="module">
-import * as THREE from 'three';
+import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.module.min.js';
 
-// ── WORLD DATA ──
-const CONTINENTS = {
-  iron:   { name:'Iron Highlands',  stat:'strength',   color:0xcc4444, emissive:0x441111, lat:45,  lon:-30,  radius:0.38 },
-  shadow: { name:'Shadow Reaches',  stat:'focus',      color:0x7c3aed, emissive:0x2a1060, lat:20,  lon:80,   radius:0.35 },
-  swift:  { name:'Swift Plains',    stat:'agility',    color:0x0ea5e9, emissive:0x043860, lat:-15, lon:140,  radius:0.32 },
-  tide:   { name:'Tide Depths',     stat:'endurance',  color:0x0d9488, emissive:0x033a35, lat:-40, lon:-120, radius:0.30 },
-  court:  { name:'Court Arena',     stat:'combat',     color:0xd97706, emissive:0x4a2800, lat:15,  lon:-100, radius:0.28 },
-  wild:   { name:'Wild Summit',     stat:'flexibility',color:0x16a34a, emissive:0x062a14, lat:-55, lon:20,   radius:0.30 },
-  gate:   { name:'The Gate',        stat:'all',        color:0xc8d8f0, emissive:0x304060, lat:5,   lon:175,  radius:0.22 },
+// ── Progress ──
+const fill = document.getElementById('load-fill');
+const setProgress = p => { fill.style.width = p + '%'; };
+
+// ── CONTINENT DEFINITIONS ──
+const CONTINENT_META = {
+  northAmerica: { name:'Iron Highlands',  stat:'strength',    hex:'#e05555', threeColor:0xe05555, emissive:0x661515 },
+  southAmerica: { name:'Wild Summit',     stat:'flexibility', hex:'#22c55e', threeColor:0x22c55e, emissive:0x0a3d1a },
+  europe:       { name:'Court Arena',     stat:'combat',      hex:'#f59e0b', threeColor:0xf59e0b, emissive:0x4a2e00 },
+  africa:       { name:'Swift Plains',    stat:'agility',     hex:'#38bdf8', threeColor:0x38bdf8, emissive:0x0c3a50 },
+  asia:         { name:'Shadow Reaches',  stat:'focus',       hex:'#a78bfa', threeColor:0xa78bfa, emissive:0x2d1a60 },
+  australia:    { name:'Tide Depths',     stat:'endurance',   hex:'#2dd4bf', threeColor:0x2dd4bf, emissive:0x0a3530 },
+  antarctica:   { name:'The Gate',        stat:'all',         hex:'#cbd5e1', threeColor:0xcbd5e1, emissive:0x1e2a3a },
 };
 
-// 6 countries per continent
-const COUNTRIES = {};
-Object.entries(CONTINENTS).forEach(([ckey, cont]) => {
-  COUNTRIES[ckey] = [];
-  const names = {
-    iron:   ['Ironforge','Steelhold','Ashvault','Cinder Keep','Brutholm','Forgepeak'],
-    shadow: ['Voidmark','Umbra','The Hollow','Phantom Spire','Eclipse','Shadowmere'],
-    swift:  ['Galerun','Stormstep','Blitzfield','Vantrace','Windfall','Rushgate'],
-    tide:   ['Deepholm','Abyssal','Coralspire','Drifthaven','Tidemark','Undertow'],
-    court:  ['Ironring','Gauntlet','The Pits','Strikewood','Combatia','Blazeguard'],
-    wild:   ['Verdant Peak','Thornveil','Mistclimb','Roothold','Canopy','Highreach'],
-    gate:   ['Gate Prime','The Threshold','Nexus','The Crossing','Voidgate','The Rift'],
-  };
-  for (let i = 0; i < 6; i++) {
-    const spreadLat = cont.lat + (Math.random()-0.5)*25;
-    const spreadLon = cont.lon + (Math.random()-0.5)*30;
-    COUNTRIES[ckey].push({
-      id: `${ckey}_${i}`,
-      name: names[ckey][i],
-      continent: ckey,
-      lat: spreadLat, lon: spreadLon,
-      owner: null,
-      ownerColor: null,
-      soldiers: 0,
-      isCapital: i === 0,
-    });
-  }
-});
+// Countries per continent with approximate positions
+const CONTINENT_COUNTRIES = {
+  northAmerica: [
+    { name:'Ironforge',    lat:60,  lon:-120, isCapital:true  },
+    { name:'Steelhold',    lat:47,  lon:-100, isCapital:false },
+    { name:'Ashvault',     lat:38,  lon:-98,  isCapital:false },
+    { name:'Cinder Keep',  lat:32,  lon:-110, isCapital:false },
+    { name:'Brutholm',     lat:52,  lon:-80,  isCapital:false },
+    { name:'Forgepeak',    lat:35,  lon:-75,  isCapital:false },
+  ],
+  southAmerica: [
+    { name:'Verdant Peak', lat:-5,  lon:-60,  isCapital:true  },
+    { name:'Thornveil',    lat:-15, lon:-55,  isCapital:false },
+    { name:'Mistclimb',    lat:-25, lon:-50,  isCapital:false },
+    { name:'Roothold',     lat:-35, lon:-65,  isCapital:false },
+    { name:'Canopy',       lat:5,   lon:-75,  isCapital:false },
+    { name:'Highreach',    lat:-45, lon:-68,  isCapital:false },
+  ],
+  europe: [
+    { name:'Ironring',     lat:52,  lon:10,   isCapital:true  },
+    { name:'Gauntlet',     lat:48,  lon:16,   isCapital:false },
+    { name:'The Pits',     lat:42,  lon:12,   isCapital:false },
+    { name:'Strikewood',   lat:50,  lon:3,    isCapital:false },
+    { name:'Combatia',     lat:60,  lon:25,   isCapital:false },
+    { name:'Blazeguard',   lat:38,  lon:22,   isCapital:false },
+  ],
+  africa: [
+    { name:'Galerun',      lat:15,  lon:15,   isCapital:true  },
+    { name:'Stormstep',    lat:5,   lon:25,   isCapital:false },
+    { name:'Blitzfield',   lat:-15, lon:25,   isCapital:false },
+    { name:'Vantrace',     lat:0,   lon:35,   isCapital:false },
+    { name:'Windfall',     lat:25,  lon:20,   isCapital:false },
+    { name:'Rushgate',     lat:-25, lon:25,   isCapital:false },
+  ],
+  asia: [
+    { name:'Voidmark',     lat:45,  lon:75,   isCapital:true  },
+    { name:'Umbra',        lat:30,  lon:80,   isCapital:false },
+    { name:'The Hollow',   lat:20,  lon:100,  isCapital:false },
+    { name:'Phantom Spire',lat:55,  lon:100,  isCapital:false },
+    { name:'Eclipse',      lat:35,  lon:105,  isCapital:false },
+    { name:'Shadowmere',   lat:60,  lon:130,  isCapital:false },
+  ],
+  australia: [
+    { name:'Deepholm',     lat:-25, lon:130,  isCapital:true  },
+    { name:'Abyssal',      lat:-32, lon:145,  isCapital:false },
+    { name:'Coralspire',   lat:-20, lon:145,  isCapital:false },
+    { name:'Drifthaven',   lat:-28, lon:115,  isCapital:false },
+    { name:'Tidemark',     lat:-35, lon:138,  isCapital:false },
+    { name:'Undertow',     lat:-15, lon:132,  isCapital:false },
+  ],
+  antarctica: [
+    { name:'Gate Prime',   lat:-82, lon:0,    isCapital:true  },
+    { name:'The Threshold',lat:-80, lon:60,   isCapital:false },
+    { name:'Nexus',        lat:-80, lon:120,  isCapital:false },
+    { name:'The Crossing', lat:-80, lon:180,  isCapital:false },
+    { name:'Voidgate',     lat:-80, lon:-120, isCapital:false },
+    { name:'The Rift',     lat:-80, lon:-60,  isCapital:false },
+  ],
+};
 
-// Mock player armies (will connect to real data)
+// Mock ownership
+const OWNERSHIP = {
+  northAmerica_0: { owner:'Lawrence', ownerColor:0xd4a017, soldiers:340 },
+  northAmerica_1: { owner:'Lawrence', ownerColor:0xd4a017, soldiers:280 },
+  northAmerica_2: { owner:'Lucas',    ownerColor:0x38bdf8, soldiers:35  },
+  asia_0:         { owner:'LuChing',  ownerColor:0xa78bfa, soldiers:890 },
+  asia_1:         { owner:'LuChing',  ownerColor:0xa78bfa, soldiers:650 },
+  asia_2:         { owner:'Lucas',    ownerColor:0x38bdf8, soldiers:280 },
+  africa_0:       { owner:'Mireyah',  ownerColor:0xff6b9d, soldiers:45  },
+};
+
 const PLAYER_ARMIES = {
-  lawrence: { color:0xd4a017, name:'Lawrence', armies:{ iron:1847, shadow:12, swift:340, tide:0, court:0, wild:48, gate:0 } },
-  luching:  { color:0x7c3aed, name:'LuChing',  armies:{ iron:120, shadow:2100, swift:89, tide:0, court:0, wild:156, gate:0 } },
-  mireyah:  { color:0xff6b9d, name:'Mireyah',  armies:{ iron:0, shadow:0, swift:45, tide:0, court:0, wild:0, gate:0 } },
-  lucas:    { color:0x0ea5e9, name:'Lucas',    armies:{ iron:35, shadow:280, swift:60, tide:0, court:0, wild:22, gate:0 } },
+  Lawrence: { color:'#d4a017', armies:{ northAmerica:1847, southAmerica:48, africa:340, europe:0, asia:12, australia:0, antarctica:0 }},
 };
 
-// Assign some countries to players for demo
-COUNTRIES.iron[0].owner = 'lawrence'; COUNTRIES.iron[0].ownerColor = 0xd4a017; COUNTRIES.iron[0].soldiers = 340;
-COUNTRIES.iron[1].owner = 'lawrence'; COUNTRIES.iron[1].ownerColor = 0xd4a017; COUNTRIES.iron[1].soldiers = 280;
-COUNTRIES.iron[2].owner = 'lucas';    COUNTRIES.iron[2].ownerColor = 0x0ea5e9; COUNTRIES.iron[2].soldiers = 35;
-COUNTRIES.shadow[0].owner = 'luching'; COUNTRIES.shadow[0].ownerColor = 0x7c3aed; COUNTRIES.shadow[0].soldiers = 890;
-COUNTRIES.shadow[1].owner = 'luching'; COUNTRIES.shadow[1].ownerColor = 0x7c3aed; COUNTRIES.shadow[1].soldiers = 650;
-COUNTRIES.shadow[2].owner = 'lucas';   COUNTRIES.shadow[2].ownerColor = 0x0ea5e9; COUNTRIES.shadow[2].soldiers = 280;
-COUNTRIES.swift[0].owner = 'mireyah';  COUNTRIES.swift[0].ownerColor = 0xff6b9d; COUNTRIES.swift[0].soldiers = 45;
-
-// ── THREE.JS SETUP ──
-const canvas = document.getElementById('globe-canvas');
-const W = window.innerWidth, H = window.innerHeight;
-const renderer = new THREE.WebGLRenderer({ canvas, antialias:true, alpha:true });
-renderer.setSize(W, H);
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-renderer.shadowMap.enabled = true;
-
-const scene = new THREE.Scene();
-const camera = new THREE.PerspectiveCamera(45, W/H, 0.1, 100);
-camera.position.set(0, 0, 3.2);
-
-// Lighting
-const ambient = new THREE.AmbientLight(0x111133, 0.8);
-scene.add(ambient);
-const sun = new THREE.DirectionalLight(0x4488ff, 1.2);
-sun.position.set(5, 3, 5);
-scene.add(sun);
-const rimLight = new THREE.DirectionalLight(0x112244, 0.5);
-rimLight.position.set(-5, -2, -3);
-scene.add(rimLight);
-
-// Stars
-const starGeo = new THREE.BufferGeometry();
-const starCount = 2000;
-const starPositions = new Float32Array(starCount * 3);
-for (let i = 0; i < starCount * 3; i++) starPositions[i] = (Math.random() - 0.5) * 80;
-starGeo.setAttribute('position', new THREE.BufferAttribute(starPositions, 3));
-const starMat = new THREE.PointsMaterial({ color:0x8899cc, size:0.04, transparent:true, opacity:0.6 });
-scene.add(new THREE.Points(starGeo, starMat));
-
-// Globe sphere
-const globeGeo = new THREE.SphereGeometry(1, 64, 64);
-const globeMat = new THREE.MeshStandardMaterial({
-  color: 0x030810,
-  roughness: 0.85,
-  metalness: 0.1,
-  emissive: 0x050d20,
-  emissiveIntensity: 0.3,
-});
-const globe = new THREE.Mesh(globeGeo, globeMat);
-scene.add(globe);
-
-// Atmosphere glow
-const atmosGeo = new THREE.SphereGeometry(1.06, 32, 32);
-const atmosMat = new THREE.MeshStandardMaterial({
-  color: 0x1133aa,
-  transparent: true,
-  opacity: 0.08,
-  side: THREE.FrontSide,
-  depthWrite: false,
-});
-scene.add(new THREE.Mesh(atmosGeo, atmosMat));
-
-// ── HELPER: lat/lon to 3D point on sphere ──
-function latLonToVec3(lat, lon, r=1) {
-  const phi   = (90 - lat) * Math.PI / 180;
-  const theta = (lon + 180) * Math.PI / 180;
-  return new THREE.Vector3(
-    -r * Math.sin(phi) * Math.cos(theta),
-     r * Math.cos(phi),
-     r * Math.sin(phi) * Math.sin(theta)
-  );
+// ── Continent classifier ──
+function classifyLonLat(lon, lat) {
+  if (lat < -60) return 'antarctica';
+  if (lon >= 112 && lat < -10) return 'australia';
+  if (lon >= 60 && lat >= -10) return 'asia';
+  if (lon >= 25 && lon < 60 && lat >= 35) return 'europe';
+  if (lon >= -20 && lon < 55 && lat < 35) return 'africa';
+  if (lon < -30 && lat >= 8) return 'northAmerica';
+  if (lon < -30 && lat < 8) return 'southAmerica';
+  if (lon >= -20 && lon < 25 && lat >= 35) return 'europe';
+  return 'asia';
 }
 
-// ── BUILD CONTINENT MESHES ──
-const continentMeshes = [];
-const countryMeshes = [];
+// ── THREE SETUP ──
+const canvas = document.getElementById('c');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias:true, alpha:true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(42, innerWidth/innerHeight, 0.1, 100);
+camera.position.z = 3.2;
 
-Object.entries(CONTINENTS).forEach(([ckey, cont]) => {
-  // Continent base — a larger raised disc
-  const contGeo = new THREE.SphereGeometry(cont.radius, 24, 24, 0, Math.PI*2, 0, Math.PI*0.55);
-  const contMat = new THREE.MeshStandardMaterial({
-    color: cont.color,
-    emissive: cont.emissive,
-    emissiveIntensity: 0.4,
-    roughness: 0.7,
-    metalness: 0.15,
-    transparent: true,
-    opacity: 0.6,
-  });
-  const contMesh = new THREE.Mesh(contGeo, contMat);
-  const contPos = latLonToVec3(cont.lat, cont.lon, 1.005);
-  contMesh.position.copy(contPos);
-  contMesh.lookAt(0, 0, 0);
-  contMesh.rotateX(Math.PI);
-  contMesh.userData = { type:'continent', key:ckey };
-  scene.add(contMesh);
-  continentMeshes.push(contMesh);
+function resize() {
+  renderer.setSize(innerWidth, innerHeight);
+  camera.aspect = innerWidth/innerHeight;
+  camera.updateProjectionMatrix();
+}
+resize();
+window.addEventListener('resize', resize);
 
-  // Country dots within each continent
-  COUNTRIES[ckey].forEach((country, i) => {
-    const isOwned = !!country.owner;
-    const color = isOwned ? country.ownerColor : 0x223355;
-    const size = country.isCapital ? 0.055 : 0.038;
-    const geo = new THREE.SphereGeometry(size, 12, 12);
-    const mat = new THREE.MeshStandardMaterial({
-      color,
-      emissive: isOwned ? color : 0x0a1525,
-      emissiveIntensity: isOwned ? 0.8 : 0.1,
-      roughness: 0.3,
-      metalness: 0.6,
-    });
-    const mesh = new THREE.Mesh(geo, mat);
-    const pos = latLonToVec3(country.lat, country.lon, 1.02);
-    mesh.position.copy(pos);
-    mesh.userData = { type:'country', country, ckey };
-    scene.add(mesh);
-    countryMeshes.push(mesh);
+// Lighting
+scene.add(new THREE.AmbientLight(0x112244, 1.1));
+const sun = new THREE.DirectionalLight(0x6699ff, 1.5);
+sun.position.set(5, 3, 5);
+scene.add(sun);
+const rim = new THREE.DirectionalLight(0x0a1533, 0.8);
+rim.position.set(-4, -2, -4);
+scene.add(rim);
+
+// Stars
+const sp = new Float32Array(3000*3);
+for (let i=0;i<sp.length;i++) sp[i]=(Math.random()-.5)*90;
+const sg = new THREE.BufferGeometry();
+sg.setAttribute('position', new THREE.BufferAttribute(sp,3));
+scene.add(new THREE.Points(sg, new THREE.PointsMaterial({color:0x7788bb, size:0.03, transparent:true, opacity:0.55})));
+
+const globeGroup = new THREE.Group();
+scene.add(globeGroup);
+
+// Ocean
+globeGroup.add(new THREE.Mesh(
+  new THREE.SphereGeometry(1, 64, 64),
+  new THREE.MeshStandardMaterial({ color:0x020a18, roughness:0.9, metalness:0.1, emissive:0x040d22, emissiveIntensity:0.6 })
+));
+
+// Atmosphere
+scene.add(new THREE.Mesh(
+  new THREE.SphereGeometry(1.07, 32, 32),
+  new THREE.MeshStandardMaterial({ color:0x1144cc, transparent:true, opacity:0.06, side:THREE.FrontSide, depthWrite:false })
+));
+
+// Grid lines
+const gm = new THREE.LineBasicMaterial({ color:0x0d1e36, transparent:true, opacity:0.4 });
+function ll2v(lat, lon, r=1) {
+  const phi = (90-lat)*Math.PI/180, theta=(lon+180)*Math.PI/180;
+  return new THREE.Vector3(-r*Math.sin(phi)*Math.cos(theta), r*Math.cos(phi), r*Math.sin(phi)*Math.sin(theta));
+}
+for (let lat=-75;lat<=75;lat+=15) {
+  const pts=[]; for(let lon=0;lon<=360;lon+=3) pts.push(ll2v(lat,lon,1.001));
+  globeGroup.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),gm));
+}
+for (let lon=0;lon<360;lon+=30) {
+  const pts=[]; for(let lat=-90;lat<=90;lat+=3) pts.push(ll2v(lat,lon,1.001));
+  globeGroup.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),gm));
+}
+
+setProgress(20);
+
+// ── Load GeoJSON and build land meshes ──
+const geoRes = await fetch('./ne_110m_land.geojson');
+const geoData = await geoRes.json();
+setProgress(50);
+
+const countryDots = [];
+
+// Build land meshes from real polygons
+geoData.features.forEach(feature => {
+  const coords = feature.geometry.coordinates[0]; // outer ring
+  if (!coords || coords.length < 3) return;
+
+  // Classify this polygon
+  const lons = coords.map(c=>c[0]);
+  const lats = coords.map(c=>c[1]);
+  const cLon = lons.reduce((a,b)=>a+b,0)/lons.length;
+  const cLat = lats.reduce((a,b)=>a+b,0)/lats.length;
+  const ckey = classifyLonLat(cLon, cLat);
+  const meta = CONTINENT_META[ckey];
+  if (!meta) return;
+
+  // Build triangle fan from centroid
+  const R = 1.003;
+  const positions = [];
+  const center = ll2v(cLat, cLon, R);
+
+  for (let i=0; i<coords.length-1; i++) {
+    const a = ll2v(coords[i][1],   coords[i][0],   R);
+    const b = ll2v(coords[i+1][1], coords[i+1][0], R);
+    positions.push(center.x, center.y, center.z);
+    positions.push(a.x, a.y, a.z);
+    positions.push(b.x, b.y, b.z);
+  }
+
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  geo.computeVertexNormals();
+
+  const mesh = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({
+    color: meta.threeColor,
+    emissive: meta.emissive,
+    emissiveIntensity: 0.45,
+    roughness: 0.65,
+    metalness: 0.08,
+    side: THREE.DoubleSide,
+  }));
+  mesh.userData = { type:'land', ckey };
+  globeGroup.add(mesh);
+});
+
+setProgress(75);
+
+// ── Country dots & capitals ──
+Object.entries(CONTINENT_COUNTRIES).forEach(([ckey, countries]) => {
+  const meta = CONTINENT_META[ckey];
+  countries.forEach((country, i) => {
+    const ownerKey = `${ckey}_${i}`;
+    const ownership = OWNERSHIP[ownerKey];
+    const isOwned = !!ownership;
+    const dotColor = isOwned ? ownership.ownerColor : 0x1a2a44;
+    const size = country.isCapital ? 0.048 : 0.032;
+
+    const dot = new THREE.Mesh(
+      new THREE.SphereGeometry(size, 10, 10),
+      new THREE.MeshStandardMaterial({
+        color: dotColor,
+        emissive: isOwned ? dotColor : 0x08111e,
+        emissiveIntensity: isOwned ? 1.0 : 0.12,
+        roughness: 0.2, metalness: 0.7,
+      })
+    );
+    dot.position.copy(ll2v(country.lat, country.lon, 1.024));
+    dot.userData = { type:'country', ckey, index:i, ...country, owner:ownership?.owner||null, ownerColor:ownership?.ownerColor||null, soldiers:ownership?.soldiers||0 };
+    globeGroup.add(dot);
+    countryDots.push(dot);
 
     // Capital ring
     if (country.isCapital) {
-      const ringGeo = new THREE.TorusGeometry(0.07, 0.008, 8, 24);
-      const ringMat = new THREE.MeshStandardMaterial({
-        color: cont.color,
-        emissive: cont.color,
-        emissiveIntensity: 1.0,
-      });
-      const ring = new THREE.Mesh(ringGeo, ringMat);
-      ring.position.copy(pos);
-      ring.lookAt(0, 0, 0);
-      scene.add(ring);
+      const ring = new THREE.Mesh(
+        new THREE.TorusGeometry(0.062, 0.006, 8, 20),
+        new THREE.MeshStandardMaterial({ color:meta.threeColor, emissive:meta.threeColor, emissiveIntensity:1.5 })
+      );
+      ring.position.copy(ll2v(country.lat, country.lon, 1.024));
+      ring.lookAt(0,0,0);
+      globeGroup.add(ring);
     }
 
-    // Ownership pillar — height = log(soldiers+1)
-    if (country.soldiers > 0) {
-      const height = Math.min(Math.log10(country.soldiers + 1) * 0.06, 0.25);
-      const pillarGeo = new THREE.CylinderGeometry(0.012, 0.018, height, 6);
-      const pillarMat = new THREE.MeshStandardMaterial({
-        color,
-        emissive: color,
-        emissiveIntensity: 0.6,
-      });
-      const pillar = new THREE.Mesh(pillarGeo, pillarMat);
+    // Soldier pillar
+    if (ownership?.soldiers > 0) {
+      const h = Math.min(Math.log10(ownership.soldiers+1)*0.052, 0.2);
+      const pos = ll2v(country.lat, country.lon, 1.024);
       const norm = pos.clone().normalize();
-      pillar.position.copy(pos.clone().add(norm.multiplyScalar(height/2)));
-      pillar.lookAt(pos.clone().add(pos.clone().normalize()));
-      pillar.rotateX(Math.PI/2);
-      scene.add(pillar);
+      const pillar = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.009,0.013,h,6),
+        new THREE.MeshStandardMaterial({ color:dotColor, emissive:dotColor, emissiveIntensity:0.8 })
+      );
+      pillar.position.copy(pos.clone().add(norm.clone().multiplyScalar(h/2)));
+      pillar.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0), norm);
+      globeGroup.add(pillar);
     }
   });
 });
 
-// Grid lines (lat/lon)
-function addGridLines() {
-  const mat = new THREE.LineBasicMaterial({ color:0x0d1f3a, transparent:true, opacity:0.4 });
-  // Latitude lines
-  for (let lat = -75; lat <= 75; lat += 15) {
-    const pts = [];
-    for (let lon = 0; lon <= 360; lon += 5) pts.push(latLonToVec3(lat, lon, 1.001));
-    scene.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), mat));
-  }
-  // Longitude lines
-  for (let lon = 0; lon < 360; lon += 30) {
-    const pts = [];
-    for (let lat = -90; lat <= 90; lat += 5) pts.push(latLonToVec3(lat, lon, 1.001));
-    scene.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), mat));
-  }
-}
-addGridLines();
+setProgress(90);
 
-// ── RAYCASTER for click/tap ──
+// Continent label sprites
+function makeLabel(text, hex) {
+  const c2 = document.createElement('canvas');
+  c2.width=256; c2.height=56;
+  const ctx=c2.getContext('2d');
+  ctx.font='bold 14px Courier New';
+  ctx.fillStyle=hex;
+  ctx.textAlign='center';
+  ctx.shadowColor=hex;
+  ctx.shadowBlur=10;
+  ctx.fillText(text,128,34);
+  const sprite=new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(c2),transparent:true,depthWrite:false}));
+  sprite.scale.set(0.55,0.12,1);
+  return sprite;
+}
+
+const CENTERS = { northAmerica:[47,-100], southAmerica:[-15,-58], europe:[50,14], africa:[2,22], asia:[38,82], australia:[-26,134], antarctica:[-78,0] };
+Object.entries(CONTINENT_META).forEach(([ckey, meta]) => {
+  const [lat,lon] = CENTERS[ckey];
+  const label = makeLabel(meta.name, meta.hex);
+  label.position.copy(ll2v(lat, lon, 1.13));
+  globeGroup.add(label);
+});
+
+setProgress(100);
+setTimeout(() => { document.getElementById('loading').style.display='none'; }, 300);
+
+// ── RAYCASTER ──
 const raycaster = new THREE.Raycaster();
-const pointer = new THREE.Vector2();
-const clickable = [...countryMeshes];
-
-function getIntersects(clientX, clientY) {
-  pointer.x = (clientX / W) * 2 - 1;
-  pointer.y = -(clientY / H) * 2 + 1;
-  raycaster.setFromCamera(pointer, camera);
-  return raycaster.intersectObjects(clickable);
+const mouse2 = new THREE.Vector2();
+function getHits(cx, cy) {
+  mouse2.x=(cx/innerWidth)*2-1; mouse2.y=-(cy/innerHeight)*2+1;
+  raycaster.setFromCamera(mouse2, camera);
+  return raycaster.intersectObjects(countryDots);
 }
 
-// ── ROTATION (manual, no OrbitControls) ──
-let isDragging = false;
-let prevMouse = { x:0, y:0 };
-let rotVelocity = { x:0, y:0 };
-const globeGroup = new THREE.Group();
-scene.add(globeGroup);
-// Move everything into group
-[globe, ...continentMeshes, ...countryMeshes].forEach(m => {
-  scene.remove(m);
-  globeGroup.add(m);
+// ── DRAG / ROTATE ──
+let drag=false, px=0, py=0, vx=0, vy=0, ts=null;
+canvas.addEventListener('mousedown', e=>{drag=true;px=e.clientX;py=e.clientY;vx=vy=0;});
+canvas.addEventListener('mousemove', e=>{
+  if(drag){const dx=e.clientX-px,dy=e.clientY-py; globeGroup.rotation.y+=dx*.005; globeGroup.rotation.x=Math.max(-1.2,Math.min(1.2,globeGroup.rotation.x+dy*.005)); vx=dy*.005;vy=dx*.005;px=e.clientX;py=e.clientY;}
+  // tooltip
+  const hits=getHits(e.clientX,e.clientY);
+  const tt=document.getElementById('tooltip');
+  if(hits.length&&hits[0].object.userData.type==='country'){
+    const d=hits[0].object.userData;
+    tt.style.display='block'; tt.style.left=(e.clientX+12)+'px'; tt.style.top=(e.clientY-28)+'px';
+    tt.textContent=d.name+(d.owner?' · '+d.owner:' · Unclaimed');
+  } else tt.style.display='none';
 });
-// Keep stars and atmosphere outside group
+canvas.addEventListener('mouseup', e=>{if(!drag)return;drag=false;const hits=getHits(e.clientX,e.clientY);if(hits.length&&hits[0].object.userData.type==='country')openPanel(hits[0].object.userData);});
 
-canvas.addEventListener('mousedown', e => {
-  isDragging = true;
-  prevMouse = { x:e.clientX, y:e.clientY };
-  rotVelocity = { x:0, y:0 };
-});
-canvas.addEventListener('mousemove', e => {
-  if (!isDragging) return;
-  const dx = e.clientX - prevMouse.x;
-  const dy = e.clientY - prevMouse.y;
-  globeGroup.rotation.y += dx * 0.005;
-  globeGroup.rotation.x += dy * 0.005;
-  globeGroup.rotation.x = Math.max(-Math.PI/2.2, Math.min(Math.PI/2.2, globeGroup.rotation.x));
-  rotVelocity = { x: dy * 0.005, y: dx * 0.005 };
-  prevMouse = { x:e.clientX, y:e.clientY };
-});
-canvas.addEventListener('mouseup', e => {
-  if (!isDragging) return;
-  isDragging = false;
-  // Click detection
-  const dx = Math.abs(e.clientX - prevMouse.x);
-  const dy = Math.abs(e.clientY - prevMouse.y);
-  if (dx < 3 && dy < 3) {
-    const hits = getIntersects(e.clientX, e.clientY);
-    if (hits.length > 0 && hits[0].object.userData.country) {
-      openPanel(hits[0].object.userData.country, hits[0].object.userData.ckey);
-    }
-  }
-});
-
-// Touch
-let touchStart = null;
-canvas.addEventListener('touchstart', e => {
-  e.preventDefault();
-  const t = e.touches[0];
-  isDragging = true;
-  touchStart = { x:t.clientX, y:t.clientY };
-  prevMouse = { x:t.clientX, y:t.clientY };
-  rotVelocity = { x:0, y:0 };
-}, { passive:false });
-canvas.addEventListener('touchmove', e => {
-  e.preventDefault();
-  if (!isDragging) return;
-  const t = e.touches[0];
-  const dx = t.clientX - prevMouse.x;
-  const dy = t.clientY - prevMouse.y;
-  globeGroup.rotation.y += dx * 0.005;
-  globeGroup.rotation.x += dy * 0.005;
-  globeGroup.rotation.x = Math.max(-Math.PI/2.2, Math.min(Math.PI/2.2, globeGroup.rotation.x));
-  rotVelocity = { x: dy * 0.005, y: dx * 0.005 };
-  prevMouse = { x:t.clientX, y:t.clientY };
-}, { passive:false });
-canvas.addEventListener('touchend', e => {
-  if (!isDragging) return;
-  isDragging = false;
-  const t = e.changedTouches[0];
-  const dx = Math.abs(t.clientX - (touchStart?.x||0));
-  const dy = Math.abs(t.clientY - (touchStart?.y||0));
-  if (dx < 8 && dy < 8) {
-    const hits = getIntersects(t.clientX, t.clientY);
-    if (hits.length > 0 && hits[0].object.userData.country) {
-      openPanel(hits[0].object.userData.country, hits[0].object.userData.ckey);
-    }
-  }
-});
+canvas.addEventListener('touchstart',e=>{e.preventDefault();const t=e.touches[0];drag=true;ts={x:t.clientX,y:t.clientY};px=t.clientX;py=t.clientY;vx=vy=0;},{passive:false});
+canvas.addEventListener('touchmove',e=>{e.preventDefault();if(!drag)return;const t=e.touches[0],dx=t.clientX-px,dy=t.clientY-py;globeGroup.rotation.y+=dx*.005;globeGroup.rotation.x=Math.max(-1.2,Math.min(1.2,globeGroup.rotation.x+dy*.005));vx=dy*.005;vy=dx*.005;px=t.clientX;py=t.clientY;},{passive:false});
+canvas.addEventListener('touchend',e=>{if(!drag)return;drag=false;const t=e.changedTouches[0];if(Math.abs(t.clientX-(ts?.x||0))<8&&Math.abs(t.clientY-(ts?.y||0))<8){const hits=getHits(t.clientX,t.clientY);if(hits.length&&hits[0].object.userData.type==='country')openPanel(hits[0].object.userData);}});
 
 // ── PANEL ──
-function openPanel(country, ckey) {
-  const cont = CONTINENTS[ckey];
-  const panel = document.getElementById('country-panel');
-  document.getElementById('panel-continent').textContent = `◈ ${cont.name.toUpperCase()} · ${cont.stat.toUpperCase()}`;
-  document.getElementById('panel-continent').style.color = '#' + cont.color.toString(16).padStart(6,'0');
-  document.getElementById('panel-country').textContent = (country.isCapital ? '★ ' : '') + country.name;
-  document.getElementById('panel-country').style.color = country.owner ? '#' + (country.ownerColor||0x61a5ff).toString(16).padStart(6,'0') : '#61a5ff';
-
-  const player = country.owner ? Object.values(PLAYER_ARMIES).find(p => {
-    return Object.keys(PLAYER_ARMIES).find(k => PLAYER_ARMIES[k].name.toLowerCase() === country.owner) === country.owner || true;
-  }) : null;
-
-  document.getElementById('panel-owner').textContent = country.owner
-    ? `Controlled by ${country.owner.charAt(0).toUpperCase()+country.owner.slice(1)} · ${country.soldiers.toLocaleString()} soldiers`
-    : 'Unclaimed — First to train here claims this land';
-
-  // Soldiers breakdown
-  const soldierEl = document.getElementById('panel-soldiers');
-  if (country.soldiers > 0) {
-    soldierEl.innerHTML = `
-      <div class="soldier-card">
-        <div class="soldier-num" style="color:#61a5ff;">${country.soldiers.toLocaleString()}</div>
-        <div class="soldier-label">STATIONED</div>
-      </div>
-      <div class="soldier-card">
-        <div class="soldier-num" style="color:#7c3aed;">${Math.floor(country.soldiers * 0.6).toLocaleString()}</div>
-        <div class="soldier-label">SHADOW ARMY</div>
-      </div>
-      <div class="soldier-card">
-        <div class="soldier-num" style="color:#d4a017;">${country.isCapital ? '×2 AP' : '×1 AP'}</div>
-        <div class="soldier-label">${country.isCapital ? 'CAPITAL BONUS' : 'INCOME'}</div>
-      </div>`;
-  } else {
-    soldierEl.innerHTML = `<div style="font-size:12px;color:rgba(61,165,255,0.4);">No soldiers stationed. Train ${cont.stat} to build your army here.</div>`;
-  }
-
-  // Actions
-  const actEl = document.getElementById('panel-actions');
-  if (!country.owner) {
-    actEl.innerHTML = `<button class="panel-btn btn-claim" onclick="claimCountry('${country.id}','${ckey}')">⚑ Claim Territory</button>`;
-  } else if (country.owner === 'lawrence') { // current user
-    actEl.innerHTML = `<button class="panel-btn btn-reinforce" onclick="reinforce('${country.id}','${ckey}')">⬆ Reinforce</button>`;
-  } else {
-    actEl.innerHTML = `<button class="panel-btn btn-attack" onclick="declareWar('${country.id}','${ckey}','${country.owner}')">⚔ Declare War</button>`;
-  }
-
-  panel.classList.add('open');
+function openPanel(d) {
+  const meta=CONTINENT_META[d.ckey];
+  const el=document.getElementById('country-panel');
+  const pc=document.getElementById('panel-continent');
+  pc.textContent=`◈ ${meta.name.toUpperCase()} · ${meta.stat.toUpperCase()}`;
+  pc.style.color=meta.hex;
+  const pco=document.getElementById('panel-country');
+  pco.textContent=(d.isCapital?'★ ':'')+d.name;
+  pco.style.color=d.owner?'#'+((d.ownerColor||0x61a5ff).toString(16).padStart(6,'0')):'#61a5ff';
+  document.getElementById('panel-owner').textContent=d.owner?`Controlled by ${d.owner} · ${d.soldiers.toLocaleString()} soldiers`:`Unclaimed — Train ${meta.stat} to build your army here`;
+  const se=document.getElementById('panel-soldiers');
+  se.innerHTML=d.soldiers>0?`<div class="soldier-card"><div class="soldier-num" style="color:#61a5ff;">${d.soldiers.toLocaleString()}</div><div class="soldier-label">STATIONED</div></div><div class="soldier-card"><div class="soldier-num" style="color:${meta.hex};">${d.isCapital?'×2':'×1'} AP</div><div class="soldier-label">${d.isCapital?'CAPITAL':'INCOME'}</div></div>`:`<div style="font-size:12px;color:rgba(61,165,255,0.4);">No army. Train ${meta.stat} to generate soldiers.</div>`;
+  const ae=document.getElementById('panel-actions');
+  if(!d.owner) ae.innerHTML=`<button class="panel-btn btn-claim" onclick="closePanel()">⚑ Train to Claim</button>`;
+  else if(d.owner==='Lawrence') ae.innerHTML=`<button class="panel-btn btn-reinforce" onclick="closePanel()">⬆ Reinforce</button>`;
+  else ae.innerHTML=`<button class="panel-btn btn-attack" onclick="closePanel()">⚔ Declare War</button>`;
+  el.classList.add('open');
 }
+window.closePanel=()=>document.getElementById('country-panel').classList.remove('open');
 
-window.closePanel = () => document.getElementById('country-panel').classList.remove('open');
-window.claimCountry = (id, ckey) => { closePanel(); showToast(`⚑ Train ${CONTINENTS[ckey].stat} to claim this territory.`); };
-window.reinforce = (id, ckey) => { closePanel(); showToast(`Training ${CONTINENTS[ckey].stat} will add soldiers here.`); };
-window.declareWar = (id, ckey, owner) => { closePanel(); showToast(`⚔ Issue a Gate Duel challenge to contest this territory.`); };
-
-function showToast(msg) {
-  const t = document.createElement('div');
-  t.style.cssText = 'position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:rgba(5,7,13,0.9);border:1px solid rgba(61,165,255,0.2);border-radius:8px;padding:10px 16px;font-size:12px;color:#61a5ff;z-index:30;white-space:nowrap;';
-  t.textContent = msg;
-  document.body.appendChild(t);
-  setTimeout(() => t.remove(), 3000);
-}
-
-// ── ARMY HUD ──
-const armyHud = document.getElementById('army-hud');
-const currentPlayer = PLAYER_ARMIES.lawrence;
-Object.entries(CONTINENTS).forEach(([ckey, cont]) => {
-  const count = currentPlayer.armies[ckey] || 0;
-  if (count === 0) return;
-  const pill = document.createElement('div');
-  pill.className = 'army-pill';
-  pill.innerHTML = `<div class="army-dot" style="background:#${cont.color.toString(16).padStart(6,'0')};"></div><span style="color:rgba(61,165,255,0.5);font-size:9px;">${cont.name.split(' ')[0]}</span><span class="army-count">${count.toLocaleString()}</span>`;
+// Army HUD
+const armyHud=document.getElementById('army-hud');
+Object.entries(PLAYER_ARMIES.Lawrence.armies).forEach(([ckey,count])=>{
+  if(!count)return;
+  const meta=CONTINENT_META[ckey];
+  const pill=document.createElement('div');
+  pill.className='army-pill';
+  pill.innerHTML=`<div class="army-dot" style="background:${meta.hex};"></div><span style="color:rgba(61,165,255,0.4);font-size:9px;">${meta.name.split(' ')[0]}</span><span class="army-count">${count.toLocaleString()}</span>`;
   armyHud.appendChild(pill);
 });
 
 // ── ANIMATE ──
-let time = 0;
-function animate() {
-  requestAnimationFrame(animate);
-  time += 0.01;
-
-  // Inertia
-  if (!isDragging) {
-    globeGroup.rotation.y += rotVelocity.y;
-    globeGroup.rotation.x += rotVelocity.x;
-    rotVelocity.x *= 0.95;
-    rotVelocity.y *= 0.95;
-    // Slow auto-rotate when idle
-    if (Math.abs(rotVelocity.y) < 0.0005) globeGroup.rotation.y += 0.0008;
-  }
-
-  // Pulse owned countries
-  countryMeshes.forEach((m, i) => {
-    if (m.userData.country?.owner) {
-      const pulse = 0.85 + Math.sin(time * 2 + i * 0.7) * 0.15;
-      m.material.emissiveIntensity = pulse;
-    }
-  });
-
-  renderer.render(scene, camera);
-}
-animate();
-
-// Resize
-window.addEventListener('resize', () => {
-  const W2 = window.innerWidth, H2 = window.innerHeight;
-  camera.aspect = W2/H2;
-  camera.updateProjectionMatrix();
-  renderer.setSize(W2, H2);
-});
+let t=0;
+(function animate(){
+  requestAnimationFrame(animate); t+=0.012;
+  if(!drag){globeGroup.rotation.y+=vy;globeGroup.rotation.x+=vx;vx*=0.94;vy*=0.94;if(Math.abs(vy)<0.0004)globeGroup.rotation.y+=0.0007;}
+  countryDots.forEach((m,i)=>{if(m.userData.owner)m.material.emissiveIntensity=0.7+Math.sin(t*2+i)*0.28;});
+  renderer.render(scene,camera);
+})();
 </script>
 </body>
 </html>
