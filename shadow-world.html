@@ -190,8 +190,8 @@ const canvas = document.getElementById('c');
 const renderer = new THREE.WebGLRenderer({ canvas, antialias:true, alpha:true });
 renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
 const scene = new THREE.Scene();
-const camera = new THREE.PerspectiveCamera(42, innerWidth/innerHeight, 0.1, 100);
-camera.position.z = 3.2;
+const camera = new THREE.PerspectiveCamera(38, innerWidth/innerHeight, 0.1, 100);
+camera.position.z = 3.8;
 function resize(){ renderer.setSize(innerWidth,innerHeight); camera.aspect=innerWidth/innerHeight; camera.updateProjectionMatrix(); }
 resize(); window.addEventListener('resize', resize);
 
@@ -440,7 +440,7 @@ function getHits(cx,cy){m2.x=(cx/innerWidth)*2-1;m2.y=-(cy/innerHeight)*2+1;rayc
 let drag=false,px=0,py=0,vx=0,vy=0,ts=null;
 canvas.addEventListener('mousedown',e=>{drag=true;px=e.clientX;py=e.clientY;vx=vy=0;});
 canvas.addEventListener('mousemove',e=>{
-  if(drag){const dx=e.clientX-px,dy=e.clientY-py;globeGroup.rotation.y+=dx*.005;globeGroup.rotation.x=Math.max(-1.2,Math.min(1.2,globeGroup.rotation.x+dy*.005));vx=dy*.005;vy=dx*.005;px=e.clientX;py=e.clientY;}
+  if(drag){const dx=e.clientX-px,dy=e.clientY-py;globeGroup.rotation.y+=dx*.005;globeGroup.rotation.x=Math.max(-0.7,Math.min(0.7,globeGroup.rotation.x+dy*.005));vx=dy*.005;vy=dx*.005;px=e.clientX;py=e.clientY;}
   const hits=getHits(e.clientX,e.clientY);
   const tt=document.getElementById('tooltip');
   if(hits.length&&hits[0].object.userData.type==='country'){const d=hits[0].object.userData;tt.style.display='block';tt.style.left=(e.clientX+12)+'px';tt.style.top=(e.clientY-28)+'px';tt.textContent=d.name+(d.owner?' · '+d.owner:' · Unclaimed');}
@@ -448,7 +448,7 @@ canvas.addEventListener('mousemove',e=>{
 });
 canvas.addEventListener('mouseup',e=>{if(!drag)return;drag=false;const hits=getHits(e.clientX,e.clientY);if(hits.length&&hits[0].object.userData.type==='country')openPanel(hits[0].object.userData);});
 canvas.addEventListener('touchstart',e=>{e.preventDefault();const t=e.touches[0];drag=true;ts={x:t.clientX,y:t.clientY};px=t.clientX;py=t.clientY;vx=vy=0;},{passive:false});
-canvas.addEventListener('touchmove',e=>{e.preventDefault();if(!drag)return;const t=e.touches[0],dx=t.clientX-px,dy=t.clientY-py;globeGroup.rotation.y+=dx*.005;globeGroup.rotation.x=Math.max(-1.2,Math.min(1.2,globeGroup.rotation.x+dy*.005));vx=dy*.005;vy=dx*.005;px=t.clientX;py=t.clientY;},{passive:false});
+canvas.addEventListener('touchmove',e=>{e.preventDefault();if(!drag)return;const t=e.touches[0],dx=t.clientX-px,dy=t.clientY-py;globeGroup.rotation.y+=dx*.005;globeGroup.rotation.x=Math.max(-0.7,Math.min(0.7,globeGroup.rotation.x+dy*.005));vx=dy*.005;vy=dx*.005;px=t.clientX;py=t.clientY;},{passive:false});
 canvas.addEventListener('touchend',e=>{if(!drag)return;drag=false;const t=e.changedTouches[0];if(Math.abs(t.clientX-(ts?.x||0))<8&&Math.abs(t.clientY-(ts?.y||0))<8){const hits=getHits(t.clientX,t.clientY);if(hits.length&&hits[0].object.userData.type==='country')openPanel(hits[0].object.userData);}});
 
 // ── PANEL ──
