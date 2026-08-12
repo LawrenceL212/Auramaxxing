@@ -6,45 +6,49 @@
 <title>Shadow World</title>
 <style>
 * { margin:0; padding:0; box-sizing:border-box; }
-body { background:#020c18; color:#e0e8ff; font-family:'Courier New',monospace; overflow:hidden; height:100vh; }
-#wrap { position:relative; width:100vw; height:100vh; overflow:hidden; cursor:grab; }
+body { background:#020c18; color:#e0e8ff; font-family:'Courier New',monospace; overflow:hidden; height:100vh; display:flex; flex-direction:row; }
+
+/* ── Map area ── */
+#map-area { position:relative; flex:1; height:100vh; overflow:hidden; }
+#map-area.drag { cursor:grabbing; }
+#wrap { position:absolute; inset:0; cursor:grab; }
 #wrap.drag { cursor:grabbing; }
 canvas { display:block; }
 
-/* ── HUD top ── */
-#hud { position:fixed; top:0; left:0; right:0; padding:8px 14px; display:flex; justify-content:space-between; align-items:center; pointer-events:none; z-index:20; background:linear-gradient(180deg,rgba(2,12,24,0.9) 0%,transparent 100%); }
-#wt { font-size:13px; letter-spacing:.18em; color:#61a5ff; text-shadow:0 0 16px rgba(61,165,255,.7); }
-#ws { font-size:8px; color:rgba(61,165,255,.35); letter-spacing:.2em; margin-top:1px; }
-
-/* ── Army sidebar — right side ── */
+/* ── Army sidebar — right column ── */
 #army-sidebar {
-  position:fixed; right:0; top:0; bottom:0; width:200px;
-  background:rgba(2,12,24,0.92); border-left:1px solid rgba(61,165,255,0.1);
-  z-index:25; display:flex; flex-direction:column; overflow-y:auto;
-  padding:48px 0 16px;
+  width:180px; min-width:180px; height:100vh; flex-shrink:0;
+  background:rgba(2,12,24,0.95); border-left:1px solid rgba(61,165,255,0.12);
+  display:flex; flex-direction:column; overflow-y:auto; overflow-x:hidden;
+  padding:8px 0 16px; order:2;
 }
 #army-sidebar::-webkit-scrollbar { width:3px; }
 #army-sidebar::-webkit-scrollbar-thumb { background:rgba(61,165,255,.2); }
-.asi-head { font-size:8px; letter-spacing:.2em; color:rgba(61,165,255,.35); padding:10px 12px 4px; border-bottom:1px solid rgba(61,165,255,.06); margin-bottom:4px; }
-.cont-row { padding:7px 12px; cursor:pointer; transition:background .15s; border-bottom:1px solid rgba(61,165,255,.04); }
+.asi-head { font-size:8px; letter-spacing:.2em; color:rgba(61,165,255,.35); padding:8px 10px 4px; border-bottom:1px solid rgba(61,165,255,.06); margin-bottom:4px; }
+.cont-row { padding:7px 10px; cursor:pointer; transition:background .15s; border-bottom:1px solid rgba(61,165,255,.04); touch-action:manipulation; }
 .cont-row:hover { background:rgba(61,165,255,.05); }
 .cont-row:active { background:rgba(61,165,255,.1); }
 .cr-name { font-size:10px; font-weight:700; display:flex; align-items:center; gap:5px; margin-bottom:3px; }
 .cr-pool { font-size:9px; color:rgba(61,165,255,.4); margin-bottom:3px; }
 .cr-pool strong { color:#d4a017; }
-.cr-bar { height:3px; background:rgba(61,165,255,.08); border-radius:2px; overflow:hidden; display:flex; gap:1px; }
-.cr-seg { height:100%; transition:width .4s; }
+.cr-bar { height:3px; background:rgba(61,165,255,.08); border-radius:2px; overflow:hidden; display:flex; }
+.cr-seg { height:100%; }
 .cr-owned { font-size:9px; margin-top:3px; }
 
+/* ── HUD ── */
+#hud { position:absolute; top:0; left:0; right:0; padding:8px 14px; display:flex; justify-content:space-between; align-items:center; pointer-events:none; z-index:20; background:linear-gradient(180deg,rgba(2,12,24,0.9) 0%,transparent 100%); }
+#wt { font-size:13px; letter-spacing:.18em; color:#61a5ff; text-shadow:0 0 16px rgba(61,165,255,.7); }
+#ws { font-size:8px; color:rgba(61,165,255,.35); letter-spacing:.2em; margin-top:1px; }
+
 /* ── Zoom buttons ── */
-#zb { position:fixed; right:212px; bottom:60px; display:flex; flex-direction:column; gap:6px; z-index:26; }
-.zb { width:34px; height:34px; background:rgba(2,12,24,0.85); border:1px solid rgba(61,165,255,0.2); border-radius:8px; color:#61a5ff; font-size:18px; cursor:pointer; display:flex; align-items:center; justify-content:center; }
+#zb { position:absolute; right:10px; bottom:50px; display:flex; flex-direction:column; gap:6px; z-index:20; }
+.zb { width:34px; height:34px; background:rgba(2,12,24,0.85); border:1px solid rgba(61,165,255,0.2); border-radius:8px; color:#61a5ff; font-size:18px; cursor:pointer; display:flex; align-items:center; justify-content:center; touch-action:manipulation; }
 
 /* ── Tooltip ── */
 #tt { position:fixed; pointer-events:none; background:rgba(2,12,24,0.95); border:1px solid rgba(61,165,255,0.3); border-radius:6px; padding:5px 10px; font-size:11px; color:#61a5ff; z-index:30; display:none; white-space:nowrap; }
 
 /* ── Bottom panel ── */
-#panel { position:fixed; bottom:0; left:0; right:200px; transform:translateY(100%); transition:transform .35s cubic-bezier(.16,1,.3,1); background:rgba(2,12,24,0.98); border-top:1px solid rgba(61,165,255,.15); border-radius:20px 20px 0 0; padding:16px 18px; z-index:30; max-height:55vh; overflow-y:auto; }
+#panel { position:fixed; bottom:0; left:0; right:180px; transform:translateY(100%); transition:transform .35s cubic-bezier(.16,1,.3,1); background:rgba(2,12,24,0.98); border-top:1px solid rgba(61,165,255,.15); border-radius:20px 20px 0 0; padding:16px 18px; z-index:30; max-height:55vh; overflow-y:auto; }
 #panel.open { transform:translateY(0); }
 #ph { width:36px; height:3px; background:rgba(61,165,255,.2); border-radius:2px; margin:0 auto 10px; }
 #pc { font-size:9px; letter-spacing:.15em; margin-bottom:2px; }
@@ -65,64 +69,63 @@ canvas { display:block; }
 #deploy-row input { background:rgba(61,165,255,.06); border:1px solid rgba(61,165,255,.2); border-radius:8px; color:#e0e8ff; font-family:'Courier New',monospace; font-size:14px; padding:7px 10px; width:72px; text-align:center; }
 #pool-info { font-size:11px; color:rgba(61,165,255,.4); margin-bottom:10px; line-height:1.6; }
 #cont-progress { margin-bottom:10px; }
+
+/* ── Mobile: sidebar becomes top strip ── */
+@media (max-width:640px) {
+  body { flex-direction:column; }
+  #army-sidebar {
+    width:100%; min-width:0; height:auto; max-height:80px;
+    border-left:none; border-bottom:1px solid rgba(61,165,255,.1);
+    flex-direction:row; padding:4px 0; order:0;
+    overflow-x:auto; overflow-y:hidden;
+    -webkit-overflow-scrolling:touch; scrollbar-width:none;
+  }
+  #army-sidebar::-webkit-scrollbar { display:none; }
+  .asi-head { display:none; }
+  .cont-row { min-width:110px; flex:0 0 110px; border-bottom:none; border-right:1px solid rgba(61,165,255,.04); padding:5px 8px; }
+  #map-area { flex:1; order:1; }
+  #zb { right:8px; bottom:12px; }
+  #panel { right:0; max-height:58vh; }
+}
+
+/* ── Loading ── */
 #load { position:fixed; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; background:#020c18; z-index:50; gap:14px; }
 #lt { font-size:11px; color:rgba(61,165,255,.5); letter-spacing:.2em; }
 .lb { width:200px; height:2px; background:rgba(61,165,255,.1); border-radius:1px; }
 .lf { height:100%; background:#61a5ff; border-radius:1px; transition:width .2s; }
-
-/* Mobile: sidebar becomes compact horizontal strip at top */
-@media (max-width:600px) {
-  #army-sidebar {
-    width:100%; height:auto; max-height:none;
-    top:36px; bottom:auto; right:0; left:0;
-    border-left:none; border-top:none; border-bottom:1px solid rgba(61,165,255,.08);
-    padding:0; flex-direction:row; flex-wrap:nowrap;
-    overflow-x:auto; overflow-y:hidden;
-    -webkit-overflow-scrolling:touch;
-    scrollbar-width:none;
-  }
-  #army-sidebar::-webkit-scrollbar { display:none; }
-  .asi-head { display:none; }
-  .cont-row {
-    min-width:130px; flex:0 0 130px;
-    border-bottom:none; border-right:1px solid rgba(61,165,255,.04);
-    padding:6px 10px;
-  }
-  #zb { right:8px; bottom:12px; }
-  #panel { right:0; max-height:60vh; }
-}
 </style>
 </head>
 <body>
 <div id="load"><div id="lt">◈ LOADING SHADOW WORLD</div><div class="lb"><div class="lf" id="lf" style="width:0%"></div></div></div>
-<div id="wrap"><canvas id="c"></canvas></div>
-<div id="hud"><div><div id="wt">◈ SHADOW WORLD</div><div id="ws">TERRITORIAL COMMAND</div></div></div>
 
-<!-- Army sidebar -->
-<div id="army-sidebar">
-  <div class="asi-head">◈ CONTINENTAL ARMIES</div>
-  <div id="sidebar-continents"></div>
-</div>
-
-<div id="zb">
-  <button class="zb" onclick="doZoom(0.3)">+</button>
-  <button class="zb" onclick="doZoom(-0.3)">−</button>
-  <button class="zb" style="font-size:13px;" onclick="resetView()">⌂</button>
-</div>
-<div id="tt"></div>
-<div id="panel">
-  <div id="ph"></div><button id="px" onclick="closePanel()">✕</button>
-  <div id="pc"></div>
-  <div id="pn"></div>
-  <div id="po"></div>
-  <div id="cont-progress"></div>
-  <div id="ps"></div>
-  <div id="pool-info"></div>
-  <div id="deploy-row" style="display:none;">
-    <input type="number" id="deploy-input" min="1" value="10" />
-    <button class="pb bd" id="deploy-btn" style="flex:none;padding:8px 16px;">⚑ Deploy</button>
+<div id="map-area">
+  <div id="wrap"><canvas id="c"></canvas></div>
+  <div id="hud"><div><div id="wt">◈ SHADOW WORLD</div><div id="ws">TERRITORIAL COMMAND</div></div></div>
+  <div id="zb">
+    <button class="zb" onclick="doZoom(0.3)">+</button>
+    <button class="zb" onclick="doZoom(-0.3)">−</button>
+    <button class="zb" style="font-size:13px;" onclick="resetView()">⌂</button>
   </div>
-  <div id="pa"></div>
+  <div id="tt"></div>
+  <div id="panel">
+    <div id="ph"></div><button id="px" onclick="closePanel()">✕</button>
+    <div id="pc"></div>
+    <div id="pn"></div>
+    <div id="po"></div>
+    <div id="cont-progress"></div>
+    <div id="ps"></div>
+    <div id="pool-info"></div>
+    <div id="deploy-row" style="display:none;">
+      <input type="number" id="deploy-input" min="1" value="10" />
+      <button class="pb bd" id="deploy-btn" style="flex:none;padding:8px 16px;">⚑ Deploy</button>
+    </div>
+    <div id="pa"></div>
+  </div>
+</div>
+
+<div id="army-sidebar">
+  <div class="asi-head">◈ ARMIES</div>
+  <div id="sidebar-continents"></div>
 </div>
 
 <script type="module">
@@ -430,19 +433,18 @@ function renderSidebar() {
 let tx=0,ty=0,sc=1;
 function applyT(){canvas.style.transformOrigin='0 0';canvas.style.transform=`translate(${tx}px,${ty}px) scale(${sc})`;}
 function resetView(){
-  const sidebarW = window.innerWidth > 600 ? 200 : 0;
-  const topH     = window.innerWidth <= 600 ? 80 : 0; // strip height on mobile
-  const availW   = innerWidth - sidebarW;
-  const availH   = innerHeight - topH;
+  const mapEl = document.getElementById('map-area');
+  const availW = mapEl ? mapEl.clientWidth : innerWidth;
+  const availH = mapEl ? mapEl.clientHeight : innerHeight;
   sc = Math.min(availW/W, availH/H);
   tx = (availW - W*sc)/2;
-  ty = topH + (availH - H*sc)/2;
+  ty = (availH - H*sc)/2;
   applyT();
 }
 resetView(); window.resetView=resetView;
 window.doZoom=d=>{const ns=Math.max(0.4,Math.min(6,sc+d));tx=innerWidth/2-(innerWidth/2-tx)*(ns/sc);ty=innerHeight/2-(innerHeight/2-ty)*(ns/sc);sc=ns;applyT();};
 
-const wrap=document.getElementById('wrap');
+const wrap=document.getElementById('map-area');
 wrap.addEventListener('wheel',e=>{e.preventDefault();const ns=Math.max(0.4,Math.min(6,sc+(e.deltaY<0?0.15:-0.15)));tx=e.clientX-(e.clientX-tx)*(ns/sc);ty=e.clientY-(e.clientY-ty)*(ns/sc);sc=ns;applyT();},{passive:false});
 
 let drag=false,ds={x:0,y:0},dt={x:0,y:0},moved=false;
@@ -616,11 +618,12 @@ const CONT_CENTERS = {
 window.focusContinent = (ckey) => {
   const [lat,lon] = CONT_CENTERS[ckey] || [0,0];
   const [cx,cy] = ll2px(lon,lat);
-  const sidebarW = window.innerWidth > 600 ? 200 : 0;
-  const availW = innerWidth - sidebarW;
+  const mapEl = document.getElementById('map-area');
+  const availW = mapEl ? mapEl.clientWidth : innerWidth;
+  const availH = mapEl ? mapEl.clientHeight : innerHeight;
   sc = 1.8;
   tx = availW/2 - cx*sc;
-  ty = innerHeight/2 - cy*sc;
+  ty = availH/2 - cy*sc;
   applyT();
 };
 </script>
