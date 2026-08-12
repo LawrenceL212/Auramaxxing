@@ -251,82 +251,12 @@ GAME_COUNTRIES.forEach(gc => {
 });
 
 // ── LOAD OWNERSHIP FROM FIRESTORE ──
+// Firebase isn't initialised in this iframe — get data from parent window via postMessage
 async function loadOwnershipFromFirestore() {
-  try {
-    const { getFirestore, collection, getDocs } = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js');
-    const { getAuth } = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js');
-    const db2 = getFirestore();
-    const auth = getAuth();
-
-    // Load all user profiles to get names, colours, and shadow army data
-    const usersSnap = await getDocs(collection(db2, 'users'));
-    const userMap = {}; // uid -> { name, shadowArmy }
-    usersSnap.docs.forEach(doc => {
-      const d = doc.data();
-      userMap[doc.id] = { name: d.displayName || 'Unknown', shadowArmy: d.shadowArmy || {} };
-    });
-
-    // Build PLAYERS map: displayName -> colour
-    // (already set from PLAYER_COLOR_MAP, just ensure it's populated)
-
-    // Build LIVE_OWNERSHIP from shadowArmy.continents[ckey].countries
-    // For now, distribute game countries based on who has the most soldiers in each continent
-    // Each continent: the player with most soldiers gets the capital, others get remaining slots
-    const CKEY_MAP = {
-      northAmerica: 'iron', southAmerica: 'wild', europe: 'court',
-      africa: 'swift', asia: 'shadow', australia: 'tide', antarctica: 'gate'
-    };
-
-    // Assign game countries to players based on their shadow army continent soldiers
-    const continentSoldiers = {}; // ckey -> [{name, soldiers}] sorted desc
-    Object.entries(userMap).forEach(([uid, user]) => {
-      const armies = user.shadowArmy?.continents || {};
-      Object.entries(CKEY_MAP).forEach(([ckey, armyKey]) => {
-        if (!continentSoldiers[ckey]) continentSoldiers[ckey] = [];
-        const soldiers = armies[armyKey]?.soldiers || 0;
-        if (soldiers > 0) {
-          continentSoldiers[ckey].push({ name: user.name, soldiers, uid });
-        }
-      });
-    });
-
-    // Sort each continent by soldier count
-    Object.keys(continentSoldiers).forEach(ckey => {
-      continentSoldiers[ckey].sort((a,b) => b.soldiers - a.soldiers);
-    });
-
-    // Assign game countries within each continent proportionally
-    GAME_COUNTRIES.forEach(gc => {
-      const players = continentSoldiers[gc.ckey] || [];
-      if (!players.length) return;
-
-      // Get all game countries in this continent sorted by isCapital first
-      const allInCont = GAME_COUNTRIES.filter(g => g.ckey === gc.ckey);
-      const idx = allInCont.indexOf(gc);
-
-      // Distribute: player with most soldiers gets capital + proportional share
-      const totalSoldiers = players.reduce((s,p) => s+p.soldiers, 0);
-      let assigned = null;
-      let cumulative = 0;
-      const fraction = (idx + 0.5) / allInCont.length;
-      for (const player of players) {
-        cumulative += player.soldiers / totalSoldiers;
-        if (fraction <= cumulative) { assigned = player; break; }
-      }
-      if (!assigned && players.length) assigned = players[players.length-1];
-
-      if (assigned) {
-        LIVE_OWNERSHIP[gc.id] = {
-          owner: assigned.name,
-          soldiers: Math.floor(assigned.soldiers / allInCont.length),
-        };
-      }
-    });
-
-    // If no Firestore data exists yet, fall back to demo data
-    const hasAnyOwnership = Object.keys(LIVE_OWNERSHIP).length > 0;
-    if (!hasAnyOwnership) {
-      // Demo: spread across players so map looks populated
+  return new Promise(resolve => {
+    // Request ownership data from parent frame
+    const timeout = setTimeout(() => {
+      // Timed out — use demo data
       LIVE_OWNERSHIP = {
         'na_0': { owner:'Lawrence', soldiers:340 },
         'na_1': { owner:'Lawrence', soldiers:280 },
@@ -347,20 +277,22 @@ async function loadOwnershipFromFirestore() {
         'sa_0': { owner:'LuChing',  soldiers:80  },
         'sa_1': { owner:'LuChing',  soldiers:45  },
       };
-    }
+      console.log('Shadow World: using demo data (parent not responding)');
+      resolve();
+    }, 2000);
 
-    console.log('Shadow World: loaded ownership for', Object.keys(LIVE_OWNERSHIP).length, 'territories');
-  } catch(e) {
-    console.warn('Shadow World: Firestore load failed, using demo data', e);
-    // Demo fallback
-    LIVE_OWNERSHIP = {
-      'na_0': { owner:'Lawrence', soldiers:340 },
-      'na_1': { owner:'Lawrence', soldiers:280 },
-      'as_0': { owner:'LuChing',  soldiers:890 },
-      'eu_0': { owner:'Lucas',    soldiers:60  },
-      'af_0': { owner:'Mireyah',  soldiers:45  },
-    };
-  }
+    window.addEventListener('message', (e) => {
+      if (e.data?.type === 'shadowWorldOwnership') {
+        clearTimeout(timeout);
+        LIVE_OWNERSHIP = e.data.ownership || {};
+        console.log('Shadow World: received ownership from parent,', Object.keys(LIVE_OWNERSHIP).length, 'territories');
+        resolve();
+      }
+    }, { once: true });
+
+    // Ask parent for ownership data
+    window.parent.postMessage({ type: 'requestShadowWorldOwnership' }, '*');
+  });
 }
 
 // ── CANVAS ──
@@ -411,6 +343,7 @@ function draw(t = 0) {
   // ── Draw every country from GeoJSON ──
   COUNTRIES_GEO.forEach(country => {
     const gc = nameToGame[country.n];
+    if (!gc) return; // country not assigned to any game country — skip
     const ownerData = LIVE_OWNERSHIP[gc.id];
     const p  = ownerData ? (PLAYERS[ownerData.owner] || PLAYER_COLOR_MAP[ownerData.owner] || null) : null;
     const pulse = p ? 0.78 + Math.sin(t * 0.003 + (ll2px(gc.lon,gc.lat)[0]) * 0.001) * 0.1 : 1;
