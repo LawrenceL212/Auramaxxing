@@ -286,20 +286,27 @@ async function loadOwnershipFromFirestore() {
       if (e.data?.type === 'shadowWorldOwnership') {
         clearTimeout(timeout);
         const received = e.data.ownership || {};
-        // If real data is too sparse (no one has armies yet), use demo data
         if (Object.keys(received).length >= 5) {
           LIVE_OWNERSHIP = received;
           console.log('Shadow World: received ownership from parent,', Object.keys(LIVE_OWNERSHIP).length, 'territories');
-        } else {
+        } else if (Object.keys(LIVE_OWNERSHIP).length < 5) {
+          // Only fall back to demo if we don't already have real data
           LIVE_OWNERSHIP = DEMO_OWNERSHIP;
           console.log('Shadow World: insufficient army data, using demo');
         }
         resolve();
       }
-    }, { once: true });
+    });
 
     // Ask parent for ownership data
     window.parent.postMessage({ type: 'requestShadowWorldOwnership' }, '*');
+
+    // Retry after 4 seconds in case backfill was still running when first request fired
+    setTimeout(() => {
+      if (Object.keys(LIVE_OWNERSHIP).length < 5) {
+        window.parent.postMessage({ type: 'requestShadowWorldOwnership' }, '*');
+      }
+    }, 4000);
   });
 }
 
