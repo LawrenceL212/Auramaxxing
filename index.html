@@ -2741,14 +2741,15 @@ switchBtn.addEventListener('click', () => {
   authError.textContent = '';
 });
 
-authForm.addEventListener('submit', async (e) => {
-  e.preventDefault();
+async function doAuth() {
   authError.textContent = '';
   if (!configOk) { authError.textContent = 'Firebase config missing — see notice above.'; return; }
   const email = document.getElementById('email').value.trim();
   const password = document.getElementById('password').value;
   const displayName = document.getElementById('displayName').value.trim();
+  if (!email || !password) { authError.textContent = 'Enter your email and password.'; return; }
   authSubmit.disabled = true;
+  authSubmit.textContent = 'Loading…';
   try {
     if (authMode === 'signup') {
       if (!displayName) throw new Error('Enter a name so your party recognizes you.');
@@ -2760,10 +2761,13 @@ authForm.addEventListener('submit', async (e) => {
     }
   } catch (err) {
     authError.textContent = friendlyAuthError(err);
-  } finally {
     authSubmit.disabled = false;
+    authSubmit.textContent = authMode === 'signup' ? 'Awaken' : 'Enter the System';
   }
-});
+}
+
+authSubmit.addEventListener('click', doAuth);
+authForm.addEventListener('submit', (e) => { e.preventDefault(); doAuth(); });
 function friendlyAuthError(err) {
   const code = err.code || '';
   if (code.includes('email-already-in-use')) return 'That email already has an account — log in instead.';
