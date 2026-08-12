@@ -68,14 +68,12 @@ import { COUNTRIES_GEO } from './countries_embedded.js';
 
 const setP = p => document.getElementById('lf').style.width = p + '%';
 
-// ── PLAYERS — colours by display name ──
-// Keys must match exact Firestore displayName values
+// ── PLAYERS — keyed by UID, never by display name ──
 const PLAYER_COLOR_MAP = {
-  'Lawrence':           { hex:'#d4a017', r:212, g:160, b:23  },
-  'Lawrence Aura Goat': { hex:'#d4a017', r:212, g:160, b:23  },
-  'LuChing':            { hex:'#7c3aed', r:124, g:58,  b:237 },
-  'Lucas':              { hex:'#0ea5e9', r:14,  g:165, b:233 },
-  'Mireyah':            { hex:'#ff6b9d', r:255, g:107, b:157 },
+  'eUtGPwQBcCSO0x3xS3ZGYFGXNIT2': { hex:'#d4a017', r:212, g:160, b:23,  name:'Lawrence' },
+  'd1W5vTx5aSTIwkR4CIwnO2xW7vf1': { hex:'#7c3aed', r:124, g:58,  b:237, name:'LuChing'  },
+  'rzcznIkNRrSKVXl74LsTaRSdHOk2': { hex:'#0ea5e9', r:14,  g:165, b:233, name:'Lucas'    },
+  'oFFi2hATYARhqcSZQlHwlsYBOge2': { hex:'#ff6b9d', r:255, g:107, b:157, name:'Mireyah'  },
 };
 let PLAYERS = { ...PLAYER_COLOR_MAP };
 
@@ -254,24 +252,24 @@ GAME_COUNTRIES.forEach(gc => {
 // ── LOAD OWNERSHIP FROM FIRESTORE ──
 // Firebase isn't initialised in this iframe — get data from parent window via postMessage
 const DEMO_OWNERSHIP = {
-  'na_0': { owner:'Lawrence', soldiers:340 },
-  'na_1': { owner:'Lawrence', soldiers:280 },
-  'na_2': { owner:'Lawrence', soldiers:180 },
-  'na_3': { owner:'Lucas',    soldiers:35  },
-  'na_4': { owner:'Lawrence', soldiers:200 },
-  'as_0': { owner:'LuChing',  soldiers:890 },
-  'as_1': { owner:'LuChing',  soldiers:650 },
-  'as_2': { owner:'LuChing',  soldiers:410 },
-  'as_3': { owner:'LuChing',  soldiers:320 },
-  'as_4': { owner:'LuChing',  soldiers:280 },
-  'eu_0': { owner:'Lucas',    soldiers:60  },
-  'eu_1': { owner:'Lucas',    soldiers:45  },
-  'eu_2': { owner:'Lucas',    soldiers:30  },
-  'eu_4': { owner:'Lucas',    soldiers:25  },
-  'af_0': { owner:'Mireyah',  soldiers:45  },
-  'af_5': { owner:'Mireyah',  soldiers:20  },
-  'sa_0': { owner:'LuChing',  soldiers:80  },
-  'sa_1': { owner:'LuChing',  soldiers:45  },
+  'na_0': { uid:'eUtGPwQBcCSO0x3xS3ZGYFGXNIT2', owner:'Lawrence', soldiers:340 },
+  'na_1': { uid:'eUtGPwQBcCSO0x3xS3ZGYFGXNIT2', owner:'Lawrence', soldiers:280 },
+  'na_2': { uid:'eUtGPwQBcCSO0x3xS3ZGYFGXNIT2', owner:'Lawrence', soldiers:180 },
+  'na_3': { uid:'rzcznIkNRrSKVXl74LsTaRSdHOk2', owner:'Lucas',    soldiers:35  },
+  'na_4': { uid:'eUtGPwQBcCSO0x3xS3ZGYFGXNIT2', owner:'Lawrence', soldiers:200 },
+  'as_0': { uid:'d1W5vTx5aSTIwkR4CIwnO2xW7vf1', owner:'LuChing',  soldiers:890 },
+  'as_1': { uid:'d1W5vTx5aSTIwkR4CIwnO2xW7vf1', owner:'LuChing',  soldiers:650 },
+  'as_2': { uid:'d1W5vTx5aSTIwkR4CIwnO2xW7vf1', owner:'LuChing',  soldiers:410 },
+  'as_3': { uid:'d1W5vTx5aSTIwkR4CIwnO2xW7vf1', owner:'LuChing',  soldiers:320 },
+  'as_4': { uid:'d1W5vTx5aSTIwkR4CIwnO2xW7vf1', owner:'LuChing',  soldiers:280 },
+  'eu_0': { uid:'rzcznIkNRrSKVXl74LsTaRSdHOk2', owner:'Lucas',    soldiers:60  },
+  'eu_1': { uid:'rzcznIkNRrSKVXl74LsTaRSdHOk2', owner:'Lucas',    soldiers:45  },
+  'eu_2': { uid:'rzcznIkNRrSKVXl74LsTaRSdHOk2', owner:'Lucas',    soldiers:30  },
+  'eu_4': { uid:'rzcznIkNRrSKVXl74LsTaRSdHOk2', owner:'Lucas',    soldiers:25  },
+  'af_0': { uid:'oFFi2hATYARhqcSZQlHwlsYBOge2', owner:'Mireyah',  soldiers:45  },
+  'af_5': { uid:'oFFi2hATYARhqcSZQlHwlsYBOge2', owner:'Mireyah',  soldiers:20  },
+  'sa_0': { uid:'d1W5vTx5aSTIwkR4CIwnO2xW7vf1', owner:'LuChing',  soldiers:80  },
+  'sa_1': { uid:'d1W5vTx5aSTIwkR4CIwnO2xW7vf1', owner:'LuChing',  soldiers:45  },
 };
 
 async function loadOwnershipFromFirestore() {
@@ -361,7 +359,7 @@ function draw(t = 0) {
     const gc = nameToGame[country.n];
     if (!gc) return; // country not assigned to any game country — skip
     const ownerData = LIVE_OWNERSHIP[gc.id];
-    const p  = ownerData ? (PLAYERS[ownerData.owner] || PLAYER_COLOR_MAP[ownerData.owner] || null) : null;
+    const p  = ownerData ? (PLAYERS[ownerData.uid] || PLAYERS[ownerData.owner] || null) : null;
     const pulse = p ? 0.78 + Math.sin(t * 0.003 + (ll2px(gc.lon,gc.lat)[0]) * 0.001) * 0.1 : 1;
     const fillCol = p
       ? `rgba(${p.r},${p.g},${p.b},${pulse})`
@@ -397,7 +395,7 @@ function draw(t = 0) {
   GAME_COUNTRIES.forEach(c => {
     const [x,y] = ll2px(c.lon, c.lat);
     const ownerData = LIVE_OWNERSHIP[c.id];
-    const p = ownerData?.owner ? (PLAYERS[ownerData.owner] || PLAYER_COLOR_MAP[ownerData.owner] || null) : null;
+    const p = ownerData?.owner ? (PLAYERS[ownerData.uid] || PLAYERS[ownerData.owner] || null) : null;
     const dpulse = p ? 0.85 + Math.sin(t*0.004 + x*0.002)*0.15 : 1;
 
     // Glow
