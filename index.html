@@ -247,7 +247,7 @@
   .btn:hover{border-color:rgba(93,157,255,0.4);box-shadow:0 0 12px rgba(93,157,255,0.1);background:var(--card);}
   .btn:active{transform:scale(0.96);box-shadow:none;}
   .btn-primary{background:var(--brass);border-color:var(--brass);color:#06111f;width:100%;padding:13px;font-size:15px;font-weight:700;}
-  #save-workout-btn.btn-primary{background:linear-gradient(135deg,rgba(61,165,255,0.3),rgba(61,165,255,0.15))!important;border:2px solid rgba(61,165,255,0.7)!important;color:#e0f0ff!important;box-shadow:0 0 28px rgba(61,165,255,0.35),inset 0 1px 0 rgba(255,255,255,0.1)!important;}
+  #save-workout-btn.btn-primary{background:linear-gradient(135deg,rgba(255,215,0,0.25),rgba(212,160,23,0.15))!important;border:2px solid rgba(255,215,0,0.6)!important;color:#FFD700!important;box-shadow:0 0 28px rgba(255,215,0,0.25),inset 0 1px 0 rgba(255,255,255,0.1)!important;}
   .btn-primary:hover{filter:brightness(1.08);}
   .btn-sm{padding:7px 12px;font-size:12.5px;}
   .btn-block{width:100%;}
@@ -286,7 +286,28 @@
   @keyframes timerPulse{0%,100%{opacity:1;}50%{opacity:0.4;}}
   main.view-area{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;padding:20px 20px 100px;max-width:640px;margin:0 auto;width:100%;}
   section.view{display:none;}
-  /* World view — keep iframe alive, show/hide without destroying */
+  /* Force landscape feel for world map on mobile */
+  section.view#view-world.active {
+    contain: strict;
+  }
+  @media(max-width:640px){
+    section.view#view-world.active{
+      position:fixed;top:0;left:0;width:100vw;
+      height:calc(100dvh - 60px);
+      z-index:10;
+    }
+    #world-map-wrap iframe {
+      /* Rotate the iframe content to landscape */
+      width:calc(100dvh - 60px) !important;
+      height:100vw !important;
+      transform-origin:top left;
+      transform:rotate(90deg) translateY(-100%);
+    }
+    #world-armies-btn{
+      /* Reposition for landscape */
+      bottom:auto;left:auto;top:16px;right:16px;
+    }
+  }
   section.view#view-world{display:flex;visibility:hidden;pointer-events:none;position:fixed;top:0;left:0;width:100%;height:100%;z-index:-1;padding:0;flex-direction:row;}
   section.view#view-world.active{visibility:visible;pointer-events:auto;position:fixed;top:0;left:0;width:100vw;height:calc(100dvh - 60px);z-index:10;margin:0;padding:0;}
   #world-layout{display:flex;flex-direction:row;width:100%;height:100%;overflow:hidden;}
@@ -309,7 +330,7 @@
     section.view#view-world.active{flex-direction:row;height:calc(100dvh - 60px);}
     #world-layout{flex-direction:row;height:100%;}
     #world-sidebar{
-      display:none;/* hidden by default on mobile — shown as bottom sheet */
+      display:none;
     }
     #world-sidebar.open{
       display:flex;position:fixed;bottom:60px;left:0;right:0;
@@ -637,8 +658,8 @@
   .date-row{display:flex;gap:10px;margin-bottom:16px;}
   .date-row .field{flex:1;margin-bottom:0;}
   @keyframes questBtnPulse {
-    0%,100% { box-shadow:0 0 24px rgba(61,165,255,0.3),inset 0 1px 0 rgba(255,255,255,0.1); }
-    50%      { box-shadow:0 0 40px rgba(61,165,255,0.6),inset 0 1px 0 rgba(255,255,255,0.15); }
+    0%,100% { box-shadow:0 0 24px rgba(255,215,0,0.25),inset 0 1px 0 rgba(255,255,255,0.1); }
+    50%      { box-shadow:0 0 40px rgba(255,215,0,0.5),inset 0 1px 0 rgba(255,255,255,0.15); }
   }
   #save-workout-btn:not(.hidden) {
     animation: questBtnPulse 2s ease-in-out infinite;
@@ -4483,15 +4504,13 @@ function addExerciseRow(presetName, targetSets, targetReps, prefillSets) {
     </div>`;
   }
   function rirChips(prefillRir) {
-    // Never pre-select RIR/RPE — the user must make a fresh judgment each session
-    return `<div class="rir-chips" title="Reps In Reserve">${[0,1,2,3,4,5].map(n =>
-      `<button type="button" class="rir-chip" data-rir="${n}">${n}</button>`
+    return `<div class="rir-chips" title="Reps In Reserve">${[0,1,2,3,4,5,6,7,8,9,10].map(n =>
+      `<button type="button" class="rir-chip" data-rir="${n}" style="${n<=2?'border-color:rgba(255,61,90,0.4);':n<=5?'border-color:rgba(212,160,23,0.4);':''}">${n}</button>`
     ).join('')}</div>`;
   }
 
   function rpeChips(prefillRpe) {
-    // Never pre-select RPE — the user must make a fresh judgment each session
-    return `<div class="rir-chips" title="Rate of Perceived Exertion (1=easy, 10=max)">${[6,7,8,9,10].map(n =>
+    return `<div class="rir-chips" title="Rate of Perceived Exertion (1=easy, 10=max)">${[1,2,3,4,5,6,7,8,9,10].map(n =>
       `<button type="button" class="rir-chip" data-rir="${n}" style="${n>=9?'border-color:rgba(255,61,90,0.4);':n>=7?'border-color:rgba(212,160,23,0.4);':''}">${n}</button>`
     ).join('')}</div>`;
   }
