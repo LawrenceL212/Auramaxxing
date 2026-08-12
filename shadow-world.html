@@ -10,55 +10,87 @@ body { background:#020c18; color:#e0e8ff; font-family:'Courier New',monospace; o
 #wrap { position:relative; width:100vw; height:100vh; overflow:hidden; cursor:grab; }
 #wrap.drag { cursor:grabbing; }
 canvas { display:block; }
-#hud { position:fixed; top:0; left:0; right:0; padding:10px 14px; display:flex; justify-content:space-between; pointer-events:none; z-index:20; background:linear-gradient(180deg,rgba(2,12,24,0.85) 0%,transparent 100%); }
-#wt { font-size:14px; letter-spacing:.18em; color:#61a5ff; text-shadow:0 0 16px rgba(61,165,255,.7); }
+
+/* ── HUD top ── */
+#hud { position:fixed; top:0; left:0; right:0; padding:8px 14px; display:flex; justify-content:space-between; align-items:center; pointer-events:none; z-index:20; background:linear-gradient(180deg,rgba(2,12,24,0.9) 0%,transparent 100%); }
+#wt { font-size:13px; letter-spacing:.18em; color:#61a5ff; text-shadow:0 0 16px rgba(61,165,255,.7); }
 #ws { font-size:8px; color:rgba(61,165,255,.35); letter-spacing:.2em; margin-top:1px; }
-#leg { position:fixed; left:10px; bottom:80px; display:flex; flex-direction:column; gap:5px; pointer-events:none; z-index:20; background:rgba(2,12,24,0.75); padding:8px 10px; border-radius:8px; border:1px solid rgba(61,165,255,0.1); }
-.lr { display:flex; align-items:center; gap:7px; font-size:10px; }
-.ld { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
-#zb { position:fixed; right:12px; bottom:80px; display:flex; flex-direction:column; gap:6px; z-index:20; }
-.zb { width:36px; height:36px; background:rgba(2,12,24,0.85); border:1px solid rgba(61,165,255,0.2); border-radius:8px; color:#61a5ff; font-size:20px; cursor:pointer; display:flex; align-items:center; justify-content:center; }
+
+/* ── Army sidebar — right side ── */
+#army-sidebar {
+  position:fixed; right:0; top:0; bottom:0; width:200px;
+  background:rgba(2,12,24,0.92); border-left:1px solid rgba(61,165,255,0.1);
+  z-index:25; display:flex; flex-direction:column; overflow-y:auto;
+  padding:48px 0 16px;
+}
+#army-sidebar::-webkit-scrollbar { width:3px; }
+#army-sidebar::-webkit-scrollbar-thumb { background:rgba(61,165,255,.2); }
+.asi-head { font-size:8px; letter-spacing:.2em; color:rgba(61,165,255,.35); padding:10px 12px 4px; border-bottom:1px solid rgba(61,165,255,.06); margin-bottom:4px; }
+.cont-row { padding:7px 12px; cursor:pointer; transition:background .15s; border-bottom:1px solid rgba(61,165,255,.04); }
+.cont-row:hover { background:rgba(61,165,255,.05); }
+.cont-row:active { background:rgba(61,165,255,.1); }
+.cr-name { font-size:10px; font-weight:700; display:flex; align-items:center; gap:5px; margin-bottom:3px; }
+.cr-pool { font-size:9px; color:rgba(61,165,255,.4); margin-bottom:3px; }
+.cr-pool strong { color:#d4a017; }
+.cr-bar { height:3px; background:rgba(61,165,255,.08); border-radius:2px; overflow:hidden; display:flex; gap:1px; }
+.cr-seg { height:100%; transition:width .4s; }
+.cr-owned { font-size:9px; margin-top:3px; }
+
+/* ── Zoom buttons ── */
+#zb { position:fixed; right:212px; bottom:60px; display:flex; flex-direction:column; gap:6px; z-index:26; }
+.zb { width:34px; height:34px; background:rgba(2,12,24,0.85); border:1px solid rgba(61,165,255,0.2); border-radius:8px; color:#61a5ff; font-size:18px; cursor:pointer; display:flex; align-items:center; justify-content:center; }
+
+/* ── Tooltip ── */
 #tt { position:fixed; pointer-events:none; background:rgba(2,12,24,0.95); border:1px solid rgba(61,165,255,0.3); border-radius:6px; padding:5px 10px; font-size:11px; color:#61a5ff; z-index:30; display:none; white-space:nowrap; }
-#panel { position:fixed; bottom:0; left:0; right:0; transform:translateY(100%); transition:transform .35s cubic-bezier(.16,1,.3,1); background:rgba(2,12,24,0.98); border-top:1px solid rgba(61,165,255,.15); border-radius:20px 20px 0 0; padding:18px 20px; z-index:30; max-height:60vh; overflow-y:auto; }
+
+/* ── Bottom panel ── */
+#panel { position:fixed; bottom:0; left:0; right:200px; transform:translateY(100%); transition:transform .35s cubic-bezier(.16,1,.3,1); background:rgba(2,12,24,0.98); border-top:1px solid rgba(61,165,255,.15); border-radius:20px 20px 0 0; padding:16px 18px; z-index:30; max-height:55vh; overflow-y:auto; }
 #panel.open { transform:translateY(0); }
-#ph { width:36px; height:3px; background:rgba(61,165,255,.2); border-radius:2px; margin:0 auto 12px; }
-#pc { font-size:9px; letter-spacing:.15em; margin-bottom:3px; }
-#pn { font-size:20px; font-weight:700; margin-bottom:3px; }
-#po { font-size:11px; color:rgba(61,165,255,.5); margin-bottom:10px; }
-#ps { display:flex; gap:8px; margin-bottom:12px; flex-wrap:wrap; }
-.sc { padding:7px 12px; background:rgba(61,165,255,.05); border:1px solid rgba(61,165,255,.1); border-radius:8px; text-align:center; min-width:70px; }
-.sn { font-size:15px; font-weight:800; }
-.sl { font-size:9px; color:rgba(61,165,255,.4); margin-top:1px; }
+#ph { width:36px; height:3px; background:rgba(61,165,255,.2); border-radius:2px; margin:0 auto 10px; }
+#pc { font-size:9px; letter-spacing:.15em; margin-bottom:2px; }
+#pn { font-size:18px; font-weight:700; margin-bottom:2px; }
+#po { font-size:11px; color:rgba(61,165,255,.5); margin-bottom:8px; }
+#ps { display:flex; gap:8px; margin-bottom:10px; flex-wrap:wrap; }
+.sc { padding:6px 10px; background:rgba(61,165,255,.05); border:1px solid rgba(61,165,255,.1); border-radius:8px; text-align:center; min-width:65px; }
+.sn { font-size:14px; font-weight:800; }
+.sl { font-size:8px; color:rgba(61,165,255,.4); margin-top:1px; }
 #pa { display:flex; gap:8px; flex-wrap:wrap; }
-.pb { flex:1; min-width:120px; padding:10px; border-radius:8px; font-family:'Courier New',monospace; font-size:12px; cursor:pointer; border:none; touch-action:manipulation; }
+.pb { flex:1; min-width:100px; padding:9px; border-radius:8px; font-family:'Courier New',monospace; font-size:12px; cursor:pointer; border:none; touch-action:manipulation; }
 .bc { background:rgba(61,165,255,.12); border:1px solid rgba(61,165,255,.3); color:#61a5ff; }
 .ba { background:rgba(255,61,90,.1); border:1px solid rgba(255,61,90,.3); color:#ff3d5a; }
 .br { background:rgba(78,205,120,.08); border:1px solid rgba(78,205,120,.25); color:#4ecd78; }
 .bd { background:rgba(212,160,23,.08); border:1px solid rgba(212,160,23,.25); color:#d4a017; }
-#px { position:absolute; top:12px; right:14px; background:none; border:none; color:rgba(61,165,255,.4); font-size:18px; cursor:pointer; }
-#deploy-row { display:flex; align-items:center; gap:8px; margin-bottom:12px; }
-#deploy-row input { background:rgba(61,165,255,.06); border:1px solid rgba(61,165,255,.2); border-radius:8px; color:#e0e8ff; font-family:'Courier New',monospace; font-size:14px; padding:8px 12px; width:80px; text-align:center; }
-#pool-info { font-size:11px; color:rgba(61,165,255,.4); margin-bottom:12px; line-height:1.6; }
-#cont-progress { margin-bottom:12px; }
-.cp-bar { height:4px; background:rgba(61,165,255,.08); border-radius:2px; margin-top:4px; overflow:hidden; }
-.cp-fill { height:100%; border-radius:2px; transition:width .4s; }
+#px { position:absolute; top:10px; right:12px; background:none; border:none; color:rgba(61,165,255,.4); font-size:18px; cursor:pointer; }
+#deploy-row { display:flex; align-items:center; gap:8px; margin-bottom:10px; }
+#deploy-row input { background:rgba(61,165,255,.06); border:1px solid rgba(61,165,255,.2); border-radius:8px; color:#e0e8ff; font-family:'Courier New',monospace; font-size:14px; padding:7px 10px; width:72px; text-align:center; }
+#pool-info { font-size:11px; color:rgba(61,165,255,.4); margin-bottom:10px; line-height:1.6; }
+#cont-progress { margin-bottom:10px; }
 #load { position:fixed; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; background:#020c18; z-index:50; gap:14px; }
 #lt { font-size:11px; color:rgba(61,165,255,.5); letter-spacing:.2em; }
 .lb { width:200px; height:2px; background:rgba(61,165,255,.1); border-radius:1px; }
 .lf { height:100%; background:#61a5ff; border-radius:1px; transition:width .2s; }
+
+/* Mobile: sidebar becomes bottom strip */
+@media (max-width:600px) {
+  #army-sidebar { width:100%; height:auto; max-height:38vh; top:auto; bottom:0; right:0; left:0; border-left:none; border-top:1px solid rgba(61,165,255,.1); padding:8px 0 60px; flex-direction:row; flex-wrap:wrap; overflow-x:auto; overflow-y:hidden; }
+  .cont-row { min-width:140px; flex:0 0 140px; border-bottom:none; border-right:1px solid rgba(61,165,255,.04); }
+  .asi-head { width:100%; flex:0 0 100%; }
+  #zb { right:8px; bottom:200px; }
+  #panel { right:0; max-height:45vh; }
+}
 </style>
 </head>
 <body>
 <div id="load"><div id="lt">◈ LOADING SHADOW WORLD</div><div class="lb"><div class="lf" id="lf" style="width:0%"></div></div></div>
 <div id="wrap"><canvas id="c"></canvas></div>
 <div id="hud"><div><div id="wt">◈ SHADOW WORLD</div><div id="ws">TERRITORIAL COMMAND</div></div></div>
-<div id="leg">
-  <div class="lr"><div class="ld" style="background:#d4a017;"></div><span style="color:#d4a017;">Lawrence</span></div>
-  <div class="lr"><div class="ld" style="background:#7c3aed;"></div><span style="color:#7c3aed;">LuChing</span></div>
-  <div class="lr"><div class="ld" style="background:#0ea5e9;"></div><span style="color:#0ea5e9;">Lucas</span></div>
-  <div class="lr"><div class="ld" style="background:#ff6b9d;"></div><span style="color:#ff6b9d;">Mireyah</span></div>
-  <div class="lr"><div class="ld" style="background:#1a2a3a;"></div><span style="color:rgba(61,165,255,.3);">Unclaimed</span></div>
+
+<!-- Army sidebar -->
+<div id="army-sidebar">
+  <div class="asi-head">◈ CONTINENTAL ARMIES</div>
+  <div id="sidebar-continents"></div>
 </div>
+
 <div id="zb">
   <button class="zb" onclick="doZoom(0.3)">+</button>
   <button class="zb" onclick="doZoom(-0.3)">−</button>
@@ -335,8 +367,51 @@ function loadFromParent() {
 loadFromParent().then(() => {
   setP(100);
   setTimeout(() => document.getElementById('load').style.display='none', 200);
+  renderSidebar();
   requestAnimationFrame(animate);
 });
+
+// ── SIDEBAR — shows all continents, your pool, who holds what ──
+function renderSidebar() {
+  const el = document.getElementById('sidebar-continents');
+  if (!el) return;
+  const myPool = LIVE_POOL[CURRENT_UID] || {};
+
+  el.innerHTML = Object.entries(CONT).map(([ckey, m]) => {
+    const allInCont = GAME_COUNTRIES.filter(g => g.ckey === ckey);
+    const pool = myPool[m.armyKey] || 0;
+
+    // Count who holds what in this continent
+    const holdMap = {}; // uid -> count
+    let totalHeld = 0;
+    allInCont.forEach(gc => {
+      const s = LIVE_COUNTRIES[gc.id];
+      if (s?.ownerUid) { holdMap[s.ownerUid] = (holdMap[s.ownerUid]||0)+1; totalHeld++; }
+    });
+
+    const myHeld = holdMap[CURRENT_UID] || 0;
+    const dominated = Object.entries(holdMap).find(([,n]) => n === 6);
+
+    // Build colour bar segments
+    const segments = Object.entries(holdMap).map(([uid, n]) => {
+      const p = PLAYERS[uid];
+      return `<div class="cr-seg" style="width:${Math.round(n/6*100)}%;background:${p?.hex||'#fff'};"></div>`;
+    }).join('');
+
+    // Owner summary line
+    const holders = Object.entries(holdMap).map(([uid, n]) => {
+      const p = PLAYERS[uid];
+      return `<span style="color:${p?.hex||'#fff'}">${p?.name||'?'}×${n}</span>`;
+    }).join(' ');
+
+    return `<div class="cont-row" onclick="focusContinent('${ckey}')">
+      <div class="cr-name" style="color:${m.hex};">${m.icon} ${m.name}</div>
+      <div class="cr-pool">Pool: <strong>${pool > 0 ? pool : '—'}</strong> ${pool > 0 ? `<span style="color:rgba(61,165,255,.3);">${m.armyKey}</span>` : `<span style="color:rgba(61,165,255,.2);">train ${m.stat}</span>`}</div>
+      <div class="cr-bar">${segments || `<div style="font-size:8px;color:rgba(61,165,255,.2);padding:2px;">unclaimed</div>`}</div>
+      <div class="cr-owned" style="color:rgba(61,165,255,.35);">${dominated ? `<span style="color:${PLAYERS[dominated[0]]?.hex}">★ ${PLAYERS[dominated[0]]?.name} dominates</span>` : holders || 'unclaimed'} ${myHeld ? `· <span style="color:#d4a017;">you: ${myHeld}/6</span>` : ''}</div>
+    </div>`;
+  }).join('');
+}
 
 // ── PAN + ZOOM ──
 let tx=0,ty=0,sc=1;
@@ -499,6 +574,7 @@ function deployToCountry(c, amount) {
   if (!LIVE_POOL[CURRENT_UID]) LIVE_POOL[CURRENT_UID] = {};
   LIVE_POOL[CURRENT_UID][m.armyKey] = Math.max(0, myPool - amount);
   closePanel();
+  renderSidebar();
   setTimeout(() => openPanel(c), 100); // re-open with updated state
 }
 
@@ -509,6 +585,20 @@ function declareWar(gcId, defenderUid) {
 
 window.closePanel = () => document.getElementById('panel').classList.remove('open');
 window.addEventListener('resize', resetView);
+
+// Focus map on a continent when clicking sidebar
+const CONT_CENTERS = {
+  northAmerica:[42,-100], southAmerica:[-20,-58], europe:[54,14],
+  africa:[5,20], asia:[42,82], australia:[-28,134], antarctica:[-78,0]
+};
+window.focusContinent = (ckey) => {
+  const [lat,lon] = CONT_CENTERS[ckey] || [0,0];
+  const [cx,cy] = ll2px(lon,lat);
+  sc = 1.8;
+  tx = innerWidth/2 - cx*sc;
+  ty = innerHeight/2 - cy*sc;
+  applyT();
+};
 </script>
 </body>
 </html>
