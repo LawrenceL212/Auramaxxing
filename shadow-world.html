@@ -7,17 +7,17 @@
 <style>
 * { margin:0; padding:0; box-sizing:border-box; }
 body { background:#020c18; color:#e0e8ff; font-family:'Courier New',monospace; overflow:hidden; height:100vh; }
-#map-wrap { position:relative; width:100vw; height:100vh; overflow:hidden; cursor:grab; }
-#map-wrap.dragging { cursor:grabbing; }
-canvas#map { display:block; image-rendering:crisp-edges; }
-#hud { position:fixed; top:0; left:0; right:0; padding:10px 14px; display:flex; justify-content:space-between; align-items:center; pointer-events:none; z-index:20; background:linear-gradient(180deg,rgba(2,12,24,0.85) 0%,transparent 100%); }
-#world-title { font-size:14px; letter-spacing:.18em; color:#61a5ff; text-shadow:0 0 16px rgba(61,165,255,.7); }
-#world-sub { font-size:8px; color:rgba(61,165,255,.35); letter-spacing:.2em; margin-top:1px; }
-#legend { position:fixed; left:10px; bottom:80px; display:flex; flex-direction:column; gap:5px; pointer-events:none; z-index:20; background:rgba(2,12,24,0.75); padding:8px 10px; border-radius:8px; border:1px solid rgba(61,165,255,0.1); }
-.lrow { display:flex; align-items:center; gap:7px; font-size:10px; }
-.ldot { width:10px; height:10px; border-radius:50%; flex-shrink:0; border:1px solid rgba(255,255,255,0.25); }
-#zoom-btns { position:fixed; right:12px; bottom:80px; display:flex; flex-direction:column; gap:6px; z-index:20; }
-.zbtn { width:36px; height:36px; background:rgba(2,12,24,0.85); border:1px solid rgba(61,165,255,0.2); border-radius:8px; color:#61a5ff; font-size:20px; cursor:pointer; display:flex; align-items:center; justify-content:center; }
+#wrap { position:relative; width:100vw; height:100vh; overflow:hidden; cursor:grab; }
+#wrap.drag { cursor:grabbing; }
+canvas { display:block; }
+#hud { position:fixed; top:0; left:0; right:0; padding:10px 14px; display:flex; justify-content:space-between; pointer-events:none; z-index:20; background:linear-gradient(180deg,rgba(2,12,24,0.85) 0%,transparent 100%); }
+#wt { font-size:14px; letter-spacing:.18em; color:#61a5ff; text-shadow:0 0 16px rgba(61,165,255,.7); }
+#ws { font-size:8px; color:rgba(61,165,255,.35); letter-spacing:.2em; margin-top:1px; }
+#leg { position:fixed; left:10px; bottom:80px; display:flex; flex-direction:column; gap:5px; pointer-events:none; z-index:20; background:rgba(2,12,24,0.75); padding:8px 10px; border-radius:8px; border:1px solid rgba(61,165,255,0.1); }
+.lr { display:flex; align-items:center; gap:7px; font-size:10px; }
+.ld { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
+#zb { position:fixed; right:12px; bottom:80px; display:flex; flex-direction:column; gap:6px; z-index:20; }
+.zb { width:36px; height:36px; background:rgba(2,12,24,0.85); border:1px solid rgba(61,165,255,0.2); border-radius:8px; color:#61a5ff; font-size:20px; cursor:pointer; display:flex; align-items:center; justify-content:center; }
 #tt { position:fixed; pointer-events:none; background:rgba(2,12,24,0.95); border:1px solid rgba(61,165,255,0.3); border-radius:6px; padding:5px 10px; font-size:11px; color:#61a5ff; z-index:30; display:none; white-space:nowrap; }
 #panel { position:fixed; bottom:0; left:0; right:0; transform:translateY(100%); transition:transform .35s cubic-bezier(.16,1,.3,1); background:rgba(2,12,24,0.98); border-top:1px solid rgba(61,165,255,.15); border-radius:20px 20px 0 0; padding:18px 20px; z-index:30; max-height:50vh; overflow-y:auto; }
 #panel.open { transform:translateY(0); }
@@ -35,27 +35,27 @@ canvas#map { display:block; image-rendering:crisp-edges; }
 .ba { background:rgba(255,61,90,.1); border:1px solid rgba(255,61,90,.3); color:#ff3d5a; }
 .br { background:rgba(78,205,120,.08); border:1px solid rgba(78,205,120,.25); color:#4ecd78; }
 #px { position:absolute; top:12px; right:14px; background:none; border:none; color:rgba(61,165,255,.4); font-size:18px; cursor:pointer; }
-#loading { position:fixed; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; background:#020c18; z-index:50; gap:14px; }
+#load { position:fixed; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; background:#020c18; z-index:50; gap:14px; }
 #lt { font-size:11px; color:rgba(61,165,255,.5); letter-spacing:.2em; }
 .lb { width:200px; height:2px; background:rgba(61,165,255,.1); border-radius:1px; }
 .lf { height:100%; background:#61a5ff; border-radius:1px; transition:width .2s; }
 </style>
 </head>
 <body>
-<div id="loading"><div id="lt">◈ LOADING SHADOW WORLD</div><div class="lb"><div class="lf" id="lf" style="width:0%"></div></div></div>
-<div id="map-wrap"><canvas id="map"></canvas></div>
-<div id="hud"><div><div id="world-title">◈ SHADOW WORLD</div><div id="world-sub">TERRITORIAL COMMAND</div></div></div>
-<div id="legend">
-  <div class="lrow"><div class="ldot" style="background:#d4a017;"></div><span style="color:#d4a017;">Lawrence</span></div>
-  <div class="lrow"><div class="ldot" style="background:#7c3aed;"></div><span style="color:#7c3aed;">LuChing</span></div>
-  <div class="lrow"><div class="ldot" style="background:#0ea5e9;"></div><span style="color:#0ea5e9;">Lucas</span></div>
-  <div class="lrow"><div class="ldot" style="background:#ff6b9d;"></div><span style="color:#ff6b9d;">Mireyah</span></div>
-  <div class="lrow"><div class="ldot" style="background:#1e3a5f;"></div><span style="color:rgba(61,165,255,.3);">Unclaimed</span></div>
+<div id="load"><div id="lt">◈ LOADING SHADOW WORLD</div><div class="lb"><div class="lf" id="lf" style="width:0%"></div></div></div>
+<div id="wrap"><canvas id="c"></canvas></div>
+<div id="hud"><div><div id="wt">◈ SHADOW WORLD</div><div id="ws">TERRITORIAL COMMAND</div></div></div>
+<div id="leg">
+  <div class="lr"><div class="ld" style="background:#d4a017;"></div><span style="color:#d4a017;">Lawrence</span></div>
+  <div class="lr"><div class="ld" style="background:#7c3aed;"></div><span style="color:#7c3aed;">LuChing</span></div>
+  <div class="lr"><div class="ld" style="background:#0ea5e9;"></div><span style="color:#0ea5e9;">Lucas</span></div>
+  <div class="lr"><div class="ld" style="background:#ff6b9d;"></div><span style="color:#ff6b9d;">Mireyah</span></div>
+  <div class="lr"><div class="ld" style="background:#1e3a5f;"></div><span style="color:rgba(61,165,255,.3);">Unclaimed</span></div>
 </div>
-<div id="zoom-btns">
-  <button class="zbtn" onclick="zoom(0.25)">+</button>
-  <button class="zbtn" onclick="zoom(-0.25)">−</button>
-  <button class="zbtn" style="font-size:13px;" onclick="resetView()">⌂</button>
+<div id="zb">
+  <button class="zb" onclick="doZoom(0.25)">+</button>
+  <button class="zb" onclick="doZoom(-0.25)">−</button>
+  <button class="zb" style="font-size:13px;" onclick="resetView()">⌂</button>
 </div>
 <div id="tt"></div>
 <div id="panel">
@@ -66,7 +66,7 @@ canvas#map { display:block; image-rendering:crisp-edges; }
 <script type="module">
 import { LAND_POLYS } from './geo_embedded.js';
 
-const setP = p => document.getElementById('lf').style.width = p+'%';
+const setP = p => document.getElementById('lf').style.width = p + '%';
 
 const PLAYERS = {
   Lawrence: { hex:'#d4a017', r:212, g:160, b:23  },
@@ -85,390 +85,404 @@ const CONT = {
   antarctica:   { name:'The Gate',        stat:'all',         hex:'#94a3b8' },
 };
 
-// ── COUNTRIES with geographic zone polygons ──
-// Each country has a zone polygon [lon,lat] defining its territory on the map
-// These are clipped against the continent's land polygon when drawn
+// ── COUNTRY DEFINITIONS ──
+// polys: direct GeoJSON polygon indices that belong to this country
+// zone112: lon/lat bbox to clip out of the Afro-Eurasian mega-polygon (idx 112)
+// zone95: lon/lat bbox to clip out of the Americas mega-polygon (idx 95)
 const COUNTRIES = [
   // NORTH AMERICA
   { id:'na_0', name:'Ironforge',     ckey:'northAmerica', isCapital:true,  owner:'Lawrence', soldiers:340,
-    lat:58,  lon:-120, zone:[[-168,72],[-100,72],[-100,55],[-168,55]] },
+    lat:58,  lon:-135, polys:[82,84,87,91,94,78,76,56,57,58,59,60],
+    zone95:{minLon:-168,maxLon:-125,minLat:54,maxLat:72} },
+
   { id:'na_1', name:'Steelhold',     ckey:'northAmerica', isCapital:false, owner:'Lawrence', soldiers:280,
-    lat:47,  lon:-98,  zone:[[-100,55],[-75,55],[-75,35],[-100,35]] },
+    lat:50,  lon:-100,
+    zone95:{minLon:-125,maxLon:-88,minLat:35,maxLat:60} },
+
   { id:'na_2', name:'Ashvault',      ckey:'northAmerica', isCapital:false, owner:'Lawrence', soldiers:180,
-    lat:37,  lon:-98,  zone:[[-100,35],[-75,25],[-100,25]] },
+    lat:32,  lon:-105,
+    zone95:{minLon:-118,maxLon:-86,minLat:15,maxLat:35} },
+
   { id:'na_3', name:'Cinder Keep',   ckey:'northAmerica', isCapital:false, owner:'Lawrence', soldiers:120,
-    lat:32,  lon:-112, zone:[[-120,35],[-100,35],[-100,15],[-120,15]] },
+    lat:19,  lon:-95, polys:[61,52,53,54,62,64,65],
+    zone95:{minLon:-90,maxLon:-60,minLat:8,maxLat:22} },
+
   { id:'na_4', name:'Brutholm',      ckey:'northAmerica', isCapital:false, owner:'Lawrence', soldiers:200,
-    lat:53,  lon:-78,  zone:[[-75,72],[-50,50],[-75,50]] },
-  { id:'na_5', name:'Forgepeak',     ckey:'northAmerica', isCapital:false, owner:'Lucas',    soldiers:35,
-    lat:35,  lon:-75,  zone:[[-75,50],[-55,25],[-75,25]] },
+    lat:52,  lon:-68, polys:[74,75,77,85,86,88,90,92,99,126],
+    zone95:{minLon:-88,maxLon:-50,minLat:42,maxLat:72} },
+
+  { id:'na_5', name:'Forgepeak',     ckey:'northAmerica', isCapital:false, owner:'Lucas', soldiers:35,
+    lat:74,  lon:-100, polys:[96,97,98,100,102,103,105,107,108,110,111,113,114,116,117,118,124,125],
+    zone95:{minLon:-125,maxLon:-50,minLat:72,maxLat:84} },
 
   // SOUTH AMERICA
   { id:'sa_0', name:'Verdant Peak',  ckey:'southAmerica', isCapital:true,  owner:'LuChing',  soldiers:80,
-    lat:-5,  lon:-65,  zone:[[-82,12],[-50,12],[-50,0],[-82,0]] },
-  { id:'sa_1', name:'Thornveil',     ckey:'southAmerica', isCapital:false, owner:null,       soldiers:0,
-    lat:-10, lon:-42,  zone:[[-55,0],[-35,-5],[-55,-20]] },
-  { id:'sa_2', name:'Mistclimb',     ckey:'southAmerica', isCapital:false, owner:null,       soldiers:0,
-    lat:-22, lon:-48,  zone:[[-55,-20],[-35,-35],[-55,-35]] },
-  { id:'sa_3', name:'Roothold',      ckey:'southAmerica', isCapital:false, owner:null,       soldiers:0,
-    lat:-38, lon:-65,  zone:[[-75,-35],[-55,-35],[-55,-56],[-75,-56]] },
-  { id:'sa_4', name:'Canopy',        ckey:'southAmerica', isCapital:false, owner:'LuChing',  soldiers:45,
-    lat:5,   lon:-72,  zone:[[-82,12],[-55,12],[-55,0],[-82,0]] },
-  { id:'sa_5', name:'Highreach',     ckey:'southAmerica', isCapital:false, owner:null,       soldiers:0,
-    lat:-45, lon:-68,  zone:[[-75,-40],[-65,-40],[-65,-56],[-75,-56]] },
+    lat:5,   lon:-70,  polys:[45],
+    zone95:{minLon:-82,maxLon:-55,minLat:0,maxLat:14} },
 
-  // EUROPE
-  { id:'eu_0', name:'Ironring',      ckey:'europe', isCapital:true,  owner:'Lucas',    soldiers:60,
-    lat:52,  lon:8,    zone:[[-10,60],[15,60],[15,45],[-10,45]] },
-  { id:'eu_1', name:'Gauntlet',      ckey:'europe', isCapital:false, owner:'Lucas',    soldiers:45,
-    lat:48,  lon:18,   zone:[[15,60],[35,60],[35,45],[15,45]] },
-  { id:'eu_2', name:'The Pits',      ckey:'europe', isCapital:false, owner:'Lucas',    soldiers:30,
-    lat:40,  lon:14,   zone:[[-5,45],[25,45],[25,34],[-5,34]] },
-  { id:'eu_3', name:'Strikewood',    ckey:'europe', isCapital:false, owner:null,       soldiers:0,
-    lat:50,  lon:2,    zone:[[-10,72],[-10,60],[10,60],[10,72]] },
-  { id:'eu_4', name:'Combatia',      ckey:'europe', isCapital:false, owner:'Lucas',    soldiers:25,
-    lat:62,  lon:25,   zone:[[15,72],[35,62],[35,72]] },
-  { id:'eu_5', name:'Blazeguard',    ckey:'europe', isCapital:false, owner:null,       soldiers:0,
-    lat:40,  lon:28,   zone:[[25,45],[40,45],[40,34],[25,34]] },
+  { id:'sa_1', name:'Thornveil',     ckey:'southAmerica', isCapital:false, owner:'LuChing',  soldiers:45,
+    lat:-8,  lon:-62,
+    zone95:{minLon:-82,maxLon:-45,minLat:-18,maxLat:0} },
+
+  { id:'sa_2', name:'Mistclimb',     ckey:'southAmerica', isCapital:false, owner:null, soldiers:0,
+    lat:-22, lon:-45,  polys:[9],
+    zone95:{minLon:-55,maxLon:-34,minLat:-36,maxLat:-5} },
+
+  { id:'sa_3', name:'Roothold',      ckey:'southAmerica', isCapital:false, owner:null, soldiers:0,
+    lat:-40, lon:-68,  polys:[8],
+    zone95:{minLon:-76,maxLon:-55,minLat:-58,maxLat:-36} },
+
+  { id:'sa_4', name:'Canopy',        ckey:'southAmerica', isCapital:false, owner:null, soldiers:0,
+    lat:-12, lon:-74,
+    zone95:{minLon:-82,maxLon:-55,minLat:-18,maxLat:0} },
+
+  { id:'sa_5', name:'Highreach',     ckey:'southAmerica', isCapital:false, owner:null, soldiers:0,
+    lat:-52, lon:-68,  polys:[8],
+    zone95:{minLon:-76,maxLon:-55,minLat:-58,maxLat:-36} },
+
+  // EUROPE (all use zone112 for mainland, some have island polys)
+  { id:'eu_0', name:'Ironring',      ckey:'europe', isCapital:true,  owner:'Lucas', soldiers:60,
+    lat:52,  lon:5,    polys:[80,83,81],
+    zone112:{minLon:-10,maxLon:22,minLat:36,maxLat:60} },
+
+  { id:'eu_1', name:'Gauntlet',      ckey:'europe', isCapital:false, owner:'Lucas', soldiers:45,
+    lat:48,  lon:22,
+    zone112:{minLon:22,maxLon:42,minLat:36,maxLat:60} },
+
+  { id:'eu_2', name:'The Pits',      ckey:'europe', isCapital:false, owner:'Lucas', soldiers:30,
+    lat:39,  lon:14,   polys:[68,69,70,72,67],
+    zone112:{minLon:-5,maxLon:22,minLat:36,maxLat:46} },
+
+  { id:'eu_3', name:'Strikewood',    ckey:'europe', isCapital:false, owner:null, soldiers:0,
+    lat:60,  lon:10,   polys:[89],
+    zone112:{minLon:-25,maxLon:22,minLat:55,maxLat:72} },
+
+  { id:'eu_4', name:'Combatia',      ckey:'europe', isCapital:false, owner:'Lucas', soldiers:25,
+    lat:64,  lon:26,   polys:[120,121,115],
+    zone112:{minLon:22,maxLon:42,minLat:55,maxLat:72} },
+
+  { id:'eu_5', name:'Blazeguard',    ckey:'europe', isCapital:false, owner:null, soldiers:0,
+    lat:40,  lon:30,
+    zone112:{minLon:28,maxLon:42,minLat:36,maxLat:48} },
 
   // AFRICA
-  { id:'af_0', name:'Galerun',       ckey:'africa', isCapital:true,  owner:'Mireyah',  soldiers:45,
-    lat:15,  lon:10,   zone:[[-18,38],[25,38],[25,10],[-18,10]] },
-  { id:'af_1', name:'Stormstep',     ckey:'africa', isCapital:false, owner:null,       soldiers:0,
-    lat:5,   lon:25,   zone:[[25,10],[55,10],[55,-5],[25,-5]] },
-  { id:'af_2', name:'Blitzfield',    ckey:'africa', isCapital:false, owner:null,       soldiers:0,
-    lat:-15, lon:25,   zone:[[10,-5],[40,-5],[40,-30],[10,-30]] },
-  { id:'af_3', name:'Vantrace',      ckey:'africa', isCapital:false, owner:null,       soldiers:0,
-    lat:5,   lon:38,   zone:[[25,10],[55,10],[55,-5],[25,-5]] },
-  { id:'af_4', name:'Windfall',      ckey:'africa', isCapital:false, owner:null,       soldiers:0,
-    lat:20,  lon:18,   zone:[[-18,38],[25,38],[25,10],[-18,10]] },
-  { id:'af_5', name:'Rushgate',      ckey:'africa', isCapital:false, owner:null,       soldiers:0,
-    lat:-30, lon:26,   zone:[[15,-30],[40,-30],[40,-38],[15,-38]] },
+  { id:'af_0', name:'Galerun',       ckey:'africa', isCapital:true,  owner:'Mireyah', soldiers:45,
+    lat:18,  lon:2,
+    zone112:{minLon:-18,maxLon:22,minLat:5,maxLat:38} },
+
+  { id:'af_1', name:'Stormstep',     ckey:'africa', isCapital:false, owner:null, soldiers:0,
+    lat:8,   lon:30,
+    zone112:{minLon:22,maxLon:52,minLat:0,maxLat:22} },
+
+  { id:'af_2', name:'Blitzfield',    ckey:'africa', isCapital:false, owner:null, soldiers:0,
+    lat:-20, lon:24,
+    zone112:{minLon:10,maxLon:40,minLat:-35,maxLat:0} },
+
+  { id:'af_3', name:'Vantrace',      ckey:'africa', isCapital:false, owner:null, soldiers:0,
+    lat:10,  lon:6,
+    zone112:{minLon:-18,maxLon:22,minLat:-5,maxLat:5} },
+
+  { id:'af_4', name:'Windfall',      ckey:'africa', isCapital:false, owner:null, soldiers:0,
+    lat:-5,  lon:36,
+    zone112:{minLon:22,maxLon:52,minLat:-35,maxLat:0} },
+
+  { id:'af_5', name:'Rushgate',      ckey:'africa', isCapital:false, owner:'Mireyah', soldiers:20,
+    lat:-20, lon:46,   polys:[20],
+    zone112:{minLon:40,maxLon:52,minLat:-26,maxLat:-12} },
 
   // ASIA
-  { id:'as_0', name:'Voidmark',      ckey:'asia', isCapital:true,  owner:'LuChing',  soldiers:890,
-    lat:48,  lon:68,   zone:[[40,72],[90,72],[90,45],[40,45]] },
-  { id:'as_1', name:'Umbra',         ckey:'asia', isCapital:false, owner:'LuChing',  soldiers:650,
-    lat:28,  lon:72,   zone:[[40,45],[80,45],[80,15],[40,15]] },
-  { id:'as_2', name:'The Hollow',    ckey:'asia', isCapital:false, owner:'LuChing',  soldiers:410,
-    lat:18,  lon:102,  zone:[[80,25],[120,25],[120,-10],[80,-10]] },
-  { id:'as_3', name:'Phantom Spire', ckey:'asia', isCapital:false, owner:'LuChing',  soldiers:320,
-    lat:57,  lon:105,  zone:[[90,72],[145,72],[145,50],[90,50]] },
-  { id:'as_4', name:'Eclipse',       ckey:'asia', isCapital:false, owner:'LuChing',  soldiers:280,
-    lat:35,  lon:112,  zone:[[100,50],[145,50],[145,25],[100,25]] },
-  { id:'as_5', name:'Shadowmere',    ckey:'asia', isCapital:false, owner:'LuChing',  soldiers:190,
-    lat:55,  lon:132,  zone:[[125,72],[148,72],[148,42],[125,42]] },
+  { id:'as_0', name:'Voidmark',      ckey:'asia', isCapital:true,  owner:'LuChing', soldiers:890,
+    lat:50,  lon:65,   polys:[109,122,123,119],
+    zone112:{minLon:40,maxLon:92,minLat:35,maxLat:78} },
+
+  { id:'as_1', name:'Umbra',         ckey:'asia', isCapital:false, owner:'LuChing', soldiers:650,
+    lat:25,  lon:70,   polys:[44],
+    zone112:{minLon:40,maxLon:100,minLat:5,maxLat:35} },
+
+  { id:'as_2', name:'The Hollow',    ckey:'asia', isCapital:false, owner:'LuChing', soldiers:410,
+    lat:15,  lon:108,  polys:[41,31,27,28,23,35,36,40,55,63],
+    zone112:{minLon:95,maxLon:120,minLat:-5,maxLat:28} },
+
+  { id:'as_3', name:'Phantom Spire', ckey:'asia', isCapital:false, owner:'LuChing', soldiers:320,
+    lat:38,  lon:130,  polys:[66,71,73,79,104,106,101,93],
+    zone112:{minLon:120,maxLon:145,minLat:25,maxLat:55} },
+
+  { id:'as_4', name:'Eclipse',       ckey:'asia', isCapital:false, owner:'LuChing', soldiers:280,
+    lat:12,  lon:122,  polys:[43,46,47,48,49,50,51,39,42,26,32,34,37,38],
+    zone112:{minLon:100,maxLon:145,minLat:-12,maxLat:25} },
+
+  { id:'as_5', name:'Shadowmere',    ckey:'asia', isCapital:false, owner:'LuChing', soldiers:190,
+    lat:60,  lon:120,  polys:[79,104,106,101,93],
+    zone112:{minLon:120,maxLon:148,minLat:42,maxLat:78} },
 
   // AUSTRALIA
   { id:'au_0', name:'Deepholm',      ckey:'australia', isCapital:true,  owner:null, soldiers:0,
-    lat:-22, lon:125,  zone:[[112,-15],[130,-15],[130,-35],[112,-35]] },
+    lat:-22, lon:125,  polys:[21] },
   { id:'au_1', name:'Abyssal',       ckey:'australia', isCapital:false, owner:null, soldiers:0,
-    lat:-30, lon:145,  zone:[[140,-25],[155,-25],[155,-40],[140,-40]] },
+    lat:-35, lon:148,  polys:[11,13] },
   { id:'au_2', name:'Coralspire',    ckey:'australia', isCapital:false, owner:null, soldiers:0,
-    lat:-18, lon:146,  zone:[[140,-10],[155,-10],[155,-25],[140,-25]] },
+    lat:-18, lon:146,  polys:[12] },
   { id:'au_3', name:'Drifthaven',    ckey:'australia', isCapital:false, owner:null, soldiers:0,
-    lat:-28, lon:118,  zone:[[112,-25],[130,-25],[130,-38],[112,-38]] },
+    lat:-5,  lon:145,  polys:[38] },
   { id:'au_4', name:'Tidemark',      ckey:'australia', isCapital:false, owner:null, soldiers:0,
-    lat:-35, lon:138,  zone:[[130,-28],[142,-28],[142,-40],[130,-40]] },
+    lat:-15, lon:170,  polys:[14,15,16,17,18,19,22,24,25,29,30] },
   { id:'au_5', name:'Undertow',      ckey:'australia', isCapital:false, owner:null, soldiers:0,
-    lat:-14, lon:132,  zone:[[130,-11],[142,-11],[142,-22],[130,-22]] },
+    lat:-6,  lon:134,  polys:[32,33] },
 
   // ANTARCTICA
   { id:'an_0', name:'Gate Prime',    ckey:'antarctica', isCapital:true,  owner:null, soldiers:0,
-    lat:-80, lon:0,    zone:[[-30,-65],[30,-65],[30,-90],[-30,-90]] },
+    lat:-80, lon:0,    polys:[7] },
   { id:'an_1', name:'The Threshold', ckey:'antarctica', isCapital:false, owner:null, soldiers:0,
-    lat:-80, lon:60,   zone:[[30,-65],[90,-65],[90,-90],[30,-90]] },
+    lat:-80, lon:60,   polys:[6,2,5] },
   { id:'an_2', name:'Nexus',         ckey:'antarctica', isCapital:false, owner:null, soldiers:0,
-    lat:-80, lon:120,  zone:[[90,-65],[150,-65],[150,-90],[90,-90]] },
+    lat:-80, lon:120,  polys:[] },
   { id:'an_3', name:'The Crossing',  ckey:'antarctica', isCapital:false, owner:null, soldiers:0,
-    lat:-80, lon:175,  zone:[[150,-65],[180,-65],[180,-90],[150,-90]] },
+    lat:-80, lon:175,  polys:[0,1,3,4] },
   { id:'an_4', name:'Voidgate',      ckey:'antarctica', isCapital:false, owner:null, soldiers:0,
-    lat:-80, lon:-120, zone:[[-180,-65],[-90,-65],[-90,-90],[-180,-90]] },
+    lat:-80, lon:-120, polys:[] },
   { id:'an_5', name:'The Rift',      ckey:'antarctica', isCapital:false, owner:null, soldiers:0,
-    lat:-80, lon:-60,  zone:[[-90,-65],[-30,-65],[-30,-90],[-90,-90]] },
+    lat:-80, lon:-60,  polys:[] },
 ];
 
-// ── CANVAS SETUP ──
-const canvas = document.getElementById('map');
+// ── CANVAS ──
+const canvas = document.getElementById('c');
 const ctx    = canvas.getContext('2d');
-const MAP_W  = 2048;
-const MAP_H  = 1024;
-canvas.width  = MAP_W;
-canvas.height = MAP_H;
+const W = 2048, H = 1024;
+canvas.width = W; canvas.height = H;
 
 function ll2px(lon, lat) {
-  return [(lon + 180) / 360 * MAP_W, (90 - lat) / 180 * MAP_H];
+  return [(lon + 180) / 360 * W, (90 - lat) / 180 * H];
 }
 
-function tracePoly(pts) {
-  // Trace a polygon path from [lon,lat] array, handling antimeridian
-  ctx.beginPath();
-  let first = true;
-  let prevX = null;
-  pts.forEach(([lon, lat]) => {
+// Trace a GeoJSON ring onto the current path
+function tracePoly(ring) {
+  if (!ring || ring.length < 2) return;
+  let first = true, px = null;
+  ring.forEach(([lon, lat]) => {
     const [x, y] = ll2px(lon, lat);
     if (first) { ctx.moveTo(x, y); first = false; }
-    else if (prevX !== null && Math.abs(x - prevX) > MAP_W / 2) ctx.moveTo(x, y);
+    else if (px !== null && Math.abs(x - px) > W / 2) ctx.moveTo(x, y); // antimeridian
     else ctx.lineTo(x, y);
-    prevX = x;
+    px = x;
   });
   ctx.closePath();
 }
 
-// ── BUILD CONTINENT CLIP PATHS ──
-// Group land polygons by continent for clipping
-function classifyPoly(idx, cLon, cLat) {
-  if (cLat < -60) return 'antarctica';
-  if (cLon > 110 && cLat < -10) return 'australia';
-  if (cLon > 95  && cLat > -10) return 'asia';
-  if (cLon > 25  && cLon < 95  && cLat > 30) return 'asia';
-  if (cLon > -15 && cLon < 50  && cLat > 34) return 'europe';
-  if (cLon > -20 && cLon < 55  && cLat < 34) return 'africa';
-  if (cLon < -30 && cLat > 8)  return 'northAmerica';
-  if (cLon < -30 && cLat < 8)  return 'southAmerica';
-  if (cLon > -20 && cLon < 25  && cLat > 34) return 'europe';
-  return 'asia';
+// Fill a specific polygon index with a colour
+function fillPoly(idx, fillStyle) {
+  const ring = LAND_POLYS[idx];
+  if (!ring) return;
+  ctx.beginPath();
+  tracePoly(ring);
+  ctx.fillStyle = fillStyle;
+  ctx.fill();
 }
 
-const continentPolys = {};
-LAND_POLYS.forEach((ring, idx) => {
-  if (!ring || ring.length < 3) return;
-  const cLon = ring.reduce((s,p)=>s+p[0],0)/ring.length;
-  const cLat  = ring.reduce((s,p)=>s+p[1],0)/ring.length;
-  if (idx === 112) {
-    // Afro-Eurasian mega-polygon — add to all three continents for clipping
-    ['asia','europe','africa'].forEach(k => {
-      if (!continentPolys[k]) continentPolys[k] = [];
-      continentPolys[k].push(ring);
-    });
-    return;
-  }
-  const ckey = classifyPoly(idx, cLon, cLat);
-  if (!continentPolys[ckey]) continentPolys[ckey] = [];
-  continentPolys[ckey].push(ring);
-});
+// Fill a zone clipped from mega-polygon 95 or 112
+function fillMegaZone(megaIdx, zone, fillStyle) {
+  const ring = LAND_POLYS[megaIdx];
+  if (!ring) return;
+
+  ctx.save();
+
+  // Clip 1: geographic bounding box
+  const [x0, y0] = ll2px(zone.minLon, zone.maxLat);
+  const [x1, y1] = ll2px(zone.maxLon, zone.minLat);
+  ctx.beginPath();
+  ctx.rect(x0, y0, x1 - x0, y1 - y0);
+  ctx.clip();
+
+  // Clip 2: actual coastline of the mega polygon
+  ctx.beginPath();
+  tracePoly(ring);
+  ctx.clip();
+
+  // Fill the clipped region
+  ctx.fillStyle = fillStyle;
+  ctx.fillRect(x0 - 2, y0 - 2, x1 - x0 + 4, y1 - y0 + 4);
+
+  ctx.restore();
+}
 
 setP(40);
 
-// ── DRAW MAP ──
-function drawMap() {
-  ctx.clearRect(0, 0, MAP_W, MAP_H);
+// ── DRAW ──
+function draw() {
+  ctx.clearRect(0, 0, W, H);
 
   // Ocean
   ctx.fillStyle = '#020e1c';
-  ctx.fillRect(0, 0, MAP_W, MAP_H);
+  ctx.fillRect(0, 0, W, H);
 
-  // Grid lines
-  ctx.strokeStyle = 'rgba(61,165,255,0.07)';
+  // Grid
+  ctx.strokeStyle = 'rgba(61,165,255,0.06)';
   ctx.lineWidth = 0.5;
-  for (let lat=-75;lat<=75;lat+=15) {
-    const y=(90-lat)/180*MAP_H;
-    ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(MAP_W,y); ctx.stroke();
+  for (let lat = -75; lat <= 75; lat += 15) {
+    const [, y] = ll2px(0, lat);
+    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
   }
-  for (let lon=-180;lon<=180;lon+=30) {
-    const x=(lon+180)/360*MAP_W;
-    ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,MAP_H); ctx.stroke();
+  for (let lon = -180; lon <= 180; lon += 30) {
+    const [x] = ll2px(lon, 0);
+    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke();
   }
 
-  // ── Step 1: Draw all land in dark base colour ──
-  ctx.fillStyle = '#0a1e30';
-  ctx.strokeStyle = 'rgba(61,165,255,0.2)';
-  ctx.lineWidth = 0.8;
+  // ── Step 1: All land in dark base ──
+  ctx.fillStyle = '#0c1e2e';
+  ctx.strokeStyle = 'rgba(61,165,255,0.18)';
+  ctx.lineWidth = 0.7;
   LAND_POLYS.forEach(ring => {
-    if (!ring || ring.length < 3) return;
-    tracePoly(ring);
-    ctx.fill();
-    ctx.stroke();
+    ctx.beginPath(); tracePoly(ring); ctx.fill(); ctx.stroke();
   });
 
-  // ── Step 2: Double-clip — first to zone bbox, then to coastline ──
+  // ── Step 2: Draw each owned country using its exact polygon shapes ──
   COUNTRIES.forEach(c => {
     if (!c.owner) return;
     const p = PLAYERS[c.owner];
-    const polys = continentPolys[c.ckey] || [];
-    if (polys.length === 0) return;
+    const fill = `rgba(${p.r},${p.g},${p.b},0.88)`;
 
-    ctx.save();
+    // Draw direct polygons
+    (c.polys || []).forEach(idx => fillPoly(idx, fill));
 
-    // Convert zone to pixel bbox
-    const zonePx = c.zone.map(([lon,lat]) => ll2px(lon,lat));
-    const minX = Math.min(...zonePx.map(pt=>pt[0]));
-    const maxX = Math.max(...zonePx.map(pt=>pt[0]));
-    const minY = Math.min(...zonePx.map(pt=>pt[1]));
-    const maxY = Math.max(...zonePx.map(pt=>pt[1]));
-
-    // CLIP 1: zone bounding box — restricts to geographic region
-    ctx.beginPath();
-    ctx.rect(minX, minY, maxX-minX, maxY-minY);
-    ctx.clip();
-
-    // CLIP 2: actual coastline within that zone
-    ctx.beginPath();
-    polys.forEach(ring => {
-      let first = true, prevX = null;
-      ring.forEach(([lon, lat]) => {
-        const [x, y] = ll2px(lon, lat);
-        if (first) { ctx.moveTo(x, y); first = false; }
-        else if (prevX !== null && Math.abs(x - prevX) > MAP_W / 2) ctx.moveTo(x, y);
-        else ctx.lineTo(x, y);
-        prevX = x;
-      });
-      ctx.closePath();
-    });
-    ctx.clip();
-
-    // Fill the entire zone area — only land within zone shows through
-    ctx.fillStyle = `rgba(${p.r},${p.g},${p.b},0.85)`;
-    ctx.fillRect(minX - 1, minY - 1, maxX - minX + 2, maxY - minY + 2);
-
-    ctx.restore();
+    // Draw mega-polygon zones
+    if (c.zone95)  fillMegaZone(95,  c.zone95,  fill);
+    if (c.zone112) fillMegaZone(112, c.zone112, fill);
   });
 
-  // ── Step 3: Re-stroke all continent coastlines on top for clean borders ──
-  ctx.strokeStyle = 'rgba(61,165,255,0.25)';
-  ctx.lineWidth = 0.8;
+  // ── Step 3: Coastline borders on top ──
+  ctx.strokeStyle = 'rgba(61,165,255,0.22)';
+  ctx.lineWidth = 0.7;
   LAND_POLYS.forEach(ring => {
-    if (!ring || ring.length < 3) return;
-    tracePoly(ring);
-    ctx.stroke();
+    ctx.beginPath(); tracePoly(ring); ctx.stroke();
   });
 
-  // ── Step 4: Continent name labels ──
-  const CC = {northAmerica:[42,-100],southAmerica:[-20,-58],europe:[56,14],africa:[5,20],asia:[42,80],australia:[-28,134],antarctica:[-78,0]};
-  Object.entries(CONT).forEach(([k,m]) => {
-    const [lat,lon] = CC[k];
-    const [x,y] = ll2px(lon,lat);
+  // ── Step 4: Continent labels ──
+  const CC = {northAmerica:[42,-100],southAmerica:[-20,-58],europe:[54,14],africa:[5,20],asia:[42,82],australia:[-28,134],antarctica:[-78,0]};
+  Object.entries(CONT).forEach(([k, m]) => {
+    const [lat, lon] = CC[k];
+    const [x, y] = ll2px(lon, lat);
     ctx.font = '11px Courier New';
-    ctx.fillStyle = m.hex + '88';
+    ctx.fillStyle = m.hex + '66';
     ctx.textAlign = 'center';
     ctx.fillText(m.name.toUpperCase(), x, y);
   });
 
   // ── Step 5: Country markers ──
   COUNTRIES.forEach(c => {
-    const [x,y] = ll2px(c.lon, c.lat);
+    const [x, y] = ll2px(c.lon, c.lat);
     const p = c.owner ? PLAYERS[c.owner] : null;
+
+    // Glow
+    if (p) {
+      const g = ctx.createRadialGradient(x, y, 0, x, y, 14);
+      g.addColorStop(0, `rgba(${p.r},${p.g},${p.b},0.4)`);
+      g.addColorStop(1, 'transparent');
+      ctx.beginPath(); ctx.arc(x, y, 14, 0, Math.PI*2);
+      ctx.fillStyle = g; ctx.fill();
+    }
 
     // Dot
     ctx.beginPath();
     ctx.arc(x, y, c.isCapital ? 7 : 5, 0, Math.PI*2);
     ctx.fillStyle   = p ? `rgba(${p.r},${p.g},${p.b},1)` : 'rgba(20,50,80,0.8)';
-    ctx.strokeStyle = 'rgba(255,255,255,0.85)';
+    ctx.strokeStyle = 'rgba(255,255,255,0.9)';
     ctx.lineWidth   = c.isCapital ? 2 : 1.2;
     ctx.fill(); ctx.stroke();
 
-    // Capital star
+    // Star
     if (c.isCapital) {
-      ctx.font = '9px Arial';
-      ctx.fillStyle = 'rgba(255,255,255,0.95)';
-      ctx.textAlign = 'center';
-      ctx.fillText('★', x, y+3.5);
+      ctx.font = '9px Arial'; ctx.fillStyle = '#fff'; ctx.textAlign = 'center';
+      ctx.fillText('★', x, y + 3.5);
     }
 
     // Soldier bar
     if (c.soldiers > 0 && p) {
-      const h = Math.min(Math.log10(c.soldiers+1)*9, 32);
+      const h = Math.min(Math.log10(c.soldiers + 1) * 9, 34);
       ctx.fillStyle = `rgba(${p.r},${p.g},${p.b},0.9)`;
-      ctx.fillRect(x-2, y-h-9, 4, h);
-      ctx.strokeStyle = 'rgba(255,255,255,0.4)';
+      ctx.fillRect(x - 2, y - h - 10, 4, h);
+      ctx.strokeStyle = 'rgba(255,255,255,0.35)';
       ctx.lineWidth = 0.5;
-      ctx.strokeRect(x-2, y-h-9, 4, h);
+      ctx.strokeRect(x - 2, y - h - 10, 4, h);
     }
 
-    // Country name
+    // Label
     if (p) {
-      const label = c.name;
-      ctx.font = `${c.isCapital?'bold 10px':'9px'} Courier New`;
+      ctx.font = `${c.isCapital ? 'bold 10px' : '9px'} Courier New`;
       ctx.textAlign = 'left';
-      ctx.strokeStyle = 'rgba(0,0,0,0.9)';
-      ctx.lineWidth = 3;
-      ctx.strokeText(label, x+9, y+4);
+      ctx.strokeStyle = 'rgba(0,0,0,0.9)'; ctx.lineWidth = 3;
+      ctx.strokeText(c.name, x + 9, y + 4);
       ctx.fillStyle = `rgba(${p.r},${p.g},${p.b},1)`;
-      ctx.fillText(label, x+9, y+4);
+      ctx.fillText(c.name, x + 9, y + 4);
     }
   });
 }
 
-drawMap();
-setP(80);
+draw();
+setP(90);
 
-// ── PAN + ZOOM (CSS transform) ──
-let tx=0, ty=0, sc=1;
-const MIN_SC=0.5, MAX_SC=5;
-
+// ── PAN + ZOOM ──
+let tx = 0, ty = 0, sc = 1;
 function applyT() {
   canvas.style.transformOrigin = '0 0';
   canvas.style.transform = `translate(${tx}px,${ty}px) scale(${sc})`;
 }
-
 function resetView() {
-  const vw=innerWidth, vh=innerHeight;
-  sc = Math.min(vw/MAP_W, vh/MAP_H) * 1.0;
-  tx = (vw - MAP_W*sc)/2;
-  ty = (vh - MAP_H*sc)/2;
+  sc = Math.min(innerWidth / W, innerHeight / H);
+  tx = (innerWidth  - W * sc) / 2;
+  ty = (innerHeight - H * sc) / 2;
   applyT();
 }
 resetView();
 window.resetView = resetView;
-
-window.zoom = d => {
-  const vw=innerWidth, vh=innerHeight;
-  const ns = Math.max(MIN_SC, Math.min(MAX_SC, sc+d));
-  tx = vw/2 - (vw/2-tx)*(ns/sc);
-  ty = vh/2 - (vh/2-ty)*(ns/sc);
+window.doZoom = d => {
+  const ns = Math.max(0.4, Math.min(6, sc + d));
+  tx = innerWidth/2  - (innerWidth/2  - tx) * (ns/sc);
+  ty = innerHeight/2 - (innerHeight/2 - ty) * (ns/sc);
   sc = ns; applyT();
 };
 
-const wrap = document.getElementById('map-wrap');
+const wrap = document.getElementById('wrap');
 wrap.addEventListener('wheel', e => {
   e.preventDefault();
-  const d = e.deltaY<0 ? 0.15 : -0.15;
-  const ns = Math.max(MIN_SC, Math.min(MAX_SC, sc+d));
-  tx = e.clientX - (e.clientX-tx)*(ns/sc);
-  ty = e.clientY - (e.clientY-ty)*(ns/sc);
-  sc=ns; applyT();
+  const ns = Math.max(0.4, Math.min(6, sc + (e.deltaY < 0 ? 0.15 : -0.15)));
+  tx = e.clientX - (e.clientX - tx)*(ns/sc);
+  ty = e.clientY - (e.clientY - ty)*(ns/sc);
+  sc = ns; applyT();
 }, {passive:false});
 
-let drag=false, ds={x:0,y:0}, dtx=0, dty=0, moved=false;
-wrap.addEventListener('mousedown', e => { drag=true; moved=false; ds={x:e.clientX,y:e.clientY}; dtx=tx; dty=ty; wrap.classList.add('dragging'); });
+let drag=false, ds={x:0,y:0}, dt={x:0,y:0}, moved=false;
+wrap.addEventListener('mousedown', e => { drag=true; moved=false; ds={x:e.clientX,y:e.clientY}; dt={x:tx,y:ty}; wrap.classList.add('drag'); });
 wrap.addEventListener('mousemove', e => {
-  if (drag) { const dx=e.clientX-ds.x,dy=e.clientY-ds.y; if(Math.abs(dx)+Math.abs(dy)>4)moved=true; tx=dtx+dx; ty=dty+dy; applyT(); }
+  if (drag) { const dx=e.clientX-ds.x,dy=e.clientY-ds.y; if(Math.abs(dx)+Math.abs(dy)>4) moved=true; tx=dt.x+dx; ty=dt.y+dy; applyT(); }
   updateTT(e.clientX, e.clientY);
 });
-wrap.addEventListener('mouseup', e => { wrap.classList.remove('dragging'); if(!moved)handleClick(e.clientX,e.clientY); drag=false; });
+wrap.addEventListener('mouseup', e => { wrap.classList.remove('drag'); if(!moved) onClick(e.clientX,e.clientY); drag=false; });
 
-let touches2=[], ld=0;
-wrap.addEventListener('touchstart', e => { e.preventDefault(); moved=false; if(e.touches.length===1){const t=e.touches[0];drag=true;ds={x:t.clientX,y:t.clientY};dtx=tx;dty=ty;} if(e.touches.length===2)ld=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY); },{passive:false});
-wrap.addEventListener('touchmove', e => {
-  e.preventDefault();
-  if(e.touches.length===1&&drag){const t=e.touches[0],dx=t.clientX-ds.x,dy=t.clientY-ds.y;if(Math.abs(dx)+Math.abs(dy)>4)moved=true;tx=dtx+dx;ty=dty+dy;applyT();}
-  if(e.touches.length===2){const d2=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);const dd=(d2-ld)*0.005;const cx=(e.touches[0].clientX+e.touches[1].clientX)/2,cy=(e.touches[0].clientY+e.touches[1].clientY)/2;const ns=Math.max(MIN_SC,Math.min(MAX_SC,sc+dd));tx=cx-(cx-tx)*(ns/sc);ty=cy-(cy-ty)*(ns/sc);sc=ns;ld=d2;applyT();}
-},{passive:false});
-wrap.addEventListener('touchend', e => { drag=false; if(!moved&&e.changedTouches.length===1)handleClick(e.changedTouches[0].clientX,e.changedTouches[0].clientY); });
+let ld=0;
+wrap.addEventListener('touchstart', e=>{e.preventDefault();moved=false;if(e.touches.length===1){const t=e.touches[0];drag=true;ds={x:t.clientX,y:t.clientY};dt={x:tx,y:ty};}if(e.touches.length===2)ld=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);},{passive:false});
+wrap.addEventListener('touchmove', e=>{e.preventDefault();if(e.touches.length===1&&drag){const t=e.touches[0],dx=t.clientX-ds.x,dy=t.clientY-ds.y;if(Math.abs(dx)+Math.abs(dy)>4)moved=true;tx=dt.x+dx;ty=dt.y+dy;applyT();}if(e.touches.length===2){const d2=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);const ns=Math.max(0.4,Math.min(6,sc+(d2-ld)*0.005));const cx=(e.touches[0].clientX+e.touches[1].clientX)/2,cy=(e.touches[0].clientY+e.touches[1].clientY)/2;tx=cx-(cx-tx)*(ns/sc);ty=cy-(cy-ty)*(ns/sc);sc=ns;ld=d2;applyT();}},{passive:false});
+wrap.addEventListener('touchend', e=>{drag=false;if(!moved&&e.changedTouches.length===1)onClick(e.changedTouches[0].clientX,e.changedTouches[0].clientY);});
 
-function screenToMap(sx,sy) { return [(sx-tx)/sc,(sy-ty)/sc]; }
+function mapCoords(sx,sy) { return [(sx-tx)/sc,(sy-ty)/sc]; }
 
-function nearestCountry(sx,sy) {
-  const [mx,my]=screenToMap(sx,sy);
-  let best=null,bd=Infinity;
-  COUNTRIES.forEach(c=>{ const [cx,cy]=ll2px(c.lon,c.lat); const d=Math.hypot(mx-cx,my-cy); if(d<bd){bd=d;best=c;} });
-  return bd < 25/sc ? best : null;
+function nearest(sx,sy) {
+  const [mx,my]=mapCoords(sx,sy);
+  let best=null, bd=Infinity;
+  COUNTRIES.forEach(c=>{const[cx,cy]=ll2px(c.lon,c.lat);const d=Math.hypot(mx-cx,my-cy);if(d<bd){bd=d;best=c;}});
+  return bd < 30/sc ? best : null;
 }
 
-function handleClick(sx,sy) { const c=nearestCountry(sx,sy); if(c)openPanel(c); }
+function onClick(sx,sy) { const c=nearest(sx,sy); if(c) openPanel(c); }
 
 function updateTT(sx,sy) {
-  const c=nearestCountry(sx,sy);
+  const c=nearest(sx,sy);
   const tt=document.getElementById('tt');
-  if(c){tt.style.display='block';tt.style.left=(sx+12)+'px';tt.style.top=(sy-28)+'px';tt.textContent=c.name+(c.owner?' · '+c.owner+(c.soldiers?' · '+c.soldiers.toLocaleString()+' soldiers':''):' · Unclaimed');}
+  if(c){tt.style.display='block';tt.style.left=(sx+12)+'px';tt.style.top=(sy-28)+'px';tt.textContent=c.name+(c.owner?' · '+c.owner+' · '+c.soldiers.toLocaleString()+' soldiers':' · Unclaimed');}
   else tt.style.display='none';
 }
 
 function openPanel(c) {
   const m=CONT[c.ckey]; const p=c.owner?PLAYERS[c.owner]:null;
-  // Count continent ownership
-  const contCountries = COUNTRIES.filter(x=>x.ckey===c.ckey);
-  const owned = contCountries.filter(x=>x.owner===c.owner).length;
+  const owned=COUNTRIES.filter(x=>x.ckey===c.ckey&&x.owner===c.owner).length;
   document.getElementById('pc').textContent=`◈ ${m.name.toUpperCase()} · ${m.stat.toUpperCase()}`;
   document.getElementById('pc').style.color=m.hex;
   document.getElementById('pn').textContent=(c.isCapital?'★ ':'')+c.name;
@@ -490,8 +504,8 @@ function openPanel(c) {
 window.closePanel=()=>document.getElementById('panel').classList.remove('open');
 
 setP(100);
-setTimeout(()=>document.getElementById('loading').style.display='none',200);
-window.addEventListener('resize',resetView);
+setTimeout(()=>document.getElementById('load').style.display='none',200);
+window.addEventListener('resize', resetView);
 </script>
 </body>
 </html>
