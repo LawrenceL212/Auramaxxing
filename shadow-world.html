@@ -278,28 +278,38 @@ function drawMap() {
   COUNTRIES.forEach(c => {
     if (!c.owner) return;
     const p = PLAYERS[c.owner];
+    const polys = continentPolys[c.ckey] || [];
+    if (polys.length === 0) return;
 
-    // Save state
     ctx.save();
 
-    // Build clip from all continent polygons
-    const polys = continentPolys[c.ckey] || [];
-    if (polys.length === 0) { ctx.restore(); return; }
-
-    // Create clip path from continent land polygons
+    // Trace ALL continent polygons into one path for clipping
     ctx.beginPath();
-    polys.forEach(ring => tracePoly(ring));
-    ctx.clip('evenodd');
+    polys.forEach(ring => {
+      let first = true, prevX = null;
+      ring.forEach(([lon, lat]) => {
+        const [x, y] = ll2px(lon, lat);
+        if (first) { ctx.moveTo(x, y); first = false; }
+        else if (prevX !== null && Math.abs(x - prevX) > MAP_W / 2) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+        prevX = x;
+      });
+      ctx.closePath();
+    });
+    ctx.clip();
 
-    // Now fill the country zone polygon — only visible land shows through
-    tracePoly(c.zone);
+    // Fill the country zone inside the clip
+    ctx.beginPath();
+    let zFirst = true, zprevX = null;
+    c.zone.forEach(([lon, lat]) => {
+      const [x, y] = ll2px(lon, lat);
+      if (zFirst) { ctx.moveTo(x, y); zFirst = false; }
+      else ctx.lineTo(x, y);
+      zprevX = x;
+    });
+    ctx.closePath();
     ctx.fillStyle = `rgba(${p.r},${p.g},${p.b},0.85)`;
     ctx.fill();
-
-    // Stroke the zone border lightly
-    ctx.strokeStyle = `rgba(${p.r},${p.g},${p.b},0.5)`;
-    ctx.lineWidth = 1.5;
-    ctx.stroke();
 
     ctx.restore();
   });
