@@ -2289,7 +2289,9 @@
     <!-- ---- INVENTORY ---- -->
     <section class="view" id="view-inventory">
       <div id="inventory-content"></div>
-      <div id="world-content" style="display:none;padding:0;position:relative;height:calc(100vh - 120px);"></div>
+    </section>
+
+    <section class="view" id="view-world" style="padding:0;position:relative;height:calc(100vh - 120px);"></section>
     </section>
 
   </main>
@@ -3101,7 +3103,9 @@ document.querySelectorAll('.bottom-nav button').forEach(btn => btn.addEventListe
 }));
 function switchView(name) {
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
-  document.getElementById('view-' + name).classList.add('active');
+  const viewEl = document.getElementById('view-' + name);
+  if (!viewEl) { console.warn('switchView: no element for view', name); return; }
+  viewEl.classList.add('active');
   document.querySelectorAll('.bottom-nav button').forEach(b => b.classList.toggle('active', b.dataset.view === name));
 
   if (name === 'board') {
@@ -13724,7 +13728,7 @@ function getEffectiveInventory() {
 }
 
 function renderShadowWorld() {
-  const el = document.getElementById('world-content');
+  const el = document.getElementById('view-world');
   if (!el) return;
   if (el.querySelector('iframe')) return; // already loaded
   el.innerHTML = `
