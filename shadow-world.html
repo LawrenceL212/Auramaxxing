@@ -198,7 +198,9 @@ resize(); window.addEventListener('resize', resize);
 scene.add(new THREE.AmbientLight(0x112244, 1.2));
 const sun = new THREE.DirectionalLight(0x6699ff, 1.6);
 sun.position.set(5,3,5); scene.add(sun);
-scene.add(Object.assign(new THREE.DirectionalLight(0x0a1533,0.7),{position:{x:-4,y:-2,z:-4}}));
+const rim = new THREE.DirectionalLight(0x0a1533,0.7);
+rim.position.set(-4,-2,-4);
+scene.add(rim);
 
 // Stars
 const sp=new Float32Array(3000*3);
@@ -250,7 +252,7 @@ Object.entries(CONTINENT_COUNTRIES).forEach(([ckey, countries]) => {
         r: pc?.r || 100, g: pc?.g || 100, b: pc?.b || 100,
         owner: own.owner,
         // Influence radius in degrees — capital gets bigger radius
-        radius: c.isCapital ? 28 : 22,
+        radius: c.isCapital ? 45 : 35,
       });
     }
   });
@@ -277,7 +279,7 @@ function getVertexColor(lat, lon, ckey) {
 
   let bestDist = Infinity;
   let bestOwner = null;
-  let bestR = br*0.25, bestG = bg*0.25, bestB = bb*0.25; // dark base
+  let bestR = br*0.12, bestG = bg*0.12, bestB = bb*0.12; // very dark base
 
   for (const oc of ownedCountries) {
     const d = angDist(lat, lon, oc.lat, oc.lon);
@@ -290,10 +292,10 @@ function getVertexColor(lat, lon, ckey) {
   if (bestOwner) {
     // Blend: full owner colour near the dot, fading to base at edge
     const t = 1 - (bestDist / bestOwner.radius);
-    const strength = Math.pow(t, 0.6); // ease in — stays strong near centre
-    bestR = (bestOwner.r/255) * strength + br*0.3 * (1-strength);
-    bestG = (bestOwner.g/255) * strength + bg*0.3 * (1-strength);
-    bestB = (bestOwner.b/255) * strength + bb*0.3 * (1-strength);
+    const strength = Math.pow(t, 0.4); // strong colour near centre, gradual fade
+    bestR = (bestOwner.r/255) * strength * 0.9 + br*0.15 * (1-strength);
+    bestG = (bestOwner.g/255) * strength * 0.9 + bg*0.15 * (1-strength);
+    bestB = (bestOwner.b/255) * strength * 0.9 + bb*0.15 * (1-strength);
   }
 
   return [bestR, bestG, bestB];
@@ -361,7 +363,7 @@ Object.entries(CONTINENT_COUNTRIES).forEach(([ckey, countries]) => {
     const dotHex = pc?.hex || '#1a2a44';
     const dotThree = pc ? parseInt(pc.hex.slice(1),16) : 0x1a2a44;
 
-    const size = country.isCapital ? 0.046 : 0.030;
+    const size = country.isCapital ? 0.065 : 0.044;
     const dot = new THREE.Mesh(
       new THREE.SphereGeometry(size,10,10),
       new THREE.MeshStandardMaterial({
@@ -385,7 +387,7 @@ Object.entries(CONTINENT_COUNTRIES).forEach(([ckey, countries]) => {
     if (country.isCapital) {
       const ringColor = parseInt(meta.hex.slice(1),16);
       const ring = new THREE.Mesh(
-        new THREE.TorusGeometry(0.058,0.006,8,20),
+        new THREE.TorusGeometry(0.082,0.009,8,20),
         new THREE.MeshStandardMaterial({color:ringColor,emissive:ringColor,emissiveIntensity:1.5})
       );
       ring.position.copy(ll2v(country.lat,country.lon,1.026));
@@ -405,6 +407,42 @@ Object.entries(CONTINENT_COUNTRIES).forEach(([ckey, countries]) => {
       pillar.position.copy(pos.clone().add(norm.clone().multiplyScalar(h/2)));
       pillar.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),norm);
       globeGroup.add(pillar);
+    }
+
+    // Owner name label above dot
+    if (own) {
+      const labelCanvas = document.createElement('canvas');
+      labelCanvas.width = 200; labelCanvas.height = 48;
+      const lctx = labelCanvas.getContext('2d');
+      lctx.font = 'bold 16px Courier New';
+      lctx.fillStyle = pc.hex;
+      lctx.textAlign = 'center';
+      lctx.shadowColor = pc.hex;
+      lctx.shadowBlur = 8;
+      lctx.fillText(own.owner, 100, 20);
+      lctx.font = '11px Courier New';
+      lctx.fillStyle = 'rgba(255,255,255,0.6)';
+      lctx.shadowBlur = 0;
+      lctx.fillText(country.name + (country.isCapital ? ' ★' : ''), 100, 36);
+      const labelSprite = new THREE.Sprite(new THREE.SpriteMaterial({
+        map: new THREE.CanvasTexture(labelCanvas),
+        transparent: true, depthWrite: false,
+      }));
+      labelSprite.scale.set(0.45, 0.11, 1);
+      labelSprite.position.copy(ll2v(country.lat, country.lon, 1.12));
+      globeGroup.add(labelSprite);
+    }
+
+    // Territory border ring — large glowing ring showing ownership zone
+    if (own) {
+      const ringRadius = country.isCapital ? 0.18 : 0.14;
+      const borderRing = new THREE.Mesh(
+        new THREE.TorusGeometry(ringRadius, 0.004, 8, 32),
+        new THREE.MeshStandardMaterial({ color: dotThree, emissive: dotThree, emissiveIntensity: 0.6, transparent: true, opacity: 0.7 })
+      );
+      borderRing.position.copy(ll2v(country.lat, country.lon, 1.018));
+      borderRing.lookAt(0, 0, 0);
+      globeGroup.add(borderRing);
     }
   });
 });
@@ -458,7 +496,9 @@ function openPanel(d){
   document.getElementById('panel-continent').style.color=meta.hex;
   document.getElementById('panel-country').textContent=(d.isCapital?'★ ':'')+d.name;
   document.getElementById('panel-country').style.color=d.ownerHex||'#61a5ff';
-  document.getElementById('panel-owner').textContent=d.owner?`Controlled by ${d.owner} · ${d.soldiers.toLocaleString()} soldiers`:`Unclaimed — Train ${meta.stat} to build your army`;
+  document.getElementById('panel-owner').innerHTML=d.owner
+    ?`<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${d.ownerHex};margin-right:6px;box-shadow:0 0 8px ${d.ownerHex};"></span><strong style="color:${d.ownerHex};">${d.owner}</strong> · ${d.soldiers.toLocaleString()} soldiers stationed`
+    :`Unclaimed — Train ${meta.stat} to build your army`;
   document.getElementById('panel-soldiers').innerHTML=d.soldiers>0
     ?`<div class="soldier-card"><div class="soldier-num" style="color:${d.ownerHex||'#61a5ff'};">${d.soldiers.toLocaleString()}</div><div class="soldier-label">STATIONED</div></div><div class="soldier-card"><div class="soldier-num" style="color:${meta.hex};">${d.isCapital?'×2':'×1'} AP</div><div class="soldier-label">${d.isCapital?'CAPITAL':'INCOME'}</div></div>`
     :`<div style="font-size:12px;color:rgba(61,165,255,0.4);">No army. Train ${meta.stat} to generate soldiers.</div>`;
