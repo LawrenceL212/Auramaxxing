@@ -16102,7 +16102,11 @@ async function resolveGateDuel(duelId, duelData) {
   const winnerStreak  = (challengerWon ? challengerStreak : defenderStreak) + 1;
   const winnerTier    = getDuelStreakTier(winnerStreak);
   const apWager       = winnerTier.apGain;
-  const trophyTier    = getDuelTrophyTier(winnerStreak);
+
+  // Total wins for trophy — use allUsers data for the winner
+  const winnerUser    = allUsers.find(u => u.uid === winnerId);
+  const winnerTotalWins = (winnerUser?.duels?.wins || 0) + 1; // +1 for this win
+  const trophyTier    = getDuelTrophyTier(winnerTotalWins);
 
   // ── Shadow Army resolution ──
   // If this duel was over a specific country, apply territorial costs
@@ -16122,8 +16126,8 @@ async function resolveGateDuel(duelId, duelData) {
     const cData = cSnap.data() || {};
     const dData = dSnap.data() || {};
 
-    const attackerSoldiers = (cData.shadowArmy?.continents?.[ckey]?.soldiers) || 0;
-    const defenderSoldiers = (dData.shadowArmy?.continents?.[ckey]?.soldiers) || 0;
+    const attackerSoldiers = cData.shadowArmy?.countries?.[targetCountryId]?.soldiers || 0;
+    const defenderSoldiers = dData.shadowArmy?.countries?.[targetCountryId]?.soldiers || 0;
 
     // Home advantage multiplier for defender
     const defenderPower = defenderSoldiers * 1.2;
@@ -16160,23 +16164,28 @@ async function resolveGateDuel(duelId, duelData) {
     const { updateDoc: ud3 } = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js');
     await Promise.all([
       ud3(doc(db, 'users', challengerId), {
-        [`shadowArmy.continents.${ckey}.soldiers`]: newAttackerSoldiers,
+        [`shadowArmy.countries.${targetCountryId}.soldiers`]: newAttackerSoldiers,
+        ...(countryTransfers ? {
+          [`shadowArmy.countries.${targetCountryId}.ownerUid`]: challengerId,
+          [`shadowArmy.countries.${targetCountryId}.ckey`]: ckey,
+        } : {}),
       }),
       ud3(doc(db, 'users', defenderId), {
-        [`shadowArmy.continents.${ckey}.soldiers`]: newDefenderSoldiers,
-        // If country transfers, update ownership
+        [`shadowArmy.countries.${targetCountryId}.soldiers`]: newDefenderSoldiers,
+        // If country transfers, remove from defender
         ...(countryTransfers ? {
-          [`shadowArmy.continents.${ckey}.countries.${targetCountryId}.owner`]: challengerId,
+          [`shadowArmy.countries.${targetCountryId}.ownerUid`]: challengerId,
         } : {}),
       }),
     ]);
 
     // Update local profile
-    if (currentUser.uid === challengerId && profile.shadowArmy?.continents?.[ckey]) {
-      profile.shadowArmy.continents[ckey].soldiers = newAttackerSoldiers;
+    if (currentUser.uid === challengerId && profile.shadowArmy?.countries?.[targetCountryId]) {
+      profile.shadowArmy.countries[targetCountryId].soldiers = newAttackerSoldiers;
     }
-    if (currentUser.uid === defenderId && profile.shadowArmy?.continents?.[ckey]) {
-      profile.shadowArmy.continents[ckey].soldiers = newDefenderSoldiers;
+    if (currentUser.uid === defenderId && profile.shadowArmy?.countries?.[targetCountryId]) {
+      profile.shadowArmy.countries[targetCountryId].soldiers = newDefenderSoldiers;
+      if (countryTransfers) profile.shadowArmy.countries[targetCountryId].ownerUid = challengerId;
     }
   }
 
