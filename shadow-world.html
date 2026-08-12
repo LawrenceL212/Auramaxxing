@@ -281,7 +281,7 @@ function drawMap() {
     ctx.stroke();
   });
 
-  // ── Step 2: For each COUNTRY, clip to its continent and fill zone in owner colour ──
+  // ── Step 2: Double-clip — first to zone bbox, then to coastline ──
   COUNTRIES.forEach(c => {
     if (!c.owner) return;
     const p = PLAYERS[c.owner];
@@ -290,7 +290,19 @@ function drawMap() {
 
     ctx.save();
 
-    // Trace ALL continent polygons into one path for clipping
+    // Convert zone to pixel bbox
+    const zonePx = c.zone.map(([lon,lat]) => ll2px(lon,lat));
+    const minX = Math.min(...zonePx.map(pt=>pt[0]));
+    const maxX = Math.max(...zonePx.map(pt=>pt[0]));
+    const minY = Math.min(...zonePx.map(pt=>pt[1]));
+    const maxY = Math.max(...zonePx.map(pt=>pt[1]));
+
+    // CLIP 1: zone bounding box — restricts to geographic region
+    ctx.beginPath();
+    ctx.rect(minX, minY, maxX-minX, maxY-minY);
+    ctx.clip();
+
+    // CLIP 2: actual coastline within that zone
     ctx.beginPath();
     polys.forEach(ring => {
       let first = true, prevX = null;
@@ -305,31 +317,9 @@ function drawMap() {
     });
     ctx.clip();
 
-    // Fill the country zone inside the clip
-    ctx.beginPath();
-    let zFirst = true, zprevX = null;
-    c.zone.forEach(([lon, lat]) => {
-      const [x, y] = ll2px(lon, lat);
-      if (zFirst) { ctx.moveTo(x, y); zFirst = false; }
-      else ctx.lineTo(x, y);
-      zprevX = x;
-    });
-    ctx.closePath();
+    // Fill the entire zone area — only land within zone shows through
     ctx.fillStyle = `rgba(${p.r},${p.g},${p.b},0.85)`;
-    ctx.fill();
-
-    // Draw thin border along country zone edges (still within clip)
-    ctx.beginPath();
-    let zbf=true, zpx2=null;
-    c.zone.forEach(([lon,lat])=>{
-      const [x,y]=ll2px(lon,lat);
-      if(zbf){ctx.moveTo(x,y);zbf=false;}else ctx.lineTo(x,y);
-      zpx2=x;
-    });
-    ctx.closePath();
-    ctx.strokeStyle=`rgba(0,0,0,0.4)`;
-    ctx.lineWidth=2;
-    ctx.stroke();
+    ctx.fillRect(minX - 1, minY - 1, maxX - minX + 2, maxY - minY + 2);
 
     ctx.restore();
   });
