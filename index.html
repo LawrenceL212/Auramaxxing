@@ -544,7 +544,7 @@
     touch-action:manipulation;transition:background .1s;
   }
   .numpad-key:active{background:var(--card-2);}
-  .numpad-key.numpad-del{font-size:18px;color:var(--text-dim);}
+  .numpad-key.numpad-del{font-size:20px;color:var(--excess);background:rgba(255,61,90,0.08);font-weight:700;}
   .numpad-key.numpad-dot{color:var(--text-dim);}
   .numpad-key.numpad-zero{grid-column:span 2;}
   .numpad-stepper-row{display:flex;gap:8px;margin:0 12px 4px;}
@@ -2127,7 +2127,7 @@
           <button class="numpad-key" data-key="3">3</button>
           <button class="numpad-key numpad-dot" data-key=".">.</button>
           <button class="numpad-key numpad-zero" data-key="0">0</button>
-          <button class="numpad-key numpad-del" data-key="del">⌫</button>
+          <button class="numpad-key numpad-del" data-key="del">⌫ DEL</button>
         </div>
       </div>
     </div>
@@ -3904,16 +3904,15 @@ function refreshCompleteButton() {
   if (!btn) return;
   const rows = document.querySelectorAll('#exercise-rows .exercise-row');
   if (!rows.length) { btn.classList.add('hidden'); return; }
-  const completedSets = [];
+  // Show button if at least one set has reps > 0 (RIR optional — don't block completion)
+  let hasAnySets = false;
   rows.forEach(row => {
     row.querySelectorAll('.set-row').forEach(sr => {
       const reps = Number(sr.querySelector('.set-reps')?.value) || 0;
-      if (reps > 0) completedSets.push(sr);
+      if (reps > 0) hasAnySets = true;
     });
   });
-  if (!completedSets.length) { btn.classList.add('hidden'); return; }
-  const allRIRSelected = completedSets.every(sr => sr.querySelector('.rir-chip.selected') !== null);
-  btn.classList.toggle('hidden', !allRIRSelected);
+  btn.classList.toggle('hidden', !hasAnySets);
 }
 document.getElementById('end-workout-modal')?.addEventListener('click', () => {
   if (!window.confirm('End this workout?\n\nAll your logged sets will be lost.')) return;
@@ -4406,10 +4405,10 @@ function addExerciseRow(presetName, targetSets, targetReps, prefillSets) {
   function checkComplete(setRow) {
     const repsInput = setRow.querySelector('.set-reps');
     const reps = Number(repsInput?.value) || 0;
-    const confirmed = repsInput?.dataset.confirmed === '1';
     const hasRir = setRow.querySelector('.rir-chip.selected') !== null;
     const wasComplete = setRow.classList.contains('complete');
-    const isNowComplete = reps > 0 && confirmed && hasRir;
+    // Complete = has reps. RIR affects colour feedback but doesn't block completion.
+    const isNowComplete = reps > 0;
 
     if (isNowComplete) {
       // Determine performance vs previous session
@@ -4541,7 +4540,10 @@ function addExerciseRow(presetName, targetSets, targetReps, prefillSets) {
       input.dispatchEvent(new Event('input'));
       checkComplete(setRow);
     }));
-    setRow.querySelectorAll('input').forEach(inp => inp.addEventListener('input', () => checkComplete(setRow)));
+    setRow.querySelectorAll('input').forEach(inp => inp.addEventListener('input', () => {
+      inp.dataset.confirmed = '1'; // typing into any field counts as confirmation
+      checkComplete(setRow);
+    }));
     setRow.querySelectorAll('.rir-chip').forEach(chip => chip.addEventListener('click', () => {
       SFX.chipSelect();
       setRow.querySelectorAll('.rir-chip').forEach(c => c.classList.remove('selected'));
