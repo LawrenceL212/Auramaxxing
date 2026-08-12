@@ -2289,6 +2289,7 @@
     <!-- ---- INVENTORY ---- -->
     <section class="view" id="view-inventory">
       <div id="inventory-content"></div>
+      <div id="world-content" style="display:none;padding:0;position:relative;height:calc(100vh - 120px);"></div>
     </section>
 
   </main>
@@ -2315,6 +2316,9 @@
       </button>
       <button data-view="inventory">
         <svg viewBox="0 0 24 24"><path d="M9 3H5a2 2 0 0 0-2 2v4m6-6h10a2 2 0 0 1 2 2v4M9 3v18m0 0h10a2 2 0 0 0 2-2V9M9 21H5a2 2 0 0 0-2-2V9m0 0h18"/></svg>Inventory
+      </button>
+      <button data-view="world">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>World
       </button>
     </div>
   </nav>
@@ -3117,6 +3121,7 @@ function switchView(name) {
   if (name === 'exercises') renderExerciseLibrary();
   if (name === 'feats') { renderFeats(); renderTrialCard(); }
   if (name === 'inventory') renderInventory();
+  if (name === 'world') renderShadowWorld();
   if (name === 'history') renderCalendar();
   if (name === 'quest') {
     if (myProgram && myProgram.days && myProgram.days.length) {
@@ -4680,6 +4685,11 @@ document.getElementById('save-workout-btn')?.addEventListener('click', async () 
     try {
       dungeonResult = await checkDungeonClear(exercises, runSummaryFromLogger);
     } catch(e) { console.warn('Dungeon check failed:', e); }
+
+    // Generate shadow army soldiers from this workout
+    try {
+      await generateShadowArmySoldiers(exercises, runSummaryFromLogger);
+    } catch(e) { console.warn('Shadow army generation failed:', e); }
 
     startDailyTimer();
     setTimeout(() => {
@@ -13713,6 +13723,17 @@ function getEffectiveInventory() {
   return result;
 }
 
+function renderShadowWorld() {
+  const el = document.getElementById('world-content');
+  if (!el) return;
+  if (el.querySelector('iframe')) return; // already loaded
+  el.innerHTML = `
+    <div style="position:relative;width:100%;height:100%;">
+      <iframe src="./shadow-world.html" style="width:100%;height:100%;border:none;background:#03050a;" allowfullscreen></iframe>
+      <div style="position:absolute;top:8px;left:50%;transform:translateX(-50%);font-family:var(--font-mono);font-size:9px;color:rgba(61,165,255,0.3);letter-spacing:0.15em;pointer-events:none;">◈ SHADOW WORLD — ALPHA</div>
+    </div>`;
+}
+
 function renderInventory() {
   const el = document.getElementById('inventory-content');
   if (!el) return;
@@ -15236,7 +15257,87 @@ window._debugEvaluateClass = async () => {
 
 
 
-// ── GATE DUEL ──
+// ── Shadow Army — generate soldiers from workout ──
+async function generateShadowArmySoldiers(exercises, runSummary) {
+  if (!currentUser || !profile) return;
+
+  // Map exercise categories to continents
+  const EXERCISE_CONTINENT = {
+    compound: 'iron', isolation: 'iron',
+    skill: 'shadow', calisthenics: 'shadow',
+    cardio: 'swift', explosive: 'swift',
+    swim: 'tide', cycling: 'tide', endurance: 'tide',
+    boxing: 'court', sport: 'court', combat: 'court',
+    flexibility: 'wild', climbing: 'wild', mobility: 'wild',
+  };
+
+  const TIER_BASE   = { 1:10, 2:25, 3:60, 4:150, 5:400 };
+  const RANK_MULT   = { E:1.0, D:1.2, C:1.5, B:2.0, A:3.0, S:5.0 };
+  const RIR_MULT    = (rir) => rir === 0 ? 1.3 : rir <= 2 ? 1.0 : rir <= 4 ? 0.7 : 0.5;
+
+  const soldiersByContinent = {};
+
+  exercises.forEach(ex => {
+    const exDef = EXERCISES_ALL[ex.name] || {};
+    const cat   = exDef.stat || exDef.category || 'compound';
+    const ckey  = EXERCISE_CONTINENT[cat] || 'iron';
+
+    // Determine dungeon tier for this exercise
+    let tier = 1;
+    Object.values(DUNGEON_CHAINS).forEach(chain => {
+      if (chain.stat && cat.includes(chain.stat)) {
+        const d = buildAssessmentData(allWorkouts.filter(w => w.uid === currentUser.uid));
+        for (let t = 4; t >= 0; t--) {
+          if (chain.dungeons[t]?.boss(d)) { tier = t + 1; break; }
+        }
+      }
+    });
+
+    const statRank = (profile.stats || {})[CONTINENTS_STAT[ckey]] || 'E';
+    const rankMult = RANK_MULT[statRank] || 1.0;
+    const tierBase = TIER_BASE[Math.min(tier, 5)] || 10;
+
+    ex.sets?.filter(s => s.reps > 0 && s.rir != null).forEach(s => {
+      const soldiers = Math.floor(tierBase * rankMult * RIR_MULT(s.rir));
+      soldiersByContinent[ckey] = (soldiersByContinent[ckey] || 0) + soldiers;
+    });
+  });
+
+  // Run sessions generate swift soldiers
+  if (runSummary?.distKm > 0) {
+    const statRank = (profile.stats || {}).agility || 'E';
+    const rankMult = RANK_MULT[statRank] || 1.0;
+    const soldiers = Math.floor(runSummary.distKm * 20 * rankMult);
+    soldiersByContinent.swift = (soldiersByContinent.swift || 0) + soldiers;
+  }
+
+  if (!Object.keys(soldiersByContinent).length) return;
+
+  // Write to Firestore
+  const { doc, updateDoc, increment: fsInc } = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js');
+  const updates = {};
+  Object.entries(soldiersByContinent).forEach(([ckey, count]) => {
+    updates[`shadowArmy.continents.${ckey}.soldiers`] = fsInc(count);
+  });
+  await updateDoc(doc(db, 'users', currentUser.uid), updates);
+
+  // Update local profile
+  if (!profile.shadowArmy) profile.shadowArmy = { continents: {} };
+  Object.entries(soldiersByContinent).forEach(([ckey, count]) => {
+    if (!profile.shadowArmy.continents[ckey]) profile.shadowArmy.continents[ckey] = { soldiers: 0, countries: {} };
+    profile.shadowArmy.continents[ckey].soldiers = (profile.shadowArmy.continents[ckey].soldiers || 0) + count;
+  });
+
+  console.log('Shadow army generated:', soldiersByContinent);
+}
+
+// Continent → stat map for soldier generation
+const CONTINENTS_STAT = {
+  iron: 'strength', shadow: 'focus', swift: 'agility',
+  tide: 'endurance', court: 'agility', wild: 'flexibility', gate: 'all',
+};
+
+
 // ══════════════════════════════════════════════════════════════════
 // GATE DUEL SYSTEM
 // The challenger picks the target. The target designs the fight.
@@ -15605,13 +15706,12 @@ async function openDuelDesigner(duelId, challengerName) {
 // ── Resolve a duel at end date ──
 async function resolveGateDuel(duelId, duelData) {
   if (!currentUser || !profile) return;
-  const { startDate, endDate, spec, challengerId, defenderId, challengerStreak, defenderStreak } = duelData;
+  const { startDate, endDate, spec, challengerId, defenderId, challengerStreak, defenderStreak, targetCountryId, targetContinentKey } = duelData;
 
   const duelWorkouts = allWorkouts.filter(w => w.date >= startDate && w.date <= endDate);
   const challengerScore = getDuelScore(spec, duelWorkouts, challengerId);
   const defenderScore   = getDuelScore(spec, duelWorkouts, defenderId);
 
-  // -1 score means they didn't meet minimum sessions — forfeit
   const challengerForfeited = challengerScore < 0;
   const defenderForfeited   = defenderScore < 0;
 
@@ -15619,7 +15719,6 @@ async function resolveGateDuel(duelId, duelData) {
   if (challengerForfeited && !defenderForfeited) { loserId = challengerId; winnerId = defenderId; }
   else if (defenderForfeited && !challengerForfeited) { loserId = defenderId; winnerId = challengerId; }
   else if (spec.metric === 'best_pace') {
-    // Lower pace = better, but we stored inverted
     winnerId = challengerScore >= defenderScore ? challengerId : defenderId;
     loserId  = winnerId === challengerId ? defenderId : challengerId;
   } else {
@@ -15627,28 +15726,100 @@ async function resolveGateDuel(duelId, duelData) {
     loserId  = winnerId === challengerId ? defenderId : challengerId;
   }
 
-  const winnerStreak = (winnerId === challengerId ? challengerStreak : defenderStreak) + 1;
-  const loserStreak  = 0; // reset
+  const challengerWon = winnerId === challengerId;
+  const winnerStreak  = (challengerWon ? challengerStreak : defenderStreak) + 1;
+  const winnerTier    = getDuelStreakTier(winnerStreak);
+  const apWager       = winnerTier.apGain;
+  const trophyTier    = getDuelTrophyTier(winnerStreak);
 
-  const winnerTier = getDuelStreakTier(winnerStreak);
-  const loserTier  = getDuelStreakTier(winnerStreak - 1 || 1); // what they were at
+  // ── Shadow Army resolution ──
+  // If this duel was over a specific country, apply territorial costs
+  let territoryResult = null;
+  if (targetCountryId && targetContinentKey) {
+    const ckey = targetContinentKey;
 
-  const apWager = winnerTier.apGain;
-  const trophyTier = getDuelTrophyTier(winnerStreak);
+    // Get current armies from Firestore for both hunters
+    const { doc: getDoc2, getDoc, updateDoc: ud2 } = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js');
+    const { doc } = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js');
+
+    const [cSnap, dSnap] = await Promise.all([
+      getDoc(doc(db, 'users', challengerId)),
+      getDoc(doc(db, 'users', defenderId)),
+    ]);
+
+    const cData = cSnap.data() || {};
+    const dData = dSnap.data() || {};
+
+    const attackerSoldiers = (cData.shadowArmy?.continents?.[ckey]?.soldiers) || 0;
+    const defenderSoldiers = (dData.shadowArmy?.continents?.[ckey]?.soldiers) || 0;
+
+    // Home advantage multiplier for defender
+    const defenderPower = defenderSoldiers * 1.2;
+    const attackerPower = attackerSoldiers;
+    const totalPower    = attackerPower + defenderPower;
+    const powerRatio    = totalPower > 0 ? attackerPower / totalPower : 0.5;
+
+    let attackerLosses, defenderLosses, countryTransfers;
+
+    if (challengerWon) {
+      // Attacker wins duel — territorial battle
+      attackerLosses  = Math.floor(defenderSoldiers * (1 - powerRatio));
+      defenderLosses  = Math.floor(defenderSoldiers * powerRatio);
+      countryTransfers = true;
+    } else {
+      // Attacker loses duel — retreat losses
+      attackerLosses  = Math.floor(attackerSoldiers * 0.3);
+      defenderLosses  = Math.floor(defenderSoldiers * 0.1);
+      countryTransfers = false;
+    }
+
+    const newAttackerSoldiers = Math.max(0, attackerSoldiers - attackerLosses);
+    const newDefenderSoldiers = Math.max(0, defenderSoldiers - defenderLosses);
+
+    territoryResult = {
+      countryTransfers, targetCountryId, ckey,
+      attackerSoldiers, defenderSoldiers,
+      attackerLosses, defenderLosses,
+      newAttackerSoldiers, newDefenderSoldiers,
+      powerRatio: Math.round(powerRatio * 100),
+    };
+
+    // Write army losses to Firestore
+    const { updateDoc: ud3 } = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js');
+    await Promise.all([
+      ud3(doc(db, 'users', challengerId), {
+        [`shadowArmy.continents.${ckey}.soldiers`]: newAttackerSoldiers,
+      }),
+      ud3(doc(db, 'users', defenderId), {
+        [`shadowArmy.continents.${ckey}.soldiers`]: newDefenderSoldiers,
+        // If country transfers, update ownership
+        ...(countryTransfers ? {
+          [`shadowArmy.continents.${ckey}.countries.${targetCountryId}.owner`]: challengerId,
+        } : {}),
+      }),
+    ]);
+
+    // Update local profile
+    if (currentUser.uid === challengerId && profile.shadowArmy?.continents?.[ckey]) {
+      profile.shadowArmy.continents[ckey].soldiers = newAttackerSoldiers;
+    }
+    if (currentUser.uid === defenderId && profile.shadowArmy?.continents?.[ckey]) {
+      profile.shadowArmy.continents[ckey].soldiers = newDefenderSoldiers;
+    }
+  }
 
   try {
     const { doc, updateDoc, increment: fsIncrement } = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js');
 
-    // Update duel record
     await updateDoc(doc(db, 'duels', duelId), {
       status: 'complete',
       winnerId, loserId,
       challengerScore, defenderScore,
       apWager,
+      territoryResult,
       resolvedAt: todayStr(),
     });
 
-    // Update winner profile
     await updateDoc(doc(db, 'users', winnerId), {
       auraPoints: fsIncrement(apWager),
       'duels.wins': fsIncrement(1),
@@ -15658,11 +15829,9 @@ async function resolveGateDuel(duelId, duelData) {
       'duels.duelTitle': winnerTier.title,
       'duels.xpBoostMult': winnerTier.xpMult,
       'duels.xpBoostUntil': todayStr(new Date(Date.now() + 7*86400000)),
-      // Grant trophy item if tier reached
       ...(trophyTier ? { [`inventory.weapon`]: { ...ITEM_DEFINITIONS[`duel_trophy_${trophyTier.tier}`], condition:100, earnedAt:todayStr() } } : {}),
     });
 
-    // Update loser profile — streak resets, trophy stripped
     await updateDoc(doc(db, 'users', loserId), {
       auraPoints: fsIncrement(-apWager),
       'duels.losses': fsIncrement(1),
@@ -15675,10 +15844,9 @@ async function resolveGateDuel(duelId, duelData) {
       'duels.defeatUntil': todayStr(new Date(Date.now() + 7*86400000)),
       'duels.debuffPct': winnerTier.debuffPct,
       'duels.trophyTier': 0,
-      'inventory.weapon': null, // trophy weapon stripped on loss — they must re-earn it
+      'inventory.weapon': null,
     });
 
-    // Update local profile if current user is involved
     if (currentUser.uid === winnerId || currentUser.uid === loserId) {
       const isWinner = currentUser.uid === winnerId;
       if (!profile.duels) profile.duels = {};
@@ -15698,7 +15866,7 @@ async function resolveGateDuel(duelId, duelData) {
       }
     }
 
-    showDuelResultModal(duelData, winnerId, loserId, challengerScore, defenderScore, apWager, trophyTier, winnerTier);
+    showDuelResultModal(duelData, winnerId, loserId, challengerScore, defenderScore, apWager, trophyTier, winnerTier, territoryResult);
     renderCompetitionBoard();
     renderBoard();
 
@@ -15706,7 +15874,7 @@ async function resolveGateDuel(duelId, duelData) {
 }
 
 // ── Duel result modal ──
-function showDuelResultModal(duelData, winnerId, loserId, cScore, dScore, apWager, trophyTier, winnerTier) {
+function showDuelResultModal(duelData, winnerId, loserId, cScore, dScore, apWager, trophyTier, winnerTier, territoryResult) {
   const isWinner = currentUser.uid === winnerId;
   const opponentName = isWinner
     ? (winnerId === duelData.challengerId ? duelData.defenderName : duelData.challengerName)
@@ -15740,6 +15908,31 @@ function showDuelResultModal(duelData, winnerId, loserId, cScore, dScore, apWage
     ${isWinner ? `<p style="font-size:11px;color:var(--text-dim);">Win streak: ${winnerTier.minStreak <= 1 ? '1' : duelData.challengerId === winnerId ? duelData.challengerStreak+1 : duelData.defenderStreak+1} · Title: ${winnerTier.title}</p>` : '<p style="font-size:11px;color:var(--excess);">Your win streak has been reset to 0. You cannot challenge for 7 days.</p>'}
     ${trophy}
     ${trophyTier?.tier === 4 && isWinner ? `<div style="font-family:var(--font-mono);font-size:9px;color:rgba(61,165,255,0.25);letter-spacing:0.08em;margin-top:8px;border-top:1px solid rgba(61,165,255,0.06);padding-top:8px;">The System records show one entry beyond this.<br>No name. No holder. The record simply says: it exists.</div>` : ''}
+    ${territoryResult ? `
+    <div style="background:rgba(0,0,0,0.3);border:1px solid rgba(61,165,255,0.1);border-radius:8px;padding:10px;margin-top:10px;font-size:11px;">
+      <div style="font-family:var(--font-mono);font-size:8px;color:rgba(61,165,255,0.4);letter-spacing:0.1em;margin-bottom:6px;">◈ SHADOW ARMY — TERRITORIAL BATTLE</div>
+      ${territoryResult.countryTransfers
+        ? `<div style="color:var(--growing);margin-bottom:4px;">⚑ Territory seized — country claimed</div>`
+        : `<div style="color:var(--excess);margin-bottom:4px;">⚔ Attack repelled — territory held</div>`}
+      <div style="display:flex;gap:8px;">
+        <div style="flex:1;text-align:center;">
+          <div style="font-size:14px;font-weight:700;color:var(--excess);">-${territoryResult.attackerLosses.toLocaleString()}</div>
+          <div style="font-size:9px;color:rgba(61,165,255,0.4);">YOUR LOSSES</div>
+          <div style="font-size:10px;color:var(--text-dim);">${territoryResult.newAttackerSoldiers.toLocaleString()} remain</div>
+        </div>
+        <div style="flex:1;text-align:center;">
+          <div style="font-size:14px;font-weight:700;color:var(--growing);">-${territoryResult.defenderLosses.toLocaleString()}</div>
+          <div style="font-size:9px;color:rgba(61,165,255,0.4);">ENEMY LOSSES</div>
+          <div style="font-size:10px;color:var(--text-dim);">${territoryResult.newDefenderSoldiers.toLocaleString()} remain</div>
+        </div>
+        <div style="flex:1;text-align:center;">
+          <div style="font-size:14px;font-weight:700;color:var(--brass);">${territoryResult.powerRatio}%</div>
+          <div style="font-size:9px;color:rgba(61,165,255,0.4);">YOUR POWER</div>
+          <div style="font-size:10px;color:var(--text-dim);">vs their army</div>
+        </div>
+      </div>
+      <div style="font-size:9px;color:rgba(61,165,255,0.3);margin-top:6px;">Train more to rebuild. Lost soldiers don't return.</div>
+    </div>` : ''}
     <button class="system-btn ${isWinner?'success':''}">Acknowledged</button>
   </div>`);
 }
