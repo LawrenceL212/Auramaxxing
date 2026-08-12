@@ -19,22 +19,29 @@ canvas { display:block; }
 #zb { position:fixed; right:12px; bottom:80px; display:flex; flex-direction:column; gap:6px; z-index:20; }
 .zb { width:36px; height:36px; background:rgba(2,12,24,0.85); border:1px solid rgba(61,165,255,0.2); border-radius:8px; color:#61a5ff; font-size:20px; cursor:pointer; display:flex; align-items:center; justify-content:center; }
 #tt { position:fixed; pointer-events:none; background:rgba(2,12,24,0.95); border:1px solid rgba(61,165,255,0.3); border-radius:6px; padding:5px 10px; font-size:11px; color:#61a5ff; z-index:30; display:none; white-space:nowrap; }
-#panel { position:fixed; bottom:0; left:0; right:0; transform:translateY(100%); transition:transform .35s cubic-bezier(.16,1,.3,1); background:rgba(2,12,24,0.98); border-top:1px solid rgba(61,165,255,.15); border-radius:20px 20px 0 0; padding:18px 20px; z-index:30; max-height:50vh; overflow-y:auto; }
+#panel { position:fixed; bottom:0; left:0; right:0; transform:translateY(100%); transition:transform .35s cubic-bezier(.16,1,.3,1); background:rgba(2,12,24,0.98); border-top:1px solid rgba(61,165,255,.15); border-radius:20px 20px 0 0; padding:18px 20px; z-index:30; max-height:60vh; overflow-y:auto; }
 #panel.open { transform:translateY(0); }
 #ph { width:36px; height:3px; background:rgba(61,165,255,.2); border-radius:2px; margin:0 auto 12px; }
 #pc { font-size:9px; letter-spacing:.15em; margin-bottom:3px; }
 #pn { font-size:20px; font-weight:700; margin-bottom:3px; }
-#po { font-size:11px; color:rgba(61,165,255,.5); margin-bottom:12px; }
+#po { font-size:11px; color:rgba(61,165,255,.5); margin-bottom:10px; }
 #ps { display:flex; gap:8px; margin-bottom:12px; flex-wrap:wrap; }
-.sc { padding:7px 12px; background:rgba(61,165,255,.05); border:1px solid rgba(61,165,255,.1); border-radius:8px; text-align:center; min-width:75px; }
+.sc { padding:7px 12px; background:rgba(61,165,255,.05); border:1px solid rgba(61,165,255,.1); border-radius:8px; text-align:center; min-width:70px; }
 .sn { font-size:15px; font-weight:800; }
 .sl { font-size:9px; color:rgba(61,165,255,.4); margin-top:1px; }
-#pa { display:flex; gap:8px; }
-.pb { flex:1; padding:10px; border-radius:8px; font-family:'Courier New',monospace; font-size:12px; cursor:pointer; border:none; }
+#pa { display:flex; gap:8px; flex-wrap:wrap; }
+.pb { flex:1; min-width:120px; padding:10px; border-radius:8px; font-family:'Courier New',monospace; font-size:12px; cursor:pointer; border:none; touch-action:manipulation; }
 .bc { background:rgba(61,165,255,.12); border:1px solid rgba(61,165,255,.3); color:#61a5ff; }
 .ba { background:rgba(255,61,90,.1); border:1px solid rgba(255,61,90,.3); color:#ff3d5a; }
 .br { background:rgba(78,205,120,.08); border:1px solid rgba(78,205,120,.25); color:#4ecd78; }
+.bd { background:rgba(212,160,23,.08); border:1px solid rgba(212,160,23,.25); color:#d4a017; }
 #px { position:absolute; top:12px; right:14px; background:none; border:none; color:rgba(61,165,255,.4); font-size:18px; cursor:pointer; }
+#deploy-row { display:flex; align-items:center; gap:8px; margin-bottom:12px; }
+#deploy-row input { background:rgba(61,165,255,.06); border:1px solid rgba(61,165,255,.2); border-radius:8px; color:#e0e8ff; font-family:'Courier New',monospace; font-size:14px; padding:8px 12px; width:80px; text-align:center; }
+#pool-info { font-size:11px; color:rgba(61,165,255,.4); margin-bottom:12px; line-height:1.6; }
+#cont-progress { margin-bottom:12px; }
+.cp-bar { height:4px; background:rgba(61,165,255,.08); border-radius:2px; margin-top:4px; overflow:hidden; }
+.cp-fill { height:100%; border-radius:2px; transition:width .4s; }
 #load { position:fixed; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; background:#020c18; z-index:50; gap:14px; }
 #lt { font-size:11px; color:rgba(61,165,255,.5); letter-spacing:.2em; }
 .lb { width:200px; height:2px; background:rgba(61,165,255,.1); border-radius:1px; }
@@ -60,7 +67,17 @@ canvas { display:block; }
 <div id="tt"></div>
 <div id="panel">
   <div id="ph"></div><button id="px" onclick="closePanel()">✕</button>
-  <div id="pc"></div><div id="pn"></div><div id="po"></div><div id="ps"></div><div id="pa"></div>
+  <div id="pc"></div>
+  <div id="pn"></div>
+  <div id="po"></div>
+  <div id="cont-progress"></div>
+  <div id="ps"></div>
+  <div id="pool-info"></div>
+  <div id="deploy-row" style="display:none;">
+    <input type="number" id="deploy-input" min="1" value="10" />
+    <button class="pb bd" id="deploy-btn" style="flex:none;padding:8px 16px;">⚑ Deploy</button>
+  </div>
+  <div id="pa"></div>
 </div>
 
 <script type="module">
@@ -68,249 +85,96 @@ import { COUNTRIES_GEO } from './countries_embedded.js';
 
 const setP = p => document.getElementById('lf').style.width = p + '%';
 
-// ── PLAYERS — keyed by UID, never by display name ──
+// ── PLAYERS — keyed by UID ──
 const PLAYER_COLOR_MAP = {
   'eUtGPwQBcCSO0x3xS3ZGYFGXNIT2': { hex:'#d4a017', r:212, g:160, b:23,  name:'Lawrence' },
   'd1W5vTx5aSTIwkR4CIwnO2xW7vf1': { hex:'#7c3aed', r:124, g:58,  b:237, name:'LuChing'  },
   'rzcznIkNRrSKVXl74LsTaRSdHOk2': { hex:'#0ea5e9', r:14,  g:165, b:233, name:'Lucas'    },
   'oFFi2hATYARhqcSZQlHwlsYBOge2': { hex:'#ff6b9d', r:255, g:107, b:157, name:'Mireyah'  },
 };
-let PLAYERS = { ...PLAYER_COLOR_MAP };
+const PLAYERS = { ...PLAYER_COLOR_MAP };
 
-// Ownership loaded from Firestore shadowArmy data
-// Format: gameCountryId -> { owner: displayName, soldiers: N }
-let LIVE_OWNERSHIP = {};
+// ── ARMY KEY → continent geography ──
+const ARMY_TO_CKEY = {
+  iron:'northAmerica', wild:'southAmerica', court:'europe',
+  swift:'africa', shadow:'asia', tide:'australia', gate:'antarctica'
+};
 
 // ── CONTINENT METADATA ──
 const CONT = {
-  northAmerica: { name:'Iron Highlands',  stat:'strength',    hex:'#e05555' },
-  southAmerica: { name:'Wild Summit',     stat:'flexibility', hex:'#22c55e' },
-  europe:       { name:'Court Arena',     stat:'combat',      hex:'#f59e0b' },
-  africa:       { name:'Swift Plains',    stat:'agility',     hex:'#38bdf8' },
-  asia:         { name:'Shadow Reaches',  stat:'focus',       hex:'#a78bfa' },
-  australia:    { name:'Tide Depths',     stat:'endurance',   hex:'#2dd4bf' },
-  antarctica:   { name:'The Gate',        stat:'all',         hex:'#94a3b8' },
+  northAmerica: { name:'Iron Highlands',  armyKey:'iron',   stat:'Strength',    hex:'#e05555', icon:'🏋️' },
+  southAmerica: { name:'Wild Summit',     armyKey:'wild',   stat:'Flexibility', hex:'#22c55e', icon:'🧗' },
+  europe:       { name:'Court Arena',     armyKey:'court',  stat:'Combat',      hex:'#f59e0b', icon:'🥊' },
+  africa:       { name:'Swift Plains',    armyKey:'swift',  stat:'Agility',     hex:'#38bdf8', icon:'🏃' },
+  asia:         { name:'Shadow Reaches',  armyKey:'shadow', stat:'Focus',       hex:'#a78bfa', icon:'🤸' },
+  australia:    { name:'Tide Depths',     armyKey:'tide',   stat:'Endurance',   hex:'#2dd4bf', icon:'🏊' },
+  antarctica:   { name:'The Gate',        armyKey:'gate',   stat:'All',         hex:'#94a3b8', icon:'⚔️' },
 };
 
-// ── GAME COUNTRIES — each maps real world countries to a slot ──
-// realCountries: array of NAME strings from ne_50m_admin_0_countries
 const GAME_COUNTRIES = [
-  // NORTH AMERICA — Iron Highlands
-  { id:'na_0', name:'Ironforge',     ckey:'northAmerica', isCapital:true,  owner:'Lawrence', soldiers:340,
-    lat:54, lon:-125,
-    realCountries:['Canada'] },
-  { id:'na_1', name:'Steelhold',     ckey:'northAmerica', isCapital:false, owner:'Lawrence', soldiers:280,
-    lat:40, lon:-98,
-    realCountries:['United States of America'] },
-  { id:'na_2', name:'Ashvault',      ckey:'northAmerica', isCapital:false, owner:'Lawrence', soldiers:180,
-    lat:23, lon:-102,
-    realCountries:['Mexico','Belize','Guatemala','El Salvador','Honduras','Nicaragua','Costa Rica','Panama'] },
-  { id:'na_3', name:'Cinder Keep',   ckey:'northAmerica', isCapital:false, owner:'Lawrence', soldiers:120,
-    lat:21, lon:-79,
-    realCountries:['Cuba','Jamaica','Haiti','Dominican Rep.','Puerto Rico','Bahamas','Trinidad and Tobago',
-                   'Barbados','St. Kitts and Nevis','Antigua and Barb.','Dominica','St. Vin. and Gren.',
-                   'Grenada','Saint Lucia','Anguilla','Aruba','Curaçao','Bermuda','Cayman Is.',
-                   'British Virgin Is.','Turks and Caicos Is.','Montserrat','Sint Maarten',
-                   'U.S. Virgin Is.','St-Martin','St-Barthélemy','St. Pierre and Miquelon'] },
-  { id:'na_4', name:'Brutholm',      ckey:'northAmerica', isCapital:false, owner:'Lawrence', soldiers:200,
-    lat:72, lon:-42,
-    realCountries:['Greenland'] },
-  { id:'na_5', name:'Forgepeak',     ckey:'northAmerica', isCapital:false, owner:'Lucas',    soldiers:35,
-    lat:64, lon:-115,
-    realCountries:[] },
-
-  // SOUTH AMERICA — Wild Summit
-  { id:'sa_0', name:'Verdant Peak',  ckey:'southAmerica', isCapital:true,  owner:'LuChing',  soldiers:80,
-    lat:4,  lon:-73,
-    realCountries:['Colombia','Venezuela','Guyana','Suriname','Ecuador'] },
-  { id:'sa_1', name:'Thornveil',     ckey:'southAmerica', isCapital:false, owner:'LuChing',  soldiers:45,
-    lat:-5, lon:-55,
-    realCountries:['Brazil'] },
-  { id:'sa_2', name:'Mistclimb',     ckey:'southAmerica', isCapital:false, owner:null,       soldiers:0,
-    lat:-12,lon:-74,
-    realCountries:['Peru','Bolivia'] },
-  { id:'sa_3', name:'Roothold',      ckey:'southAmerica', isCapital:false, owner:null,       soldiers:0,
-    lat:-34,lon:-64,
-    realCountries:['Argentina','Uruguay','Paraguay'] },
-  { id:'sa_4', name:'Canopy',        ckey:'southAmerica', isCapital:false, owner:null,       soldiers:0,
-    lat:-18,lon:-70,
-    realCountries:['Chile'] },
-  { id:'sa_5', name:'Highreach',     ckey:'southAmerica', isCapital:false, owner:null,       soldiers:0,
-    lat:-52,lon:-68,
-    realCountries:['Falkland Is.'] },
-
-  // EUROPE — Court Arena
-  { id:'eu_0', name:'Ironring',      ckey:'europe', isCapital:true,  owner:'Lucas',    soldiers:60,
-    lat:51, lon:4,
-    realCountries:['United Kingdom','Ireland','France','Belgium','Netherlands','Luxembourg',
-                   'Germany','Switzerland','Austria','Denmark','Monaco','Andorra','Liechtenstein',
-                   'Faeroe Is.','Åland','Guernsey','Jersey','Isle of Man'] },
-  { id:'eu_1', name:'Gauntlet',      ckey:'europe', isCapital:false, owner:'Lucas',    soldiers:45,
-    lat:48, lon:20,
-    realCountries:['Poland','Czechia','Slovakia','Hungary','Romania','Bulgaria','Serbia',
-                   'Croatia','Slovenia','Bosnia and Herz.','Albania','North Macedonia','Kosovo',
-                   'Moldova','Montenegro','San Marino','Vatican'] },
-  { id:'eu_2', name:'The Pits',      ckey:'europe', isCapital:false, owner:'Lucas',    soldiers:30,
-    lat:40, lon:14,
-    realCountries:['Italy','Spain','Portugal','Greece','Malta','Cyprus','N. Cyprus'] },
-  { id:'eu_3', name:'Strikewood',    ckey:'europe', isCapital:false, owner:null,       soldiers:0,
-    lat:64, lon:14,
-    realCountries:['Sweden','Norway','Finland','Iceland'] },
-  { id:'eu_4', name:'Combatia',      ckey:'europe', isCapital:false, owner:'Lucas',    soldiers:25,
-    lat:56, lon:25,
-    realCountries:['Estonia','Latvia','Lithuania','Belarus','Ukraine'] },
-  { id:'eu_5', name:'Blazeguard',    ckey:'europe', isCapital:false, owner:null,       soldiers:0,
-    lat:40, lon:35,
-    realCountries:['Turkey','Georgia','Armenia','Azerbaijan'] },
-
-  // AFRICA — Swift Plains
-  { id:'af_0', name:'Galerun',       ckey:'africa', isCapital:true,  owner:'Mireyah',  soldiers:45,
-    lat:18, lon:2,
-    realCountries:['Morocco','Algeria','Tunisia','Libya','W. Sahara','Mauritania','Mali',
-                   'Niger','Senegal','Gambia','Guinea-Bissau','Guinea','Sierra Leone',
-                   'Liberia',"Côte d'Ivoire",'Ghana','Togo','Benin','Nigeria',
-                   'Burkina Faso','Cabo Verde','Egypt'] },
-  { id:'af_1', name:'Stormstep',     ckey:'africa', isCapital:false, owner:null,       soldiers:0,
-    lat:8,  lon:25,
-    realCountries:['Chad','Sudan','S. Sudan','Central African Rep.','Cameroon',
-                   'Eq. Guinea','Gabon','Congo','Dem. Rep. Congo',
-                   'Ethiopia','Djibouti','Eritrea','Somalia','Somaliland',"São Tomé and Principe"] },
-  { id:'af_2', name:'Blitzfield',    ckey:'africa', isCapital:false, owner:null,       soldiers:0,
-    lat:-5, lon:30,
-    realCountries:['Uganda','Kenya','Rwanda','Burundi','Tanzania','Angola'] },
-  { id:'af_3', name:'Vantrace',      ckey:'africa', isCapital:false, owner:null,       soldiers:0,
-    lat:-25,lon:25,
-    realCountries:['Zambia','Zimbabwe','Malawi','Mozambique','Namibia','Botswana','eSwatini','Lesotho'] },
-  { id:'af_4', name:'Windfall',      ckey:'africa', isCapital:false, owner:null,       soldiers:0,
-    lat:-30,lon:26,
-    realCountries:['South Africa'] },
-  { id:'af_5', name:'Rushgate',      ckey:'africa', isCapital:false, owner:'Mireyah',  soldiers:20,
-    lat:-20,lon:46,
-    realCountries:['Madagascar','Comoros','Seychelles','Mauritius','Saint Helena'] },
-
-  // ASIA — Shadow Reaches
-  { id:'as_0', name:'Voidmark',      ckey:'asia', isCapital:true,  owner:'LuChing',  soldiers:890,
-    lat:60, lon:100,
-    realCountries:['Russia','Kazakhstan','Mongolia','Uzbekistan','Turkmenistan','Kyrgyzstan','Tajikistan'] },
-  { id:'as_1', name:'Umbra',         ckey:'asia', isCapital:false, owner:'LuChing',  soldiers:650,
-    lat:28, lon:68,
-    realCountries:['China','India','Pakistan','Afghanistan','Nepal','Bhutan','Bangladesh','Sri Lanka',
-                   'Iran','Iraq','Syria','Kuwait','Saudi Arabia','Yemen','Oman',
-                   'United Arab Emirates','Qatar','Bahrain','Jordan','Lebanon','Israel',
-                   'Palestine','Macao','Hong Kong','Siachen Glacier','Indian Ocean Ter.'] },
-  { id:'as_2', name:'The Hollow',    ckey:'asia', isCapital:false, owner:'LuChing',  soldiers:410,
-    lat:15, lon:102,
-    realCountries:['Myanmar','Thailand','Vietnam','Laos','Cambodia','Malaysia','Singapore',
-                   'Indonesia','Brunei','Timor-Leste'] },
-  { id:'as_3', name:'Phantom Spire', ckey:'asia', isCapital:false, owner:'LuChing',  soldiers:320,
-    lat:36, lon:128,
-    realCountries:['Japan','South Korea','North Korea','Taiwan'] },
-  { id:'as_4', name:'Eclipse',       ckey:'asia', isCapital:false, owner:'LuChing',  soldiers:280,
-    lat:12, lon:122,
-    realCountries:['Philippines'] },
-  { id:'as_5', name:'Shadowmere',    ckey:'asia', isCapital:false, owner:'LuChing',  soldiers:190,
-    lat:4,  lon:108,
-    realCountries:[] },
-
-  // AUSTRALIA — Tide Depths
-  { id:'au_0', name:'Deepholm',      ckey:'australia', isCapital:true,  owner:null, soldiers:0,
-    lat:-25,lon:130, realCountries:['Australia'] },
-  { id:'au_1', name:'Abyssal',       ckey:'australia', isCapital:false, owner:null, soldiers:0,
-    lat:-40,lon:148, realCountries:[] },
-  { id:'au_2', name:'Coralspire',    ckey:'australia', isCapital:false, owner:null, soldiers:0,
-    lat:-6, lon:147, realCountries:['Papua New Guinea','Solomon Is.','Vanuatu'] },
-  { id:'au_3', name:'Drifthaven',    ckey:'australia', isCapital:false, owner:null, soldiers:0,
-    lat:-14,lon:167, realCountries:['Fiji','Samoa','Tonga','New Caledonia'] },
-  { id:'au_4', name:'Tidemark',      ckey:'australia', isCapital:false, owner:null, soldiers:0,
-    lat:-10,lon:160, realCountries:['Micronesia','Palau','Marshall Is.','Kiribati','Nauru','Tuvalu'] },
-  { id:'au_5', name:'Undertow',      ckey:'australia', isCapital:false, owner:null, soldiers:0,
-    lat:-38,lon:175, realCountries:['New Zealand'] },
-
+  // NORTH AMERICA — Iron Highlands (strength training)
+  { id:'na_0', name:'Ironforge',    ckey:'northAmerica', isCapital:true,  lat:54,  lon:-125, realCountries:['Canada'] },
+  { id:'na_1', name:'Steelhold',    ckey:'northAmerica', isCapital:false, lat:40,  lon:-98,  realCountries:['United States of America'] },
+  { id:'na_2', name:'Ashvault',     ckey:'northAmerica', isCapital:false, lat:23,  lon:-102, realCountries:['Mexico','Belize','Guatemala','El Salvador','Honduras','Nicaragua','Costa Rica','Panama'] },
+  { id:'na_3', name:'Cinder Keep',  ckey:'northAmerica', isCapital:false, lat:21,  lon:-79,  realCountries:['Cuba','Jamaica','Haiti','Dominican Rep.','Puerto Rico','Bahamas','Trinidad and Tobago','Barbados','St. Kitts and Nevis','Antigua and Barb.','Dominica','St. Vin. and Gren.','Grenada','Saint Lucia','Anguilla','Aruba','Curaçao','Bermuda','Cayman Is.','British Virgin Is.','Turks and Caicos Is.','Montserrat','Sint Maarten','U.S. Virgin Is.','St-Martin','St-Barthélemy','St. Pierre and Miquelon'] },
+  { id:'na_4', name:'Brutholm',     ckey:'northAmerica', isCapital:false, lat:72,  lon:-42,  realCountries:['Greenland'] },
+  { id:'na_5', name:'Forgepeak',    ckey:'northAmerica', isCapital:false, lat:64,  lon:-115, realCountries:[] },
+  // SOUTH AMERICA — Wild Summit (flexibility/climbing)
+  { id:'sa_0', name:'Verdant Peak', ckey:'southAmerica', isCapital:true,  lat:4,   lon:-73,  realCountries:['Colombia','Venezuela','Guyana','Suriname','Ecuador'] },
+  { id:'sa_1', name:'Thornveil',    ckey:'southAmerica', isCapital:false, lat:-5,  lon:-55,  realCountries:['Brazil'] },
+  { id:'sa_2', name:'Mistclimb',    ckey:'southAmerica', isCapital:false, lat:-12, lon:-74,  realCountries:['Peru','Bolivia'] },
+  { id:'sa_3', name:'Roothold',     ckey:'southAmerica', isCapital:false, lat:-34, lon:-64,  realCountries:['Argentina','Uruguay','Paraguay'] },
+  { id:'sa_4', name:'Canopy',       ckey:'southAmerica', isCapital:false, lat:-18, lon:-70,  realCountries:['Chile'] },
+  { id:'sa_5', name:'Highreach',    ckey:'southAmerica', isCapital:false, lat:-52, lon:-68,  realCountries:['Falkland Is.'] },
+  // EUROPE — Court Arena (boxing/sports)
+  { id:'eu_0', name:'Ironring',     ckey:'europe', isCapital:true,  lat:51, lon:4,   realCountries:['United Kingdom','Ireland','France','Belgium','Netherlands','Luxembourg','Germany','Switzerland','Austria','Denmark','Monaco','Andorra','Liechtenstein','Faeroe Is.','Åland','Guernsey','Jersey','Isle of Man'] },
+  { id:'eu_1', name:'Gauntlet',     ckey:'europe', isCapital:false, lat:48, lon:20,  realCountries:['Poland','Czechia','Slovakia','Hungary','Romania','Bulgaria','Serbia','Croatia','Slovenia','Bosnia and Herz.','Albania','North Macedonia','Kosovo','Moldova','Montenegro','San Marino','Vatican'] },
+  { id:'eu_2', name:'The Pits',     ckey:'europe', isCapital:false, lat:40, lon:14,  realCountries:['Italy','Spain','Portugal','Greece','Malta','Cyprus','N. Cyprus'] },
+  { id:'eu_3', name:'Strikewood',   ckey:'europe', isCapital:false, lat:64, lon:14,  realCountries:['Sweden','Norway','Finland','Iceland'] },
+  { id:'eu_4', name:'Combatia',     ckey:'europe', isCapital:false, lat:56, lon:25,  realCountries:['Estonia','Latvia','Lithuania','Belarus','Ukraine'] },
+  { id:'eu_5', name:'Blazeguard',   ckey:'europe', isCapital:false, lat:40, lon:35,  realCountries:['Turkey','Georgia','Armenia','Azerbaijan'] },
+  // AFRICA — Swift Plains (cardio/running)
+  { id:'af_0', name:'Galerun',      ckey:'africa', isCapital:true,  lat:18, lon:2,   realCountries:['Morocco','Algeria','Tunisia','Libya','W. Sahara','Mauritania','Mali','Niger','Senegal','Gambia','Guinea-Bissau','Guinea','Sierra Leone','Liberia',"Côte d'Ivoire",'Ghana','Togo','Benin','Nigeria','Burkina Faso','Cabo Verde','Egypt'] },
+  { id:'af_1', name:'Stormstep',    ckey:'africa', isCapital:false, lat:8,  lon:25,  realCountries:['Chad','Sudan','S. Sudan','Central African Rep.','Cameroon','Eq. Guinea','Gabon','Congo','Dem. Rep. Congo','Ethiopia','Djibouti','Eritrea','Somalia','Somaliland',"São Tomé and Principe"] },
+  { id:'af_2', name:'Blitzfield',   ckey:'africa', isCapital:false, lat:-5, lon:30,  realCountries:['Uganda','Kenya','Rwanda','Burundi','Tanzania','Angola'] },
+  { id:'af_3', name:'Vantrace',     ckey:'africa', isCapital:false, lat:-25,lon:25,  realCountries:['Zambia','Zimbabwe','Malawi','Mozambique','Namibia','Botswana','eSwatini','Lesotho'] },
+  { id:'af_4', name:'Windfall',     ckey:'africa', isCapital:false, lat:-30,lon:26,  realCountries:['South Africa'] },
+  { id:'af_5', name:'Rushgate',     ckey:'africa', isCapital:false, lat:-20,lon:46,  realCountries:['Madagascar','Comoros','Seychelles','Mauritius','Saint Helena'] },
+  // ASIA — Shadow Reaches (focus/skill)
+  { id:'as_0', name:'Voidmark',     ckey:'asia', isCapital:true,  lat:60, lon:100, realCountries:['Russia','Kazakhstan','Mongolia','Uzbekistan','Turkmenistan','Kyrgyzstan','Tajikistan'] },
+  { id:'as_1', name:'Umbra',        ckey:'asia', isCapital:false, lat:28, lon:68,  realCountries:['China','India','Pakistan','Afghanistan','Nepal','Bhutan','Bangladesh','Sri Lanka','Iran','Iraq','Syria','Kuwait','Saudi Arabia','Yemen','Oman','United Arab Emirates','Qatar','Bahrain','Jordan','Lebanon','Israel','Palestine','Macao','Hong Kong','Siachen Glacier','Indian Ocean Ter.'] },
+  { id:'as_2', name:'The Hollow',   ckey:'asia', isCapital:false, lat:15, lon:102, realCountries:['Myanmar','Thailand','Vietnam','Laos','Cambodia','Malaysia','Singapore','Indonesia','Brunei','Timor-Leste'] },
+  { id:'as_3', name:'Phantom Spire',ckey:'asia', isCapital:false, lat:36, lon:128, realCountries:['Japan','South Korea','North Korea','Taiwan'] },
+  { id:'as_4', name:'Eclipse',      ckey:'asia', isCapital:false, lat:12, lon:122, realCountries:['Philippines'] },
+  { id:'as_5', name:'Shadowmere',   ckey:'asia', isCapital:false, lat:4,  lon:108, realCountries:[] },
+  // AUSTRALIA — Tide Depths (endurance/swimming)
+  { id:'au_0', name:'Deepholm',     ckey:'australia', isCapital:true,  lat:-25,lon:130, realCountries:['Australia'] },
+  { id:'au_1', name:'Abyssal',      ckey:'australia', isCapital:false, lat:-40,lon:148, realCountries:[] },
+  { id:'au_2', name:'Coralspire',   ckey:'australia', isCapital:false, lat:-6, lon:147, realCountries:['Papua New Guinea','Solomon Is.','Vanuatu'] },
+  { id:'au_3', name:'Drifthaven',   ckey:'australia', isCapital:false, lat:-14,lon:167, realCountries:['Fiji','Samoa','Tonga','New Caledonia'] },
+  { id:'au_4', name:'Tidemark',     ckey:'australia', isCapital:false, lat:-10,lon:160, realCountries:['Micronesia','Palau','Marshall Is.','Kiribati','Nauru','Tuvalu'] },
+  { id:'au_5', name:'Undertow',     ckey:'australia', isCapital:false, lat:-38,lon:175, realCountries:['New Zealand'] },
   // ANTARCTICA — The Gate
-  { id:'an_0', name:'Gate Prime',    ckey:'antarctica', isCapital:true,  owner:null, soldiers:0,
-    lat:-80,lon:0,   realCountries:['Antarctica'] },
-  { id:'an_1', name:'The Threshold', ckey:'antarctica', isCapital:false, owner:null, soldiers:0,
-    lat:-80,lon:60,  realCountries:[] },
-  { id:'an_2', name:'Nexus',         ckey:'antarctica', isCapital:false, owner:null, soldiers:0,
-    lat:-80,lon:120, realCountries:[] },
-  { id:'an_3', name:'The Crossing',  ckey:'antarctica', isCapital:false, owner:null, soldiers:0,
-    lat:-80,lon:175, realCountries:[] },
-  { id:'an_4', name:'Voidgate',      ckey:'antarctica', isCapital:false, owner:null, soldiers:0,
-    lat:-80,lon:-120,realCountries:[] },
-  { id:'an_5', name:'The Rift',      ckey:'antarctica', isCapital:false, owner:null, soldiers:0,
-    lat:-80,lon:-60, realCountries:[] },
+  { id:'an_0', name:'Gate Prime',   ckey:'antarctica', isCapital:true,  lat:-80,lon:0,    realCountries:['Antarctica'] },
+  { id:'an_1', name:'The Threshold',ckey:'antarctica', isCapital:false, lat:-80,lon:60,   realCountries:[] },
+  { id:'an_2', name:'Nexus',        ckey:'antarctica', isCapital:false, lat:-80,lon:120,  realCountries:[] },
+  { id:'an_3', name:'The Crossing', ckey:'antarctica', isCapital:false, lat:-80,lon:175,  realCountries:[] },
+  { id:'an_4', name:'Voidgate',     ckey:'antarctica', isCapital:false, lat:-80,lon:-120, realCountries:[] },
+  { id:'an_5', name:'The Rift',     ckey:'antarctica', isCapital:false, lat:-80,lon:-60,  realCountries:[] },
 ];
 
-// ── BUILD LOOKUP: real country name → game country ──
+// ── LOOKUP: real country name → game country ──
 const nameToGame = {};
 GAME_COUNTRIES.forEach(gc => {
-  (gc.realCountries || []).forEach(name => {
-    if (!nameToGame[name]) nameToGame[name] = gc;
-  });
+  (gc.realCountries||[]).forEach(name => { if (!nameToGame[name]) nameToGame[name] = gc; });
 });
 
-// ── LOAD OWNERSHIP FROM FIRESTORE ──
-// Firebase isn't initialised in this iframe — get data from parent window via postMessage
-const DEMO_OWNERSHIP = {
-  'na_0': { uid:'eUtGPwQBcCSO0x3xS3ZGYFGXNIT2', owner:'Lawrence', soldiers:340 },
-  'na_1': { uid:'eUtGPwQBcCSO0x3xS3ZGYFGXNIT2', owner:'Lawrence', soldiers:280 },
-  'na_2': { uid:'eUtGPwQBcCSO0x3xS3ZGYFGXNIT2', owner:'Lawrence', soldiers:180 },
-  'na_3': { uid:'rzcznIkNRrSKVXl74LsTaRSdHOk2', owner:'Lucas',    soldiers:35  },
-  'na_4': { uid:'eUtGPwQBcCSO0x3xS3ZGYFGXNIT2', owner:'Lawrence', soldiers:200 },
-  'as_0': { uid:'d1W5vTx5aSTIwkR4CIwnO2xW7vf1', owner:'LuChing',  soldiers:890 },
-  'as_1': { uid:'d1W5vTx5aSTIwkR4CIwnO2xW7vf1', owner:'LuChing',  soldiers:650 },
-  'as_2': { uid:'d1W5vTx5aSTIwkR4CIwnO2xW7vf1', owner:'LuChing',  soldiers:410 },
-  'as_3': { uid:'d1W5vTx5aSTIwkR4CIwnO2xW7vf1', owner:'LuChing',  soldiers:320 },
-  'as_4': { uid:'d1W5vTx5aSTIwkR4CIwnO2xW7vf1', owner:'LuChing',  soldiers:280 },
-  'eu_0': { uid:'rzcznIkNRrSKVXl74LsTaRSdHOk2', owner:'Lucas',    soldiers:60  },
-  'eu_1': { uid:'rzcznIkNRrSKVXl74LsTaRSdHOk2', owner:'Lucas',    soldiers:45  },
-  'eu_2': { uid:'rzcznIkNRrSKVXl74LsTaRSdHOk2', owner:'Lucas',    soldiers:30  },
-  'eu_4': { uid:'rzcznIkNRrSKVXl74LsTaRSdHOk2', owner:'Lucas',    soldiers:25  },
-  'af_0': { uid:'oFFi2hATYARhqcSZQlHwlsYBOge2', owner:'Mireyah',  soldiers:45  },
-  'af_5': { uid:'oFFi2hATYARhqcSZQlHwlsYBOge2', owner:'Mireyah',  soldiers:20  },
-  'sa_0': { uid:'d1W5vTx5aSTIwkR4CIwnO2xW7vf1', owner:'LuChing',  soldiers:80  },
-  'sa_1': { uid:'d1W5vTx5aSTIwkR4CIwnO2xW7vf1', owner:'LuChing',  soldiers:45  },
-};
-
-let CURRENT_UID = null;
-
-async function loadOwnershipFromFirestore() {
-  return new Promise(resolve => {
-    // Request ownership data from parent frame
-    const timeout = setTimeout(() => {
-      LIVE_OWNERSHIP = DEMO_OWNERSHIP;
-      console.log('Shadow World: using demo data (parent not responding)');
-      resolve();
-    }, 2000);
-
-    window.addEventListener('message', (e) => {
-      if (e.data?.type === 'shadowWorldOwnership') {
-        clearTimeout(timeout);
-        const received = e.data.ownership || {};
-        if (Object.keys(received).length >= 5) {
-          LIVE_OWNERSHIP = received;
-          if (e.data.currentUid) CURRENT_UID = e.data.currentUid;
-          console.log('Shadow World: received ownership from parent,', Object.keys(LIVE_OWNERSHIP).length, 'territories');
-        } else if (Object.keys(LIVE_OWNERSHIP).length < 5) {
-          // Only fall back to demo if we don't already have real data
-          LIVE_OWNERSHIP = DEMO_OWNERSHIP;
-          console.log('Shadow World: insufficient army data, using demo');
-        }
-        resolve();
-      }
-    });
-
-    // Ask parent for ownership data
-    window.parent.postMessage({ type: 'requestShadowWorldOwnership' }, '*');
-
-    // Retry after 4 seconds in case backfill was still running when first request fired
-    setTimeout(() => {
-      if (Object.keys(LIVE_OWNERSHIP).length < 5) {
-        window.parent.postMessage({ type: 'requestShadowWorldOwnership' }, '*');
-      }
-    }, 4000);
-  });
-}
+// ── LIVE STATE ──
+// countries: { [gameCountryId]: { ownerUid, soldiers } }
+// pool:      { [uid]: { iron, wild, court, swift, shadow, tide, gate } }
+let LIVE_COUNTRIES = {};  // who owns what and how many soldiers stationed
+let LIVE_POOL      = {};  // each player's undeployed soldier pool by army key
+let CURRENT_UID    = null;
 
 // ── CANVAS ──
 const canvas = document.getElementById('c');
@@ -321,7 +185,6 @@ canvas.width = W; canvas.height = H;
 function ll2px(lon, lat) {
   return [(lon + 180) / 360 * W, (90 - lat) / 180 * H];
 }
-
 function traceRing(ring) {
   if (!ring || ring.length < 2) return;
   let first = true, prevX = null;
@@ -340,8 +203,6 @@ setP(40);
 // ── DRAW ──
 function draw(t = 0) {
   ctx.clearRect(0, 0, W, H);
-
-  // Ocean
   ctx.fillStyle = '#020912';
   ctx.fillRect(0, 0, W, H);
 
@@ -357,51 +218,44 @@ function draw(t = 0) {
     ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,H); ctx.stroke();
   }
 
-  // ── Draw every country from GeoJSON ──
+  // Draw each country polygon
   COUNTRIES_GEO.forEach(country => {
     const gc = nameToGame[country.n];
-    if (!gc) return; // country not assigned to any game country — skip
-    const ownerData = LIVE_OWNERSHIP[gc.id];
-    const p  = ownerData ? (PLAYERS[ownerData.uid] || PLAYERS[ownerData.owner] || null) : null;
-    const pulse = p ? 0.78 + Math.sin(t * 0.003 + (ll2px(gc.lon,gc.lat)[0]) * 0.001) * 0.1 : 1;
-    const fillCol = p
-      ? `rgba(${p.r},${p.g},${p.b},${pulse})`
-      : '#0a1828';
-    const strokeCol = p
-      ? `rgba(${p.r},${p.g},${p.b},0.5)`
-      : 'rgba(61,165,255,0.12)';
+    if (!gc) return;
+    const state = LIVE_COUNTRIES[gc.id];
+    const p = state?.ownerUid ? PLAYERS[state.ownerUid] : null;
+    const pulse = p ? 0.78 + Math.sin(t * 0.003 + (ll2px(gc.lon||0, gc.lat||0)[0]) * 0.001) * 0.1 : 1;
+    const fillCol = p ? `rgba(${p.r},${p.g},${p.b},${pulse})` : '#0a1828';
+    const strokeCol = p ? `rgba(${p.r},${p.g},${p.b},0.5)` : 'rgba(61,165,255,0.12)';
 
     country.r.forEach(ring => {
-      ctx.beginPath();
-      traceRing(ring);
-      ctx.fillStyle   = fillCol;
+      ctx.beginPath(); traceRing(ring);
+      ctx.fillStyle = fillCol;
       ctx.strokeStyle = strokeCol;
-      ctx.lineWidth   = p ? 1.2 : 0.5;
-      ctx.fill();
-      ctx.stroke();
+      ctx.lineWidth = p ? 1.2 : 0.5;
+      ctx.fill(); ctx.stroke();
     });
   });
 
-  // ── Continent labels ──
-  const CC = {northAmerica:[42,-100],southAmerica:[-20,-58],europe:[54,14],
-               africa:[5,20],asia:[42,82],australia:[-28,134],antarctica:[-78,0]};
+  // Continent labels
+  const CC = {northAmerica:[42,-100],southAmerica:[-20,-58],europe:[54,14],africa:[5,20],asia:[42,82],australia:[-28,134],antarctica:[-78,0]};
   Object.entries(CONT).forEach(([k,m]) => {
     const [lat,lon] = CC[k];
     const [x,y] = ll2px(lon,lat);
-    ctx.font = 'bold 11px Courier New';
-    ctx.fillStyle = m.hex + '55';
+    ctx.font = 'bold 10px Courier New';
+    ctx.fillStyle = m.hex + '44';
     ctx.textAlign = 'center';
     ctx.fillText(m.name.toUpperCase(), x, y);
   });
 
-  // ── Country markers ──
+  // Game country dots
   GAME_COUNTRIES.forEach(c => {
     const [x,y] = ll2px(c.lon, c.lat);
-    const ownerData = LIVE_OWNERSHIP[c.id];
-    const p = ownerData?.owner ? (PLAYERS[ownerData.uid] || PLAYERS[ownerData.owner] || null) : null;
+    const state = LIVE_COUNTRIES[c.id];
+    const p = state?.ownerUid ? PLAYERS[state.ownerUid] : null;
     const dpulse = p ? 0.85 + Math.sin(t*0.004 + x*0.002)*0.15 : 1;
 
-    // Glow
+    // Glow ring
     if (p) {
       const g = ctx.createRadialGradient(x,y,0,x,y,16*dpulse);
       g.addColorStop(0, `rgba(${p.r},${p.g},${p.b},0.4)`);
@@ -424,20 +278,20 @@ function draw(t = 0) {
     }
 
     // Soldier bar
-    const soldiers = ownerData?.soldiers || 0;
+    const soldiers = state?.soldiers || 0;
     if (soldiers > 0 && p) {
       const h = Math.min(Math.log10(soldiers+1)*9,34);
       ctx.fillStyle = `rgb(${p.r},${p.g},${p.b})`;
       ctx.fillRect(x-2,y-h-10,4,h);
-      ctx.strokeStyle='rgba(255,255,255,0.35)';ctx.lineWidth=0.5;
+      ctx.strokeStyle='rgba(255,255,255,0.3)'; ctx.lineWidth=0.5;
       ctx.strokeRect(x-2,y-h-10,4,h);
     }
 
-    // Label
-    if (p && ownerData) {
+    // Label (only if owned)
+    if (p && state) {
       ctx.font=`${c.isCapital?'bold 10px':'9px'} Courier New`;
       ctx.textAlign='left';
-      ctx.strokeStyle='rgba(0,0,0,0.95)';ctx.lineWidth=3;
+      ctx.strokeStyle='rgba(0,0,0,0.95)'; ctx.lineWidth=3;
       ctx.strokeText(c.name,x+9,y+4);
       ctx.fillStyle=`rgb(${p.r},${p.g},${p.b})`;
       ctx.fillText(c.name,x+9,y+4);
@@ -445,7 +299,6 @@ function draw(t = 0) {
   });
 }
 
-// Animation
 let lastT = 0;
 function animate(t) {
   requestAnimationFrame(animate);
@@ -453,8 +306,37 @@ function animate(t) {
   lastT = t;
   draw(t);
 }
-loadOwnershipFromFirestore().then(() => requestAnimationFrame(animate));
-setP(90);
+
+// ── LOAD DATA FROM PARENT ──
+let CURRENT_GC = null; // currently open panel
+
+function loadFromParent() {
+  return new Promise(resolve => {
+    const timeout = setTimeout(() => {
+      console.log('Shadow World: parent timeout, using empty state');
+      resolve();
+    }, 3000);
+
+    window.addEventListener('message', (e) => {
+      if (e.data?.type === 'shadowWorldData') {
+        clearTimeout(timeout);
+        LIVE_COUNTRIES = e.data.countries || {};
+        LIVE_POOL      = e.data.pool      || {};
+        CURRENT_UID    = e.data.currentUid || null;
+        console.log('Shadow World: loaded', Object.keys(LIVE_COUNTRIES).length, 'occupied countries');
+        resolve();
+      }
+    });
+
+    window.parent.postMessage({ type: 'requestShadowWorldData' }, '*');
+  });
+}
+
+loadFromParent().then(() => {
+  setP(100);
+  setTimeout(() => document.getElementById('load').style.display='none', 200);
+  requestAnimationFrame(animate);
+});
 
 // ── PAN + ZOOM ──
 let tx=0,ty=0,sc=1;
@@ -481,40 +363,152 @@ function nearest(sx,sy){const[mx,my]=mapCoords(sx,sy);let best=null,bd=Infinity;
 function onClick(sx,sy){const c=nearest(sx,sy);if(c)openPanel(c);}
 
 function updateTT(sx,sy){
-  const c=nearest(sx,sy);const tt=document.getElementById('tt');
-  if(c){tt.style.display='block';tt.style.left=(sx+12)+'px';tt.style.top=(sy-28)+'px';
-    const _ow2=LIVE_OWNERSHIP[c?.id]; tt.textContent=c.name+(_ow2?' · '+_ow2.owner+' · '+_ow2.soldiers.toLocaleString()+' soldiers':' · Unclaimed');}
-  else tt.style.display='none';
+  const c=nearest(sx,sy); const tt=document.getElementById('tt');
+  if(c){
+    const state=LIVE_COUNTRIES[c.id];
+    const p=state?.ownerUid?PLAYERS[state.ownerUid]:null;
+    tt.style.display='block';tt.style.left=(sx+12)+'px';tt.style.top=(sy-28)+'px';
+    tt.textContent=c.name+(state?` · ${p?.name||'?'} · ${state.soldiers} soldiers`:' · Unclaimed');
+  } else tt.style.display='none';
 }
 
-function openPanel(c){
-  const m=CONT[c.ckey];
-  const ownerData=LIVE_OWNERSHIP[c.id];
-  const p=ownerData?(PLAYERS[ownerData.owner]||PLAYER_COLOR_MAP[ownerData.owner]||null):null;
-  const owned=GAME_COUNTRIES.filter(x=>x.ckey===c.ckey&&LIVE_OWNERSHIP[x.id]?.owner===ownerData?.owner).length;
-  document.getElementById('pc').textContent=`◈ ${m.name.toUpperCase()} · ${m.stat.toUpperCase()}`;
-  document.getElementById('pc').style.color=m.hex;
-  document.getElementById('pn').textContent=(c.isCapital?'★ ':'')+c.name;
-  document.getElementById('pn').style.color=p?.hex||'#61a5ff';
-  document.getElementById('po').innerHTML=ownerData
-    ?`<span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${p?.hex||'#61a5ff'};box-shadow:0 0 6px ${p?.hex||'#61a5ff'};margin-right:6px;vertical-align:middle;"></span><strong style="color:${p?.hex||'#61a5ff'};">${ownerData.owner}</strong> — ${owned}/6 in ${m.name}`
-    :`Unclaimed — Train ${m.stat} to build your shadow army here`;
-  document.getElementById('ps').innerHTML=`
-    <div class="sc"><div class="sn" style="color:${p?.hex||'#61a5ff'};">${ownerData?.soldiers>0?ownerData.soldiers.toLocaleString():'-'}</div><div class="sl">SOLDIERS</div></div>
-    <div class="sc"><div class="sn" style="color:${m.hex};">${c.isCapital?'×2':'×1'} AP</div><div class="sl">${c.isCapital?'CAPITAL':'INCOME'}</div></div>
-    <div class="sc"><div class="sn" style="color:${m.hex};">${owned}/6</div><div class="sl">CONTINENT</div></div>`;
-  document.getElementById('pa').innerHTML=!ownerData
-    ?`<button class="pb bc" onclick="closePanel()">⚑ Train to Claim</button>`
-    :ownerData.uid===CURRENT_UID
-    ?`<button class="pb br" onclick="closePanel()">⬆ Reinforce</button>`
-    :`<button class="pb ba" onclick="closePanel()">⚔ Declare War</button>`;
+function openPanel(c) {
+  CURRENT_GC = c;
+  const m    = CONT[c.ckey];
+  const state = LIVE_COUNTRIES[c.id];
+  const ownerP = state?.ownerUid ? PLAYERS[state.ownerUid] : null;
+  const isOwner = state?.ownerUid === CURRENT_UID;
+  const myPool  = (LIVE_POOL[CURRENT_UID] || {})[m.armyKey] || 0;
+
+  // Count continent ownership
+  const allInCont = GAME_COUNTRIES.filter(g => g.ckey === c.ckey);
+  const ownedByUid = {};
+  allInCont.forEach(g => {
+    const s = LIVE_COUNTRIES[g.id];
+    if (s?.ownerUid) ownedByUid[s.ownerUid] = (ownedByUid[s.ownerUid]||0)+1;
+  });
+  const myOwned = ownedByUid[CURRENT_UID] || 0;
+  const dominated = Object.entries(ownedByUid).find(([,n]) => n === 6);
+
+  // Header
+  document.getElementById('pc').textContent = `${m.icon} ${m.name.toUpperCase()} · ${m.stat}`;
+  document.getElementById('pc').style.color = m.hex;
+  document.getElementById('pn').textContent = (c.isCapital?'★ ':'')+c.name;
+  document.getElementById('pn').style.color = ownerP?.hex || '#61a5ff';
+
+  // Owner line
+  if (state && ownerP) {
+    document.getElementById('po').innerHTML = `<span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${ownerP.hex};margin-right:6px;vertical-align:middle;"></span><strong style="color:${ownerP.hex};">${ownerP.name}</strong> holds this territory`;
+  } else {
+    document.getElementById('po').innerHTML = `<span style="color:rgba(61,165,255,0.4);">Unclaimed — deploy soldiers to take this territory</span>`;
+  }
+
+  // Continent progress bar
+  const leaders = Object.entries(ownedByUid).sort((a,b)=>b[1]-a[1]);
+  const progressHTML = `
+    <div style="font-family:var(--font-mono,monospace);font-size:9px;color:${m.hex};letter-spacing:.12em;margin-bottom:6px;">${m.icon} CONTINENT CONTROL</div>
+    ${dominated ? `<div style="font-size:11px;color:${PLAYERS[dominated[0]]?.hex||'#fff'};font-weight:700;margin-bottom:6px;">★ ${PLAYERS[dominated[0]]?.name||'?'} dominates ${m.name}</div>` : ''}
+    ${leaders.map(([uid,n]) => {
+      const pl = PLAYERS[uid];
+      if (!pl) return '';
+      const pct = Math.round(n/6*100);
+      return `<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;">
+        <span style="color:${pl.hex};font-size:10px;min-width:60px;">${pl.name}</span>
+        <div style="flex:1;height:4px;background:rgba(61,165,255,.08);border-radius:2px;overflow:hidden;">
+          <div style="width:${pct}%;height:100%;background:${pl.hex};border-radius:2px;"></div>
+        </div>
+        <span style="font-size:10px;color:${pl.hex};">${n}/6</span>
+      </div>`;
+    }).join('')}
+    ${!leaders.length ? `<div style="font-size:10px;color:rgba(61,165,255,.3);">No players have territory here yet</div>` : ''}
+    <div style="margin-top:6px;font-size:10px;color:rgba(61,165,255,.3);">Train ${m.stat} → earn ${m.armyKey} soldiers → deploy here</div>
+  `;
+  document.getElementById('cont-progress').innerHTML = progressHTML;
+
+  // Stats row
+  document.getElementById('ps').innerHTML = `
+    <div class="sc"><div class="sn" style="color:${ownerP?.hex||'#61a5ff'}">${state?.soldiers||'—'}</div><div class="sl">STATIONED</div></div>
+    <div class="sc"><div class="sn" style="color:${m.hex}">${myOwned}/6</div><div class="sl">MY HOLD</div></div>
+    <div class="sc"><div class="sn" style="color:${m.hex}">${myPool}</div><div class="sl">MY POOL</div></div>
+  `;
+
+  // Pool info
+  document.getElementById('pool-info').innerHTML = myPool > 0
+    ? `<span style="color:rgba(61,165,255,.5);">You have <strong style="color:#d4a017;">${myPool}</strong> ${m.armyKey} soldiers ready to deploy. Train more ${m.stat} to earn more.</span>`
+    : `<span style="color:rgba(61,165,255,.3);">Train ${m.stat} exercises to earn ${m.armyKey} soldiers for this continent.</span>`;
+
+  // Deploy row — show if player has pool soldiers
+  const deployRow = document.getElementById('deploy-row');
+  if (myPool > 0 && !isOwner) {
+    deployRow.style.display = 'flex';
+    const input = document.getElementById('deploy-input');
+    input.max = myPool;
+    input.value = Math.min(10, myPool);
+    document.getElementById('deploy-btn').onclick = () => deployToCountry(c, parseInt(input.value)||1);
+  } else if (myPool > 0 && isOwner) {
+    deployRow.style.display = 'flex';
+    const input = document.getElementById('deploy-input');
+    input.max = myPool;
+    input.value = Math.min(10, myPool);
+    document.getElementById('deploy-btn').textContent = '⬆ Reinforce';
+    document.getElementById('deploy-btn').onclick = () => deployToCountry(c, parseInt(input.value)||1);
+  } else {
+    deployRow.style.display = 'none';
+  }
+
+  // Action buttons
+  const pa = document.getElementById('pa');
+  if (!state) {
+    // Unclaimed
+    pa.innerHTML = myPool > 0
+      ? `<button class="pb bc" onclick="quickDeploy('${c.id}')">⚑ Claim (deploy above)</button>`
+      : `<button class="pb bc" style="opacity:.5;cursor:default;">⚑ Train to Claim</button>`;
+  } else if (isOwner) {
+    pa.innerHTML = `<button class="pb br" onclick="closePanel()">✓ Your Territory</button>`;
+  } else {
+    // Owned by someone else — can declare war via Gate Duel
+    pa.innerHTML = `<button class="pb ba" onclick="declareWar('${c.id}','${state.ownerUid}')">⚔ Declare War</button>`;
+  }
+
   document.getElementById('panel').classList.add('open');
 }
-window.closePanel=()=>document.getElementById('panel').classList.remove('open');
 
-setP(100);
-setTimeout(()=>document.getElementById('load').style.display='none',200);
-window.addEventListener('resize',resetView);
+function quickDeploy(gcId) {
+  const input = document.getElementById('deploy-input');
+  deployToCountry(GAME_COUNTRIES.find(g=>g.id===gcId), parseInt(input.value)||1);
+}
+
+function deployToCountry(c, amount) {
+  const m = CONT[c.ckey];
+  const myPool = (LIVE_POOL[CURRENT_UID]||{})[m.armyKey]||0;
+  if (amount <= 0 || amount > myPool) {
+    alert(`You only have ${myPool} ${m.armyKey} soldiers available.`); return;
+  }
+  // Send deploy command to parent
+  window.parent.postMessage({
+    type: 'deployToCountry',
+    gcId: c.id,
+    armyKey: m.armyKey,
+    amount,
+    ckey: c.ckey,
+  }, '*');
+  // Optimistic update
+  if (!LIVE_COUNTRIES[c.id]) LIVE_COUNTRIES[c.id] = { ownerUid: CURRENT_UID, soldiers: 0 };
+  else if (!LIVE_COUNTRIES[c.id].ownerUid) LIVE_COUNTRIES[c.id].ownerUid = CURRENT_UID;
+  LIVE_COUNTRIES[c.id].soldiers = (LIVE_COUNTRIES[c.id].soldiers||0) + amount;
+  if (!LIVE_POOL[CURRENT_UID]) LIVE_POOL[CURRENT_UID] = {};
+  LIVE_POOL[CURRENT_UID][m.armyKey] = Math.max(0, myPool - amount);
+  closePanel();
+  setTimeout(() => openPanel(c), 100); // re-open with updated state
+}
+
+function declareWar(gcId, defenderUid) {
+  window.parent.postMessage({ type: 'shadowWorldDeclareWar', gcId, defenderUid }, '*');
+  closePanel();
+}
+
+window.closePanel = () => document.getElementById('panel').classList.remove('open');
+window.addEventListener('resize', resetView);
 </script>
 </body>
 </html>
