@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Shadow World</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:#03050a; color:#e0e8ff; font-family:'Courier New',monospace; overflow:hidden; height:100vh; }
+  #globe-wrap { position:relative; width:100vw; height:100vh; }
+  canvas { display:block; }
+
+  /* HUD */
+  #hud-top { position:fixed; top:0; left:0; right:0; padding:14px 16px; display:flex; justify-content:space-between; align-items:flex-start; pointer-events:none; z-index:10; }
+  #title-block { }
+  #world-title { font-size:18px; letter-spacing:0.15em; color:#61a5ff; text-shadow:0 0 20px rgba(61,165,255,0.6); }
+  #world-sub { font-size:9px; color:rgba(61,165,255,0.4); letter-spacing:0.2em; margin-top:2px; }
+
+  #army-hud { display:flex; flex-direction:column; gap:4px; pointer-events:none; }
+  .army-pill { display:flex; align-items:center; gap:6px; padding:4px 8px; background:rgba(5,7,13,0.8); border:1px solid rgba(61,165,255,0.12); border-radius:20px; font-size:10px; }
+  .army-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+  .army-count { color:#61a5ff; font-weight:700; }
+
+  /* Country panel */
+  #country-panel { position:fixed; bottom:0; left:0; right:0; transform:translateY(100%); transition:transform 0.3s cubic-bezier(0.16,1,0.3,1); background:rgba(5,7,13,0.97); border-top:1px solid rgba(61,165,255,0.15); border-radius:20px 20px 0 0; padding:20px; z-index:20; max-height:60vh; overflow-y:auto; }
+  #country-panel.open { transform:translateY(0); }
+  #panel-handle { width:36px; height:3px; background:rgba(61,165,255,0.2); border-radius:2px; margin:0 auto 16px; }
+  #panel-continent { font-size:9px; letter-spacing:0.15em; color:rgba(61,165,255,0.4); margin-bottom:4px; }
+  #panel-country { font-size:20px; font-weight:700; margin-bottom:4px; }
+  #panel-owner { font-size:11px; color:rgba(61,165,255,0.5); margin-bottom:12px; }
+  #panel-soldiers { display:flex; gap:8px; margin-bottom:16px; flex-wrap:wrap; }
+  .soldier-card { padding:8px 12px; background:rgba(61,165,255,0.05); border:1px solid rgba(61,165,255,0.12); border-radius:8px; text-align:center; }
+  .soldier-num { font-size:18px; font-weight:800; }
+  .soldier-label { font-size:9px; color:rgba(61,165,255,0.4); margin-top:2px; }
+  #panel-actions { display:flex; gap:8px; }
+  .panel-btn { flex:1; padding:12px; border-radius:8px; font-family:'Courier New',monospace; font-size:12px; letter-spacing:0.05em; cursor:pointer; border:none; }
+  .btn-claim { background:rgba(61,165,255,0.15); border:1px solid rgba(61,165,255,0.3); color:#61a5ff; }
+  .btn-attack { background:rgba(255,61,90,0.12); border:1px solid rgba(255,61,90,0.3); color:#ff3d5a; }
+  .btn-reinforce { background:rgba(78,205,120,0.1); border:1px solid rgba(78,205,120,0.25); color:#4ecd78; }
+  #panel-close { position:absolute; top:16px; right:16px; background:none; border:none; color:rgba(61,165,255,0.4); font-size:18px; cursor:pointer; }
+
+  /* Legend */
+  #legend { position:fixed; left:12px; bottom:80px; display:flex; flex-direction:column; gap:4px; pointer-events:none; }
+  .legend-item { display:flex; align-items:center; gap:6px; font-size:9px; color:rgba(61,165,255,0.35); letter-spacing:0.05em; }
+  .legend-dot { width:10px; height:10px; border-radius:2px; flex-shrink:0; }
+
+  /* Rotate hint */
+  #hint { position:fixed; bottom:20px; left:50%; transform:translateX(-50%); font-size:9px; color:rgba(61,165,255,0.2); letter-spacing:0.1em; pointer-events:none; }
+</style>
+</head>
+<body>
+<div id="globe-wrap">
+  <canvas id="globe-canvas"></canvas>
+</div>
+
+<!-- HUD -->
+<div id="hud-top">
+  <div id="title-block">
+    <div id="world-title">◈ SHADOW WORLD</div>
+    <div id="world-sub">TERRITORIAL COMMAND</div>
+  </div>
+  <div id="army-hud" id="army-hud"></div>
+</div>
+
+<div id="legend">
+  <div class="legend-item"><div class="legend-dot" style="background:#cc4444;"></div>Iron Highlands</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#7c3aed;"></div>Shadow Reaches</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#0ea5e9;"></div>Swift Plains</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#0d9488;"></div>Tide Depths</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#d97706;"></div>Court Arena</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#16a34a;"></div>Wild Summit</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#e2e8f0;"></div>The Gate</div>
+</div>
+
+<div id="hint">DRAG TO ROTATE · TAP COUNTRY TO COMMAND</div>
+
+<!-- Country panel -->
+<div id="country-panel">
+  <div id="panel-handle"></div>
+  <button id="panel-close" onclick="closePanel()">✕</button>
+  <div id="panel-continent"></div>
+  <div id="panel-country"></div>
+  <div id="panel-owner"></div>
+  <div id="panel-soldiers"></div>
+  <div id="panel-actions"></div>
+</div>
+
+<script type="module">
+import * as THREE from 'three';
+
+// ── WORLD DATA ──
+const CONTINENTS = {
+  iron:   { name:'Iron Highlands',  stat:'strength',   color:0xcc4444, emissive:0x441111, lat:45,  lon:-30,  radius:0.38 },
+  shadow: { name:'Shadow Reaches',  stat:'focus',      color:0x7c3aed, emissive:0x2a1060, lat:20,  lon:80,   radius:0.35 },
+  swift:  { name:'Swift Plains',    stat:'agility',    color:0x0ea5e9, emissive:0x043860, lat:-15, lon:140,  radius:0.32 },
+  tide:   { name:'Tide Depths',     stat:'endurance',  color:0x0d9488, emissive:0x033a35, lat:-40, lon:-120, radius:0.30 },
+  court:  { name:'Court Arena',     stat:'combat',     color:0xd97706, emissive:0x4a2800, lat:15,  lon:-100, radius:0.28 },
+  wild:   { name:'Wild Summit',     stat:'flexibility',color:0x16a34a, emissive:0x062a14, lat:-55, lon:20,   radius:0.30 },
+  gate:   { name:'The Gate',        stat:'all',        color:0xc8d8f0, emissive:0x304060, lat:5,   lon:175,  radius:0.22 },
+};
+
+// 6 countries per continent
+const COUNTRIES = {};
+Object.entries(CONTINENTS).forEach(([ckey, cont]) => {
+  COUNTRIES[ckey] = [];
+  const names = {
+    iron:   ['Ironforge','Steelhold','Ashvault','Cinder Keep','Brutholm','Forgepeak'],
+    shadow: ['Voidmark','Umbra','The Hollow','Phantom Spire','Eclipse','Shadowmere'],
+    swift:  ['Galerun','Stormstep','Blitzfield','Vantrace','Windfall','Rushgate'],
+    tide:   ['Deepholm','Abyssal','Coralspire','Drifthaven','Tidemark','Undertow'],
+    court:  ['Ironring','Gauntlet','The Pits','Strikewood','Combatia','Blazeguard'],
+    wild:   ['Verdant Peak','Thornveil','Mistclimb','Roothold','Canopy','Highreach'],
+    gate:   ['Gate Prime','The Threshold','Nexus','The Crossing','Voidgate','The Rift'],
+  };
+  for (let i = 0; i < 6; i++) {
+    const spreadLat = cont.lat + (Math.random()-0.5)*25;
+    const spreadLon = cont.lon + (Math.random()-0.5)*30;
+    COUNTRIES[ckey].push({
+      id: `${ckey}_${i}`,
+      name: names[ckey][i],
+      continent: ckey,
+      lat: spreadLat, lon: spreadLon,
+      owner: null,
+      ownerColor: null,
+      soldiers: 0,
+      isCapital: i === 0,
+    });
+  }
+});
+
+// Mock player armies (will connect to real data)
+const PLAYER_ARMIES = {
+  lawrence: { color:0xd4a017, name:'Lawrence', armies:{ iron:1847, shadow:12, swift:340, tide:0, court:0, wild:48, gate:0 } },
+  luching:  { color:0x7c3aed, name:'LuChing',  armies:{ iron:120, shadow:2100, swift:89, tide:0, court:0, wild:156, gate:0 } },
+  mireyah:  { color:0xff6b9d, name:'Mireyah',  armies:{ iron:0, shadow:0, swift:45, tide:0, court:0, wild:0, gate:0 } },
+  lucas:    { color:0x0ea5e9, name:'Lucas',    armies:{ iron:35, shadow:280, swift:60, tide:0, court:0, wild:22, gate:0 } },
+};
+
+// Assign some countries to players for demo
+COUNTRIES.iron[0].owner = 'lawrence'; COUNTRIES.iron[0].ownerColor = 0xd4a017; COUNTRIES.iron[0].soldiers = 340;
+COUNTRIES.iron[1].owner = 'lawrence'; COUNTRIES.iron[1].ownerColor = 0xd4a017; COUNTRIES.iron[1].soldiers = 280;
+COUNTRIES.iron[2].owner = 'lucas';    COUNTRIES.iron[2].ownerColor = 0x0ea5e9; COUNTRIES.iron[2].soldiers = 35;
+COUNTRIES.shadow[0].owner = 'luching'; COUNTRIES.shadow[0].ownerColor = 0x7c3aed; COUNTRIES.shadow[0].soldiers = 890;
+COUNTRIES.shadow[1].owner = 'luching'; COUNTRIES.shadow[1].ownerColor = 0x7c3aed; COUNTRIES.shadow[1].soldiers = 650;
+COUNTRIES.shadow[2].owner = 'lucas';   COUNTRIES.shadow[2].ownerColor = 0x0ea5e9; COUNTRIES.shadow[2].soldiers = 280;
+COUNTRIES.swift[0].owner = 'mireyah';  COUNTRIES.swift[0].ownerColor = 0xff6b9d; COUNTRIES.swift[0].soldiers = 45;
+
+// ── THREE.JS SETUP ──
+const canvas = document.getElementById('globe-canvas');
+const W = window.innerWidth, H = window.innerHeight;
+const renderer = new THREE.WebGLRenderer({ canvas, antialias:true, alpha:true });
+renderer.setSize(W, H);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.shadowMap.enabled = true;
+
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(45, W/H, 0.1, 100);
+camera.position.set(0, 0, 3.2);
+
+// Lighting
+const ambient = new THREE.AmbientLight(0x111133, 0.8);
+scene.add(ambient);
+const sun = new THREE.DirectionalLight(0x4488ff, 1.2);
+sun.position.set(5, 3, 5);
+scene.add(sun);
+const rimLight = new THREE.DirectionalLight(0x112244, 0.5);
+rimLight.position.set(-5, -2, -3);
+scene.add(rimLight);
+
+// Stars
+const starGeo = new THREE.BufferGeometry();
+const starCount = 2000;
+const starPositions = new Float32Array(starCount * 3);
+for (let i = 0; i < starCount * 3; i++) starPositions[i] = (Math.random() - 0.5) * 80;
+starGeo.setAttribute('position', new THREE.BufferAttribute(starPositions, 3));
+const starMat = new THREE.PointsMaterial({ color:0x8899cc, size:0.04, transparent:true, opacity:0.6 });
+scene.add(new THREE.Points(starGeo, starMat));
+
+// Globe sphere
+const globeGeo = new THREE.SphereGeometry(1, 64, 64);
+const globeMat = new THREE.MeshStandardMaterial({
+  color: 0x030810,
+  roughness: 0.85,
+  metalness: 0.1,
+  emissive: 0x050d20,
+  emissiveIntensity: 0.3,
+});
+const globe = new THREE.Mesh(globeGeo, globeMat);
+scene.add(globe);
+
+// Atmosphere glow
+const atmosGeo = new THREE.SphereGeometry(1.06, 32, 32);
+const atmosMat = new THREE.MeshStandardMaterial({
+  color: 0x1133aa,
+  transparent: true,
+  opacity: 0.08,
+  side: THREE.FrontSide,
+  depthWrite: false,
+});
+scene.add(new THREE.Mesh(atmosGeo, atmosMat));
+
+// ── HELPER: lat/lon to 3D point on sphere ──
+function latLonToVec3(lat, lon, r=1) {
+  const phi   = (90 - lat) * Math.PI / 180;
+  const theta = (lon + 180) * Math.PI / 180;
+  return new THREE.Vector3(
+    -r * Math.sin(phi) * Math.cos(theta),
+     r * Math.cos(phi),
+     r * Math.sin(phi) * Math.sin(theta)
+  );
+}
+
+// ── BUILD CONTINENT MESHES ──
+const continentMeshes = [];
+const countryMeshes = [];
+
+Object.entries(CONTINENTS).forEach(([ckey, cont]) => {
+  // Continent base — a larger raised disc
+  const contGeo = new THREE.SphereGeometry(cont.radius, 24, 24, 0, Math.PI*2, 0, Math.PI*0.55);
+  const contMat = new THREE.MeshStandardMaterial({
+    color: cont.color,
+    emissive: cont.emissive,
+    emissiveIntensity: 0.4,
+    roughness: 0.7,
+    metalness: 0.15,
+    transparent: true,
+    opacity: 0.6,
+  });
+  const contMesh = new THREE.Mesh(contGeo, contMat);
+  const contPos = latLonToVec3(cont.lat, cont.lon, 1.005);
+  contMesh.position.copy(contPos);
+  contMesh.lookAt(0, 0, 0);
+  contMesh.rotateX(Math.PI);
+  contMesh.userData = { type:'continent', key:ckey };
+  scene.add(contMesh);
+  continentMeshes.push(contMesh);
+
+  // Country dots within each continent
+  COUNTRIES[ckey].forEach((country, i) => {
+    const isOwned = !!country.owner;
+    const color = isOwned ? country.ownerColor : 0x223355;
+    const size = country.isCapital ? 0.055 : 0.038;
+    const geo = new THREE.SphereGeometry(size, 12, 12);
+    const mat = new THREE.MeshStandardMaterial({
+      color,
+      emissive: isOwned ? color : 0x0a1525,
+      emissiveIntensity: isOwned ? 0.8 : 0.1,
+      roughness: 0.3,
+      metalness: 0.6,
+    });
+    const mesh = new THREE.Mesh(geo, mat);
+    const pos = latLonToVec3(country.lat, country.lon, 1.02);
+    mesh.position.copy(pos);
+    mesh.userData = { type:'country', country, ckey };
+    scene.add(mesh);
+    countryMeshes.push(mesh);
+
+    // Capital ring
+    if (country.isCapital) {
+      const ringGeo = new THREE.TorusGeometry(0.07, 0.008, 8, 24);
+      const ringMat = new THREE.MeshStandardMaterial({
+        color: cont.color,
+        emissive: cont.color,
+        emissiveIntensity: 1.0,
+      });
+      const ring = new THREE.Mesh(ringGeo, ringMat);
+      ring.position.copy(pos);
+      ring.lookAt(0, 0, 0);
+      scene.add(ring);
+    }
+
+    // Ownership pillar — height = log(soldiers+1)
+    if (country.soldiers > 0) {
+      const height = Math.min(Math.log10(country.soldiers + 1) * 0.06, 0.25);
+      const pillarGeo = new THREE.CylinderGeometry(0.012, 0.018, height, 6);
+      const pillarMat = new THREE.MeshStandardMaterial({
+        color,
+        emissive: color,
+        emissiveIntensity: 0.6,
+      });
+      const pillar = new THREE.Mesh(pillarGeo, pillarMat);
+      const norm = pos.clone().normalize();
+      pillar.position.copy(pos.clone().add(norm.multiplyScalar(height/2)));
+      pillar.lookAt(pos.clone().add(pos.clone().normalize()));
+      pillar.rotateX(Math.PI/2);
+      scene.add(pillar);
+    }
+  });
+});
+
+// Grid lines (lat/lon)
+function addGridLines() {
+  const mat = new THREE.LineBasicMaterial({ color:0x0d1f3a, transparent:true, opacity:0.4 });
+  // Latitude lines
+  for (let lat = -75; lat <= 75; lat += 15) {
+    const pts = [];
+    for (let lon = 0; lon <= 360; lon += 5) pts.push(latLonToVec3(lat, lon, 1.001));
+    scene.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), mat));
+  }
+  // Longitude lines
+  for (let lon = 0; lon < 360; lon += 30) {
+    const pts = [];
+    for (let lat = -90; lat <= 90; lat += 5) pts.push(latLonToVec3(lat, lon, 1.001));
+    scene.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), mat));
+  }
+}
+addGridLines();
+
+// ── RAYCASTER for click/tap ──
+const raycaster = new THREE.Raycaster();
+const pointer = new THREE.Vector2();
+const clickable = [...countryMeshes];
+
+function getIntersects(clientX, clientY) {
+  pointer.x = (clientX / W) * 2 - 1;
+  pointer.y = -(clientY / H) * 2 + 1;
+  raycaster.setFromCamera(pointer, camera);
+  return raycaster.intersectObjects(clickable);
+}
+
+// ── ROTATION (manual, no OrbitControls) ──
+let isDragging = false;
+let prevMouse = { x:0, y:0 };
+let rotVelocity = { x:0, y:0 };
+const globeGroup = new THREE.Group();
+scene.add(globeGroup);
+// Move everything into group
+[globe, ...continentMeshes, ...countryMeshes].forEach(m => {
+  scene.remove(m);
+  globeGroup.add(m);
+});
+// Keep stars and atmosphere outside group
+
+canvas.addEventListener('mousedown', e => {
+  isDragging = true;
+  prevMouse = { x:e.clientX, y:e.clientY };
+  rotVelocity = { x:0, y:0 };
+});
+canvas.addEventListener('mousemove', e => {
+  if (!isDragging) return;
+  const dx = e.clientX - prevMouse.x;
+  const dy = e.clientY - prevMouse.y;
+  globeGroup.rotation.y += dx * 0.005;
+  globeGroup.rotation.x += dy * 0.005;
+  globeGroup.rotation.x = Math.max(-Math.PI/2.2, Math.min(Math.PI/2.2, globeGroup.rotation.x));
+  rotVelocity = { x: dy * 0.005, y: dx * 0.005 };
+  prevMouse = { x:e.clientX, y:e.clientY };
+});
+canvas.addEventListener('mouseup', e => {
+  if (!isDragging) return;
+  isDragging = false;
+  // Click detection
+  const dx = Math.abs(e.clientX - prevMouse.x);
+  const dy = Math.abs(e.clientY - prevMouse.y);
+  if (dx < 3 && dy < 3) {
+    const hits = getIntersects(e.clientX, e.clientY);
+    if (hits.length > 0 && hits[0].object.userData.country) {
+      openPanel(hits[0].object.userData.country, hits[0].object.userData.ckey);
+    }
+  }
+});
+
+// Touch
+let touchStart = null;
+canvas.addEventListener('touchstart', e => {
+  e.preventDefault();
+  const t = e.touches[0];
+  isDragging = true;
+  touchStart = { x:t.clientX, y:t.clientY };
+  prevMouse = { x:t.clientX, y:t.clientY };
+  rotVelocity = { x:0, y:0 };
+}, { passive:false });
+canvas.addEventListener('touchmove', e => {
+  e.preventDefault();
+  if (!isDragging) return;
+  const t = e.touches[0];
+  const dx = t.clientX - prevMouse.x;
+  const dy = t.clientY - prevMouse.y;
+  globeGroup.rotation.y += dx * 0.005;
+  globeGroup.rotation.x += dy * 0.005;
+  globeGroup.rotation.x = Math.max(-Math.PI/2.2, Math.min(Math.PI/2.2, globeGroup.rotation.x));
+  rotVelocity = { x: dy * 0.005, y: dx * 0.005 };
+  prevMouse = { x:t.clientX, y:t.clientY };
+}, { passive:false });
+canvas.addEventListener('touchend', e => {
+  if (!isDragging) return;
+  isDragging = false;
+  const t = e.changedTouches[0];
+  const dx = Math.abs(t.clientX - (touchStart?.x||0));
+  const dy = Math.abs(t.clientY - (touchStart?.y||0));
+  if (dx < 8 && dy < 8) {
+    const hits = getIntersects(t.clientX, t.clientY);
+    if (hits.length > 0 && hits[0].object.userData.country) {
+      openPanel(hits[0].object.userData.country, hits[0].object.userData.ckey);
+    }
+  }
+});
+
+// ── PANEL ──
+function openPanel(country, ckey) {
+  const cont = CONTINENTS[ckey];
+  const panel = document.getElementById('country-panel');
+  document.getElementById('panel-continent').textContent = `◈ ${cont.name.toUpperCase()} · ${cont.stat.toUpperCase()}`;
+  document.getElementById('panel-continent').style.color = '#' + cont.color.toString(16).padStart(6,'0');
+  document.getElementById('panel-country').textContent = (country.isCapital ? '★ ' : '') + country.name;
+  document.getElementById('panel-country').style.color = country.owner ? '#' + (country.ownerColor||0x61a5ff).toString(16).padStart(6,'0') : '#61a5ff';
+
+  const player = country.owner ? Object.values(PLAYER_ARMIES).find(p => {
+    return Object.keys(PLAYER_ARMIES).find(k => PLAYER_ARMIES[k].name.toLowerCase() === country.owner) === country.owner || true;
+  }) : null;
+
+  document.getElementById('panel-owner').textContent = country.owner
+    ? `Controlled by ${country.owner.charAt(0).toUpperCase()+country.owner.slice(1)} · ${country.soldiers.toLocaleString()} soldiers`
+    : 'Unclaimed — First to train here claims this land';
+
+  // Soldiers breakdown
+  const soldierEl = document.getElementById('panel-soldiers');
+  if (country.soldiers > 0) {
+    soldierEl.innerHTML = `
+      <div class="soldier-card">
+        <div class="soldier-num" style="color:#61a5ff;">${country.soldiers.toLocaleString()}</div>
+        <div class="soldier-label">STATIONED</div>
+      </div>
+      <div class="soldier-card">
+        <div class="soldier-num" style="color:#7c3aed;">${Math.floor(country.soldiers * 0.6).toLocaleString()}</div>
+        <div class="soldier-label">SHADOW ARMY</div>
+      </div>
+      <div class="soldier-card">
+        <div class="soldier-num" style="color:#d4a017;">${country.isCapital ? '×2 AP' : '×1 AP'}</div>
+        <div class="soldier-label">${country.isCapital ? 'CAPITAL BONUS' : 'INCOME'}</div>
+      </div>`;
+  } else {
+    soldierEl.innerHTML = `<div style="font-size:12px;color:rgba(61,165,255,0.4);">No soldiers stationed. Train ${cont.stat} to build your army here.</div>`;
+  }
+
+  // Actions
+  const actEl = document.getElementById('panel-actions');
+  if (!country.owner) {
+    actEl.innerHTML = `<button class="panel-btn btn-claim" onclick="claimCountry('${country.id}','${ckey}')">⚑ Claim Territory</button>`;
+  } else if (country.owner === 'lawrence') { // current user
+    actEl.innerHTML = `<button class="panel-btn btn-reinforce" onclick="reinforce('${country.id}','${ckey}')">⬆ Reinforce</button>`;
+  } else {
+    actEl.innerHTML = `<button class="panel-btn btn-attack" onclick="declareWar('${country.id}','${ckey}','${country.owner}')">⚔ Declare War</button>`;
+  }
+
+  panel.classList.add('open');
+}
+
+window.closePanel = () => document.getElementById('country-panel').classList.remove('open');
+window.claimCountry = (id, ckey) => { closePanel(); showToast(`⚑ Train ${CONTINENTS[ckey].stat} to claim this territory.`); };
+window.reinforce = (id, ckey) => { closePanel(); showToast(`Training ${CONTINENTS[ckey].stat} will add soldiers here.`); };
+window.declareWar = (id, ckey, owner) => { closePanel(); showToast(`⚔ Issue a Gate Duel challenge to contest this territory.`); };
+
+function showToast(msg) {
+  const t = document.createElement('div');
+  t.style.cssText = 'position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:rgba(5,7,13,0.9);border:1px solid rgba(61,165,255,0.2);border-radius:8px;padding:10px 16px;font-size:12px;color:#61a5ff;z-index:30;white-space:nowrap;';
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 3000);
+}
+
+// ── ARMY HUD ──
+const armyHud = document.getElementById('army-hud');
+const currentPlayer = PLAYER_ARMIES.lawrence;
+Object.entries(CONTINENTS).forEach(([ckey, cont]) => {
+  const count = currentPlayer.armies[ckey] || 0;
+  if (count === 0) return;
+  const pill = document.createElement('div');
+  pill.className = 'army-pill';
+  pill.innerHTML = `<div class="army-dot" style="background:#${cont.color.toString(16).padStart(6,'0')};"></div><span style="color:rgba(61,165,255,0.5);font-size:9px;">${cont.name.split(' ')[0]}</span><span class="army-count">${count.toLocaleString()}</span>`;
+  armyHud.appendChild(pill);
+});
+
+// ── ANIMATE ──
+let time = 0;
+function animate() {
+  requestAnimationFrame(animate);
+  time += 0.01;
+
+  // Inertia
+  if (!isDragging) {
+    globeGroup.rotation.y += rotVelocity.y;
+    globeGroup.rotation.x += rotVelocity.x;
+    rotVelocity.x *= 0.95;
+    rotVelocity.y *= 0.95;
+    // Slow auto-rotate when idle
+    if (Math.abs(rotVelocity.y) < 0.0005) globeGroup.rotation.y += 0.0008;
+  }
+
+  // Pulse owned countries
+  countryMeshes.forEach((m, i) => {
+    if (m.userData.country?.owner) {
+      const pulse = 0.85 + Math.sin(time * 2 + i * 0.7) * 0.15;
+      m.material.emissiveIntensity = pulse;
+    }
+  });
+
+  renderer.render(scene, camera);
+}
+animate();
+
+// Resize
+window.addEventListener('resize', () => {
+  const W2 = window.innerWidth, H2 = window.innerHeight;
+  camera.aspect = W2/H2;
+  camera.updateProjectionMatrix();
+  renderer.setSize(W2, H2);
+});
+</script>
+</body>
+</html>
