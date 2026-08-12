@@ -272,6 +272,8 @@ const DEMO_OWNERSHIP = {
   'sa_1': { uid:'d1W5vTx5aSTIwkR4CIwnO2xW7vf1', owner:'LuChing',  soldiers:45  },
 };
 
+let CURRENT_UID = null;
+
 async function loadOwnershipFromFirestore() {
   return new Promise(resolve => {
     // Request ownership data from parent frame
@@ -287,6 +289,7 @@ async function loadOwnershipFromFirestore() {
         const received = e.data.ownership || {};
         if (Object.keys(received).length >= 5) {
           LIVE_OWNERSHIP = received;
+          if (e.data.currentUid) CURRENT_UID = e.data.currentUid;
           console.log('Shadow World: received ownership from parent,', Object.keys(LIVE_OWNERSHIP).length, 'territories');
         } else if (Object.keys(LIVE_OWNERSHIP).length < 5) {
           // Only fall back to demo if we don't already have real data
@@ -484,7 +487,7 @@ function updateTT(sx,sy){
   else tt.style.display='none';
 }
 
-async function openPanel(c){
+function openPanel(c){
   const m=CONT[c.ckey];
   const ownerData=LIVE_OWNERSHIP[c.id];
   const p=ownerData?(PLAYERS[ownerData.owner]||PLAYER_COLOR_MAP[ownerData.owner]||null):null;
@@ -500,11 +503,9 @@ async function openPanel(c){
     <div class="sc"><div class="sn" style="color:${p?.hex||'#61a5ff'};">${ownerData?.soldiers>0?ownerData.soldiers.toLocaleString():'-'}</div><div class="sl">SOLDIERS</div></div>
     <div class="sc"><div class="sn" style="color:${m.hex};">${c.isCapital?'×2':'×1'} AP</div><div class="sl">${c.isCapital?'CAPITAL':'INCOME'}</div></div>
     <div class="sc"><div class="sn" style="color:${m.hex};">${owned}/6</div><div class="sl">CONTINENT</div></div>`;
-  const {getAuth:_ga2}=await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js').catch(()=>({getAuth:()=>({currentUser:null})}));
-  const _myName=_ga2().currentUser?.displayName||'';
   document.getElementById('pa').innerHTML=!ownerData
     ?`<button class="pb bc" onclick="closePanel()">⚑ Train to Claim</button>`
-    :ownerData.owner===_myName
+    :ownerData.uid===CURRENT_UID
     ?`<button class="pb br" onclick="closePanel()">⬆ Reinforce</button>`
     :`<button class="pb ba" onclick="closePanel()">⚔ Declare War</button>`;
   document.getElementById('panel').classList.add('open');
