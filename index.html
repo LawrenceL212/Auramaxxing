@@ -13805,7 +13805,7 @@ window.addEventListener('message', async (e) => {
       Object.entries(CKEY_MAP).forEach(([ckey, armyKey]) => {
         if (!continentSoldiers[ckey]) continentSoldiers[ckey] = [];
         const soldiers = armies[armyKey]?.soldiers || 0;
-        if (soldiers > 0) continentSoldiers[ckey].push({ name: u.displayName, soldiers });
+        if (soldiers > 0) continentSoldiers[ckey].push({ uid: u.uid, name: u.displayName, soldiers });
       });
     });
 
@@ -13835,7 +13835,7 @@ window.addEventListener('message', async (e) => {
           cum += p.soldiers / total;
           if (fraction <= cum) { assigned = p; break; }
         }
-        ownership[id] = { owner: assigned.name, soldiers: Math.floor(assigned.soldiers / ids.length) };
+        ownership[id] = { uid: assigned.uid, owner: assigned.name, soldiers: Math.floor(assigned.soldiers / ids.length) };
       });
     });
 
