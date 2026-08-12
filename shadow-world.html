@@ -17,7 +17,7 @@ canvas { display:block; }
 #zb { position:absolute; right:10px; bottom:20px; display:flex; flex-direction:column; gap:6px; z-index:20; }
 .zb { width:34px; height:34px; background:rgba(2,12,24,0.85); border:1px solid rgba(61,165,255,0.2); border-radius:8px; color:#61a5ff; font-size:18px; cursor:pointer; display:flex; align-items:center; justify-content:center; touch-action:manipulation; }
 #tt { position:fixed; pointer-events:none; background:rgba(2,12,24,0.95); border:1px solid rgba(61,165,255,0.3); border-radius:6px; padding:5px 10px; font-size:11px; color:#61a5ff; z-index:30; display:none; white-space:nowrap; }
-#panel { position:absolute; bottom:0; left:0; right:0; transform:translateY(100%); transition:transform .35s cubic-bezier(.16,1,.3,1); background:rgba(2,12,24,0.98); border-top:1px solid rgba(61,165,255,.15); border-radius:20px 20px 0 0; padding:16px 18px; z-index:30; max-height:55vh; overflow-y:auto; }
+#panel { position:absolute; bottom:0; left:0; right:0; transform:translateY(100%); transition:transform .35s cubic-bezier(.16,1,.3,1); background:rgba(2,12,24,0.98); border-top:1px solid rgba(61,165,255,.15); border-radius:20px 20px 0 0; padding:16px 18px; z-index:30; max-height:70vh; overflow-y:auto; -webkit-overflow-scrolling:touch; overscroll-behavior:contain; }
 #panel.open { transform:translateY(0); }
 #ph { width:36px; height:3px; background:rgba(61,165,255,.2); border-radius:2px; margin:0 auto 10px; }
 #pc { font-size:9px; letter-spacing:.15em; margin-bottom:2px; }
@@ -33,7 +33,9 @@ canvas { display:block; }
 .ba { background:rgba(255,61,90,.1); border:1px solid rgba(255,61,90,.3); color:#ff3d5a; }
 .br { background:rgba(78,205,120,.08); border:1px solid rgba(78,205,120,.25); color:#4ecd78; }
 .bd { background:rgba(212,160,23,.08); border:1px solid rgba(212,160,23,.25); color:#d4a017; }
-#px { position:absolute; top:10px; right:12px; background:none; border:none; color:rgba(61,165,255,.4); font-size:18px; cursor:pointer; }
+#px { position:sticky; top:0; float:right; background:rgba(2,12,24,0.9); border:none; color:rgba(61,165,255,.6); font-size:22px; cursor:pointer; width:44px; height:44px; display:flex; align-items:center; justify-content:center; border-radius:8px; touch-action:manipulation; z-index:5; }
+#panel-backdrop { display:none; position:absolute; inset:0; z-index:29; }
+#panel-backdrop.open { display:block; }
 #deploy-row { display:flex; align-items:center; gap:8px; margin-bottom:10px; }
 #deploy-row input { background:rgba(61,165,255,.06); border:1px solid rgba(61,165,255,.2); border-radius:8px; color:#e0e8ff; font-family:'Courier New',monospace; font-size:14px; padding:7px 10px; width:72px; text-align:center; }
 #pool-info { font-size:11px; color:rgba(61,165,255,.4); margin-bottom:10px; line-height:1.6; }
@@ -56,8 +58,12 @@ canvas { display:block; }
     <button class="zb" style="font-size:13px;" onclick="resetView()">⌂</button>
   </div>
   <div id="tt"></div>
+  <div id="panel-backdrop" onclick="closePanel()"></div>
   <div id="panel">
-    <div id="ph"></div><button id="px" onclick="closePanel()">✕</button>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;position:sticky;top:0;background:rgba(2,12,24,0.98);padding-bottom:8px;">
+      <div style="font-family:var(--font-mono,monospace);font-size:9px;color:rgba(61,165,255,.4);letter-spacing:.15em;">◈ TERRITORY</div>
+      <button id="px" onclick="closePanel()">✕</button>
+    </div>
     <div id="pc"></div>
     <div id="pn"></div>
     <div id="po"></div>
@@ -474,6 +480,7 @@ function openPanel(c) {
   }
 
   document.getElementById('panel').classList.add('open');
+  document.getElementById('panel-backdrop').classList.add('open');
 }
 
 function quickDeploy(gcId) {
@@ -510,7 +517,10 @@ function declareWar(gcId, defenderUid) {
   closePanel();
 }
 
-window.closePanel = () => document.getElementById('panel').classList.remove('open');
+window.closePanel = () => {
+  document.getElementById('panel').classList.remove('open');
+  document.getElementById('panel-backdrop').classList.remove('open');
+};
 window.addEventListener('resize', resetView);
 
 // Listen for focus commands from parent
