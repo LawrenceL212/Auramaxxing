@@ -123,10 +123,7 @@ canvas { display:block; }
   </div>
 </div>
 
-<div id="army-sidebar">
-  <div class="asi-head">◈ ARMIES</div>
-  <div id="sidebar-continents"></div>
-</div>
+
 
 <script type="module">
 import { COUNTRIES_GEO } from './countries_embedded.js';
@@ -609,6 +606,25 @@ function declareWar(gcId, defenderUid) {
 
 window.closePanel = () => document.getElementById('panel').classList.remove('open');
 window.addEventListener('resize', resetView);
+
+// Listen for focus commands from parent
+window.addEventListener('message', (e) => {
+  if (e.data?.type === 'focusContinent') {
+    const CONT_CENTERS = {
+      northAmerica:[42,-100], southAmerica:[-20,-58], europe:[54,14],
+      africa:[5,20], asia:[42,82], australia:[-28,134], antarctica:[-78,0]
+    };
+    const [lat,lon] = CONT_CENTERS[e.data.ckey] || [0,0];
+    const [cx,cy] = ll2px(lon,lat);
+    const mapEl = document.getElementById('map-area');
+    const availW = mapEl ? mapEl.clientWidth : innerWidth;
+    const availH = mapEl ? mapEl.clientHeight : innerHeight;
+    sc = 1.8;
+    tx = availW/2 - cx*sc;
+    ty = availH/2 - cy*sc;
+    applyT();
+  }
+});
 
 // Focus map on a continent when clicking sidebar
 const CONT_CENTERS = {
