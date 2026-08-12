@@ -13789,15 +13789,18 @@ window.addEventListener('message', async (e) => {
   if (!iframe) return;
 
   try {
-    // Build ownership from all users' shadowArmy data
+    // Read fresh shadowArmy data directly from Firestore
+    const { collection, getDocs } = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js');
+    const usersSnap = await getDocs(collection(db, 'users'));
+    const freshUsers = usersSnap.docs.map(d => ({ uid: d.id, ...d.data() }));
+
     const CKEY_MAP = {
       northAmerica:'iron', southAmerica:'wild', europe:'court',
       africa:'swift', asia:'shadow', australia:'tide', antarctica:'gate'
     };
 
-    // Collect soldier counts per continent per user
-    const continentSoldiers = {}; // ckey -> [{name, soldiers}]
-    (allUsers || []).forEach(u => {
+    const continentSoldiers = {};
+    freshUsers.forEach(u => {
       const armies = u.shadowArmy?.continents || {};
       Object.entries(CKEY_MAP).forEach(([ckey, armyKey]) => {
         if (!continentSoldiers[ckey]) continentSoldiers[ckey] = [];
@@ -13806,13 +13809,11 @@ window.addEventListener('message', async (e) => {
       });
     });
 
-    // Sort each continent by soldiers desc
     Object.keys(continentSoldiers).forEach(ckey =>
       continentSoldiers[ckey].sort((a,b) => b.soldiers - a.soldiers)
     );
 
-    // Assign game countries proportionally within each continent
-    const GAME_COUNTRIES_KEYS = {
+    const GAME_COUNTRY_IDS = {
       northAmerica: ['na_0','na_1','na_2','na_3','na_4','na_5'],
       southAmerica: ['sa_0','sa_1','sa_2','sa_3','sa_4','sa_5'],
       europe:       ['eu_0','eu_1','eu_2','eu_3','eu_4','eu_5'],
@@ -13823,14 +13824,13 @@ window.addEventListener('message', async (e) => {
     };
 
     const ownership = {};
-    Object.entries(GAME_COUNTRIES_KEYS).forEach(([ckey, ids]) => {
+    Object.entries(GAME_COUNTRY_IDS).forEach(([ckey, ids]) => {
       const players = continentSoldiers[ckey] || [];
       if (!players.length) return;
       const total = players.reduce((s,p) => s + p.soldiers, 0);
       ids.forEach((id, idx) => {
         const fraction = (idx + 0.5) / ids.length;
-        let cum = 0;
-        let assigned = players[players.length - 1];
+        let cum = 0, assigned = players[players.length - 1];
         for (const p of players) {
           cum += p.soldiers / total;
           if (fraction <= cum) { assigned = p; break; }
@@ -13839,6 +13839,7 @@ window.addEventListener('message', async (e) => {
       });
     });
 
+    console.log('Shadow World ownership built:', Object.keys(ownership).length, 'territories', ownership);
     iframe.contentWindow.postMessage({ type: 'shadowWorldOwnership', ownership }, '*');
   } catch(err) {
     console.warn('Shadow World ownership build failed:', err);
