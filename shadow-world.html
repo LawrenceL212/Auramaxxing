@@ -68,14 +68,15 @@ import { COUNTRIES_GEO } from './countries_embedded.js';
 
 const setP = p => document.getElementById('lf').style.width = p + '%';
 
-// ── PLAYERS — colours by uid, populated from Firestore ──
+// ── PLAYERS — colours by display name ──
+// Keys must match exact Firestore displayName values
 const PLAYER_COLOR_MAP = {
-  'Lawrence': { hex:'#d4a017', r:212, g:160, b:23  },
-  'LuChing':  { hex:'#7c3aed', r:124, g:58,  b:237 },
-  'Lucas':    { hex:'#0ea5e9', r:14,  g:165, b:233 },
-  'Mireyah':  { hex:'#ff6b9d', r:255, g:107, b:157 },
+  'Lawrence':           { hex:'#d4a017', r:212, g:160, b:23  },
+  'Lawrence Aura Goat': { hex:'#d4a017', r:212, g:160, b:23  },
+  'LuChing':            { hex:'#7c3aed', r:124, g:58,  b:237 },
+  'Lucas':              { hex:'#0ea5e9', r:14,  g:165, b:233 },
+  'Mireyah':            { hex:'#ff6b9d', r:255, g:107, b:157 },
 };
-// Will be populated from Firestore: uid -> { hex, r, g, b, name }
 let PLAYERS = { ...PLAYER_COLOR_MAP };
 
 // Ownership loaded from Firestore shadowArmy data
