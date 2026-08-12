@@ -13790,68 +13790,98 @@ function renderShadowWorld() {
     </div>`;
 }
 
-// ── Handle Shadow World iframe ownership requests ──
+// ── Handle Shadow World iframe requests ──
 window.addEventListener('message', async (e) => {
-  if (e.data?.type !== 'requestShadowWorldOwnership') return;
   const iframe = document.querySelector('#view-world iframe');
   if (!iframe) return;
 
-  try {
-    // Read fresh shadowArmy data directly from Firestore
-    const { collection, getDocs } = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js');
-    const usersSnap = await getDocs(collection(db, 'users'));
-    const freshUsers = usersSnap.docs.map(d => ({ uid: d.id, ...d.data() }));
+  // ── Data request ──
+  if (e.data?.type === 'requestShadowWorldData') {
+    try {
+      const { collection, getDocs } = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js');
+      const usersSnap = await getDocs(collection(db, 'users'));
 
-    const CKEY_MAP = {
-      northAmerica:'iron', southAmerica:'wild', europe:'court',
-      africa:'swift', asia:'shadow', australia:'tide', antarctica:'gate'
-    };
+      // Build countries map: gcId -> { ownerUid, soldiers }
+      const countries = {};
+      // Build pool map: uid -> { iron, wild, court, swift, shadow, tide, gate }
+      const pool = {};
 
-    const continentSoldiers = {};
-    freshUsers.forEach(u => {
-      const armies = u.shadowArmy?.continents || {};
-      Object.entries(CKEY_MAP).forEach(([ckey, armyKey]) => {
-        if (!continentSoldiers[ckey]) continentSoldiers[ckey] = [];
-        const soldiers = armies[armyKey]?.soldiers || 0;
-        if (soldiers > 0) continentSoldiers[ckey].push({ uid: u.uid, name: u.displayName, soldiers });
+      usersSnap.docs.forEach(d => {
+        const u = d.data();
+        const uid = d.id;
+        // Pool = undeployed soldiers per army key
+        const userPool = u.shadowArmy?.pool || {};
+        if (Object.keys(userPool).length) pool[uid] = userPool;
+
+        // Countries this user owns
+        const userCountries = u.shadowArmy?.countries || {};
+        Object.entries(userCountries).forEach(([gcId, data]) => {
+          // Higher soldier count wins on conflict (shouldn't happen but safety net)
+          if (!countries[gcId] || data.soldiers > countries[gcId].soldiers) {
+            countries[gcId] = { ownerUid: uid, soldiers: data.soldiers || 0 };
+          }
+        });
       });
-    });
 
-    Object.keys(continentSoldiers).forEach(ckey =>
-      continentSoldiers[ckey].sort((a,b) => b.soldiers - a.soldiers)
-    );
+      iframe.contentWindow.postMessage({
+        type: 'shadowWorldData',
+        countries,
+        pool,
+        currentUid: currentUser?.uid || null,
+      }, '*');
+    } catch(err) {
+      console.warn('Shadow World data build failed:', err);
+      iframe.contentWindow.postMessage({ type:'shadowWorldData', countries:{}, pool:{}, currentUid: currentUser?.uid }, '*');
+    }
+  }
 
-    const GAME_COUNTRY_IDS = {
-      northAmerica: ['na_0','na_1','na_2','na_3','na_4','na_5'],
-      southAmerica: ['sa_0','sa_1','sa_2','sa_3','sa_4','sa_5'],
-      europe:       ['eu_0','eu_1','eu_2','eu_3','eu_4','eu_5'],
-      africa:       ['af_0','af_1','af_2','af_3','af_4','af_5'],
-      asia:         ['as_0','as_1','as_2','as_3','as_4','as_5'],
-      australia:    ['au_0','au_1','au_2','au_3','au_4','au_5'],
-      antarctica:   ['an_0','an_1','an_2','an_3','an_4','an_5'],
-    };
+  // ── Deploy soldiers to a country ──
+  if (e.data?.type === 'deployToCountry') {
+    const { gcId, armyKey, amount, ckey } = e.data;
+    if (!currentUser || !gcId || !armyKey || !amount) return;
+    try {
+      const { doc, updateDoc, increment: fsInc, getDoc } = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js');
+      const userRef = doc(db, 'users', currentUser.uid);
+      const snap = await getDoc(userRef);
+      const data = snap.data() || {};
+      const currentPool = data.shadowArmy?.pool?.[armyKey] || 0;
 
-    const ownership = {};
-    Object.entries(GAME_COUNTRY_IDS).forEach(([ckey, ids]) => {
-      const players = continentSoldiers[ckey] || [];
-      if (!players.length) return;
-      const total = players.reduce((s,p) => s + p.soldiers, 0);
-      ids.forEach((id, idx) => {
-        const fraction = (idx + 0.5) / ids.length;
-        let cum = 0, assigned = players[players.length - 1];
-        for (const p of players) {
-          cum += p.soldiers / total;
-          if (fraction <= cum) { assigned = p; break; }
-        }
-        ownership[id] = { uid: assigned.uid, owner: assigned.name, soldiers: Math.floor(assigned.soldiers / ids.length) };
+      if (amount > currentPool) {
+        console.warn('Deploy: not enough pool soldiers'); return;
+      }
+
+      await updateDoc(userRef, {
+        [`shadowArmy.pool.${armyKey}`]: Math.max(0, currentPool - amount),
+        [`shadowArmy.countries.${gcId}.soldiers`]: fsInc(amount),
+        [`shadowArmy.countries.${gcId}.ownerUid`]: currentUser.uid,
+        [`shadowArmy.countries.${gcId}.ckey`]: ckey,
       });
-    });
 
-    console.log('Shadow World ownership built:', Object.keys(ownership).length, 'territories', ownership);
-    iframe.contentWindow.postMessage({ type: 'shadowWorldOwnership', ownership, currentUid: currentUser?.uid }, '*');
-  } catch(err) {
-    console.warn('Shadow World ownership build failed:', err);
-    iframe.contentWindow.postMessage({ type: 'shadowWorldOwnership', ownership: {} }, '*');
+      // Update local profile
+      if (!profile.shadowArmy) profile.shadowArmy = {};
+      if (!profile.shadowArmy.pool) profile.shadowArmy.pool = {};
+      if (!profile.shadowArmy.countries) profile.shadowArmy.countries = {};
+      profile.shadowArmy.pool[armyKey] = Math.max(0, currentPool - amount);
+      profile.shadowArmy.countries[gcId] = {
+        soldiers: (profile.shadowArmy.countries[gcId]?.soldiers || 0) + amount,
+        ownerUid: currentUser.uid,
+        ckey,
+      };
+
+      showToast(`⚑ ${amount} soldiers deployed`, 'success');
+    } catch(err) {
+      console.warn('Deploy failed:', err);
+    }
+  }
+
+  // ── Declare war (Gate Duel) ──
+  if (e.data?.type === 'shadowWorldDeclareWar') {
+    const { defenderUid } = e.data;
+    if (typeof sendGateDuel === 'function') {
+      sendGateDuel(defenderUid);
+    } else {
+      showToast('Gate Duel system not ready', 'error');
+    }
   }
 });
 
@@ -15177,8 +15207,8 @@ function openWorkoutDetail(workoutId) {
           const { doc: fDoc, updateDoc: fUpdate } = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js');
           const updates = {};
           Object.entries(soldierLoss).forEach(([ckey, loss]) => {
-            const cur = profile.shadowArmy?.continents?.[ckey]?.soldiers || 0;
-            updates[`shadowArmy.continents.${ckey}.soldiers`] = Math.max(0, cur - loss);
+            const cur = profile.shadowArmy?.pool?.[ckey] || 0;
+            updates[`shadowArmy.pool.${ckey}`] = Math.max(0, cur - loss);
           });
           await fUpdate(fDoc(db, 'users', currentUser.uid), updates);
         }
@@ -15545,22 +15575,22 @@ async function generateShadowArmySoldiers(exercises, runSummary) {
 
   if (!Object.keys(soldiersByContinent).length) return;
 
-  // Write to Firestore
+  // Write to Firestore pool (undeployed soldiers)
   const { doc, updateDoc, increment: fsInc } = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js');
   const updates = {};
   Object.entries(soldiersByContinent).forEach(([ckey, count]) => {
-    updates[`shadowArmy.continents.${ckey}.soldiers`] = fsInc(count);
+    updates[`shadowArmy.pool.${ckey}`] = fsInc(count);
   });
   await updateDoc(doc(db, 'users', currentUser.uid), updates);
 
   // Update local profile
-  if (!profile.shadowArmy) profile.shadowArmy = { continents: {} };
+  if (!profile.shadowArmy) profile.shadowArmy = { pool: {}, countries: {} };
+  if (!profile.shadowArmy.pool) profile.shadowArmy.pool = {};
   Object.entries(soldiersByContinent).forEach(([ckey, count]) => {
-    if (!profile.shadowArmy.continents[ckey]) profile.shadowArmy.continents[ckey] = { soldiers: 0, countries: {} };
-    profile.shadowArmy.continents[ckey].soldiers = (profile.shadowArmy.continents[ckey].soldiers || 0) + count;
+    profile.shadowArmy.pool[ckey] = (profile.shadowArmy.pool[ckey] || 0) + count;
   });
 
-  console.log('Shadow army generated:', soldiersByContinent);
+  console.log('Shadow army pool updated:', soldiersByContinent);
 }
 
 // Continent → stat map for soldier generation
@@ -15624,16 +15654,16 @@ async function backfillShadowArmySoldiers() {
   const { doc, updateDoc, increment: fsInc } = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js');
   const updates = { 'shadowArmy._backfilledCount': myWOs.length };
   Object.entries(totalByContinent).forEach(([ckey, count]) => {
-    updates[`shadowArmy.continents.${ckey}.soldiers`] = fsInc(count);
+    updates[`shadowArmy.pool.${ckey}`] = fsInc(count);
   });
   await updateDoc(doc(db, 'users', currentUser.uid), updates);
 
   // Update local profile
-  if (!profile.shadowArmy) profile.shadowArmy = { continents: {} };
+  if (!profile.shadowArmy) profile.shadowArmy = { pool: {}, countries: {} };
+  if (!profile.shadowArmy.pool) profile.shadowArmy.pool = {};
   profile.shadowArmy._backfilledCount = myWOs.length;
   Object.entries(totalByContinent).forEach(([ckey, count]) => {
-    if (!profile.shadowArmy.continents[ckey]) profile.shadowArmy.continents[ckey] = { soldiers: 0 };
-    profile.shadowArmy.continents[ckey].soldiers = (profile.shadowArmy.continents[ckey].soldiers || 0) + count;
+    profile.shadowArmy.pool[ckey] = (profile.shadowArmy.pool[ckey] || 0) + count;
   });
 
   console.log('Shadow army backfill complete:', totalByContinent);
