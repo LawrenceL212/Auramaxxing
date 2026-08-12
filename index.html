@@ -7401,6 +7401,8 @@ function showGateClearModal(cleared, weeklyGoal, completed) {
 async function checkStatDecay() {
   if (!myProgram || !myProgram.schedule || !myProgram.schedule.length) return;
   if (!myWorkouts.length) return;
+  // No decay while streak is frozen
+  if (profile.streakFreeze?.active) return;
   const lastWorkout = myWorkouts.reduce((a,b) => a.date > b.date ? a : b);
   const daysSinceLastWorkout = (new Date() - new Date(lastWorkout.date + 'T12:00:00')) / 86400000;
   if (daysSinceLastWorkout < 14) return;
@@ -7424,7 +7426,13 @@ async function checkStatDecay() {
 // Penalty Zone: dock AP for missed scheduled training days
 async function checkPenalty() {
   if (!myProgram || !myProgram.schedule || !myProgram.schedule.length) return null;
+
+  // ── Streak freeze: no penalty while frozen ──
+  const freeze = profile.streakFreeze;
+  if (freeze?.active) return null;
+  // Also skip if yesterday was within a completed freeze window
   const yStr = todayStr(daysAgo(1));
+  if (freeze && freeze.from && freeze.to && yStr >= freeze.from && yStr <= freeze.to) return null;
   const yDow = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][new Date(yStr + 'T12:00:00').getDay()];
   const wasScheduled = myProgram.schedule.includes(yDow.slice(0,3));
   if (!wasScheduled) return null;
