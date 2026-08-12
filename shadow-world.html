@@ -252,31 +252,32 @@ GAME_COUNTRIES.forEach(gc => {
 
 // ── LOAD OWNERSHIP FROM FIRESTORE ──
 // Firebase isn't initialised in this iframe — get data from parent window via postMessage
+const DEMO_OWNERSHIP = {
+  'na_0': { owner:'Lawrence', soldiers:340 },
+  'na_1': { owner:'Lawrence', soldiers:280 },
+  'na_2': { owner:'Lawrence', soldiers:180 },
+  'na_3': { owner:'Lucas',    soldiers:35  },
+  'na_4': { owner:'Lawrence', soldiers:200 },
+  'as_0': { owner:'LuChing',  soldiers:890 },
+  'as_1': { owner:'LuChing',  soldiers:650 },
+  'as_2': { owner:'LuChing',  soldiers:410 },
+  'as_3': { owner:'LuChing',  soldiers:320 },
+  'as_4': { owner:'LuChing',  soldiers:280 },
+  'eu_0': { owner:'Lucas',    soldiers:60  },
+  'eu_1': { owner:'Lucas',    soldiers:45  },
+  'eu_2': { owner:'Lucas',    soldiers:30  },
+  'eu_4': { owner:'Lucas',    soldiers:25  },
+  'af_0': { owner:'Mireyah',  soldiers:45  },
+  'af_5': { owner:'Mireyah',  soldiers:20  },
+  'sa_0': { owner:'LuChing',  soldiers:80  },
+  'sa_1': { owner:'LuChing',  soldiers:45  },
+};
+
 async function loadOwnershipFromFirestore() {
   return new Promise(resolve => {
     // Request ownership data from parent frame
     const timeout = setTimeout(() => {
-      // Timed out — use demo data
-      LIVE_OWNERSHIP = {
-        'na_0': { owner:'Lawrence', soldiers:340 },
-        'na_1': { owner:'Lawrence', soldiers:280 },
-        'na_2': { owner:'Lawrence', soldiers:180 },
-        'na_3': { owner:'Lucas',    soldiers:35  },
-        'na_4': { owner:'Lawrence', soldiers:200 },
-        'as_0': { owner:'LuChing',  soldiers:890 },
-        'as_1': { owner:'LuChing',  soldiers:650 },
-        'as_2': { owner:'LuChing',  soldiers:410 },
-        'as_3': { owner:'LuChing',  soldiers:320 },
-        'as_4': { owner:'LuChing',  soldiers:280 },
-        'eu_0': { owner:'Lucas',    soldiers:60  },
-        'eu_1': { owner:'Lucas',    soldiers:45  },
-        'eu_2': { owner:'Lucas',    soldiers:30  },
-        'eu_4': { owner:'Lucas',    soldiers:25  },
-        'af_0': { owner:'Mireyah',  soldiers:45  },
-        'af_5': { owner:'Mireyah',  soldiers:20  },
-        'sa_0': { owner:'LuChing',  soldiers:80  },
-        'sa_1': { owner:'LuChing',  soldiers:45  },
-      };
+      LIVE_OWNERSHIP = DEMO_OWNERSHIP;
       console.log('Shadow World: using demo data (parent not responding)');
       resolve();
     }, 2000);
@@ -284,8 +285,15 @@ async function loadOwnershipFromFirestore() {
     window.addEventListener('message', (e) => {
       if (e.data?.type === 'shadowWorldOwnership') {
         clearTimeout(timeout);
-        LIVE_OWNERSHIP = e.data.ownership || {};
-        console.log('Shadow World: received ownership from parent,', Object.keys(LIVE_OWNERSHIP).length, 'territories');
+        const received = e.data.ownership || {};
+        // If real data is too sparse (no one has armies yet), use demo data
+        if (Object.keys(received).length >= 5) {
+          LIVE_OWNERSHIP = received;
+          console.log('Shadow World: received ownership from parent,', Object.keys(LIVE_OWNERSHIP).length, 'territories');
+        } else {
+          LIVE_OWNERSHIP = DEMO_OWNERSHIP;
+          console.log('Shadow World: insufficient army data, using demo');
+        }
         resolve();
       }
     }, { once: true });
