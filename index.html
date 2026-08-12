@@ -247,6 +247,7 @@
   .btn:hover{border-color:rgba(93,157,255,0.4);box-shadow:0 0 12px rgba(93,157,255,0.1);background:var(--card);}
   .btn:active{transform:scale(0.96);box-shadow:none;}
   .btn-primary{background:var(--brass);border-color:var(--brass);color:#06111f;width:100%;padding:13px;font-size:15px;font-weight:700;}
+  #save-workout-btn.btn-primary{background:linear-gradient(135deg,rgba(61,165,255,0.3),rgba(61,165,255,0.15))!important;border:2px solid rgba(61,165,255,0.7)!important;color:#e0f0ff!important;box-shadow:0 0 28px rgba(61,165,255,0.35),inset 0 1px 0 rgba(255,255,255,0.1)!important;}
   .btn-primary:hover{filter:brightness(1.08);}
   .btn-sm{padding:7px 12px;font-size:12.5px;}
   .btn-block{width:100%;}
@@ -14954,8 +14955,35 @@ function openWorkoutDetail(workoutId) {
       prsFromThis.forEach(p => consequences.push(`PR removed: ${p.name} [${p.tier || 'Unranked'}]`));
     }
 
-    const sessionXP = computeWorkoutXP(w.exercises || []).generalXP;
+    const sessionXP   = computeWorkoutXP(w.exercises || []).generalXP;
+    const oldLevel    = levelFromTotalXP(profile.hunterXP || 0);
+    const newTotalXP  = Math.max(0, (profile.hunterXP || 0) - sessionXP);
+    const newLevel    = levelFromTotalXP(newTotalXP);
     if (sessionXP > 0.05) consequences.unshift(`−${Math.round(sessionXP)} Hunter XP (session reversed)`);
+    if (newLevel < oldLevel) {
+      let apLost = 0;
+      for (let l = oldLevel; l > newLevel; l--) apLost += apForLevel(l);
+      consequences.unshift(`−${apLost} AP — level ${oldLevel} → ${newLevel} reversed`);
+    }
+
+    // Dungeon damage reversal
+    if (profile.activeDungeon) {
+      const dmg = computeSessionDungeonDamage(w.exercises || []);
+      if (dmg > 0) {
+        const clearedByThis = profile.activeDungeon.clearedAt === w.date;
+        if (clearedByThis) {
+          consequences.push(`Dungeon item removed — this workout cleared the dungeon`);
+        } else {
+          consequences.push(`${Math.round(dmg)} dungeon damage reversed`);
+        }
+      }
+    }
+
+    // Shadow army soldiers reversal
+    const soldierTotal = (w.exercises || []).reduce((t, ex) => {
+      return t + (ex.sets || []).filter(s => s.reps > 0).length * 10;
+    }, 0);
+    if (soldierTotal > 0) consequences.push(`Shadow army soldiers from this session removed`);
 
     if (!consequences.length) {
       consequences.push('Remove this workout from your history');
@@ -14979,18 +15007,33 @@ function openWorkoutDetail(workoutId) {
       // 1. delete the workout
       await deleteDoc(doc(db, 'workouts', workoutId));
 
-      // 2. reverse the XP this session granted (delete + relog must not double-pay).
-      //    Level and AP are NOT clawed back below the levels already reached —
-      //    levelFromTotalXP naturally handles the level; AP stays (already spent/kept).
+      // 2. reverse XP and claw back AP for any levels lost
       const rev = computeWorkoutXP(w.exercises || []);
       if (rev.generalXP > 0.05) {
+        const oldLevel   = levelFromTotalXP(profile.hunterXP || 0);
         const newTotalXP = Math.max(0, Math.round(((profile.hunterXP || 0) - rev.generalXP) * 10) / 10);
-        const delBatch = { hunterXP: newTotalXP, hunterLevel: levelFromTotalXP(newTotalXP) };
+        const newLevel   = levelFromTotalXP(newTotalXP);
+        const delBatch   = { hunterXP: newTotalXP, hunterLevel: newLevel };
+
+        // Claw back AP for each level lost
+        if (newLevel < oldLevel) {
+          let apToRemove = 0;
+          for (let l = oldLevel; l > newLevel; l--) {
+            apToRemove += apForLevel(l);
+          }
+          const newAP = Math.max(0, (profile.auraPoints || 0) - apToRemove);
+          delBatch.auraPoints = newAP;
+          profile.auraPoints  = newAP;
+          consequences.unshift(`−${apToRemove} AP (level ${oldLevel} → ${newLevel} reversed)`);
+        }
+
         const caps = profile.statTrainingXP || {};
         for (const [stat, gain] of Object.entries(rev.trainingXP)) {
           if (gain > 0.05) delBatch[`statTrainingXP.${stat}`] = Math.max(10, (caps[stat] || 0) - gain);
         }
         await writeUserFields(delBatch);
+        profile.hunterXP   = newTotalXP;
+        profile.hunterLevel = newLevel;
       }
 
       // 3. remove PRs set in this workout
@@ -15000,6 +15043,75 @@ function openWorkoutDetail(workoutId) {
         await setDoc(doc(db, 'prs', currentUser.uid), newPRs);
         myPRs = newPRs;
       }
+
+      // 4. reverse dungeon damage from this workout
+      try {
+        if (profile.activeDungeon) {
+          const dungeonDamage = computeSessionDungeonDamage(w.exercises || []);
+          if (dungeonDamage > 0) {
+            const dungeon = profile.activeDungeon;
+            const restoredHP = Math.min(dungeon.bossMaxHP || dungeon.bossHP, (dungeon.bossHP || 0) + dungeonDamage);
+            // If dungeon was cleared by this workout, strip the earned item and restore dungeon
+            const clearedByThis = dungeon.clearedAt === w.date || dungeon.clearedBy === workoutId;
+            if (clearedByThis) {
+              // Remove the item earned from this dungeon clear
+              const itemSlot = dungeon.rewardSlot;
+              if (itemSlot && profile.inventory?.[itemSlot]?.earnedAt === w.date) {
+                await writeUserFields({ [`inventory.${itemSlot}`]: null, activeDungeon: null });
+                profile.activeDungeon = null;
+                if (profile.inventory) profile.inventory[itemSlot] = null;
+                showToast('Dungeon item removed — dungeon reset.', 'error');
+              } else {
+                await writeUserFields({ activeDungeon: null });
+                profile.activeDungeon = null;
+              }
+            } else {
+              const updatedDungeon = { ...dungeon, bossHP: restoredHP };
+              await writeUserFields({ activeDungeon: updatedDungeon });
+              profile.activeDungeon = updatedDungeon;
+            }
+          }
+        }
+      } catch(e) { console.warn('Dungeon reversal failed:', e); }
+
+      // 5. reverse shadow army soldiers from this workout
+      try {
+        const STAT_TO_CONT = {
+          strength:'iron', focus:'shadow', agility:'swift',
+          endurance:'tide', flexibility:'wild'
+        };
+        const TIER_BASE   = { 1:10, 2:25, 3:60, 4:150, 5:400 };
+        const RANK_MULT   = { E:1.0, D:1.2, C:1.5, B:2.0, A:3.0, S:5.0 };
+        const RIR_MULT    = r => r === 0 ? 1.3 : r <= 2 ? 1.0 : r <= 4 ? 0.7 : 0.5;
+
+        const soldierLoss = {};
+        (w.exercises || []).forEach(ex => {
+          const exDef = EXERCISES_ALL[ex.name] || {};
+          const stat  = exDef.stat || 'strength';
+          const ckey  = STAT_TO_CONT[stat] || 'iron';
+          const tier  = exDef.skillTier ? Math.round(exDef.skillTier) : 1;
+          const statRank = (profile.stats || {})[stat] || 'E';
+          const rankMult = RANK_MULT[statRank] || 1.0;
+          const tierBase = TIER_BASE[Math.min(tier, 5)] || 10;
+          (ex.sets || []).filter(s => s.reps > 0 && s.rir != null).forEach(s => {
+            const loss = Math.floor(tierBase * rankMult * RIR_MULT(s.rir));
+            soldierLoss[ckey] = (soldierLoss[ckey] || 0) + loss;
+          });
+        });
+
+        if (Object.keys(soldierLoss).length) {
+          const { doc: fDoc, updateDoc: fUpdate } = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js');
+          const updates = {};
+          Object.entries(soldierLoss).forEach(([ckey, loss]) => {
+            const cur = profile.shadowArmy?.continents?.[ckey]?.soldiers || 0;
+            updates[`shadowArmy.continents.${ckey}.soldiers`] = Math.max(0, cur - loss);
+          });
+          await fUpdate(fDoc(db, 'users', currentUser.uid), updates);
+        }
+      } catch(e) { console.warn('Shadow army reversal failed:', e); }
+
+      // 6. recheck achievements (some may no longer apply without this workout)
+      try { await checkAndUnlockAchievements(); } catch(e) {}
 
       overlay.remove();
       await loadAllData();
