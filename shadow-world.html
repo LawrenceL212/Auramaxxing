@@ -157,7 +157,7 @@ const COUNTRIES = [
   { id:'as_4', name:'Eclipse',       ckey:'asia', isCapital:false, owner:'LuChing',  soldiers:280,
     lat:35,  lon:112,  zone:[[100,50],[145,50],[145,25],[100,25]] },
   { id:'as_5', name:'Shadowmere',    ckey:'asia', isCapital:false, owner:'LuChing',  soldiers:190,
-    lat:55,  lon:132,  zone:[[125,72],[180,72],[180,42],[125,42]] },
+    lat:55,  lon:132,  zone:[[125,72],[148,72],[148,42],[125,42]] },
 
   // AUSTRALIA
   { id:'au_0', name:'Deepholm',      ckey:'australia', isCapital:true,  owner:null, soldiers:0,
@@ -227,7 +227,6 @@ function classifyPoly(idx, cLon, cLat) {
   if (cLon < -30 && cLat > 8)  return 'northAmerica';
   if (cLon < -30 && cLat < 8)  return 'southAmerica';
   if (cLon > -20 && cLon < 25  && cLat > 34) return 'europe';
-  if (idx === 112) return 'asia';
   return 'asia';
 }
 
@@ -236,7 +235,15 @@ LAND_POLYS.forEach((ring, idx) => {
   if (!ring || ring.length < 3) return;
   const cLon = ring.reduce((s,p)=>s+p[0],0)/ring.length;
   const cLat  = ring.reduce((s,p)=>s+p[1],0)/ring.length;
-  const ckey  = classifyPoly(idx, cLon, cLat);
+  if (idx === 112) {
+    // Afro-Eurasian mega-polygon — add to all three continents for clipping
+    ['asia','europe','africa'].forEach(k => {
+      if (!continentPolys[k]) continentPolys[k] = [];
+      continentPolys[k].push(ring);
+    });
+    return;
+  }
+  const ckey = classifyPoly(idx, cLon, cLat);
   if (!continentPolys[ckey]) continentPolys[ckey] = [];
   continentPolys[ckey].push(ring);
 });
@@ -310,6 +317,19 @@ function drawMap() {
     ctx.closePath();
     ctx.fillStyle = `rgba(${p.r},${p.g},${p.b},0.85)`;
     ctx.fill();
+
+    // Draw thin border along country zone edges (still within clip)
+    ctx.beginPath();
+    let zbf=true, zpx2=null;
+    c.zone.forEach(([lon,lat])=>{
+      const [x,y]=ll2px(lon,lat);
+      if(zbf){ctx.moveTo(x,y);zbf=false;}else ctx.lineTo(x,y);
+      zpx2=x;
+    });
+    ctx.closePath();
+    ctx.strokeStyle=`rgba(0,0,0,0.4)`;
+    ctx.lineWidth=2;
+    ctx.stroke();
 
     ctx.restore();
   });
