@@ -626,6 +626,12 @@ window.closePanel = () => {
   document.getElementById('panel').classList.remove('open');
   document.getElementById('panel-backdrop').classList.remove('open');
 };
+
+// Stop panel touches from reaching the map pan/zoom listeners
+['touchstart','touchmove','touchend','mousedown','mousemove','mouseup','click'].forEach(evt => {
+  document.getElementById('panel').addEventListener(evt, e => e.stopPropagation(), { passive: false });
+  document.getElementById('panel-backdrop').addEventListener(evt, e => e.stopPropagation(), { passive: false });
+});
 window.addEventListener('resize', resetView);
 
 // Listen for continent focus from parent
