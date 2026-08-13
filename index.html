@@ -302,7 +302,22 @@
     min-height:100dvh;display:flex;align-items:center;justify-content:center;padding:24px;
     background:radial-gradient(circle at 20% -10%, rgba(91,168,255,0.10), transparent 40%), var(--bg);
   }
-  .auth-card{width:100%;max-width:380px;}
+  .auth-card{
+    width:100%;max-width:360px;
+    position:relative;
+  }
+  /* Auth screen atmosphere — the System awakens */
+  #auth-screen{
+    background:
+      radial-gradient(ellipse 600px 400px at 50% 20%, rgba(91,168,255,0.06) 0%, transparent 70%),
+      radial-gradient(ellipse 400px 600px at 30% 80%, rgba(139,92,255,0.04) 0%, transparent 70%),
+      var(--void);
+    animation:authAtmosphere 8s ease-in-out infinite;
+  }
+  @keyframes authAtmosphere{
+    0%,100%{background-position:0 0;}
+    50%{filter:brightness(1.05);}
+  }
   .eyebrow{font-family:var(--font-mono);font-size:11px;letter-spacing:0.25em;color:var(--brass);text-align:center;margin:0 0 10px;text-transform:uppercase;}
   .wordmark{font-family:var(--font-display);font-size:26px;font-weight:800;letter-spacing:0.04em;color:var(--text);margin:0 0 4px;text-transform:uppercase;text-align:center;text-shadow:0 0 18px rgba(91,168,255,0.5);}
   .wordmark span{color:var(--brass);}
@@ -359,7 +374,7 @@
     position:sticky;top:0;z-index:5;display:flex;align-items:center;
     justify-content:space-between;
     padding:max(12px, env(safe-area-inset-top)) 20px 12px;
-    border-bottom:1px solid rgba(91,168,255,0.1);
+    border-bottom:none;
     background:linear-gradient(180deg,rgba(5,7,13,0.97) 0%,rgba(5,7,13,0.88) 100%);
     backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
     flex-shrink:0;
@@ -433,8 +448,8 @@
     from{opacity:0;transform:translateY(8px);}
     to{opacity:1;transform:translateY(0);}
   }
-  section.view.active{display:block;animation:fade .25s ease;}
-  @keyframes fade{from{opacity:0;transform:translateY(4px);}to{opacity:1;transform:translateY(0);}}
+  section.view.active{display:block;animation:viewEnter 0.3s var(--ease-cinema) both;}
+  /* fade removed — unified to viewEnter */
   .view h2{font-size:22px;margin:0 0 4px;}
   .view .sub{color:var(--text-dim);font-size:14px;margin:0 0 20px;}
 
@@ -597,10 +612,12 @@
   .set-row{
     display:grid;grid-template-columns:22px 1fr 1fr 26px;gap:8px;align-items:start;
     padding:8px 10px;border-radius:6px;
-    background:rgba(91,168,255,0.02);
-    border:1px solid rgba(91,168,255,0.06);
-    margin-bottom:6px;
-    transition:background .2s, border-color .2s, box-shadow .3s;
+    background:transparent;
+    border:none;
+    border-bottom:1px solid rgba(91,168,255,0.06);
+    border-radius:0;
+    margin-bottom:0;
+    transition:background .2s, box-shadow .3s;
     position:relative;overflow:hidden;
   }
   .set-row::before{
@@ -729,7 +746,7 @@
   .rir-label{font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.05em;font-weight:600;}
   .set-row .set-idx{color:var(--text-faint);font-size:12px;font-family:var(--font-mono);text-align:center;padding-top:10px;}
   .set-row .remove-x.set-remove{padding-top:6px;}
-  .stepper{display:flex;align-items:center;background:var(--card-2);border:1px solid var(--border);border-radius:8px;overflow:hidden;}
+  .stepper{display:flex;align-items:center;background:rgba(255,255,255,0.02);border:1px solid rgba(91,168,255,0.1);border-radius:8px;overflow:hidden;}
   .stepper button{background:none;border:none;color:var(--brass);font-size:20px;min-width:42px;height:44px;cursor:pointer;flex-shrink:0;touch-action:manipulation;}
   .stepper button:active{background:var(--brass-dim);}
   .stepper input{width:100%;min-width:0;text-align:center;background:transparent;border:none;color:var(--text);-webkit-text-fill-color:var(--text);font-size:16px;padding:0 2px;font-family:var(--font-mono);height:44px;cursor:pointer;caret-color:transparent;-webkit-appearance:none;appearance:none;}
@@ -830,13 +847,24 @@
     text-shadow:0 0 12px rgba(91,168,255,0.5);
   }
 
+  /* ── QUEST CARD — mission screen, not a card ── */
   .quest-card{
-    position:relative;background:
-      radial-gradient(ellipse 300px 200px at 15% -10%, rgba(91,168,255,0.18), transparent 60%),
-      linear-gradient(180deg, rgba(91,168,255,0.08), transparent 40%), var(--card);
-    border:1px solid var(--brass);border-radius:2px;padding:22px 20px;margin-bottom:16px;
-    box-shadow:0 0 0 1px rgba(91,168,255,0.2), 0 0 40px -8px rgba(91,168,255,0.55), inset 0 0 60px -20px rgba(91,168,255,0.15);
+    position:relative;
+    /* Environmental scene — dungeon-gate aesthetic */
+    background:
+      radial-gradient(ellipse 280px 160px at 20% -5%, rgba(91,168,255,0.14) 0%, transparent 60%),
+      radial-gradient(ellipse 200px 200px at 85% 95%, rgba(91,168,255,0.06) 0%, transparent 70%),
+      linear-gradient(180deg, rgba(14,18,28,0.99) 0%, rgba(5,6,10,0.99) 100%);
+    /* No full border — top edge is the boundary */
+    border:none;
+    border-top:1px solid rgba(91,168,255,0.2);
+    border-radius:var(--radius-md);
+    padding:20px 18px;
+    margin-bottom:0;
     overflow:hidden;
+    box-shadow:
+      inset 0 1px 0 rgba(91,168,255,0.12),
+      0 4px 32px rgba(0,0,0,0.5);
   }
 
   /* ── Floating motes ── */
@@ -887,34 +915,45 @@
     100% { background-position:-200% 0; }
   }
 
-  /* ensure content stays above effects */
   .quest-card > *:not(.quest-mote):not(.quest-lightning-canvas):not(.quest-scanline):not(.quest-shimmer) {
     position:relative;z-index:1;
   }
-  .quest-card::before,.quest-card::after{content:"";position:absolute;width:14px;height:14px;border-color:var(--brass);pointer-events:none;}
-  .quest-card::before{top:-1px;left:-1px;border-top:2px solid;border-left:2px solid;}
-  .quest-card::after{bottom:-1px;right:-1px;border-bottom:2px solid;border-right:2px solid;}
-  .quest-card.quest-complete{border-color:var(--violet);box-shadow:0 0 0 1px rgba(139,92,255,0.2), 0 0 40px -8px rgba(139,92,255,0.6), inset 0 0 60px -20px rgba(139,92,255,0.1);}
-  .quest-card.quest-complete::before,.quest-card.quest-complete::after{border-color:var(--violet);}
+  /* L-bracket corners — HUD language, not full border */
+  .quest-card::before,.quest-card::after{content:"";position:absolute;width:10px;height:10px;border-color:rgba(91,168,255,0.3);pointer-events:none;}
+  .quest-card::before{top:-1px;left:-1px;border-top:1px solid;border-left:1px solid;}
+  .quest-card::after{bottom:-1px;right:-1px;border-bottom:1px solid;border-right:1px solid;}
+  .quest-card.quest-complete{
+    border-top-color:rgba(139,92,255,0.3);
+    background:
+      radial-gradient(ellipse 280px 160px at 20% -5%, rgba(139,92,255,0.12) 0%, transparent 60%),
+      radial-gradient(ellipse 200px 200px at 85% 95%, rgba(139,92,255,0.06) 0%, transparent 70%),
+      linear-gradient(180deg, rgba(14,18,28,0.99) 0%, rgba(5,6,10,0.99) 100%);
+    box-shadow:inset 0 1px 0 rgba(139,92,255,0.15), 0 4px 32px rgba(0,0,0,0.5);
+  }
+  .quest-card.quest-complete::before,.quest-card.quest-complete::after{border-color:rgba(139,92,255,0.3);}
   .quest-eyebrow{
-    font-family:var(--font-mono);font-size:11px;letter-spacing:0.3em;color:var(--brass);
-    text-align:center;margin-bottom:14px;
-    animation:questEyebrowPulse 3s ease-in-out infinite;
+    font-family:var(--font-mono);font-size:9px;letter-spacing:0.35em;color:rgba(91,168,255,0.5);
+    text-align:left;margin-bottom:6px;text-transform:uppercase;
   }
-  @keyframes questEyebrowPulse{0%,100%{opacity:1;}50%{opacity:0.55;}}
-  .quest-card.quest-complete .quest-eyebrow{color:var(--violet);animation:none;}
-  .quest-flavor{text-align:center;font-size:13px;color:var(--text-faint);margin:0 0 16px;line-height:1.6;font-family:var(--font-mono);letter-spacing:0.02em;}
-  .quest-flavor b{color:var(--brass);font-family:var(--font-display);font-size:14px;letter-spacing:0.04em;}
+  .quest-card.quest-complete .quest-eyebrow{color:rgba(139,92,255,0.5);animation:none;}
+  /* Day name as large typographic hero — asymmetric, left-aligned */
+  .quest-flavor{
+    text-align:left;font-size:22px;font-weight:800;color:var(--text);
+    margin:0 0 16px;line-height:1.2;font-family:var(--font-display);
+    letter-spacing:0.04em;text-transform:uppercase;
+  }
+  .quest-flavor b{color:var(--brass);display:block;}
+  .quest-flavor .quest-flavor-sub{
+    font-family:var(--font-mono);font-size:10px;letter-spacing:0.12em;
+    color:var(--text-faint);font-weight:400;text-transform:uppercase;
+    display:block;margin-bottom:6px;
+  }
   .quest-goal-label{
-    text-align:center;font-family:var(--font-display);font-size:11px;letter-spacing:0.25em;
-    color:var(--text-faint);margin-bottom:10px;position:relative;padding:0 8px;
+    text-align:left;font-family:var(--font-mono);font-size:8px;letter-spacing:0.25em;
+    color:var(--text-faint);margin-bottom:8px;text-transform:uppercase;padding:0;
   }
-  .quest-goal-label::before,.quest-goal-label::after{
-    content:"";position:absolute;top:50%;height:1px;width:30%;
-    background:linear-gradient(90deg,transparent,rgba(91,168,255,0.3));
-  }
-  .quest-goal-label::before{left:0;background:linear-gradient(90deg,transparent,rgba(91,168,255,0.3));}
-  .quest-goal-label::after{right:0;background:linear-gradient(270deg,transparent,rgba(91,168,255,0.3));}
+  .quest-goal-label::before,.quest-goal-label::after{display:none;}
+
   .quest-checklist{margin-bottom:14px;}
   .quest-check-row{
     display:grid;grid-template-columns:28px 1fr auto auto;
@@ -978,51 +1017,48 @@
     box-shadow:0 0 6px var(--violet);
   }
   .quest-warning{
-    display:flex;align-items:center;justify-content:center;gap:6px;
-    font-family:var(--font-mono);font-size:10px;letter-spacing:0.06em;
-    color:var(--excess);margin:0 0 16px;padding:8px 12px;
-    background:rgba(255,77,103,0.06);border-radius:4px;
-    border:1px solid rgba(255,77,103,0.2);
+    display:flex;align-items:center;gap:6px;
+    font-family:var(--font-mono);font-size:10px;letter-spacing:0.08em;
+    color:var(--excess);margin:0 0 16px;padding:6px 0;
+    /* No box — just floating data */
+    background:none;border:none;border-radius:0;
   }
   .quest-card.quest-complete .quest-warning{
-    color:var(--growing);background:rgba(62,207,142,0.06);
-    border-color:rgba(62,207,142,0.2);
+    color:var(--growing);
   }
+  /* Begin Hunt — the dominant action */
   .quest-complete-btn{
-    display:block;width:100%;padding:16px;border-radius:6px;font-weight:800;font-size:15px;
-    letter-spacing:0.1em;text-transform:uppercase;font-family:var(--font-display);
+    display:block;width:100%;padding:16px;border-radius:var(--radius-sm);
+    font-weight:800;font-size:14px;
+    letter-spacing:0.12em;text-transform:uppercase;font-family:var(--font-display);
     position:relative;overflow:hidden;
-    background:linear-gradient(135deg, rgba(91,168,255,0.15) 0%, rgba(139,92,255,0.15) 100%);
-    border:1px solid rgba(91,168,255,0.4);color:var(--text);cursor:pointer;
-    box-shadow:0 0 20px rgba(91,168,255,0.15), inset 0 1px 0 rgba(91,168,255,0.2);
-    transition:all .15s ease;
+    background:rgba(91,168,255,0.06);
+    border:1px solid rgba(91,168,255,0.2);
+    color:var(--brass);cursor:pointer;
+    box-shadow:inset 0 1px 0 rgba(91,168,255,0.1);
+    transition:transform var(--dur-snap) var(--ease-impact), box-shadow var(--dur-fast);
   }
   .quest-complete-btn::before{
     content:'';position:absolute;top:0;left:-100%;width:60%;height:100%;
-    background:linear-gradient(90deg,transparent,rgba(255,255,255,0.06),transparent);
-    animation:btnShimmer 3s ease-in-out infinite;
+    background:linear-gradient(90deg,transparent,rgba(255,255,255,0.04),transparent);
+    animation:btnShimmer 4s ease-in-out infinite;
   }
   @keyframes btnShimmer{0%{left:-100%}50%{left:150%}100%{left:150%}}
   .quest-complete-btn:hover{
-    border-color:rgba(91,168,255,0.8);
-    box-shadow:0 0 30px rgba(91,168,255,0.3), 0 0 60px rgba(91,168,255,0.1), inset 0 1px 0 rgba(91,168,255,0.3);
-    transform:translateY(-1px);
+    border-color:rgba(91,168,255,0.4);
+    box-shadow:inset 0 1px 0 rgba(91,168,255,0.15), 0 0 20px rgba(91,168,255,0.08);
   }
-  .quest-complete-btn:active{transform:scale(0.98) translateY(0);box-shadow:0 0 10px rgba(91,168,255,0.2);}
+  .quest-complete-btn:active{transform:scale(0.98);}
   .quest-complete-btn.all-complete{
-    background:linear-gradient(135deg, rgba(139,92,255,0.2) 0%, rgba(255,214,107,0.1) 100%);
-    border-color:#FFD66B;color:#FFD66B;
-    box-shadow:0 0 30px rgba(255,214,107,0.2), 0 0 60px rgba(255,214,107,0.08), inset 0 1px 0 rgba(255,214,107,0.2);
-    animation:completePulse 2s ease-in-out infinite;
-  }
-  @keyframes completePulse{
-    0%,100%{box-shadow:0 0 30px rgba(255,214,107,0.2), 0 0 60px rgba(255,214,107,0.08);}
-    50%{box-shadow:0 0 50px rgba(255,214,107,0.35), 0 0 100px rgba(255,214,107,0.12);}
+    background:rgba(255,214,107,0.06);
+    border-color:rgba(255,214,107,0.3);color:var(--legendary);
+    box-shadow:inset 0 1px 0 rgba(255,214,107,0.1), 0 0 24px rgba(255,214,107,0.08);
+    animation:questBtnPulse 3s ease-in-out infinite;
   }
   .quest-card.quest-complete .quest-complete-btn{
-    background:linear-gradient(135deg,rgba(139,92,255,0.2),rgba(91,168,255,0.1));
-    border-color:var(--growing);color:var(--growing);
-    box-shadow:0 0 16px rgba(139,92,255,0.3);cursor:default;animation:none;
+    background:rgba(139,92,255,0.05);
+    border-color:rgba(111,255,176,0.2);color:var(--growing);
+    box-shadow:none;cursor:default;animation:none;
   }
 
   .rest-card{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:24px 20px;margin-bottom:16px;text-align:center;}
@@ -1065,7 +1101,7 @@
   .carousel-arrow:active{background:var(--brass-dim);transform:scale(0.92);box-shadow:0 0 22px rgba(91,168,255,0.65);}
 
   .weekday-chips{display:flex;gap:6px;flex-wrap:wrap;}
-  .weekday-chip{padding:8px 12px;border-radius:20px;background:var(--card-2);border:1px solid var(--border);color:var(--text-dim);font-size:12.5px;cursor:pointer;transition:transform .1s, border-color .15s, background .15s, color .15s;}
+  .weekday-chip{padding:8px 12px;border-radius:20px;background:rgba(255,255,255,0.02);border:1px solid rgba(91,168,255,0.1);color:var(--text-dim);font-size:12.5px;cursor:pointer;transition:transform .1s, border-color .15s, background .15s, color .15s;}
   .weekday-chip:hover{border-color:rgba(91,168,255,0.4);color:var(--text);}
   .weekday-chip:active{transform:scale(0.94);}
   .weekday-chip.on{background:var(--brass-dim);border-color:var(--brass);color:var(--brass);font-weight:700;}
@@ -1079,7 +1115,7 @@
   .day-editor-head{display:flex;gap:8px;margin-bottom:8px;}
   .day-editor-head input{flex:1;}
   .ex-chip-row{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0;}
-  .ex-chip{background:var(--card-2);border:1px solid var(--border);border-radius:20px;padding:5px 10px 5px 12px;font-size:12.5px;display:flex;align-items:center;gap:6px;}
+  .ex-chip{background:rgba(255,255,255,0.02);border:1px solid rgba(91,168,255,0.1);border-radius:20px;padding:5px 10px 5px 12px;font-size:12.5px;display:flex;align-items:center;gap:6px;}
   .ex-chip button{background:none;border:none;color:var(--text-faint);cursor:pointer;font-size:14px;}
 
   /* ---------- Rank ---------- */
@@ -1528,7 +1564,7 @@
   .today-row.me{border-color:rgba(91,168,255,0.3);}
 
   /* Streak pill states */
-  .streak-pill{font-family:var(--font-mono);font-size:11px;padding:3px 8px;border-radius:10px;background:var(--card-2);border:1px solid var(--border);color:var(--text-dim);white-space:nowrap;}
+  .streak-pill{font-family:var(--font-mono);font-size:11px;padding:3px 8px;border-radius:10px;background:rgba(255,255,255,0.02);border:1px solid rgba(91,168,255,0.1);color:var(--text-dim);white-space:nowrap;}
   .streak-pill.at-risk{background:rgba(255,77,103,0.1);border-color:var(--excess);color:var(--excess);animation:timerPulse 1.5s ease-in-out infinite;}
   .streak-pill.safe{background:rgba(139,92,255,0.1);border-color:var(--growing);color:var(--growing);}
   .streak-pill.rest{background:rgba(91,168,255,0.06);border-color:rgba(91,168,255,0.2);color:rgba(91,168,255,0.5);}
@@ -1657,7 +1693,7 @@
 
   /* ========== Strength Rankings ========== */
   .strength-rank-list{display:flex;flex-direction:column;gap:8px;}
-  .strength-rank-row{display:flex;align-items:center;gap:12px;padding:10px 12px;background:var(--card-2);border:1px solid var(--border);border-radius:8px;cursor:pointer;transition:border-color .2s;}
+  .strength-rank-row{display:flex;align-items:center;gap:12px;padding:10px 12px;background:rgba(255,255,255,0.02);border:1px solid rgba(91,168,255,0.1);border-radius:8px;cursor:pointer;transition:border-color .2s;}
   .strength-rank-row:hover{border-color:var(--brass);}
   .strength-rank-row.me{border-color:rgba(91,168,255,0.4);}
   .strength-rank-pos{font-family:var(--font-mono);font-size:13px;color:var(--text-faint);width:18px;text-align:center;flex-shrink:0;}
@@ -1673,7 +1709,7 @@
   /* ── Schedule mode selector ── */
   .sched-mode-wrap{display:flex;flex-direction:column;gap:8px;margin-top:6px;}
   .sched-mode-btn{
-    background:var(--card-2);border:1px solid var(--border);border-radius:8px;
+    background:rgba(255,255,255,0.02);border:1px solid rgba(91,168,255,0.1);border-radius:8px;
     padding:10px 14px;text-align:left;cursor:pointer;color:var(--text-dim);
     font-size:13px;display:flex;flex-direction:column;gap:2px;touch-action:manipulation;
   }
@@ -1803,14 +1839,14 @@
     from { transform: scaleX(0); opacity:0; }
     to   { transform: scaleX(1); opacity:1; }
   }
-  .debrief-window{background:linear-gradient(160deg,rgba(14,17,32,1),rgba(22,26,48,1));border:1px solid var(--brass);border-radius:6px;padding:28px 24px;width:100%;max-width:420px;box-shadow:0 0 60px -10px rgba(91,168,255,0.4);position:relative;}
+  .debrief-window{background:linear-gradient(160deg,rgba(10,13,19,0.99),rgba(5,6,10,0.99));border:none;border-radius:var(--radius-md);padding:28px 24px;width:100%;max-width:420px;box-shadow:inset 0 1px 0 rgba(91,168,255,0.12),0 0 0 1px rgba(91,168,255,0.06),0 24px 80px rgba(0,0,0,0.8);position:relative;}
   .debrief-window::before,.debrief-window::after{content:"";position:absolute;width:16px;height:16px;border-color:var(--brass);pointer-events:none;}
   .debrief-window::before{top:-1px;left:-1px;border-top:2px solid;border-left:2px solid;}
   .debrief-window::after{bottom:-1px;right:-1px;border-bottom:2px solid;border-right:2px solid;}
   .debrief-eyebrow{font-family:var(--font-mono);font-size:10px;letter-spacing:.4em;color:var(--brass);text-transform:uppercase;margin-bottom:4px;}
   .debrief-title{font-family:var(--font-display);font-size:22px;margin:0 0 20px;letter-spacing:.04em;}
   .debrief-stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px;}
-  .debrief-stat{background:var(--card-2);border:1px solid var(--border);border-radius:8px;padding:12px;text-align:center;}
+  .debrief-stat{background:rgba(255,255,255,0.02);border:1px solid rgba(91,168,255,0.1);border-radius:8px;padding:12px;text-align:center;}
   .debrief-stat-value{font-family:var(--font-mono);font-size:22px;color:var(--brass);line-height:1;}
   .debrief-stat-label{font-size:10px;color:var(--text-faint);text-transform:uppercase;letter-spacing:.06em;margin-top:4px;}
   .debrief-prs{margin-bottom:20px;}
@@ -1828,21 +1864,21 @@
   /* ========== Today Card on Rank tab ========== */
   .today-debrief-card{background:linear-gradient(135deg,rgba(91,168,255,0.08),transparent 60%),var(--card);border:1px solid rgba(91,168,255,0.3);border-radius:8px;padding:16px;margin-bottom:12px;}
   .today-debrief-row{display:flex;gap:8px;margin-bottom:8px;}
-  .today-stat-pill{flex:1;background:var(--card-2);border:1px solid var(--border);border-radius:8px;padding:10px 8px;text-align:center;}
+  .today-stat-pill{flex:1;background:rgba(255,255,255,0.02);border:1px solid rgba(91,168,255,0.1);border-radius:8px;padding:10px 8px;text-align:center;}
   .today-stat-val{font-family:var(--font-mono);font-size:18px;color:var(--brass);}
   .today-stat-lbl{font-size:10px;color:var(--text-faint);text-transform:uppercase;letter-spacing:.05em;margin-top:2px;}
   .today-no-workout{font-size:13px;color:var(--text-dim);text-align:center;padding:12px 0;}
 
   /* ========== Party Intel & Superlatives ========== */
   .superlatives-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
-  .superlative-card{background:var(--card-2);border:1px solid var(--border);border-radius:8px;padding:12px;}
+  .superlative-card{background:rgba(255,255,255,0.02);border:1px solid rgba(91,168,255,0.1);border-radius:8px;padding:12px;}
   .superlative-icon{font-size:20px;margin-bottom:4px;}
   .superlative-label{font-size:10px;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px;}
   .superlative-name{font-size:14px;font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
   .superlative-detail{font-size:11px;color:var(--text-dim);margin-top:2px;}
 
   .party-dash-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
-  .party-tile{background:var(--card-2);border:1px solid var(--border);border-radius:8px;padding:12px;text-align:center;}
+  .party-tile{background:rgba(255,255,255,0.02);border:1px solid rgba(91,168,255,0.1);border-radius:8px;padding:12px;text-align:center;}
   .party-tile-label{font-size:10px;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:6px;}
   .party-tile-value{font-family:var(--font-mono);font-size:20px;color:var(--brass);}
   .party-tile-name{font-size:11px;color:var(--text-dim);margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
@@ -1882,7 +1918,7 @@
 
   /* ========== PARTY DASHBOARD ========== */
   .party-dash-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
-  .party-stat-tile{background:var(--card-2);border:1px solid var(--border);border-radius:8px;padding:12px;text-align:center;}
+  .party-stat-tile{background:rgba(255,255,255,0.02);border:1px solid rgba(91,168,255,0.1);border-radius:8px;padding:12px;text-align:center;}
   .party-stat-value{font-family:var(--font-display);font-size:22px;color:var(--brass);margin:0;}
   .party-stat-label{font-size:11px;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.05em;margin:4px 0 0;}
   .weakest-link{border-color:var(--excess);opacity:0.8;}
@@ -2084,12 +2120,12 @@
   .weight-input-row input{flex:1;}
 
   /* ---------- Exercises library ---------- */
-  .lib-search{width:100%;padding:12px 14px;background:var(--card-2);border:1px solid var(--border);border-radius:20px;color:var(--text);margin-bottom:12px;font-size:15px;}
+  .lib-search{width:100%;padding:12px 14px;background:rgba(255,255,255,0.02);border:1px solid rgba(91,168,255,0.1);border-radius:20px;color:var(--text);margin-bottom:12px;font-size:15px;}
   .lib-filters{display:flex;gap:8px;margin-bottom:14px;overflow-x:auto;padding-bottom:4px;}
-  .lib-filters select{background:var(--card-2);border:1px solid var(--border);color:var(--brass);padding:9px 12px;border-radius:20px;font-size:12.5px;white-space:nowrap;}
+  .lib-filters select{background:rgba(255,255,255,0.02);border:1px solid rgba(91,168,255,0.1);color:var(--brass);padding:9px 12px;border-radius:20px;font-size:12.5px;white-space:nowrap;}
   .lib-stat-chip{
     padding:6px 12px;border-radius:20px;
-    background:var(--card-2);border:1px solid var(--border);
+    background:rgba(255,255,255,0.02);border:1px solid rgba(91,168,255,0.1);
     color:var(--text-faint);font-size:12px;cursor:pointer;white-space:nowrap;
     transition:all .15s;font-family:var(--font-body);
   }
@@ -2154,7 +2190,7 @@
   }
   .modal h3{margin:0 0 16px;font-size:17px;}
   .muscle-checks{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;}
-  .muscle-check{display:flex;align-items:center;gap:6px;background:var(--card-2);border:1px solid var(--border);border-radius:20px;padding:6px 12px;font-size:12.5px;cursor:pointer;}
+  .muscle-check{display:flex;align-items:center;gap:6px;background:rgba(255,255,255,0.02);border:1px solid rgba(91,168,255,0.1);border-radius:20px;padding:6px 12px;font-size:12.5px;cursor:pointer;}
   .muscle-check.on{border-color:var(--brass);color:var(--brass);}
 
   /* ---------- Workout logging modal ---------- */
@@ -2203,15 +2239,22 @@
   .rest-timer-stop{background:none;border:none;color:var(--excess);font-size:11.5px;cursor:pointer;text-decoration:underline;}
 
   /* ── ACTIVE OBJECTIVES STRIP ── */
-  #objectives-strip{display:flex;flex-direction:column;gap:8px;margin-bottom:16px;}
-  .obj-card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:11px 14px;display:flex;align-items:center;gap:12px;cursor:default;}
-  .obj-icon{font-size:18px;flex-shrink:0;}
+  #objectives-strip{display:flex;flex-direction:column;gap:6px;margin-bottom:12px;}
+  /* Objectives as floating data rows — not cards */
+  .obj-card{
+    display:flex;align-items:center;gap:10px;
+    padding:8px 0;
+    border-bottom:1px solid rgba(91,168,255,0.06);
+    background:none;border-radius:0;border-top:none;border-left:none;border-right:none;
+  }
+  .obj-card:first-child{border-top:1px solid rgba(91,168,255,0.06);}
+  .obj-icon{font-size:14px;flex-shrink:0;opacity:0.7;}
   .obj-body{flex:1;min-width:0;}
-  .obj-title{font-size:10px;font-family:var(--font-mono);color:var(--text-dim);letter-spacing:.06em;margin-bottom:4px;}
-  .obj-bar-wrap{height:4px;background:rgba(255,255,255,.06);border-radius:2px;overflow:hidden;margin-bottom:4px;}
-  .obj-bar-fill{height:100%;border-radius:2px;transition:width .6s;}
+  .obj-title{font-size:9px;font-family:var(--font-mono);color:var(--text-faint);letter-spacing:.1em;margin-bottom:3px;text-transform:uppercase;}
+  .obj-bar-wrap{height:2px;background:rgba(255,255,255,.05);border-radius:1px;overflow:hidden;margin-bottom:3px;}
+  .obj-bar-fill{height:100%;border-radius:1px;transition:width .6s;}
   .obj-sub{font-size:10px;color:var(--text-faint);}
-  .obj-value{font-family:var(--font-mono);font-size:13px;font-weight:800;flex-shrink:0;}
+  .obj-value{font-family:var(--font-mono);font-size:12px;font-weight:800;flex-shrink:0;}
 
   /* ── Previous session reference ── */
   .prev-session-ref{display:flex;align-items:center;gap:6px;padding:3px 0 3px 4px;border-left:2px solid rgba(91,168,255,.15);margin:2px 0 4px;flex-wrap:wrap;}
@@ -2285,7 +2328,7 @@
   .feat-icon{
     width:44px;height:44px;border-radius:8px;display:flex;align-items:center;
     justify-content:center;font-size:22px;flex-shrink:0;
-    background:var(--card-2);border:1px solid var(--border);
+    background:rgba(255,255,255,0.02);border:1px solid rgba(91,168,255,0.1);
   }
   .feat-card.unlocked .feat-icon{border-color:rgba(91,168,255,0.3);background:rgba(91,168,255,0.08);}
   .feat-card.legendary.unlocked .feat-icon{border-color:rgba(255,214,107,0.4);background:rgba(255,214,107,0.08);}
@@ -2363,20 +2406,20 @@
       <span class="mono">firebaseConfig</span> near the top of the script with your project's keys.
     </div>
     <div class="auth-card">
-      <p class="eyebrow">◈ The System ◈</p>
+      <p class="eyebrow" style="letter-spacing:.3em;opacity:.7;">◈ SYSTEM INITIALISING ◈</p>
       <p class="wordmark">AURAMAXXING<span>.</span></p>
-      <p class="tagline">Arise. Log your training. Rank up with your party.</p>
+      <p class="tagline" style="font-family:var(--font-mono);font-size:11px;color:rgba(91,168,255,.4);letter-spacing:.06em;margin-bottom:24px;">The System has detected a new Hunter.</p>
       <form id="auth-form">
         <div class="field hidden" id="name-field">
-          <label for="displayName">Hunter name</label>
+          <label for="displayName" style="font-family:var(--font-mono);font-size:10px;letter-spacing:.12em;color:var(--text-faint);">HUNTER DESIGNATION</label>
           <input id="displayName" type="text" placeholder="What your party calls you" autocomplete="name" maxlength="24" inputmode="text" />
         </div>
         <div class="field">
-          <label for="email">Email</label>
+          <label for="email" style="font-family:var(--font-mono);font-size:10px;letter-spacing:.12em;color:var(--text-faint);">IDENTIFICATION</label>
           <input id="email" type="email" placeholder="you@example.com" autocomplete="email" required />
         </div>
         <div class="field">
-          <label for="password">Password</label>
+          <label for="password" style="font-family:var(--font-mono);font-size:10px;letter-spacing:.12em;color:var(--text-faint);">ACCESS CODE</label>
           <input id="password" type="password" placeholder="••••••••" autocomplete="current-password" required />
         </div>
         <button type="submit" class="btn btn-primary" id="auth-submit">Enter the System</button>
@@ -2396,27 +2439,30 @@
     <p class="wordmark">AURA<span>MAXX</span></p>
     <div class="daily-timer" id="daily-timer"></div>
     <div class="user-chip">
-      <button class="icon-btn" id="settings-btn" title="Settings">⚙</button>
+      <button class="icon-btn" id="settings-btn" title="System Settings" style="color:rgba(91,168,255,.4);">⚙</button>
       <div class="avatar" id="user-avatar">–</div>
-      <button class="icon-btn" id="logout-btn">Log out</button>
+      <button class="icon-btn" id="logout-btn" title="Leave the System" style="font-family:var(--font-mono);font-size:9px;letter-spacing:.08em;color:rgba(91,168,255,.35);">◈ EXIT</button>
     </div>
   </header>
 
   <main class="view-area">
 
     <!-- ---- QUEST (log + program) ---- -->
-    <section class="view active" id="view-quest">
-      <h2>Daily Hunt</h2>
-      <p class="sub">Run your program or log a one-off session. Every set feeds your stats and your streak.</p>
+    <section class="view active" id="view-quest" style="padding:0;overflow:hidden;">
 
-      <!-- ── ACTIVE OBJECTIVES STRIP ── -->
-      <div id="objectives-strip"></div>
+      <!-- ── HUNT SCREEN — mission not a form ── -->
+      <!-- Objectives float at top — data not a card -->
+      <div id="objectives-strip" style="padding:var(--fluid-pad) var(--fluid-pad) 0;"></div>
 
-      <div id="program-card-wrap"></div>
-      <div id="program-editor-wrap"></div>
+      <!-- Quest feed fills the space — the card IS the screen -->
+      <div id="program-card-wrap" style="padding:0 var(--fluid-pad);"></div>
+      <div id="program-editor-wrap" style="padding:0 var(--fluid-pad);"></div>
 
-      <button class="btn btn-block" id="manual-log-btn" style="margin-top:4px;">+ Log manually</button>
-      <button class="btn btn-block" id="log-run-btn" style="margin-top:8px;background:var(--maintaining);color:#fff;">🏃 Log a run</button>
+      <!-- Secondary actions — minimal, below the mission -->
+      <div style="padding:8px var(--fluid-pad) var(--fluid-pad);display:flex;gap:8px;">
+        <button class="btn btn-sm" id="manual-log-btn" style="flex:1;font-family:var(--font-mono);font-size:11px;letter-spacing:.06em;background:transparent;border-color:rgba(91,168,255,0.12);color:var(--text-faint);">+ Log Session</button>
+        <button class="btn btn-sm" id="log-run-btn" style="flex:1;font-family:var(--font-mono);font-size:11px;letter-spacing:.06em;background:transparent;border-color:rgba(47,184,198,0.2);color:var(--maintaining);">🏃 Log Run</button>
+      </div>
     </section>
 
     <!-- Full-screen workout logging modal — opened by Begin Hunt or manual logging -->
@@ -2462,10 +2508,10 @@
             </div>
           </div>
           <div id="exercise-rows"></div>
-          <button class="btn add-exercise-btn" id="add-exercise-btn">+ Add exercise</button>
+          <button class="btn add-exercise-btn" id="add-exercise-btn" style="font-family:var(--font-mono);letter-spacing:.06em;">+ Add Exercise</button>
           <div class="save-bar">
-            <button class="btn btn-primary hidden" id="save-workout-btn" style="width:100%;padding:16px;font-size:15px;font-family:var(--font-mono);letter-spacing:0.08em;border-radius:12px;background:linear-gradient(135deg,rgba(91,168,255,0.25),rgba(91,168,255,0.12));border:2px solid rgba(91,168,255,0.6);box-shadow:0 0 24px rgba(91,168,255,0.3),inset 0 1px 0 rgba(255,255,255,0.1);color:#e0f0ff;font-weight:700;">⚔ Complete Quest</button>
-            <p class="save-msg hidden" id="save-msg">Hunt cleared — XP logged.</p>
+            <button class="btn btn-primary hidden" id="save-workout-btn">⚔ Complete Quest</button>
+            <p class="save-msg hidden" id="save-msg" style="font-family:var(--font-mono);font-size:11px;letter-spacing:.08em;">◈ HUNT CLEARED</p>
           </div>
         </div>
       </div>
@@ -2527,7 +2573,7 @@
           <label>Date</label>
           <input type="date" id="run-date" />
         </div>
-        <button class="btn btn-primary" id="save-run-btn" style="width:100%;">Save Run</button>
+        <button class="btn btn-primary" id="save-run-btn" style="width:100%;font-family:var(--font-mono);letter-spacing:.08em;">◈ LOG RUN</button>
       </div>
     </div>
 
@@ -2563,27 +2609,7 @@
     <!-- ---- RANK ---- -->
     <section class="view" id="view-board">
 
-      <!-- Hunter Threat Board -->
-      <div class="sl-section-head">Hunter Threat Board</div>
-      <div id="board-body"></div>
-
-      <!-- Party Status — Today -->
-      <div class="sl-section-head">Party Status — Today</div>
-      <div class="today-list" id="today-list"></div>
-
-      <!-- Today's session card -->
-      <div id="today-debrief-card-slot"></div>
-
-      <!-- WEEKLY RAID BOSS -->
-      <div id="raid-boss-slot"></div>
-
-      <!-- GUILD FEED -->
-      <div id="guild-feed-slot"></div>
-
-      <!-- PROGRESSION ROADMAP -->
-      <div id="progression-roadmap-slot"></div>
-
-      <!-- CHARACTER SCREEN -->
+      <!-- CHARACTER SCREEN — hero first -->
       <div class="char-screen" id="char-card">
         <div class="char-screen-bg" id="char-screen-bg"></div>
         <div class="char-screen-inner">
@@ -2593,9 +2619,9 @@
 
             <!-- Floating identity — left, above anatomy -->
             <div class="char-stage-identity">
-              <div class="char-eyebrow">HUNTER PROFILE</div>
+              <div class="char-eyebrow">◈ SYSTEM ASSESSMENT</div>
               <div class="char-name" id="char-name">—</div>
-              <div class="char-title" id="char-title">Unranked Hunter</div>
+              <div class="char-title" id="char-title">Awaiting classification</div>
             </div>
 
             <!-- Rank + Power — right, floating -->
@@ -2661,10 +2687,35 @@
           <p class="char-rank-hint" id="char-rank-hint"></p>
           <button onclick="generateHunterCard()" style="width:100%;margin-top:14px;padding:11px;background:rgba(91,168,255,.04);border:1px solid rgba(91,168,255,.1);border-radius:var(--radius-md);color:rgba(91,168,255,.5);font-family:var(--font-mono);font-size:11px;letter-spacing:.1em;cursor:pointer;touch-action:manipulation;">◈ GENERATE HUNTER CARD</button>
           <div id="hunter-card-output" style="display:none;margin-top:12px;"></div>
+          <!-- Secondary navigation — accessible from Rank screen -->
+          <div style="display:flex;gap:6px;margin-top:16px;padding-top:12px;border-top:1px solid rgba(91,168,255,0.06);">
+            <button onclick="switchView('exercises')" style="flex:1;padding:8px 4px;background:transparent;border:1px solid rgba(91,168,255,0.1);border-radius:var(--radius-sm);color:rgba(91,168,255,.4);font-family:var(--font-mono);font-size:10px;letter-spacing:.08em;cursor:pointer;">Arsenal</button>
+            <button onclick="switchView('history')" style="flex:1;padding:8px 4px;background:transparent;border:1px solid rgba(91,168,255,0.1);border-radius:var(--radius-sm);color:rgba(91,168,255,.4);font-family:var(--font-mono);font-size:10px;letter-spacing:.08em;cursor:pointer;">Shadow Log</button>
+            <button onclick="switchView('feats')" style="flex:1;padding:8px 4px;background:transparent;border:1px solid rgba(91,168,255,0.1);border-radius:var(--radius-sm);color:rgba(91,168,255,.4);font-family:var(--font-mono);font-size:10px;letter-spacing:.08em;cursor:pointer;">Gates</button>
+          </div>
         </div>
       </div>
 
 
+
+
+      <!-- ◈ THREAT ASSESSMENT -->
+      <div class="sl-section-head">◈ THREAT ASSESSMENT</div>
+      <div id="board-body"></div>
+
+      <!-- ◈ PARTY STATUS -->
+      <div class="sl-section-head">◈ PARTY STATUS</div>
+      <div class="today-list" id="today-list"></div>
+      <div id="today-debrief-card-slot"></div>
+
+      <!-- WEEKLY RAID BOSS -->
+      <div id="raid-boss-slot"></div>
+
+      <!-- GUILD FEED -->
+      <div id="guild-feed-slot"></div>
+
+      <!-- PROGRESSION ROADMAP -->
+      <div id="progression-roadmap-slot"></div>
 
       <!-- Hunter profile modal -->
       <div class="hunter-modal hidden" id="hunter-modal">
@@ -2675,8 +2726,7 @@
     <!-- ---- TRENDS ---- -->
     <section class="view" id="view-trends">
       <div id="trends-dashboard">
-        <h2>Codex</h2>
-        <p class="sub">Everything your training data can tell you.</p>
+        <div style="font-family:var(--font-mono);font-size:8px;color:rgba(91,168,255,.3);letter-spacing:.25em;margin-bottom:4px;">◈ SYSTEM CODEX</div><h2 style="margin:0 0 2px;font-size:22px;">Your Body</h2><p class="sub" style="margin-bottom:16px;">What the System has analysed.</p>
         <!-- PR Records -->
         <div id="pr-panel"></div>
         <!-- Strength Rankings -->
@@ -2720,8 +2770,8 @@
 
     <!-- ---- HISTORY ---- -->
     <section class="view" id="view-history">
-      <h2>Quest Log</h2>
-      <p class="sub">Every cleared quest across the party.</p>
+      
+      <div style="font-family:var(--font-mono);font-size:9px;color:rgba(91,168,255,.3);letter-spacing:.2em;padding:12px var(--fluid-pad) 4px;">◈ SYSTEM LOG</div>
 
       <!-- Tab toggle: Calendar / System Feed -->
       <div style="display:flex;gap:6px;margin-bottom:12px;">
@@ -2775,23 +2825,15 @@
       <button data-view="trends">
         <svg viewBox="0 0 24 24"><path d="M2 12h4l3-9 4 18 3-9h4"/></svg>Codex
       </button>
-      <button data-view="exercises">
-        <svg viewBox="0 0 24 24"><path d="M6 5h12M6 19h12M6 5v14M18 5v14M10 9l4 3-4 3"/></svg>Arsenal
-      </button>
-      <button data-view="history">
-        <svg viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7M3 4v5h5"/><path d="M12 8v4l3 2"/></svg>Shadow Log
-      </button>
-      <button data-view="feats">
-        <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18M3 9h6M3 15h6M15 9l2 2 4-4"/></svg>Gates
-      </button>
       <button data-view="inventory">
-        <svg viewBox="0 0 24 24"><path d="M9 3H5a2 2 0 0 0-2 2v4m6-6h10a2 2 0 0 1 2 2v4M9 3v18m0 0h10a2 2 0 0 0 2-2V9M9 21H5a2 2 0 0 0-2-2V9m0 0h18"/></svg>Inventory
+        <svg viewBox="0 0 24 24"><path d="M9 3H5a2 2 0 0 0-2 2v4m6-6h10a2 2 0 0 1 2 2v4M9 3v18m0 0h10a2 2 0 0 0 2-2V9M9 21H5a2 2 0 0 0-2-2V9m0 0h18"/></svg>Arsenal
       </button>
       <button data-view="world">
         <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>World
       </button>
     </div>
   </nav>
+  <!-- Secondary nav destinations still accessible via settings/board screen -->
 </div>
 
 <script type="module">
@@ -3401,6 +3443,18 @@ function friendlyAuthError(err) {
 }
 document.getElementById('logout-btn')?.addEventListener('click', () => signOut(auth));
 
+// ── Unlock audio on first interaction ──
+let _audioUnlocked = false;
+function _unlockAudio() {
+  if (_audioUnlocked) return;
+  _audioUnlocked = true;
+  SFX.unlock();
+  document.removeEventListener('touchstart', _unlockAudio);
+  document.removeEventListener('mousedown', _unlockAudio);
+}
+document.addEventListener('touchstart', _unlockAudio, { passive: true });
+document.addEventListener('mousedown', _unlockAudio, { passive: true });
+
 /* ---- Daily Quest Timer ---- */
 let dailyTimerInterval = null;
 // start immediately so the timer shows even before auth/data loads
@@ -3414,7 +3468,7 @@ function startDailyTimer() {
     const completedToday = myWorkouts && myWorkouts.some(w => w.date === today);
 
     if (completedToday) {
-      el.innerHTML = `<span class="daily-timer-label">Hunt</span><span class="daily-timer-time safe">✓ CLEARED</span>`;
+      el.innerHTML = `<span class="daily-timer-label">GATE</span><span class="daily-timer-time safe">✓ CLEARED</span>`;
       return;
     }
 
@@ -3434,7 +3488,8 @@ function startDailyTimer() {
     const pad = n => String(n).padStart(2, '0');
     const timeStr = `${pad(h)}:${pad(m)}:${pad(s)}`;
     const urgent = secsLeft < 3600;
-    el.innerHTML = `<span class="daily-timer-label">Hunt expires</span><span class="daily-timer-time ${urgent ? 'urgent' : ''}">${timeStr}</span>`;
+    const displayTime = `${pad(h)}:${pad(m)}`;
+    el.innerHTML = `<span class="daily-timer-label">${urgent ? '⚠ GATE' : 'GATE'}</span><span class="daily-timer-time ${urgent ? 'urgent' : ''}">${displayTime}</span>`;
   };
   render();
   dailyTimerInterval = setInterval(render, 1000);
@@ -3978,9 +4033,10 @@ function renderQuestFeed() {
 
   if (!myProgram || !myProgram.days || !myProgram.days.length) {
     wrap.innerHTML = `
-      <div class="card program-empty">
-        <p class="display" style="font-size:15px;color:var(--text-dim);">No active plan</p>
-        <p>Build one so the System knows what's next.</p>
+      <div style="padding:32px 20px;text-align:center;">
+        <div style="font-family:var(--font-mono);font-size:8px;color:rgba(91,168,255,.3);letter-spacing:.25em;margin-bottom:20px;">◈ SYSTEM</div>
+        <div style="font-family:var(--font-display);font-size:24px;font-weight:900;color:var(--text-dim);letter-spacing:.06em;margin-bottom:8px;">NO HUNT ASSIGNED</div>
+        <p style="font-size:13px;color:var(--text-faint);margin:0 0 28px;line-height:1.7;">The System is watching.<br>You have not yet defined your training.</p>
         <button class="btn btn-primary" id="build-program-btn" style="width:auto;padding:11px 20px;">+ Create plan</button>
       </div>`;
     document.getElementById('build-program-btn')?.addEventListener('click', () => { editingProgram = true; renderQuestFeed(); });
@@ -4181,24 +4237,27 @@ function buildQuestCardHTML(idx) {
     // PR potential
     const prPotential = day.exercises.filter(ex => myPRs[ex.name]?.e1rm);
 
+    // Which stats get trained (outcomes language, not formulas)
+    const trainedStats = Object.keys(statGains);
+    const STAT_LABELS = { strength:'Strength', endurance:'Endurance', agility:'Agility', focus:'Focus', defence:'Defence', flexibility:'Flexibility' };
+    const STAT_ICONS2 = { strength:'⚔', endurance:'🔥', agility:'⚡', focus:'🎯', defence:'🛡', flexibility:'💫' };
+    const statSummary = trainedStats.map(id => `${STAT_ICONS2[id]||''} ${STAT_LABELS[id]||id}`).join('  ·  ');
+
     return `
-      <div style="border-top:1px solid rgba(91,168,255,0.15);margin:14px 0 16px;padding-top:12px;">
-        <div style="font-family:var(--font-mono);font-size:9px;letter-spacing:0.25em;color:var(--text-faint);text-transform:uppercase;margin-bottom:10px;">◈ Quest Rewards Preview</div>
-        <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:10px;">
-          <span style="font-family:var(--font-display);font-size:24px;color:#FFD66B;">+XP</span>
-          <span style="font-size:11px;color:var(--text-dim);font-family:var(--font-mono);">Hunter XP</span>
-          <span style="font-size:10px;color:var(--text-faint);margin-left:4px;">feeds your level · AP from levelling up</span>
+      <div style="border-top:1px solid rgba(91,168,255,0.08);margin:14px 0 16px;padding-top:12px;">
+        <div style="font-family:var(--font-mono);font-size:8px;letter-spacing:.2em;color:rgba(91,168,255,.3);margin-bottom:10px;">◈ IF HUNT COMPLETED</div>
+
+        <!-- Outcome: XP gained -->
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+          <span style="font-family:var(--font-display);font-size:20px;color:var(--legendary);font-weight:900;">+XP</span>
+          <span style="font-size:11px;color:var(--text-dim);">Hunter progression</span>
         </div>
-        ${statRows ? `
-          <div style="font-size:10px;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px;font-family:var(--font-mono);">Training Cap XP</div>
-          <div style="display:flex;flex-direction:column;gap:4px;margin-bottom:${crossRows?'4px':'8px'};">${statRows}</div>
-        ` : ''}
-        ${crossRows ? `
-          <div style="font-size:9px;color:var(--text-faint);letter-spacing:0.06em;margin-bottom:4px;font-family:var(--font-mono);">Cross-trains</div>
-          <div style="display:flex;flex-direction:column;gap:3px;margin-bottom:8px;">${crossRows}</div>
-        ` : ''}
-        ${unmapped.length ? `<div style="font-size:10px;color:var(--text-faint);font-family:var(--font-mono);">+ volume XP: ${unmapped.slice(0,3).join(', ')}${unmapped.length>3?` +${unmapped.length-3} more`:''}</div>` : ''}
-        ${prPotential.length ? `<div style="margin-top:8px;padding:6px 10px;background:rgba(139,92,255,0.08);border:1px solid rgba(139,92,255,0.3);border-radius:6px;font-size:11px;color:var(--violet);font-family:var(--font-mono);">🏆 ${prPotential.length} PR${prPotential.length>1?'s':''} on the line → ${prPotential.slice(0,2).map(e=>e.name).join(', ')}${prPotential.length>2?`…`:''}</div>` : ''}
+
+        <!-- Outcome: which attributes respond -->
+        ${statSummary ? `<div style="font-size:11px;color:var(--text-dim);margin-bottom:8px;">${statSummary} will be stimulated</div>` : ''}
+
+        <!-- Outcome: PR possibility — dramatic, not analytical -->
+        ${prPotential.length ? `<div style="padding:8px 10px;background:rgba(139,92,255,0.06);border-left:2px solid rgba(139,92,255,0.4);font-size:11px;color:var(--violet);">🏆 Personal record possible</div>` : ''}
       </div>`;
   }
 
@@ -4210,16 +4269,19 @@ function buildQuestCardHTML(idx) {
   const progressPct = totalExercises > 0 ? (completedExercises / totalExercises * 100).toFixed(0) : 0;
 
   return `
-    <div class="quest-eyebrow">⚠ HUNT INFO</div>
-    <p class="quest-flavor">${flavor}</p>
-    <div class="quest-goal-label">GOAL</div>
+    <div class="quest-eyebrow">◈ DAILY HUNT</div>
+    <p class="quest-flavor">
+      <span class="quest-flavor-sub">${isActiveDay ? '⚠ ACTIVE — STREAK AT RISK' : myProgram.scheduleMode === 'fixed' && day.assignedDays?.length ? `SCHEDULED · ${day.assignedDays.join(', ')}` : `DAY ${idx+1} OF ${myProgram.days.length}`}</span>
+      ${escapeHtml(day.name)}
+    </p>
+    <div class="quest-goal-label">OBJECTIVES · ${completedExercises}/${totalExercises} CLEARED</div>
     <div class="quest-progress-bar-wrap" title="${completedExercises}/${totalExercises} exercises complete">
       <div class="quest-progress-bar" style="width:${progressPct}%"></div>
     </div>
     <div class="quest-checklist">${checklist}</div>
-    <p class="quest-warning">${warning}</p>
+    ${allComplete ? '<p class="quest-warning">✓ HUNT CLEARED — STREAK SECURED</p>' : isActiveDay ? '<p class="quest-warning">⚠ INCOMPLETE — LOG YOUR SETS</p>' : `<p class="quest-warning" style="color:var(--text-faint);">LAST LOGGED: ${fmtDaysAgo(day.lastDate).toUpperCase()}</p>`}
     ${buildRewardsPreview()}
-    <button class="quest-complete-btn quest-begin-btn">${allComplete ? '✓ Hunt Cleared' : (isActiveDay ? 'Begin Hunt' : 'Log this instead')}</button>`;
+    <button class="quest-complete-btn quest-begin-btn">${allComplete ? '✓ CLEARED' : (isActiveDay ? 'BEGIN HUNT' : 'LOG SESSION →')}</button>`;
 }
 
 function spawnQuestEffects(cardEl, isComplete) {
@@ -4910,7 +4972,7 @@ function renderProgramEditor(wrap) {
             <button class="remove-ex-btn" data-ei="${ei}" style="flex-shrink:0;">×</button>
           </div>`).join('')}
         </div>
-        <button type="button" class="btn btn-sm day-add-ex-btn">+ Add exercise</button>
+        <button type="button" class="btn btn-sm day-add-ex-btn" style="font-family:var(--font-mono);letter-spacing:.06em;">+ Add Exercise</button>
       </div>`).join('') || '<p style="color:var(--text-faint);font-size:13px;">No workout days yet — add one.</p>';
 
     // day weekday assignment (fixed mode)
@@ -5238,14 +5300,14 @@ function addExerciseRow(presetName, targetSets, targetReps, prefillSets) {
       ${isRunEx
         ? `<div style="display:flex;align-items:center;gap:3px;">
              <input type="number" class="set-reps" placeholder="00" min="0" max="999" inputmode="numeric"
-               style="width:48px;background:var(--card-2);border:1px solid var(--border);border-radius:8px 0 0 8px;color:var(--text);-webkit-text-fill-color:var(--text);padding:0 6px;font-size:15px;font-family:var(--font-mono);height:44px;text-align:center;-webkit-appearance:none;" />
+               style="width:48px;background:transparent;border:none;border-bottom:1.5px solid rgba(91,168,255,0.25);border-radius:0;color:var(--text);-webkit-text-fill-color:var(--text);padding:0 4px;font-size:16px;font-family:var(--font-mono);height:44px;text-align:center;-webkit-appearance:none;font-weight:700;" />
              <span style="font-size:12px;color:var(--text-faint);padding:0 1px;">:</span>
              <input type="number" class="set-secs" placeholder="00" min="0" max="59" inputmode="numeric"
-               style="width:44px;background:var(--card-2);border:1px solid var(--border);border-radius:0 8px 8px 0;color:var(--text);-webkit-text-fill-color:var(--text);padding:0 6px;font-size:15px;font-family:var(--font-mono);height:44px;text-align:center;-webkit-appearance:none;" />
+               style="width:44px;background:transparent;border:none;border-bottom:1.5px solid rgba(91,168,255,0.18);border-radius:0;color:var(--text);-webkit-text-fill-color:var(--text);padding:0 4px;font-size:16px;font-family:var(--font-mono);height:44px;text-align:center;-webkit-appearance:none;font-weight:700;" />
            </div>
            <div style="display:flex;align-items:center;gap:4px;">
              <input type="number" class="set-dist" step="0.01" min="0" placeholder="0.00" inputmode="decimal"
-               style="width:72px;background:var(--card-2);border:1px solid var(--border);border-radius:8px;color:var(--text);-webkit-text-fill-color:var(--text);padding:0 8px;font-size:15px;font-family:var(--font-mono);height:44px;text-align:center;-webkit-appearance:none;" />
+               style="width:72px;background:rgba(255,255,255,0.02);border:1px solid rgba(91,168,255,0.1);border-radius:8px;color:var(--text);-webkit-text-fill-color:var(--text);padding:0 8px;font-size:15px;font-family:var(--font-mono);height:44px;text-align:center;-webkit-appearance:none;" />
              <span style="font-size:10px;color:var(--text-faint);">km</span>
            </div>`
         : `${stepper('set-reps', prefillReps || '', 0, repsStep, repsLabel)}
@@ -5512,9 +5574,9 @@ document.getElementById('save-workout-btn')?.addEventListener('click', async () 
       });
     }, 600);
  } catch (err) {
-    alert('Could not save: ' + err.message);
+    showToast('The System encountered an error. Try again.', 'error');
   } finally {
-    btn.disabled = false; btn.textContent = 'Complete hunt';
+    btn.disabled = false; btn.textContent = '⚔ Complete Quest';
   }
 });
 
@@ -7354,7 +7416,7 @@ function openStatInvestPanel(statId) {
       </div>
       <div style="display:flex;gap:8px;align-items:center;">
         <input type="number" id="invest-amount" min="1" max="${canInvest}" value="1"
-          style="flex:1;background:var(--card-2);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:8px;font-size:14px;" />
+          style="flex:1;background:rgba(255,255,255,0.02);border:1px solid rgba(91,168,255,0.1);border-radius:6px;color:var(--text);padding:8px;font-size:14px;" />
         <span style="font-size:12px;color:var(--text-faint);">AP</span>
       </div>
     </div>
@@ -9334,10 +9396,10 @@ function openRawWorkoutPanel() {
       <button class="icon-btn" id="raw-close" style="font-size:20px;">✕</button>
     </div>
     <div style="display:flex;gap:8px;margin-bottom:10px;">
-      <select id="raw-user" style="flex:1;background:var(--card-2);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:8px;font-size:13px;">
+      <select id="raw-user" style="flex:1;background:rgba(255,255,255,0.02);border:1px solid rgba(91,168,255,0.1);border-radius:6px;color:var(--text);padding:8px;font-size:13px;">
         ${targets.map(t => `<option value="${t.uid}">${escapeHtml(t.name)}</option>`).join('')}
       </select>
-      <input type="date" id="raw-date" value="${todayStr()}" style="flex:1;background:var(--card-2);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:8px;font-size:13px;" />
+      <input type="date" id="raw-date" value="${todayStr()}" style="flex:1;background:rgba(255,255,255,0.02);border:1px solid rgba(91,168,255,0.1);border-radius:6px;color:var(--text);padding:8px;font-size:13px;" />
       <button class="btn btn-sm" id="raw-load" style="font-size:12px;">Load</button>
     </div>
     <div id="raw-content" style="color:var(--text-faint);font-size:13px;">Pick a hunter and date, then Load.</div>
@@ -9421,7 +9483,7 @@ function openRawWorkoutPanel() {
           <p style="color:var(--text-faint);margin-bottom:8px;">No workout found for that hunter/date. You can create one:</p>
           <div style="margin-bottom:14px;">
             <div style="font-size:11px;font-family:var(--font-mono);color:var(--text-faint);margin-bottom:4px;">New Doc ID: ${escapeHtml(newId)}</div>
-            <textarea class="raw-json-box" data-wid="${newId}" spellcheck="false" style="width:100%;min-height:220px;background:var(--card-2);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:10px;font-family:var(--font-mono);font-size:11px;line-height:1.5;">${escapeHtml(JSON.stringify({ uid, date, time: new Date().toTimeString().slice(0,5), exercises: [ { name: 'Exercise Name', sets: [ { reps: 10, weight: 0, rir: null } ] } ], programDayIndex: null }, null, 2))}</textarea>
+            <textarea class="raw-json-box" data-wid="${newId}" spellcheck="false" style="width:100%;min-height:220px;background:rgba(255,255,255,0.02);border:1px solid rgba(91,168,255,0.1);border-radius:6px;color:var(--text);padding:10px;font-family:var(--font-mono);font-size:11px;line-height:1.5;">${escapeHtml(JSON.stringify({ uid, date, time: new Date().toTimeString().slice(0,5), exercises: [ { name: 'Exercise Name', sets: [ { reps: 10, weight: 0, rir: null } ] } ], programDayIndex: null }, null, 2))}</textarea>
             <div style="display:flex;gap:6px;margin-top:6px;">
               <button class="btn btn-sm raw-autofill-btn" data-wid="${newId}" data-uid="${uid}" style="flex:1;font-size:11px;">🧮 Autofill BW% weight</button>
               <button class="btn btn-sm raw-save-btn" data-wid="${newId}" style="flex:1;font-size:12px;">💾 Create this workout</button>
@@ -9433,7 +9495,7 @@ function openRawWorkoutPanel() {
       content.innerHTML = docs.map(d => `
         <div style="margin-bottom:14px;">
           <div style="font-size:11px;font-family:var(--font-mono);color:var(--text-faint);margin-bottom:4px;">Doc ID: ${escapeHtml(d.id)}</div>
-          <textarea class="raw-json-box" data-wid="${d.id}" spellcheck="false" style="width:100%;min-height:220px;background:var(--card-2);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:10px;font-family:var(--font-mono);font-size:11px;line-height:1.5;">${escapeHtml(JSON.stringify({ uid: d.uid, date: d.date, time: d.time, exercises: d.exercises, programDayIndex: d.programDayIndex ?? null }, null, 2))}</textarea>
+          <textarea class="raw-json-box" data-wid="${d.id}" spellcheck="false" style="width:100%;min-height:220px;background:rgba(255,255,255,0.02);border:1px solid rgba(91,168,255,0.1);border-radius:6px;color:var(--text);padding:10px;font-family:var(--font-mono);font-size:11px;line-height:1.5;">${escapeHtml(JSON.stringify({ uid: d.uid, date: d.date, time: d.time, exercises: d.exercises, programDayIndex: d.programDayIndex ?? null }, null, 2))}</textarea>
           <div style="display:flex;gap:6px;margin-top:6px;">
             <button class="btn btn-sm raw-autofill-btn" data-wid="${d.id}" data-uid="${d.uid}" style="flex:1;font-size:11px;">🧮 Autofill BW% weight</button>
             <button class="btn btn-sm raw-save-btn" data-wid="${d.id}" style="flex:1;font-size:12px;">💾 Save this workout</button>
@@ -9467,17 +9529,17 @@ function openApAdjustPanel() {
     </div>
     <div class="field" style="margin-bottom:12px;">
       <label>Hunter</label>
-      <select id="apadj-user" style="width:100%;background:var(--card-2);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:8px;font-size:13px;">
+      <select id="apadj-user" style="width:100%;background:rgba(255,255,255,0.02);border:1px solid rgba(91,168,255,0.1);border-radius:6px;color:var(--text);padding:8px;font-size:13px;">
         ${targets.map(t => `<option value="${t.uid}">${escapeHtml(t.name)}</option>`).join('')}
       </select>
     </div>
     <div class="field" style="margin-bottom:12px;">
       <label>Amount (use a negative number to deduct)</label>
-      <input type="number" id="apadj-amount" placeholder="e.g. 10 or -10" style="width:100%;background:var(--card-2);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:8px;font-size:13px;" />
+      <input type="number" id="apadj-amount" placeholder="e.g. 10 or -10" style="width:100%;background:rgba(255,255,255,0.02);border:1px solid rgba(91,168,255,0.1);border-radius:6px;color:var(--text);padding:8px;font-size:13px;" />
     </div>
     <div class="field" style="margin-bottom:14px;">
       <label>Reason (for your own records)</label>
-      <input type="text" id="apadj-reason" placeholder="e.g. race-condition AP loss, Aug 8" style="width:100%;background:var(--card-2);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:8px;font-size:13px;" />
+      <input type="text" id="apadj-reason" placeholder="e.g. race-condition AP loss, Aug 8" style="width:100%;background:rgba(255,255,255,0.02);border:1px solid rgba(91,168,255,0.1);border-radius:6px;color:var(--text);padding:8px;font-size:13px;" />
     </div>
     <button class="btn btn-primary" id="apadj-apply" style="width:100%;">Apply Adjustment</button>
     <div id="apadj-result" style="margin-top:10px;font-size:12px;color:var(--text-faint);"></div>
@@ -9530,7 +9592,7 @@ function openRawProfilePanel() {
       <button class="icon-btn" id="rprof-close" style="font-size:20px;">✕</button>
     </div>
     <div style="display:flex;gap:8px;margin-bottom:10px;">
-      <select id="rprof-user" style="flex:1;background:var(--card-2);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:8px;font-size:13px;">
+      <select id="rprof-user" style="flex:1;background:rgba(255,255,255,0.02);border:1px solid rgba(91,168,255,0.1);border-radius:6px;color:var(--text);padding:8px;font-size:13px;">
         ${targets.map(t => `<option value="${t.uid}">${escapeHtml(t.name)}</option>`).join('')}
       </select>
       <button class="btn btn-sm" id="rprof-load" style="font-size:12px;">Load</button>
@@ -9550,7 +9612,7 @@ function openRawProfilePanel() {
       if (!snap.exists()) { content.innerHTML = '<p style="color:var(--text-faint);">No profile doc found for that hunter.</p>'; return; }
       const data = snap.data();
       content.innerHTML = `
-        <textarea id="rprof-json-box" spellcheck="false" style="width:100%;min-height:320px;background:var(--card-2);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:10px;font-family:var(--font-mono);font-size:11px;line-height:1.5;">${escapeHtml(JSON.stringify(data, null, 2))}</textarea>
+        <textarea id="rprof-json-box" spellcheck="false" style="width:100%;min-height:320px;background:rgba(255,255,255,0.02);border:1px solid rgba(91,168,255,0.1);border-radius:6px;color:var(--text);padding:10px;font-family:var(--font-mono);font-size:11px;line-height:1.5;">${escapeHtml(JSON.stringify(data, null, 2))}</textarea>
         <button class="btn btn-sm" id="rprof-save-btn" style="width:100%;margin-top:6px;font-size:12px;">💾 Save this profile (full overwrite)</button>
       `;
       overlay.querySelector('#rprof-save-btn').addEventListener('click', async () => {
@@ -9718,7 +9780,7 @@ async function openApLedger() {
       <button class="icon-btn" id="ledger-close" style="font-size:20px;">✕</button>
     </div>
     <div style="display:flex;gap:8px;margin-bottom:12px;">
-      <select id="ledger-user" style="flex:1;background:var(--card-2);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:8px;font-size:13px;">
+      <select id="ledger-user" style="flex:1;background:rgba(255,255,255,0.02);border:1px solid rgba(91,168,255,0.1);border-radius:6px;color:var(--text);padding:8px;font-size:13px;">
         ${targets.map(t => `<option value="${t.uid}">${escapeHtml(t.name)}</option>`).join('')}
       </select>
       <button class="btn btn-sm" id="ledger-load" style="font-size:12px;">Load</button>
@@ -10093,17 +10155,17 @@ function openAdminWorkoutLogger(targetUid, hunterName) {
         <div class="admin-set-row" style="display:grid;grid-template-columns:24px 1fr 1fr auto;gap:6px;align-items:center;margin-bottom:6px;">
           <span style="font-size:11px;color:var(--text-faint);text-align:center;">${si+1}</span>
           <input type="number" class="admin-reps" placeholder="${repsLabel}" min="0" inputmode="decimal"
-            style="background:var(--card-2);border:1px solid var(--border);border-radius:4px;color:var(--text);padding:6px 8px;font-size:13px;width:100%;" />
+            style="background:rgba(255,255,255,0.02);border:1px solid rgba(91,168,255,0.1);border-radius:4px;color:var(--text);padding:6px 8px;font-size:13px;width:100%;" />
           <input type="number" class="admin-weight" placeholder="kg" min="0" step="0.5" inputmode="decimal"
-            style="background:var(--card-2);border:1px solid var(--border);border-radius:4px;color:var(--text);padding:6px 8px;font-size:13px;width:100%;" />
-          <select class="admin-rir" style="background:var(--card-2);border:1px solid var(--border);border-radius:4px;color:var(--text);padding:6px 4px;font-size:12px;">
+            style="background:rgba(255,255,255,0.02);border:1px solid rgba(91,168,255,0.1);border-radius:4px;color:var(--text);padding:6px 8px;font-size:13px;width:100%;" />
+          <select class="admin-rir" style="background:rgba(255,255,255,0.02);border:1px solid rgba(91,168,255,0.1);border-radius:4px;color:var(--text);padding:6px 4px;font-size:12px;">
             <option value="">-</option>
             ${isTimed
               ? [6,7,8,9,10].map(n=>`<option value="${n}">RPE${n}</option>`).join('')
               : [0,1,2,3,4,5].map(n=>`<option value="${n}">RIR${n}</option>`).join('')}
           </select>
         </div>`).join('');
-      return `<div class="admin-ex-block" data-ei="${ei}" style="background:var(--card-2);border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:10px;">
+      return `<div class="admin-ex-block" data-ei="${ei}" style="background:rgba(255,255,255,0.02);border:1px solid rgba(91,168,255,0.1);border-radius:8px;padding:12px;margin-bottom:10px;">
         <div style="font-size:13px;font-weight:700;margin-bottom:8px;color:var(--brass);">${escapeHtml(ex.name)}</div>
         <div style="display:grid;grid-template-columns:24px 1fr 1fr auto;gap:6px;margin-bottom:4px;">
           <span></span>
@@ -10127,14 +10189,14 @@ function openAdminWorkoutLogger(targetUid, hunterName) {
       </div>
       <div class="field" style="margin-bottom:12px;">
         <label>Date</label>
-        <input type="date" id="admin-log-date" value="${today}" style="background:var(--card-2);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:8px 10px;font-size:14px;width:100%;" />
+        <input type="date" id="admin-log-date" value="${today}" style="background:rgba(255,255,255,0.02);border:1px solid rgba(91,168,255,0.1);border-radius:6px;color:var(--text);padding:8px 10px;font-size:14px;width:100%;" />
       </div>
       <div class="field" style="margin-bottom:12px;">
         <label>Time (when they trained)</label>
-        <input type="time" id="admin-log-time" value="${new Date().toTimeString().slice(0,5)}" style="background:var(--card-2);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:8px 10px;font-size:14px;width:100%;" />
+        <input type="time" id="admin-log-time" value="${new Date().toTimeString().slice(0,5)}" style="background:rgba(255,255,255,0.02);border:1px solid rgba(91,168,255,0.1);border-radius:6px;color:var(--text);padding:8px 10px;font-size:14px;width:100%;" />
       </div>
       <div id="admin-ex-rows">${prefillExercises.length ? buildExerciseRows(prefillExercises) : '<p style="color:var(--text-faint);font-size:13px;">No program found — add exercises below.</p>'}</div>
-      <button class="btn" id="admin-add-ex" style="width:100%;margin-bottom:14px;">+ Add exercise</button>
+      <button class="btn" id="admin-add-ex" style="width:100%;margin-bottom:14px;" style="font-family:var(--font-mono);letter-spacing:.06em;">+ Add Exercise</button>
       <button class="btn btn-primary" id="admin-log-save" style="width:100%;">Save workout for ${escapeHtml(hunterName)}</button>
     </div>`;
 
@@ -10152,7 +10214,7 @@ function openAdminWorkoutLogger(targetUid, hunterName) {
       <div class="modal" style="max-height:70vh;display:flex;flex-direction:column;">
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
           <input id="ex-search" placeholder="Search exercise…" autofocus
-            style="flex:1;background:var(--card-2);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:8px 10px;font-size:13px;" />
+            style="flex:1;background:rgba(255,255,255,0.02);border:1px solid rgba(91,168,255,0.1);border-radius:6px;color:var(--text);padding:8px 10px;font-size:13px;" />
           <button class="icon-btn" id="ex-picker-close" style="font-size:20px;">✕</button>
         </div>
         <div id="ex-list" style="overflow-y:auto;flex:1;display:flex;flex-direction:column;gap:4px;"></div>
@@ -10168,7 +10230,7 @@ function openAdminWorkoutLogger(targetUid, hunterName) {
         const exDef = EXERCISES_ALL[n] || {};
         const isTimed = !!exDef.timed;
         return `<button class="ex-pick-btn" data-name="${escapeHtml(n)}"
-          style="background:var(--card-2);border:1px solid var(--border);border-radius:6px;
+          style="background:rgba(255,255,255,0.02);border:1px solid rgba(91,168,255,0.1);border-radius:6px;
           color:var(--text);padding:8px 12px;text-align:left;cursor:pointer;font-size:13px;
           display:flex;align-items:center;justify-content:space-between;">
           <span>${escapeHtml(n)}</span>
@@ -10184,7 +10246,7 @@ function openAdminWorkoutLogger(targetUid, hunterName) {
         const block = document.createElement('div');
         block.className = 'admin-ex-block';
         block.dataset.name = name;
-        block.style.cssText = 'background:var(--card-2);border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:10px;';
+        block.style.cssText = 'background:rgba(255,255,255,0.02);border:1px solid rgba(91,168,255,0.1);border-radius:8px;padding:12px;margin-bottom:10px;';
         block.innerHTML = `<div style="font-size:13px;font-weight:700;margin-bottom:8px;color:var(--brass);">${escapeHtml(name)}</div>
           <div style="display:grid;grid-template-columns:24px 1fr 1fr auto;gap:6px;margin-bottom:4px;">
             <span></span>
@@ -11995,7 +12057,7 @@ function muscleStatusStrength() {
   for (const m of MUSCLES) {
     const tier = muscleBestTier[m] || null;
     const status = tier ? TIER_STATUS[tier] : 'Stalled';
-    const label = tier ? TIER_LABEL[tier] : 'No data';
+    const label = tier ? TIER_LABEL[tier] : 'The System has no record of this';
     result[m] = { volume: 0, status, tier, label, weeks: [0,0,0,0] };
   }
   return result;
@@ -12466,7 +12528,7 @@ function renderTrends() {
             <span style="font-family:var(--font-mono);font-size:10px;color:var(--text-faint);flex-shrink:0;">${e.date}</span>
             <span class="weight-entry-val" style="font-family:var(--font-mono);font-size:13px;color:var(--text);flex:1;">${e.weight} kg</span>
             <input class="weight-entry-input hidden" type="number" step="0.1" inputmode="decimal" value="${e.weight}"
-              style="flex:1;background:var(--card-2);border:1px solid var(--brass);border-radius:4px;color:var(--text);padding:4px 8px;font-size:13px;font-family:var(--font-mono);" />
+              style="flex:1;background:transparent;border:none;border-bottom:1px solid rgba(91,168,255,0.3);border-radius:0;color:var(--text);padding:4px 8px;font-size:13px;font-family:var(--font-mono);" />
             <button class="btn btn-sm weight-edit-btn" data-id="${e.id}" style="font-size:11px;padding:3px 8px;">✎</button>
             <button class="btn btn-sm weight-save-edit-btn hidden" data-id="${e.id}" style="font-size:11px;padding:3px 8px;color:var(--growing);border-color:var(--growing);">✓</button>
             <button class="btn btn-sm weight-delete-btn" data-id="${e.id}" style="font-size:11px;padding:3px 8px;color:var(--excess);border-color:var(--excess);">🗑</button>
@@ -12588,7 +12650,7 @@ function renderMuscleDetail() {
               { tier:'Intermediate', color:'var(--violet)', icon:'⚔️', label:'[Seasoned Fighter]', desc:'Top 50% — true hunter' },
               { tier:'Novice',       color:'var(--maintaining)', icon:'🗡️', label:'[Rising Hunter]',  desc:'Top 80% — awakening begins' },
               { tier:'Beginner',     color:'var(--brass)', icon:'🛡️', label:'[Rookie Hunter]',  desc:'Baseline established' },
-              { tier:'No data',      color:'var(--text-faint)', icon:'◻', label:'[Unranked]',       desc:'No PRs logged for this muscle' },
+              { tier:'The System has no record of this',      color:'var(--text-faint)', icon:'◻', label:'[Unranked]',       desc:'No PRs logged for this muscle' },
             ].map(t => `
               <div style="display:flex;align-items:center;gap:10px;padding:7px 10px;background:var(--card-2);border-radius:6px;border-left:3px solid ${t.color};">
                 <span style="font-size:16px;flex-shrink:0;">${t.icon}</span>
@@ -12614,7 +12676,7 @@ function renderMuscleDetail() {
           const s = stats[m]; const maxW = Math.max(...s.weeks, 1);
           const isPast = muscleDetailMode === 'Past';
           const volLabel = muscleDetailMode === 'Strength'
-            ? (s.label || 'No data')
+            ? (s.label || 'The System has no record of this')
             : isPast
               ? `${s.sets7 ?? s.volume} sets this week${s.mev!=null?' · MEV '+s.mev+' MAV '+s.mav:''}`
               : `${s.volume.toLocaleString()} planned emphasis`;
@@ -13134,7 +13196,7 @@ function openEditExerciseModal(name) {
 
       <div style="display:flex;gap:10px;margin-top:16px;">
         <button class="btn" id="cancel-edit-ex" style="flex:1;">Cancel</button>
-        <button class="btn btn-primary" id="save-edit-ex" style="flex:2;">Save changes</button>
+        <button class="btn btn-primary" id="save-edit-ex" style="flex:2;">◈ Apply</button>
       </div>
       ${existingOverride ? `<button class="btn" id="delete-edit-ex" style="width:100%;margin-top:10px;color:var(--excess);border-color:var(--excess);">${isBaseExercise ? 'Revert to default' : 'Delete exercise'}</button>` : ''}
     </div>`;
@@ -15573,7 +15635,7 @@ function renderFeats() {
   if (!el) return;
   el.innerHTML = `
     <div style="padding-bottom:8px;">
-      <div style="font-family:var(--font-display);font-size:22px;letter-spacing:0.04em;margin:0 0 4px;">GATES</div>
+      <div style="font-family:var(--font-mono);font-size:8px;color:rgba(91,168,255,.3);letter-spacing:.25em;margin-bottom:6px;">◈ SYSTEM GATES</div><div style="font-family:var(--font-display);font-size:22px;letter-spacing:0.04em;margin:0 0 4px;">GATES</div>
       <p style="font-size:13px;color:var(--text-dim);margin:0 0 16px;">Trials. Progressions. Goals. The System tracks what you pursue.</p>
       <div class="feat-tabs">
         <button class="feat-tab ${featsActiveTab==='achievements'?'active':''}" data-tab="achievements">Achievements</button>
@@ -16725,9 +16787,9 @@ function openWorkoutDetail(workoutId) {
           return `
           <div class="detail-set-row" data-si="${si}">
             <span class="set-idx">${si+1}</span>
-            <input type="number" class="edit-reps" data-ei="${ei}" data-si="${si}" value="${s.reps||0}" min="0" inputmode="decimal" style="width:52px;background:var(--card-2);border:1px solid var(--border);border-radius:4px;color:var(--text);padding:4px 6px;font-size:13px;" />
-            <input type="number" class="edit-weight" data-ei="${ei}" data-si="${si}" value="${s.weight||0}" min="0" step="0.5" inputmode="decimal" style="width:52px;background:var(--card-2);border:1px solid var(--border);border-radius:4px;color:var(--text);padding:4px 6px;font-size:13px;" />
-            <select class="edit-rir" data-ei="${ei}" data-si="${si}" style="background:var(--card-2);border:1px solid var(--border);border-radius:4px;color:var(--text);padding:4px 3px;font-size:11px;width:58px;">
+            <input type="number" class="edit-reps" data-ei="${ei}" data-si="${si}" value="${s.reps||0}" min="0" inputmode="decimal" style="width:52px;background:rgba(255,255,255,0.02);border:1px solid rgba(91,168,255,0.1);border-radius:4px;color:var(--text);padding:4px 6px;font-size:13px;" />
+            <input type="number" class="edit-weight" data-ei="${ei}" data-si="${si}" value="${s.weight||0}" min="0" step="0.5" inputmode="decimal" style="width:52px;background:rgba(255,255,255,0.02);border:1px solid rgba(91,168,255,0.1);border-radius:4px;color:var(--text);padding:4px 6px;font-size:13px;" />
+            <select class="edit-rir" data-ei="${ei}" data-si="${si}" style="background:rgba(255,255,255,0.02);border:1px solid rgba(91,168,255,0.1);border-radius:4px;color:var(--text);padding:4px 3px;font-size:11px;width:58px;">
               <option value="">—</option>${rirOptions}
             </select>
             <button class="remove-set-edit-btn" data-ei="${ei}" data-si="${si}" style="background:none;border:none;color:var(--excess);font-size:16px;cursor:pointer;">×</button>
@@ -16735,7 +16797,7 @@ function openWorkoutDetail(workoutId) {
         }).join('')}
       </div>`;
     }).join('');
-    return exHtml + `<button type="button" class="btn" id="add-exercise-edit-btn" style="width:100%;margin-top:4px;">+ Add exercise</button>`;
+    return exHtml + `<button type="button" class="btn" id="add-exercise-edit-btn" style="width:100%;margin-top:4px;" style="font-family:var(--font-mono);letter-spacing:.06em;">+ Add Exercise</button>`;
   }
 
   overlay.innerHTML = `
@@ -16753,7 +16815,7 @@ function openWorkoutDetail(workoutId) {
       <button class="btn" id="detail-debrief-btn" style="width:100%;margin-bottom:12px;border-color:var(--brass);color:var(--brass);">⚡ View Session Debrief</button>
       <div id="detail-content" style="margin:0 0 16px;">${buildReadView()}</div>
       <div id="detail-edit-actions" style="display:none;margin-bottom:12px;">
-        <button class="btn btn-primary" id="detail-save-edit" style="width:100%;margin-bottom:8px;">Save changes</button>
+        <button class="btn btn-primary" id="detail-save-edit" style="width:100%;margin-bottom:8px;">◈ Apply</button>
         <button class="btn" id="detail-cancel-edit" style="width:100%;">Cancel</button>
       </div>
       <div class="delete-warning-box" id="delete-warning-box" style="display:none;background:rgba(255,77,103,0.08);border:1px solid var(--excess);border-radius:8px;padding:12px 14px;margin-bottom:12px;">
@@ -17116,7 +17178,7 @@ function openWorkoutDetail(workoutId) {
       renderHistoryList();
       startDailyTimer();
     } catch (err) {
-      alert('Could not delete: ' + err.message);
+      showToast('The System could not complete the deletion. Try again.', 'error');
       btn.disabled = false; btn.textContent = 'Confirm — delete and reverse AP';
     }
   });
