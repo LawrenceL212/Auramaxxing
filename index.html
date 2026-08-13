@@ -6307,6 +6307,19 @@ function computeWorkoutXP(exercises) {
     const tier = exDef.skillTier || 1.0;
     const isRun = isRunExercise(ex.name);
 
+    // Derive statWeights from intent when no explicit weights defined
+    // This ensures custom exercises with intent set still contribute to training caps
+    const INTENT_WEIGHTS = {
+      strength:    { strength: 1.0 },
+      hypertrophy: { strength: 0.8, defence: 0.2 },
+      skill:       { focus: 1.0 },
+      explosive:   { agility: 0.8, strength: 0.2 },
+      endurance:   { endurance: 0.8, agility: 0.2 },
+      mobility:    { flexibility: 1.0 },
+      defence:     { defence: 1.0 },
+    };
+    const effectiveWeights = weights || (exDef.intent ? INTENT_WEIGHTS[exDef.intent] : null);
+
     if (isRun) {
       // ── RUN XP: distKm × 2.797 × intensityMult(rir) ──
       // Each km of running is worth a scaled set-equivalent.
@@ -6350,8 +6363,8 @@ function computeWorkoutXP(exercises) {
 
       generalXP += setXP;
 
-      if (weights) {
-        for (const [stat, w] of Object.entries(weights)) {
+      if (effectiveWeights) {
+        for (const [stat, w] of Object.entries(effectiveWeights)) {
           if (trainingXP[stat] !== undefined) {
             trainingXP[stat] += setXP * w;
           }
@@ -18046,8 +18059,9 @@ async function generateShadowArmySoldiers(exercises, runSummary) {
     const rankMult = RANK_MULT[statRank] || 1.0;
     const tierBase = TIER_BASE[Math.min(tier, 5)] || 10;
 
-    ex.sets?.filter(s => s.reps > 0 && s.rir != null).forEach(s => {
-      const soldiers = Math.floor(tierBase * rankMult * RIR_MULT(s.rir));
+    ex.sets?.filter(s => s.reps > 0).forEach(s => {
+      const effectiveRir = s.rir ?? 3; // default to RIR 3 if not recorded (timed/flexibility)
+      const soldiers = Math.floor(tierBase * rankMult * RIR_MULT(effectiveRir));
       soldiersByContinent[ckey] = (soldiersByContinent[ckey] || 0) + soldiers;
     });
   });
@@ -18124,8 +18138,9 @@ async function backfillShadowArmySoldiers() {
       const statRank = (profile.stats || {})[CONTINENTS_STAT[ckey]] || 'E';
       const rankMult = RANK_MULT[statRank] || 1.0;
 
-      (ex.sets || []).filter(s => s.reps > 0 && s.rir != null).forEach(s => {
-        const soldiers = Math.floor(10 * rankMult * RIR_MULT(s.rir));
+      (ex.sets || []).filter(s => s.reps > 0).forEach(s => {
+        const effectiveRir = s.rir ?? 3;
+        const soldiers = Math.floor(10 * rankMult * RIR_MULT(effectiveRir));
         totalByContinent[ckey] = (totalByContinent[ckey] || 0) + soldiers;
       });
     });
