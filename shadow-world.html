@@ -262,6 +262,19 @@ function draw(t = 0) {
   ctx.fillStyle = '#020912';
   ctx.fillRect(0, 0, W, H);
 
+  // ── PHASE I: Ambient atmospheric layer ──
+  // Slow breathing light — the world feels alive
+  const breathe = 0.5 + Math.sin(t * 0.0008) * 0.1;
+  const atmGrad = ctx.createRadialGradient(W*0.3, H*0.2, 0, W*0.3, H*0.2, W*0.5);
+  atmGrad.addColorStop(0, `rgba(91,168,255,${0.015 * breathe})`);
+  atmGrad.addColorStop(1, 'transparent');
+  ctx.fillStyle = atmGrad; ctx.fillRect(0, 0, W, H);
+
+  const atmGrad2 = ctx.createRadialGradient(W*0.7, H*0.7, 0, W*0.7, H*0.7, W*0.4);
+  atmGrad2.addColorStop(0, `rgba(139,92,255,${0.01 * breathe})`);
+  atmGrad2.addColorStop(1, 'transparent');
+  ctx.fillStyle = atmGrad2; ctx.fillRect(0, 0, W, H);
+
   // Grid
   ctx.strokeStyle = 'rgba(61,165,255,0.04)';
   ctx.lineWidth = 0.5;
@@ -430,7 +443,7 @@ function draw(t = 0) {
 let lastT = 0;
 function animate(t) {
   requestAnimationFrame(animate);
-  if (t-lastT < 50) return;
+  if (t-lastT < 33) return; // ~30fps for world — alive but not expensive
   lastT = t;
   draw(t);
 }
