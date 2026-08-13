@@ -485,8 +485,8 @@
   /* Corner bracket framing — L-shape corners instead of full border */
   .card::before,.card::after,.exercise-row::before,.exercise-row::after{
     content:"";position:absolute;width:10px;height:10px;pointer-events:none;
-    border-color:rgba(91,168,255,0.3);
-    transition:border-color var(--dur-mid) var(--ease-ui);
+    border-color:rgba(91,168,255,0.2);
+    /* No animation — brackets are static HUD geometry, not decorative effects */
   }
   .card::before,.exercise-row::before{top:-1px;left:-1px;border-top:1px solid;border-left:1px solid;}
   .card::after,.exercise-row::after{bottom:-1px;right:-1px;border-bottom:1px solid;border-right:1px solid;}
@@ -906,7 +906,7 @@
     position:absolute;left:0;right:0;height:1px;
     background:linear-gradient(90deg,transparent,rgba(91,168,255,0.4),rgba(91,168,255,0.8),rgba(91,168,255,0.4),transparent);
     pointer-events:none;z-index:0;
-    animation:questScanline 4s ease-in-out infinite;
+    /* animation:questScanline disabled — too much continuous motion */ 4s ease-in-out infinite;
     opacity:0;
   }
   @keyframes questScanline {
@@ -995,28 +995,29 @@
     padding:2px 6px;border-radius:4px;
   }
   .quest-check-row.complete{
-    background:rgba(139,92,255,0.06);
-    border-color:rgba(139,92,255,0.15);
-    border-radius:4px;margin:0 -6px;padding:10px 12px;
-    animation:questRowComplete 0.4s cubic-bezier(0.16,1,0.3,1) both;
+    background:rgba(91,168,255,0.04);
+    border-color:rgba(91,168,255,0.08);
   }
   @keyframes questRowComplete{
-    0%{transform:scaleX(0.97);background:rgba(139,92,255,0.2);}
-    60%{transform:scaleX(1.01);}
-    100%{transform:scaleX(1);background:rgba(139,92,255,0.06);}
+    0%  { background:rgba(111,255,176,0.12); }
+    60% { background:rgba(91,168,255,0.06); }
+    100%{ background:rgba(91,168,255,0.04); }
   }
-  .quest-check-row.complete .qc-name{color:var(--violet);text-decoration:line-through;text-decoration-color:rgba(139,92,255,0.4);}
+  /* NO strikethrough — the name stays readable. Completed = dimmed + ◈ icon */
+  .quest-check-row.complete .qc-name{
+    color:var(--text-faint);
+    /* No text-decoration: line-through — this is task-manager language */
+  }
   .quest-check-row.complete .qc-box{
-    background:rgba(139,92,255,0.2);border-color:var(--violet);
-    color:var(--violet);text-shadow:0 0 8px var(--violet);
-    animation:qcBoxPop 0.35s cubic-bezier(0.16,1,0.3,1) both;
+    background:rgba(111,255,176,0.15);
+    border-color:rgba(111,255,176,0.4);
+    color:var(--growing);
+    font-size:10px;letter-spacing:0;
+    content:"◈";
   }
-  @keyframes qcBoxPop{
-    0%{transform:scale(0.6);opacity:0;}
-    70%{transform:scale(1.2);}
-    100%{transform:scale(1);opacity:1;}
+  .quest-check-row.complete .qc-sets,.quest-check-row.complete .qc-reps{
+    color:rgba(91,168,255,0.35);
   }
-  .quest-check-row.complete .qc-sets,.quest-check-row.complete .qc-reps{color:rgba(139,92,255,0.6);}
 
   /* ── Quest progress bar ── */
   .quest-progress-bar-wrap{
@@ -1344,9 +1345,9 @@
     animation: hunterBreathe 5s cubic-bezier(0.4,0,0.6,1) infinite;
   }
   @keyframes hunterBreathe {
-    0%,100% { transform: scaleY(1) scaleX(1); }
-    40%     { transform: scaleY(1.008) scaleX(1.003); }
-    60%     { transform: scaleY(1.008) scaleX(1.003); }
+    0%,100% { transform: scaleY(1) scaleX(1) translateY(0); }
+    40%     { transform: scaleY(1.018) scaleX(1.006) translateY(-1.5px); }
+    60%     { transform: scaleY(1.018) scaleX(1.006) translateY(-1.5px); }
   }
   /* Aura behind hunter — breathes on different phase */
   .hunter-aura-ring {
@@ -1501,7 +1502,7 @@
   .hunter-xp-bar::after{
     content:'';position:absolute;top:0;right:0;width:20px;height:100%;
     background:linear-gradient(90deg,transparent,rgba(255,255,255,0.4));
-    animation:xpBarShine 2s ease-in-out infinite;
+    /* xpBarShine disabled — bar movement provides sufficient feedback */
   }
   @keyframes xpBarShine{0%,100%{opacity:0}50%{opacity:1}}
   .hunter-xp-bar-glow{
@@ -2549,9 +2550,9 @@
         <div class="workout-modal-header" style="position:relative;">
           <div style="padding-right:104px;">
             <div style="font-family:var(--font-mono);font-size:9px;letter-spacing:0.2em;color:rgba(91,168,255,0.5);margin-bottom:2px;">◈ QUEST ACTIVE ◈</div>
-            <h3 id="logger-title" style="margin:0;font-size:17px;font-family:var(--font-head);letter-spacing:0.04em;">Log exercises</h3>
+            <div id="logger-title" style="font-family:var(--font-display);font-size:20px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;line-height:1.1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin:0 0 2px;">HUNT ACTIVE</div>
             <div style="display:flex;justify-content:space-between;margin-top:4px;">
-              <span style="font-family:var(--font-mono);font-size:10px;color:var(--text-faint);" id="logger-set-count">0 sets logged</span>
+              <span style="font-family:var(--font-mono);font-size:10px;color:rgba(91,168,255,.5);" id="logger-set-count" style="letter-spacing:.06em;"></span>
               <span style="font-family:var(--font-mono);font-size:10px;color:rgba(255,214,107,0.7);transition:all 0.3s;" id="logger-xp-live">+0 XP</span>
             </div>
             <div style="height:2px;background:rgba(91,168,255,0.08);margin-top:6px;border-radius:1px;overflow:hidden;">
@@ -2574,6 +2575,7 @@
           <div class="rest-timer-display" id="rest-timer-display">—</div>
           <button type="button" class="rest-timer-stop hidden" id="rest-timer-stop">Stop</button>
         </div>
+        <div id="rest-next-preview" class="rest-next-preview" style="display:none;padding:6px 20px;background:rgba(91,168,255,0.04);border-bottom:1px solid rgba(91,168,255,0.06);font-family:var(--font-mono);font-size:10px;color:rgba(91,168,255,.5);letter-spacing:.06em;"></div>
         <div class="workout-modal-body">
           <div class="date-row">
             <div class="field">
@@ -2896,19 +2898,42 @@
   <nav class="bottom-nav">
     <div class="nav-inner">
       <button data-view="quest" class="active">
-        <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Hunt
+        <!-- Sword/blade glyph — Hunt -->
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M4 20 L18 6 M18 6 L14 6 M18 6 L18 10"/>
+          <path d="M4 20 L7 17" stroke-width="2.5"/>
+          <path d="M9 15 L12 12"/>
+        </svg>Hunt
       </button>
       <button data-view="board">
-        <svg viewBox="0 0 24 24"><path d="M4 20V10M12 20V4M20 20v-7"/></svg>Rank
+        <!-- Crown/rank sigil — Rank -->
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 17 L5 8 L9 13 L12 6 L15 13 L19 8 L21 17 Z"/>
+          <line x1="3" y1="20" x2="21" y2="20"/>
+        </svg>Rank
       </button>
       <button data-view="trends">
-        <svg viewBox="0 0 24 24"><path d="M2 12h4l3-9 4 18 3-9h4"/></svg>Codex
+        <!-- Body/anatomy pulse — Codex -->
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 3 C10 3 8 5 8 8 L8 10 C8 11 7 12 6 12 C7 12 8 13 8 14 L8 18 C8 21 10 22 12 22 C14 22 16 21 16 18 L16 14 C16 13 17 12 18 12 C17 12 16 11 16 10 L16 8 C16 5 14 3 12 3Z"/>
+        </svg>Codex
       </button>
       <button data-view="inventory">
-        <svg viewBox="0 0 24 24"><path d="M9 3H5a2 2 0 0 0-2 2v4m6-6h10a2 2 0 0 1 2 2v4M9 3v18m0 0h10a2 2 0 0 0 2-2V9M9 21H5a2 2 0 0 0-2-2V9m0 0h18"/></svg>Arsenal
+        <!-- Shield — Arsenal -->
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 3 L20 7 L20 13 C20 17.4 16.4 21.1 12 22 C7.6 21.1 4 17.4 4 13 L4 7 Z"/>
+          <path d="M9 12 L11 14 L15 10"/>
+        </svg>Arsenal
       </button>
       <button data-view="world">
-        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>World
+        <!-- Territory/world sigil — World -->
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="9"/>
+          <path d="M12 3 L12 21"/>
+          <path d="M3.5 9 L20.5 9"/>
+          <path d="M3.5 15 L20.5 15"/>
+          <path d="M12 3 C9 6 9 9 12 12 C15 15 15 18 12 21"/>
+        </svg>World
       </button>
     </div>
   </nav>
@@ -3189,7 +3214,7 @@ function showEnergyFlow(exercises, xpResult, prs, onComplete) {
   if (generalXP > 0) steps.push({ icon:'◈', label:'XP GENERATED', sub:`+${generalXP.toFixed(0)} hunter XP`, col:'#FFD66B', delay:300 });
   const STAT_ICONS_EF = { strength:'⚔', endurance:'🔥', agility:'⚡', focus:'🎯', defence:'🛡', flexibility:'💫' };
   const topStat = Object.entries(trainingXP).sort(([,a],[,b])=>b-a)[0];
-  if (topStat) steps.push({ icon:STAT_ICONS_EF[topStat[0]]||'◆', label:`${topStat[0].toUpperCase()} STIMULATED`, sub:`+${topStat[1].toFixed(1)} training cap XP`, col:'var(--growing)', delay:600 });
+  if (topStat) steps.push({ icon:STAT_ICONS_EF[topStat[0]]||'◆', label:`${topStat[0].toUpperCase()} STIMULATED`, sub:`The System has recognised increased ${topStat[0]}`, col:'var(--growing)', delay:600 });
   if (apEarned > 0) steps.push({ icon:'⚡', label:'AURA POINTS EARNED', sub:`+${apEarned} AP`, col:'var(--legendary)', delay:900 });
   if (prs.length > 0) steps.push({ icon:'🏆', label:`${prs.length} NEW RECORD${prs.length>1?'S':''}`, sub:prs.slice(0,2).map(p=>p.exercise).join(', '), col:'var(--violet)', delay:1100 });
   if (dungeonDmg > 0) steps.push({ icon:'💀', label:'DUNGEON DAMAGED', sub:`-${Math.round(dungeonDmg)} HP dealt`, col:'var(--violet)', delay:1300 });
@@ -4271,17 +4296,13 @@ function buildQuestCardHTML(idx) {
     const repsLabel = timed ? (unit === 'mins' ? `${ex.reps}m` : `${ex.reps}s`) : `${ex.reps}r`;
     const setsLabel = `${Math.min(done, ex.sets)}/${ex.sets}`;
     return `<div class="quest-check-row ${complete ? 'complete' : ''}">
-      <div class="qc-box">${complete ? '✓' : ''}</div>
+      <div class="qc-box">${complete ? '◈' : ''}</div>
       <span class="qc-name">${escapeHtml(ex.name)}</span>
       <span class="qc-sets">${setsLabel} sets</span>
       <span class="qc-reps">${repsLabel}</span>
     </div>`;
   }).join('');
-  const flavor = isActiveDay
-    ? `[Daily Hunt: <b>${escapeHtml(day.name)}</b> has arrived.]`
-    : myProgram.scheduleMode === 'fixed' && day.assignedDays?.length
-      ? `[Viewing: <b>${escapeHtml(day.name)}</b> · scheduled ${day.assignedDays.join(', ')}]`
-      : `[Viewing: <b>${escapeHtml(day.name)}</b> · Day ${idx+1} of ${myProgram.days.length}]`;
+  // flavor variable removed — dead code
   const warning = allComplete
     ? '✓ QUEST CLEARED — STREAK SECURED'
     : isActiveDay
@@ -4739,7 +4760,7 @@ function progressiveOverloadSuggestion(exerciseName, targetReps) {
 function startProgramDay(idx) {
   activeDayIndex = idx;
   const day = myProgram.days[idx];
-  document.getElementById('logger-title').textContent = `Logging: ${day.name}`;
+  document.getElementById('logger-title').textContent = day.name.toUpperCase();
   const rows = document.getElementById('exercise-rows');
   rows.innerHTML = '';
   day.exercises.forEach(ex => {
@@ -4780,7 +4801,8 @@ function closeWorkoutModal(discard = false) {
   if (discard) {
     // reset logger state fully
     activeDayIndex = null;
-    document.getElementById('logger-title').textContent = 'Log exercises';
+    document.getElementById('logger-title').textContent = 'HUNT ACTIVE';
+  document.getElementById('logger-exercise-hero')?.removeAttribute('data-exercise');
     document.getElementById('exercise-rows').innerHTML = '';
     addExerciseRow();
     document.getElementById('save-workout-btn').classList.add('hidden');
@@ -4819,7 +4841,8 @@ document.getElementById('manual-log-btn')?.addEventListener('click', () => {
   document.getElementById('workout-date').value = todayStr();
   document.getElementById('workout-time').value = nowTimeStr();
   activeDayIndex = null;
-  document.getElementById('logger-title').textContent = 'Log exercises';
+  document.getElementById('logger-title').textContent = 'HUNT ACTIVE';
+  document.getElementById('logger-exercise-hero')?.removeAttribute('data-exercise');
   openWorkoutModal();
 });
 
@@ -4951,6 +4974,35 @@ function startRestTimer(totalSeconds) {
   const stopBtn = document.getElementById('rest-timer-stop');
   display.classList.remove('done');
   stopBtn.classList.remove('hidden');
+  // ── Wire next exercise preview ──
+  try {
+    const rows = document.getElementById('exercise-rows');
+    if (rows) {
+      const allRows = [...rows.querySelectorAll('.exercise-row')];
+      // Find the first incomplete exercise row
+      const nextRow = allRows.find(r => {
+        const sets = [...r.querySelectorAll('.set-row')];
+        return sets.some(s => !s.classList.contains('complete'));
+      });
+      const previewEl = document.getElementById('rest-next-preview');
+      if (previewEl && nextRow) {
+        const name = nextRow.dataset.exName || '';
+        const incompleteSets = [...nextRow.querySelectorAll('.set-row')].filter(s => !s.classList.contains('complete'));
+        const nextSet = nextRow.querySelectorAll('.set-row').length - incompleteSets.length + 1;
+        const totalSets = nextRow.querySelectorAll('.set-row').length;
+        const prevWeight = incompleteSets[0]?.dataset.prevWeight;
+        const prevReps = incompleteSets[0]?.dataset.prevReps;
+        const weightHint = prevWeight > 0 ? ` · ${prevWeight}kg` : '';
+        const repsHint = prevReps > 0 ? ` × ${prevReps}` : '';
+        previewEl.innerHTML = name
+          ? `<span style="letter-spacing:.06em;">${name.toUpperCase()}</span><span style="opacity:.5;margin-left:6px;">SET ${nextSet} / ${totalSets}${weightHint}${repsHint}</span>`
+          : '';
+        previewEl.style.display = name ? 'block' : 'none';
+      } else if (previewEl) {
+        previewEl.style.display = 'none';
+      }
+    }
+  } catch(e) {}
   const render = () => {
     const m = Math.floor(remaining / 60), s = remaining % 60;
     display.textContent = `${m}:${String(s).padStart(2,'0')}`;
@@ -5368,7 +5420,7 @@ function addExerciseRow(presetName, targetSets, targetReps, prefillSets) {
       if (xpLive) xpLive.textContent = `+${Math.round(xp)} XP`;
       if (setCount) {
         const total = exercises.reduce((n,e)=>n+(e.sets||[]).filter(s=>s.reps>0).length,0);
-        setCount.textContent = `${total} set${total!==1?'s':''} logged`;
+        setCount.textContent = total > 0 ? `${total} SET${total!==1?'S':''} CLEARED` : '';
       }
     } catch(e) {}
   }
@@ -5528,6 +5580,13 @@ function addExerciseRow(presetName, targetSets, targetReps, prefillSets) {
     pickerLabel.textContent = name;
     pickerBtn.classList.remove('placeholder');
     refreshTags();
+    // Update the workout modal heading to show current exercise name
+    const titleEl = document.getElementById('logger-title');
+    if (titleEl && name) {
+      titleEl.textContent = name.toUpperCase();
+      titleEl.style.animation = 'none';
+      requestAnimationFrame(() => { titleEl.style.animation = 'fadeIn 0.2s ease both'; });
+    }
   }
   pickerBtn.addEventListener('click', () => openExercisePicker(selectExercise));
   row.querySelector('.add-set-btn').addEventListener('click', () => { SFX.pop(); addSetRow(); });
@@ -5605,7 +5664,8 @@ document.getElementById('save-workout-btn')?.addEventListener('click', async () 
       questCarouselIndex = myProgram.currentDayIndex;
       await setDoc(doc(db, 'programs', currentUser.uid), myProgram);
       activeDayIndex = null;
-      document.getElementById('logger-title').textContent = 'Log exercises';
+      document.getElementById('logger-title').textContent = 'HUNT ACTIVE';
+  document.getElementById('logger-exercise-hero')?.removeAttribute('data-exercise');
     }
     document.getElementById('save-msg').classList.remove('hidden');
     setTimeout(() => document.getElementById('save-msg').classList.add('hidden'), 2500);
@@ -7497,7 +7557,7 @@ function openStatInvestPanel(statId) {
         <p style="color:var(--excess);font-size:12px;font-weight:700;margin:0 0 6px;">Training cap reached</p>
         <p style="color:var(--text-dim);font-size:11px;margin:0 0 8px;line-height:1.6;">
           You need <strong style="color:var(--brass);">${Math.max(0, invested + 1 - trainingCap) + (50 - trainingCap > 0 ? 50 - trainingCap : 0)} more Training XP</strong> in ${label} before you can invest further.
-          Log exercises that train ${label.toLowerCase()} to raise your cap.
+          Train ${label.toLowerCase()} to advance this attribute.
         </p>
         <p style="color:var(--text-faint);font-size:10px;font-family:var(--font-mono);margin:0;">
           To reach D rank: need 50 XP cap · you have ${trainingCap} XP cap · gap: ${Math.max(0, 50 - trainingCap)} XP
@@ -7940,10 +8000,15 @@ function renderCharCard() {
       </div>
     </div>
 
-    <!-- Detailed stat rows — kept for invest/upgrade mechanics -->
-    <div style="margin-top:12px;">
-      <div style="font-family:var(--font-mono);font-size:8px;color:rgba(91,168,255,0.25);letter-spacing:.2em;margin-bottom:8px;">◈ DETAILED ANALYSIS</div>
-      <div id="char-stat-rows"></div>
+    <!-- Detailed stat rows — progressive disclosure -->
+    <div style="margin-top:16px;">
+      <button onclick="this.nextElementSibling.classList.toggle('hidden');this.dataset.open=this.dataset.open==='1'?'0':'1';this.querySelector('.disc-arrow').textContent=this.dataset.open==='1'?'▾':'▸';"
+        data-open="0"
+        style="width:100%;display:flex;align-items:center;justify-content:space-between;padding:10px 0;background:none;border:none;border-top:1px solid rgba(91,168,255,0.08);cursor:pointer;touch-action:manipulation;">
+        <span style="font-family:var(--font-mono);font-size:8px;color:rgba(91,168,255,0.35);letter-spacing:.2em;">◈ DETAILED ANALYSIS</span>
+        <span class="disc-arrow" style="font-family:var(--font-mono);font-size:10px;color:rgba(91,168,255,.3);">▸</span>
+      </button>
+      <div class="hidden" id="char-stat-rows"></div>
     </div>`;
 
   // Generate detailed stat rows for upgrade mechanics
