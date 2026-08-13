@@ -771,6 +771,7 @@
     position:fixed;inset:0;z-index:500;
     background:rgba(5,7,13,0.5);
     display:flex;flex-direction:column;justify-content:flex-end;
+    touch-action:none;overscroll-behavior:none;
   }
   .numpad-overlay.hidden{display:none;}
   .numpad-sheet{
@@ -1223,7 +1224,7 @@
   .stat-row.gate-ready{background:rgba(255,214,107,0.04);border-radius:8px;padding:6px 4px;}
 
   /* ── Awakening Modal ── */
-  .awakening-overlay{position:fixed;inset:0;z-index:500;background:#000;display:flex;align-items:center;justify-content:center;animation:awakenFadeIn .5s ease;}
+  .awakening-overlay{position:fixed;inset:0;touch-action:none;overscroll-behavior:none;z-index:500;background:#000;display:flex;align-items:center;justify-content:center;animation:awakenFadeIn .5s ease;}
   @keyframes awakenFadeIn{from{opacity:0;}to{opacity:1;}}
   .awakening-particles{position:absolute;inset:0;overflow:hidden;pointer-events:none;}
   .awk-particle{position:absolute;width:4px;height:4px;border-radius:50%;animation:awkFloat linear infinite;opacity:0;}
@@ -1763,7 +1764,7 @@
   .run-unit-btn.selected{background:var(--maintaining);color:#fff;font-weight:700;}
 
   /* ========== Post-Workout Debrief ========== */
-  .debrief-overlay{position:fixed;inset:0;z-index:200;background:rgba(5,7,13,0.95);backdrop-filter:blur(8px);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;animation:sysOverlayIn .3s ease;overflow-y:auto;}
+  .debrief-overlay{position:fixed;inset:0;touch-action:none;overscroll-behavior:none;z-index:200;background:rgba(5,7,13,0.95);backdrop-filter:blur(8px);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;animation:sysOverlayIn .3s ease;overflow-y:auto;}
 
   /* ── Quest Clear Banner ── */
   .quest-clear-banner {
@@ -1920,7 +1921,7 @@
   .party-tile-name{font-size:11px;color:var(--text-dim);margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 
   /* ========== Hunter Profile Modal ========== */
-  .hunter-modal{position:fixed;inset:0;z-index:100;background:rgba(5,7,13,0.9);backdrop-filter:blur(6px);overflow-y:auto;}
+  .hunter-modal{position:fixed;inset:0;z-index:100;background:rgba(5,7,13,0.9);backdrop-filter:blur(6px);overflow-y:auto;touch-action:none;overscroll-behavior:none;}
   .hunter-modal.hidden{display:none;}
   .hunter-modal-inner{max-width:520px;margin:0 auto;padding:20px 16px 80px;}
   .hunter-modal-header{display:flex;align-items:center;gap:12px;margin-bottom:20px;}
@@ -1996,7 +1997,7 @@
     position:fixed;inset:0;z-index:200;display:flex;align-items:center;justify-content:center;
     background:rgba(5,7,13,0.92);backdrop-filter:blur(8px);
     animation:sysOverlayIn .3s ease;
-  }
+  touch-action:none;overscroll-behavior:none;}
   @keyframes sysOverlayIn{from{opacity:0;}to{opacity:1;}}
   /* ── SYSTEM WINDOW — smoked glass, not a glowing rectangle ── */
   .system-window{
@@ -2195,7 +2196,7 @@
   .ex-card .ex-edit-link{display:block;margin-top:6px;font-size:11px;color:var(--violet);background:none;border:none;padding:0;cursor:pointer;text-align:left;}
   .ex-card .ex-edit-link:hover{text-decoration:underline;}
 
-  .modal-overlay{position:fixed;inset:0;background:rgba(5,7,13,0.75);backdrop-filter:blur(3px);display:flex;align-items:flex-end;justify-content:center;z-index:80;}
+  .modal-overlay{position:fixed;inset:0;background:rgba(5,7,13,0.75);backdrop-filter:blur(3px);display:flex;align-items:flex-end;justify-content:center;z-index:80;touch-action:none;overscroll-behavior:none;}
 
   /* workout pill — minimised state */
   .workout-pill{
@@ -2231,7 +2232,7 @@
 
   /* ---------- Workout logging modal ---------- */
   .workout-modal-overlay{
-    position:fixed;inset:0;
+    position:fixed;inset:0;touch-action:none;overscroll-behavior:none;
     background:rgba(3,5,10,0.9);
     backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
     z-index:60;display:flex;flex-direction:column;
@@ -3087,9 +3088,62 @@ function drainNotifQueue() {
   }
 }
 
-// ── LIVING AMBIENT SYSTEM ──
+// ── CENTRAL LAYER SYSTEM — iOS-safe scroll lock ──
+// iOS Safari ignores body overflow:hidden. Fix: use position:fixed on body
+// while preserving the scroll position so the page doesn't jump.
+let _scrollY = 0;
+let _lockCount = 0;
+
+function lockBodyScroll() {
+  _lockCount++;
+  if (_lockCount > 1) return; // already locked
+  _scrollY = window.scrollY;
+  document.body.style.position = 'fixed';
+  document.body.style.top = `-${_scrollY}px`;
+  document.body.style.left = '0';
+  document.body.style.right = '0';
+  lockBodyScroll();
+}
+
+function unlockBodyScroll() {
+  _lockCount = Math.max(0, _lockCount - 1);
+  if (_lockCount > 0) return; // another layer still open
+  document.body.style.position = '';
+  document.body.style.top = '';
+  document.body.style.left = '';
+  document.body.style.right = '';
+  unlockBodyScroll();
+  window.scrollTo(0, _scrollY);
+}
+
+// Wrap existing open/close functions
+const _origOpenWorkout = typeof openWorkoutModal === 'function' ? openWorkoutModal : null;
+const _origCloseWorkout = typeof minimiseWorkoutModal === 'function' ? minimiseWorkoutModal : null;
 // The System is always running. Subtle particles, light movement, data pulse.
 // Performance-conscious: canvas, requestAnimationFrame, pauses when hidden.
+// ── GLOBAL OVERLAY SCROLL LOCK OBSERVER ──
+// Watches for modal overlays added/removed — auto-manages iOS scroll lock
+// This handles all dynamic overlays without patching every close handler
+(function() {
+  const BLOCKING = ['modal-overlay','system-overlay','debrief-overlay',
+    'awakening-overlay','numpad-overlay'];
+
+  function countActive() {
+    return BLOCKING.reduce((n, cls) =>
+      n + document.getElementsByClassName(cls).length, 0);
+  }
+
+  let _wasActive = false;
+  const obs = new MutationObserver(() => {
+    const active = countActive() > 0;
+    if (active && !_wasActive) { lockBodyScroll(); _wasActive = true; }
+    else if (!active && _wasActive) { _lockCount = 1; unlockBodyScroll(); _wasActive = false; }
+  });
+  document.addEventListener('DOMContentLoaded', () => {
+    obs.observe(document.body, { childList: true });
+  });
+})();
+
 function startAmbientSystem() {
   // Create ambient canvas behind everything
   const canvas = document.createElement('canvas');
@@ -3319,6 +3373,7 @@ function openNumpad(input) {
   document.getElementById('numpad-display').textContent = numpadRaw || '—';
   document.getElementById('numpad-overlay').classList.remove('hidden');
   document.querySelector('.numpad-dot').style.visibility = isWeight ? 'visible' : 'hidden';
+  lockBodyScroll();
 }
 
 function closeNumpad(confirm = true) {
@@ -3340,6 +3395,7 @@ function closeNumpad(confirm = true) {
   numpadTarget = null;
   numpadRaw = '';
   document.getElementById('numpad-overlay').classList.add('hidden');
+  unlockBodyScroll();
 }
 
 function numpadKey(key) {
@@ -3359,6 +3415,13 @@ function numpadKey(key) {
 document.getElementById('numpad-overlay')?.addEventListener('click', e => {
   if (e.target === document.getElementById('numpad-overlay')) closeNumpad(false);
 });
+// Stop touch events reaching background on mobile
+document.getElementById('numpad-overlay')?.addEventListener('touchstart', e => {
+  e.stopPropagation();
+}, { passive: false });
+document.getElementById('numpad-overlay')?.addEventListener('touchmove', e => {
+  if (e.target === document.getElementById('numpad-overlay')) e.preventDefault(); // prevent bg scroll
+}, { passive: false });
 document.getElementById('numpad-confirm')?.addEventListener('click', () => { SFX.numpadConfirm(); closeNumpad(true); });
 document.querySelectorAll('.numpad-key').forEach(btn => {
   btn.addEventListener('click', () => numpadKey(btn.dataset.key));
@@ -3684,7 +3747,7 @@ function openSettingsModal() {
     overlay.querySelectorAll('.haptic-chip').forEach(c => c.classList.toggle('on', c.dataset.val === chip.dataset.val));
     if (chip.dataset.val === 'on' && navigator.vibrate) navigator.vibrate([30]);
   }));
-  overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
+  overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); unlockBodyScroll(); });
   overlay.querySelector('#cancel-settings').addEventListener('click', () => overlay.remove());
   // admin buttons
   overlay.querySelector('#admin-open-tester')?.addEventListener('click', () => { overlay.remove(); openAdminTester(); });
@@ -4774,7 +4837,7 @@ function startProgramDay(idx) {
 function openWorkoutModal() {
   document.getElementById('workout-modal-overlay').classList.remove('hidden');
   document.getElementById('workout-pill').classList.add('hidden');
-  document.body.style.overflow = 'hidden';
+  lockBodyScroll();
   // Hunt minimal mode — dim ambient system while training
   const ambCanvas = document.getElementById('ambient-canvas');
   if (ambCanvas) ambCanvas.style.opacity = '0.2';
@@ -4782,7 +4845,7 @@ function openWorkoutModal() {
 }
 function minimiseWorkoutModal() {
   document.getElementById('workout-modal-overlay').classList.add('hidden');
-  document.body.style.overflow = '';
+  unlockBodyScroll();
   // Restore ambient system
   const ambCanvas = document.getElementById('ambient-canvas');
   if (ambCanvas) ambCanvas.style.opacity = '0.6';
@@ -4796,7 +4859,7 @@ function minimiseWorkoutModal() {
 function closeWorkoutModal(discard = false) {
   document.getElementById('workout-modal-overlay').classList.add('hidden');
   document.getElementById('workout-pill').classList.add('hidden');
-  document.body.style.overflow = '';
+  unlockBodyScroll();
   stopRestTimer();
   if (discard) {
     // reset logger state fully
@@ -4850,16 +4913,16 @@ document.getElementById('manual-log-btn')?.addEventListener('click', () => {
 document.getElementById('log-run-btn')?.addEventListener('click', () => {
   document.getElementById('run-date').value = todayStr();
   document.getElementById('run-modal-overlay').classList.remove('hidden');
-  document.body.style.overflow = 'hidden';
+  lockBodyScroll();
 });
 document.getElementById('close-run-modal')?.addEventListener('click', () => {
   document.getElementById('run-modal-overlay').classList.add('hidden');
-  document.body.style.overflow = '';
+  unlockBodyScroll();
 });
 document.getElementById('run-modal-overlay')?.addEventListener('click', e => {
   if (e.target === document.getElementById('run-modal-overlay')) {
     document.getElementById('run-modal-overlay').classList.add('hidden');
-    document.body.style.overflow = '';
+    unlockBodyScroll();
   }
 });
 
@@ -4953,7 +5016,7 @@ document.getElementById('save-run-btn')?.addEventListener('click', async () => {
     const runXpResult = await awardWorkoutXP([{ name: selectedRunType, sets: [{ reps: Math.round((distKm||5)*10), rir: runRIR }] }]);
     profile._lastXpResult = runXpResult;
     document.getElementById('run-modal-overlay').classList.add('hidden');
-    document.body.style.overflow = '';
+    unlockBodyScroll();
     startDailyTimer();
     showToast(`Run logged — ${distKm ? distKm.toFixed(2)+'km' : ''} ${paceStr}${runXpResult?.generalXP ? ' · +'+Math.round(runXpResult.generalXP)+' XP' : ''}`, 'success');
     // reset form
@@ -5276,6 +5339,7 @@ function openExercisePicker(onSelect) {
       <div class="picker-list" id="picker-list"></div>
     </div>`;
   document.body.appendChild(overlay);
+  lockBodyScroll();
   const searchEl = overlay.querySelector('#picker-search');
   const listEl = overlay.querySelector('#picker-list');
   function renderList() {
@@ -5292,7 +5356,7 @@ function openExercisePicker(onSelect) {
     listEl.querySelectorAll('.picker-item').forEach(item => item.addEventListener('click', () => {
       SFX.pop();
       onSelect(item.dataset.name);
-      overlay.remove();
+      overlay.remove(); unlockBodyScroll();
     }));
   }
   searchEl.addEventListener('input', renderList);
@@ -8182,9 +8246,11 @@ function showSystemModal(html, onClose) {
   overlay.className = 'system-overlay';
   overlay.innerHTML = html;
   document.body.appendChild(overlay);
+  lockBodyScroll();
+  const cleanup = () => { overlay.remove(); unlockBodyScroll(); if (onClose) onClose(); };
   const btn = overlay.querySelector('.system-btn');
-  if (btn) btn.addEventListener('click', () => { overlay.remove(); if (onClose) onClose(); });
-  overlay.addEventListener('click', e => { if (e.target === overlay) { overlay.remove(); if (onClose) onClose(); } });
+  if (btn) btn.addEventListener('click', cleanup);
+  overlay.addEventListener('click', e => { if (e.target === overlay) cleanup(); });
   return overlay;
 }
 
@@ -9307,7 +9373,7 @@ async function openHunterProfile(targetUid) {
     </div>`;
   }).join('');
 
-  // Per-stat rows — training cap XP + rank
+  // Per-stat rows — stat rank comparison
   const h2hRows = STAT_DEFS.map(def => {
     const myRankIdx = RANK_TIERS.indexOf(myStats[def.id] || 'E');
     const theirRankIdx = RANK_TIERS.indexOf(theirStats[def.id] || 'E');
