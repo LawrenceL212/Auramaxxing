@@ -5167,7 +5167,7 @@ document.getElementById('save-run-btn')?.addEventListener('click', async () => {
       }
       return 3;
     })();
-    const runXpResult = await awardWorkoutXP([{ name: selectedRunType, sets: [{ reps: Math.round((distKm||5)*10), rir: runRIR }] }]);
+    const runXpResult = await awardWorkoutXP([{ name: selectedRunType, sets: [{ reps: Math.round((distKm||5)*10), distKm: Math.round(distKm*100)/100, rir: runRIR }] }]);
     profile._lastXpResult = runXpResult;
     document.getElementById('run-modal-overlay').classList.add('hidden');
     unlockBodyScroll();
@@ -5898,7 +5898,7 @@ document.getElementById('save-workout-btn')?.addEventListener('click', async () 
         : ex.name === 'Tempo Run' ? 1
         : ex.name === 'Long Run' ? 3
         : 4;
-      return { ...ex, sets: ex.sets.map(s => ({ ...s, rir: s.rir ?? runRIR })) };
+      return { ...ex, _runSummary: runSummaryFromLogger, sets: ex.sets.map(s => ({ ...s, rir: s.rir ?? runRIR })) };
     }));
     profile._lastXpResult = xpResult; // stash for debrief XP bar animation
     // Show session XP on the level banner
@@ -6305,6 +6305,41 @@ function computeWorkoutXP(exercises) {
     const exDef = EXERCISES_ALL[ex.name] || {};
     const weights = exDef.statWeights || null;
     const tier = exDef.skillTier || 1.0;
+    const isRun = isRunExercise(ex.name);
+
+    if (isRun) {
+      // ── RUN XP: distKm × 2.797 × intensityMult(rir) ──
+      // Each km of running is worth a scaled set-equivalent.
+      // C=2.797 calibrated so 8.25km Tempo Run = 30 XP.
+      const RUN_C = 2.797;
+      const RUN_RIR_MAP = {
+        'Hill Sprints':0, 'Interval Running':0, 'Race':0,
+        'Tempo Run':1,
+        'Long Run':3,
+      };
+      const runRir = ex.sets?.[0]?.rir ?? RUN_RIR_MAP[ex.name] ?? 4;
+
+      // Prefer distKm from sets (workout logger) or runSummary passed via ex._runSummary
+      let distKm = null;
+      for (const s of (ex.sets || [])) {
+        if (s.distKm && s.distKm > 0) { distKm = s.distKm; break; }
+      }
+      if (!distKm && ex._runSummary?.distKm > 0) distKm = ex._runSummary.distKm;
+      // Fallback: reps stored as distKm×10 (run modal pattern) — reps/10
+      if (!distKm) {
+        const reps = Number(ex.sets?.[0]?.reps) || 0;
+        if (reps > 0) distKm = reps / 10;
+      }
+
+      if (distKm && distKm > 0) {
+        const runXP = distKm * RUN_C * intensityMult(runRir);
+        generalXP += runXP;
+        // Run training XP: endurance-primary, agility-secondary
+        trainingXP.endurance += runXP * 0.8;
+        trainingXP.agility   += runXP * 0.2;
+      }
+      continue; // skip the set-based loop below for runs
+    }
 
     for (const set of (ex.sets || [])) {
       const reps = Number(set.reps) || 0;
