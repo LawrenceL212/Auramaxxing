@@ -4283,7 +4283,8 @@ async function loadAllData() {
   allWorkouts = woSnap.docs.map(d => ({ id: d.id, ...d.data() }));
   myWorkouts = allWorkouts.filter(w => w.uid === currentUser.uid);
 
-  const exSnap = await getDocs(query(collection(db, 'customExercises'), where('addedBy', '==', currentUser.uid)));
+  // Custom exercises are shared across all players — one player creates, everyone sees it
+  const exSnap = await getDocs(collection(db, 'customExercises'));
   customExercises = exSnap.docs.map(d => ({ id: d.id, ...d.data() }));
   rebuildExercisesAll();
 
@@ -6317,6 +6318,8 @@ function computeWorkoutXP(exercises) {
       endurance:   { endurance: 0.8, agility: 0.2 },
       mobility:    { flexibility: 1.0 },
       defence:     { defence: 1.0 },
+      balance:     { focus: 0.6, defence: 0.4 },
+      isometric:   { strength: 0.5, focus: 0.5 },
     };
     const effectiveWeights = weights || (exDef.intent ? INTENT_WEIGHTS[exDef.intent] : null);
 
