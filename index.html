@@ -485,6 +485,45 @@
   .icon-btn:active{transform:scale(0.88);}
   #settings-btn{font-size:18px;padding:4px 6px;}
 
+  /* ── SYSTEM COMMAND PANEL ── */
+  .system-cmd-overlay { align-items: flex-end; justify-content: center; }
+  @media (min-width: 641px) { .system-cmd-overlay { align-items: center; } }
+  .system-cmd-panel {
+    background: linear-gradient(170deg, rgba(10,13,20,0.99), rgba(5,6,10,0.99));
+    border-top: 1px solid rgba(91,168,255,0.12);
+    border-radius: var(--radius-md) var(--radius-md) 0 0;
+    width: 100%; max-width: 480px;
+    max-height: min(90dvh, 90vh);
+    display: flex; flex-direction: column;
+    box-shadow: inset 0 1px 0 rgba(91,168,255,0.08), 0 -8px 60px rgba(0,0,0,0.8), 0 0 0 1px rgba(91,168,255,0.04);
+    animation: sysCmdIn 0.32s var(--ease-cinema) both;
+  }
+  @keyframes sysCmdIn { from{opacity:0;transform:translateY(24px);} to{opacity:1;transform:translateY(0);} }
+  @media (min-width: 641px) {
+    .system-cmd-panel { border-radius: var(--radius-md); border-top: none; max-height: min(80dvh,80vh);
+      box-shadow: inset 0 1px 0 rgba(91,168,255,0.08), 0 24px 80px rgba(0,0,0,0.8), 0 0 0 1px rgba(91,168,255,0.06);
+      animation: sysCmdInCenter 0.32s var(--ease-cinema) both; }
+  }
+  @keyframes sysCmdInCenter { from{opacity:0;transform:scale(0.95) translateY(12px);} to{opacity:1;transform:scale(1) translateY(0);} }
+  .system-cmd-header { display:flex; align-items:center; justify-content:space-between; padding:18px 20px 14px; border-bottom:1px solid rgba(91,168,255,0.06); flex-shrink:0; }
+  .system-cmd-close { width:36px; height:36px; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.06); border-radius:50%; color:var(--text-faint); font-size:14px; cursor:pointer; touch-action:manipulation; display:flex; align-items:center; justify-content:center; transition:background var(--dur-fast), color var(--dur-fast); }
+  .system-cmd-close:hover { background:rgba(255,77,103,0.08); color:var(--excess); }
+  .system-cmd-body { flex:1; overflow-y:auto; overflow-x:hidden; -webkit-overflow-scrolling:touch; padding:18px 20px calc(18px + env(safe-area-inset-bottom,0)); }
+  .system-cmd-section-label { font-family:var(--font-mono); font-size:8px; color:rgba(91,168,255,0.35); letter-spacing:.25em; margin-bottom:10px; }
+  .system-cmd-functions { display:flex; flex-direction:column; gap:4px; }
+  .sys-fn-btn { display:flex; align-items:center; gap:14px; padding:14px 16px; background:rgba(91,168,255,0.04); border:1px solid rgba(91,168,255,0.1); border-radius:var(--radius-sm); color:var(--text); cursor:pointer; touch-action:manipulation; text-align:left; width:100%; transition:background var(--dur-fast), border-color var(--dur-fast), transform var(--dur-snap); }
+  .sys-fn-btn:hover { background:rgba(91,168,255,0.08); border-color:rgba(91,168,255,0.22); }
+  .sys-fn-btn:active { transform:scale(0.98); }
+  .sys-fn-glyph { font-size:20px; flex-shrink:0; width:44px; height:44px; background:rgba(91,168,255,0.06); border-radius:var(--radius-sm); display:flex; align-items:center; justify-content:center; }
+  .sys-fn-info { flex:1; min-width:0; }
+  .sys-fn-name { font-family:var(--font-display); font-size:14px; font-weight:700; letter-spacing:.05em; margin-bottom:2px; }
+  .sys-fn-desc { font-family:var(--font-mono); font-size:10px; color:var(--text-faint); }
+  .sys-fn-chevron { font-size:18px; color:rgba(91,168,255,0.3); flex-shrink:0; }
+  .system-cmd-settings { background:rgba(255,255,255,0.015); border:1px solid rgba(255,255,255,0.04); border-radius:var(--radius-sm); padding:14px; }
+  .system-cmd-settings .field { margin-bottom:12px; }
+  .system-cmd-settings label { font-family:var(--font-mono); font-size:9px; color:rgba(91,168,255,0.4); letter-spacing:.12em; text-transform:uppercase; display:block; margin-bottom:6px; }
+  .system-cmd-settings input { background:rgba(255,255,255,0.03); border:1px solid rgba(91,168,255,0.12); border-radius:var(--radius-sm); color:var(--text); padding:8px 10px; font-family:var(--font-mono); font-size:13px; width:100%; box-sizing:border-box; }
+
   /* ---------- Daily quest timer ---------- */
   .daily-timer{display:flex;flex-direction:column;align-items:center;gap:1px;cursor:default;}
   .daily-timer-label{font-size:9px;text-transform:uppercase;letter-spacing:0.1em;color:var(--text-faint);}
@@ -2633,7 +2672,7 @@
     <p class="wordmark">AURA<span>MAXX</span></p>
     <div class="daily-timer" id="daily-timer"></div>
     <div class="user-chip">
-      <button class="icon-btn" id="settings-btn" title="System Settings" style="color:rgba(91,168,255,.4);">⚙</button>
+      <button class="icon-btn" id="settings-btn" title="System Command" style="color:rgba(91,168,255,.4);font-family:var(--font-mono);font-size:14px;letter-spacing:.04em;">◈</button>
       <div class="avatar" id="user-avatar">–</div>
       <button class="icon-btn" id="logout-btn" title="Leave the System" style="font-family:var(--font-mono);font-size:9px;letter-spacing:.08em;color:rgba(91,168,255,.35);">◈ EXIT</button>
     </div>
@@ -3033,7 +3072,7 @@
           <path d="M12 3 C10 3 8 5 8 8 L8 10 C8 11 7 12 6 12 C7 12 8 13 8 14 L8 18 C8 21 10 22 12 22 C14 22 16 21 16 18 L16 14 C16 13 17 12 18 12 C17 12 16 11 16 10 L16 8 C16 5 14 3 12 3Z"/>
         </svg>Codex
       </button>
-      <button data-view="inventory">
+      <button data-view="exercises">
         <!-- Shield — Arsenal -->
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
           <path d="M12 3 L20 7 L20 13 C20 17.4 16.4 21.1 12 22 C7.6 21.1 4 17.4 4 13 L4 7 Z"/>
@@ -3781,71 +3820,104 @@ document.getElementById('settings-btn')?.addEventListener('click', () => openSet
 
 function openSettingsModal() {
   const overlay = document.createElement('div');
-  overlay.className = 'modal-overlay';
+  overlay.className = 'system-overlay system-cmd-overlay';
   overlay.innerHTML = `
-    <div class="modal">
-      <h3>Settings</h3>
-      <div class="field">
-        <button class="btn btn-sm" style="width:100%;margin-bottom:4px;" onclick="document.querySelector('.settings-overlay')?.remove();showUpdateNotice();">📋 View What's New (v20260811)</button>
-      </div>
-      <div class="field">
-        <label>Hunter name</label>
-        <input id="settings-name" value="${escapeHtml(profile.displayName || '')}" placeholder="What your party calls you" maxlength="24" inputmode="text" />
-        <p style="font-size:11.5px;color:var(--text-faint);margin:6px 0 0;">This is what shows up on the leaderboard and in Today's check-ins for everyone else.</p>
-      </div>
-      <div class="field">
-        <label>Weekly goal (workouts)</label>
-        <input id="settings-goal" type="number" min="1" max="14" value="${profile.weeklyGoal || 3}" />
-        <p style="font-size:11.5px;color:var(--text-faint);margin:6px 0 0;">Used by the Streaks widget on Trends.</p>
-      </div>
-      <div class="field">
-        <label>Muscle map body type</label>
-        <div class="weekday-chips">
-          <button type="button" class="weekday-chip body-type-chip ${(profile.bodyType||'male')==='male'?'on':''}" data-type="male" style="flex:1;">Male</button>
-          <button type="button" class="weekday-chip body-type-chip ${profile.bodyType==='female'?'on':''}" data-type="female" style="flex:1;">Female</button>
+    <div class="system-cmd-panel">
+      <div class="system-cmd-header">
+        <div>
+          <div style="font-family:var(--font-mono);font-size:8px;color:rgba(91,168,255,.4);letter-spacing:.25em;margin-bottom:4px;">◈ SYSTEM</div>
+          <div style="font-family:var(--font-display);font-size:18px;font-weight:900;letter-spacing:.06em;">COMMAND</div>
         </div>
-        <p style="font-size:11.5px;color:var(--text-faint);margin:6px 0 0;">Changes the body shape on your Muscle Activation chart in Trends. Purely visual — doesn't affect your tracked data.</p>
+        <button class="system-cmd-close" id="system-cmd-close" aria-label="Close">✕</button>
       </div>
-      <div class="field">
-        <label>Sound effects</label>
-        <div class="weekday-chips">
-          <button type="button" class="weekday-chip sound-chip ${SFX.soundOn()?'on':''}" data-val="on" style="flex:1;">On</button>
-          <button type="button" class="weekday-chip sound-chip ${!SFX.soundOn()?'on':''}" data-val="off" style="flex:1;">Off</button>
+      <div class="system-cmd-body">
+        <div class="system-cmd-section-label">◈ SYSTEM FUNCTIONS</div>
+        <div class="system-cmd-functions">
+          <button class="sys-fn-btn" data-view="history">
+            <div class="sys-fn-glyph">📜</div>
+            <div class="sys-fn-info">
+              <div class="sys-fn-name">SHADOW LOG</div>
+              <div class="sys-fn-desc">Historical records of every Hunt</div>
+            </div>
+            <div class="sys-fn-chevron">›</div>
+          </button>
+          <button class="sys-fn-btn" data-view="feats">
+            <div class="sys-fn-glyph">⚔</div>
+            <div class="sys-fn-info">
+              <div class="sys-fn-name">GATES</div>
+              <div class="sys-fn-desc">Known Gates · Active trials</div>
+            </div>
+            <div class="sys-fn-chevron">›</div>
+          </button>
+          <button class="sys-fn-btn" data-view="inventory">
+            <div class="sys-fn-glyph">🎒</div>
+            <div class="sys-fn-info">
+              <div class="sys-fn-name">INVENTORY</div>
+              <div class="sys-fn-desc">Equipment · Items · Loadout</div>
+            </div>
+            <div class="sys-fn-chevron">›</div>
+          </button>
         </div>
-        <p style="font-size:11.5px;color:var(--text-faint);margin:6px 0 0;">Quest complete, PR, awakening, and penalty sounds.</p>
-      </div>
-      <div class="field">
-        <label>Haptic feedback</label>
-        <div class="weekday-chips">
-          <button type="button" class="weekday-chip haptic-chip ${SFX.hapticOn()?'on':''}" data-val="on" style="flex:1;">On</button>
-          <button type="button" class="weekday-chip haptic-chip ${!SFX.hapticOn()?'on':''}" data-val="off" style="flex:1;">Off</button>
+        <div class="system-cmd-section-label" style="margin-top:20px;">◈ SYSTEM SETTINGS</div>
+        <div class="system-cmd-settings">
+          <div class="field">
+            <label>Hunter name</label>
+            <input id="settings-name" value="${escapeHtml(profile.displayName || '')}" placeholder="Your designation" maxlength="24" inputmode="text" />
+          </div>
+          <div class="field">
+            <label>Weekly goal</label>
+            <input id="settings-goal" type="number" min="1" max="14" value="${profile.weeklyGoal || 3}" style="max-width:80px;" />
+          </div>
+          <div class="field">
+            <label>Body type</label>
+            <div class="weekday-chips">
+              <button type="button" class="weekday-chip body-type-chip ${(profile.bodyType||'male')==='male'?'on':''}" data-type="male" style="flex:1;">Male</button>
+              <button type="button" class="weekday-chip body-type-chip ${profile.bodyType==='female'?'on':''}" data-type="female" style="flex:1;">Female</button>
+            </div>
+          </div>
+          <div class="field">
+            <label>Sound</label>
+            <div class="weekday-chips">
+              <button type="button" class="weekday-chip sound-chip ${SFX.soundOn()?'on':''}" data-val="on" style="flex:1;">On</button>
+              <button type="button" class="weekday-chip sound-chip ${!SFX.soundOn()?'on':''}" data-val="off" style="flex:1;">Off</button>
+            </div>
+          </div>
+          <div class="field">
+            <label>Haptic</label>
+            <div class="weekday-chips">
+              <button type="button" class="weekday-chip haptic-chip ${SFX.hapticOn()?'on':''}" data-val="on" style="flex:1;">On</button>
+              <button type="button" class="weekday-chip haptic-chip ${!SFX.hapticOn()?'on':''}" data-val="off" style="flex:1;">Off</button>
+            </div>
+          </div>
+          <div style="display:flex;gap:8px;margin-top:8px;">
+            <button class="btn" id="cancel-settings" style="flex:1;font-size:13px;">Close</button>
+            <button class="btn btn-primary" id="save-settings" style="flex:2;font-size:13px;">Save</button>
+          </div>
+          <button id="settings-exit-btn" style="width:100%;margin-top:8px;padding:9px;background:transparent;border:1px solid rgba(255,77,103,0.15);border-radius:var(--radius-sm);color:rgba(255,77,103,0.45);font-family:var(--font-mono);font-size:10px;letter-spacing:.1em;cursor:pointer;touch-action:manipulation;">◈ EXIT SYSTEM</button>
+          ${currentUser?.uid === 'eUtGPwQBcCSO0x3xS3ZGYFGXNIT2' ? `
+          <div style="margin-top:12px;padding-top:12px;border-top:1px solid rgba(255,77,103,0.08);">
+            <div style="font-family:var(--font-mono);font-size:8px;letter-spacing:.2em;color:var(--excess);margin-bottom:8px;">◈ ADMIN</div>
+            <div style="display:flex;flex-direction:column;gap:6px;">
+              <button class="btn" id="admin-open-tester" style="color:var(--brass);border-color:var(--brass);font-size:12px;">🧪 Run System Tests</button>
+              <button class="btn" id="admin-open-users" style="font-size:12px;">👥 View All Users</button>
+              <button class="btn" id="admin-fix-streaks" style="font-size:12px;color:var(--excess);border-color:var(--excess);">🔧 Fix Missing Streaks</button>
+              <button class="btn" id="admin-fix-ap" style="font-size:12px;color:var(--excess);border-color:var(--excess);">🩹 Fix Missing AP</button>
+              <button class="btn" id="admin-fix-orphans" style="font-size:12px;color:var(--excess);border-color:var(--excess);">🔍 Mismatched Workouts</button>
+              <button class="btn" id="admin-advance-rotation" style="font-size:12px;color:var(--excess);border-color:var(--excess);">⏭ Advance Rotation</button>
+              <button class="btn" id="admin-raw-workout" style="font-size:12px;color:var(--brass);border-color:var(--brass);">🗄 Raw Workout</button>
+              <button class="btn" id="admin-adjust-ap" style="font-size:12px;color:var(--brass);border-color:var(--brass);">➕ Manual AP</button>
+              <button class="btn" id="admin-raw-profile" style="font-size:12px;color:var(--brass);border-color:var(--brass);">🗄 Raw Profile</button>
+              <button class="btn" id="admin-ap-ledger" style="font-size:12px;color:var(--brass);border-color:var(--brass);">📋 AP Ledger</button>
+              <button class="btn" id="admin-migrate-v2" style="font-size:12px;color:#FFD66B;border-color:#FFD66B;">⚡ Migrate V2</button>
+            </div>
+          </div>` : ''}
+          <p class="auth-error" id="settings-error" style="margin-top:8px;"></p>
         </div>
-        <p style="font-size:11.5px;color:var(--text-faint);margin:6px 0 0;">Vibration on quest complete, PRs, and rest timer.</p>
       </div>
-      <div style="display:flex;gap:10px;margin-top:6px;">
-        <button class="btn" id="cancel-settings" style="flex:1;">Cancel</button>
-        <button class="btn btn-primary" id="save-settings" style="flex:2;">Save</button>
-      </div>
-      ${currentUser?.uid === 'eUtGPwQBcCSO0x3xS3ZGYFGXNIT2' ? `
-      <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border);">
-        <div style="font-family:var(--font-mono);font-size:9px;letter-spacing:0.2em;color:var(--excess);margin-bottom:10px;">◈ ADMIN PANEL</div>
-        <div style="display:flex;flex-direction:column;gap:8px;">
-          <button class="btn" id="admin-open-tester" style="color:var(--brass);border-color:var(--brass);font-size:12px;">🧪 Run System Tests</button>
-          <button class="btn" id="admin-open-users" style="font-size:12px;">👥 View All Users & Stats</button>
-          <button class="btn" id="admin-fix-streaks" style="font-size:12px;color:var(--excess);border-color:var(--excess);">🔧 Fix Missing Streaks</button>
-          <button class="btn" id="admin-fix-ap" style="font-size:12px;color:var(--excess);border-color:var(--excess);">🩹 Fix Missing AP</button>
-          <button class="btn" id="admin-fix-orphans" style="font-size:12px;color:var(--excess);border-color:var(--excess);">🔍 Find/Reassign Mismatched Workouts</button>
-          <button class="btn" id="admin-advance-rotation" style="font-size:12px;color:var(--excess);border-color:var(--excess);">⏭ Advance Stuck Rotation Day</button>
-          <button class="btn" id="admin-raw-workout" style="font-size:12px;color:var(--brass);border-color:var(--brass);">🗄 View/Edit Raw Workout</button>
-          <button class="btn" id="admin-adjust-ap" style="font-size:12px;color:var(--brass);border-color:var(--brass);">➕ Manual AP Adjustment</button>
-          <button class="btn" id="admin-raw-profile" style="font-size:12px;color:var(--brass);border-color:var(--brass);">🗄 View/Edit Raw Profile</button>
-          <button class="btn" id="admin-ap-ledger" style="font-size:12px;color:var(--brass);border-color:var(--brass);">📋 AP Ledger</button>
-          <button class="btn" id="admin-migrate-v2" style="font-size:12px;color:#FFD66B;border-color:#FFD66B;">⚡ Migrate to New XP System</button>
-        </div>
-      </div>` : ''}
-      <p class="auth-error" id="settings-error" style="margin-top:10px;"></p>
-    </div>`;
+    </div>
+  `;
   document.body.appendChild(overlay);
+  lockBodyScroll();
   let selectedBodyType = profile.bodyType || 'male';
   overlay.querySelectorAll('.body-type-chip').forEach(chip => chip.addEventListener('click', () => {
     selectedBodyType = chip.dataset.type;
@@ -3861,9 +3933,15 @@ function openSettingsModal() {
     overlay.querySelectorAll('.haptic-chip').forEach(c => c.classList.toggle('on', c.dataset.val === chip.dataset.val));
     if (chip.dataset.val === 'on' && navigator.vibrate) navigator.vibrate([30]);
   }));
-  overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); unlockBodyScroll(); });
-  overlay.querySelector('#cancel-settings').addEventListener('click', () => overlay.remove());
-  // admin buttons
+  overlay.addEventListener('click', (e) => { if (e.target === overlay) { overlay.remove(); unlockBodyScroll(); } });
+  overlay.querySelector('#system-cmd-close')?.addEventListener('click', () => { overlay.remove(); unlockBodyScroll(); });
+  overlay.querySelector('#cancel-settings').addEventListener('click', () => { overlay.remove(); unlockBodyScroll(); });
+  overlay.querySelector('#settings-exit-btn')?.addEventListener('click', () => { overlay.remove(); unlockBodyScroll(); signOut(auth); });
+  const onEsc = (e) => { if (e.key === 'Escape') { overlay.remove(); unlockBodyScroll(); document.removeEventListener('keydown', onEsc); } };
+  document.addEventListener('keydown', onEsc);
+  overlay.querySelectorAll('.sys-fn-btn[data-view]').forEach(btn => {
+    btn.addEventListener('click', () => { overlay.remove(); unlockBodyScroll(); switchView(btn.dataset.view); });
+  });
   overlay.querySelector('#admin-open-tester')?.addEventListener('click', () => { overlay.remove(); openAdminTester(); });
   overlay.querySelector('#admin-open-users')?.addEventListener('click', () => { overlay.remove(); openAdminUserPanel(); });
   overlay.querySelector('#admin-fix-streaks')?.addEventListener('click', () => { overlay.remove(); fixMissingStreaks(); });
@@ -3888,9 +3966,10 @@ function openSettingsModal() {
       profile.displayName = newName;
       profile.weeklyGoal = newGoal;
       profile.bodyType = selectedBodyType;
-      await loadAnatomyTemplate(selectedBodyType); // make sure the chosen body's art is ready before we re-render
+      await loadAnatomyTemplate(selectedBodyType);
       document.getElementById('user-avatar').textContent = initials(newName);
       overlay.remove();
+      unlockBodyScroll();
       await loadAllData();
     } catch (err) {
       errEl.textContent = err.message || 'Could not save — try again.';
@@ -3898,249 +3977,6 @@ function openSettingsModal() {
     }
   });
 }
-
-/* =========================================================================
-   SOUND & HAPTIC SYSTEM
-   ========================================================================= */
-const SFX = {
-  // returns pref from localStorage (profile not loaded yet at init time)
-  soundOn: () => localStorage.getItem('aura_sound') !== 'off',
-  hapticOn: () => localStorage.getItem('aura_haptic') !== 'off',
-
-  // Web Audio API context — created lazily, resumed on first gesture
-  _ctx: null,
-  ctx() {
-    if (!this._ctx) {
-      this._ctx = new (window.AudioContext || window.webkitAudioContext)();
-    }
-    // iOS/mobile requires resume after user gesture
-    if (this._ctx.state === 'suspended') {
-      this._ctx.resume();
-    }
-    return this._ctx;
-  },
-
-  // unlock audio on first touch — call this on any early tap
-  unlock() {
-    try {
-      const ctx = this.ctx();
-      // play a silent buffer to unlock
-      const buf = ctx.createBuffer(1, 1, 22050);
-      const src = ctx.createBufferSource();
-      src.buffer = buf;
-      src.connect(ctx.destination);
-      src.start(0);
-    } catch(e) {}
-  },
-
-  // Haptic wrapper
-  vibrate(pattern) {
-    if (!this.hapticOn()) return;
-    try { if (navigator.vibrate) navigator.vibrate(pattern); } catch(e) {}
-  },
-
-  // Core tone generator
-  _tone(freq, type, gainVal, duration, delay = 0) {
-    if (!this.soundOn()) return;
-    try {
-      const ctx = this.ctx();
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.type = type;
-      osc.frequency.setValueAtTime(freq, ctx.currentTime + delay);
-      gain.gain.setValueAtTime(0, ctx.currentTime + delay);
-      gain.gain.linearRampToValueAtTime(gainVal, ctx.currentTime + delay + 0.01);
-      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + delay + duration);
-      osc.start(ctx.currentTime + delay);
-      osc.stop(ctx.currentTime + delay + duration + 0.05);
-    } catch(e) {}
-  },
-
-  // ── Sound effects ──
-
-  // Hunt Complete — ascending triumphant chord
-  questComplete() {
-    this._tone(440, 'sine', 0.18, 0.3, 0);
-    this._tone(554, 'sine', 0.14, 0.3, 0.08);
-    this._tone(659, 'sine', 0.12, 0.4, 0.16);
-    this._tone(880, 'sine', 0.10, 0.5, 0.28);
-    this.vibrate([40, 30, 80]);
-  },
-
-  // PR / Boss Defeated — dramatic power chord
-  bossDefeated() {
-    this._tone(220, 'sawtooth', 0.08, 0.6, 0);
-    this._tone(330, 'sine', 0.12, 0.5, 0.05);
-    this._tone(440, 'sine', 0.15, 0.6, 0.1);
-    this._tone(660, 'sine', 0.10, 0.8, 0.2);
-    this.vibrate([60, 40, 120, 40, 60]);
-  },
-
-  // Awakening / Rank up — ethereal rising sweep
-  awakening() {
-    for (let i = 0; i < 8; i++) {
-      const freq = 200 + i * 80;
-      this._tone(freq, 'sine', 0.06, 0.3, i * 0.1);
-    }
-    this._tone(880, 'sine', 0.15, 1.0, 0.7);
-    this.vibrate([30, 20, 30, 20, 200]);
-  },
-
-  // Achievement unlock — bright notification ding
-  achievement() {
-    this._tone(523, 'sine', 0.12, 0.15, 0);
-    this._tone(784, 'sine', 0.10, 0.25, 0.1);
-    this._tone(1047, 'sine', 0.08, 0.35, 0.18);
-    this.vibrate([20, 10, 40]);
-  },
-
-  // Gate clear — solemn confirmation
-  gateClear() {
-    this._tone(330, 'sine', 0.10, 0.4, 0);
-    this._tone(440, 'sine', 0.12, 0.5, 0.15);
-    this._tone(660, 'sine', 0.08, 0.6, 0.3);
-    this.vibrate([60, 30, 60]);
-  },
-
-  // Penalty / Gate failed — ominous descending
-  penalty() {
-    this._tone(330, 'sawtooth', 0.06, 0.3, 0);
-    this._tone(277, 'sawtooth', 0.08, 0.4, 0.15);
-    this._tone(220, 'sawtooth', 0.10, 0.6, 0.3);
-    this.vibrate([100, 50, 100, 50, 200]);
-  },
-
-  // Class assigned — mysterious reveal
-  classAssigned() {
-    this._tone(110, 'sine', 0.08, 0.8, 0);
-    this._tone(220, 'sine', 0.06, 0.6, 0.2);
-    this._tone(330, 'sine', 0.10, 0.5, 0.5);
-    this._tone(440, 'sine', 0.12, 0.8, 0.8);
-    this.vibrate([50, 30, 50, 30, 150]);
-  },
-
-  // UI tap — subtle click
-  tap() {
-    this._tone(800, 'sine', 0.04, 0.06, 0);
-    this.vibrate([8]);
-  },
-
-  // Numpad key press — mechanical keyboard feel
-  numpadKey() {
-    this._tone(600, 'square', 0.025, 0.04, 0);
-    this.vibrate([4]);
-  },
-
-  // Numpad confirm / set complete
-  numpadConfirm() {
-    this._tone(440, 'sine', 0.06, 0.08, 0);
-    this._tone(660, 'sine', 0.04, 0.1, 0.05);
-    this.vibrate([15]);
-  },
-
-  // Set marked complete
-  setComplete() {
-    this._tone(523, 'sine', 0.05, 0.12, 0);
-    this._tone(659, 'sine', 0.04, 0.15, 0.06);
-    this.vibrate([10, 5, 10]);
-  },
-
-  // RIR chip / toggle chip select
-  chipSelect() {
-    this._tone(700, 'sine', 0.03, 0.05, 0);
-    this.vibrate([6]);
-  },
-
-  // Carousel swipe
-  swipe() {
-    this._tone(300, 'sine', 0.04, 0.08, 0);
-    this._tone(400, 'sine', 0.03, 0.06, 0.04);
-    this.vibrate([10]);
-  },
-
-  // Begin Quest / primary action
-  beginQuest() {
-    this._tone(220, 'sine', 0.06, 0.15, 0);
-    this._tone(330, 'sine', 0.05, 0.2, 0.08);
-    this.vibrate([20, 10, 30]);
-  },
-
-  // Add/remove set or exercise — soft pop
-  pop() {
-    this._tone(500, 'sine', 0.04, 0.07, 0);
-    this.vibrate([8]);
-  },
-
-  // Rest preset tap
-  restTap() {
-    this._tone(440, 'triangle', 0.04, 0.06, 0);
-    this.vibrate([6]);
-  },
-
-  // Rest timer done — three gentle chimes
-  restDone() {
-    this._tone(523, 'sine', 0.08, 0.2, 0);
-    this._tone(659, 'sine', 0.08, 0.2, 0.15);
-    this._tone(784, 'sine', 0.10, 0.3, 0.3);
-    this.vibrate([200, 100, 200]);
-  },
-};
-
-if (configOk) {
-  onAuthStateChanged(auth, async (user) => {
-    if (user) {
-      currentUser = user;
-      const snap = await getDoc(doc(db, 'users', user.uid));
-      profile = snap.exists() ? snap.data() : { displayName: user.displayName || 'You', weeklyGoal: 3 };
-      if (!profile.stats) profile.stats = defaultStats();
-      if (profile.auraPoints === undefined) profile.auraPoints = 0;
-      if (!profile.email && currentUser.email) {
-        await writeUserFields({ email: currentUser.email });
-        profile.email = currentUser.email;
-      }
-      document.getElementById('user-avatar').textContent = initials(profile.displayName);
-      document.getElementById('auth-screen').style.display = 'none';
-      document.getElementById('app').style.display = 'flex';
-      await loadAnatomyTemplate(profile.bodyType === 'female' ? 'female' : 'male');
-      await loadAllData();
-      // run system checks on every login — penalties, rank-up alerts etc.
-      setTimeout(() => runSystemChecks(), 800);
-      setTimeout(() => ensureStatBaselines(), 1200);
-    } else {
-      currentUser = null;
-      document.getElementById('auth-screen').style.display = 'flex';
-      document.getElementById('app').style.display = 'none';
-    }
-  });
-}
-
-/* =========================================================================
-   NAV
-   ========================================================================= */
-// Unlock Web Audio on first user gesture — required by all mobile browsers
-document.addEventListener('touchstart', function unlockAudio() {
-  SFX.unlock();
-  document.removeEventListener('touchstart', unlockAudio);
-}, { once: true, passive: true });
-
-document.addEventListener('click', function unlockAudioClick() {
-  SFX.unlock();
-  document.removeEventListener('click', unlockAudioClick);
-}, { once: true });
-
-document.querySelectorAll('.bottom-nav button').forEach(btn => btn.addEventListener('click', () => {
-  SFX.unlock();
-  SFX.vibrate([6]);
-  switchView(btn.dataset.view);
-}));
-// ── #2 DIRECTIONAL TRANSITIONS ──
-// Navigation hierarchy: hunt(0) → board(1) → trends(2) → inventory(3) → world(4)
-// Moving right = going deeper = slide up. Moving left = returning = slide down.
-const VIEW_DEPTH = { quest:0, board:1, trends:2, inventory:3, world:4, exercises:2, history:1, feats:2 };
-let _lastViewDepth = 0;
-
 function switchView(name) {
   const newDepth = VIEW_DEPTH[name] ?? 1;
   const goingDeeper = newDepth >= _lastViewDepth;
