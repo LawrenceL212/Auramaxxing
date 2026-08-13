@@ -8204,6 +8204,43 @@ function renderCharCard() {
     }
   }
 
+  // Active effects strip — duel boost/debuff, streak bonus, item dmgMult
+  const charEffects = [];
+  const charDuels = profile.duels || {};
+  const charToday = todayStr();
+  if (charDuels.xpBoostUntil >= charToday && charDuels.xpBoostMult > 1) {
+    charEffects.push({ label:'DUEL BOOST', value:`×${charDuels.xpBoostMult.toFixed(2)} XP`, color:'#4ecd78' });
+  }
+  if (charDuels.defeatUntil >= charToday && charDuels.debuffPct > 0) {
+    charEffects.push({ label:'DEFEAT DEBUFF', value:`−${Math.round(charDuels.debuffPct*100)}% XP`, color:'#FF4D67' });
+  }
+  const charStreak = computeStreak(currentUser.uid);
+  const STREAK_XP_MULT_C = { D:1.02, C:1.05, B:1.08, A:1.12, S:1.15 };
+  const charStreakTier = HUNTER_RANK_TIERS.find(t => charStreak >= t.min)?.rank || 'E';
+  if (STREAK_XP_MULT_C[charStreakTier]) {
+    charEffects.push({ label:`STREAK ${charStreakTier}`, value:`×${STREAK_XP_MULT_C[charStreakTier].toFixed(2)} XP`, color:'#FFD66B' });
+  }
+  const charInv = profile.inventory || {};
+  const charDmgMult = ['weapon','armour','boots','accessory'].reduce((acc, slot) => {
+    const item = charInv[slot];
+    return item?.dmgMult ? acc * item.dmgMult : acc;
+  }, 1.0);
+  if (charDmgMult > 1.01) {
+    charEffects.push({ label:'ITEM DMG', value:`×${charDmgMult.toFixed(2)}`, color:'#A78BFA' });
+  }
+  const existingEffectsEl = document.getElementById('char-active-effects');
+  if (existingEffectsEl) existingEffectsEl.remove();
+  if (charEffects.length) {
+    const effectsEl = document.createElement('div');
+    effectsEl.id = 'char-active-effects';
+    effectsEl.style.cssText = 'display:flex;flex-wrap:wrap;gap:4px;margin-top:6px;';
+    effectsEl.innerHTML = charEffects.map(e =>
+      `<span style="font-family:var(--font-mono);font-size:8px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:4px;padding:2px 6px;color:${e.color};letter-spacing:0.05em;">${e.label} ${e.value}</span>`
+    ).join('');
+    const titleEl = document.getElementById('char-title');
+    if (titleEl) titleEl.after(effectsEl);
+  }
+
   // rank orb
   const badge = document.getElementById('char-rank-badge');
   badge.className = `char-rank-orb ${rankClass}`;
@@ -8504,7 +8541,7 @@ function showDungeonDamageNotif(result, done) {
 function showDungeonClearModal(item, done) {
   const rColor = ({Common:'rgba(160,160,160,0.9)',Uncommon:'rgba(78,205,120,0.9)',Rare:'rgba(91,168,255,0.9)',Epic:'rgba(139,92,255,0.9)',Legendary:'rgba(255,214,107,1.0)'})[item.rarity] || 'rgba(91,168,255,0.9)';
   const statBonusHtml = item.statBonus
-    ? Object.entries(item.statBonus).map(([s,v])=>`<span style="background:rgba(91,168,255,0.1);border:1px solid rgba(91,168,255,0.2);border-radius:4px;padding:2px 8px;font-family:var(--font-mono);font-size:11px;color:${rColor};">+${v} ${s}</span>`).join('')
+    ? Object.entries(item.statBonus).map(([s,v])=>`<span style="background:rgba(91,168,255,0.1);border:1px solid rgba(91,168,255,0.2);border-radius:4px;padding:2px 8px;font-family:var(--font-mono);font-size:11px;color:${rColor};">+${v} ${s} cap</span>`).join('')
     : '';
   showSystemModal(`<div class="system-window levelup">
     <p class="system-eyebrow" style="color:${rColor};letter-spacing:0.2em;">◈ DUNGEON CLEARED ◈</p>
@@ -11138,12 +11175,29 @@ function showDebriefModal(exercises, apEarned, prs, done, soldiersEarned = {}) {
     </div>` : '';
 
   // ── XP BAR — animate from old to new ──
+  // Compute active multipliers for display
+  const duelsD = profile.duels || {};
+  const todayD = todayStr();
+  const hasBoost  = duelsD.xpBoostUntil >= todayD && duelsD.xpBoostMult > 1;
+  const hasDebuff = duelsD.defeatUntil  >= todayD && duelsD.debuffPct > 0;
+  const STREAK_XP_MULT_D = { E:1.0, D:1.02, C:1.05, B:1.08, A:1.12, S:1.15 };
+  const streakD = computeStreak(currentUser.uid);
+  const streakTierD = HUNTER_RANK_TIERS.find(t => streakD >= t.min)?.rank || 'E';
+  const streakBonusD = STREAK_XP_MULT_D[streakTierD] || 1.0;
+
+  const multTags = [];
+  if (hasBoost)  multTags.push(`<span style="color:#4ecd78;font-size:9px;font-family:var(--font-mono);">⚔ DUEL BOOST ×${duelsD.xpBoostMult.toFixed(2)}</span>`);
+  if (hasDebuff) multTags.push(`<span style="color:#FF4D67;font-size:9px;font-family:var(--font-mono);">✗ DEFEAT DEBUFF −${Math.round(duelsD.debuffPct*100)}%</span>`);
+  if (streakBonusD > 1.0) multTags.push(`<span style="color:#FFD66B;font-size:9px;font-family:var(--font-mono);">🔥 STREAK ${streakTierD} ×${streakBonusD.toFixed(2)}</span>`);
+  const multHtml = multTags.length ? `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:4px;">${multTags.join('')}</div>` : '';
+
   const xpHtml = generalXP > 0 ? `
     <div style="margin-bottom:14px;animation:achieveIn .5s var(--ease-cinema) .35s both;">
       <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px;">
         <span style="font-family:var(--font-mono);font-size:8px;color:rgba(91,168,255,.4);letter-spacing:.15em;">HUNTER LEVEL ${hunterLevel}</span>
         <span style="font-family:var(--font-mono);font-size:11px;color:var(--legendary);">+${Math.round(generalXP)} XP</span>
       </div>
+      ${multHtml}
       <div class="xp-debrief-bar-wrap">
         <div class="xp-debrief-bar" id="debrief-xp-bar" style="width:${prevXpPct.toFixed(1)}%"></div>
       </div>
@@ -11349,15 +11403,12 @@ function renderObjectivesStrip() {
   const RANK_TIERS_LIST = ['E','D','C','B','A','S'];
 
   // For each non-maxed stat, compute how far along it is toward its next rank
+  // Uses checkV2UpgradeGates so item statBonus is included in the investable cap
   const statProgress = STAT_DEFS.map(def => {
-    const cur = statRanks[def.id] || 'E';
-    if (cur === 'S') return null;
-    const nextRank = RANK_TIERS_LIST[RANK_TIERS_LIST.indexOf(cur) + 1];
-    const invested = statAP[def.id] || 0;
-    const needed   = STAT_RANK_AP_COST[nextRank] || 0;
-    const cap      = Math.floor(statTrainingXP[def.id] || 0);
-    const pct      = needed > 0 ? Math.min(100, Math.round((invested / needed) * 100)) : 0;
-    return { id: def.id, label: def.label, cur, nextRank, invested, needed, cap, pct };
+    const gates = checkV2UpgradeGates(def.id);
+    if (gates.isMaxed) return null;
+    const pct = gates.apNeeded > 0 ? Math.min(100, Math.round((gates.apInvested / gates.apNeeded) * 100)) : 0;
+    return { id: def.id, label: def.label, cur: gates.currentRank, nextRank: gates.nextRank, invested: gates.apInvested, needed: gates.apNeeded, cap: gates.trainingCap, pct };
   }).filter(Boolean);
 
   if (statProgress.length > 0) {
@@ -16061,7 +16112,7 @@ function renderInventory() {
       </div>`;
 
     const statLines = item.statBonus
-      ? Object.entries(item.statBonus).slice(0,2).map(([s,v])=>`<span style="font-size:6.5px;color:${rColor};font-family:var(--font-mono);">+${v} ${s}</span>`).join('<br>')
+      ? Object.entries(item.statBonus).slice(0,2).map(([s,v])=>`<span style="font-size:6.5px;color:${rColor};font-family:var(--font-mono);">+${v} ${s} cap</span>`).join('<br>')
       : '';
 
     return `
