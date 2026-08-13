@@ -11203,24 +11203,40 @@ function renderObjectivesStrip() {
 
   const objectives = [];
 
-  // 1. Hunter rank gap
-  const ap = profile.auraPoints || 0;
-  const currentRank = profile.hunterRank || 'E';
+  // 1. Closest stat to ranking up (V2 system — 6 independent stats)
+  const statAP = profile.statAP || {};
+  const statTrainingXP = profile.statTrainingXP || {};
+  const statRanks = profile.stats || {};
   const RANK_TIERS_LIST = ['E','D','C','B','A','S'];
-  const curIdx = RANK_TIERS_LIST.indexOf(currentRank);
-  const UPGRADE_COSTS_LOCAL = { E:50, D:300, C:1000, B:5000, A:20000 };
-  if (curIdx < RANK_TIERS_LIST.length - 1) {
-    const nextRank = RANK_TIERS_LIST[curIdx + 1];
-    const cost = UPGRADE_COSTS_LOCAL[currentRank] || 50;
-    const pct = Math.min(100, Math.round((ap / cost) * 100));
-    const apLeft = Math.max(0, cost - ap);
+
+  // For each non-maxed stat, compute how far along it is toward its next rank
+  const statProgress = STAT_DEFS.map(def => {
+    const cur = statRanks[def.id] || 'E';
+    if (cur === 'S') return null;
+    const nextRank = RANK_TIERS_LIST[RANK_TIERS_LIST.indexOf(cur) + 1];
+    const invested = statAP[def.id] || 0;
+    const needed   = STAT_RANK_AP_COST[nextRank] || 0;
+    const cap      = Math.floor(statTrainingXP[def.id] || 0);
+    const pct      = needed > 0 ? Math.min(100, Math.round((invested / needed) * 100)) : 0;
+    return { id: def.id, label: def.label, cur, nextRank, invested, needed, cap, pct };
+  }).filter(Boolean);
+
+  if (statProgress.length > 0) {
+    // Show the stat closest to ranking up (highest pct)
+    const closest = statProgress.reduce((a, b) => b.pct > a.pct ? b : a);
+    const apLeft  = Math.max(0, closest.needed - closest.invested);
+    const capShort = closest.cap < closest.needed && apLeft > 0;
     objectives.push({
       icon: '⚔',
-      title: `RANK UP · ${currentRank} → ${nextRank}`,
-      pct,
+      title: `${closest.label.toUpperCase()} · ${closest.cur} → ${closest.nextRank}`,
+      pct: closest.pct,
       colour: '#FFD66B',
-      value: `${pct}%`,
-      sub: apLeft > 0 ? `${apLeft.toLocaleString()} AP needed` : '✓ Ready to rank up',
+      value: `${closest.invested}/${closest.needed} AP`,
+      sub: closest.pct >= 100
+        ? '✓ Ready to rank up'
+        : capShort
+          ? `Training cap: ${closest.cap} AP — train ${closest.label.toLowerCase()} to unlock`
+          : `${apLeft} AP to go`,
     });
   }
 
@@ -12886,18 +12902,25 @@ function renderTrends() {
       ${(() => {
         const caps = profile.statTrainingXP || {};
         const invested = profile.statAP || {};
+        const statRanksC = profile.stats || {};
         const STAT_ICONS_T = { strength:'⚔️', focus:'🎯', defence:'🛡️', agility:'⚡', endurance:'🔥', flexibility:'💫' };
-        const RANK_COST = 50; // E→D cost
+        const RANK_TIERS_T = ['E','D','C','B','A','S'];
         return Object.entries(caps)
           .sort(([,a],[,b]) => b - a)
           .map(([stat, cap]) => {
             const inv = invested[stat] || 0;
-            const capPct = Math.min(100, (cap / RANK_COST) * 100).toFixed(0);
-            const invPct = cap > 0 ? Math.min(100, (inv / cap) * 100).toFixed(0) : 0;
+            const curRank = statRanksC[stat] || 'E';
+            const nextRank = curRank === 'S' ? null : RANK_TIERS_T[RANK_TIERS_T.indexOf(curRank) + 1];
+            const rankCost = nextRank ? (STAT_RANK_AP_COST[nextRank] || 100) : 0;
+            // cap bar = how much of the training cap covers the rank cost
+            const capPct = rankCost > 0 ? Math.min(100, (Math.floor(cap) / rankCost) * 100).toFixed(0) : 100;
+            // invest bar = AP invested toward next rank
+            const invPct = rankCost > 0 ? Math.min(100, (inv / rankCost) * 100).toFixed(0) : 100;
+            const label = curRank === 'S' ? Math.floor(cap) + ' XP cap \u00b7 maxed' : Math.floor(cap) + ' XP cap \u00b7 ' + inv + '/' + rankCost + ' AP \u2192 ' + nextRank;
             return `<div style="margin-bottom:10px;">
               <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px;">
                 <span style="font-size:12px;color:var(--text-dim);">${STAT_ICONS_T[stat]||'·'} ${stat.charAt(0).toUpperCase()+stat.slice(1)}</span>
-                <span style="font-family:var(--font-mono);font-size:10px;color:var(--text-faint);">${Math.floor(cap)} XP cap · ${inv} AP invested</span>
+                <span style="font-family:var(--font-mono);font-size:10px;color:var(--text-faint);">${label}</span>
               </div>
               <div style="height:6px;background:rgba(91,168,255,0.08);border-radius:3px;position:relative;overflow:hidden;">
                 <div class="training-cap-bar" style="position:absolute;top:0;left:0;height:100%;width:${capPct}%;background:rgba(91,168,255,0.2);border-radius:3px;"></div>
