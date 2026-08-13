@@ -6464,19 +6464,22 @@ function buildMilestoneData() {
           const e = e1rm(s.weight, s.reps);
           data.deadliftRatio = Math.max(data.deadliftRatio, e/bw);
         }
-        // Planche hold
+        // Planche hold — durationMins stores actual duration; convert to seconds
         if (['Tuck Planche','Advanced Tuck Planche','Straddle Planche','Full Planche'].includes(name)) {
-          data.plancheHold = Math.max(data.plancheHold, s.reps); // reps = seconds for timed
+          const holdSecs = s.durationMins != null ? Math.round(s.durationMins * 60) : s.reps;
+          data.plancheHold = Math.max(data.plancheHold, holdSecs);
         }
-        // Handstand
+        // Handstand — durationMins stores actual duration; convert to seconds for milestone check
         if (['Freestanding Handstand Hold','Wall Handstand Hold','Chest-to-Wall Handstand Hold'].includes(name)) {
-          data.handstandHold = Math.max(data.handstandHold, s.reps);
+          const holdSecs = s.durationMins != null ? Math.round(s.durationMins * 60) : s.reps;
+          data.handstandHold = Math.max(data.handstandHold, holdSecs);
         }
         // Muscle up
         if (['Muscle Up'].includes(name)) data.muscleUp = Math.max(data.muscleUp, s.reps);
         // Front lever — include progression exercises
         if (['Front Lever','Straddle Front Lever','Tuck Front Lever','Advanced Tuck Front Lever','Single Leg Front Lever'].includes(name)) {
-          data.frontLeverHold = Math.max(data.frontLeverHold, s.reps);
+          const holdSecs = s.durationMins != null ? Math.round(s.durationMins * 60) : s.reps;
+          data.frontLeverHold = Math.max(data.frontLeverHold, holdSecs);
         }
         // Running — read from runSummary first, fall back to set reps
         if (['Running','Easy Run','Long Run','Tempo Run','Hill Sprints','Interval Running',
@@ -6491,7 +6494,8 @@ function buildMilestoneData() {
         if (['Front Splits','Side Splits','Middle Splits'].includes(name)) data.splitsAchieved = true;
         // German hang
         if (['German Hang','German hang'].includes(name)) {
-          data.germanHangSecs = Math.max(data.germanHangSecs, s.reps);
+          const holdSecs = s.durationMins != null ? Math.round(s.durationMins * 60) : s.reps;
+          data.germanHangSecs = Math.max(data.germanHangSecs, holdSecs);
         }
         // Pistol squat
         if (name === 'Pistol Squat') data.pistolAchieved = true;
