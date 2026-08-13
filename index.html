@@ -286,33 +286,12 @@
   @keyframes timerPulse{0%,100%{opacity:1;}50%{opacity:0.4;}}
   main.view-area{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;padding:20px 20px 100px;max-width:640px;margin:0 auto;width:100%;}
   section.view{display:none;}
-  /* Force landscape feel for world map on mobile */
-  section.view#view-world.active {
-    contain: strict;
-  }
-  @media(max-width:640px){
-    section.view#view-world.active{
-      position:fixed;top:0;left:0;width:100vw;
-      height:calc(100dvh - 60px);
-      z-index:10;
-    }
-    #world-map-wrap iframe {
-      /* Rotate the iframe content to landscape */
-      width:calc(100dvh - 60px) !important;
-      height:100vw !important;
-      transform-origin:top left;
-      transform:rotate(90deg) translateY(-100%);
-    }
-    #world-armies-btn{
-      /* Reposition for landscape */
-      bottom:auto;left:auto;top:16px;right:16px;
-    }
-  }
+  /* World map mobile — full screen, no rotation */
   section.view#view-world{display:flex;visibility:hidden;pointer-events:none;position:fixed;top:0;left:0;width:100%;height:100%;z-index:-1;padding:0;flex-direction:row;}
-  section.view#view-world.active{visibility:visible;pointer-events:auto;position:fixed;top:0;left:0;width:100vw;height:calc(100dvh - 60px);z-index:10;margin:0;padding:0;}
+  section.view#view-world.active{visibility:visible;pointer-events:auto;position:fixed;top:0;left:0;width:100vw;bottom:60px;z-index:10;margin:0;padding:0;height:auto;}
   #world-layout{display:flex;flex-direction:row;width:100%;height:100%;overflow:hidden;}
   #world-map-wrap{flex:1;height:100%;position:relative;overflow:hidden;min-width:0;}
-  #world-map-wrap iframe{width:100%;height:100%;border:none;background:#03050a;display:block;}
+  #world-map-wrap iframe{width:100%;height:100%;border:none;background:#03050a;display:block;min-height:0;}
   #world-sidebar{width:180px;min-width:180px;height:100%;background:rgba(2,12,24,0.95);border-left:1px solid rgba(61,165,255,0.12);display:flex;flex-direction:column;overflow-y:auto;overflow-x:hidden;flex-shrink:0;}
   #world-sidebar::-webkit-scrollbar{width:3px;}
   #world-sidebar::-webkit-scrollbar-thumb{background:rgba(61,165,255,.2);}
@@ -327,7 +306,7 @@
   .ws-seg{height:100%;}
   .ws-owned{font-size:9px;margin-top:3px;}
   @media(max-width:640px){
-    section.view#view-world.active{flex-direction:row;height:calc(100dvh - 60px);}
+    section.view#view-world.active{flex-direction:row;}
     #world-layout{flex-direction:row;height:100%;}
     #world-sidebar{
       display:none;
@@ -1894,6 +1873,7 @@
     background:var(--card-2);flex-shrink:0;flex-wrap:wrap;
   }
   .rest-timer-label{font-size:12px;color:var(--text-dim);font-weight:600;white-space:nowrap;}
+  .rest-timer-phase{font-family:var(--font-mono);font-size:8px;color:rgba(61,165,255,.4);letter-spacing:.15em;display:block;margin-top:1px;}
   .rest-timer-presets{display:flex;gap:5px;}
   .rest-preset-btn{background:var(--card);border:1px solid var(--border);color:var(--text-dim);border-radius:14px;padding:5px 10px;font-size:11.5px;cursor:pointer;}
   .rest-preset-btn:active{border-color:var(--brass);color:var(--brass);}
@@ -1903,6 +1883,25 @@
   .rest-timer-display.done{color:var(--growing);animation:restPulse 1s ease-in-out 3;}
   @keyframes restPulse{0%,100%{opacity:1;}50%{opacity:0.35;}}
   .rest-timer-stop{background:none;border:none;color:var(--excess);font-size:11.5px;cursor:pointer;text-decoration:underline;}
+
+  /* ── ACTIVE OBJECTIVES STRIP ── */
+  #objectives-strip{display:flex;flex-direction:column;gap:8px;margin-bottom:16px;}
+  .obj-card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:11px 14px;display:flex;align-items:center;gap:12px;cursor:default;}
+  .obj-icon{font-size:18px;flex-shrink:0;}
+  .obj-body{flex:1;min-width:0;}
+  .obj-title{font-size:10px;font-family:var(--font-mono);color:var(--text-dim);letter-spacing:.06em;margin-bottom:4px;}
+  .obj-bar-wrap{height:4px;background:rgba(255,255,255,.06);border-radius:2px;overflow:hidden;margin-bottom:4px;}
+  .obj-bar-fill{height:100%;border-radius:2px;transition:width .6s;}
+  .obj-sub{font-size:10px;color:var(--text-faint);}
+  .obj-value{font-family:var(--font-mono);font-size:13px;font-weight:800;flex-shrink:0;}
+
+  /* ── RIR description ── */
+  .rir-desc{font-size:10px;color:rgba(61,165,255,.5);margin-top:3px;min-height:13px;font-style:italic;transition:opacity .2s;text-align:center;}
+
+  /* ── Stat WHY panel ── */
+  .stat-why{background:rgba(61,165,255,.04);border:1px solid rgba(61,165,255,.1);border-radius:8px;padding:10px 12px;margin-top:8px;font-size:11px;color:var(--text-dim);line-height:1.7;display:none;}
+  .stat-why.open{display:block;}
+  .stat-why-head{font-family:var(--font-mono);font-size:8px;color:rgba(61,165,255,.4);letter-spacing:.1em;margin-bottom:6px;}
 
   /* ---------- History calendar ---------- */
   .cal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
@@ -2089,6 +2088,9 @@
       <h2>Daily Hunt</h2>
       <p class="sub">Run your program or log a one-off session. Every set feeds your stats and your streak.</p>
 
+      <!-- ── ACTIVE OBJECTIVES STRIP ── -->
+      <div id="objectives-strip"></div>
+
       <div id="program-card-wrap"></div>
       <div id="program-editor-wrap"></div>
 
@@ -2117,7 +2119,7 @@
           </div>
         </div>
         <div class="rest-timer-bar">
-          <span class="rest-timer-label">⏱ Rest</span>
+          <span class="rest-timer-label">⏱ Rest<span class="rest-timer-phase">RECOVERY PHASE</span></span>
           <div class="rest-timer-presets">
             <button type="button" class="rest-preset-btn" data-secs="30">30s</button>
             <button type="button" class="rest-preset-btn" data-secs="60">60s</button>
@@ -2254,6 +2256,9 @@
       <!-- WEEKLY RAID BOSS -->
       <div id="raid-boss-slot"></div>
 
+      <!-- PROGRESSION ROADMAP -->
+      <div id="progression-roadmap-slot"></div>
+
       <!-- CHARACTER SCREEN -->
       <div class="char-screen" id="char-card">
         <div class="char-screen-bg" id="char-screen-bg"></div>
@@ -2292,11 +2297,16 @@
               <div class="char-title" id="char-title">Unranked Hunter</div>
             </div>
             <div class="char-power-col">
-              <div class="char-power-value" id="char-power-value">0</div>
+              <div class="char-power-value" id="char-power-value" style="cursor:pointer;" onclick="togglePowerBreakdown()" title="Tap to see breakdown">0</div>
               <div class="char-power-label">POWER</div>
               <div id="char-dominant-stat" style="font-family:var(--font-mono);font-size:9px;color:var(--text-faint);letter-spacing:0.06em;margin-top:2px;"></div>
               <div class="char-ap-row"><span class="char-ap-value" id="ap-amount">0</span><span class="char-ap-label">AP</span></div>
             </div>
+          </div>
+          <div id="power-breakdown-panel" style="display:none;background:rgba(61,165,255,.04);border:1px solid rgba(61,165,255,.1);border-radius:8px;padding:10px 14px;margin:0 0 10px;font-size:11px;">
+            <div style="font-family:var(--font-mono);font-size:8px;color:rgba(61,165,255,.4);letter-spacing:.1em;margin-bottom:8px;">◈ POWER BREAKDOWN</div>
+            <div id="power-breakdown-rows"></div>
+            <div style="font-size:9px;color:rgba(61,165,255,.3);margin-top:8px;border-top:1px solid rgba(61,165,255,.08);padding-top:6px;">Power = your stats converted to a numeric score. Train all stats to grow it.</div>
           </div>
           <div class="char-divider"></div>
           <div id="calibration-observation-slot"></div>
@@ -2311,6 +2321,8 @@
           </div>
           <div class="char-stats" id="char-stats"></div>
           <p class="char-rank-hint" id="char-rank-hint"></p>
+          <button onclick="generateHunterCard()" style="width:100%;margin-top:14px;padding:11px;background:rgba(61,165,255,.06);border:1px solid rgba(61,165,255,.2);border-radius:10px;color:rgba(61,165,255,.7);font-family:var(--font-mono);font-size:11px;letter-spacing:.08em;cursor:pointer;touch-action:manipulation;">◈ GENERATE HUNTER CARD</button>
+          <div id="hunter-card-output" style="display:none;margin-top:12px;"></div>
         </div>
       </div>
 
@@ -2372,16 +2384,29 @@
     <section class="view" id="view-history">
       <h2>Quest Log</h2>
       <p class="sub">Every cleared quest across the party.</p>
-      <div class="card">
-        <div class="cal-head">
-          <button id="cal-prev">‹</button>
-          <span class="cal-title" id="cal-title"></span>
-          <button id="cal-next">›</button>
-        </div>
-        <div class="cal-weekdays"><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span><span>S</span></div>
-        <div class="cal-grid" id="cal-grid"></div>
+
+      <!-- Tab toggle: Calendar / System Feed -->
+      <div style="display:flex;gap:6px;margin-bottom:12px;">
+        <button id="history-tab-cal" class="btn btn-sm" style="flex:1;font-family:var(--font-mono);font-size:11px;" onclick="switchHistoryTab('cal')">📅 Calendar</button>
+        <button id="history-tab-feed" class="btn btn-sm" style="flex:1;font-family:var(--font-mono);font-size:11px;opacity:.5;" onclick="switchHistoryTab('feed')">◈ System Feed</button>
       </div>
-      <div id="history-list"></div>
+
+      <div id="history-cal-view">
+        <div class="card">
+          <div class="cal-head">
+            <button id="cal-prev">‹</button>
+            <span class="cal-title" id="cal-title"></span>
+            <button id="cal-next">›</button>
+          </div>
+          <div class="cal-weekdays"><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span><span>S</span></div>
+          <div class="cal-grid" id="cal-grid"></div>
+        </div>
+        <div id="history-list"></div>
+      </div>
+
+      <div id="history-feed-view" style="display:none;">
+        <div id="system-feed-content"></div>
+      </div>
     </section>
 
     <!-- ---- GATES ---- -->
@@ -3218,12 +3243,23 @@ function switchView(name) {
   document.querySelectorAll('.bottom-nav button').forEach(b => b.classList.toggle('active', b.dataset.view === name));
 
   // World iframe stays loaded — section CSS handles visibility
-  if (name === 'world') { renderShadowWorld(); renderWorldSidebar(); }
+  if (name === 'world') {
+    renderShadowWorld();
+    renderWorldSidebar();
+    // Lock to landscape on mobile
+    if (window.innerWidth <= 640 && screen.orientation?.lock) {
+      screen.orientation.lock('landscape').catch(() => {});
+    }
+  } else {
+    // Unlock orientation when leaving world
+    if (screen.orientation?.unlock) screen.orientation.unlock();
+  }
 
   if (name === 'board') {
     renderBoard();
     renderCharCard();
     renderTodayCard();
+    renderProgressionRoadmap();
   }
   if (name === 'trends') {
     trendsView = 'dashboard';
@@ -3240,6 +3276,7 @@ function switchView(name) {
   if (name === 'world') { renderShadowWorld(); renderWorldSidebar(); }
   if (name === 'history') renderCalendar();
   if (name === 'quest') {
+    renderObjectivesStrip();
     if (myProgram && myProgram.days && myProgram.days.length) {
       if (myProgram.scheduleMode === 'fixed') {
         const today = todayWeekday();
@@ -3309,6 +3346,7 @@ async function loadAllData() {
 
   populateExerciseSelects();
   renderQuestFeed();
+  renderObjectivesStrip();
   maybeSpawnWeaknessTrial().catch(console.warn);
   setTimeout(() => { try { renderBoard(); } catch(e) { console.error(e); } }, 0);
   setTimeout(() => { try { renderTrends(); } catch(e) {} }, 50);
@@ -4506,7 +4544,7 @@ function addExerciseRow(presetName, targetSets, targetReps, prefillSets) {
   function rirChips(prefillRir) {
     return `<div class="rir-chips" title="Reps In Reserve">${[0,1,2,3,4,5,6,7,8,9,10].map(n =>
       `<button type="button" class="rir-chip" data-rir="${n}" style="${n<=2?'border-color:rgba(255,61,90,0.4);':n<=5?'border-color:rgba(212,160,23,0.4);':''}">${n}</button>`
-    ).join('')}</div>`;
+    ).join('')}</div><div class="rir-desc"></div>`;
   }
 
   function rpeChips(prefillRpe) {
@@ -4661,6 +4699,23 @@ function addExerciseRow(presetName, targetSets, targetReps, prefillSets) {
       chip.classList.add('selected');
       checkComplete(setRow);
       refreshCompleteButton();
+      // Show plain-English RIR description
+      const rir = parseInt(chip.dataset.rir);
+      const RIR_DESCS = {
+        0:'Absolute limit — could not do another rep.',
+        1:'One rep left in the tank.',
+        2:'Could probably do 2 more.',
+        3:'3 reps left — moderately hard.',
+        4:'4 reps left — comfortable.',
+        5:'5 reps left — fairly easy.',
+        6:'6+ reps left — light effort.',
+        7:'Very easy — lots left.',
+        8:'Extremely easy.',
+        9:'Almost no effort.',
+        10:'Minimal effort — warm-up level.',
+      };
+      const descEl = setRow.querySelector('.rir-desc');
+      if (descEl) descEl.textContent = RIR_DESCS[rir] || '';
     }));
     setRow.querySelector('.set-remove').addEventListener('click', () => { SFX.pop(); setRow.remove(); [...setsList.children].forEach((r,i) => r.querySelector('.set-idx').textContent = i+1); });
     setsList.appendChild(setRow);
@@ -4808,6 +4863,13 @@ document.getElementById('save-workout-btn')?.addEventListener('click', async () 
     try {
       soldiersEarned = await generateShadowArmySoldiers(exercises, runSummaryFromLogger) || {};
     } catch(e) { console.warn('Shadow army generation failed:', e); }
+
+    // Store last session damage for debrief
+    profile._lastDungeonDamage = dungeonResult?.damage || 0;
+    // Raid damage: estimated from this session's XP vs weekly minimum
+    const sessionXP = xpResult?.generalXP || 0;
+    const PERSONAL_MIN_XP_EST = 3 * 15 * 1.8;
+    profile._lastRaidDamage = Math.round((sessionXP / PERSONAL_MIN_XP_EST) * (10 / (allUsers.length||1)) * 10) / 10;
 
     startDailyTimer();
     setTimeout(() => {
@@ -6794,6 +6856,26 @@ function renderCharCard() {
   if (document.getElementById('char-power-value')) {
     document.getElementById('char-power-value').textContent = power.toLocaleString();
   }
+  // Power breakdown
+  const STAT_ICONS2 = { strength:'⚔️', endurance:'🔥', agility:'⚡', focus:'🎯', defence:'🛡️', flexibility:'💫' };
+  const breakdownRows = document.getElementById('power-breakdown-rows');
+  if (breakdownRows) {
+    const TIER_VAL = { E:0, D:1, C:3, B:6, A:10, S:15 };
+    const rows = STAT_DEFS.map(d => {
+      const rank = stats[d.id] || 'E';
+      const val = (TIER_VAL[rank] || 0) * 100;
+      return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+        <span style="font-size:12px;">${STAT_ICONS2[d.id]||'·'}</span>
+        <span style="flex:1;font-size:11px;color:var(--text-dim);text-transform:capitalize;">${d.label}</span>
+        <span style="font-family:var(--font-mono);font-size:10px;color:${RANK_COLORS[rank]||'var(--text-faint)'};">${rank}</span>
+        <span style="font-family:var(--font-mono);font-size:11px;color:var(--brass);font-weight:700;">${val}</span>
+      </div>`;
+    }).join('');
+    breakdownRows.innerHTML = rows + `<div style="display:flex;align-items:center;gap:8px;margin-top:6px;padding-top:6px;border-top:1px solid rgba(61,165,255,.08);">
+      <span style="flex:1;font-size:11px;color:var(--text-dim);font-weight:700;">TOTAL</span>
+      <span style="font-family:var(--font-mono);font-size:13px;color:var(--brass);font-weight:800;">${power.toLocaleString()}</span>
+    </div>`;
+  }
   // Hunter level banner — prominent, animated
   const hunterXP = profile.hunterXP || 0;
   // Derive level from XP (not the stored field) so the bar can't desync
@@ -6826,13 +6908,13 @@ function renderCharCard() {
   }
   // dominant stat — highest ranked stat
   const STAT_ORDER = ['S','A','B','C','D','E'];
-  const STAT_ICONS2 = { strength:'⚔️', endurance:'🔥', agility:'⚡', focus:'🎯', defence:'🛡️', flexibility:'💫' };
+  const STAT_ICONS_DOM = { strength:'⚔️', endurance:'🔥', agility:'⚡', focus:'🎯', defence:'🛡️', flexibility:'💫' };
   const dominantEl = document.getElementById('char-dominant-stat');
   if (dominantEl) {
     const statsArr = STAT_DEFS.map(d => ({ id:d.id, rank:(profile.stats||{})[d.id]||'E' }));
     const best = statsArr.sort((a,b) => STAT_ORDER.indexOf(a.rank) - STAT_ORDER.indexOf(b.rank))[0];
     if (best && best.rank !== 'E') {
-      dominantEl.textContent = STAT_ICONS2[best.id] + ' ' + best.id.charAt(0).toUpperCase() + best.id.slice(1) + '-focused';
+      dominantEl.textContent = STAT_ICONS_DOM[best.id] + ' ' + best.id.charAt(0).toUpperCase() + best.id.slice(1) + '-focused';
     } else {
       dominantEl.textContent = '';
     }
@@ -6984,6 +7066,16 @@ function renderCharCard() {
     const btnLabel = isMaxed ? 'MAX' : gates.ready ? '⚡ RANK UP' : canInvest ? `Invest AP →` : `Train ${def.label}`;
     const btnCls = isMaxed ? 'stat-upgrade-btn maxed' : gates.ready ? 'stat-upgrade-btn can-upgrade awakening' : 'stat-upgrade-btn';
 
+    const STAT_EXPLAINS = {
+      strength:    { what:'Based on your personal lift improvement (e1RM) from your starting baseline.', how:'Train compound lifts: bench, squat, deadlift, overhead press.', measure:'Measured by: Barbell e1RM improvement %' },
+      endurance:   { what:'Based on your running pace and distance improvement over time.', how:'Run consistently — easy runs, tempo runs, long runs.', measure:'Measured by: Running pace improvement %' },
+      agility:     { what:'Based on your explosive and sprint performance improvement.', how:'Train explosive movements, sprints, jumps, sport.', measure:'Measured by: Explosive PR improvement %' },
+      flexibility: { what:'Based on consistency of mobility, core, and flexibility training.', how:'Train mobility, stretching, climbing, calisthenics regularly.', measure:'Measured by: Weekly mobility sessions' },
+      defence:     { what:'Measures your consistency and resilience — how reliably you show up and stick to your training schedule.', how:'Set a realistic weekly goal and hit it every week. Consistency over time is what builds Defence.', measure:'Measured by: % of weeks you hit your weekly training goal' },
+      focus:       { what:'Based on streak length and training session quality.', how:'Train consistently, log every session, keep your streak.', measure:'Measured by: Streak days + session quality' },
+    };
+    const ex = STAT_EXPLAINS[def.id] || {};
+
     return `<div class="stat-row" style="cursor:pointer;" data-stat-detail="${def.id}">
       <span class="stat-label" title="${def.desc}">${def.label}</span>
       <div style="flex:1;min-width:0;">
@@ -6992,10 +7084,17 @@ function renderCharCard() {
           <div class="stat-tiers">${RANK_TIERS.map(()=>'<div class="stat-tier-seg"></div>').join('')}</div>
         </div>
         ${xpTag}
+        <div class="stat-why" id="stat-why-${def.id}">
+          <div class="stat-why-head">◈ WHAT IS ${def.label.toUpperCase()}?</div>
+          <div style="margin-bottom:6px;">${ex.what||''}</div>
+          <div style="color:var(--text-faint);font-size:10px;margin-bottom:3px;">${ex.measure||''}</div>
+          <div style="color:var(--growing);font-size:10px;">How to improve: ${ex.how||''}</div>
+        </div>
       </div>
       <span class="stat-rank ${rankCls}">${cur}</span>
       <div style="display:flex;flex-direction:column;align-items:flex-end;gap:2px;">
         <button class="${btnCls}" data-stat="${def.id}" ${isMaxed?'disabled':''}>${btnLabel}</button>
+        <button class="stat-why-btn" data-stat="${def.id}" style="background:none;border:none;color:rgba(61,165,255,.35);font-size:10px;cursor:pointer;padding:2px 4px;touch-action:manipulation;">why?</button>
       </div>
     </div>`;
   }).join('');
@@ -7008,6 +7107,18 @@ function renderCharCard() {
     row.addEventListener('click', e => {
       if (e.target.closest('button')) return;
       openStatInvestPanel(row.dataset.statDetail);
+    });
+  });
+
+  // "why?" button toggles explanation panel
+  statsEl.querySelectorAll('.stat-why-btn').forEach(btn => {
+    btn.addEventListener('click', e => {
+      e.stopPropagation();
+      const panel = document.getElementById('stat-why-' + btn.dataset.stat);
+      if (!panel) return;
+      const isOpen = panel.classList.contains('open');
+      statsEl.querySelectorAll('.stat-why').forEach(p => p.classList.remove('open'));
+      if (!isOpen) panel.classList.add('open');
     });
   });
 
@@ -9595,6 +9706,14 @@ function showDebriefModal(exercises, apEarned, prs, done, soldiersEarned = {}) {
   const xpPct = Math.min(100, (xpIntoLevel / xpNeeded) * 100);
   const prevXpPct = Math.max(0, xpPct - (generalXP / xpNeeded * 100));
 
+  // Dungeon damage this session
+  const dungeonDmg = profile._lastDungeonDamage || 0;
+  const dungeon = profile.activeDungeon;
+  const dungeonHpPct = dungeon ? Math.max(0, Math.round((dungeon.hp / dungeon.maxHp) * 100)) : null;
+
+  // Raid damage this session (estimated from session XP share)
+  const raidDmg = profile._lastRaidDamage || 0;
+
   // Training XP stat breakdown
   const STAT_ICONS_D = { strength:'⚔️', focus:'🎯', defence:'🛡️', agility:'⚡', endurance:'🔥', flexibility:'💫' };
   const statRows = Object.entries(trainingXP)
@@ -9615,6 +9734,34 @@ function showDebriefModal(exercises, apEarned, prs, done, soldiersEarned = {}) {
         <div style="font-family:var(--font-head);font-size:18px;font-weight:800;color:#FFD700;">Level ${lu.level}</div>
         <div style="font-size:12px;color:var(--text-dim);margin-top:2px;">+${lu.ap} AP earned</div>
       `).join('')}
+    </div>` : '';
+
+  // Dungeon section
+  const dungeonHtml = dungeonDmg > 0 && dungeon ? (() => {
+    const DUNGEON_CHAINS_LOCAL = typeof DUNGEON_CHAINS !== 'undefined' ? DUNGEON_CHAINS : {};
+    const chain = DUNGEON_CHAINS_LOCAL[dungeon.chainKey] || {};
+    const hpBarPct = dungeonHpPct ?? 0;
+    return `<div style="background:rgba(139,107,255,0.06);border:1px solid rgba(139,107,255,0.2);border-radius:10px;padding:12px;margin-bottom:14px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+        <span style="font-family:var(--font-mono);font-size:9px;color:rgba(139,107,255,.6);letter-spacing:.1em;">${chain.icon||'⚔'} DUNGEON DAMAGE</span>
+        <span style="font-family:var(--font-mono);font-size:13px;color:var(--violet);font-weight:800;">-${Math.round(dungeonDmg)} HP</span>
+      </div>
+      <div style="font-size:13px;color:var(--text-dim);margin-bottom:6px;">${dungeon.name || chain.label || 'Active Dungeon'}</div>
+      <div style="height:6px;background:rgba(139,107,255,.08);border-radius:3px;overflow:hidden;margin-bottom:4px;">
+        <div style="width:${hpBarPct}%;height:100%;background:var(--violet);border-radius:3px;transition:width .6s;"></div>
+      </div>
+      <div style="font-size:10px;color:rgba(139,107,255,.4);">${hpBarPct}% HP remaining · ${Math.round(dungeon.totalDamage||0).toLocaleString()} total damage dealt</div>
+    </div>`;
+  })() : '';
+
+  // Raid section
+  const raidHtml = raidDmg > 0 ? `
+    <div style="background:rgba(255,61,90,0.05);border:1px solid rgba(255,61,90,0.18);border-radius:10px;padding:12px;margin-bottom:14px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+        <span style="font-family:var(--font-mono);font-size:9px;color:rgba(255,61,90,.5);letter-spacing:.1em;">⚔ RAID CONTRIBUTION</span>
+        <span style="font-family:var(--font-mono);font-size:13px;color:var(--excess);font-weight:800;">${raidDmg.toFixed(1)} dmg</span>
+      </div>
+      <div style="font-size:10px;color:rgba(255,61,90,.4);">Your damage dealt to this week's raid boss</div>
     </div>` : '';
 
   const el = document.createElement('div');
@@ -9665,6 +9812,9 @@ function showDebriefModal(exercises, apEarned, prs, done, soldiersEarned = {}) {
         <p style="font-size:10px;font-family:var(--font-mono);color:var(--text-faint);letter-spacing:0.08em;margin-bottom:8px;">TRAINING CAPS RAISED</p>
         ${statRows}
       </div>` : ''}
+
+      ${dungeonHtml}
+      ${raidHtml}
 
       ${Object.keys(soldiersEarned).length ? (() => {
         const ARMY_META = {
@@ -9782,6 +9932,99 @@ function showDebriefModal(exercises, apEarned, prs, done, soldiersEarned = {}) {
     }
     if (done) done();
   });
+}
+
+// ── ACTIVE OBJECTIVES STRIP — shown on Hunt tab ──
+function renderObjectivesStrip() {
+  const el = document.getElementById('objectives-strip');
+  if (!el || !profile || !currentUser) return;
+
+  const objectives = [];
+
+  // 1. Hunter rank gap
+  const ap = profile.auraPoints || 0;
+  const currentRank = profile.hunterRank || 'E';
+  const RANK_TIERS_LIST = ['E','D','C','B','A','S'];
+  const curIdx = RANK_TIERS_LIST.indexOf(currentRank);
+  const UPGRADE_COSTS_LOCAL = { E:50, D:300, C:1000, B:5000, A:20000 };
+  if (curIdx < RANK_TIERS_LIST.length - 1) {
+    const nextRank = RANK_TIERS_LIST[curIdx + 1];
+    const cost = UPGRADE_COSTS_LOCAL[currentRank] || 50;
+    const pct = Math.min(100, Math.round((ap / cost) * 100));
+    const apLeft = Math.max(0, cost - ap);
+    objectives.push({
+      icon: '⚔',
+      title: `RANK UP · ${currentRank} → ${nextRank}`,
+      pct,
+      colour: '#FFD700',
+      value: `${pct}%`,
+      sub: apLeft > 0 ? `${apLeft.toLocaleString()} AP needed` : '✓ Ready to rank up',
+    });
+  }
+
+  // 2. Weekly goal / Defence
+  const weekStart = startOfWeek(new Date());
+  const weekEnd = new Date(weekStart); weekEnd.setDate(weekEnd.getDate()+7);
+  const weekSessions = myWorkouts.filter(w =>
+    w.uid === currentUser.uid && dateInRange(w.date, weekStart, weekEnd)
+  ).length;
+  const weeklyGoal = profile.weeklyGoal || 3;
+  const goalPct = Math.min(100, Math.round((weekSessions / weeklyGoal) * 100));
+  objectives.push({
+    icon: '🗓',
+    title: 'WEEKLY GOAL',
+    pct: goalPct,
+    colour: goalPct >= 100 ? 'var(--growing)' : '#61a5ff',
+    value: `${weekSessions}/${weeklyGoal}`,
+    sub: goalPct >= 100 ? '✓ Weekly goal met' : `${weeklyGoal - weekSessions} session${weeklyGoal - weekSessions !== 1 ? 's' : ''} remaining`,
+  });
+
+  // 3. Active dungeon
+  const dungeon = profile.activeDungeon;
+  if (dungeon) {
+    const hpPct = Math.max(0, Math.round((dungeon.hp / dungeon.maxHp) * 100));
+    const damagePct = 100 - hpPct;
+    const chain = (typeof DUNGEON_CHAINS !== 'undefined' && DUNGEON_CHAINS[dungeon.chainKey]) || {};
+    objectives.push({
+      icon: chain.icon || '⚔',
+      title: `DUNGEON · ${dungeon.name || chain.label || 'Active Dungeon'}`,
+      pct: damagePct,
+      colour: 'var(--violet)',
+      value: `${hpPct}% HP`,
+      sub: `${Math.round(dungeon.totalDamage||0).toLocaleString()} damage dealt`,
+    });
+  }
+
+  // 4. Active trial
+  const trial = profile.activeTrial;
+  if (trial && !trial.completed) {
+    const TRIAL_DEFS = typeof TRIAL_DEFINITIONS !== 'undefined' ? TRIAL_DEFINITIONS : {};
+    const def = TRIAL_DEFS[trial.stat] || { icon:'◆', color:'var(--brass)', label:'Trial' };
+    const { progress = 0, required = 1 } = (typeof checkTrialProgress === 'function') ? checkTrialProgress(trial) : {};
+    const trialPct = required > 0 ? Math.min(100, Math.round((progress / required) * 100)) : 0;
+    const daysLeft = daysBetween(todayStr(), trial.expiresDate);
+    objectives.push({
+      icon: def.icon || '◆',
+      title: `${def.label || 'TRIAL'} · ${trial.type === 'weakness' ? 'SYSTEM GATE' : 'VOLUNTARY'}`,
+      pct: trialPct,
+      colour: def.color || 'var(--brass)',
+      value: `${progress}/${required}`,
+      sub: `${daysLeft}d remaining`,
+    });
+  }
+
+  if (!objectives.length) { el.innerHTML = ''; return; }
+
+  el.innerHTML = objectives.map(o => `
+    <div class="obj-card">
+      <div class="obj-icon">${o.icon}</div>
+      <div class="obj-body">
+        <div class="obj-title">${o.title}</div>
+        <div class="obj-bar-wrap"><div class="obj-bar-fill" style="width:${o.pct}%;background:${o.colour};"></div></div>
+        <div class="obj-sub">${o.sub}</div>
+      </div>
+      <div class="obj-value" style="color:${o.colour};">${o.value}</div>
+    </div>`).join('');
 }
 
 function renderTodayCard() {
@@ -14867,6 +15110,297 @@ function openAddGoalModal() {
 }
 document.getElementById('cal-prev')?.addEventListener('click', () => { calCursor.setMonth(calCursor.getMonth()-1); renderCalendar(); });
 document.getElementById('cal-next')?.addEventListener('click', () => { calCursor.setMonth(calCursor.getMonth()+1); renderCalendar(); });
+
+let _historyTab = 'cal';
+function switchHistoryTab(tab) {
+  _historyTab = tab;
+  document.getElementById('history-cal-view').style.display = tab === 'cal' ? '' : 'none';
+  document.getElementById('history-feed-view').style.display = tab === 'feed' ? '' : 'none';
+  document.getElementById('history-tab-cal').style.opacity = tab === 'cal' ? '1' : '.5';
+  document.getElementById('history-tab-feed').style.opacity = tab === 'feed' ? '1' : '.5';
+  if (tab === 'feed') renderSystemFeed();
+}
+window.switchHistoryTab = switchHistoryTab;
+
+window.togglePowerBreakdown = () => {
+  const panel = document.getElementById('power-breakdown-panel');
+  if (panel) panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+};
+
+// ── PROGRESSION ROADMAP ──
+function renderProgressionRoadmap() {
+  const el = document.getElementById('progression-roadmap-slot');
+  if (!el || !profile || !currentUser) return;
+
+  const stats = profile.stats || {};
+  const ap = profile.auraPoints || 0;
+  const RANK_LIST = ['E','D','C','B','A','S'];
+  const charRank = charRankFromStats(stats);
+  const UPGRADE_COSTS_L = { E:50, D:300, C:1000, B:5000, A:20000 };
+
+  // Check milestones
+  const myWOs = myWorkouts.filter(w => w.uid === currentUser.uid);
+  const hasDungeon = !!profile.activeDungeon || Object.values(profile.inventory||{}).some(i=>i?.earnedAt);
+  const hasItem = Object.values(profile.inventory||{}).some(i=>i?.earnedAt);
+  const hasClass = !!profile.hunterClassName;
+  const hasRare = Object.values(profile.inventory||{}).some(i=>i?.rarity==='Rare'||i?.rarity==='Epic'||i?.rarity==='Legendary');
+  const hasLegendary = Object.values(profile.inventory||{}).some(i=>i?.rarity==='Legendary');
+  const hasRaid = !!profile.lastRaidPenaltyWeek || myWOs.length >= 7;
+  const ranksReached = RANK_LIST.filter(r => RANK_LIST.indexOf(r) <= RANK_LIST.indexOf(charRank));
+
+  const milestones = [
+    { icon:'⚔', label:'Awakened', sub:'Logged first workout', done: myWOs.length > 0 },
+    { icon:'🛡', label:'E Rank', sub:'Beginning — most stop here', done: ranksReached.includes('E'), rank:true },
+    { icon:'🗡', label:'D Rank', sub:'Something real is being built', done: ranksReached.includes('D'), rank:true },
+    { icon:'⚔', label:'First Dungeon', sub:'The gates have opened', done: hasDungeon },
+    { icon:'🎒', label:'First Item', sub:'System drops your first equipment', done: hasItem },
+    { icon:'⚔', label:'C Rank', sub:'You are consistent. You earned this.', done: ranksReached.includes('C'), rank:true },
+    { icon:'◆', label:'Classification', sub:'The System names what you are', done: hasClass },
+    { icon:'🔴', label:'First Rare Item', sub:'Above common. The System noticed.', done: hasRare },
+    { icon:'⚔', label:'B Rank', sub:'Years of work live in your body', done: ranksReached.includes('B'), rank:true },
+    { icon:'💀', label:'First Raid Clear', sub:"The party cleared the week's boss", done: hasRaid },
+    { icon:'⚔', label:'A Rank', sub:'Among the serious. Elite.', done: ranksReached.includes('A'), rank:true },
+    { icon:'👑', label:'Legendary Item', sub:'The System forged something rare', done: hasLegendary },
+    { icon:'👑', label:'S Rank', sub:'The System has nothing left to give', done: charRank === 'S', rank:true },
+  ];
+
+  const firstIncomplete = milestones.findIndex(m => !m.done);
+
+  el.innerHTML = `
+    <div style="margin-bottom:16px;">
+      <div style="font-family:var(--font-mono);font-size:9px;color:rgba(61,165,255,.4);letter-spacing:.15em;margin-bottom:10px;">◈ YOUR JOURNEY</div>
+      <div style="position:relative;">
+        <div style="position:absolute;left:15px;top:0;bottom:0;width:1px;background:linear-gradient(180deg,rgba(61,165,255,.3),rgba(61,165,255,.05));"></div>
+        ${milestones.map((m, i) => {
+          const isCurrent = i === firstIncomplete;
+          const col = m.done ? 'var(--growing)' : isCurrent ? 'var(--brass)' : 'rgba(61,165,255,.2)';
+          return `<div style="display:flex;align-items:flex-start;gap:12px;padding:6px 0;position:relative;">
+            <div style="width:30px;height:30px;border-radius:50%;background:${m.done?'rgba(78,205,120,.15)':isCurrent?'rgba(212,160,23,.12)':'rgba(61,165,255,.05)'};border:1.5px solid ${col};display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;z-index:1;">${m.done?'✓':m.icon}</div>
+            <div style="padding-top:4px;flex:1;">
+              <div style="font-size:12px;font-weight:700;color:${col};">${m.label}${isCurrent?' ←':''}</div>
+              <div style="font-size:10px;color:rgba(61,165,255,.35);margin-top:1px;">${m.sub}</div>
+            </div>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>`;
+}
+
+// ── HUNTER CARD GENERATOR ──
+window.generateHunterCard = () => {
+  const stats = profile.stats || {};
+  const ap = profile.auraPoints || 0;
+  const charRank = charRankFromStats(stats);
+  const power = calcPowerLevel(stats);
+  const name = profile.displayName || 'Hunter';
+  const cls = profile.hunterClassName || '???';
+  const streak = computeStreak(currentUser.uid);
+  const STAT_ICONS_CARD = { strength:'STR', endurance:'END', agility:'AGI', focus:'FOC', defence:'DEF', flexibility:'FLE' };
+  const RANK_COLORS_CARD = { E:'#6b7a9a', D:'#61a5ff', C:'#4ecd78', B:'#a78bfa', A:'#ff6b35', S:'#FFD700' };
+
+  const statRows = STAT_DEFS.map(d => {
+    const rank = stats[d.id]||'E';
+    return `<div style="display:flex;justify-content:space-between;align-items:center;padding:3px 0;border-bottom:1px solid rgba(61,165,255,.06);">
+      <span style="font-family:'Courier New',monospace;font-size:10px;color:rgba(255,255,255,.5);">${STAT_ICONS_CARD[d.id]||d.id.slice(0,3).toUpperCase()}</span>
+      <span style="font-family:'Courier New',monospace;font-size:11px;color:${RANK_COLORS_CARD[rank]||'#fff'};font-weight:700;">${rank}</span>
+    </div>`;
+  }).join('');
+
+  const cardHTML = `
+    <div id="generated-hunter-card" style="background:linear-gradient(135deg,#05070D,#0d1428);border:1px solid rgba(61,165,255,.3);border-radius:16px;padding:20px;max-width:300px;margin:0 auto;font-family:'Courier New',monospace;box-shadow:0 0 40px rgba(61,165,255,.15);">
+      <div style="font-size:8px;color:rgba(61,165,255,.4);letter-spacing:.2em;margin-bottom:12px;text-align:center;">◈ AURAMAXXING · HUNTER PROFILE ◈</div>
+      <div style="text-align:center;margin-bottom:16px;">
+        <div style="font-size:22px;font-weight:900;color:#fff;letter-spacing:.04em;">${escapeHtml(name).toUpperCase()}</div>
+        <div style="font-size:28px;font-weight:900;color:${RANK_COLORS_CARD[charRank]||'#fff'};margin:4px 0;">${charRank} RANK</div>
+        <div style="font-size:11px;color:rgba(255,255,255,.5);">${escapeHtml(cls)}</div>
+      </div>
+      <div style="display:flex;justify-content:space-around;margin-bottom:16px;padding:12px 0;border-top:1px solid rgba(61,165,255,.1);border-bottom:1px solid rgba(61,165,255,.1);">
+        <div style="text-align:center;">
+          <div style="font-size:20px;font-weight:800;color:var(--brass,#FFD700);">${power.toLocaleString()}</div>
+          <div style="font-size:8px;color:rgba(255,255,255,.4);letter-spacing:.1em;">POWER</div>
+        </div>
+        <div style="text-align:center;">
+          <div style="font-size:20px;font-weight:800;color:#61a5ff;">${ap.toLocaleString()}</div>
+          <div style="font-size:8px;color:rgba(255,255,255,.4);letter-spacing:.1em;">AP</div>
+        </div>
+        <div style="text-align:center;">
+          <div style="font-size:20px;font-weight:800;color:#4ecd78;">${streak}</div>
+          <div style="font-size:8px;color:rgba(255,255,255,.4);letter-spacing:.1em;">STREAK</div>
+        </div>
+      </div>
+      <div style="margin-bottom:12px;">${statRows}</div>
+      <div style="font-size:8px;color:rgba(61,165,255,.25);text-align:center;letter-spacing:.1em;">POWER YOU EARNED IN REAL LIFE</div>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:10px;">
+      <button onclick="this.parentElement.parentElement.style.display='none'" style="flex:1;padding:10px;background:rgba(61,165,255,.08);border:1px solid rgba(61,165,255,.2);border-radius:8px;color:rgba(61,165,255,.6);font-family:'Courier New',monospace;font-size:11px;cursor:pointer;">✕ Close</button>
+      <button onclick="copyHunterCard()" style="flex:1;padding:10px;background:rgba(212,160,23,.1);border:1px solid rgba(212,160,23,.3);border-radius:8px;color:#d4a017;font-family:'Courier New',monospace;font-size:11px;cursor:pointer;">📋 Copy Text</button>
+    </div>`;
+
+  const out = document.getElementById('hunter-card-output');
+  if (out) { out.style.display = 'block'; out.innerHTML = cardHTML; }
+};
+
+window.copyHunterCard = () => {
+  const stats = profile.stats || {};
+  const charRank = charRankFromStats(stats);
+  const power = calcPowerLevel(stats);
+  const name = profile.displayName || 'Hunter';
+  const cls = profile.hunterClassName || '???';
+  const streak = computeStreak(currentUser.uid);
+  const STAT_ABBR = { strength:'STR', endurance:'END', agility:'AGI', focus:'FOC', defence:'DEF', flexibility:'FLE' };
+  const statLines = STAT_DEFS.map(d => `${STAT_ABBR[d.id]}  ${stats[d.id]||'E'}`).join('\n');
+  const text = `━━━━━━━━━━━━━━━━━━━━
+    AURAMAXXING
+━━━━━━━━━━━━━━━━━━━━
+${name.toUpperCase()}
+${charRank} RANK · ${cls}
+
+POWER   ${power.toLocaleString()}
+AP      ${(profile.auraPoints||0).toLocaleString()}
+STREAK  ${streak}d
+
+${statLines}
+━━━━━━━━━━━━━━━━━━━━
+POWER YOU EARNED IN REAL LIFE`;
+  navigator.clipboard.writeText(text).then(() => showToast('Hunter card copied', 'success')).catch(()=>{});
+};
+
+function renderSystemFeed() {
+  const el = document.getElementById('system-feed-content');
+  if (!el) return;
+
+  // Build events from myWorkouts + myPRs + profile milestones
+  const events = [];
+
+  // Workouts
+  myWorkouts.filter(w => w.uid === currentUser.uid).forEach(w => {
+    const sets = (w.exercises||[]).reduce((n,ex) => n+(ex.sets||[]).filter(s=>s.reps>0).length, 0);
+    const vol = (w.exercises||[]).reduce((n,ex) =>
+      n+(ex.sets||[]).filter(s=>s.reps>0&&s.weight>0).reduce((v,s)=>v+s.reps*s.weight,0),0);
+    const isRun = !!w.runSummary?.distKm;
+    events.push({
+      date: w.date,
+      time: w.time || '00:00',
+      type: 'workout',
+      icon: isRun ? '🏃' : '⚔',
+      title: isRun ? `${w.runSummary.distKm.toFixed(2)}km run` : `Hunt cleared — ${w.exercises?.length||0} exercises`,
+      sub: isRun
+        ? `${w.runSummary.distKm.toFixed(2)}km · ${w.runSummary.type||'Run'}`
+        : `${sets} sets${vol>0?' · '+(vol>=1000?(vol/1000).toFixed(1)+'t':Math.round(vol)+'kg'):''}`,
+      colour: isRun ? 'var(--growing)' : 'var(--brass)',
+    });
+  });
+
+  // PRs
+  Object.entries(myPRs).forEach(([exercise, pr]) => {
+    if (!pr.date) return;
+    events.push({
+      date: pr.date,
+      time: '00:01',
+      type: 'pr',
+      icon: '🏆',
+      title: `Personal Record — ${escapeHtml(exercise)}`,
+      sub: `${pr.e1rm?.toFixed(1)||'?'} kg e1RM · ${pr.tier||''}`,
+      colour: 'var(--violet)',
+    });
+  });
+
+  // Achievements
+  const achievements = profile.unlockedAchievements || {};
+  Object.entries(achievements).forEach(([id, date]) => {
+    if (!date) return;
+    events.push({
+      date,
+      time: '00:02',
+      type: 'achievement',
+      icon: '◆',
+      title: `Achievement unlocked`,
+      sub: id.replace(/_/g,' '),
+      colour: '#FFD700',
+    });
+  });
+
+  // Rank milestones from profile
+  const RANK_LIST_SF = ['D','C','B','A','S'];
+  const charRank_SF = charRankFromStats(profile.stats||{});
+  RANK_LIST_SF.forEach(r => {
+    if (RANK_TIERS.indexOf(r) <= RANK_TIERS.indexOf(charRank_SF)) {
+      const dateKey = profile[`rankUpDate_${r}`];
+      if (dateKey) events.push({
+        date: dateKey,
+        time: '00:03',
+        type: 'rank',
+        icon: '⚔',
+        title: `${r} RANK ACHIEVED`,
+        sub: RANK_TITLES[r] || '',
+        colour: RANK_COLORS[r] || 'var(--brass)',
+      });
+    }
+  });
+
+  // Class reveal
+  if (profile.hunterClassName && profile.classRevealDate) {
+    events.push({
+      date: profile.classRevealDate,
+      time: '00:04',
+      type: 'class',
+      icon: '◆',
+      title: `Classification — ${profile.hunterClassName}`,
+      sub: 'The System named what you are',
+      colour: 'var(--violet)',
+    });
+  }
+
+  // Item drops
+  Object.entries(profile.inventory||{}).forEach(([slot, item]) => {
+    if (!item?.earnedAt) return;
+    events.push({
+      date: item.earnedAt,
+      time: '00:05',
+      type: 'item',
+      icon: '🎒',
+      title: `${item.name||'Item'} — ${item.rarity||'Common'}`,
+      sub: `${slot.charAt(0).toUpperCase()+slot.slice(1)} slot · Tier ${item.tier||1}`,
+      colour: item.rarity==='Legendary'?'#FFD700':item.rarity==='Epic'?'var(--violet)':item.rarity==='Rare'?'#61a5ff':'var(--text-dim)',
+    });
+  });
+
+  // Sort newest first
+  events.sort((a,b) => (b.date+b.time).localeCompare(a.date+a.time));
+
+  if (!events.length) {
+    el.innerHTML = `<div style="text-align:center;padding:32px;color:var(--text-faint);font-family:var(--font-mono);font-size:12px;">
+      <div style="font-size:28px;margin-bottom:12px;">◈</div>
+      SYSTEM LOG EMPTY<br>
+      <span style="font-size:10px;opacity:.5;">Complete your first hunt to begin.</span>
+    </div>`;
+    return;
+  }
+
+  // Group by date
+  const byDate = {};
+  events.forEach(e => { if (!byDate[e.date]) byDate[e.date] = []; byDate[e.date].push(e); });
+
+  const today = todayStr();
+  el.innerHTML = Object.entries(byDate).map(([date, evts]) => {
+    const isToday = date === today;
+    const d = new Date(date + 'T12:00:00');
+    const label = isToday ? 'TODAY' : d.toLocaleDateString(undefined,{weekday:'short',month:'short',day:'numeric'});
+    const rows = evts.map(e => `
+      <div style="display:flex;align-items:flex-start;gap:10px;padding:8px 0;border-bottom:1px solid rgba(61,165,255,.04);">
+        <div style="font-size:18px;flex-shrink:0;margin-top:1px;">${e.icon}</div>
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:12px;color:${e.colour};font-weight:700;">${e.title}</div>
+          <div style="font-size:10px;color:var(--text-faint);margin-top:1px;">${e.sub}</div>
+        </div>
+        <div style="font-size:9px;font-family:var(--font-mono);color:rgba(61,165,255,.25);flex-shrink:0;margin-top:3px;">${e.time.slice(0,5)}</div>
+      </div>`).join('');
+    return `<div style="margin-bottom:16px;">
+      <div style="font-family:var(--font-mono);font-size:9px;color:rgba(61,165,255,.4);letter-spacing:.12em;margin-bottom:6px;padding-bottom:4px;border-bottom:1px solid rgba(61,165,255,.08);">◈ ${label}</div>
+      ${rows}
+    </div>`;
+  }).join('');
+}
 
 function renderCalendar() {
   document.getElementById('cal-title').textContent = calCursor.toLocaleDateString(undefined,{month:'long', year:'numeric'});
