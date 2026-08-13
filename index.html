@@ -4328,21 +4328,53 @@ async function loadAllData() {
   startAmbientSystem();
 }
 function rebuildExercisesAll() {
+  // Skill tier overrides — difficulty multiplier for XP calculation
+  // Reflects the real difficulty gap between progression levels
+  const SKILL_TIER_MAP = {
+    // Planche progression
+    'Planche Lean':1.0,'Frog Stand':1.0,'Pseudo planche push up':1.0,
+    'Tuck Planche':1.5,'Advanced Tuck Planche':2.0,
+    'Straddle Planche':2.5,'Single Leg Planche':2.5,'Full Planche':3.0,
+    // Front lever progression
+    'Dead Hang':0.8,
+    'Tuck Front Lever':1.5,'Tuck front lever raise':1.5,
+    'Advanced Tuck Front Lever':2.0,'Advanced tuck front lever raise':2.0,
+    'Straddle Front Lever':2.5,'Front Lever Raise':2.5,
+    'Front Lever':3.0,
+    // Handstand progression
+    'Wall Handstand Hold':1.0,'Chest-to-Wall Handstand Hold':1.2,
+    'Freestanding Handstand Hold':2.0,'Handstand Shoulder Taps':2.0,
+    'Handstand Push Up':2.5,
+    // Other skills
+    'L-Sit':1.5,'German Hang':1.0,'German hang':1.0,
+    'Pike hold':1.0,'Wall Toe Pull':1.2,'Hollow hold':0.8,
+    'Dragon Flag':2.0,'Dragon Flag Negatives':1.5,
+    'Crucifix crunch':1.2,'Archer Row':1.5,'Archer pull up':1.8,
+    'Back Lever':2.0,'Straddle Back Lever':2.5,
+  };
+
   EXERCISES_ALL = structuredCloneLite(BASE_EXERCISES);
+
+  // Apply skill tier map to base exercises that don't already have one
+  Object.keys(EXERCISES_ALL).forEach(name => {
+    if (SKILL_TIER_MAP[name] && !EXERCISES_ALL[name].skillTier) {
+      EXERCISES_ALL[name].skillTier = SKILL_TIER_MAP[name];
+    }
+  });
+
   for (const ce of customExercises) {
     EXERCISES_ALL[ce.name] = {
-      // preserve any base exercise fields (intent, statWeights, skillTier, bwPercent)
       ...(BASE_EXERCISES[ce.name] || {}),
-      // then apply the custom override fields
       muscles: ce.muscles || {},
       equipment: ce.equipment || 'Other',
-      // intent override — custom can override base intent
       ...(ce.intent ? { intent: ce.intent } : {}),
-      // explicitly handle timed — false must override base true, and vice versa
       timed: ce.timed === true ? true : ce.timed === false ? false : undefined,
       timedUnit: ce.timedUnit || undefined,
     };
-    // clean up undefined keys
+    // Apply skill tier to custom exercises if not already set
+    if (SKILL_TIER_MAP[ce.name] && !EXERCISES_ALL[ce.name].skillTier) {
+      EXERCISES_ALL[ce.name].skillTier = SKILL_TIER_MAP[ce.name];
+    }
     if (EXERCISES_ALL[ce.name].timed === undefined) delete EXERCISES_ALL[ce.name].timed;
     if (EXERCISES_ALL[ce.name].timedUnit === undefined) delete EXERCISES_ALL[ce.name].timedUnit;
   }
@@ -5683,7 +5715,15 @@ function addExerciseRow(presetName, targetSets, targetReps, prefillSets) {
                style="width:72px;background:rgba(255,255,255,0.02);border:1px solid rgba(91,168,255,0.1);border-radius:8px;color:var(--text);-webkit-text-fill-color:var(--text);padding:0 8px;font-size:15px;font-family:var(--font-mono);height:44px;text-align:center;-webkit-appearance:none;" />
              <span style="font-size:10px;color:var(--text-faint);">km</span>
            </div>`
-        : `${stepper('set-reps', prefillReps || '', 0, repsStep, repsLabel)}
+        : `${timed
+             ? `<div style="display:flex;align-items:center;gap:3px;">
+                 <input type="number" class="set-reps" placeholder="00" min="0" max="${unit==='mins'?60:300}" inputmode="numeric"
+                   style="width:48px;background:transparent;border:none;border-bottom:1.5px solid rgba(91,168,255,0.25);border-radius:0;color:var(--text);-webkit-text-fill-color:var(--text);padding:0 4px;font-size:16px;font-family:var(--font-mono);height:44px;text-align:center;-webkit-appearance:none;font-weight:700;" />
+                 <span style="font-size:12px;color:var(--text-faint);padding:0 1px;">${unit==='mins'?'m':'s'}</span>
+                 ${unit==='secs' ? `<span style="font-size:9px;color:rgba(91,168,255,.3);font-family:var(--font-mono);letter-spacing:.05em;">SECS</span>` : ''}
+               </div>`
+             : stepper('set-reps', prefillReps || '', 0, repsStep, repsLabel)
+           }
            ${timed
              ? '<div class="stepper" style="opacity:0.25;pointer-events:none;"><button>−</button><input type="text" value="BW" readonly style="color:var(--text-faint);font-size:12px;"/><button>+</button></div>'
              : stepper('set-weight', prefillWeight || '', 0, 2.5, 'kg')
