@@ -4283,7 +4283,7 @@ async function loadAllData() {
   allWorkouts = woSnap.docs.map(d => ({ id: d.id, ...d.data() }));
   myWorkouts = allWorkouts.filter(w => w.uid === currentUser.uid);
 
-  const exSnap = await getDocs(collection(db, 'customExercises'));
+  const exSnap = await getDocs(query(collection(db, 'customExercises'), where('addedBy', '==', currentUser.uid)));
   customExercises = exSnap.docs.map(d => ({ id: d.id, ...d.data() }));
   rebuildExercisesAll();
 
@@ -13722,8 +13722,8 @@ function openEditExerciseModal(name) {
     const btn = overlay.querySelector('#save-edit-ex');
     btn.disabled = true; btn.textContent = 'Saving…';
     const muscles = {}; selected.forEach(m => muscles[m] = 1);
-    const equipment = document.getElementById('edit-ex-equip').value;
-    const intent = document.getElementById('edit-ex-intent').value || null;
+    const equipment = overlay.querySelector('#edit-ex-equip').value;
+    const intent = overlay.querySelector('#edit-ex-intent').value || null;
     const data = {
       muscles,
       equipment,
@@ -15745,11 +15745,16 @@ window.addEventListener('message', async (e) => {
         });
       });
 
+      // Read exploration lock from the shared 'config' doc
+      const cfgSnap = await getDoc(doc(db, 'config', 'shadowWorld'));
+      const explorationUnlocksAt = cfgSnap.exists() ? (cfgSnap.data().explorationUnlocksAt || null) : null;
+
       iframe.contentWindow.postMessage({
         type: 'shadowWorldData',
         countries,
         pool,
         currentUid: currentUser?.uid || null,
+        explorationUnlocksAt,
       }, '*');
     } catch(err) {
       console.warn('Shadow World data build failed:', err);
@@ -15765,11 +15770,26 @@ window.addEventListener('message', async (e) => {
       const { doc, updateDoc, increment: fsInc, getDoc } = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js');
       const userRef = doc(db, 'users', currentUser.uid);
       const snap = await getDoc(userRef);
-      const data = snap.data() || {};
-      const currentPool = data.shadowArmy?.pool?.[armyKey] || 0;
+      const dat = snap.data() || {};
+      const currentPool = dat.shadowArmy?.pool?.[armyKey] || 0;
 
       if (amount > currentPool) {
         console.warn('Deploy: not enough pool soldiers'); return;
+      }
+
+      // Server-side exploration lock
+      const cfgSnap2 = await getDoc(doc(db, 'config', 'shadowWorld'));
+      const unlocksAt = cfgSnap2.exists() ? cfgSnap2.data().explorationUnlocksAt : null;
+      if (unlocksAt && new Date() < new Date(unlocksAt)) {
+        showToast('Exploration is locked — wait for the countdown', 'error');
+        return;
+      }
+
+      // Server-side ownership guard — cannot deploy to enemy territory
+      const existingOwner = dat.shadowArmy?.countries?.[gcId]?.ownerUid;
+      if (existingOwner && existingOwner !== currentUser.uid) {
+        showToast('Cannot deploy to enemy territory — Declare War first', 'error');
+        return;
       }
 
       await updateDoc(userRef, {
@@ -15793,6 +15813,54 @@ window.addEventListener('message', async (e) => {
       showToast(`⚑ ${amount} soldiers deployed`, 'success');
     } catch(err) {
       console.warn('Deploy failed:', err);
+    }
+  }
+
+  // ── Withdraw soldiers from a country back to pool ──
+  if (e.data?.type === 'withdrawFromCountry') {
+    const { gcId, armyKey, amount, ckey } = e.data;
+    if (!currentUser || !gcId || !armyKey || !amount) return;
+    try {
+      const { doc, updateDoc, increment: fsInc, getDoc } = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js');
+      const userRef = doc(db, 'users', currentUser.uid);
+      const snap = await getDoc(userRef);
+      const dat = snap.data() || {};
+
+      // Must be owner
+      const owner = dat.shadowArmy?.countries?.[gcId]?.ownerUid;
+      if (owner !== currentUser.uid) {
+        showToast('Cannot withdraw — not your territory', 'error');
+        return;
+      }
+
+      const stationed = dat.shadowArmy?.countries?.[gcId]?.soldiers || 0;
+      const actualAmount = Math.min(amount, stationed);
+      if (actualAmount <= 0) return;
+
+      const newStationed = stationed - actualAmount;
+
+      await updateDoc(userRef, {
+        [`shadowArmy.pool.${armyKey}`]: fsInc(actualAmount),
+        [`shadowArmy.countries.${gcId}.soldiers`]: newStationed,
+        // If territory is now empty, clear ownership
+        ...(newStationed === 0 ? {
+          [`shadowArmy.countries.${gcId}.ownerUid`]: null,
+        } : {}),
+      });
+
+      // Update local profile
+      if (!profile.shadowArmy) profile.shadowArmy = {};
+      if (!profile.shadowArmy.pool) profile.shadowArmy.pool = {};
+      profile.shadowArmy.pool[armyKey] = (profile.shadowArmy.pool[armyKey] || 0) + actualAmount;
+      if (profile.shadowArmy.countries?.[gcId]) {
+        profile.shadowArmy.countries[gcId].soldiers = newStationed;
+        if (newStationed === 0) profile.shadowArmy.countries[gcId].ownerUid = null;
+      }
+
+      showToast(`⬆ ${actualAmount} soldiers returned to pool`, 'success');
+      renderWorldSidebar();
+    } catch(err) {
+      console.warn('Withdraw failed:', err);
     }
   }
 
