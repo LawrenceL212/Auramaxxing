@@ -1895,6 +1895,9 @@
   .obj-sub{font-size:10px;color:var(--text-faint);}
   .obj-value{font-family:var(--font-mono);font-size:13px;font-weight:800;flex-shrink:0;}
 
+  /* ── Previous session reference ── */
+  .prev-session-ref{display:flex;align-items:center;gap:6px;padding:3px 0 3px 4px;border-left:2px solid rgba(61,165,255,.15);margin:2px 0 4px;flex-wrap:wrap;}
+
   /* ── RIR description ── */
   .rir-desc{font-size:10px;color:rgba(61,165,255,.5);margin-top:3px;min-height:13px;font-style:italic;transition:opacity .2s;text-align:center;}
 
@@ -2255,6 +2258,9 @@
 
       <!-- WEEKLY RAID BOSS -->
       <div id="raid-boss-slot"></div>
+
+      <!-- GUILD FEED -->
+      <div id="guild-feed-slot"></div>
 
       <!-- PROGRESSION ROADMAP -->
       <div id="progression-roadmap-slot"></div>
@@ -3260,6 +3266,16 @@ function switchView(name) {
     renderCharCard();
     renderTodayCard();
     renderProgressionRoadmap();
+    renderGuildHeader();
+    renderGuildFeed();
+    // Inject monthly report into progression roadmap slot if available
+    try {
+      const report = renderMonthlyReport();
+      if (report) {
+        const slot = document.getElementById('progression-roadmap-slot');
+        if (slot) slot.insertAdjacentHTML('afterbegin', report);
+      }
+    } catch(e) {}
   }
   if (name === 'trends') {
     trendsView = 'dashboard';
@@ -4633,6 +4649,14 @@ function addExerciseRow(presetName, targetSets, targetReps, prefillSets) {
     if (prevReps != null)   setRow.dataset.prevReps   = prevReps;
     if (prevWeight != null) setRow.dataset.prevWeight = prevWeight;
     if (prevRir != null)    setRow.dataset.prevRir    = prevRir;
+    // Build prev session reference tag
+    const prevTag = (prevReps > 0)
+      ? `<div class="prev-session-ref">
+           <span style="color:rgba(61,165,255,.35);font-size:9px;font-family:var(--font-mono);">LAST</span>
+           <span style="color:rgba(61,165,255,.5);font-size:9px;font-family:var(--font-mono);">${prevReps}${prevWeight > 0 ? ` × ${prevWeight}kg` : ''} ${prevRir != null ? `@ RIR ${prevRir}` : ''}</span>
+           <button type="button" class="copy-prev-btn" style="background:rgba(61,165,255,.08);border:1px solid rgba(61,165,255,.2);border-radius:4px;color:rgba(61,165,255,.6);font-size:9px;padding:1px 6px;cursor:pointer;touch-action:manipulation;font-family:var(--font-mono);">↑ Copy</button>
+         </div>`
+      : '';
     const timed = isTimed();
     const unit = timedUnit();
     const exName = row.dataset.exName || '';
@@ -4665,10 +4689,36 @@ function addExerciseRow(presetName, targetSets, targetReps, prefillSets) {
       }
       <button type="button" class="remove-x set-remove">×</button>
       ${suggTag}
+      ${prevTag}
       <div class="set-row-rir">
         <span class="set-row-rir-label">${timed ? 'RPE' : 'RIR'}</span>
         ${timed ? rpeChips(prefillRir) : rirChips(prefillRir)}
       </div>`;
+    // Copy previous set button
+    const copyBtn = setRow.querySelector('.copy-prev-btn');
+    if (copyBtn) {
+      copyBtn.addEventListener('click', () => {
+        SFX.pop();
+        const repsInput = setRow.querySelector('.set-reps');
+        const weightInput = setRow.querySelector('.set-weight');
+        if (repsInput && prevReps > 0) {
+          repsInput.value = prevReps;
+          repsInput.dataset.confirmed = '1';
+          repsInput.dispatchEvent(new Event('input'));
+        }
+        if (weightInput && prevWeight > 0) {
+          weightInput.value = prevWeight;
+          weightInput.dataset.confirmed = '1';
+          weightInput.dispatchEvent(new Event('input'));
+        }
+        if (prevRir != null) {
+          const chip = setRow.querySelector(`.rir-chip[data-rir="${prevRir}"]`);
+          if (chip) { chip.click(); }
+        }
+        copyBtn.textContent = '✓';
+        copyBtn.style.color = 'var(--growing)';
+      });
+    }
     setRow.querySelectorAll('.step-down').forEach(btn => btn.addEventListener('click', () => {
       SFX.numpadKey();
       const input = btn.parentElement.querySelector('input');
@@ -8067,30 +8117,63 @@ async function evaluateAndSaveClass() {
 
 function showClassRevealModal(result, previousClassName) {
   const tier2 = result.tier;
-  const isFirst    = !previousClassName;
-  const isEvolution = !!previousClassName;
+  const isFirst = !previousClassName;
   const col = tier2.color || '#61A5FF';
-  showSystemModal(`<div class="system-window levelup">
-    <p class="system-eyebrow" style="color:${col};letter-spacing:0.2em;">
-      ${isEvolution ? '◈ CLASS EVOLVED ◈' : '◈ CLASS ASSIGNED ◈'}
+
+  // Class lore — System voice narrating what this class means
+  const CLASS_LORE = {
+    'Iron Sentinel':    'You do not chase numbers. You chase standards. Every session, the bar goes up or it does not count. The System has watched iron move through you and decided: this one does not stop.',
+    'Shadow Monk':      'You train like no one is watching. Slow, deliberate, invisible. While others chase volume, you chase mastery. The System has classified this pattern as rare.',
+    'Swift Predator':   'You are built to move. Fast recovery. High frequency. You treat rest as a weapon, not a reward. The System has seen your pattern and named it accordingly.',
+    'Tide Walker':      'Distance does not intimidate you. Time does not intimidate you. You are the kind of hunter who simply keeps going. The System respects this more than it will say.',
+    'Court Fighter':    'You train for real situations. Boxing. Combat. Sport. Not aesthetics — function. The System does not often see this. It is noting it now.',
+    'Wild Climber':     'You move through the world differently. Flexible, mobile, adaptable. Strength through range. The System has been tracking your body\'s unusual capabilities.',
+    'Sovereign':        'No weaknesses. No comfort zones. Every stat developed. Every system trained. The System has run its full analysis and found nothing to exploit.',
+    'Berserker':        'Strength and speed. The classic combination of the dangerous. You are not balanced — you are optimised to be threatening. The System approves.',
+    'Iron Wall':        'Strength and resilience. You are difficult to move and difficult to break. The System has identified this combination as particularly rare among hunters.',
+    'Shadow Runner':    'Speed and endurance. You can hurt things fast and keep hurting them for a long time. The System classifies this as high threat.',
+    'Tactician':        'Focus and flexibility. You see the whole board. You adapt. You do not brute-force problems — you find the angle. The System has noticed.',
+    'Balanced Fighter': 'No dominant weakness. No dominant strength. You are difficult to read and difficult to prepare for. The System finds this interesting.',
+  };
+
+  const lore = CLASS_LORE[tier2.name] || 'The System has analysed your training history and reached a conclusion. This is who you are.';
+
+  // Root icons
+  const ROOT_ICONS = { IRON:'🏋️', SHADOW:'🤸', SWIFT:'🏃', TIDE:'🌊', COURT:'🥊', WILD:'🧗' };
+
+  showSystemModal(`<div class="system-window levelup" style="max-width:360px;">
+    <p class="system-eyebrow" style="color:${col};letter-spacing:0.2em;animation:fadeIn .6s ease both;">
+      ${isFirst ? '◈ CLASSIFICATION COMPLETE ◈' : '◈ CLASS EVOLVED ◈'}
     </p>
-    <div class="system-icon" style="font-size:52px;margin:8px 0;">
-      ${result.activeRoots.map(r => ({'IRON':'🏋️','SHADOW':'🤸','SWIFT':'🏃','TIDE':'🌊','COURT':'🥊','WILD':'🧗'})[r]||'').join('')}
+    <div class="system-icon" style="font-size:56px;margin:12px 0;animation:bounceIn .6s cubic-bezier(.16,1,.3,1) .2s both;">
+      ${result.activeRoots.map(r => ROOT_ICONS[r]||'').join('')}
     </div>
-    <h2 class="system-title" style="color:${col};">${escapeHtml(tier2.name)}</h2>
-    <p class="system-body" style="color:var(--text-dim);">
-      ${isFirst
-        ? 'The System has watched long enough to be certain.<br>This is who you are.'
-        : `The System has re-evaluated.<br>You are no longer ${escapeHtml(previousClassName)}.`}
-    </p>
-    <div style="background:rgba(0,0,0,0.3);border-radius:8px;padding:10px 14px;margin:12px 0;text-align:left;">
-      <div style="font-family:var(--font-mono);font-size:8px;color:rgba(61,165,255,0.4);letter-spacing:0.1em;margin-bottom:6px;">ACTIVE ROOTS</div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;">
-        ${result.activeRoots.map(r => `<span style="font-size:11px;color:${col};font-family:var(--font-mono);">${r}</span>`).join(' · ')}
+    <div style="font-family:var(--font-mono);font-size:9px;color:rgba(61,165,255,.4);letter-spacing:.2em;margin-bottom:6px;animation:fadeIn .6s ease .3s both;">THE SYSTEM HAS NAMED YOU</div>
+    <h2 class="system-title" style="color:${col};font-size:28px;letter-spacing:.04em;animation:fadeIn .6s ease .4s both;">${escapeHtml(tier2.name)}</h2>
+
+    ${isFirst ? '' : `<p style="font-size:11px;color:var(--text-faint);margin:4px 0 12px;animation:fadeIn .6s ease .45s both;">Previously: ${escapeHtml(previousClassName)}</p>`}
+
+    <div style="background:rgba(0,0,0,0.4);border:1px solid ${col}22;border-radius:10px;padding:14px;margin:14px 0;text-align:left;animation:fadeIn .8s ease .5s both;">
+      <div style="font-family:var(--font-mono);font-size:8px;color:${col}99;letter-spacing:.12em;margin-bottom:8px;">◈ SYSTEM ANALYSIS</div>
+      <p style="font-size:12px;color:var(--text-dim);line-height:1.7;font-style:italic;">"${lore}"</p>
+    </div>
+
+    <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-bottom:12px;animation:fadeIn .6s ease .6s both;">
+      ${result.activeRoots.map(r => `<span style="font-size:10px;color:${col};font-family:var(--font-mono);background:${col}15;border:1px solid ${col}33;border-radius:4px;padding:3px 8px;">${ROOT_ICONS[r]||''} ${r}</span>`).join('')}
+    </div>
+
+    <div style="display:flex;gap:16px;justify-content:center;margin-bottom:14px;animation:fadeIn .6s ease .65s both;">
+      <div style="text-align:center;">
+        <div style="font-family:var(--font-mono);font-size:9px;color:rgba(61,165,255,.4);margin-bottom:2px;">RAID AFFINITY</div>
+        <div style="font-size:13px;color:${col};font-weight:700;">${tier2.raidAffinity}</div>
+      </div>
+      <div style="text-align:center;">
+        <div style="font-family:var(--font-mono);font-size:9px;color:rgba(61,165,255,.4);margin-bottom:2px;">DAMAGE BONUS</div>
+        <div style="font-size:13px;color:${col};font-weight:700;">×${tier2.affinityMult.toFixed(2)}</div>
       </div>
     </div>
-    <p style="font-size:11px;color:var(--text-faint);margin-top:8px;">Raid affinity: <strong style="color:${col};">${tier2.raidAffinity}</strong> · ×${tier2.affinityMult.toFixed(2)} damage</p>
-    <button class="system-btn success">Acknowledged</button>
+
+    <button class="system-btn success" style="animation:fadeIn .6s ease .8s both;">Acknowledged</button>
   </div>`);
 }
 
@@ -10014,6 +10097,29 @@ function renderObjectivesStrip() {
   }
 
   if (!objectives.length) { el.innerHTML = ''; return; }
+
+  // Hidden discovery: check for secret milestones
+  const myWOs2 = myWorkouts.filter(w => w.uid === currentUser.uid);
+  const HIDDEN = [
+    { trigger: myWOs2.length === 7,   icon:'◈', msg:'7 hunts completed. The System has begun to take you seriously.', colour:'var(--violet)' },
+    { trigger: myWOs2.length === 30,  icon:'◈', msg:'30 sessions. Most hunters stop here. You did not.', colour:'var(--brass)' },
+    { trigger: myWOs2.length === 100, icon:'◈', msg:'100 sessions. The System has nothing more to say. You know what this means.', colour:'#FFD700' },
+    { trigger: (profile.auraPoints||0) >= 50 && (profile.hunterRank||'E') === 'E', icon:'⚔', msg:'You have enough AP to rank up. The System is waiting.', colour:'var(--brass)' },
+    { trigger: computeStreak(currentUser.uid) >= 7,  icon:'🔥', msg:'7-day streak. The pattern is forming.', colour:'var(--growing)' },
+    { trigger: computeStreak(currentUser.uid) >= 30, icon:'🔥', msg:'30-day streak. This is no longer a habit. This is identity.', colour:'#FFD700' },
+  ];
+  const triggered = HIDDEN.filter(h => h.trigger);
+  const latestHidden = triggered[triggered.length - 1];
+  if (latestHidden && !profile[`_discoveryAck_${latestHidden.msg.slice(0,20)}`]) {
+    objectives.unshift({
+      icon: latestHidden.icon,
+      title: '◈ SYSTEM MESSAGE',
+      pct: 100,
+      colour: latestHidden.colour,
+      value: '',
+      sub: latestHidden.msg,
+    });
+  }
 
   el.innerHTML = objectives.map(o => `
     <div class="obj-card">
@@ -15126,6 +15232,185 @@ window.togglePowerBreakdown = () => {
   const panel = document.getElementById('power-breakdown-panel');
   if (panel) panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
 };
+
+// ── GUILD IDENTITY HEADER ──
+function renderGuildHeader() {
+  const el = document.getElementById('guild-header-slot');
+  if (!el || !allUsers.length) return;
+
+  // Party stats
+  const totalWorkouts = allWorkouts.length;
+  const totalPower = allUsers.reduce((s,u) => s + getUserPowerLevel(u), 0);
+  const avgStreak = Math.round(allUsers.reduce((s,u) => s + computeStreak(u.uid), 0) / allUsers.length);
+  const weekStart = startOfWeek(new Date());
+  const thisWeekWOs = allWorkouts.filter(w => w.date >= todayStr(weekStart)).length;
+  const highestRank = [...allUsers].sort((a,b) => {
+    const RI = r => 'EDCBAS'.indexOf(r);
+    return RI(getUserCharRank(b)) - RI(getUserCharRank(a));
+  })[0];
+
+  // Collective title
+  const allSRank = allUsers.every(u => getUserCharRank(u) === 'S');
+  const allARank = allUsers.every(u => 'EDCBAS'.indexOf(getUserCharRank(u)) >= 4);
+  const guildTitle = allSRank ? 'SHADOW MONARCHS' : allARank ? 'ELITE HUNTERS' : totalWorkouts > 100 ? 'VETERAN HUNTERS' : totalWorkouts > 30 ? 'ACTIVE HUNTERS' : 'RISING HUNTERS';
+
+  el.innerHTML = `
+    <div style="background:radial-gradient(ellipse 600px 120px at 50% 0%,rgba(61,165,255,0.08),transparent),var(--card);border:1px solid rgba(61,165,255,.15);border-radius:14px;padding:16px;margin-bottom:14px;text-align:center;">
+      <div style="font-family:var(--font-mono);font-size:8px;color:rgba(61,165,255,.35);letter-spacing:.2em;margin-bottom:6px;">◈ HUNTER PARTY</div>
+      <div style="font-size:20px;font-weight:900;color:var(--brass);letter-spacing:.06em;margin-bottom:12px;">${guildTitle}</div>
+      <div style="display:flex;justify-content:space-around;gap:8px;">
+        <div style="text-align:center;">
+          <div style="font-family:var(--font-mono);font-size:18px;font-weight:800;color:var(--brass);">${totalWorkouts}</div>
+          <div style="font-size:8px;color:rgba(61,165,255,.4);letter-spacing:.08em;margin-top:2px;">TOTAL HUNTS</div>
+        </div>
+        <div style="text-align:center;">
+          <div style="font-family:var(--font-mono);font-size:18px;font-weight:800;color:#61a5ff;">${totalPower.toLocaleString()}</div>
+          <div style="font-size:8px;color:rgba(61,165,255,.4);letter-spacing:.08em;margin-top:2px;">PARTY POWER</div>
+        </div>
+        <div style="text-align:center;">
+          <div style="font-family:var(--font-mono);font-size:18px;font-weight:800;color:var(--growing);">${thisWeekWOs}</div>
+          <div style="font-size:8px;color:rgba(61,165,255,.4);letter-spacing:.08em;margin-top:2px;">THIS WEEK</div>
+        </div>
+        <div style="text-align:center;">
+          <div style="font-family:var(--font-mono);font-size:18px;font-weight:800;color:#ff6b35;">${avgStreak}d</div>
+          <div style="font-size:8px;color:rgba(61,165,255,.4);letter-spacing:.08em;margin-top:2px;">AVG STREAK</div>
+        </div>
+      </div>
+    </div>`;
+}
+
+// ── GUILD FEED ──
+function renderGuildFeed() {
+  const el = document.getElementById('guild-feed-slot');
+  if (!el || !allUsers.length) return;
+
+  // Build shared events from all workouts, PRs, rank-ups
+  const events = [];
+  const weekStart = todayStr(startOfWeek(new Date()));
+
+  // Recent workouts from all users (last 14 days)
+  const cutoff = new Date(); cutoff.setDate(cutoff.getDate() - 14);
+  const cutoffStr = todayStr(cutoff);
+
+  allWorkouts.filter(w => w.date >= cutoffStr).forEach(w => {
+    const user = allUsers.find(u => u.uid === w.uid);
+    if (!user) return;
+    const isMe = w.uid === currentUser.uid;
+    const sets = (w.exercises||[]).reduce((n,ex) => n+(ex.sets||[]).filter(s=>s.reps>0).length, 0);
+    const vol = (w.exercises||[]).reduce((n,ex) =>
+      n+(ex.sets||[]).filter(s=>s.reps>0&&s.weight>0).reduce((v,s)=>v+s.reps*s.weight,0),0);
+    const isRun = !!w.runSummary?.distKm;
+    events.push({
+      date: w.date,
+      time: w.time || '00:00',
+      uid: w.uid,
+      name: user.displayName || 'Hunter',
+      icon: isRun ? '🏃' : '⚔',
+      text: isMe
+        ? (isRun ? `logged a ${w.runSummary.distKm.toFixed(2)}km run` : `cleared a hunt — ${sets} sets`)
+        : (isRun ? `logged a ${w.runSummary.distKm.toFixed(2)}km run` : `cleared a hunt`),
+      sub: vol > 0 ? (vol >= 1000 ? `${(vol/1000).toFixed(1)}t volume` : `${Math.round(vol)}kg volume`) : '',
+      colour: isMe ? 'var(--brass)' : 'var(--text)',
+    });
+  });
+
+  // PR events
+  allUsers.forEach(u => {
+    const userPRs = u.uid === currentUser.uid ? myPRs : (allUserPRs[u.uid] || {});
+    Object.entries(userPRs).forEach(([ex, pr]) => {
+      if (!pr.date || pr.date < cutoffStr) return;
+      events.push({
+        date: pr.date,
+        time: '00:01',
+        uid: u.uid,
+        name: u.displayName || 'Hunter',
+        icon: '🏆',
+        text: `set a PR — ${escapeHtml(ex)} ${pr.e1rm?.toFixed(1)||''}kg e1RM`,
+        sub: pr.tier || '',
+        colour: 'var(--violet)',
+      });
+    });
+  });
+
+  // Sort newest first
+  events.sort((a,b) => (b.date+b.time).localeCompare(a.date+a.time));
+  const recent = events.slice(0, 15);
+
+  if (!recent.length) { el.innerHTML = ''; return; }
+
+  const today = todayStr();
+  const yesterday = todayStr(new Date(Date.now()-86400000));
+
+  const PLAYER_COLORS = {
+    'eUtGPwQBcCSO0x3xS3ZGYFGXNIT2': '#d4a017',
+    'd1W5vTx5aSTIwkR4CIwnO2xW7vf1': '#7c3aed',
+    'rzcznIkNRrSKVXl74LsTaRSdHOk2': '#0ea5e9',
+    'oFFi2hATYARhqcSZQlHwlsYBOge2': '#ff6b9d',
+  };
+
+  el.innerHTML = `
+    <div style="font-family:var(--font-mono);font-size:9px;color:rgba(61,165,255,.4);letter-spacing:.15em;margin-bottom:8px;">◈ GUILD FEED</div>
+    <div style="display:flex;flex-direction:column;gap:2px;">
+      ${recent.map(e => {
+        const nameColor = PLAYER_COLORS[e.uid] || 'var(--text)';
+        const dateLabel = e.date === today ? 'today' : e.date === yesterday ? 'yesterday' : e.date;
+        return `<div style="display:flex;align-items:flex-start;gap:8px;padding:8px;background:var(--card);border-radius:8px;margin-bottom:4px;">
+          <span style="font-size:16px;flex-shrink:0;">${e.icon}</span>
+          <div style="flex:1;min-width:0;">
+            <div style="font-size:12px;"><strong style="color:${nameColor};">${escapeHtml(e.name)}</strong> <span style="color:var(--text-dim);">${e.text}</span></div>
+            ${e.sub ? `<div style="font-size:10px;color:var(--text-faint);margin-top:1px;">${e.sub}</div>` : ''}
+          </div>
+          <div style="font-size:9px;font-family:var(--font-mono);color:rgba(61,165,255,.25);flex-shrink:0;white-space:nowrap;">${dateLabel}</div>
+        </div>`;
+      }).join('')}
+    </div>`;
+}
+
+// ── MONTHLY REPORT ──
+function renderMonthlyReport() {
+  // Only show if we have at least 3 weeks of data
+  const myWOs = myWorkouts.filter(w => w.uid === currentUser.uid);
+  if (myWOs.length < 5) return null;
+
+  const now = new Date();
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  const lastMonthStart = new Date(now.getFullYear(), now.getMonth()-1, 1);
+  const monthStr = todayStr(monthStart);
+  const lastMonthStr = todayStr(lastMonthStart);
+
+  const thisMonthWOs = myWOs.filter(w => w.date >= monthStr);
+  const lastMonthWOs = myWOs.filter(w => w.date >= lastMonthStr && w.date < monthStr);
+
+  if (!thisMonthWOs.length && !lastMonthWOs.length) return null;
+
+  const thisVol = thisMonthWOs.reduce((n,w) =>
+    n+(w.exercises||[]).reduce((e,ex) =>
+      e+(ex.sets||[]).filter(s=>s.reps>0&&s.weight>0).reduce((v,s)=>v+s.reps*s.weight,0),0),0);
+  const lastVol = lastMonthWOs.reduce((n,w) =>
+    n+(w.exercises||[]).reduce((e,ex) =>
+      e+(ex.sets||[]).filter(s=>s.reps>0&&s.weight>0).reduce((v,s)=>v+s.reps*s.weight,0),0),0);
+
+  const volChange = lastVol > 0 ? Math.round(((thisVol-lastVol)/lastVol)*100) : 0;
+  const monthName = now.toLocaleDateString(undefined,{month:'long'});
+
+  return `<div style="background:var(--card);border:1px solid rgba(61,165,255,.12);border-radius:12px;padding:14px;margin-bottom:14px;">
+    <div style="font-family:var(--font-mono);font-size:8px;color:rgba(61,165,255,.4);letter-spacing:.15em;margin-bottom:10px;">◈ ${monthName.toUpperCase()} REPORT</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+      <div style="flex:1;min-width:80px;background:var(--card-2);border-radius:8px;padding:10px;text-align:center;">
+        <div style="font-family:var(--font-mono);font-size:18px;font-weight:800;color:var(--brass);">${thisMonthWOs.length}</div>
+        <div style="font-size:9px;color:rgba(61,165,255,.4);margin-top:2px;">SESSIONS</div>
+      </div>
+      <div style="flex:1;min-width:80px;background:var(--card-2);border-radius:8px;padding:10px;text-align:center;">
+        <div style="font-family:var(--font-mono);font-size:18px;font-weight:800;color:#61a5ff;">${thisVol>=1000?(thisVol/1000).toFixed(1)+'t':Math.round(thisVol)+'kg'}</div>
+        <div style="font-size:9px;color:rgba(61,165,255,.4);margin-top:2px;">VOLUME</div>
+      </div>
+      ${lastVol > 0 ? `<div style="flex:1;min-width:80px;background:var(--card-2);border-radius:8px;padding:10px;text-align:center;">
+        <div style="font-family:var(--font-mono);font-size:18px;font-weight:800;color:${volChange>=0?'var(--growing)':'var(--excess)'};">${volChange>=0?'+':''}${volChange}%</div>
+        <div style="font-size:9px;color:rgba(61,165,255,.4);margin-top:2px;">VS LAST MONTH</div>
+      </div>` : ''}
+    </div>
+  </div>`;
+}
 
 // ── PROGRESSION ROADMAP ──
 function renderProgressionRoadmap() {
