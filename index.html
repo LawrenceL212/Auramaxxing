@@ -6360,7 +6360,11 @@ function computeWorkoutXP(exercises) {
     for (const set of (ex.sets || [])) {
       const reps = Number(set.reps) || 0;
       if (reps <= 0) continue;
-      const im = intensityMult(set.rir);
+      // Timed exercises store RPE (1=easy, 10=max) not RIR — convert to RIR equivalent
+      const isTimed = !!exDef.timed;
+      const rawVal = set.rir;
+      const effectiveRir = (isTimed && rawVal != null) ? (10 - rawVal) : rawVal;
+      const im = intensityMult(effectiveRir);
       const rm = repsMult(reps);
       const setXP = Math.max(0.5, 2 * rm * im * tier);
 
