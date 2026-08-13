@@ -448,8 +448,21 @@
     from{opacity:0;transform:translateY(8px);}
     to{opacity:1;transform:translateY(0);}
   }
-  section.view.active{display:block;animation:viewEnter 0.3s var(--ease-cinema) both;}
-  /* fade removed — unified to viewEnter */
+  /* Directional transitions — forward=deeper, back=returning */
+  [data-view-dir="forward"] section.view.active {
+    animation:viewEnterForward 0.32s var(--ease-cinema) both;
+  }
+  [data-view-dir="back"] section.view.active {
+    animation:viewEnterBack 0.32s var(--ease-cinema) both;
+  }
+  @keyframes viewEnterForward {
+    from{opacity:0;transform:translateY(20px);}
+    to{opacity:1;transform:translateY(0);}
+  }
+  @keyframes viewEnterBack {
+    from{opacity:0;transform:translateY(-12px);}
+    to{opacity:1;transform:translateY(0);}
+  }
   .view h2{font-size:22px;margin:0 0 4px;}
   .view .sub{color:var(--text-dim);font-size:14px;margin:0 0 20px;}
 
@@ -1324,17 +1337,39 @@
     padding:12px 0 0;
     min-height:200px;
   }
-  /* Atmospheric haze layer */
-  .char-body-atmosphere{
+  /* ── #1 HUNTER BREATHING — believable, not cartoon ── */
+  /* Applied to the SVG wrapper inside char-body-content */
+  .hunter-breathe {
+    transform-origin: 50% 45%; /* chest centre */
+    animation: hunterBreathe 5s cubic-bezier(0.4,0,0.6,1) infinite;
+  }
+  @keyframes hunterBreathe {
+    0%,100% { transform: scaleY(1) scaleX(1); }
+    40%     { transform: scaleY(1.008) scaleX(1.003); }
+    60%     { transform: scaleY(1.008) scaleX(1.003); }
+  }
+  /* Aura behind hunter — breathes on different phase */
+  .hunter-aura-ring {
+    position:absolute;
+    left:50%;top:50%;
+    width:70%;padding-top:70%;
+    transform:translate(-50%,-50%);
+    border-radius:50%;
+    pointer-events:none;
+    animation:hunterAura 5s ease-in-out infinite;
+  }
+  @keyframes hunterAura {
+    0%,100% { opacity:0.4; transform:translate(-50%,-50%) scale(1); }
+    50%     { opacity:0.7; transform:translate(-50%,-50%) scale(1.04); }
+  }
+  /* Rim light sweeps subtly */
+  .char-body-atmosphere {
     position:absolute;inset:0;pointer-events:none;
-    background:
-      /* Key light from above-left */
-      radial-gradient(ellipse 120px 80px at 35% 10%, rgba(91,168,255,0.05) 0%, transparent 70%),
-      /* Rim light from right */
-      radial-gradient(ellipse 60px 200px at 100% 50%, rgba(139,92,255,0.04) 0%, transparent 70%),
-      /* Ground shadow */
-      radial-gradient(ellipse 80% 20px at 50% 100%, rgba(0,0,0,0.4) 0%, transparent 100%);
-    z-index:1;
+    animation:atmospherePulse 7s ease-in-out infinite;
+  }
+  @keyframes atmospherePulse {
+    0%,100% { opacity:0.7; }
+    50%     { opacity:1; }
   }
   .char-body-content{
     position:relative;z-index:2;
@@ -2213,12 +2248,55 @@
     from{opacity:0;transform:translateY(16px);filter:blur(3px);}
     to{opacity:1;transform:translateY(0);filter:blur(0);}
   }
+  /* ── #7 AMBIENT — visible but not screensaver ── */
+  /* Particles tripled, gradients quadrupled in startAmbientSystem (JS) */
+
+  /* ── #4 WORKOUT HEADER — exercise is the hero ── */
   .workout-modal-header{
     display:flex;align-items:flex-start;justify-content:space-between;
-    padding:16px 20px 14px;flex-shrink:0;
+    padding:14px 20px 12px;flex-shrink:0;
     background:linear-gradient(180deg, rgba(91,168,255,0.06) 0%, transparent 100%);
-    border-bottom:1px solid rgba(91,168,255,0.12);
-    box-shadow:inset 0 1px 0 rgba(91,168,255,0.08);
+    border-bottom:1px solid rgba(91,168,255,0.1);
+    box-shadow:inset 0 1px 0 rgba(91,168,255,0.06);
+  }
+  /* Exercise name is the hero inside each exercise block */
+  .ex-name-hero{
+    font-family:var(--font-display);font-size:17px;font-weight:800;
+    letter-spacing:.03em;color:var(--text);margin:0 0 2px;line-height:1.2;
+  }
+  .ex-set-counter{
+    font-family:var(--font-mono);font-size:11px;color:rgba(91,168,255,.6);letter-spacing:.1em;
+  }
+
+  /* ── #9 SET COMPLETION FEEDBACK ── */
+  .set-row.just-completed {
+    animation:setCompletePulse 0.5s var(--ease-impact) both;
+  }
+  @keyframes setCompletePulse {
+    0%  { background:rgba(111,255,176,0.12); }
+    60% { background:rgba(111,255,176,0.06); }
+    100%{ background:transparent; }
+  }
+  .set-row.is-pr {
+    animation:setPRPulse 0.6s var(--ease-impact) both;
+  }
+  @keyframes setPRPulse {
+    0%  { background:rgba(139,92,255,0.18); }
+    60% { background:rgba(139,92,255,0.08); }
+    100%{ background:rgba(139,92,255,0.03); }
+  }
+
+  /* ── #8 REST TIMER — Hunt context not stopwatch ── */
+  .rest-next-preview{
+    font-family:var(--font-mono);font-size:9px;color:rgba(91,168,255,.5);
+    letter-spacing:.08em;margin-top:4px;
+  }
+  .rest-timer-bar{
+    display:flex;align-items:center;gap:8px;padding:10px 20px;
+    border-bottom:1px solid rgba(91,168,255,0.08);
+    background:rgba(5,6,10,0.95);
+    flex-shrink:0;flex-wrap:wrap;
+  } rgba(91,168,255,0.08);
   }
   .workout-modal-header h3{margin:0;font-size:16px;}
   .workout-modal-body{flex:1;overflow-y:auto;padding:16px 20px calc(100px + env(safe-area-inset-bottom, 0));-webkit-overflow-scrolling:touch;}
@@ -2621,7 +2699,7 @@
             <div class="char-stage-identity">
               <div class="char-eyebrow">◈ SYSTEM ASSESSMENT</div>
               <div class="char-name" id="char-name">—</div>
-              <div class="char-title" id="char-title">Awaiting classification</div>
+              <div class="char-title" id="char-title">The System is watching</div>
             </div>
 
             <!-- Rank + Power — right, floating -->
@@ -2727,7 +2805,9 @@
     <section class="view" id="view-trends">
       <div id="trends-dashboard">
         <div style="font-family:var(--font-mono);font-size:8px;color:rgba(91,168,255,.3);letter-spacing:.25em;margin-bottom:4px;">◈ SYSTEM CODEX</div><h2 style="margin:0 0 2px;font-size:22px;">Your Body</h2><p class="sub" style="margin-bottom:16px;">What the System has analysed.</p>
-        <!-- PR Records -->
+        <!-- Body/muscle analysis FIRST — anatomy is the hero -->
+        <div id="trends-widgets"></div>
+        <!-- PR Records — supporting content below -->
         <div id="pr-panel"></div>
         <!-- Strength Rankings -->
         <div id="strength-rankings"></div>
@@ -2735,7 +2815,6 @@
         <div id="weekly-superlatives"></div>
         <!-- Party Stats Dashboard -->
         <div id="party-dashboard"></div>
-        <div id="trends-widgets"></div>
       </div>
       <div id="trends-muscle-detail" class="hidden"></div>
     </section>
@@ -3005,16 +3084,15 @@ function startAmbientSystem() {
   resize();
   window.addEventListener('resize', resize);
 
-  // Particle pool — very few, very slow
-  const PARTICLE_COUNT = 18;
+  // Particle pool — few but VISIBLE
+  const PARTICLE_COUNT = 22;
   const particles = Array.from({length: PARTICLE_COUNT}, () => ({
-    x: Math.random() * 1,
-    y: Math.random() * 1,
-    vx: (Math.random() - 0.5) * 0.0002,
-    vy: -Math.random() * 0.0003 - 0.0001, // drift upward slowly
-    size: Math.random() * 1.5 + 0.5,
-    opacity: Math.random() * 0.3 + 0.05,
-    // Each particle has its own hue — mostly blue/violet
+    x: Math.random(),
+    y: Math.random(),
+    vx: (Math.random() - 0.5) * 0.00015,
+    vy: -Math.random() * 0.00025 - 0.00008,
+    size: Math.random() * 2 + 0.8,
+    opacity: Math.random() * 0.5 + 0.2,   // 0.2–0.7 — actually visible
     hue: Math.random() > 0.6 ? 'rgba(139,92,255,' : 'rgba(91,168,255,',
     life: Math.random(),
     maxLife: 0.8 + Math.random() * 0.2,
@@ -3045,7 +3123,7 @@ function startAmbientSystem() {
     const lightX = W * (0.3 + Math.sin(lightT * 0.7) * 0.15);
     const lightY = H * (0.1 + Math.sin(lightT * 0.5) * 0.05);
     const grad = ctx.createRadialGradient(lightX, lightY, 0, lightX, lightY, W * 0.5);
-    grad.addColorStop(0, `rgba(91,168,255,${0.02 + Math.sin(lightT) * 0.008})`);
+    grad.addColorStop(0, `rgba(91,168,255,${0.06 + Math.sin(lightT) * 0.025})`);
     grad.addColorStop(1, 'transparent');
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, W, H);
@@ -3054,7 +3132,7 @@ function startAmbientSystem() {
     const auraX = W * (0.8 + Math.sin(lightT * 0.4) * 0.1);
     const auraY = H * 0.6;
     const aGrad = ctx.createRadialGradient(auraX, auraY, 0, auraX, auraY, W * 0.35);
-    aGrad.addColorStop(0, `rgba(139,92,255,${0.015 + Math.sin(lightT * 0.8) * 0.005})`);
+    aGrad.addColorStop(0, `rgba(139,92,255,${0.045 + Math.sin(lightT * 0.8) * 0.015})`);
     aGrad.addColorStop(1, 'transparent');
     ctx.fillStyle = aGrad;
     ctx.fillRect(0, 0, W, H);
@@ -3125,7 +3203,7 @@ function showEnergyFlow(exercises, xpResult, prs, onComplete) {
 
   steps.forEach((step, i) => {
     const row = document.createElement('div');
-    row.style.cssText = 'display:flex;align-items:center;gap:12px;width:100%;padding:10px 0;opacity:0;transition:opacity 0.4s ease,transform 0.4s ease;transform:translateY(8px);';
+    row.style.cssText = 'display:flex;align-items:center;gap:12px;width:100%;padding:10px 0;opacity:0;transition:opacity 0.5s ease,transform 0.5s ease;transform:translateY(10px);';
     row.innerHTML = `
       <div style="width:36px;height:36px;border-radius:50%;background:${step.col}18;border:1px solid ${step.col}44;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;">${step.icon}</div>
       <div style="flex:1;min-width:0;">
@@ -3138,22 +3216,25 @@ function showEnergyFlow(exercises, xpResult, prs, onComplete) {
       line.style.cssText = `width:1px;height:14px;background:linear-gradient(180deg,${step.col}50,rgba(91,168,255,0.08));margin-left:18px;`;
       inner.appendChild(line);
     }
+    // Each step revealed at delay, stays visible — no auto-fade
     setTimeout(() => { row.style.opacity='1'; row.style.transform='translateY(0)'; }, step.delay + 200);
   });
 
   const skipBtn = document.createElement('button');
   skipBtn.textContent = 'Continue →';
   skipBtn.style.cssText = 'margin-top:24px;padding:10px 24px;background:rgba(91,168,255,0.06);border:1px solid rgba(91,168,255,0.15);border-radius:100px;color:rgba(91,168,255,0.5);font-family:var(--font-mono);font-size:11px;letter-spacing:.08em;cursor:pointer;touch-action:manipulation;opacity:0;transition:opacity 0.4s ease;';
+  // Continue button — requires explicit tap, appears after last step
+  // Auto-dismiss only after 6 seconds of the full chain being visible
   const lastDelay = steps[steps.length-1].delay;
-  setTimeout(() => { skipBtn.style.opacity='1'; }, lastDelay + 400);
-
+  setTimeout(() => { skipBtn.style.opacity='1'; }, lastDelay + 600);
   const dismiss = () => {
     overlay.style.opacity='0'; overlay.style.transition='opacity 0.25s ease';
     setTimeout(() => { overlay.remove(); onComplete(); }, 260);
   };
   skipBtn.addEventListener('click', dismiss);
   overlay.addEventListener('click', e => { if(e.target===overlay) dismiss(); });
-  setTimeout(dismiss, lastDelay + 1600);
+  // Auto-dismiss after chain completes + 5 second linger
+  setTimeout(dismiss, lastDelay + 5500);
 
   inner.appendChild(skipBtn);
   overlay.appendChild(inner);
@@ -3852,7 +3933,20 @@ document.querySelectorAll('.bottom-nav button').forEach(btn => btn.addEventListe
   SFX.vibrate([6]);
   switchView(btn.dataset.view);
 }));
+// ── #2 DIRECTIONAL TRANSITIONS ──
+// Navigation hierarchy: hunt(0) → board(1) → trends(2) → inventory(3) → world(4)
+// Moving right = going deeper = slide up. Moving left = returning = slide down.
+const VIEW_DEPTH = { quest:0, board:1, trends:2, inventory:3, world:4, exercises:2, history:1, feats:2 };
+let _lastViewDepth = 0;
+
 function switchView(name) {
+  const newDepth = VIEW_DEPTH[name] ?? 1;
+  const goingDeeper = newDepth >= _lastViewDepth;
+  _lastViewDepth = newDepth;
+
+  // Apply directional class before showing new view
+  document.documentElement.dataset.viewDir = goingDeeper ? 'forward' : 'back';
+
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
   const viewEl = document.getElementById('view-' + name);
   if (!viewEl) { console.warn('switchView: no element for view', name); return; }
@@ -5235,7 +5329,15 @@ function addExerciseRow(presetName, targetSets, targetReps, prefillSets) {
     }
     if (isNowComplete && !wasComplete) {
       SFX.setComplete();
-      const anim = setRow.classList.contains('set-pr') ? 'setPR' : 'setDamage';
+      // #9: Physical set completion feedback — pulse the row
+      const isPR = setRow.classList.contains('set-pr');
+      setRow.classList.remove('just-completed','is-pr');
+      requestAnimationFrame(() => {
+        setRow.classList.add(isPR ? 'is-pr' : 'just-completed');
+        // Haptic feedback where supported
+        if (navigator.vibrate) navigator.vibrate(isPR ? [20,30,20] : [12]);
+      });
+      const anim = isPR ? 'setPR' : 'setDamage';
       setRow.style.animation = 'none';
       requestAnimationFrame(() => {
         setRow.style.animation = `${anim} 0.35s cubic-bezier(0.16,1,0.3,1) both`;
@@ -6372,7 +6474,7 @@ function rankBadge(tier) { return `<span class="rank-badge" style="color:${tier.
 const RANK_TIERS = ['E','D','C','B','A','S'];
 const RANK_COLORS = { E:'var(--rank-e)', D:'var(--rank-d)', C:'var(--rank-c)', B:'var(--rank-b)', A:'var(--rank-a)', S:'var(--rank-s)' };
 const RANK_TITLES = {
-  E:'Unranked Hunter', D:'Novice Hunter', C:'Seasoned Hunter',
+  E:'The System is watching', D:'Novice Hunter', C:'Seasoned Hunter',
   B:'Elite Hunter', A:'Shadow Monarch', S:'Absolute Being'
 };
 const UPGRADE_COSTS = { E:50, D:300, C:1000, B:5000, A:20000 };
@@ -7729,7 +7831,18 @@ function renderCharCard() {
   const bodyContent = document.getElementById('char-body-content');
   if (bodyContent) {
     const muscleStats = muscleStatusPast();
-    bodyContent.innerHTML = `<div class="body-pair">${bodySvg('front', muscleStats)}${bodySvg('back', muscleStats)}</div>`;
+    const rankCol = RANK_COLORS[charRank] || 'rgba(91,168,255,0.3)';
+    // Aura ring behind the body — rank colour, breathing
+    const auraRing = `<div class="hunter-aura-ring" style="background:radial-gradient(ellipse,${rankCol}18 0%,${rankCol}08 40%,transparent 70%);"></div>`;
+    // Atmosphere CSS (kept here so it references rankCol at render time)
+    const atmosphereBg = `
+      radial-gradient(ellipse 120px 80px at 35% 5%, rgba(91,168,255,0.07) 0%, transparent 70%),
+      radial-gradient(ellipse 60px 200px at 100% 50%, rgba(139,92,255,0.05) 0%, transparent 70%),
+      radial-gradient(ellipse 80% 20px at 50% 100%, rgba(0,0,0,0.4) 0%, transparent 100%)`;
+    const atm = bodyContent.parentElement?.querySelector('.char-body-atmosphere');
+    if (atm) atm.style.background = atmosphereBg;
+    // Wrap body pair in breathing container
+    bodyContent.innerHTML = auraRing + `<div class="body-pair hunter-breathe">${bodySvg('front', muscleStats)}${bodySvg('back', muscleStats)}</div>`;
   }
 
   // ── ATTRIBUTE MATRIX — orbital stat system ──
@@ -10552,16 +10665,8 @@ function showDebriefModal(exercises, apEarned, prs, done, soldiersEarned = {}) {
   const totalVol = exercises.reduce((n, ex) =>
     n + (ex.sets||[]).filter(s=>s.reps>0 && s.weight>0).reduce((v,s) => v + s.reps * s.weight, 0), 0);
   const streak = computeStreak(currentUser.uid);
-  const missingRIR = exercises.filter(ex => (ex.sets||[]).some(s => s.reps > 0 && s.rir == null));
   const tierEmojis = { Elite:'👑', Advanced:'💀', Intermediate:'⚔️', Novice:'🗡️', Beginner:'🛡️' };
-  const prRows = prs.map(p => `
-    <div class="debrief-pr-row">
-      <span class="debrief-pr-name">${escapeHtml(p.exercise)}</span>
-      <span style="font-size:11px;color:var(--violet);">${p.tier ? `${tierEmojis[p.tier]||''} ${p.tier}` : ''}</span>
-      <span class="debrief-xp-badge">+${p.xp} XP</span>
-    </div>`).join('');
 
-  // XP earned this session
   const xpResult = profile._lastXpResult || null;
   const generalXP = xpResult?.generalXP || 0;
   const trainingXP = xpResult?.trainingXP || {};
@@ -10574,113 +10679,117 @@ function showDebriefModal(exercises, apEarned, prs, done, soldiersEarned = {}) {
   const xpPct = Math.min(100, (xpIntoLevel / xpNeeded) * 100);
   const prevXpPct = Math.max(0, xpPct - (generalXP / xpNeeded * 100));
 
-  // Dungeon damage this session
   const dungeonDmg = profile._lastDungeonDamage || 0;
   const dungeon = profile.activeDungeon;
   const dungeonHpPct = dungeon ? Math.max(0, Math.round((dungeon.hp / dungeon.maxHp) * 100)) : null;
-
-  // Raid damage this session (estimated from session XP share)
   const raidDmg = profile._lastRaidDamage || 0;
 
-  // Training XP stat breakdown
-  const STAT_ICONS_D = { strength:'⚔️', focus:'🎯', defence:'🛡️', agility:'⚡', endurance:'🔥', flexibility:'💫' };
-  const statRows = Object.entries(trainingXP)
-    .filter(([,v]) => v > 0.5)
-    .sort(([,a],[,b]) => b - a)
-    .map(([stat, xp]) => `
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
-        <span style="font-size:13px;flex-shrink:0;">${STAT_ICONS_D[stat]||'·'}</span>
-        <span style="font-size:11px;color:var(--text-dim);flex:1;text-transform:capitalize;">${stat}</span>
-        <span style="font-family:var(--font-mono);font-size:10px;color:var(--growing);">+${xp.toFixed(1)} cap XP</span>
-      </div>`).join('');
+  // ── PRIMARY DEVELOPMENT — what stat grew most? ──
+  const STAT_ICONS_D = { strength:'⚔', focus:'🎯', defence:'🛡', agility:'⚡', endurance:'🔥', flexibility:'💫' };
+  const STAT_LABELS_D = { strength:'STRENGTH', focus:'FOCUS', defence:'DEFENCE', agility:'AGILITY', endurance:'ENDURANCE', flexibility:'FLEXIBILITY' };
+  const topStatEntry = Object.entries(trainingXP).filter(([,v])=>v>0.5).sort(([,a],[,b])=>b-a)[0];
+  const topStatId = topStatEntry?.[0];
+  const topStatRank = topStatId ? (profile.stats?.[topStatId] || 'E') : null;
 
-  // Level-up notice
+  // ── PRIMARY DEVELOPMENT HERO — large, cinematic ──
+  const primaryHero = topStatId ? `
+    <div style="text-align:center;padding:20px 0 16px;border-bottom:1px solid rgba(91,168,255,0.08);margin-bottom:16px;animation:achieveIn .5s var(--ease-cinema) .1s both;">
+      <div style="font-size:36px;margin-bottom:8px;">${STAT_ICONS_D[topStatId]}</div>
+      <div style="font-family:var(--font-display);font-size:22px;font-weight:900;letter-spacing:.08em;color:var(--text);">${STAT_LABELS_D[topStatId]}</div>
+      <div style="font-family:var(--font-mono);font-size:11px;color:var(--growing);letter-spacing:.15em;margin-top:4px;">STIMULATED</div>
+      ${topStatRank !== 'E' ? `<div style="font-family:var(--font-mono);font-size:9px;color:rgba(91,168,255,.3);margin-top:6px;letter-spacing:.1em;">CURRENT RANK · ${topStatRank}</div>` : ''}
+    </div>` : '';
+
+  // ── PR MOMENT — each PR gets weight, not a row ──
+  const prHtml = prs.length ? `
+    <div style="margin-bottom:14px;animation:achieveIn .5s var(--ease-cinema) .25s both;">
+      ${prs.map(p => `
+        <div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid rgba(91,168,255,0.06);">
+          <span style="font-size:20px;">🏆</span>
+          <div style="flex:1;min-width:0;">
+            <div style="font-size:12px;color:var(--text);font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(p.exercise)}</div>
+            <div style="font-size:10px;color:var(--violet);font-family:var(--font-mono);">${p.tier ? `${tierEmojis[p.tier]} ${p.tier}` : 'NEW RECORD'}</div>
+          </div>
+        </div>`).join('')}
+    </div>` : '';
+
+  // ── XP BAR — animate from old to new ──
+  const xpHtml = generalXP > 0 ? `
+    <div style="margin-bottom:14px;animation:achieveIn .5s var(--ease-cinema) .35s both;">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px;">
+        <span style="font-family:var(--font-mono);font-size:8px;color:rgba(91,168,255,.4);letter-spacing:.15em;">HUNTER LEVEL ${hunterLevel}</span>
+        <span style="font-family:var(--font-mono);font-size:11px;color:var(--legendary);">+${Math.round(generalXP)} XP</span>
+      </div>
+      <div class="xp-debrief-bar-wrap">
+        <div class="xp-debrief-bar" id="debrief-xp-bar" style="width:${prevXpPct.toFixed(1)}%"></div>
+      </div>
+      <div style="font-family:var(--font-mono);font-size:9px;color:var(--text-faint);margin-top:3px;text-align:right;">${xpPct.toFixed(0)}% to Level ${hunterLevel + 1}</div>
+    </div>` : '';
+
+  // ── LEVEL UP ──
   const levelUpHtml = levelUps.length ? `
-    <div style="background:rgba(255,214,107,0.08);border:1px solid rgba(255,214,107,0.3);border-radius:6px;padding:10px;margin-bottom:14px;text-align:center;">
-      <div style="font-family:var(--font-mono);font-size:9px;color:#FFD66B;letter-spacing:0.15em;margin-bottom:4px;">◈ LEVEL UP ◈</div>
+    <div style="background:rgba(255,214,107,0.06);border-top:1px solid rgba(255,214,107,0.2);padding:12px;margin-bottom:14px;text-align:center;animation:achieveIn .5s var(--ease-cinema) .15s both;">
+      <div style="font-family:var(--font-mono);font-size:8px;color:rgba(255,214,107,.5);letter-spacing:.2em;margin-bottom:4px;">◈ LEVEL UP ◈</div>
       ${levelUps.map(lu => `
-        <div style="font-family:var(--font-head);font-size:18px;font-weight:800;color:#FFD66B;">Level ${lu.level}</div>
-        <div style="font-size:12px;color:var(--text-dim);margin-top:2px;">+${lu.ap} AP earned</div>
+        <div style="font-family:var(--font-display);font-size:22px;font-weight:900;color:var(--legendary);">Level ${lu.level}</div>
+        <div style="font-size:11px;color:var(--text-dim);margin-top:2px;">+${lu.ap} AP unlocked</div>
       `).join('')}
     </div>` : '';
 
-  // Dungeon section
+  // ── DUNGEON ──
   const dungeonHtml = dungeonDmg > 0 && dungeon ? (() => {
     const DUNGEON_CHAINS_LOCAL = typeof DUNGEON_CHAINS !== 'undefined' ? DUNGEON_CHAINS : {};
     const chain = DUNGEON_CHAINS_LOCAL[dungeon.chainKey] || {};
-    const hpBarPct = dungeonHpPct ?? 0;
-    return `<div style="background:rgba(139,92,255,0.06);border:1px solid rgba(139,92,255,0.2);border-radius:10px;padding:12px;margin-bottom:14px;">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
-        <span style="font-family:var(--font-mono);font-size:9px;color:rgba(139,92,255,.6);letter-spacing:.1em;">${chain.icon||'⚔'} DUNGEON DAMAGE</span>
-        <span style="font-family:var(--font-mono);font-size:13px;color:var(--violet);font-weight:800;">-${Math.round(dungeonDmg)} HP</span>
+    return `<div style="background:rgba(139,92,255,0.05);border-left:2px solid rgba(139,92,255,0.3);padding:10px 12px;margin-bottom:10px;animation:achieveIn .5s var(--ease-cinema) .45s both;">
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <span style="font-size:11px;color:var(--text-dim);">${dungeon.name || chain.label || 'Dungeon'}</span>
+        <span style="font-family:var(--font-mono);font-size:12px;color:var(--violet);font-weight:800;">-${Math.round(dungeonDmg)} HP</span>
       </div>
-      <div style="font-size:13px;color:var(--text-dim);margin-bottom:6px;">${dungeon.name || chain.label || 'Active Dungeon'}</div>
-      <div style="height:6px;background:rgba(139,92,255,.08);border-radius:3px;overflow:hidden;margin-bottom:4px;">
-        <div style="width:${hpBarPct}%;height:100%;background:var(--violet);border-radius:3px;transition:width .6s;"></div>
-      </div>
-      <div style="font-size:10px;color:rgba(139,92,255,.4);">${hpBarPct}% HP remaining · ${Math.round(dungeon.totalDamage||0).toLocaleString()} total damage dealt</div>
+      <div style="font-family:var(--font-mono);font-size:8px;color:rgba(139,92,255,.4);margin-top:2px;letter-spacing:.1em;">${dungeonHpPct}% HP REMAINING</div>
     </div>`;
   })() : '';
 
-  // Raid section
+  // ── RAID ──
   const raidHtml = raidDmg > 0 ? `
-    <div style="background:rgba(255,77,103,0.05);border:1px solid rgba(255,77,103,0.18);border-radius:10px;padding:12px;margin-bottom:14px;">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
-        <span style="font-family:var(--font-mono);font-size:9px;color:rgba(255,77,103,.5);letter-spacing:.1em;">⚔ RAID CONTRIBUTION</span>
-        <span style="font-family:var(--font-mono);font-size:13px;color:var(--excess);font-weight:800;">${raidDmg.toFixed(1)} dmg</span>
+    <div style="background:rgba(255,77,103,0.04);border-left:2px solid rgba(255,77,103,0.25);padding:10px 12px;margin-bottom:10px;animation:achieveIn .5s var(--ease-cinema) .5s both;">
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <span style="font-size:11px;color:var(--text-dim);">Raid Boss</span>
+        <span style="font-family:var(--font-mono);font-size:12px;color:var(--excess);font-weight:800;">${raidDmg.toFixed(1)} dmg</span>
       </div>
-      <div style="font-size:10px;color:rgba(255,77,103,.4);">Your damage dealt to this week's raid boss</div>
+      <div style="font-family:var(--font-mono);font-size:8px;color:rgba(255,77,103,.4);margin-top:2px;letter-spacing:.1em;">CONTRIBUTION RECORDED</div>
     </div>` : '';
+
+  // ── SESSION SUMMARY — compact stats ──
+  const summaryHtml = `
+    <div style="display:flex;gap:12px;margin-bottom:14px;animation:achieveIn .5s var(--ease-cinema) .4s both;">
+      <div style="flex:1;text-align:center;">
+        <div style="font-family:var(--font-display);font-size:20px;font-weight:900;color:var(--text);">${totalSets}</div>
+        <div style="font-family:var(--font-mono);font-size:8px;color:var(--text-faint);letter-spacing:.1em;">SETS</div>
+      </div>
+      ${totalVol > 0 ? `<div style="flex:1;text-align:center;">
+        <div style="font-family:var(--font-display);font-size:20px;font-weight:900;color:var(--text);">${totalVol>=1000?(totalVol/1000).toFixed(1)+'t':Math.round(totalVol)+'kg'}</div>
+        <div style="font-family:var(--font-mono);font-size:8px;color:var(--text-faint);letter-spacing:.1em;">VOLUME</div>
+      </div>` : ''}
+      <div style="flex:1;text-align:center;">
+        <div style="font-family:var(--font-display);font-size:20px;font-weight:900;color:var(--text);">${streak}d</div>
+        <div style="font-family:var(--font-mono);font-size:8px;color:var(--text-faint);letter-spacing:.1em;">STREAK</div>
+      </div>
+    </div>`;
 
   const el = document.createElement('div');
   el.className = 'debrief-overlay';
   el.innerHTML = `
     <div class="debrief-window">
-      <p class="debrief-eyebrow">Hunt Complete</p>
-      <h2 class="debrief-title">⚡ Session Debrief</h2>
-
-      ${levelUpHtml}
-
-      ${generalXP > 0 ? `
-      <div style="background:rgba(255,214,107,0.06);border:1px solid rgba(255,214,107,0.15);border-radius:6px;padding:12px;margin-bottom:14px;">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
-          <span style="font-family:var(--font-mono);font-size:9px;color:rgba(255,214,107,0.5);letter-spacing:0.1em;">HUNTER LEVEL ${hunterLevel}</span>
-          <span style="font-family:var(--font-mono);font-size:11px;color:#FFD66B;">+${Math.round(generalXP)} XP</span>
-        </div>
-        <div class="xp-debrief-bar-wrap">
-          <div class="xp-debrief-bar" id="debrief-xp-bar" style="width:${prevXpPct.toFixed(1)}%"></div>
-        </div>
-        <div style="display:flex;justify-content:space-between;font-family:var(--font-mono);font-size:9px;color:var(--text-faint);margin-top:3px;">
-          <span>${Math.round(xpIntoLevel)} / ${xpNeeded} XP to Level ${hunterLevel + 1}</span>
-          <span>${xpPct.toFixed(0)}%</span>
-        </div>
-      </div>` : ''}
-
-      <div class="debrief-stat-grid">
-        <div class="debrief-stat">
-          <div class="debrief-stat-value">${totalSets}</div>
-          <div class="debrief-stat-label">Sets Logged</div>
-        </div>
-        <div class="debrief-stat">
-          <div class="debrief-stat-value">${totalVol > 0 ? (totalVol >= 1000 ? (totalVol/1000).toFixed(1)+'t' : Math.round(totalVol).toLocaleString()+'kg') : '—'}</div>
-          <div class="debrief-stat-label">Volume</div>
-        </div>
-        <div class="debrief-stat">
-          <div class="debrief-stat-value">${streak}<span style="font-size:13px;">d</span></div>
-          <div class="debrief-stat-label">Streak</div>
-        </div>
-        <div class="debrief-stat">
-          <div class="debrief-stat-value">${Math.round(generalXP)}</div>
-          <div class="debrief-stat-label">XP Earned</div>
-        </div>
+      <div style="text-align:center;padding-bottom:14px;border-bottom:1px solid rgba(91,168,255,0.08);margin-bottom:14px;animation:achieveIn .4s var(--ease-cinema) both;">
+        <div style="font-family:var(--font-mono);font-size:8px;color:rgba(91,168,255,.4);letter-spacing:.25em;margin-bottom:8px;">◈ SYSTEM RECORD</div>
+        <div style="font-family:var(--font-display);font-size:26px;font-weight:900;letter-spacing:.06em;">HUNT COMPLETE</div>
       </div>
 
-      ${statRows ? `
-      <div style="margin-bottom:14px;">
-        <p style="font-size:10px;font-family:var(--font-mono);color:var(--text-faint);letter-spacing:0.08em;margin-bottom:8px;">TRAINING CAPS RAISED</p>
-        ${statRows}
-      </div>` : ''}
-
+      ${levelUpHtml}
+      ${primaryHero}
+      ${prHtml}
+      ${xpHtml}
+      ${summaryHtml}
       ${dungeonHtml}
       ${raidHtml}
 
@@ -16269,18 +16378,25 @@ function renderGuildFeed() {
   };
 
   el.innerHTML = `
-    <div style="font-family:var(--font-mono);font-size:9px;color:rgba(91,168,255,.4);letter-spacing:.15em;margin-bottom:8px;">◈ GUILD FEED</div>
+    <div style="font-family:var(--font-mono);font-size:9px;color:rgba(91,168,255,.4);letter-spacing:.15em;margin-bottom:8px;">◈ SYSTEM RECORD</div>
     <div style="display:flex;flex-direction:column;gap:2px;">
       ${recent.map(e => {
         const nameColor = PLAYER_COLORS[e.uid] || 'var(--text)';
         const dateLabel = e.date === today ? 'today' : e.date === yesterday ? 'yesterday' : e.date;
-        return `<div style="display:flex;align-items:flex-start;gap:8px;padding:8px;background:var(--card);border-radius:8px;margin-bottom:4px;">
-          <span style="font-size:16px;flex-shrink:0;">${e.icon}</span>
+        // System language for event types
+        const systemText = e.type === 'pr'
+          ? `${escapeHtml(e.name)}'s ${e.text.replace('set a PR — ','').split(' ')[0]} ADVANCED`
+          : e.type === 'workout'
+            ? `${escapeHtml(e.name)} — HUNT CLEARED`
+            : `${escapeHtml(e.name)} — ${e.text.toUpperCase()}`;
+        const systemSub = e.sub || '';
+        return `<div style="display:flex;align-items:flex-start;gap:8px;padding:7px 0;border-bottom:1px solid rgba(91,168,255,0.05);">
+          <div style="width:6px;height:6px;border-radius:50%;background:${nameColor};margin-top:5px;flex-shrink:0;"></div>
           <div style="flex:1;min-width:0;">
-            <div style="font-size:12px;"><strong style="color:${nameColor};">${escapeHtml(e.name)}</strong> <span style="color:var(--text-dim);">${e.text}</span></div>
-            ${e.sub ? `<div style="font-size:10px;color:var(--text-faint);margin-top:1px;">${e.sub}</div>` : ''}
+            <div style="font-size:11px;font-family:var(--font-mono);color:var(--text-dim);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;letter-spacing:.03em;"><span style="color:${nameColor};">${escapeHtml(e.name)}</span> · ${e.icon} ${e.type === 'pr' ? 'NEW RECORD' : 'HUNT CLEARED'}</div>
+            ${systemSub ? `<div style="font-size:9px;color:var(--text-faint);margin-top:1px;">${systemSub}</div>` : ''}
           </div>
-          <div style="font-size:9px;font-family:var(--font-mono);color:rgba(91,168,255,.25);flex-shrink:0;white-space:nowrap;">${dateLabel}</div>
+          <div style="font-size:8px;font-family:var(--font-mono);color:rgba(91,168,255,.2);flex-shrink:0;margin-top:3px;white-space:nowrap;">${dateLabel}</div>
         </div>`;
       }).join('')}
     </div>`;
