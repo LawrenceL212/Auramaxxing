@@ -4331,26 +4331,26 @@ function rebuildExercisesAll() {
   // Skill tier overrides — difficulty multiplier for XP calculation
   // Reflects the real difficulty gap between progression levels
   const SKILL_TIER_MAP = {
-    // Planche progression
+    // Planche progression — 1.0 to 1.5
     'Planche Lean':1.0,'Frog Stand':1.0,'Pseudo planche push up':1.0,
-    'Tuck Planche':1.5,'Advanced Tuck Planche':2.0,
-    'Straddle Planche':2.5,'Single Leg Planche':2.5,'Full Planche':3.0,
-    // Front lever progression
-    'Dead Hang':0.8,
-    'Tuck Front Lever':1.5,'Tuck front lever raise':1.5,
-    'Advanced Tuck Front Lever':2.0,'Advanced tuck front lever raise':2.0,
-    'Straddle Front Lever':2.5,'Front Lever Raise':2.5,
-    'Front Lever':3.0,
-    // Handstand progression
-    'Wall Handstand Hold':1.0,'Chest-to-Wall Handstand Hold':1.2,
-    'Freestanding Handstand Hold':2.0,'Handstand Shoulder Taps':2.0,
-    'Handstand Push Up':2.5,
+    'Tuck Planche':1.15,'Advanced Tuck Planche':1.25,
+    'Straddle Planche':1.35,'Single Leg Planche':1.35,'Full Planche':1.5,
+    // Front lever progression — 1.0 to 1.5
+    'Dead Hang':0.9,
+    'Tuck Front Lever':1.15,'Tuck front lever raise':1.15,
+    'Advanced Tuck Front Lever':1.25,'Advanced tuck front lever raise':1.25,
+    'Straddle Front Lever':1.35,'Front Lever Raise':1.35,
+    'Front Lever':1.5,
+    // Handstand progression — 1.0 to 1.3
+    'Wall Handstand Hold':1.0,'Chest-to-Wall Handstand Hold':1.05,
+    'Freestanding Handstand Hold':1.2,'Handstand Shoulder Taps':1.2,
+    'Handstand Push Up':1.3,
     // Other skills
-    'L-Sit':1.5,'German Hang':1.0,'German hang':1.0,
-    'Pike hold':1.0,'Wall Toe Pull':1.2,'Hollow hold':0.8,
-    'Dragon Flag':2.0,'Dragon Flag Negatives':1.5,
-    'Crucifix crunch':1.2,'Archer Row':1.5,'Archer pull up':1.8,
-    'Back Lever':2.0,'Straddle Back Lever':2.5,
+    'L-Sit':1.15,'German Hang':1.0,'German hang':1.0,
+    'Pike hold':1.0,'Wall Toe Pull':1.05,'Hollow hold':0.9,
+    'Dragon Flag':1.3,'Dragon Flag Negatives':1.15,
+    'Crucifix crunch':1.05,'Archer Row':1.15,'Archer pull up':1.2,
+    'Back Lever':1.25,'Straddle Back Lever':1.35,
   };
 
   EXERCISES_ALL = structuredCloneLite(BASE_EXERCISES);
