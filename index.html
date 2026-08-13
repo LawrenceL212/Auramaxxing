@@ -11102,19 +11102,121 @@ function weeklyMuscleVolumes() {
   return weekVolumes;
 }
 function muscleStatusPast() {
-  const weekVolumes = weeklyMuscleVolumes();
+  // ── SORENESS / RECOVERY MODEL ──
+  // Models actual muscle fatigue based on:
+  // 1. Sets performed per muscle in last 7 days (volume)
+  // 2. Days since last session for that muscle (recency)
+  // 3. Recovery rate per muscle (larger muscles recover slower)
+  // Outputs: Recovered / Recovering / Sore / Overreached + volume status
+
+  const now = new Date();
+  const RECOVERY_DAYS = {
+    // Fast-recovering muscles
+    'Forearms':3,'Calves':3,'Traps':3,'Rear Delts':3,
+    // Medium
+    'Biceps':2.5,'Triceps':2.5,'Side Delts':2.5,'Front Delts':2.5,'Abs':2,
+    // Slow
+    'Chest':3,'Lats':3,'Rhomboids':3,'Mid Back':3,'Lower Back':4,
+    'Quads':4,'Hamstrings':4,'Glutes':4,'Adductors':3,
+    // Default
+    'default':3,
+  };
+  // Recommended weekly sets per muscle (MEV-MRV range)
+  const WEEKLY_SETS = {
+    'Chest':{mev:4,mav:12,mrv:20},'Lats':{mev:6,mav:14,mrv:25},'Rhomboids':{mev:4,mav:12,mrv:20},
+    'Mid Back':{mev:4,mav:12,mrv:20},'Lower Back':{mev:3,mav:8,mrv:16},'Traps':{mev:4,mav:12,mrv:20},
+    'Front Delts':{mev:0,mav:6,mrv:12},'Side Delts':{mev:6,mav:12,mrv:20},'Rear Delts':{mev:6,mav:12,mrv:20},
+    'Biceps':{mev:4,mav:10,mrv:20},'Triceps':{mev:4,mav:10,mrv:20},'Forearms':{mev:4,mav:10,mrv:20},
+    'Quads':{mev:8,mav:16,mrv:28},'Hamstrings':{mev:6,mav:12,mrv:20},'Glutes':{mev:4,mav:12,mrv:20},
+    'Adductors':{mev:2,mav:8,mrv:16},'Calves':{mev:8,mav:14,mrv:20},'Abs':{mev:4,mav:12,mrv:20},
+    'default':{mev:4,mav:10,mrv:20},
+  };
+
+  // Gather per-muscle: sets and dates from last 14 days
+  const cutoff = new Date(now); cutoff.setDate(cutoff.getDate()-14);
+  const muscleData = {}; // muscle -> { sets7: [], dates: [] }
+  MUSCLES.forEach(m => { muscleData[m] = { sets7: 0, sets14: 0, lastDate: null }; });
+
+  const sevenDaysAgo = new Date(now); sevenDaysAgo.setDate(sevenDaysAgo.getDate()-7);
+
+  for (const w of myWorkouts) {
+    if (w.uid !== currentUser?.uid) continue;
+    const wd = new Date(w.date + 'T12:00:00');
+    if (wd < cutoff) continue;
+    for (const ex of (w.exercises||[])) {
+      const muscles = (EXERCISES_ALL[ex.name]||{}).muscles || {};
+      const completedSets = (ex.sets||[]).filter(s=>s.reps>0).length;
+      if (!completedSets) continue;
+      for (const [muscle, emph] of Object.entries(muscles)) {
+        if (!muscleData[muscle]) continue;
+        // Weight sets by muscle emphasis
+        const weightedSets = completedSets * Math.min(1, emph);
+        if (wd >= sevenDaysAgo) muscleData[muscle].sets7 += weightedSets;
+        muscleData[muscle].sets14 += weightedSets;
+        if (!muscleData[muscle].lastDate || wd > muscleData[muscle].lastDate) {
+          muscleData[muscle].lastDate = wd;
+        }
+      }
+    }
+  }
+
   const result = {};
   for (const m of MUSCLES) {
-    const thisWeek = weekVolumes[0][m] || 0;
-    const prior = [weekVolumes[1][m]||0, weekVolumes[2][m]||0, weekVolumes[3][m]||0];
-    const priorAvg = prior.reduce((a,b)=>a+b,0) / 3;
-    let status;
-    if (thisWeek === 0) status = 'Stalled';
-    else if (priorAvg === 0) status = 'Focusing';
-    else { const ratio = thisWeek / priorAvg;
-      if (ratio >= 1.4) status = 'Excess'; else if (ratio >= 1.15) status = 'Growing';
-      else if (ratio >= 0.85) status = 'Maintaining'; else status = 'Stalled'; }
-    result[m] = { volume: Math.round(thisWeek), status, weeks: [weekVolumes[0][m]||0, weekVolumes[1][m]||0, weekVolumes[2][m]||0, weekVolumes[3][m]||0] };
+    const d = muscleData[m];
+    const recoveryDays = RECOVERY_DAYS[m] || RECOVERY_DAYS.default;
+    const ranges = WEEKLY_SETS[m] || WEEKLY_SETS.default;
+    const sets7 = Math.round(d.sets7);
+    const sets14 = Math.round(d.sets14);
+
+    // Days since last stimulus
+    const daysSince = d.lastDate ? (now - d.lastDate) / 86400000 : 99;
+    // Recovery fraction: 0 = still sore, 1 = fully recovered
+    const recoveryFraction = Math.min(1, daysSince / recoveryDays);
+
+    // Volume status based on weekly sets vs MEV/MAV/MRV
+    let volumeStatus, status;
+    if (sets7 === 0) {
+      volumeStatus = daysSince > 14 ? 'Stalled' : 'Recovering';
+    } else if (sets7 >= ranges.mrv) {
+      volumeStatus = 'Overreached'; // too much
+    } else if (sets7 >= ranges.mav) {
+      volumeStatus = 'Growing';     // in hypertrophy zone
+    } else if (sets7 >= ranges.mev) {
+      volumeStatus = 'Maintaining'; // minimum effective
+    } else {
+      volumeStatus = 'Stalled';     // below MEV
+    }
+
+    // Combine volume status with recovery state
+    if (recoveryFraction < 0.3) {
+      status = 'Excess'; // Sore — too soon to train again
+    } else if (recoveryFraction < 0.65) {
+      status = 'Focusing'; // Recovering — getting there
+    } else if (sets7 === 0 && daysSince > 7) {
+      status = 'Stalled'; // Fully recovered but not trained recently
+    } else {
+      status = volumeStatus;
+    }
+
+    // Human-readable recovery label
+    const recoveryLabel = recoveryFraction >= 1 ? 'Fully recovered'
+      : recoveryFraction >= 0.65 ? `~${Math.round(recoveryDays - daysSince * 0.8)}d to full recovery`
+      : `Sore — ${Math.ceil(recoveryDays * (1-recoveryFraction))}d estimated`;
+
+    result[m] = {
+      volume: sets7,
+      status,
+      volumeStatus,
+      recoveryFraction,
+      recoveryLabel,
+      sets7,
+      sets14,
+      daysSince: Math.round(daysSince),
+      mev: ranges.mev,
+      mav: ranges.mav,
+      mrv: ranges.mrv,
+      weeks: [sets7, Math.max(0, sets14-sets7), 0, 0],
+    };
   }
   return result;
 }
@@ -11768,7 +11870,7 @@ function renderMuscleDetail() {
         </div>
       ` : statusCountRow(stats)}
       <p class="sub" style="margin:14px 0 0;">${
-        muscleDetailMode === 'Past' ? 'Sets completed per muscle group — last 7 days'
+        muscleDetailMode === 'Past' ? 'Soreness model — based on sets trained, days since last session, and muscle recovery rate'
         : muscleDetailMode === 'Planned' ? `Planned emphasis from ${myProgram ? escapeHtml(myProgram.name) : 'your program'}`
         : 'Best strength tier achieved per muscle group based on your PRs'
       }</p>
@@ -11778,14 +11880,23 @@ function renderMuscleDetail() {
       <div class="muscle-detail-list">
         ${sorted.map(m => {
           const s = stats[m]; const maxW = Math.max(...s.weeks, 1);
+          const isPast = muscleDetailMode === 'Past';
+          const volLabel = muscleDetailMode === 'Strength'
+            ? (s.label || 'No data')
+            : isPast
+              ? `${s.sets7 ?? s.volume} sets this week${s.mev!=null?' · MEV '+s.mev+' MAV '+s.mav:''}`
+              : `${s.volume.toLocaleString()} planned emphasis`;
+          const recoveryLine = isPast && s.recoveryLabel
+            ? `<div style="font-size:9px;color:rgba(61,165,255,.35);margin-top:1px;">${s.recoveryLabel}${s.daysSince < 99 ? ' · last '+s.daysSince+'d ago' : ''}</div>`
+            : '';
           return `<div class="muscle-detail-row" data-m="${m}">
             <div class="muscle-detail-row-top">
-              <div><div class="m-name">${m}</div><div class="m-vol">${
-                muscleDetailMode === 'Strength'
-                  ? (s.label || 'No data')
-                  : `${s.volume.toLocaleString()} ${muscleDetailMode==='Past'?'vol this week':'planned emphasis'}`
-              }</div></div>
-              <span class="status-badge" style="background:${STATUS_COLOR[s.status]}22;color:${STATUS_COLOR[s.status]};">${s.status}</span>
+              <div>
+                <div class="m-name">${m}</div>
+                <div class="m-vol">${volLabel}</div>
+                ${recoveryLine}
+              </div>
+              <span class="status-badge" style="background:${STATUS_COLOR[s.status]}22;color:${STATUS_COLOR[s.status]};">${isPast && s.volumeStatus && s.volumeStatus !== s.status ? s.volumeStatus : s.status}</span>
             </div>
             <div class="spark-row">${s.weeks.slice().reverse().map(v => `<div class="spark-bar" style="height:${Math.max(10,(v/maxW)*100)}%;background:${STATUS_COLOR[s.status]};opacity:${0.4};"></div>`).join('')}</div>
           </div>`;
