@@ -273,13 +273,27 @@
 
   /* ── No horizontal scroll anywhere ── */
   html, body{max-width:100vw;overflow-x:hidden;}
-  ::-webkit-scrollbar{width:8px;height:8px;}
-  ::-webkit-scrollbar-thumb{background:var(--border);border-radius:8px;}
+  ::-webkit-scrollbar{width:3px;height:3px;}
+  ::-webkit-scrollbar-track{background:transparent;}
+  ::-webkit-scrollbar-thumb{background:rgba(91,168,255,0.15);border-radius:2px;}
+  ::-webkit-scrollbar-thumb:hover{background:rgba(91,168,255,0.3);}
   a{color:inherit;}
   button{font-family:inherit;}
   input,select,textarea{font-family:inherit;}
-  :focus-visible{outline:2px solid var(--brass);outline-offset:2px;}
+  :focus-visible{outline:2px solid var(--brass);outline-offset:2px;border-radius:var(--radius-sm);}
+  button:focus:not(:focus-visible){outline:none;}
   h1,h2,h3,.display{font-family:var(--font-display);letter-spacing:0.04em;text-transform:uppercase;}
+
+  /* ── PHASE J: REDUCED MOTION ── */
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+    .hunter-xp-bar, .stat-bar { transition: width 0.3s ease !important; }
+    #ambient-canvas { display: none !important; }
+  }
   .mono{font-family:var(--font-mono);}
   .hidden{display:none !important;}
 
@@ -1521,28 +1535,61 @@
   .status-dot.rest{background:rgba(91,168,255,0.2);border:2px solid rgba(91,168,255,0.3);}
 
   /* ── Raid Boss ── */
+  /* ── PHASE G: DUNGEON ATMOSPHERIC PRESENTATION ── */
   .raid-boss-card{
-    background:linear-gradient(135deg,rgba(255,77,103,0.06),rgba(5,7,13,0.98));
-    border:1px solid rgba(255,77,103,0.25);border-radius:8px;padding:16px;
-    margin-bottom:16px;position:relative;overflow:hidden;
+    /* Environmental dungeon — not a card */
+    background:
+      radial-gradient(ellipse 200px 100px at 50% 0%, rgba(255,77,103,0.08) 0%, transparent 70%),
+      radial-gradient(ellipse 300px 200px at 50% 100%, rgba(5,6,10,0.8) 0%, transparent 100%),
+      linear-gradient(180deg, rgba(20,8,12,0.98) 0%, rgba(5,6,10,0.99) 100%);
+    border:none;
+    border-radius:var(--radius-md);
+    padding:16px;
+    margin-bottom:16px;
+    position:relative;overflow:hidden;
+    /* Top edge — red danger light bleeds from above */
+    box-shadow:
+      inset 0 1px 0 rgba(255,77,103,0.15),
+      inset 0 -1px 0 rgba(0,0,0,0.3),
+      0 8px 40px rgba(0,0,0,0.6),
+      0 0 0 1px rgba(255,77,103,0.06);
   }
+  /* Atmospheric fog layer */
   .raid-boss-card::before{
-    content:"";position:absolute;top:0;left:0;right:0;height:1px;
-    background:linear-gradient(90deg,transparent,rgba(255,77,103,0.6),transparent);
+    content:"";position:absolute;top:0;left:0;right:0;height:2px;
+    background:linear-gradient(90deg,transparent,rgba(255,77,103,0.4),transparent);
+    animation:raidScanline 4s ease-in-out infinite;
+  }
+  @keyframes raidScanline{
+    0%,100%{opacity:0.4;}
+    50%{opacity:0.9;}
+  }
+  /* Boss idle pulse — environmental breathing */
+  .raid-boss-card::after{
+    content:"";position:absolute;bottom:0;left:50%;transform:translateX(-50%);
+    width:60%;height:40px;
+    background:radial-gradient(ellipse 100% 100%, rgba(255,77,103,0.04) 0%, transparent 100%);
+    animation:bossIdle 3s ease-in-out infinite;
+    pointer-events:none;
+  }
+  @keyframes bossIdle{
+    0%,100%{opacity:0.5;transform:translateX(-50%) scaleX(1);}
+    50%{opacity:1;transform:translateX(-50%) scaleX(1.1);}
   }
   .raid-boss-card.cleared{
-    background:linear-gradient(135deg,rgba(139,92,255,0.08),rgba(5,7,13,0.98));
-    border-color:rgba(139,92,255,0.3);
+    background:linear-gradient(180deg, rgba(8,20,15,0.98) 0%, rgba(5,6,10,0.99) 100%);
+    box-shadow:inset 0 1px 0 rgba(111,255,176,0.12), 0 8px 40px rgba(0,0,0,0.5), 0 0 0 1px rgba(111,255,176,0.04);
   }
-  .raid-boss-card.cleared::before{background:linear-gradient(90deg,transparent,rgba(139,92,255,0.6),transparent);}
+  .raid-boss-card.cleared::before{background:linear-gradient(90deg,transparent,rgba(111,255,176,0.3),transparent);animation:none;}
+  .raid-boss-card.cleared::after{display:none;}
   .raid-boss-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px;}
-  .raid-eyebrow{font-family:var(--font-mono);font-size:9px;letter-spacing:0.3em;color:var(--excess);margin-bottom:6px;}
+  .raid-eyebrow{font-family:var(--font-mono);font-size:9px;letter-spacing:0.3em;color:var(--excess);margin-bottom:6px;opacity:0.7;}
   .raid-boss-name{font-family:var(--font-display);font-size:18px;letter-spacing:0.06em;color:var(--text);margin-bottom:4px;}
   .raid-phase{font-family:var(--font-mono);font-size:11px;}
   .raid-hp-col{text-align:right;}
   .raid-hp-value{font-family:var(--font-display);font-size:22px;font-weight:900;}
   .raid-hp-label{font-family:var(--font-mono);font-size:9px;color:var(--text-faint);letter-spacing:0.2em;}
-  .raid-hp-bar-wrap{height:8px;background:rgba(255,77,103,0.1);border-radius:4px;overflow:hidden;margin-bottom:14px;position:relative;}
+  .raid-hp-bar-wrap{height:6px;background:rgba(255,77,103,0.08);border-radius:3px;overflow:hidden;margin-bottom:14px;position:relative;}
   .raid-hp-bar{height:100%;border-radius:4px;transition:width 1s ease;box-shadow:0 0 8px currentColor;}
   .raid-hp-bar-stripes{
     position:absolute;inset:0;
@@ -2894,7 +2941,183 @@ function drainNotifQueue() {
   }
 }
 
-// ── SCREEN FLASH — for major events ──
+// ── LIVING AMBIENT SYSTEM ──
+// The System is always running. Subtle particles, light movement, data pulse.
+// Performance-conscious: canvas, requestAnimationFrame, pauses when hidden.
+function startAmbientSystem() {
+  // Create ambient canvas behind everything
+  const canvas = document.createElement('canvas');
+  canvas.id = 'ambient-canvas';
+  canvas.style.cssText = `
+    position:fixed;inset:0;pointer-events:none;z-index:0;
+    opacity:0.6;
+  `;
+  document.body.insertBefore(canvas, document.body.firstChild);
+
+  const ctx = canvas.getContext('2d');
+  let W, H;
+  function resize() {
+    W = canvas.width = window.innerWidth;
+    H = canvas.height = window.innerHeight;
+  }
+  resize();
+  window.addEventListener('resize', resize);
+
+  // Particle pool — very few, very slow
+  const PARTICLE_COUNT = 18;
+  const particles = Array.from({length: PARTICLE_COUNT}, () => ({
+    x: Math.random() * 1,
+    y: Math.random() * 1,
+    vx: (Math.random() - 0.5) * 0.0002,
+    vy: -Math.random() * 0.0003 - 0.0001, // drift upward slowly
+    size: Math.random() * 1.5 + 0.5,
+    opacity: Math.random() * 0.3 + 0.05,
+    // Each particle has its own hue — mostly blue/violet
+    hue: Math.random() > 0.6 ? 'rgba(139,92,255,' : 'rgba(91,168,255,',
+    life: Math.random(),
+    maxLife: 0.8 + Math.random() * 0.2,
+  }));
+
+  // Slow atmospheric light — radiates from top
+  let lightT = 0;
+
+  let running = true;
+  let lastTime = 0;
+
+  function tick(time) {
+    if (!running) return;
+    requestAnimationFrame(tick);
+
+    // Throttle to ~20fps for performance
+    if (time - lastTime < 50) return;
+    lastTime = time;
+
+    // Pause if page hidden
+    if (document.hidden) return;
+
+    ctx.clearRect(0, 0, W, H);
+
+    lightT += 0.003;
+
+    // Extremely subtle atmospheric background gradient — breathes slowly
+    const lightX = W * (0.3 + Math.sin(lightT * 0.7) * 0.15);
+    const lightY = H * (0.1 + Math.sin(lightT * 0.5) * 0.05);
+    const grad = ctx.createRadialGradient(lightX, lightY, 0, lightX, lightY, W * 0.5);
+    grad.addColorStop(0, `rgba(91,168,255,${0.02 + Math.sin(lightT) * 0.008})`);
+    grad.addColorStop(1, 'transparent');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, W, H);
+
+    // Violet aura on right — slower movement
+    const auraX = W * (0.8 + Math.sin(lightT * 0.4) * 0.1);
+    const auraY = H * 0.6;
+    const aGrad = ctx.createRadialGradient(auraX, auraY, 0, auraX, auraY, W * 0.35);
+    aGrad.addColorStop(0, `rgba(139,92,255,${0.015 + Math.sin(lightT * 0.8) * 0.005})`);
+    aGrad.addColorStop(1, 'transparent');
+    ctx.fillStyle = aGrad;
+    ctx.fillRect(0, 0, W, H);
+
+    // Particles — drift upward, fade in/out
+    particles.forEach(p => {
+      p.life += 0.002;
+      if (p.life > p.maxLife) {
+        // Reset at bottom
+        p.x = Math.random();
+        p.y = 1 + Math.random() * 0.1;
+        p.vx = (Math.random() - 0.5) * 0.0002;
+        p.vy = -Math.random() * 0.0003 - 0.0001;
+        p.life = 0;
+        p.opacity = Math.random() * 0.25 + 0.05;
+      }
+
+      // Fade in first 20%, fade out last 20%
+      const lifePct = p.life / p.maxLife;
+      const fade = lifePct < 0.2 ? lifePct / 0.2 : lifePct > 0.8 ? (1 - lifePct) / 0.2 : 1;
+
+      p.x += p.vx;
+      p.y += p.vy;
+
+      const px = p.x * W;
+      const py = p.y * H;
+
+      ctx.beginPath();
+      ctx.arc(px, py, p.size, 0, Math.PI * 2);
+      ctx.fillStyle = p.hue + (p.opacity * fade) + ')';
+      ctx.fill();
+    });
+  }
+
+  requestAnimationFrame(tick);
+
+  // Stop when not needed
+  document.addEventListener('visibilitychange', () => { running = !document.hidden; });
+}
+
+window.stopAmbientSystem = () => {
+  const c = document.getElementById('ambient-canvas');
+  if (c) c.remove();
+};
+// ── PHASE E: ENERGY FLOW — causality chain animation ──
+function showEnergyFlow(exercises, xpResult, prs, onComplete) {
+  const generalXP = xpResult?.generalXP || 0;
+  const trainingXP = xpResult?.trainingXP || {};
+  const apEarned = xpResult?.apEarned || 0;
+  const dungeonDmg = profile._lastDungeonDamage || 0;
+
+  const steps = [];
+  steps.push({ icon:'⚔', label:'HUNT COMPLETE', sub:`${exercises.length} exercise${exercises.length!==1?'s':''}`, col:'var(--brass)', delay:0 });
+  if (generalXP > 0) steps.push({ icon:'◈', label:'XP GENERATED', sub:`+${generalXP.toFixed(0)} hunter XP`, col:'#FFD66B', delay:300 });
+  const STAT_ICONS_EF = { strength:'⚔', endurance:'🔥', agility:'⚡', focus:'🎯', defence:'🛡', flexibility:'💫' };
+  const topStat = Object.entries(trainingXP).sort(([,a],[,b])=>b-a)[0];
+  if (topStat) steps.push({ icon:STAT_ICONS_EF[topStat[0]]||'◆', label:`${topStat[0].toUpperCase()} STIMULATED`, sub:`+${topStat[1].toFixed(1)} training cap XP`, col:'var(--growing)', delay:600 });
+  if (apEarned > 0) steps.push({ icon:'⚡', label:'AURA POINTS EARNED', sub:`+${apEarned} AP`, col:'var(--legendary)', delay:900 });
+  if (prs.length > 0) steps.push({ icon:'🏆', label:`${prs.length} NEW RECORD${prs.length>1?'S':''}`, sub:prs.slice(0,2).map(p=>p.exercise).join(', '), col:'var(--violet)', delay:1100 });
+  if (dungeonDmg > 0) steps.push({ icon:'💀', label:'DUNGEON DAMAGED', sub:`-${Math.round(dungeonDmg)} HP dealt`, col:'var(--violet)', delay:1300 });
+
+  if (steps.length <= 1) { onComplete(); return; }
+
+  const overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;inset:0;z-index:600;background:rgba(5,6,10,0.93);display:flex;flex-direction:column;align-items:center;justify-content:center;animation:fadeIn 0.3s ease;';
+  const inner = document.createElement('div');
+  inner.style.cssText = 'display:flex;flex-direction:column;align-items:center;width:100%;max-width:320px;padding:0 24px;';
+
+  steps.forEach((step, i) => {
+    const row = document.createElement('div');
+    row.style.cssText = 'display:flex;align-items:center;gap:12px;width:100%;padding:10px 0;opacity:0;transition:opacity 0.4s ease,transform 0.4s ease;transform:translateY(8px);';
+    row.innerHTML = `
+      <div style="width:36px;height:36px;border-radius:50%;background:${step.col}18;border:1px solid ${step.col}44;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;">${step.icon}</div>
+      <div style="flex:1;min-width:0;">
+        <div style="font-family:var(--font-mono);font-size:10px;color:${step.col};letter-spacing:.1em;font-weight:700;">${step.label}</div>
+        <div style="font-size:11px;color:var(--text-faint);margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${step.sub}</div>
+      </div>`;
+    inner.appendChild(row);
+    if (i < steps.length - 1) {
+      const line = document.createElement('div');
+      line.style.cssText = `width:1px;height:14px;background:linear-gradient(180deg,${step.col}50,rgba(91,168,255,0.08));margin-left:18px;`;
+      inner.appendChild(line);
+    }
+    setTimeout(() => { row.style.opacity='1'; row.style.transform='translateY(0)'; }, step.delay + 200);
+  });
+
+  const skipBtn = document.createElement('button');
+  skipBtn.textContent = 'Continue →';
+  skipBtn.style.cssText = 'margin-top:24px;padding:10px 24px;background:rgba(91,168,255,0.06);border:1px solid rgba(91,168,255,0.15);border-radius:100px;color:rgba(91,168,255,0.5);font-family:var(--font-mono);font-size:11px;letter-spacing:.08em;cursor:pointer;touch-action:manipulation;opacity:0;transition:opacity 0.4s ease;';
+  const lastDelay = steps[steps.length-1].delay;
+  setTimeout(() => { skipBtn.style.opacity='1'; }, lastDelay + 400);
+
+  const dismiss = () => {
+    overlay.style.opacity='0'; overlay.style.transition='opacity 0.25s ease';
+    setTimeout(() => { overlay.remove(); onComplete(); }, 260);
+  };
+  skipBtn.addEventListener('click', dismiss);
+  overlay.addEventListener('click', e => { if(e.target===overlay) dismiss(); });
+  setTimeout(dismiss, lastDelay + 1600);
+
+  inner.appendChild(skipBtn);
+  overlay.appendChild(inner);
+  document.body.appendChild(overlay);
+}
+
 function screenFlash(colour = '#5BA8FF', duration = 120) {
   const el = document.createElement('div');
   el.style.cssText = `position:fixed;inset:0;z-index:9990;pointer-events:none;
@@ -3593,6 +3816,9 @@ function switchView(name) {
     // Unlock orientation when leaving world
     if (screen.orientation?.unlock) screen.orientation.unlock();
   }
+  // Phase J: Dim ambient on heavy screens, full on light screens
+  const _amb = document.getElementById('ambient-canvas');
+  if (_amb) _amb.style.opacity = ['world','trends'].includes(name) ? '0.3' : '0.6';
 
   if (name === 'board') {
     renderBoard();
@@ -3706,6 +3932,8 @@ async function loadAllData() {
   setTimeout(() => { try { maybeShowUpdateNotice(); } catch(e) {} }, 800);
   setTimeout(() => { try { checkPendingDuels(); } catch(e) {} }, 1000);
   setTimeout(() => { try { backfillShadowArmySoldiers(); } catch(e) { console.warn('Backfill failed:', e); } }, 1500);
+  // Start living ambient system — runs always in background
+  startAmbientSystem();
 }
 function rebuildExercisesAll() {
   EXERCISES_ALL = structuredCloneLite(BASE_EXERCISES);
@@ -4370,11 +4598,17 @@ function openWorkoutModal() {
   document.getElementById('workout-modal-overlay').classList.remove('hidden');
   document.getElementById('workout-pill').classList.add('hidden');
   document.body.style.overflow = 'hidden';
+  // Hunt minimal mode — dim ambient system while training
+  const ambCanvas = document.getElementById('ambient-canvas');
+  if (ambCanvas) ambCanvas.style.opacity = '0.2';
   refreshCompleteButton();
 }
 function minimiseWorkoutModal() {
   document.getElementById('workout-modal-overlay').classList.add('hidden');
   document.body.style.overflow = '';
+  // Restore ambient system
+  const ambCanvas = document.getElementById('ambient-canvas');
+  if (ambCanvas) ambCanvas.style.opacity = '0.6';
   const pill = document.getElementById('workout-pill');
   const label = document.getElementById('workout-pill-label');
   const title = document.getElementById('logger-title').textContent;
@@ -5257,25 +5491,27 @@ document.getElementById('save-workout-btn')?.addEventListener('click', async () 
     startDailyTimer();
     setTimeout(() => {
       closeWorkoutModal(false);
-      showQuestClearBanner(xpResult?.apEarned || 0, prs.length, false, xpResult?.generalXP || 0);
-      SFX.questComplete();
-      // Screen flash + floating XP for cinematic feel
-      screenFlash('rgba(255,214,107,0.08)', 200);
-      if (xpResult?.apEarned > 0) floatNumber(`+${xpResult.apEarned} AP`, 'var(--legendary)');
-      if (xpResult?.levelUps?.length) {
-        for (const lu of xpResult.levelUps) {
-          queueNotif(done => showLevelUpModal(lu.level, lu.ap, done));
+
+      // ── PHASE E: Energy flow causality chain ──
+      showEnergyFlow(exercises, xpResult, prs, () => {
+        showQuestClearBanner(xpResult?.apEarned || 0, prs.length, false, xpResult?.generalXP || 0);
+        SFX.questComplete();
+        screenFlash('rgba(255,214,107,0.06)', 180);
+        if (xpResult?.apEarned > 0) floatNumber(`+${xpResult.apEarned} AP`, 'var(--legendary)');
+        if (xpResult?.levelUps?.length) {
+          for (const lu of xpResult.levelUps) {
+            queueNotif(done => showLevelUpModal(lu.level, lu.ap, done));
+          }
         }
-      }
-      queueNotif(done => showDebriefModal(exercises, xpResult?.apEarned || 0, prs, done, soldiersEarned));
-      // Dungeon clear notification
-      if (dungeonResult?.cleared && dungeonResult?.item) {
-        queueNotif(done => showDungeonClearModal(dungeonResult.item, done));
-      } else if (dungeonResult?.damage > 0) {
-        queueNotif(done => showDungeonDamageNotif(dungeonResult, done));
-      }
+        queueNotif(done => showDebriefModal(exercises, xpResult?.apEarned || 0, prs, done, soldiersEarned));
+        if (dungeonResult?.cleared && dungeonResult?.item) {
+          queueNotif(done => showDungeonClearModal(dungeonResult.item, done));
+        } else if (dungeonResult?.damage > 0) {
+          queueNotif(done => showDungeonDamageNotif(dungeonResult, done));
+        }
+      });
     }, 600);
-  } catch (err) {
+ } catch (err) {
     alert('Could not save: ' + err.message);
   } finally {
     btn.disabled = false; btn.textContent = 'Complete hunt';
@@ -7434,9 +7670,109 @@ function renderCharCard() {
     bodyContent.innerHTML = `<div class="body-pair">${bodySvg('front', muscleStats)}${bodySvg('back', muscleStats)}</div>`;
   }
 
-  // stat bars
+  // ── ATTRIBUTE MATRIX — orbital stat system ──
+  // Stats positioned spatially around the hunter rather than as a list
   const statsEl = document.getElementById('char-stats');
-  statsEl.innerHTML = STAT_DEFS.map(def => {
+
+  // Determine dominant and weakest stat
+  const statRanks = STAT_DEFS.map(d => ({ id:d.id, label:d.label, rank:stats[d.id]||'E', idx:RANK_TIERS.indexOf(stats[d.id]||'E') }));
+  const dominantStat = [...statRanks].sort((a,b)=>b.idx-a.idx)[0];
+  const weakestStat = [...statRanks].sort((a,b)=>a.idx-b.idx)[0];
+  const STAT_ICONS_FULL = { strength:'⚔', endurance:'🔥', agility:'⚡', focus:'🎯', defence:'🛡', flexibility:'💫' };
+
+  // Build radar polygon SVG from stat ranks
+  const radarW = 200, radarH = 200, cx = 100, cy = 100, maxR = 75;
+  const n = STAT_DEFS.length;
+  const angles = STAT_DEFS.map((_, i) => (i / n) * Math.PI * 2 - Math.PI / 2);
+  const radarPoints = statRanks.map((s, i) => {
+    const r = (s.idx / 5) * maxR;
+    return { x: cx + Math.cos(angles[i]) * r, y: cy + Math.sin(angles[i]) * r };
+  });
+  const outerPoints = angles.map(a => ({ x: cx + Math.cos(a) * maxR, y: cy + Math.sin(a) * maxR }));
+  const polyPath = radarPoints.map((p, i) => `${i===0?'M':'L'}${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ') + ' Z';
+  const outerPath = outerPoints.map((p, i) => `${i===0?'M':'L'}${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ') + ' Z';
+
+  // Concentric guide rings
+  const guideRings = [0.25, 0.5, 0.75, 1].map(r =>
+    outerPoints.map((_, i) => {
+      const a = angles[i]; const rr = r * maxR;
+      return `${i===0?'M':'L'}${(cx+Math.cos(a)*rr).toFixed(1)},${(cy+Math.sin(a)*rr).toFixed(1)}`;
+    }).join(' ') + ' Z'
+  ).join('\n');
+
+  // Spoke lines
+  const spokeLines = angles.map(a =>
+    `<line x1="${cx}" y1="${cy}" x2="${(cx+Math.cos(a)*maxR).toFixed(1)}" y2="${(cy+Math.sin(a)*maxR).toFixed(1)}" stroke="rgba(91,168,255,0.06)" stroke-width="1"/>`
+  ).join('');
+
+  // Stat labels around the radar
+  const labelRadius = maxR + 22;
+  const statLabels = STAT_DEFS.map((def, i) => {
+    const s = statRanks[i];
+    const lx = cx + Math.cos(angles[i]) * labelRadius;
+    const ly = cy + Math.sin(angles[i]) * labelRadius;
+    const col = RANK_COLORS[s.rank] || 'var(--text-faint)';
+    const anchor = Math.cos(angles[i]) > 0.3 ? 'start' : Math.cos(angles[i]) < -0.3 ? 'end' : 'middle';
+    return `
+      <text x="${lx.toFixed(1)}" y="${(ly-4).toFixed(1)}" text-anchor="${anchor}" font-family="var(--font-mono)" font-size="8" fill="${col}" opacity="0.9">${STAT_ICONS_FULL[def.id]||''} ${def.label.toUpperCase().slice(0,3)}</text>
+      <text x="${lx.toFixed(1)}" y="${(ly+8).toFixed(1)}" text-anchor="${anchor}" font-family="var(--font-display)" font-size="11" fill="${col}" font-weight="900">${s.rank}</text>`;
+  }).join('');
+
+  // Dot at each vertex
+  const statDots = radarPoints.map((p, i) => {
+    const col = RANK_COLORS[statRanks[i].rank] || '#2A3A4A';
+    const glow = statRanks[i].idx > 0 ? `filter:drop-shadow(0 0 4px ${col})` : '';
+    return `<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="3" fill="${col}" style="${glow}"/>`;
+  }).join('');
+
+  const radarSvg = `
+    <svg viewBox="0 0 ${radarW} ${radarH}" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:220px;display:block;margin:0 auto;overflow:visible;">
+      ${guideRings.split('\n').map(p => `<path d="${p}" fill="none" stroke="rgba(91,168,255,0.05)" stroke-width="1"/>`).join('')}
+      ${spokeLines}
+      <path d="${polyPath}" fill="${RANK_COLORS[charRank]}18" stroke="${RANK_COLORS[charRank]}80" stroke-width="1.5" stroke-linejoin="round"/>
+      ${statDots}
+      ${statLabels}
+    </svg>`;
+
+  statsEl.innerHTML = `
+    <!-- ATTRIBUTE MATRIX — spatial composition -->
+    <div style="position:relative;margin-bottom:4px;">
+      <!-- System analysis label -->
+      <div style="font-family:var(--font-mono);font-size:8px;color:rgba(91,168,255,0.3);letter-spacing:.2em;text-align:center;margin-bottom:12px;">◈ ATTRIBUTE MATRIX</div>
+
+      <!-- Radar chart -->
+      <div style="position:relative;">
+        ${radarSvg}
+        <!-- Dominant + weakest overlaid in centre -->
+        <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;pointer-events:none;">
+          <div style="font-family:var(--font-mono);font-size:7px;color:rgba(91,168,255,0.3);letter-spacing:.1em;margin-bottom:2px;">POWER</div>
+          <div style="font-family:var(--font-display);font-size:14px;font-weight:900;color:${RANK_COLORS[charRank]};line-height:1;">${power.toLocaleString()}</div>
+        </div>
+      </div>
+
+      <!-- Dominant / limiting row -->
+      <div style="display:flex;gap:8px;margin-top:12px;">
+        <div style="flex:1;padding:8px;background:rgba(${dominantStat.idx>2?'111,255,176':'91,168,255'},0.04);border-top:1px solid rgba(${dominantStat.idx>2?'111,255,176':'91,168,255'},0.12);border-radius:var(--radius-sm);">
+          <div style="font-family:var(--font-mono);font-size:7px;color:rgba(91,168,255,0.4);letter-spacing:.12em;margin-bottom:4px;">DOMINANT</div>
+          <div style="font-size:12px;color:${RANK_COLORS[dominantStat.rank]};font-weight:700;">${STAT_ICONS_FULL[dominantStat.id]} ${dominantStat.label}</div>
+          <div style="font-family:var(--font-display);font-size:16px;font-weight:900;color:${RANK_COLORS[dominantStat.rank]};">${dominantStat.rank}</div>
+        </div>
+        <div style="flex:1;padding:8px;background:rgba(255,77,103,0.03);border-top:1px solid rgba(255,77,103,0.08);border-radius:var(--radius-sm);">
+          <div style="font-family:var(--font-mono);font-size:7px;color:rgba(255,77,103,0.4);letter-spacing:.12em;margin-bottom:4px;">LIMITING</div>
+          <div style="font-size:12px;color:${RANK_COLORS[weakestStat.rank]};font-weight:700;">${STAT_ICONS_FULL[weakestStat.id]} ${weakestStat.label}</div>
+          <div style="font-family:var(--font-display);font-size:16px;font-weight:900;color:${RANK_COLORS[weakestStat.rank]};">${weakestStat.rank}</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Detailed stat rows — kept for invest/upgrade mechanics -->
+    <div style="margin-top:12px;">
+      <div style="font-family:var(--font-mono);font-size:8px;color:rgba(91,168,255,0.25);letter-spacing:.2em;margin-bottom:8px;">◈ DETAILED ANALYSIS</div>
+      <div id="char-stat-rows"></div>
+    </div>`;
+
+  // Generate detailed stat rows for upgrade mechanics
+  const statRowHtml = STAT_DEFS.map(def => {
     const cur = stats[def.id] || 'E';
     const curIdx = RANK_TIERS.indexOf(cur);
     const pct = (curIdx / 5) * 100;
@@ -7504,11 +7840,15 @@ function renderCharCard() {
     </div>`;
   }).join('');
 
-  statsEl.querySelectorAll('.stat-upgrade-btn:not([disabled])').forEach(btn =>
+  // Inject stat rows into the matrix's detail section
+  const statRowsEl = document.getElementById('char-stat-rows');
+  if (statRowsEl) statRowsEl.innerHTML = statRowHtml;
+
+  const statRowsContainer = statRowsEl || statsEl;
+  statRowsContainer.querySelectorAll('.stat-upgrade-btn:not([disabled])').forEach(btn =>
     btn.addEventListener('click', () => openStatInvestPanel(btn.dataset.stat)));
 
-  // tap stat row to open invest panel
-  statsEl.querySelectorAll('.stat-row[data-stat-detail]').forEach(row => {
+  statRowsContainer.querySelectorAll('.stat-row[data-stat-detail]').forEach(row => {
     row.addEventListener('click', e => {
       if (e.target.closest('button')) return;
       openStatInvestPanel(row.dataset.statDetail);
@@ -7516,13 +7856,13 @@ function renderCharCard() {
   });
 
   // "why?" button toggles explanation panel
-  statsEl.querySelectorAll('.stat-why-btn').forEach(btn => {
+  statRowsContainer.querySelectorAll('.stat-why-btn').forEach(btn => {
     btn.addEventListener('click', e => {
       e.stopPropagation();
       const panel = document.getElementById('stat-why-' + btn.dataset.stat);
       if (!panel) return;
       const isOpen = panel.classList.contains('open');
-      statsEl.querySelectorAll('.stat-why').forEach(p => p.classList.remove('open'));
+      statRowsContainer.querySelectorAll('.stat-why').forEach(p => p.classList.remove('open'));
       if (!isOpen) panel.classList.add('open');
     });
   });
@@ -15174,34 +15514,49 @@ function renderInventory() {
       ${activeDungeonHtml}
 
       <!-- Body model -->
-      <div style="background:var(--card);border:1px solid rgba(91,168,255,0.08);border-radius:12px;padding:16px;margin-bottom:20px;">
-        <div style="font-family:var(--font-mono);font-size:10px;color:rgba(91,168,255,0.4);letter-spacing:0.15em;margin-bottom:4px;">── CHARACTER ──</div>
-        <p style="font-size:11px;color:var(--text-faint);margin:0 0 10px;">Highlighted muscles show what each equipped item covers. Unlit muscles show training status.</p>
-        <div style="display:flex;gap:6px;margin-bottom:12px;">
-          <button id="inv-view-front" class="btn btn-sm" style="flex:1;font-size:11px;" onclick="
-            document.getElementById('inv-body-front').style.display='block';
-            document.getElementById('inv-body-back').style.display='none';
-            this.style.opacity='1'; this.style.borderColor='var(--accent)';
-            document.getElementById('inv-view-back').style.opacity='0.4'; document.getElementById('inv-view-back').style.borderColor='';
-          ">Front</button>
-          <button id="inv-view-back" class="btn btn-sm" style="flex:1;font-size:11px;opacity:0.4;" onclick="
-            document.getElementById('inv-body-back').style.display='block';
-            document.getElementById('inv-body-front').style.display='none';
-            this.style.opacity='1'; this.style.borderColor='var(--accent)';
-            document.getElementById('inv-view-front').style.opacity='0.4'; document.getElementById('inv-view-front').style.borderColor='';
-          ">Back</button>
-        </div>
-        <div id="inv-body-wrap" style="justify-content:center;">
-          <div id="inv-body-front">${bodySvg('front', {}, profile.bodyType || 'male', getEffectiveInventory(), true)}</div>
-          <div id="inv-body-back" style="display:none;">${bodySvg('back', {}, profile.bodyType || 'male', getEffectiveInventory(), true)}</div>
-        </div>
-      </div>
+      <!-- PHASE H: ARMOURY STAGE — hunter + equipment composition -->
+      <div style="position:relative;border-radius:var(--radius-md);overflow:hidden;margin-bottom:20px;background:var(--void);box-shadow:0 0 0 1px rgba(255,255,255,0.03),0 8px 40px rgba(0,0,0,0.6);">
+        <!-- Armoury atmosphere -->
+        <div style="position:absolute;inset:0;pointer-events:none;
+          background:radial-gradient(ellipse 60% 40% at 50% 0%,rgba(91,168,255,0.04) 0%,transparent 70%),
+          radial-gradient(ellipse 40% 60% at 80% 50%,rgba(255,214,107,0.02) 0%,transparent 70%);
+          z-index:0;"></div>
 
-      <!-- Equipped loadout — 3+3 grid on mobile -->
-      <div style="background:var(--card);border:1px solid rgba(91,168,255,0.12);border-radius:12px;padding:16px;margin-bottom:20px;">
-        <div style="font-family:var(--font-mono);font-size:10px;color:rgba(91,168,255,0.4);letter-spacing:0.15em;margin-bottom:14px;">── CURRENT LOADOUT ──</div>
-        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;text-align:center;">
-          ${equippedHtml}
+        <div style="position:relative;z-index:1;padding:16px 16px 8px;">
+          <div style="font-family:var(--font-mono);font-size:8px;color:rgba(91,168,255,0.3);letter-spacing:.2em;margin-bottom:12px;">◈ ARMOURY</div>
+
+          <!-- View toggle — integrated into stage not separate card -->
+          <div style="display:flex;gap:6px;margin-bottom:12px;">
+            <button id="inv-view-front" style="flex:1;font-size:11px;padding:7px;font-family:var(--font-mono);background:rgba(91,168,255,0.08);border:1px solid rgba(91,168,255,0.2);border-radius:var(--radius-sm);color:var(--brass);cursor:pointer;letter-spacing:.06em;" onclick="
+              document.getElementById('inv-body-front').style.display='block';
+              document.getElementById('inv-body-back').style.display='none';
+              this.style.opacity='1'; this.style.borderColor='rgba(91,168,255,0.4)';
+              document.getElementById('inv-view-back').style.opacity='0.4'; document.getElementById('inv-view-back').style.borderColor='rgba(91,168,255,0.1)';
+            ">FRONT</button>
+            <button id="inv-view-back" style="flex:1;font-size:11px;padding:7px;font-family:var(--font-mono);background:rgba(91,168,255,0.04);border:1px solid rgba(91,168,255,0.1);border-radius:var(--radius-sm);color:rgba(91,168,255,0.4);cursor:pointer;letter-spacing:.06em;opacity:0.6;" onclick="
+              document.getElementById('inv-body-back').style.display='block';
+              document.getElementById('inv-body-front').style.display='none';
+              this.style.opacity='1'; this.style.borderColor='rgba(91,168,255,0.4)'; this.style.color='var(--brass)';
+              document.getElementById('inv-view-front').style.opacity='0.4'; document.getElementById('inv-view-front').style.borderColor='rgba(91,168,255,0.1)'; document.getElementById('inv-view-front').style.color='rgba(91,168,255,0.4)';
+            ">BACK</button>
+          </div>
+
+          <!-- Hunter body — equipment lights up equipped zones -->
+          <div id="inv-body-wrap" style="position:relative;display:flex;justify-content:center;padding:0 0 8px;">
+            <!-- Rim light from behind hunter -->
+            <div style="position:absolute;top:20%;left:50%;transform:translateX(-50%);width:60%;height:60%;border-radius:50%;background:radial-gradient(ellipse,rgba(91,168,255,0.04),transparent 70%);pointer-events:none;"></div>
+            <div id="inv-body-front">${bodySvg('front', {}, profile.bodyType || 'male', getEffectiveInventory(), true)}</div>
+            <div id="inv-body-back" style="display:none;">${bodySvg('back', {}, profile.bodyType || 'male', getEffectiveInventory(), true)}</div>
+          </div>
+          <div style="font-size:9px;font-family:var(--font-mono);color:rgba(91,168,255,0.2);text-align:center;padding-bottom:12px;letter-spacing:.06em;">Equipped zones illuminated · Unlit = training status</div>
+        </div>
+
+        <!-- Equipped loadout — part of the stage, not a separate card -->
+        <div style="border-top:1px solid rgba(255,255,255,0.04);padding:12px 16px 16px;position:relative;z-index:1;">
+          <div style="font-family:var(--font-mono);font-size:8px;color:rgba(91,168,255,0.3);letter-spacing:.2em;margin-bottom:12px;">◈ CURRENT LOADOUT</div>
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;text-align:center;">
+            ${equippedHtml}
+          </div>
         </div>
       </div>
 
