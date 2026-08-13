@@ -6661,7 +6661,18 @@ function showMilestonesBanner(milestones, trainingXPGains, totalXP, done) {
 async function awardWorkoutXP(exercises) {
   if (!profile || !currentUser) return;
 
-  const { generalXP, trainingXP } = computeWorkoutXP(exercises);
+  const { generalXP: rawXP, trainingXP } = computeWorkoutXP(exercises);
+
+  // Apply duel XP boost (winner) or debuff (loser)
+  const duels = profile.duels || {};
+  const today = todayStr();
+  let xpMult = 1.0;
+  if (duels.xpBoostUntil && duels.xpBoostUntil >= today && duels.xpBoostMult > 1) {
+    xpMult = duels.xpBoostMult;
+  } else if (duels.defeatUntil && duels.defeatUntil >= today && duels.debuffPct > 0) {
+    xpMult = 1 - duels.debuffPct;
+  }
+  const generalXP = Math.round(rawXP * xpMult * 10) / 10;
 
   const currentLevel = profile.hunterLevel || 1;
   const currentXP = profile.hunterXP || 0;
@@ -9029,6 +9040,19 @@ async function runSystemChecks() {
     try { return await fn(); }
     catch(e) { console.warn(`${label} failed:`, e); return null; }
   };
+
+  // Auto-expire streak freeze if the freeze window has passed
+  await safe('checkStreakFreezeExpiry', async () => {
+    const freeze = profile.streakFreeze;
+    if (!freeze?.active) return;
+    const today = todayStr();
+    // If a 'to' date was set and it's now in the past, auto-deactivate
+    if (freeze.to && freeze.to < today) {
+      const expired = { active: false, from: freeze.from, to: freeze.to };
+      await writeUserFields({ streakFreeze: expired });
+      profile.streakFreeze = expired;
+    }
+  });
 
   await safe('checkStatDecay', checkStatDecay);
   await safe('evaluateAndSaveClass', evaluateAndSaveClass);
@@ -18092,8 +18116,9 @@ async function generateShadowArmySoldiers(exercises, runSummary) {
 
   exercises.forEach(ex => {
     const exDef = EXERCISES_ALL[ex.name] || {};
-    const cat   = exDef.stat || exDef.category || 'compound';
+    const cat   = exDef.stat || exDef.category || exDef.intent || 'compound';
     const ckey  = EXERCISE_CONTINENT[cat] || 'iron';
+    const isTimed = !!exDef.timed;
 
     // Determine dungeon tier for this exercise
     let tier = 1;
@@ -18111,7 +18136,8 @@ async function generateShadowArmySoldiers(exercises, runSummary) {
     const tierBase = TIER_BASE[Math.min(tier, 5)] || 10;
 
     ex.sets?.filter(s => s.reps > 0).forEach(s => {
-      const effectiveRir = s.rir ?? 3; // default to RIR 3 if not recorded (timed/flexibility)
+      const rawRir = s.rir ?? 3;
+      const effectiveRir = (isTimed && s.rir != null && s.rir > 5) ? (10 - s.rir) : rawRir;
       const soldiers = Math.floor(tierBase * rankMult * RIR_MULT(effectiveRir));
       soldiersByContinent[ckey] = (soldiersByContinent[ckey] || 0) + soldiers;
     });
@@ -18184,14 +18210,21 @@ async function backfillShadowArmySoldiers() {
   toProcess.forEach(w => {
     (w.exercises || []).forEach(ex => {
       const exDef = EXERCISES_ALL[ex.name] || {};
-      const cat   = exDef.stat || exDef.category || 'compound';
+      const cat   = exDef.stat || exDef.category || exDef.intent || 'compound';
       const ckey  = EXERCISE_CONTINENT[cat] || 'iron';
+      const isTimed = !!exDef.timed;
       const statRank = (profile.stats || {})[CONTINENTS_STAT[ckey]] || 'E';
       const rankMult = RANK_MULT[statRank] || 1.0;
 
+      // Use skillTier to approximate dungeon tier for backfill
+      const skillTier = exDef.skillTier || 1.0;
+      const approxTier = skillTier >= 1.4 ? 3 : skillTier >= 1.2 ? 2 : 1;
+      const tierBase = TIER_BASE[approxTier] || 10;
+
       (ex.sets || []).filter(s => s.reps > 0).forEach(s => {
-        const effectiveRir = s.rir ?? 3;
-        const soldiers = Math.floor(10 * rankMult * RIR_MULT(effectiveRir));
+        const rawRir = s.rir ?? 3;
+        const effectiveRir = (isTimed && s.rir != null && s.rir > 5) ? (10 - s.rir) : rawRir;
+        const soldiers = Math.floor(tierBase * rankMult * RIR_MULT(effectiveRir));
         totalByContinent[ckey] = (totalByContinent[ckey] || 0) + soldiers;
       });
     });
