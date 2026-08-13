@@ -3142,7 +3142,7 @@ const STATUS_COLOR = {
   Focusing:   '#5BA8FF',     // system blue — recently trained
   Excess:     '#FF4D67',     // danger red — sore/overreached
   Recovering: '#8B5CFF',     // violet — healing
-  Overreached:'#FF6B35',     // orange-red — beyond limit
+  Overreached:'#FFD66B',     // gold — beyond limit
 };
 
 let EXERCISES_ALL = { ...structuredCloneLite(BASE_EXERCISES) };
@@ -12691,9 +12691,14 @@ function bodySvg(view, stats, overrideBodyType, items, silhouette) {
   return `<div class="body-pair-slot">${svgStr}</div>`;
 }
 function statusCounts(stats) {
-  const counts = { Stalled:0, Maintaining:0, Growing:0, Focusing:0, Excess:0 };
-  MUSCLES.forEach(m => counts[stats[m].status]++);
-  return counts;
+  const counts = { Stalled:0, Maintaining:0, Growing:0, Focusing:0, Excess:0, Overreached:0 };
+  MUSCLES.forEach(m => {
+    const s = stats[m].status;
+    if (counts[s] !== undefined) counts[s]++;
+    else counts[s] = 1; // safety net for any future statuses
+  });
+  // Drop zero-count entries so they don't clutter the row
+  return Object.fromEntries(Object.entries(counts).filter(([,v]) => v > 0));
 }
 function statusCountRow(stats) {
   const counts = statusCounts(stats);
