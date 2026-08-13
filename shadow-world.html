@@ -6,8 +6,8 @@
 <title>Shadow World</title>
 <style>
 * { margin:0; padding:0; box-sizing:border-box; }
-body { background:#020c18; color:#e0e8ff; font-family:'Courier New',monospace; overflow:hidden; height:100vh; }
-#map-area { position:relative; width:100vw; height:100vh; overflow:hidden; }
+body { background:#020c18; color:#e0e8ff; font-family:'Courier New',monospace; overflow:hidden; height:100dvh; }
+#map-area { position:relative; width:100vw; height:100dvh; overflow:hidden; }
 #wrap { position:absolute; inset:0; cursor:grab; }
 #wrap.drag { cursor:grabbing; }
 canvas { display:block; }
@@ -18,7 +18,7 @@ canvas { display:block; }
 .zb { width:34px; height:34px; background:rgba(2,12,24,0.85); border:1px solid rgba(61,165,255,0.2); border-radius:8px; color:#61a5ff; font-size:18px; cursor:pointer; display:flex; align-items:center; justify-content:center; touch-action:manipulation; }
 #tt { position:fixed; pointer-events:none; background:rgba(2,12,24,0.95); border:1px solid rgba(61,165,255,0.3); border-radius:6px; padding:5px 10px; font-size:11px; color:#61a5ff; z-index:30; display:none; white-space:nowrap; }
 /* Panel */
-#panel { position:absolute; bottom:0; left:0; right:0; transform:translateY(100%); transition:transform .35s cubic-bezier(.16,1,.3,1); background:rgba(2,12,24,0.98); border-top:1px solid rgba(61,165,255,.15); border-radius:20px 20px 0 0; padding:0 18px 18px; z-index:30; max-height:70vh; overflow-y:auto; -webkit-overflow-scrolling:touch; overscroll-behavior:contain; }
+#panel { position:absolute; bottom:0; left:0; right:0; transform:translateY(100%); transition:transform .35s cubic-bezier(.16,1,.3,1); background:rgba(2,12,24,0.98); border-top:1px solid rgba(61,165,255,.15); border-radius:20px 20px 0 0; padding:0 18px 18px; z-index:30; max-height:70dvh; overflow-y:auto; -webkit-overflow-scrolling:touch; overscroll-behavior:contain; }
 #panel.open { transform:translateY(0); }
 #panel-header { display:flex; align-items:center; justify-content:space-between; padding:14px 0 10px; position:sticky; top:0; background:rgba(2,12,24,0.98); border-bottom:1px solid rgba(61,165,255,.08); margin-bottom:12px; }
 #px { background:rgba(61,165,255,.08); border:1px solid rgba(61,165,255,.2); color:#61a5ff; font-size:18px; cursor:pointer; width:44px; height:44px; display:flex; align-items:center; justify-content:center; border-radius:8px; touch-action:manipulation; }
