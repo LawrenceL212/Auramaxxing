@@ -6672,6 +6672,14 @@ async function awardWorkoutXP(exercises) {
   } else if (duels.defeatUntil && duels.defeatUntil >= today && duels.debuffPct > 0) {
     xpMult = 1 - duels.debuffPct;
   }
+
+  // Streak rank bonus — consistent training earns a small XP multiplier
+  // D(3+)=1.02, C(7+)=1.05, B(14+)=1.08, A(30+)=1.12, S(60+)=1.15
+  const STREAK_XP_MULT = { E:1.0, D:1.02, C:1.05, B:1.08, A:1.12, S:1.15 };
+  const streak = computeStreak(currentUser.uid);
+  const streakTier = HUNTER_RANK_TIERS.find(t => streak >= t.min)?.rank || 'E';
+  xpMult *= (STREAK_XP_MULT[streakTier] || 1.0);
+
   const generalXP = Math.round(rawXP * xpMult * 10) / 10;
 
   const currentLevel = profile.hunterLevel || 1;
@@ -7706,11 +7714,19 @@ function checkV2UpgradeGates(statId) {
   const nextRank = RANK_TIERS[RANK_TIERS.indexOf(currentRank) + 1];
   const apInvested = (profile.statAP || {})[statId] || 0;
   const apNeeded = STAT_RANK_AP_COST[nextRank];
-  const trainingCap = (profile.statTrainingXP || {})[statId] || 0;
+  const baseTrainingCap = (profile.statTrainingXP || {})[statId] || 0;
+
+  // Item statBonus — equipped items expand the investable training cap
+  const inv = profile.inventory || {};
+  const itemStatBonus = ['weapon','armour','boots','accessory'].reduce((acc, slot) => {
+    const item = inv[slot];
+    if (!item?.statBonus) return acc;
+    return acc + (item.statBonus[statId] || 0);
+  }, 0);
+  const trainingCap = baseTrainingCap + itemStatBonus;
+
   const ap = profile.auraPoints || 0;
-  // how much more AP can be invested in this stat
   const maxInvestable = Math.max(0, Math.floor(trainingCap) - apInvested);
-  // can rank up when invested AP reaches the threshold
   const ready = apInvested >= apNeeded;
   return { ready, isMaxed: false, currentRank, nextRank, apInvested, apNeeded, trainingCap, maxInvestable, ap };
 }
@@ -12074,8 +12090,29 @@ async function renderRaidBoss() {
     const intensityMult = getIntensityMultiplier(u.uid);
     const consistencyMult = getConsistencyMultiplier(u.uid);
     const eliteBonus = hasEliteSkill(u.uid) ? 0.5 : 0;
+
+    // Item dmgMult — weapon slot is primary, others stack multiplicatively
+    const inv = u.inventory || {};
+    const itemDmgMult = ['weapon','armour','boots','accessory'].reduce((acc, slot) => {
+      const item = inv[slot];
+      return item?.dmgMult ? acc * item.dmgMult : acc;
+    }, 1.0);
+
+    // Class affinity — affinityMult from tier applies when boss weakness matches class stat
+    let classAffinityMult = 1.0;
+    if (u.hunterClassKey && u.hunterTierIndex != null) {
+      const classModule = _classModule; // already loaded by the time raid renders
+      const classTier = classModule?.CLASS_PATHS?.[u.hunterClassKey]?.tiers?.[u.hunterTierIndex];
+      if (classTier?.affinityMult && classTier?.raidAffinity) {
+        const classStatMatches = boss.weakness === 'all' ||
+          boss.weakness === classTier.raidAffinity?.toLowerCase() ||
+          classTier.raidAffinity?.toLowerCase().includes(boss.weakness);
+        if (classStatMatches) classAffinityMult = classTier.affinityMult;
+      }
+    }
+
     const maxCap = weaknessMult > 1.0 ? personalShare * 2.0 : personalShare * 1.5;
-    const finalDamage = Math.min(maxCap, baseDamage * weaknessMult * intensityMult * consistencyMult) + eliteBonus;
+    const finalDamage = Math.min(maxCap, baseDamage * weaknessMult * intensityMult * consistencyMult * itemDmgMult * classAffinityMult) + eliteBonus;
 
     hunterDamage[u.uid] = Math.max(0, finalDamage);
     hunterDetails[u.uid] = {
