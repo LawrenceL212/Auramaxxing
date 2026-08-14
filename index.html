@@ -4544,7 +4544,8 @@ function buildQuestCardHTML(idx) {
     const timed = exDef.timed;
     const unit = exDef.timedUnit || 'secs';
     const repsVal = ex.reps || (ex.repRange ? String(ex.repRange).match(/(\d+)/)?.[1] : null) || '?';
-    const repsLabel = timed ? (unit === 'mins' ? `${repsVal}m` : `${repsVal}s`) : `${repsVal}r`;
+    const repRangeLabel = ex.repRange ? ` (${ex.repRange})` : '';
+    const repsLabel = timed ? (unit === 'mins' ? `${repsVal}m` : `${repsVal}s`) : `${repsVal}r${repRangeLabel}`;
     const setsLabel = `${Math.min(done, ex.sets)}/${ex.sets}`;
     return `<div class="quest-check-row ${complete ? 'complete' : ''}">
       <div class="qc-box">${complete ? '◈' : ''}</div>
@@ -4924,13 +4925,18 @@ function progressiveOverloadSuggestion(exerciseName, targetReps) {
     .slice(-3)
     .map(w => w.exercises.find(e => e.name === exerciseName));
 
-  // no history — if it's a BW exercise, autofill with BW percentage
+  // no history — seed from programme startWeight if available, else BW %
   if (!sessions.length) {
-    if (bwPct && userBW) {
-      const bwWeight = Math.round(userBW * bwPct * 10) / 10;
-      return Array(3).fill(null).map(() => ({
-        reps: targetReps, weight: bwWeight, rir: null,
-        suggestion: `~${bwPct*100}% BW (${bwWeight}kg est.)`,
+    const progEx = myProgram?.days?.flatMap(d => d.exercises || []).find(e => e.name === exerciseName);
+    const seedWeight = progEx?.startWeight || (bwPct && userBW ? Math.round(userBW * bwPct * 10) / 10 : 0);
+    const seedSets = progEx?.sets || 3;
+    const seedRir = progEx?.rir ?? null;
+    if (seedWeight) {
+      const label = progEx?.startWeight
+        ? `Target: ${seedWeight}kg × ${targetReps} — starting load`
+        : `~${bwPct*100}% BW (${seedWeight}kg est.)`;
+      return Array(seedSets).fill(null).map(() => ({
+        reps: targetReps, weight: seedWeight, rir: seedRir, suggestion: label,
       }));
     }
     return null;
