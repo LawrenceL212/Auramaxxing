@@ -9139,32 +9139,7 @@ async function loadCheckins() {
   myCheckins = snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a,b) => a.date.localeCompare(b.date));
 }
 
-async function checkWeeklyCheckinBanner() {
-  if (!profile || !currentUser) return;
-  const today = todayStr();
-  const lastCheckin = myCheckins[myCheckins.length - 1];
-  const daysSince = lastCheckin
-    ? Math.floor((new Date(today) - new Date(lastCheckin.date)) / 86400000)
-    : 999;
-  if (daysSince < 7) return; // done within the week — no banner
 
-  // Show persistent banner
-  const existing = document.getElementById('checkin-banner');
-  if (existing) return;
-  const banner = document.createElement('div');
-  banner.id = 'checkin-banner';
-  banner.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:8000;background:rgba(91,168,255,0.08);border-bottom:1px solid rgba(91,168,255,0.2);backdrop-filter:blur(6px);padding:10px 20px;display:flex;align-items:center;gap:12px;font-family:var(--font-mono);font-size:11px;';
-  banner.innerHTML = `
-    <span style="color:rgba(91,168,255,.5);letter-spacing:.15em;">◈ SYSTEM</span>
-    <span style="color:#F2F5FA;flex:1;">Weekly body check-in overdue${lastCheckin ? ` — last: ${lastCheckin.date}` : ' — first check-in'}. The System tracks your transformation.</span>
-    <button onclick="openCheckinModal()" style="background:rgba(91,168,255,.15);border:1px solid rgba(91,168,255,.35);color:#5BA8FF;padding:6px 14px;border-radius:6px;cursor:pointer;font-family:var(--font-mono);font-size:11px;white-space:nowrap;">Take Measurements →</button>
-  `;
-  document.body.prepend(banner);
-}
-
-function dismissCheckinBanner() {
-  document.getElementById('checkin-banner')?.remove();
-}
 
 window.openCheckinModal = () => {
   const existing = document.getElementById('checkin-modal-overlay');
@@ -9350,7 +9325,6 @@ window.saveCheckin = async () => {
     await loadCheckins();
     myWeights = [...myWeights.filter(w => w.date !== today), { date: today, weight }].sort((a,b) => a.date.localeCompare(b.date));
 
-    dismissCheckinBanner();
     document.getElementById('checkin-modal-overlay')?.remove();
 
     showToast(`✓ Check-in saved · ${bodyFatPct ? bodyFatPct + '% BF · ' : ''}${weight}kg`, 'success');
@@ -9395,9 +9369,6 @@ async function runSystemChecks() {
       profile.streakFreeze = expired;
     }
   });
-
-  // ── Weekly check-in reminder ──
-  await safe('checkWeeklyCheckin', checkWeeklyCheckinBanner);
 
   await safe('checkStatDecay', checkStatDecay);
   await safe('evaluateAndSaveClass', evaluateAndSaveClass);
