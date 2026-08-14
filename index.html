@@ -90,6 +90,66 @@
   }
   *{box-sizing:border-box;}
   html,body{height:100%;}
+
+  /* ── Global overlay host ── */
+  #overlay-host {
+    /* True viewport-level container — no constraints */
+    position: fixed;
+    inset: 0;
+    /* Pointer events only active when children are present */
+    pointer-events: none;
+    /* Must not create a stacking context that traps children */
+    /* No transform, filter, will-change, isolation, contain */
+    z-index: 0; /* children use their own z-index */
+  }
+  #overlay-host > * {
+    pointer-events: auto;
+  }
+
+  /* ── Global cross-device fixes ── */
+  *, *::before, *::after { box-sizing: border-box; }
+
+  /* Minimum touch target 44px on all interactive elements */
+  button, [role="button"], .btn, .nav-btn, .rir-chip, .weekday-chip,
+  .muscle-check, .ex-card, .quest-card, .threat-card {
+    min-height: 44px;
+  }
+  /* Exception: small inline chips can be smaller but get larger tap area */
+  .rir-chip, .status-pill, .suggest-badge {
+    min-height: unset;
+    position: relative;
+  }
+  .rir-chip::after {
+    content: '';
+    position: absolute;
+    inset: -8px;
+  }
+
+  /* Prevent iOS text size adjustment */
+  html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+
+  /* Prevent double-tap zoom on buttons */
+  button, a { touch-action: manipulation; }
+
+  /* iOS input zoom prevention — all inputs 16px minimum */
+  input, textarea, select {
+    font-size: max(16px, 1em) !important;
+  }
+
+  /* Smooth scrolling on iOS */
+  .modal, .log-scroll, #trends-widgets, #exercise-list,
+  .char-body-content, #workout-inner {
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+  }
+
+  /* Prevent content jumping when keyboard opens on Android */
+  @supports (height: 100dvh) {
+    .modal-overlay, .workout-modal-overlay {
+      height: 100dvh;
+    }
+  }
+
   body{
     margin:0;background:var(--void);color:var(--text);
     font-family:var(--font-body);
@@ -472,10 +532,15 @@
     justify-content:space-between;
     padding:max(12px, env(safe-area-inset-top)) 20px 12px;
     border-bottom:none;
-    background:linear-gradient(180deg,rgba(5,7,13,0.97) 0%,rgba(5,7,13,0.88) 100%);
-    backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
+    /* Solid background replaces backdrop-filter — prevents creation of a stacking
+       context that traps position:fixed children (Safari/iOS bug with backdrop-filter
+       on sticky ancestors). Visual result is nearly identical at this opacity. */
+    background:rgba(5,7,13,0.97);
+    /* NO backdrop-filter — removed to fix containing-block issue */
     flex-shrink:0;
-    box-shadow:0 1px 0 rgba(91,168,255,0.06), 0 4px 20px rgba(0,0,0,0.4);
+    box-shadow:0 1px 0 rgba(91,168,255,0.08), 0 2px 0 rgba(91,168,255,0.04), 0 4px 24px rgba(0,0,0,0.6);
+    /* Bottom edge lighting to maintain visual separation without blur */
+    border-bottom: 1px solid rgba(91,168,255,0.07);
   }
   header.topbar .wordmark{font-size:18px;margin:0;text-align:left;text-shadow:none;}
   .user-chip{display:flex;align-items:center;gap:10px;}
@@ -876,7 +941,7 @@
 
   /* ── Custom in-app numpad ── */
   .numpad-overlay{
-    position:fixed;inset:0;z-index:500;
+    position:fixed;inset:0;z-index:600;
     background:rgba(5,7,13,0.5);
     display:flex;flex-direction:column;justify-content:flex-end;
     touch-action:none;overscroll-behavior:none;
@@ -1338,11 +1403,11 @@
   .stat-row.gate-ready{background:rgba(255,214,107,0.04);border-radius:8px;padding:6px 4px;}
 
   /* ── Awakening Modal ── */
-  .awakening-overlay{position:fixed;inset:0;touch-action:none;overscroll-behavior:none;z-index:500;background:#000;display:flex;align-items:center;justify-content:center;animation:awakenFadeIn .5s ease;}
+  .awakening-overlay{position:fixed;inset:0;touch-action:none;overscroll-behavior:none;z-index:700;background:#000;display:flex;align-items:center;justify-content:center;animation:awakenFadeIn .5s ease;}
   @keyframes awakenFadeIn{from{opacity:0;}to{opacity:1;}}
   .awakening-particles{position:absolute;inset:0;overflow:hidden;pointer-events:none;}
   .awk-particle{position:absolute;width:4px;height:4px;border-radius:50%;animation:awkFloat linear infinite;opacity:0;}
-  @keyframes awkFloat{0%{transform:translateY(100vh) scale(0);opacity:0;}20%{opacity:1;}80%{opacity:1;}100%{transform:translateY(-20vh) scale(1.5);opacity:0;}}
+  @keyframes awkFloat{0%{transform:translateY(100dvh) scale(0);opacity:0;}20%{opacity:1;}80%{opacity:1;}100%{transform:translateY(-20vh) scale(1.5);opacity:0;}}
   .awakening-window{
     position:relative;z-index:1;background:rgba(8,10,20,0.98);
     border-radius:6px;padding:40px 32px;max-width:400px;width:90%;text-align:center;
@@ -1657,7 +1722,7 @@
   @keyframes levelUpFlash{0%{opacity:0}20%{opacity:0.4}100%{opacity:0}}
   .level-up-flash{
     position:fixed;inset:0;background:#FFD66B;pointer-events:none;
-    z-index:9999;animation:levelUpFlash 0.6s ease forwards;
+    z-index:999;animation:levelUpFlash 0.6s ease forwards;
   }
 
   /* Stats — redesigned */
@@ -1878,7 +1943,7 @@
   .run-unit-btn.selected{background:var(--maintaining);color:#fff;font-weight:700;}
 
   /* ========== Post-Workout Debrief ========== */
-  .debrief-overlay{position:fixed;inset:0;touch-action:none;overscroll-behavior:none;z-index:200;background:rgba(5,7,13,0.95);backdrop-filter:blur(8px);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;animation:sysOverlayIn .3s ease;overflow-y:auto;}
+  .debrief-overlay{position:fixed;inset:0;touch-action:none;overscroll-behavior:none;z-index:500;background:rgba(5,7,13,0.95);backdrop-filter:blur(8px);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;animation:sysOverlayIn .3s ease;overflow-y:auto;}
 
   /* ── Quest Clear Banner ── */
   .quest-clear-banner {
@@ -2035,7 +2100,7 @@
   .party-tile-name{font-size:11px;color:var(--text-dim);margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 
   /* ========== Hunter Profile Modal ========== */
-  .hunter-modal{position:fixed;inset:0;z-index:100;background:rgba(5,7,13,0.9);backdrop-filter:blur(6px);overflow-y:auto;touch-action:none;overscroll-behavior:none;}
+  .hunter-modal{position:fixed;inset:0;z-index:400;background:rgba(5,7,13,0.9);backdrop-filter:blur(6px);overflow-y:auto;touch-action:none;overscroll-behavior:none;}
   .hunter-modal.hidden{display:none;}
   .hunter-modal-inner{max-width:520px;margin:0 auto;padding:20px 16px 80px;}
   .hunter-modal-header{display:flex;align-items:center;gap:12px;margin-bottom:20px;}
@@ -2076,7 +2141,7 @@
   .weakest-link .party-stat-value{color:var(--excess);}
 
   /* ========== HUNTER PROFILE MODAL ========== */
-  .hunter-modal{position:fixed;inset:0;z-index:100;background:rgba(5,7,13,0.88);backdrop-filter:blur(6px);display:flex;align-items:flex-end;justify-content:center;}
+  .hunter-modal{position:fixed;inset:0;z-index:400;background:rgba(5,7,13,0.88);backdrop-filter:blur(6px);display:flex;align-items:flex-end;justify-content:center;}
   .hunter-modal.hidden{display:none;}
   .hunter-modal-inner{
     background:var(--bg);width:100%;max-width:640px;max-height:min(90dvh, 90vh);overflow-y:auto;
@@ -2108,7 +2173,7 @@
 
   /* ========== SYSTEM MODALS (Solo Leveling aesthetic) ========== */
   .system-overlay{
-    position:fixed;inset:0;z-index:200;display:flex;align-items:center;justify-content:center;
+    position:fixed;inset:0;z-index:900;display:flex;align-items:center;justify-content:center;
     background:rgba(5,7,13,0.92);backdrop-filter:blur(8px);
     animation:sysOverlayIn .3s ease;
   touch-action:none;overscroll-behavior:none;}
@@ -2335,7 +2400,25 @@
   .system-cmd-settings .field{margin-bottom:12px;}
   .system-cmd-settings label{font-family:var(--font-mono);font-size:9px;color:rgba(91,168,255,0.4);letter-spacing:.12em;text-transform:uppercase;display:block;margin-bottom:6px;}
   .system-cmd-settings input{background:rgba(255,255,255,0.03);border:1px solid rgba(91,168,255,0.12);border-radius:var(--radius-sm);color:var(--text);padding:8px 10px;font-family:var(--font-mono);font-size:13px;width:100%;box-sizing:border-box;}
-  .modal-overlay{position:fixed;inset:0;background:rgba(5,7,13,0.75);backdrop-filter:blur(3px);display:flex;align-items:flex-end;justify-content:center;z-index:80;touch-action:none;overscroll-behavior:none;overflow:hidden;}
+  .modal-overlay{
+    position:fixed;
+    inset:0;
+    /* Ensure full coverage on all devices including notch/home bar */
+    top:0; left:0; right:0; bottom:0;
+    width:100%; height:100%;
+    background:rgba(5,7,13,0.82);
+    backdrop-filter:blur(6px);
+    -webkit-backdrop-filter:blur(6px);
+    display:flex;
+    align-items:flex-end;
+    justify-content:center;
+    z-index:300;
+    touch-action:none;
+    overscroll-behavior:none;
+    overflow:hidden;
+    /* Safe area padding so content clears home indicator */
+    padding-bottom:env(safe-area-inset-bottom, 0px);
+  }
 
   /* workout pill — minimised state */
   .workout-pill{
@@ -2353,7 +2436,11 @@
     background:linear-gradient(145deg, rgba(13,21,32,0.99) 0%, rgba(7,11,20,0.99) 100%);
     border:1px solid rgba(91,168,255,0.15);
     border-top-left-radius:16px;border-top-right-radius:16px;
-    padding:20px;width:100%;max-width:640px;max-height:min(85dvh, 85vh);overflow-y:auto;
+    padding:20px;
+    padding-bottom:calc(20px + env(safe-area-inset-bottom, 0px));
+    width:100%;max-width:640px;max-height:85dvh;overflow-y:auto;
+    -webkit-overflow-scrolling:touch;
+    overscroll-behavior:contain;
     box-shadow:
       0 0 0 1px rgba(91,168,255,0.06),
       0 -8px 40px rgba(0,0,0,0.8),
@@ -2374,12 +2461,12 @@
     position:fixed;inset:0;touch-action:none;overscroll-behavior:none;
     background:rgba(3,5,10,0.9);
     backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
-    z-index:60;display:flex;flex-direction:column;
+    z-index:250;display:flex;flex-direction:column;
     animation:overlayIn 0.25s ease both;
   }
   @keyframes overlayIn{from{opacity:0}to{opacity:1}}
   /* exercise picker must sit above the workout modal */
-  .workout-modal-overlay ~ .modal-overlay, .modal-overlay{z-index:80;}
+  .workout-modal-overlay ~ .modal-overlay, .modal-overlay{z-index:300;}
   .workout-modal{
     background:linear-gradient(180deg, rgba(9,14,26,0.99) 0%, rgba(5,7,13,1) 100%);
     display:flex;flex-direction:column;height:100%;max-width:640px;margin:0 auto;width:100%;
@@ -2617,6 +2704,12 @@
 </head>
 <body>
 
+<!-- ============ GLOBAL OVERLAY HOST ============ -->
+<!-- All foreground overlays/modals mount here, outside #app and all view containers.
+     This ensures position:fixed children use the true viewport as containing block,
+     unaffected by backdrop-filter, transform, overflow, or max-width on #app. -->
+<div id="overlay-host"></div>
+
 <!-- ============ AUTH SCREEN ============ -->
 <div id="auth-screen">
   <div>
@@ -2667,7 +2760,7 @@
   <main class="view-area">
 
     <!-- ---- QUEST (log + program) ---- -->
-    <section class="view active" id="view-quest" style="padding:0;overflow:hidden;">
+    <section class="view active" id="view-quest" style="padding:0;">
 
       <!-- ── HUNT SCREEN — mission not a form ── -->
       <!-- Objectives float at top — data not a card -->
@@ -2745,7 +2838,7 @@
 
     <!-- Run Logger Modal -->
     <div class="modal-overlay hidden" id="run-modal-overlay">
-      <div class="modal" style="max-height:min(85dvh, 85vh);overflow-y:auto;">
+      <div class="modal" style="max-height:85dvh;overflow-y:auto;">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
           <h3 style="margin:0;">🏃 Log a Run</h3>
           <button class="icon-btn" id="close-run-modal" style="font-size:20px;">✕</button>
@@ -3235,13 +3328,13 @@ let _lockCount = 0;
 
 function lockBodyScroll() {
   _lockCount++;
-  if (_lockCount > 1) return; // already locked
+  if (_lockCount > 1) return; // already locked — nested modal, don't re-lock
   _scrollY = window.scrollY;
   document.body.style.position = 'fixed';
   document.body.style.top = `-${_scrollY}px`;
   document.body.style.left = '0';
   document.body.style.right = '0';
-  lockBodyScroll();
+  document.body.style.width = '100%';
 }
 
 function unlockBodyScroll() {
@@ -3415,7 +3508,7 @@ function showEnergyFlow(exercises, xpResult, prs, onComplete) {
   if (steps.length <= 1) { onComplete(); return; }
 
   const overlay = document.createElement('div');
-  overlay.style.cssText = 'position:fixed;inset:0;z-index:600;background:rgba(5,6,10,0.93);display:flex;flex-direction:column;align-items:center;justify-content:center;animation:fadeIn 0.3s ease;';
+  overlay.style.cssText = 'position:fixed;inset:0;z-index:700;background:rgba(5,6,10,0.93);display:flex;flex-direction:column;align-items:center;justify-content:center;animation:fadeIn 0.3s ease;';
   const inner = document.createElement('div');
   inner.style.cssText = 'display:flex;flex-direction:column;align-items:center;width:100%;max-width:320px;padding:0 24px;';
 
@@ -3456,7 +3549,7 @@ function showEnergyFlow(exercises, xpResult, prs, onComplete) {
 
   inner.appendChild(skipBtn);
   overlay.appendChild(inner);
-  document.body.appendChild(overlay);
+  getOverlayHost().appendChild(overlay);
 }
 
 function screenFlash(colour = '#5BA8FF', duration = 120) {
@@ -3881,7 +3974,7 @@ function openSettingsModal() {
       '</div></div>' : '') +
     '<p class="auth-error" id="settings-error" style="margin-top:8px;"></p>';
 
-  document.body.appendChild(overlay);
+  getOverlayHost().appendChild(overlay);
   lockBodyScroll();
   let selectedBodyType = profile.bodyType || 'male';
   overlay.querySelectorAll('.body-type-chip').forEach(chip => chip.addEventListener('click', () => {
@@ -5468,7 +5561,7 @@ async function openAdminProgramEditor(targetUid, targetName) {
   const overlay = document.createElement('div');
   overlay.className = 'modal-overlay';
   overlay.innerHTML = `
-    <div class="modal" style="max-height:min(85dvh, 85vh);overflow-y:auto;">
+    <div class="modal" style="max-height:85dvh;overflow-y:auto;">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
         <h3 style="margin:0;">✎ Editing ${escapeHtml(targetName)}'s plan</h3>
         <button class="icon-btn" id="admin-prog-close" style="font-size:20px;">✕</button>
@@ -5484,7 +5577,7 @@ async function openAdminProgramEditor(targetUid, targetName) {
         <button class="btn btn-primary" id="admin-prog-save" style="flex:2;">Save their plan</button>
       </div>
     </div>`;
-  document.body.appendChild(overlay);
+  getOverlayHost().appendChild(overlay);
 
   // render a simple day summary (read-only exercise list, editable sets/reps)
   const daysEl = overlay.querySelector('#admin-prog-days');
@@ -5541,7 +5634,7 @@ function openExercisePicker(onSelect) {
       <input type="text" class="lib-search" id="picker-search" placeholder="Search exercises…" />
       <div class="picker-list" id="picker-list"></div>
     </div>`;
-  document.body.appendChild(overlay);
+  getOverlayHost().appendChild(overlay);
   lockBodyScroll();
   const searchEl = overlay.querySelector('#picker-search');
   const listEl = overlay.querySelector('#picker-list');
@@ -5728,7 +5821,7 @@ function addExerciseRow(presetName, targetSets, targetReps, prefillSets) {
            </div>
            <div style="display:flex;align-items:center;gap:4px;">
              <input type="number" class="set-dist" step="0.01" min="0" placeholder="0.00" inputmode="decimal"
-               style="width:72px;background:rgba(255,255,255,0.02);border:1px solid rgba(91,168,255,0.1);border-radius:8px;color:var(--text);-webkit-text-fill-color:var(--text);padding:0 8px;font-size:15px;font-family:var(--font-mono);height:44px;text-align:center;-webkit-appearance:none;" />
+               style="width:72px;background:rgba(255,255,255,0.02);border:1px solid rgba(91,168,255,0.1);border-radius:8px;color:var(--text);-webkit-text-fill-color:var(--text);padding:0 8px;font-size:16px;font-family:var(--font-mono);height:44px;text-align:center;-webkit-appearance:none;" />
              <span style="font-size:10px;color:var(--text-faint);">km</span>
            </div>`
         : `${timed
@@ -5741,7 +5834,7 @@ function addExerciseRow(presetName, targetSets, targetReps, prefillSets) {
              : stepper('set-reps', prefillReps || '', 0, repsStep, repsLabel)
            }
            ${timed
-             ? '<div class="stepper" style="opacity:0.25;pointer-events:none;"><button>−</button><input type="text" value="BW" readonly style="color:var(--text-faint);font-size:12px;"/><button>+</button></div>'
+             ? '<div class="stepper" style="opacity:0.25;pointer-events:none;"><button>−</button><input type="text" value="BW" readonly style="color:var(--text-faint);font-size:16px;"/><button>+</button></div>'
              : stepper('set-weight', prefillWeight || '', 0, 2.5, 'kg')
            }`
       }
@@ -6665,7 +6758,7 @@ async function checkAndAwardMilestones(pendingUpdates) {
 function showMilestonesBanner(milestones, trainingXPGains, totalXP, done) {
   if (!milestones.length) { if (done) done(); return; }
   const banner = document.createElement('div');
-  banner.style.cssText = `position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.93);z-index:9998;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;animation:viewEnter 0.4s cubic-bezier(0.16,1,0.3,1) both;`;
+  banner.style.cssText = `position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.93);z-index:850;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;animation:viewEnter 0.4s cubic-bezier(0.16,1,0.3,1) both;`;
 
   const cards = milestones.map(m => {
     const statColor = { strength:'var(--brass)', endurance:'#FF4D67', agility:'var(--violet)', focus:'#FFD66B', flexibility:'#27AE60', defence:'var(--growing)' }[m.stat] || 'var(--brass)';
@@ -6683,7 +6776,7 @@ function showMilestonesBanner(milestones, trainingXPGains, totalXP, done) {
     <div style="width:100%;max-width:320px;max-height:min(60dvh, 60vh);overflow-y:auto;">${cards}</div>
     <div style="margin-top:12px;font-family:var(--font-mono);font-size:13px;color:var(--brass);">Total: +${totalXP} Hunter XP</div>
     <button class="btn btn-primary" id="milestone-ack-btn" style="margin-top:16px;min-width:160px;">Acknowledge</button>`;
-  document.body.appendChild(banner);
+  getOverlayHost().appendChild(banner);
   banner.querySelector('#milestone-ack-btn').addEventListener('click', () => {
     banner.remove();
     if (done) done();
@@ -7903,7 +7996,7 @@ function openStatInvestPanel(statId) {
   const canInvest = Math.min(maxInvest, ap);
   const overlay = document.createElement('div');
   overlay.className = 'modal-overlay';
-  overlay.innerHTML = `<div class="modal" style="max-height:min(85dvh, 85vh);overflow-y:auto;">
+  overlay.innerHTML = `<div class="modal" style="max-height:85dvh;overflow-y:auto;">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
       <h3>Invest AP — ${label}</h3>
       <button class="icon-btn" id="invest-close" style="font-size:20px;">✕</button>
@@ -7955,7 +8048,7 @@ function openStatInvestPanel(statId) {
       </div>
       <div style="display:flex;gap:8px;align-items:center;">
         <input type="number" id="invest-amount" min="1" max="${canInvest}" value="1"
-          style="flex:1;background:rgba(255,255,255,0.02);border:1px solid rgba(91,168,255,0.1);border-radius:6px;color:var(--text);padding:8px;font-size:14px;" />
+          style="flex:1;background:rgba(255,255,255,0.02);border:1px solid rgba(91,168,255,0.1);border-radius:6px;color:var(--text);padding:8px;font-size:16px;" />
         <span style="font-size:12px;color:var(--text-faint);">AP</span>
       </div>
     </div>
@@ -7963,7 +8056,7 @@ function openStatInvestPanel(statId) {
     ` : ''}
     `}
   </div>`;
-  document.body.appendChild(overlay);
+  getOverlayHost().appendChild(overlay);
   overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
   overlay.querySelector('#invest-close').addEventListener('click', () => overlay.remove());
   overlay.querySelectorAll('.invest-quick').forEach(btn => {
@@ -8553,7 +8646,7 @@ function showDungeonDamageNotif(result, done) {
   const hpPct = Math.max(0, (result.newHp / result.maxHp) * 100);
   const hpColor = hpPct > 60 ? 'var(--growing)' : hpPct > 30 ? 'var(--brass)' : 'var(--excess)';
   const banner = document.createElement('div');
-  banner.style.cssText = 'position:fixed;bottom:80px;left:50%;transform:translateX(-50%);z-index:9000;background:var(--card);border:1px solid rgba(139,92,255,0.4);border-radius:12px;padding:16px 20px;max-width:320px;width:90vw;box-shadow:0 0 30px rgba(139,92,255,0.2);';
+  banner.style.cssText = 'position:fixed;bottom:80px;left:50%;transform:translateX(-50%);z-index:950;background:var(--card);border:1px solid rgba(139,92,255,0.4);border-radius:12px;padding:16px 20px;max-width:320px;width:90vw;box-shadow:0 0 30px rgba(139,92,255,0.2);';
   banner.innerHTML = `
     <div style="font-family:var(--font-mono);font-size:9px;color:var(--violet);letter-spacing:0.12em;margin-bottom:8px;">⚔ DUNGEON DAMAGE DEALT</div>
     <div style="font-size:14px;font-weight:700;margin-bottom:4px;">${escapeHtml(dungeon.bossName||'Boss')}</div>
@@ -8565,7 +8658,7 @@ function showDungeonDamageNotif(result, done) {
       <div style="height:100%;width:${hpPct.toFixed(1)}%;background:${hpColor};border-radius:4px;"></div>
     </div>
     <button class="btn btn-sm" style="width:100%;">Continue</button>`;
-  document.body.appendChild(banner);
+  getOverlayHost().appendChild(banner);
   banner.querySelector('button').addEventListener('click', () => { banner.remove(); if(done) done(); }, { once:true });
   setTimeout(() => { try { banner.remove(); if(done) done(); } catch(e){} }, 6000);
 }
@@ -8595,7 +8688,7 @@ function showSystemModal(html, onClose) {
   const overlay = document.createElement('div');
   overlay.className = 'system-overlay';
   overlay.innerHTML = html;
-  document.body.appendChild(overlay);
+  getOverlayHost().appendChild(overlay);
   lockBodyScroll();
   const cleanup = () => { overlay.remove(); unlockBodyScroll(); if (onClose) onClose(); };
   const btn = overlay.querySelector('.system-btn');
@@ -8647,7 +8740,7 @@ function showAwakeningModal(statLabel, oldRank, newRank, hunterName) {
         ${isAllS ? `<div class="awakening-sovereign" style="animation:cinematicIn .6s ease .8s both;">★ ABSOLUTE BEING ACHIEVED ★</div>` : ''}
         <button class="awakening-btn" style="animation:fadeIn .4s ease .9s both;">Rise</button>
       </div>`;
-    document.body.appendChild(overlay);
+    getOverlayHost().appendChild(overlay);
 
     // Particles scaled to rank
     const PARTICLE_COUNTS = { D:8, C:16, B:24, A:32, S:50 };
@@ -8688,7 +8781,7 @@ function showBossDefeatedModal(exerciseName, e1rm, tier, xp, percentile) {
   const cfg = TIER_CONFIG[tier] || TIER_CONFIG.Beginner;
 
   const overlay = document.createElement('div');
-  overlay.style.cssText = `position:fixed;inset:0;z-index:600;background:rgba(5,7,13,${tier==='Elite'?'0.97':'0.93'});display:flex;align-items:center;justify-content:center;animation:sysOverlayIn 0.3s ease;`;
+  overlay.style.cssText = `position:fixed;inset:0;z-index:700;background:rgba(5,7,13,${tier==='Elite'?'0.97':'0.93'});display:flex;align-items:center;justify-content:center;animation:sysOverlayIn 0.3s ease;`;
 
   // Screen hit flash for PR
   const hitFlash = document.createElement('div');
@@ -8738,7 +8831,7 @@ function showBossDefeatedModal(exerciseName, e1rm, tier, xp, percentile) {
         onmouseout="this.style.background='none';this.style.boxShadow='none'">ACKNOWLEDGED</button>
     </div>`;
 
-  document.body.appendChild(overlay);
+  getOverlayHost().appendChild(overlay);
 
   // spawn particles scaled to tier
   const container = overlay.querySelector('#boss-particles');
@@ -8881,7 +8974,7 @@ function showStatGateModal(statId) {
   const overlay = document.createElement('div');
   overlay.className = 'modal-overlay';
   overlay.innerHTML = `
-    <div class="modal" style="max-height:min(85dvh, 85vh);overflow-y:auto;">
+    <div class="modal" style="max-height:85dvh;overflow-y:auto;">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
         <div style="display:flex;align-items:center;gap:10px;">
           <span style="font-size:28px;">${STAT_ICONS[statId]||''}</span>
@@ -8977,7 +9070,7 @@ function showStatGateModal(statId) {
       ` : ''}
     </div>`;
 
-  document.body.appendChild(overlay);
+  getOverlayHost().appendChild(overlay);
   overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
   overlay.querySelector('#gate-modal-close').addEventListener('click', () => overlay.remove());
 }
@@ -9123,6 +9216,11 @@ async function checkWeeklyGate() {
 
 // ── WEEKLY CHECK-IN SYSTEM ────────────────────────────────────────────────────
 
+// ── Overlay host — all foreground modals/overlays mount here ──
+// Keeps position:fixed elements truly viewport-relative (avoids iOS Safari
+// backdrop-filter/sticky containment bug on #app header).
+const getOverlayHost = () => document.getElementById('overlay-host') || document.body;
+
 let myCheckins = []; // loaded alongside myWeights
 
 // US Navy body fat formula
@@ -9151,7 +9249,7 @@ window.openCheckinModal = () => {
 
   const overlay = document.createElement('div');
   overlay.id = 'checkin-modal-overlay';
-  overlay.style.cssText = 'position:fixed;inset:0;z-index:9500;background:rgba(2,4,8,.9);backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:center;padding:20px;';
+  overlay.style.cssText = 'position:fixed;inset:0;z-index:800;background:rgba(2,4,8,.9);backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:center;padding:20px;';
 
   overlay.innerHTML = `
     <div style="background:rgba(22,27,37,.98);border:1px solid rgba(91,168,255,.15);border-radius:14px;padding:24px;width:100%;max-width:440px;max-height:90vh;overflow-y:auto;font-family:var(--font-mono);">
@@ -9186,7 +9284,7 @@ window.openCheckinModal = () => {
 
       <div style="margin-bottom:12px;">
         <div style="font-size:10px;color:rgba(242,245,250,.35);margin-bottom:6px;">Notes (optional)</div>
-        <textarea id="ci-notes" placeholder="How are you feeling? Any observations..." style="width:100%;background:rgba(255,255,255,.04);border:1px solid rgba(91,168,255,.15);border-radius:6px;color:#F2F5FA;padding:8px;font-family:var(--font-mono);font-size:11px;resize:none;height:60px;"></textarea>
+        <textarea id="ci-notes" placeholder="How are you feeling? Any observations..." style="width:100%;background:rgba(255,255,255,.04);border:1px solid rgba(91,168,255,.15);border-radius:6px;color:#F2F5FA;padding:8px;font-family:var(--font-mono);font-size:16px;resize:none;height:60px;"></textarea>
       </div>
 
       <button onclick="saveCheckin()" style="width:100%;background:rgba(91,168,255,.12);border:1px solid rgba(91,168,255,.3);color:#5BA8FF;padding:12px;border-radius:8px;cursor:pointer;font-family:var(--font-mono);font-size:13px;letter-spacing:.06em;">◈ SAVE CHECK-IN</button>
@@ -9194,7 +9292,7 @@ window.openCheckinModal = () => {
     </div>
   `;
 
-  document.body.appendChild(overlay);
+  getOverlayHost().appendChild(overlay);
 
   // Live estimation
   const liveFields = ['ci-weight','ci-waist','ci-neck','ci-shoulders','ci-armLeft','ci-armRight'];
@@ -9213,7 +9311,7 @@ function checkinField(label, id, unit, lastVal, placeholder, hint) {
     <div style="font-size:9px;letter-spacing:.12em;color:rgba(91,168,255,.4);margin-bottom:4px;">${label.toUpperCase()} (${unit})</div>
     <input type="number" id="${id}" step="0.1" placeholder="${placeholder}"
       value="${lastVal || ''}"
-      style="width:100%;background:rgba(255,255,255,.04);border:1px solid rgba(91,168,255,.15);border-radius:6px;color:#F2F5FA;padding:8px 10px;font-family:var(--font-mono);font-size:14px;font-weight:700;" />
+      style="width:100%;background:rgba(255,255,255,.04);border:1px solid rgba(91,168,255,.15);border-radius:6px;color:#F2F5FA;padding:8px 10px;font-family:var(--font-mono);font-size:16px;font-weight:700;" />
     <div style="font-size:9px;color:rgba(242,245,250,.2);margin-top:2px;">${hint}</div>
   </div>`;
 }
@@ -9562,7 +9660,7 @@ const CLASS_CSS = `
     to { stroke-dashoffset: 0; }
   }
   .class-reveal-overlay {
-    position: fixed; inset: 0; z-index: 600;
+    position: fixed; inset: 0; z-index: 700;
     background: #000;
     display: flex; align-items: center; justify-content: center;
     animation: classRevealIn 0.6s ease forwards;
@@ -9586,7 +9684,7 @@ const CLASS_CSS = `
     opacity: 0;
   }
   @keyframes classParticleFloat {
-    0% { transform: translateY(100vh) scale(0); opacity:0; }
+    0% { transform: translateY(100dvh) scale(0); opacity:0; }
     15% { opacity: 0.8; }
     85% { opacity: 0.6; }
     100% { transform: translateY(-20vh) scale(1.5); opacity:0; }
@@ -10108,7 +10206,7 @@ function openOrphanedWorkoutsPanel() {
   const orphans = allWorkouts.filter(w => !KNOWN[w.uid]);
   const overlay = document.createElement('div');
   overlay.className = 'modal-overlay';
-  overlay.innerHTML = `<div class="modal" style="max-height:min(85dvh, 85vh);overflow-y:auto;">
+  overlay.innerHTML = `<div class="modal" style="max-height:85dvh;overflow-y:auto;">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
       <h3>Mismatched Workouts</h3>
       <button class="icon-btn" id="orphan-close" style="font-size:20px;">✕</button>
@@ -10128,7 +10226,7 @@ function openOrphanedWorkoutsPanel() {
         : '<p style="color:var(--text-faint);">No mismatched workouts found — every workout is correctly owned.</p>'}
     </div>
   </div>`;
-  document.body.appendChild(overlay);
+  getOverlayHost().appendChild(overlay);
   overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
   overlay.querySelector('#orphan-close').addEventListener('click', () => overlay.remove());
   overlay.querySelectorAll('.reassign-btn').forEach(btn => {
@@ -10159,7 +10257,7 @@ async function openAdvanceRotationPanel() {
   ];
   const overlay = document.createElement('div');
   overlay.className = 'modal-overlay';
-  overlay.innerHTML = `<div class="modal" style="max-height:min(85dvh, 85vh);overflow-y:auto;">
+  overlay.innerHTML = `<div class="modal" style="max-height:85dvh;overflow-y:auto;">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
       <h3>Advance Rotation Day</h3>
       <button class="icon-btn" id="rot-close" style="font-size:20px;">✕</button>
@@ -10167,7 +10265,7 @@ async function openAdvanceRotationPanel() {
     <p style="font-size:12px;color:var(--text-faint);margin:0 0 14px;">Rotation-mode only. Shows each hunter's current stuck day and lets you bump them to the next day in their program.</p>
     <div id="rot-content"><p style="color:var(--text-faint);">Loading…</p></div>
   </div>`;
-  document.body.appendChild(overlay);
+  getOverlayHost().appendChild(overlay);
   overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
   overlay.querySelector('#rot-close').addEventListener('click', () => overlay.remove());
 
@@ -10227,21 +10325,21 @@ function openRawWorkoutPanel() {
   ];
   const overlay = document.createElement('div');
   overlay.className = 'modal-overlay';
-  overlay.innerHTML = `<div class="modal" style="max-height:min(88dvh, 88vh);overflow-y:auto;">
+  overlay.innerHTML = `<div class="modal" style="max-height:88dvh;overflow-y:auto;">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
       <h3>Raw Workout Viewer</h3>
       <button class="icon-btn" id="raw-close" style="font-size:20px;">✕</button>
     </div>
     <div style="display:flex;gap:8px;margin-bottom:10px;">
-      <select id="raw-user" style="flex:1;background:rgba(255,255,255,0.02);border:1px solid rgba(91,168,255,0.1);border-radius:6px;color:var(--text);padding:8px;font-size:13px;">
+      <select id="raw-user" style="flex:1;background:rgba(255,255,255,0.02);border:1px solid rgba(91,168,255,0.1);border-radius:6px;color:var(--text);padding:8px;font-size:16px;">
         ${targets.map(t => `<option value="${t.uid}">${escapeHtml(t.name)}</option>`).join('')}
       </select>
-      <input type="date" id="raw-date" value="${todayStr()}" style="flex:1;background:rgba(255,255,255,0.02);border:1px solid rgba(91,168,255,0.1);border-radius:6px;color:var(--text);padding:8px;font-size:13px;" />
+      <input type="date" id="raw-date" value="${todayStr()}" style="flex:1;background:rgba(255,255,255,0.02);border:1px solid rgba(91,168,255,0.1);border-radius:6px;color:var(--text);padding:8px;font-size:16px;" />
       <button class="btn btn-sm" id="raw-load" style="font-size:12px;">Load</button>
     </div>
     <div id="raw-content" style="color:var(--text-faint);font-size:13px;">Pick a hunter and date, then Load.</div>
   </div>`;
-  document.body.appendChild(overlay);
+  getOverlayHost().appendChild(overlay);
   overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
   overlay.querySelector('#raw-close').addEventListener('click', () => overlay.remove());
 
@@ -10320,7 +10418,7 @@ function openRawWorkoutPanel() {
           <p style="color:var(--text-faint);margin-bottom:8px;">No workout found for that hunter/date. You can create one:</p>
           <div style="margin-bottom:14px;">
             <div style="font-size:11px;font-family:var(--font-mono);color:var(--text-faint);margin-bottom:4px;">New Doc ID: ${escapeHtml(newId)}</div>
-            <textarea class="raw-json-box" data-wid="${newId}" spellcheck="false" style="width:100%;min-height:220px;background:rgba(255,255,255,0.02);border:1px solid rgba(91,168,255,0.1);border-radius:6px;color:var(--text);padding:10px;font-family:var(--font-mono);font-size:11px;line-height:1.5;">${escapeHtml(JSON.stringify({ uid, date, time: new Date().toTimeString().slice(0,5), exercises: [ { name: 'Exercise Name', sets: [ { reps: 10, weight: 0, rir: null } ] } ], programDayIndex: null }, null, 2))}</textarea>
+            <textarea class="raw-json-box" data-wid="${newId}" spellcheck="false" style="width:100%;min-height:220px;background:rgba(255,255,255,0.02);border:1px solid rgba(91,168,255,0.1);border-radius:6px;color:var(--text);padding:10px;font-family:var(--font-mono);font-size:16px;line-height:1.5;">${escapeHtml(JSON.stringify({ uid, date, time: new Date().toTimeString().slice(0,5), exercises: [ { name: 'Exercise Name', sets: [ { reps: 10, weight: 0, rir: null } ] } ], programDayIndex: null }, null, 2))}</textarea>
             <div style="display:flex;gap:6px;margin-top:6px;">
               <button class="btn btn-sm raw-autofill-btn" data-wid="${newId}" data-uid="${uid}" style="flex:1;font-size:11px;">🧮 Autofill BW% weight</button>
               <button class="btn btn-sm raw-save-btn" data-wid="${newId}" style="flex:1;font-size:12px;">💾 Create this workout</button>
@@ -10332,7 +10430,7 @@ function openRawWorkoutPanel() {
       content.innerHTML = docs.map(d => `
         <div style="margin-bottom:14px;">
           <div style="font-size:11px;font-family:var(--font-mono);color:var(--text-faint);margin-bottom:4px;">Doc ID: ${escapeHtml(d.id)}</div>
-          <textarea class="raw-json-box" data-wid="${d.id}" spellcheck="false" style="width:100%;min-height:220px;background:rgba(255,255,255,0.02);border:1px solid rgba(91,168,255,0.1);border-radius:6px;color:var(--text);padding:10px;font-family:var(--font-mono);font-size:11px;line-height:1.5;">${escapeHtml(JSON.stringify({ uid: d.uid, date: d.date, time: d.time, exercises: d.exercises, programDayIndex: d.programDayIndex ?? null }, null, 2))}</textarea>
+          <textarea class="raw-json-box" data-wid="${d.id}" spellcheck="false" style="width:100%;min-height:220px;background:rgba(255,255,255,0.02);border:1px solid rgba(91,168,255,0.1);border-radius:6px;color:var(--text);padding:10px;font-family:var(--font-mono);font-size:16px;line-height:1.5;">${escapeHtml(JSON.stringify({ uid: d.uid, date: d.date, time: d.time, exercises: d.exercises, programDayIndex: d.programDayIndex ?? null }, null, 2))}</textarea>
           <div style="display:flex;gap:6px;margin-top:6px;">
             <button class="btn btn-sm raw-autofill-btn" data-wid="${d.id}" data-uid="${d.uid}" style="flex:1;font-size:11px;">🧮 Autofill BW% weight</button>
             <button class="btn btn-sm raw-save-btn" data-wid="${d.id}" style="flex:1;font-size:12px;">💾 Save this workout</button>
@@ -10359,29 +10457,29 @@ function openApAdjustPanel() {
   ];
   const overlay = document.createElement('div');
   overlay.className = 'modal-overlay';
-  overlay.innerHTML = `<div class="modal" style="max-height:min(85dvh, 85vh);overflow-y:auto;">
+  overlay.innerHTML = `<div class="modal" style="max-height:85dvh;overflow-y:auto;">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
       <h3>Manual AP Adjustment</h3>
       <button class="icon-btn" id="apadj-close" style="font-size:20px;">✕</button>
     </div>
     <div class="field" style="margin-bottom:12px;">
       <label>Hunter</label>
-      <select id="apadj-user" style="width:100%;background:rgba(255,255,255,0.02);border:1px solid rgba(91,168,255,0.1);border-radius:6px;color:var(--text);padding:8px;font-size:13px;">
+      <select id="apadj-user" style="width:100%;background:rgba(255,255,255,0.02);border:1px solid rgba(91,168,255,0.1);border-radius:6px;color:var(--text);padding:8px;font-size:16px;">
         ${targets.map(t => `<option value="${t.uid}">${escapeHtml(t.name)}</option>`).join('')}
       </select>
     </div>
     <div class="field" style="margin-bottom:12px;">
       <label>Amount (use a negative number to deduct)</label>
-      <input type="number" id="apadj-amount" placeholder="e.g. 10 or -10" style="width:100%;background:rgba(255,255,255,0.02);border:1px solid rgba(91,168,255,0.1);border-radius:6px;color:var(--text);padding:8px;font-size:13px;" />
+      <input type="number" id="apadj-amount" placeholder="e.g. 10 or -10" style="width:100%;background:rgba(255,255,255,0.02);border:1px solid rgba(91,168,255,0.1);border-radius:6px;color:var(--text);padding:8px;font-size:16px;" />
     </div>
     <div class="field" style="margin-bottom:14px;">
       <label>Reason (for your own records)</label>
-      <input type="text" id="apadj-reason" placeholder="e.g. race-condition AP loss, Aug 8" style="width:100%;background:rgba(255,255,255,0.02);border:1px solid rgba(91,168,255,0.1);border-radius:6px;color:var(--text);padding:8px;font-size:13px;" />
+      <input type="text" id="apadj-reason" placeholder="e.g. race-condition AP loss, Aug 8" style="width:100%;background:rgba(255,255,255,0.02);border:1px solid rgba(91,168,255,0.1);border-radius:6px;color:var(--text);padding:8px;font-size:16px;" />
     </div>
     <button class="btn btn-primary" id="apadj-apply" style="width:100%;">Apply Adjustment</button>
     <div id="apadj-result" style="margin-top:10px;font-size:12px;color:var(--text-faint);"></div>
   </div>`;
-  document.body.appendChild(overlay);
+  getOverlayHost().appendChild(overlay);
   overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
   overlay.querySelector('#apadj-close').addEventListener('click', () => overlay.remove());
 
@@ -10423,20 +10521,20 @@ function openRawProfilePanel() {
   ];
   const overlay = document.createElement('div');
   overlay.className = 'modal-overlay';
-  overlay.innerHTML = `<div class="modal" style="max-height:min(88dvh, 88vh);overflow-y:auto;">
+  overlay.innerHTML = `<div class="modal" style="max-height:88dvh;overflow-y:auto;">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
       <h3>Raw Profile Viewer</h3>
       <button class="icon-btn" id="rprof-close" style="font-size:20px;">✕</button>
     </div>
     <div style="display:flex;gap:8px;margin-bottom:10px;">
-      <select id="rprof-user" style="flex:1;background:rgba(255,255,255,0.02);border:1px solid rgba(91,168,255,0.1);border-radius:6px;color:var(--text);padding:8px;font-size:13px;">
+      <select id="rprof-user" style="flex:1;background:rgba(255,255,255,0.02);border:1px solid rgba(91,168,255,0.1);border-radius:6px;color:var(--text);padding:8px;font-size:16px;">
         ${targets.map(t => `<option value="${t.uid}">${escapeHtml(t.name)}</option>`).join('')}
       </select>
       <button class="btn btn-sm" id="rprof-load" style="font-size:12px;">Load</button>
     </div>
     <div id="rprof-content" style="color:var(--text-faint);font-size:13px;">Pick a hunter, then Load.</div>
   </div>`;
-  document.body.appendChild(overlay);
+  getOverlayHost().appendChild(overlay);
   overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
   overlay.querySelector('#rprof-close').addEventListener('click', () => overlay.remove());
 
@@ -10449,7 +10547,7 @@ function openRawProfilePanel() {
       if (!snap.exists()) { content.innerHTML = '<p style="color:var(--text-faint);">No profile doc found for that hunter.</p>'; return; }
       const data = snap.data();
       content.innerHTML = `
-        <textarea id="rprof-json-box" spellcheck="false" style="width:100%;min-height:320px;background:rgba(255,255,255,0.02);border:1px solid rgba(91,168,255,0.1);border-radius:6px;color:var(--text);padding:10px;font-family:var(--font-mono);font-size:11px;line-height:1.5;">${escapeHtml(JSON.stringify(data, null, 2))}</textarea>
+        <textarea id="rprof-json-box" spellcheck="false" style="width:100%;min-height:320px;background:rgba(255,255,255,0.02);border:1px solid rgba(91,168,255,0.1);border-radius:6px;color:var(--text);padding:10px;font-family:var(--font-mono);font-size:16px;line-height:1.5;">${escapeHtml(JSON.stringify(data, null, 2))}</textarea>
         <button class="btn btn-sm" id="rprof-save-btn" style="width:100%;margin-top:6px;font-size:12px;">💾 Save this profile (full overwrite)</button>
       `;
       overlay.querySelector('#rprof-save-btn').addEventListener('click', async () => {
@@ -10516,7 +10614,7 @@ async function runV2Migration() {
 
   const overlay = document.createElement('div');
   overlay.className = 'modal-overlay';
-  overlay.innerHTML = `<div class="modal" style="max-height:min(88dvh, 88vh);overflow-y:auto;">
+  overlay.innerHTML = `<div class="modal" style="max-height:88dvh;overflow-y:auto;">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
       <h3>⚡ V2 System Migration</h3>
       <button class="icon-btn" id="migrate-close" style="font-size:20px;">✕</button>
@@ -10537,7 +10635,7 @@ async function runV2Migration() {
     <button class="btn btn-primary" id="migrate-run" style="width:100%;">⚡ Run Migration</button>
     <div id="migrate-log" style="margin-top:12px;font-size:11px;font-family:var(--font-mono);color:var(--text-faint);"></div>
   </div>`;
-  document.body.appendChild(overlay);
+  getOverlayHost().appendChild(overlay);
   overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
   overlay.querySelector('#migrate-close').addEventListener('click', () => overlay.remove());
 
@@ -10611,20 +10709,20 @@ async function openApLedger() {
   ];
   const overlay = document.createElement('div');
   overlay.className = 'modal-overlay';
-  overlay.innerHTML = `<div class="modal" style="max-height:min(88dvh, 88vh);overflow-y:auto;">
+  overlay.innerHTML = `<div class="modal" style="max-height:88dvh;overflow-y:auto;">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
       <h3>📋 AP Ledger</h3>
       <button class="icon-btn" id="ledger-close" style="font-size:20px;">✕</button>
     </div>
     <div style="display:flex;gap:8px;margin-bottom:12px;">
-      <select id="ledger-user" style="flex:1;background:rgba(255,255,255,0.02);border:1px solid rgba(91,168,255,0.1);border-radius:6px;color:var(--text);padding:8px;font-size:13px;">
+      <select id="ledger-user" style="flex:1;background:rgba(255,255,255,0.02);border:1px solid rgba(91,168,255,0.1);border-radius:6px;color:var(--text);padding:8px;font-size:16px;">
         ${targets.map(t => `<option value="${t.uid}">${escapeHtml(t.name)}</option>`).join('')}
       </select>
       <button class="btn btn-sm" id="ledger-load" style="font-size:12px;">Load</button>
     </div>
     <div id="ledger-content" style="color:var(--text-faint);font-size:13px;">Pick a hunter, then Load.</div>
   </div>`;
-  document.body.appendChild(overlay);
+  getOverlayHost().appendChild(overlay);
   overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
   overlay.querySelector('#ledger-close').addEventListener('click', () => overlay.remove());
 
@@ -10674,14 +10772,14 @@ async function openApLedger() {
 async function openAdminUserPanel() {
   const overlay = document.createElement('div');
   overlay.className = 'modal-overlay';
-  overlay.innerHTML = `<div class="modal" style="max-height:min(85dvh, 85vh);overflow-y:auto;">
+  overlay.innerHTML = `<div class="modal" style="max-height:85dvh;overflow-y:auto;">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
       <h3>All Users</h3>
       <button class="icon-btn" id="aup-close" style="font-size:20px;">✕</button>
     </div>
     <div id="aup-content"><p style="color:var(--text-faint);">Loading…</p></div>
   </div>`;
-  document.body.appendChild(overlay);
+  getOverlayHost().appendChild(overlay);
   overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
   overlay.querySelector('#aup-close').addEventListener('click', () => overlay.remove());
 
@@ -10748,7 +10846,7 @@ async function openStreakFreezePanel(uid, name) {
     ${isFrozenNow ? `<p style="font-size:10px;color:var(--text-faint);margin-top:8px;line-height:1.5;">Unfreezing resumes normal rules today. If they don't train today they will lose their streak.</p>` : ''}
   </div>`;
 
-  document.body.appendChild(overlay);
+  getOverlayHost().appendChild(overlay);
   overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
   overlay.querySelector('#freeze-cancel').addEventListener('click', () => overlay.remove());
 
@@ -10779,7 +10877,7 @@ window.openStreakFreezePanel = openStreakFreezePanel;
 async function openAdminTester() {
   const overlay = document.createElement('div');
   overlay.className = 'modal-overlay';
-  overlay.innerHTML = `<div class="modal" style="max-height:min(88dvh, 88vh);overflow-y:auto;font-family:var(--font-mono);font-size:12px;">
+  overlay.innerHTML = `<div class="modal" style="max-height:88dvh;overflow-y:auto;font-family:var(--font-mono);font-size:12px;">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
       <div>
         <div style="font-size:9px;letter-spacing:0.25em;color:var(--text-faint);">ADMIN</div>
@@ -10790,7 +10888,7 @@ async function openAdminTester() {
     <div id="tester-results"></div>
     <button class="btn btn-primary" id="tester-run" style="width:100%;margin-top:12px;">▶ Run All Tests</button>
   </div>`;
-  document.body.appendChild(overlay);
+  getOverlayHost().appendChild(overlay);
   overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
   overlay.querySelector('#tester-close').addEventListener('click', () => overlay.remove());
 
@@ -10992,10 +11090,10 @@ function openAdminWorkoutLogger(targetUid, hunterName) {
         <div class="admin-set-row" style="display:grid;grid-template-columns:24px 1fr 1fr auto;gap:6px;align-items:center;margin-bottom:6px;">
           <span style="font-size:11px;color:var(--text-faint);text-align:center;">${si+1}</span>
           <input type="number" class="admin-reps" placeholder="${repsLabel}" min="0" inputmode="decimal"
-            style="background:rgba(255,255,255,0.02);border:1px solid rgba(91,168,255,0.1);border-radius:4px;color:var(--text);padding:6px 8px;font-size:13px;width:100%;" />
+            style="background:rgba(255,255,255,0.02);border:1px solid rgba(91,168,255,0.1);border-radius:4px;color:var(--text);padding:6px 8px;font-size:16px;width:100%;" />
           <input type="number" class="admin-weight" placeholder="kg" min="0" step="0.5" inputmode="decimal"
-            style="background:rgba(255,255,255,0.02);border:1px solid rgba(91,168,255,0.1);border-radius:4px;color:var(--text);padding:6px 8px;font-size:13px;width:100%;" />
-          <select class="admin-rir" style="background:rgba(255,255,255,0.02);border:1px solid rgba(91,168,255,0.1);border-radius:4px;color:var(--text);padding:6px 4px;font-size:12px;">
+            style="background:rgba(255,255,255,0.02);border:1px solid rgba(91,168,255,0.1);border-radius:4px;color:var(--text);padding:6px 8px;font-size:16px;width:100%;" />
+          <select class="admin-rir" style="background:rgba(255,255,255,0.02);border:1px solid rgba(91,168,255,0.1);border-radius:4px;color:var(--text);padding:6px 4px;font-size:16px;">
             <option value="">-</option>
             ${isTimed
               ? [6,7,8,9,10].map(n=>`<option value="${n}">RPE${n}</option>`).join('')
@@ -11016,7 +11114,7 @@ function openAdminWorkoutLogger(targetUid, hunterName) {
   }
 
   overlay.innerHTML = `
-    <div class="modal" style="max-height:min(88dvh, 88vh);overflow-y:auto;">
+    <div class="modal" style="max-height:88dvh;overflow-y:auto;">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
         <div>
           <div style="font-family:var(--font-mono);font-size:9px;color:var(--text-faint);letter-spacing:0.2em;">ADMIN · LOG WORKOUT FOR</div>
@@ -11026,18 +11124,18 @@ function openAdminWorkoutLogger(targetUid, hunterName) {
       </div>
       <div class="field" style="margin-bottom:12px;">
         <label>Date</label>
-        <input type="date" id="admin-log-date" value="${today}" style="background:rgba(255,255,255,0.02);border:1px solid rgba(91,168,255,0.1);border-radius:6px;color:var(--text);padding:8px 10px;font-size:14px;width:100%;" />
+        <input type="date" id="admin-log-date" value="${today}" style="background:rgba(255,255,255,0.02);border:1px solid rgba(91,168,255,0.1);border-radius:6px;color:var(--text);padding:8px 10px;font-size:16px;width:100%;" />
       </div>
       <div class="field" style="margin-bottom:12px;">
         <label>Time (when they trained)</label>
-        <input type="time" id="admin-log-time" value="${new Date().toTimeString().slice(0,5)}" style="background:rgba(255,255,255,0.02);border:1px solid rgba(91,168,255,0.1);border-radius:6px;color:var(--text);padding:8px 10px;font-size:14px;width:100%;" />
+        <input type="time" id="admin-log-time" value="${new Date().toTimeString().slice(0,5)}" style="background:rgba(255,255,255,0.02);border:1px solid rgba(91,168,255,0.1);border-radius:6px;color:var(--text);padding:8px 10px;font-size:16px;width:100%;" />
       </div>
       <div id="admin-ex-rows">${prefillExercises.length ? buildExerciseRows(prefillExercises) : '<p style="color:var(--text-faint);font-size:13px;">No program found — add exercises below.</p>'}</div>
       <button class="btn" id="admin-add-ex" style="width:100%;margin-bottom:14px;" style="font-family:var(--font-mono);letter-spacing:.06em;">+ Add Exercise</button>
       <button class="btn btn-primary" id="admin-log-save" style="width:100%;">Save workout for ${escapeHtml(hunterName)}</button>
     </div>`;
 
-  document.body.appendChild(overlay);
+  getOverlayHost().appendChild(overlay);
   overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
   overlay.querySelector('#admin-log-close').addEventListener('click', () => overlay.remove());
 
@@ -11048,15 +11146,15 @@ function openAdminWorkoutLogger(targetUid, hunterName) {
     pickerOverlay.style.zIndex = '700';
     const allExNames = Object.keys(EXERCISES_ALL).sort();
     pickerOverlay.innerHTML = `
-      <div class="modal" style="max-height:min(70dvh, 70vh);display:flex;flex-direction:column;">
+      <div class="modal" style="max-height:70dvh;display:flex;flex-direction:column;">
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
           <input id="ex-search" placeholder="Search exercise…" autofocus
-            style="flex:1;background:rgba(255,255,255,0.02);border:1px solid rgba(91,168,255,0.1);border-radius:6px;color:var(--text);padding:8px 10px;font-size:13px;" />
+            style="flex:1;background:rgba(255,255,255,0.02);border:1px solid rgba(91,168,255,0.1);border-radius:6px;color:var(--text);padding:8px 10px;font-size:16px;" />
           <button class="icon-btn" id="ex-picker-close" style="font-size:20px;">✕</button>
         </div>
         <div id="ex-list" style="overflow-y:auto;flex:1;display:flex;flex-direction:column;gap:4px;"></div>
       </div>`;
-    document.body.appendChild(pickerOverlay);
+    getOverlayHost().appendChild(pickerOverlay);
 
     const listEl = pickerOverlay.querySelector('#ex-list');
     const searchEl = pickerOverlay.querySelector('#ex-search');
@@ -11094,9 +11192,9 @@ function openAdminWorkoutLogger(targetUid, hunterName) {
           ${Array.from({length:sets},(_,si)=>`
             <div class="admin-set-row" style="display:grid;grid-template-columns:24px 1fr 1fr auto;gap:6px;align-items:center;margin-bottom:6px;">
               <span style="font-size:11px;color:var(--text-faint);text-align:center;">${si+1}</span>
-              <input type="number" class="admin-reps" placeholder="${repsLabel}" min="0" inputmode="decimal" style="background:var(--card);border:1px solid var(--border);border-radius:4px;color:var(--text);padding:6px 8px;font-size:13px;width:100%;" />
-              <input type="number" class="admin-weight" placeholder="kg" min="0" step="0.5" inputmode="decimal" style="background:var(--card);border:1px solid var(--border);border-radius:4px;color:var(--text);padding:6px 8px;font-size:13px;width:100%;" />
-              <select class="admin-rir" style="background:var(--card);border:1px solid var(--border);border-radius:4px;color:var(--text);padding:6px 4px;font-size:12px;">
+              <input type="number" class="admin-reps" placeholder="${repsLabel}" min="0" inputmode="decimal" style="background:var(--card);border:1px solid var(--border);border-radius:4px;color:var(--text);padding:6px 8px;font-size:16px;width:100%;" />
+              <input type="number" class="admin-weight" placeholder="kg" min="0" step="0.5" inputmode="decimal" style="background:var(--card);border:1px solid var(--border);border-radius:4px;color:var(--text);padding:6px 8px;font-size:16px;width:100%;" />
+              <select class="admin-rir" style="background:var(--card);border:1px solid var(--border);border-radius:4px;color:var(--text);padding:6px 4px;font-size:16px;">
                 <option value="">-</option>
                 ${isTimed?[6,7,8,9,10].map(n=>`<option value="${n}">RPE${n}</option>`).join(''):[0,1,2,3,4,5].map(n=>`<option value="${n}">RIR${n}</option>`).join('')}
               </select>
@@ -11264,7 +11362,7 @@ function showLevelUpModal(newLevel, apAwarded, done) {
   // Gold flash across screen
   const flash = document.createElement('div');
   flash.className = 'level-up-flash';
-  document.body.appendChild(flash);
+  getOverlayHost().appendChild(flash);
   setTimeout(() => flash.remove(), 700);
 
   showSystemModal(`<div class="system-window levelup" id="levelup-modal-inner" style="overflow:hidden;">
@@ -11343,7 +11441,7 @@ function showQuestClearBanner(apEarned, prCount, persistent = false, generalXP =
       ${xpText ? `<div class="quest-clear-ap" style="color:#FFD66B;">${xpText}${apText ? ` · ${apText}` : ''}${prText}</div>` : apText ? `<div class="quest-clear-ap">${apText}${prText}</div>` : ''}
     </div>`;
 
-  document.body.appendChild(banner);
+  getOverlayHost().appendChild(banner);
 
   if (!persistent) {
     // save to localStorage so it persists for the rest of the day
@@ -11597,7 +11695,7 @@ function showDebriefModal(exercises, apEarned, prs, done, soldiersEarned = {}) {
       <button class="debrief-close-btn">Back to the Hunt</button>
     </div>`;
 
-  document.body.appendChild(el);
+  getOverlayHost().appendChild(el);
 
   // Animate the XP bar from previous position to current position
   const debriefXpBar = el.querySelector('#debrief-xp-bar');
@@ -13424,7 +13522,7 @@ function renderTrends() {
             <span style="font-family:var(--font-mono);font-size:10px;color:var(--text-faint);flex-shrink:0;">${e.date}</span>
             <span class="weight-entry-val" style="font-family:var(--font-mono);font-size:13px;color:var(--text);flex:1;">${e.weight} kg</span>
             <input class="weight-entry-input hidden" type="number" step="0.1" inputmode="decimal" value="${e.weight}"
-              style="flex:1;background:transparent;border:none;border-bottom:1px solid rgba(91,168,255,0.3);border-radius:0;color:var(--text);padding:4px 8px;font-size:13px;font-family:var(--font-mono);" />
+              style="flex:1;background:transparent;border:none;border-bottom:1px solid rgba(91,168,255,0.3);border-radius:0;color:var(--text);padding:4px 8px;font-size:16px;font-family:var(--font-mono);" />
             <button class="btn btn-sm weight-edit-btn" data-id="${e.id}" style="font-size:11px;padding:3px 8px;">✎</button>
             <button class="btn btn-sm weight-save-edit-btn hidden" data-id="${e.id}" style="font-size:11px;padding:3px 8px;color:var(--growing);border-color:var(--growing);">✓</button>
             <button class="btn btn-sm weight-delete-btn" data-id="${e.id}" style="font-size:11px;padding:3px 8px;color:var(--excess);border-color:var(--excess);">🗑</button>
@@ -13764,7 +13862,7 @@ function openMusclePRPanel(muscleName) {
   const overlay = document.createElement('div');
   overlay.className = 'modal-overlay';
   overlay.innerHTML = `
-    <div class="modal" style="max-height:min(85dvh, 85vh);overflow-y:auto;">
+    <div class="modal" style="max-height:85dvh;overflow-y:auto;">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
         <div>
           <div style="font-family:var(--font-mono);font-size:9px;letter-spacing:0.3em;color:var(--text-faint);margin-bottom:4px;">MUSCLE GROUP</div>
@@ -13775,7 +13873,7 @@ function openMusclePRPanel(muscleName) {
       ${!unlocked ? `<div style="background:rgba(91,168,255,0.08);border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:14px;font-size:12px;color:var(--text-dim);font-family:var(--font-mono);">🔒 PR badges unlock after 14 days — tracking your numbers now so your baseline is ready.</div>` : ''}
       ${exerciseCards}
     </div>`;
-  document.body.appendChild(overlay);
+  getOverlayHost().appendChild(overlay);
   overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
   overlay.querySelector('#muscle-panel-close').addEventListener('click', () => overlay.remove());
 }
@@ -13978,7 +14076,7 @@ function openAddExerciseModal() {
         <button class="btn btn-primary" id="save-add-ex" style="flex:2;" disabled>Add exercise</button>
       </div>
     </div>`;
-  document.body.appendChild(overlay);
+  getOverlayHost().appendChild(overlay);
 
   const selected = new Set();
   let isTimed = false;
@@ -14144,7 +14242,7 @@ function openEditExerciseModal(name) {
       </div>
       ${existingOverride ? `<button class="btn" id="delete-edit-ex" style="width:100%;margin-top:10px;color:var(--excess);border-color:var(--excess);">${isBaseExercise ? 'Revert to default' : 'Delete exercise'}</button>` : ''}
     </div>`;
-  document.body.appendChild(overlay);
+  getOverlayHost().appendChild(overlay);
   const selected = new Set(currentMuscles);
   let isTimed = currentTimed;
   let timedUnit = currentUnit;
@@ -16439,7 +16537,7 @@ function renderInventory() {
         <div style="font-size:8px;color:${rColor};text-align:center;max-width:62px;line-height:1.3;font-weight:600;">${escapeHtml(displayName)}</div>
       </div>
 
-      <div id="${modalId}" style="display:none;position:fixed;inset:0;z-index:9999;align-items:center;justify-content:center;background:rgba(0,0,0,0.75);backdrop-filter:blur(6px);" onclick="if(event.target===this)this.style.display='none'">
+      <div id="${modalId}" style="display:none;position:fixed;inset:0;z-index:800;align-items:center;justify-content:center;background:rgba(0,0,0,0.75);backdrop-filter:blur(6px);" onclick="if(event.target===this)this.style.display='none'">
         <div style="background:var(--card);border:1px solid ${rColor};border-radius:16px;padding:24px;max-width:320px;width:90vw;box-shadow:0 0 60px ${glowColor};position:relative;overflow:hidden;">
           <div style="position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,transparent,${rColor},transparent);"></div>
           <div style="display:flex;align-items:center;gap:14px;margin-bottom:16px;">
@@ -17089,7 +17187,7 @@ function openAddGoalModal() {
         <button class="btn btn-primary" id="save-goal" style="flex:2;">Set Goal</button>
       </div>
     </div>`;
-  document.body.appendChild(overlay);
+  getOverlayHost().appendChild(overlay);
 
   let goalType = 'e1rm';
 
@@ -17806,9 +17904,9 @@ function openWorkoutDetail(workoutId) {
           return `
           <div class="detail-set-row" data-si="${si}">
             <span class="set-idx">${si+1}</span>
-            <input type="number" class="edit-reps" data-ei="${ei}" data-si="${si}" value="${s.reps||0}" min="0" inputmode="decimal" style="width:52px;background:rgba(255,255,255,0.02);border:1px solid rgba(91,168,255,0.1);border-radius:4px;color:var(--text);padding:4px 6px;font-size:13px;" />
-            <input type="number" class="edit-weight" data-ei="${ei}" data-si="${si}" value="${s.weight||0}" min="0" step="0.5" inputmode="decimal" style="width:52px;background:rgba(255,255,255,0.02);border:1px solid rgba(91,168,255,0.1);border-radius:4px;color:var(--text);padding:4px 6px;font-size:13px;" />
-            <select class="edit-rir" data-ei="${ei}" data-si="${si}" style="background:rgba(255,255,255,0.02);border:1px solid rgba(91,168,255,0.1);border-radius:4px;color:var(--text);padding:4px 3px;font-size:11px;width:58px;">
+            <input type="number" class="edit-reps" data-ei="${ei}" data-si="${si}" value="${s.reps||0}" min="0" inputmode="decimal" style="width:52px;background:rgba(255,255,255,0.02);border:1px solid rgba(91,168,255,0.1);border-radius:4px;color:var(--text);padding:4px 6px;font-size:16px;" />
+            <input type="number" class="edit-weight" data-ei="${ei}" data-si="${si}" value="${s.weight||0}" min="0" step="0.5" inputmode="decimal" style="width:52px;background:rgba(255,255,255,0.02);border:1px solid rgba(91,168,255,0.1);border-radius:4px;color:var(--text);padding:4px 6px;font-size:16px;" />
+            <select class="edit-rir" data-ei="${ei}" data-si="${si}" style="background:rgba(255,255,255,0.02);border:1px solid rgba(91,168,255,0.1);border-radius:4px;color:var(--text);padding:4px 3px;font-size:16px;width:58px;">
               <option value="">—</option>${rirOptions}
             </select>
             <button class="remove-set-edit-btn" data-ei="${ei}" data-si="${si}" style="background:none;border:none;color:var(--excess);font-size:16px;cursor:pointer;">×</button>
@@ -17845,7 +17943,7 @@ function openWorkoutDetail(workoutId) {
       <button class="btn" id="detail-delete-confirm" style="width:100%;background:var(--excess);color:#fff;display:none;margin-top:8px;">Confirm — delete and reverse AP</button>
     </div>`;
 
-  document.body.appendChild(overlay);
+  getOverlayHost().appendChild(overlay);
   overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
   overlay.querySelector('#detail-close').addEventListener('click', () => overlay.remove());
 
@@ -18223,7 +18321,7 @@ function maybeShowStreakFreezeNotice() {
   if (!profile?.streakFreeze?.active) return;
 
   const modal = document.createElement('div');
-  modal.style.cssText = 'position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.92);backdrop-filter:blur(8px);';
+  modal.style.cssText = 'position:fixed;inset:0;z-index:850;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.92);backdrop-filter:blur(8px);';
   modal.innerHTML = `
     <div style="max-width:340px;width:92vw;text-align:center;padding:32px 24px;background:linear-gradient(160deg,rgba(5,7,13,0.98),rgba(10,15,30,0.98));border:1px solid rgba(255,214,107,0.4);border-radius:20px;box-shadow:0 0 80px rgba(255,214,107,0.15),0 0 200px rgba(255,214,107,0.05);">
       <div style="font-size:52px;margin-bottom:12px;">👑</div>
@@ -18242,7 +18340,7 @@ function maybeShowStreakFreezeNotice() {
       <div style="font-family:var(--font-mono);font-size:9px;color:rgba(255,214,107,0.3);letter-spacing:0.1em;margin-bottom:20px;">— THE SYSTEM, on behalf of Lawrence —</div>
       <button style="width:100%;padding:14px;background:linear-gradient(135deg,rgba(255,214,107,0.15),rgba(255,214,107,0.08));border:1px solid rgba(255,214,107,0.4);border-radius:10px;color:rgba(255,214,107,0.9);font-family:var(--font-display);font-size:14px;letter-spacing:0.08em;cursor:pointer;" onclick="this.closest('div[style*=fixed]').remove()">I AM GRATEFUL. PROCEED.</button>
     </div>`;
-  document.body.appendChild(modal);
+  getOverlayHost().appendChild(modal);
   modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
   SFX.classAssigned?.();
 }
@@ -18257,7 +18355,7 @@ function showUpdateNotice() {
   document.querySelectorAll('.update-notice-overlay').forEach(e => e.remove());
   const overlay = document.createElement('div');
   overlay.className = 'update-notice-overlay';
-  overlay.style.cssText = 'position:fixed;inset:0;z-index:9998;background:rgba(0,0,0,0.8);backdrop-filter:blur(6px);display:flex;align-items:flex-end;justify-content:center;padding-bottom:80px;';
+  overlay.style.cssText = 'position:fixed;inset:0;z-index:850;background:rgba(0,0,0,0.8);backdrop-filter:blur(6px);display:flex;align-items:flex-end;justify-content:center;padding-bottom:80px;';
   overlay.innerHTML = `
     <div style="background:var(--card);border:1px solid rgba(91,168,255,0.2);border-radius:20px 20px 16px 16px;max-width:440px;width:min(95vw, 640px);max-height:min(80dvh, 80vh);overflow-y:auto;box-shadow:0 -4px 60px rgba(91,168,255,0.15);">
       <div style="position:sticky;top:0;background:var(--card);border-radius:20px 20px 0 0;padding:20px 20px 12px;border-bottom:1px solid rgba(91,168,255,0.08);">
@@ -18306,7 +18404,7 @@ function showUpdateNotice() {
       </div>
     </div>`;
 
-  document.body.appendChild(overlay);
+  getOverlayHost().appendChild(overlay);
 
   const key = `aura_update_dismissed_${currentUser?.uid || 'anon'}_${UPDATE_VERSION}`;
   overlay.querySelector('#update-notice-dismiss').addEventListener('click', () => {
@@ -18847,7 +18945,7 @@ async function sendGateDuel(targetUid) {
       <button class="btn btn-sm" id="duel-cancel" style="flex:1;">Back Down</button>
     </div>
   </div>`;
-  document.body.appendChild(modal);
+  getOverlayHost().appendChild(modal);
   modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
   modal.querySelector('#duel-cancel').addEventListener('click', () => modal.remove());
   modal.querySelector('#duel-confirm').addEventListener('click', async () => {
@@ -18912,7 +19010,7 @@ async function openDuelDesigner(duelId, challengerName) {
         <!-- Exercise -->
         ${exercises.length > 1 ? `<div>
           <div style="font-size:11px;color:var(--text-faint);margin-bottom:6px;font-family:var(--font-mono);">EXERCISE</div>
-          <select id="duel-exercise" style="width:100%;background:var(--card);border:1px solid var(--border);border-radius:6px;padding:8px;color:var(--text);font-size:13px;">
+          <select id="duel-exercise" style="width:100%;background:var(--card);border:1px solid var(--border);border-radius:6px;padding:8px;color:var(--text);font-size:16px;">
             ${exercises.map(e => `<option value="${e}" ${e===selectedExercise?'selected':''}>${e}</option>`).join('')}
           </select>
         </div>` : ''}
@@ -19008,7 +19106,7 @@ async function openDuelDesigner(duelId, challengerName) {
     });
   };
 
-  modal.innerHTML = `<div class="modal" style="max-width:420px;max-height:min(88dvh, 88vh);overflow-y:auto;">
+  modal.innerHTML = `<div class="modal" style="max-width:420px;max-height:88dvh;overflow-y:auto;">
     <div style="font-family:var(--font-mono);font-size:9px;color:var(--excess);letter-spacing:0.2em;margin-bottom:8px;">⚔ GATE DUEL — DESIGN THE FIGHT</div>
     <h3 style="margin-bottom:4px;">You were challenged by ${escapeHtml(challengerName)}</h3>
     <p style="font-size:12px;color:var(--text-dim);margin-bottom:16px;line-height:1.6;">
@@ -19016,7 +19114,7 @@ async function openDuelDesigner(duelId, challengerName) {
     </p>
     <div class="duel-designer-body"></div>
   </div>`;
-  document.body.appendChild(modal);
+  getOverlayHost().appendChild(modal);
   modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
   renderContent();
 }
@@ -19315,7 +19413,7 @@ async function checkPendingDuels() {
 // ── Show incoming challenge notice ──
 function showIncomingDuelNotice(duelId, duel) {
   const modal = document.createElement('div');
-  modal.style.cssText = 'position:fixed;inset:0;z-index:99990;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.88);backdrop-filter:blur(6px);';
+  modal.style.cssText = 'position:fixed;inset:0;z-index:850;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.88);backdrop-filter:blur(6px);';
   modal.innerHTML = `
     <div style="max-width:340px;width:92vw;text-align:center;padding:28px 22px;background:var(--card);border:1px solid rgba(255,77,103,0.4);border-radius:16px;box-shadow:0 0 60px rgba(255,77,103,0.15);">
       <div style="font-family:var(--font-mono);font-size:9px;color:var(--excess);letter-spacing:0.2em;margin-bottom:8px;">◈ GATE DUEL — INCOMING ◈</div>
@@ -19328,7 +19426,7 @@ function showIncomingDuelNotice(duelId, duel) {
       <button class="btn btn-primary" style="width:100%;border-color:rgba(255,77,103,0.4);background:rgba(255,77,103,0.08);color:var(--excess);margin-bottom:8px;" onclick="this.closest('div[style*=fixed]').remove(); openDuelDesigner('${duelId}','${escapeHtml(duel.challengerName)}')">⚔ Design The Fight</button>
       <button class="btn btn-sm" style="width:100%;color:var(--text-dim);" onclick="this.closest('div[style*=fixed]').remove()">Later</button>
     </div>`;
-  document.body.appendChild(modal);
+  getOverlayHost().appendChild(modal);
   modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
   SFX.classAssigned?.();
 }
