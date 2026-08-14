@@ -213,7 +213,26 @@ canvas { display:block; }
 <script type="module">
 import { COUNTRIES_GEO } from './countries_embedded.js';
 
-const setP = p => document.getElementById('lf').style.width = p + '%';
+const setP = p => {
+  const bar = document.getElementById('lf');
+  if (bar) bar.style.width = p + '%';
+  const fl = document.getElementById('load-flavor');
+  if (fl) {
+    const flavors = [
+      'Scanning global territories...',
+      'Detecting hostile activity...',
+      'Calibrating shadow coordinates...',
+      'Establishing System connection...',
+      'Mapping dimensional boundaries...',
+      'Initialising territorial command...',
+    ];
+    const idx = Math.min(Math.floor((p / 100) * flavors.length), flavors.length - 1);
+    fl.style.animation = 'none';
+    fl.offsetHeight;
+    fl.style.animation = 'flavorFade 1s ease-in-out';
+    fl.textContent = flavors[idx];
+  }
+};
 
 // ── PLAYERS ──
 const PLAYERS = {
@@ -308,28 +327,6 @@ function traceRing(ring) {
     prevX=x;
   });
   ctx.closePath();
-}
-
-// ── Loading progress ──
-const LOAD_FLAVORS = [
-  'Scanning global territories...',
-  'Detecting hostile activity...',
-  'Calibrating shadow coordinates...',
-  'Establishing System connection...',
-  'Mapping dimensional boundaries...',
-  'Initialising territorial command...',
-];
-function setP(pct) {
-  const bar = document.getElementById('lf');
-  if (bar) bar.style.width = pct + '%';
-  const fl = document.getElementById('load-flavor');
-  if (fl) {
-    const idx = Math.floor((pct / 100) * LOAD_FLAVORS.length);
-    fl.style.animation = 'none';
-    fl.offsetHeight; // reflow
-    fl.style.animation = 'flavorFade 1s ease-in-out';
-    fl.textContent = LOAD_FLAVORS[Math.min(idx, LOAD_FLAVORS.length - 1)];
-  }
 }
 
 setP(40);
