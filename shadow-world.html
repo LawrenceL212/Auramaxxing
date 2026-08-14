@@ -861,7 +861,8 @@ function deployToCountry(c, amount) {
   if (!LIVE_COUNTRIES[c.id]) LIVE_COUNTRIES[c.id]={ownerUid:CURRENT_UID,soldiers:0};
   else if (!LIVE_COUNTRIES[c.id].ownerUid) LIVE_COUNTRIES[c.id].ownerUid=CURRENT_UID;
   LIVE_COUNTRIES[c.id].soldiers=(LIVE_COUNTRIES[c.id].soldiers||0)+amount;
-  if (!LIVE_POOL[CURRENT_UID]) LIVE_POOL[CURRENT_UID]={};\n  LIVE_POOL[CURRENT_UID][m.armyKey]=Math.max(0,myPool-amount);
+  if (!LIVE_POOL[CURRENT_UID]) LIVE_POOL[CURRENT_UID]={};
+  LIVE_POOL[CURRENT_UID][m.armyKey]=Math.max(0,myPool-amount);
   swNotify(`⚑ ${amount.toLocaleString()} soldiers deployed to ${c.name}`, PLAYERS[CURRENT_UID]?.hex||'#61a5ff');
   updateGateLock();
   closePanel();
