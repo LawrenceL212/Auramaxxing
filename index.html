@@ -9129,48 +9129,57 @@ const POSES = [
   {
     id: 'front_relaxed',
     label: 'Front — Relaxed',
-    instruction: 'Stand facing camera. Feet shoulder-width. Arms slightly away from body. Look forward. Neutral expression.',
+    instruction: 'Frame from chin/neck down — no face needed. Feet shoulder-width, arms slightly away from body. Stand tall. Fill the frame from neck to feet.',
     icon: '🧍',
-    svgGuide: `<svg viewBox="0 0 120 200" xmlns="http://www.w3.org/2000/svg" style="width:80px;opacity:.5;">
-      <ellipse cx="60" cy="22" rx="14" ry="16" fill="none" stroke="#5BA8FF" stroke-width="1.5"/>
-      <line x1="60" y1="38" x2="60" y2="110" stroke="#5BA8FF" stroke-width="1.5"/>
+    svgGuide: `<svg viewBox="0 0 120 220" xmlns="http://www.w3.org/2000/svg" style="width:80px;opacity:.5;">
+      <line x1="0" y1="18" x2="120" y2="18" stroke="#FF4D67" stroke-width="1.5" stroke-dasharray="4,3"/>
+      <text x="60" y="12" text-anchor="middle" fill="#FF4D67" font-size="8" font-family="monospace">frame here ↓</text>
+      <ellipse cx="60" cy="8" rx="13" ry="15" fill="rgba(255,77,103,.1)" stroke="rgba(255,77,103,.3)" stroke-width="1"/>
+      <line x1="60" y1="22" x2="60" y2="110" stroke="#5BA8FF" stroke-width="1.5"/>
       <line x1="60" y1="52" x2="32" y2="85" stroke="#5BA8FF" stroke-width="1.5"/>
       <line x1="60" y1="52" x2="88" y2="85" stroke="#5BA8FF" stroke-width="1.5"/>
-      <line x1="60" y1="110" x2="40" y2="170" stroke="#5BA8FF" stroke-width="1.5"/>
-      <line x1="60" y1="110" x2="80" y2="170" stroke="#5BA8FF" stroke-width="1.5"/>
+      <line x1="60" y1="110" x2="40" y2="175" stroke="#5BA8FF" stroke-width="1.5"/>
+      <line x1="60" y1="110" x2="80" y2="175" stroke="#5BA8FF" stroke-width="1.5"/>
       <rect x="38" y="65" width="44" height="46" rx="4" fill="none" stroke="#5BA8FF" stroke-width="1.2"/>
+      <rect x="8" y="18" width="104" height="198" rx="4" fill="none" stroke="rgba(91,168,255,.3)" stroke-width="1" stroke-dasharray="3,3"/>
     </svg>`,
   },
   {
     id: 'front_flexed',
     label: 'Front — Double Bicep',
-    instruction: 'Same position. Raise both arms to shoulder height, elbows bent 90°. Flex hard. Look forward.',
+    instruction: 'Frame from chin/neck down — no face needed. Raise both arms to shoulder height, elbows bent 90°. Flex hard. Same foot position as the relaxed shot.',
     icon: '💪',
-    svgGuide: `<svg viewBox="0 0 120 200" xmlns="http://www.w3.org/2000/svg" style="width:80px;opacity:.5;">
-      <ellipse cx="60" cy="22" rx="14" ry="16" fill="none" stroke="#5BA8FF" stroke-width="1.5"/>
-      <line x1="60" y1="38" x2="60" y2="110" stroke="#5BA8FF" stroke-width="1.5"/>
-      <line x1="60" y1="52" x2="20" y2="52" stroke="#5BA8FF" stroke-width="1.5"/>
-      <line x1="20" y1="52" x2="20" y2="30" stroke="#5BA8FF" stroke-width="1.5"/>
-      <line x1="60" y1="52" x2="100" y2="52" stroke="#5BA8FF" stroke-width="1.5"/>
-      <line x1="100" y1="52" x2="100" y2="30" stroke="#5BA8FF" stroke-width="1.5"/>
-      <line x1="60" y1="110" x2="40" y2="170" stroke="#5BA8FF" stroke-width="1.5"/>
-      <line x1="60" y1="110" x2="80" y2="170" stroke="#5BA8FF" stroke-width="1.5"/>
+    svgGuide: `<svg viewBox="0 0 120 220" xmlns="http://www.w3.org/2000/svg" style="width:80px;opacity:.5;">
+      <line x1="0" y1="18" x2="120" y2="18" stroke="#FF4D67" stroke-width="1.5" stroke-dasharray="4,3"/>
+      <text x="60" y="12" text-anchor="middle" fill="#FF4D67" font-size="8" font-family="monospace">frame here ↓</text>
+      <ellipse cx="60" cy="8" rx="13" ry="15" fill="rgba(255,77,103,.1)" stroke="rgba(255,77,103,.3)" stroke-width="1"/>
+      <line x1="60" y1="22" x2="60" y2="110" stroke="#5BA8FF" stroke-width="1.5"/>
+      <line x1="60" y1="52" x2="16" y2="52" stroke="#5BA8FF" stroke-width="1.5"/>
+      <line x1="16" y1="52" x2="16" y2="28" stroke="#5BA8FF" stroke-width="1.5"/>
+      <line x1="60" y1="52" x2="104" y2="52" stroke="#5BA8FF" stroke-width="1.5"/>
+      <line x1="104" y1="52" x2="104" y2="28" stroke="#5BA8FF" stroke-width="1.5"/>
+      <line x1="60" y1="110" x2="40" y2="175" stroke="#5BA8FF" stroke-width="1.5"/>
+      <line x1="60" y1="110" x2="80" y2="175" stroke="#5BA8FF" stroke-width="1.5"/>
       <rect x="38" y="65" width="44" height="46" rx="4" fill="none" stroke="#5BA8FF" stroke-width="1.2"/>
+      <rect x="8" y="18" width="104" height="198" rx="4" fill="none" stroke="rgba(91,168,255,.3)" stroke-width="1" stroke-dasharray="3,3"/>
     </svg>`,
   },
   {
     id: 'side_relaxed',
     label: 'Side — Left Profile',
-    instruction: 'Turn 90° so your LEFT side faces the camera. Arms hanging naturally. Stand tall.',
+    instruction: 'Frame from chin/neck down — no face needed. Turn 90° so your LEFT side faces the camera. Arms hanging naturally. Stand tall.',
     icon: '🧍',
-    svgGuide: `<svg viewBox="0 0 80 200" xmlns="http://www.w3.org/2000/svg" style="width:50px;opacity:.5;">
-      <ellipse cx="40" cy="22" rx="12" ry="16" fill="none" stroke="#5BA8FF" stroke-width="1.5"/>
-      <line x1="40" y1="38" x2="40" y2="110" stroke="#5BA8FF" stroke-width="1.5"/>
+    svgGuide: `<svg viewBox="0 0 80 220" xmlns="http://www.w3.org/2000/svg" style="width:50px;opacity:.5;">
+      <line x1="0" y1="18" x2="80" y2="18" stroke="#FF4D67" stroke-width="1.5" stroke-dasharray="4,3"/>
+      <text x="40" y="12" text-anchor="middle" fill="#FF4D67" font-size="8" font-family="monospace">frame ↓</text>
+      <ellipse cx="40" cy="8" rx="11" ry="14" fill="rgba(255,77,103,.1)" stroke="rgba(255,77,103,.3)" stroke-width="1"/>
+      <line x1="40" y1="22" x2="40" y2="110" stroke="#5BA8FF" stroke-width="1.5"/>
       <line x1="40" y1="52" x2="20" y2="85" stroke="#5BA8FF" stroke-width="1.5"/>
       <line x1="40" y1="52" x2="55" y2="85" stroke="#5BA8FF" stroke-width="1.5"/>
-      <line x1="40" y1="110" x2="30" y2="170" stroke="#5BA8FF" stroke-width="1.5"/>
-      <line x1="40" y1="110" x2="52" y2="170" stroke="#5BA8FF" stroke-width="1.5"/>
-      <rect x="28" y="60" width="26" height="50" rx="3" fill="none" stroke="#5BA8FF" stroke-width="1.2"/>
+      <line x1="40" y1="110" x2="30" y2="175" stroke="#5BA8FF" stroke-width="1.5"/>
+      <line x1="40" y1="110" x2="52" y2="175" stroke="#5BA8FF" stroke-width="1.5"/>
+      <rect x="24" y="60" width="28" height="50" rx="3" fill="none" stroke="#5BA8FF" stroke-width="1.2"/>
+      <rect x="6" y="18" width="68" height="198" rx="4" fill="none" stroke="rgba(91,168,255,.3)" stroke-width="1" stroke-dasharray="3,3"/>
     </svg>`,
   },
 ];
@@ -9259,7 +9268,7 @@ window.openPhotoCheckin = async (checkinDate) => {
           <div style="display:flex;justify-content:center;margin-bottom:16px;">${preview}</div>
 
           <div style="font-size:10px;color:rgba(242,245,250,.25);margin-bottom:14px;">
-            📏 Stand ~1.5m from camera · Full body in frame · Good lighting
+            📏 Stand ~1.5m from camera · Chin to feet in frame · No face needed · Good lighting
           </div>
 
           <input type="file" id="pose-file-input" accept="image/*" capture="environment" style="display:none;" />
