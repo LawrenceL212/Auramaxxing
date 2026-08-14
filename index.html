@@ -5988,11 +5988,12 @@ function addExerciseRow(presetName, targetSets, targetReps, prefillSets) {
   row.querySelector('.remove-x').addEventListener('click', () => row.remove());
   if (prefillSets && prefillSets.length) {
     // Pass the semantically correct intensity value — rpe for timed, rir for resistance
-  const isTimedPrefill = !!(exDef?.timed && exDef?.timedUnit !== 'mins');
-  prefillSets.forEach(s => addSetRow(s.reps, s.weight,
-    isTimedPrefill ? (s.rpe ?? s.rir) : s.rir,  // correct field per type
-    s.suggestion, s.prevReps, s.prevWeight,
-    isTimedPrefill ? (s.prevRpe ?? s.prevRir) : s.prevRir));
+    const _prefillDef = EXERCISES_ALL[exName] || {};
+    const isTimedPrefill = !!(_prefillDef.timed && _prefillDef.timedUnit !== 'mins');
+    prefillSets.forEach(s => addSetRow(s.reps, s.weight,
+      isTimedPrefill ? (s.rpe ?? s.rir) : s.rir,
+      s.suggestion, s.prevReps, s.prevWeight,
+      isTimedPrefill ? (s.prevRpe ?? s.prevRir) : s.prevRir));
   } else if (targetSets > 0) {
     for (let i = 0; i < targetSets; i++) addSetRow(targetReps);
   } else {
