@@ -224,7 +224,8 @@
 
   /* Workout modal — fluid */
   .workout-modal-header { padding: var(--fluid-pad) var(--fluid-pad) clamp(8px,2vw,14px) !important; }
-  .workout-modal-body { padding: var(--fluid-pad) var(--fluid-pad) calc(clamp(80px,22vw,120px) + env(safe-area-inset-bottom,0)) !important; }
+  .workout-modal-/* body padding removed — was incorrectly setting coordinate origin.
+     View-area padding handles content spacing correctly. */
 
   /* Set rows — fluid */
   .set-row {
@@ -562,7 +563,8 @@
   @keyframes timerPulse{0%,100%{opacity:1;}50%{opacity:0.4;}}
   main.view-area{
     flex:1;overflow-y:auto;overflow-x:hidden;
-    -webkit-overflow-scrolling:touch;
+    /* -webkit-overflow-scrolling:touch removed — obsolete since iOS 13, caused iOS
+       stacking context that trapped position:fixed descendants of this element */
     /* Use dvh-aware padding — accounts for iOS browser chrome */
     padding: var(--fluid-pad) var(--fluid-pad) calc(80px + env(safe-area-inset-bottom, 0));
     max-width:640px;margin:0 auto;width:100%;
@@ -2388,7 +2390,7 @@
   .system-cmd-header{display:flex;align-items:center;justify-content:space-between;padding:18px 20px 14px;border-bottom:1px solid rgba(91,168,255,0.06);flex-shrink:0;}
   .system-cmd-close{width:36px;height:36px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:50%;color:var(--text-faint);font-size:14px;cursor:pointer;touch-action:manipulation;display:flex;align-items:center;justify-content:center;transition:background var(--dur-fast),color var(--dur-fast);}
   .system-cmd-close:hover{background:rgba(255,77,103,0.08);color:var(--excess);}
-  .system-cmd-body{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;padding:18px 20px calc(18px + env(safe-area-inset-bottom,0));}
+  .system-cmd-body{flex:1;overflow-y:auto;overflow-x:hidden;padding:18px 20px calc(18px + env(safe-area-inset-bottom,0));}
   .system-cmd-section-label{font-family:var(--font-mono);font-size:8px;color:rgba(91,168,255,0.35);letter-spacing:.25em;margin-bottom:10px;}
   .system-cmd-functions{display:flex;flex-direction:column;gap:4px;}
   .sys-fn-btn{display:flex;align-items:center;gap:14px;padding:14px 16px;background:rgba(91,168,255,0.04);border:1px solid rgba(91,168,255,0.1);border-radius:var(--radius-sm);color:var(--text);cursor:pointer;touch-action:manipulation;text-align:left;width:100%;transition:background var(--dur-fast),border-color var(--dur-fast),transform var(--dur-snap);}
@@ -2442,7 +2444,6 @@
     padding:20px;
     padding-bottom:calc(20px + env(safe-area-inset-bottom, 0px));
     width:100%;max-width:640px;max-height:85dvh;overflow-y:auto;
-    -webkit-overflow-scrolling:touch;
     overscroll-behavior:contain;
     box-shadow:
       0 0 0 1px rgba(91,168,255,0.06),
@@ -2530,7 +2531,7 @@
   } rgba(91,168,255,0.08);
   }
   .workout-modal-header h3{margin:0;font-size:16px;}
-  .workout-modal-body{flex:1;overflow-y:auto;padding:16px 20px calc(100px + env(safe-area-inset-bottom, 0));-webkit-overflow-scrolling:touch;}
+  .workout-modal-body{flex:1;overflow-y:auto;padding:16px 20px calc(100px + env(safe-area-inset-bottom, 0));}
   .rest-timer-bar{
     display:flex;align-items:center;gap:8px;padding:10px 20px;border-bottom:1px solid var(--border);
     background:var(--card-2);flex-shrink:0;flex-wrap:wrap;
@@ -2780,58 +2781,7 @@
       </div>
     </section>
 
-    <!-- Full-screen workout logging modal — opened by Begin Hunt or manual logging -->
-    <div class="workout-modal-overlay hidden" id="workout-modal-overlay">
-      <div class="workout-modal">
-        <div class="workout-modal-header" style="position:relative;">
-          <div style="padding-right:104px;">
-            <div style="font-family:var(--font-mono);font-size:9px;letter-spacing:0.2em;color:rgba(91,168,255,0.5);margin-bottom:2px;">◈ QUEST ACTIVE ◈</div>
-            <div id="logger-title" style="font-family:var(--font-display);font-size:20px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;line-height:1.1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin:0 0 2px;">HUNT ACTIVE</div>
-            <div style="display:flex;justify-content:space-between;margin-top:4px;">
-              <span style="font-family:var(--font-mono);font-size:10px;color:rgba(91,168,255,.5);" id="logger-set-count" style="letter-spacing:.06em;"></span>
-              <span style="font-family:var(--font-mono);font-size:10px;color:rgba(255,214,107,0.7);transition:all 0.3s;" id="logger-xp-live">+0 XP</span>
-            </div>
-            <div style="height:2px;background:rgba(91,168,255,0.08);margin-top:6px;border-radius:1px;overflow:hidden;">
-              <div id="logger-xp-bar" style="height:100%;width:0%;background:linear-gradient(90deg,var(--brass),#FFD66B);border-radius:1px;transition:width 0.6s cubic-bezier(0.16,1,0.3,1);box-shadow:0 0 6px rgba(255,214,107,0.4);"></div>
-            </div>
-          </div>
-          <div style="position:absolute;top:0;right:0;display:flex;gap:8px;">
-            <button id="minimise-workout-modal" style="width:44px;height:44px;display:flex;align-items:center;justify-content:center;background:rgba(91,168,255,0.1);border:1px solid rgba(91,168,255,0.3);border-radius:8px;color:#61a5ff;font-size:20px;cursor:pointer;touch-action:manipulation;">−</button>
-            <button id="end-workout-modal" style="width:44px;height:44px;display:flex;align-items:center;justify-content:center;background:rgba(255,77,103,0.1);border:1px solid rgba(255,77,103,0.35);border-radius:8px;color:#ff3d5a;font-size:18px;cursor:pointer;touch-action:manipulation;">✕</button>
-          </div>
-        </div>
-        <div class="rest-timer-bar">
-          <span class="rest-timer-label">⏱ Rest<span class="rest-timer-phase">RECOVERY PHASE</span></span>
-          <div class="rest-timer-presets">
-            <button type="button" class="rest-preset-btn" data-secs="30">30s</button>
-            <button type="button" class="rest-preset-btn" data-secs="60">60s</button>
-            <button type="button" class="rest-preset-btn" data-secs="90">90s</button>
-            <button type="button" class="rest-preset-btn" data-secs="120">120s</button>
-          </div>
-          <div class="rest-timer-display" id="rest-timer-display">—</div>
-          <button type="button" class="rest-timer-stop hidden" id="rest-timer-stop">Stop</button>
-        </div>
-        <div id="rest-next-preview" class="rest-next-preview" style="display:none;padding:6px 20px;background:rgba(91,168,255,0.04);border-bottom:1px solid rgba(91,168,255,0.06);font-family:var(--font-mono);font-size:10px;color:rgba(91,168,255,.5);letter-spacing:.06em;"></div>
-        <div class="workout-modal-body">
-          <div class="date-row">
-            <div class="field">
-              <label for="workout-date">Date</label>
-              <input type="date" id="workout-date" />
-            </div>
-            <div class="field">
-              <label for="workout-time">Time</label>
-              <input type="time" id="workout-time" />
-            </div>
-          </div>
-          <div id="exercise-rows"></div>
-          <button class="btn add-exercise-btn" id="add-exercise-btn" style="font-family:var(--font-mono);letter-spacing:.06em;">+ Add Exercise</button>
-          <div class="save-bar">
-            <button class="btn btn-primary hidden" id="save-workout-btn">⚔ Complete Quest</button>
-            <p class="save-msg hidden" id="save-msg" style="font-family:var(--font-mono);font-size:11px;letter-spacing:.08em;">◈ HUNT CLEARED</p>
-          </div>
-        </div>
-      </div>
-    </div>
+
 
     <!-- Minimised workout pill — shows when workout continues in background -->
     <div class="workout-pill hidden" id="workout-pill">
@@ -2893,34 +2843,7 @@
       </div>
     </div>
 
-    <!-- Custom in-app numpad — replaces system keyboard for reps/weight -->
-    <div class="numpad-overlay hidden" id="numpad-overlay">
-      <div class="numpad-sheet" id="numpad-sheet">
-        <div class="numpad-header">
-          <span class="numpad-context" id="numpad-context">Reps</span>
-          <span class="numpad-display" id="numpad-display">—</span>
-          <button class="numpad-confirm" id="numpad-confirm">✓ Done</button>
-        </div>
-        <div class="numpad-stepper-row">
-          <button class="numpad-step-btn" id="numpad-minus">−</button>
-          <button class="numpad-step-btn" id="numpad-plus">+</button>
-        </div>
-        <div class="numpad-grid">
-          <button class="numpad-key" data-key="7">7</button>
-          <button class="numpad-key" data-key="8">8</button>
-          <button class="numpad-key" data-key="9">9</button>
-          <button class="numpad-key" data-key="4">4</button>
-          <button class="numpad-key" data-key="5">5</button>
-          <button class="numpad-key" data-key="6">6</button>
-          <button class="numpad-key" data-key="1">1</button>
-          <button class="numpad-key" data-key="2">2</button>
-          <button class="numpad-key" data-key="3">3</button>
-          <button class="numpad-key numpad-dot" data-key=".">.</button>
-          <button class="numpad-key numpad-zero" data-key="0">0</button>
-          <button class="numpad-key numpad-del" data-key="del">⌫ DEL</button>
-        </div>
-      </div>
-    </div>
+
 
     <!-- ---- RANK ---- -->
     <section class="view" id="view-board">
@@ -3176,6 +3099,90 @@
   <!-- Secondary nav destinations still accessible via settings/board screen -->
 </div>
 
+<!-- ── Viewport-level overlays — direct body children, outside #app ── -->
+<!-- Full-screen workout logging modal — opened by Begin Hunt or manual logging -->
+<div class="workout-modal-overlay hidden" id="workout-modal-overlay">
+  <div class="workout-modal">
+    <div class="workout-modal-header" style="position:relative;">
+  <div style="padding-right:104px;">
+    <div style="font-family:var(--font-mono);font-size:9px;letter-spacing:0.2em;color:rgba(91,168,255,0.5);margin-bottom:2px;">◈ QUEST ACTIVE ◈</div>
+    <div id="logger-title" style="font-family:var(--font-display);font-size:20px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;line-height:1.1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin:0 0 2px;">HUNT ACTIVE</div>
+    <div style="display:flex;justify-content:space-between;margin-top:4px;">
+      <span style="font-family:var(--font-mono);font-size:10px;color:rgba(91,168,255,.5);" id="logger-set-count" style="letter-spacing:.06em;"></span>
+      <span style="font-family:var(--font-mono);font-size:10px;color:rgba(255,214,107,0.7);transition:all 0.3s;" id="logger-xp-live">+0 XP</span>
+    </div>
+    <div style="height:2px;background:rgba(91,168,255,0.08);margin-top:6px;border-radius:1px;overflow:hidden;">
+      <div id="logger-xp-bar" style="height:100%;width:0%;background:linear-gradient(90deg,var(--brass),#FFD66B);border-radius:1px;transition:width 0.6s cubic-bezier(0.16,1,0.3,1);box-shadow:0 0 6px rgba(255,214,107,0.4);"></div>
+    </div>
+  </div>
+  <div style="position:absolute;top:0;right:0;display:flex;gap:8px;">
+    <button id="minimise-workout-modal" style="width:44px;height:44px;display:flex;align-items:center;justify-content:center;background:rgba(91,168,255,0.1);border:1px solid rgba(91,168,255,0.3);border-radius:8px;color:#61a5ff;font-size:20px;cursor:pointer;touch-action:manipulation;">−</button>
+    <button id="end-workout-modal" style="width:44px;height:44px;display:flex;align-items:center;justify-content:center;background:rgba(255,77,103,0.1);border:1px solid rgba(255,77,103,0.35);border-radius:8px;color:#ff3d5a;font-size:18px;cursor:pointer;touch-action:manipulation;">✕</button>
+  </div>
+    </div>
+    <div class="rest-timer-bar">
+  <span class="rest-timer-label">⏱ Rest<span class="rest-timer-phase">RECOVERY PHASE</span></span>
+  <div class="rest-timer-presets">
+    <button type="button" class="rest-preset-btn" data-secs="30">30s</button>
+    <button type="button" class="rest-preset-btn" data-secs="60">60s</button>
+    <button type="button" class="rest-preset-btn" data-secs="90">90s</button>
+    <button type="button" class="rest-preset-btn" data-secs="120">120s</button>
+  </div>
+  <div class="rest-timer-display" id="rest-timer-display">—</div>
+  <button type="button" class="rest-timer-stop hidden" id="rest-timer-stop">Stop</button>
+    </div>
+    <div id="rest-next-preview" class="rest-next-preview" style="display:none;padding:6px 20px;background:rgba(91,168,255,0.04);border-bottom:1px solid rgba(91,168,255,0.06);font-family:var(--font-mono);font-size:10px;color:rgba(91,168,255,.5);letter-spacing:.06em;"></div>
+    <div class="workout-modal-body">
+  <div class="date-row">
+    <div class="field">
+      <label for="workout-date">Date</label>
+      <input type="date" id="workout-date" />
+    </div>
+    <div class="field">
+      <label for="workout-time">Time</label>
+      <input type="time" id="workout-time" />
+    </div>
+  </div>
+  <div id="exercise-rows"></div>
+  <button class="btn add-exercise-btn" id="add-exercise-btn" style="font-family:var(--font-mono);letter-spacing:.06em;">+ Add Exercise</button>
+  <div class="save-bar">
+    <button class="btn btn-primary hidden" id="save-workout-btn">⚔ Complete Quest</button>
+    <p class="save-msg hidden" id="save-msg" style="font-family:var(--font-mono);font-size:11px;letter-spacing:.08em;">◈ HUNT CLEARED</p>
+  </div>
+    </div>
+  </div>
+</div>
+
+<!-- Custom in-app numpad — replaces system keyboard for reps/weight -->
+<div class="numpad-overlay hidden" id="numpad-overlay">
+  <div class="numpad-sheet" id="numpad-sheet">
+    <div class="numpad-header">
+  <span class="numpad-context" id="numpad-context">Reps</span>
+  <span class="numpad-display" id="numpad-display">—</span>
+  <button class="numpad-confirm" id="numpad-confirm">✓ Done</button>
+    </div>
+    <div class="numpad-stepper-row">
+  <button class="numpad-step-btn" id="numpad-minus">−</button>
+  <button class="numpad-step-btn" id="numpad-plus">+</button>
+    </div>
+    <div class="numpad-grid">
+  <button class="numpad-key" data-key="7">7</button>
+  <button class="numpad-key" data-key="8">8</button>
+  <button class="numpad-key" data-key="9">9</button>
+  <button class="numpad-key" data-key="4">4</button>
+  <button class="numpad-key" data-key="5">5</button>
+  <button class="numpad-key" data-key="6">6</button>
+  <button class="numpad-key" data-key="1">1</button>
+  <button class="numpad-key" data-key="2">2</button>
+  <button class="numpad-key" data-key="3">3</button>
+  <button class="numpad-key numpad-dot" data-key=".">.</button>
+  <button class="numpad-key numpad-zero" data-key="0">0</button>
+  <button class="numpad-key numpad-del" data-key="del">⌫ DEL</button>
+    </div>
+  </div>
+</div>
+
+
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import { BASE_EXERCISES } from "./exercises.js";
@@ -3347,7 +3354,7 @@ function unlockBodyScroll() {
   document.body.style.top = '';
   document.body.style.left = '';
   document.body.style.right = '';
-  unlockBodyScroll();
+  document.body.style.width = '';
   window.scrollTo(0, _scrollY);
 }
 
@@ -3375,7 +3382,13 @@ const _origCloseWorkout = typeof minimiseWorkoutModal === 'function' ? minimiseW
     else if (!active && _wasActive) { _lockCount = 1; unlockBodyScroll(); _wasActive = false; }
   });
   document.addEventListener('DOMContentLoaded', () => {
-    obs.observe(document.body, { childList: true });
+    // Observe body for dynamic overlay additions AND attribute changes on static overlays
+    obs.observe(document.body, { childList: true, subtree: false, attributes: true, attributeFilter: ['class'] });
+    // Also observe static body-level overlays directly for class changes (show/hide)
+    ['workout-modal-overlay', 'numpad-overlay'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) obs.observe(el, { attributes: true, attributeFilter: ['class'] });
+    });
   });
 })();
 
