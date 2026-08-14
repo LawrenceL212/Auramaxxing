@@ -18006,7 +18006,12 @@ function openWorkoutDetail(workoutId) {
           <span class="set-idx">${i+1}</span>
           <span>${isRunEx ? durationStr : s.reps + ' ' + repsLabel.toLowerCase()}</span>
           <span>${isRunEx ? (s.distKm ? s.distKm.toFixed(2)+' km' : '—') : (s.weight ? s.weight+'kg' : '—')}</span>
-          ${s.rir != null ? `<span style="color:var(--text-faint);font-size:11px;">${timed ? 'RPE' : 'RIR'} ${s.rir}</span>` : '<span></span>'}
+          ${(() => {
+            const _siDisp = getSetIntensity(s, EXERCISES_ALL[ex.name] || {});
+            if (_siDisp.type === 'rpe') return `<span style="color:var(--text-faint);font-size:11px;">RPE ${_siDisp.value}</span>`;
+            if (_siDisp.type === 'rir') return `<span style="color:var(--text-faint);font-size:11px;">RIR ${_siDisp.value}</span>`;
+            return '<span></span>';
+          })()}
         </div>`;
       }).join('');
       return `<div class="detail-exercise">
@@ -19020,10 +19025,22 @@ function getDuelScore(spec, workouts, uid) {
   qualifying.forEach(w => {
     (w.exercises || []).forEach(ex => {
       if (exName && exName !== 'Any Exercise (Total Sets)' && ex.name !== exName) return;
+      const exDef = EXERCISES_ALL[ex.name] || {};
+      // Determine whether this exercise uses RIR or RPE semantics
+      const isTimedEx = !!(exDef.timed && exDef.timedUnit !== 'mins');
+      const isRunEx   = !!(exDef.timed && exDef.intent === 'endurance');
+      // Timed/hold sets qualify by duration (s.reps); resistance sets qualify by RIR gate.
+      // New-schema timed sets have rir=null, rpe=N — must not be excluded by rir gate.
       (ex.sets || []).filter(s => {
         if (!s.reps || s.reps <= 0) return false;
-        if (s.rir == null || s.rir > maxRIR) return false;
-        return true;
+        if (isTimedEx || isRunEx) {
+          // Hold/skill/run: no RIR gate — duration is the qualifying metric
+          return true;
+        }
+        // Resistance: apply RIR gate using getSetIntensity for legacy compatibility
+        const si = getSetIntensity(s, exDef);
+        if (si.type !== 'rir' || si.value == null) return maxRIR >= 5; // no intensity = admit if gate is loose
+        return si.value <= maxRIR;
       }).forEach(s => allSets.push({ ...s, exName: ex.name, date: w.date }));
     });
   });
