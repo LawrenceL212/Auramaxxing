@@ -5059,14 +5059,20 @@ function progressiveOverloadSuggestion(exerciseName, targetReps) {
   const timeStep = timedUnit === 'mins' ? 1 : 15; // +1 min or +15 secs
 
   const prevTwoRIRs = sessions.slice(0, -1).map(s => {
-    const rirs = s.sets.map(set => set.rir).filter(r => r != null);
+    // For timed: read rpe field (RPE semantics). For resistance: read rir field.
+    const rirs = s.sets.map(set => {
+      const siPo = getSetIntensity(set, exDef);
+      return siPo.value; // returns rir for resistance, rpe for timed, null if none
+    }).filter(r => r != null);
     return rirs.length ? rirs.reduce((a,b)=>a+b,0)/rirs.length : null;
   }).filter(r => r != null);
 
   return last.sets.map(set => {
     const prefillWeight = set.weight;
     const prefillReps = set.reps;
-    const rir = set.rir;
+    // Use semantic accessor — timed reads rpe, resistance reads rir
+    const _siPo = getSetIntensity(set, exDef);
+    const rir = _siPo.value; // semantically correct value (RPE for timed, RIR for resistance)
     let suggestion = null;
     let newReps = prefillReps;
     let newWeight = prefillWeight;
@@ -5325,7 +5331,9 @@ document.getElementById('save-run-btn')?.addEventListener('click', async () => {
       }
       return 3;
     })();
-    const runXpResult = await awardWorkoutXP([{ name: selectedRunType, sets: [{ reps: Math.round((distKm||5)*10), distKm: Math.round(distKm*100)/100, rir: runRIR }] }]);
+    // Run XP uses distance (objective) + optional RPE (subjective)
+    // Do NOT store synthetic RIR — it is not RIR
+    const runXpResult = await awardWorkoutXP([{ name: selectedRunType, sets: [{ reps: Math.round((distKm||5)*10), distKm: Math.round(distKm*100)/100 }] }]);
     profile._lastXpResult = runXpResult;
     document.getElementById('run-modal-overlay').classList.add('hidden');
     unlockBodyScroll();
@@ -5737,9 +5745,14 @@ function addExerciseRow(presetName, targetSets, targetReps, prefillSets) {
 
       // Score: e1RM-like comparison — higher weight×reps with lower RIR = better
       // For timed: reps = duration, weight irrelevant
-      const score     = reps * (weight > 0 ? weight : 1) * (rir != null ? (6 - Math.min(rir, 5)) : 1);
+      // Score: resistance uses RIR factor. Timed uses duration only (no rir/rpe factor).
+      // Do NOT apply RIR formula to RPE values.
+      const _siScore = getSetIntensity({ rir, rpe: null }, EXERCISES_ALL[row.closest('.exercise-row')?.dataset.exName] || {});
+      const rirFactor = (_siScore.type === 'rir' && rir != null) ? (6 - Math.min(rir, 5)) : 1;
+      const score     = reps * (weight > 0 ? weight : 1) * rirFactor;
+      const prevRirFactor = prevRir != null && _siScore.type === 'rir' ? (6 - Math.min(prevRir, 5)) : 1;
       const prevScore = prevReps > 0
-        ? prevReps * (prevWeight > 0 ? prevWeight : 1) * (prevRir != null ? (6 - Math.min(prevRir, 5)) : 1)
+        ? prevReps * (prevWeight > 0 ? prevWeight : 1) * prevRirFactor
         : 0;
 
       setRow.classList.remove('set-below','set-matched','set-pr');
@@ -5916,8 +5929,8 @@ function addExerciseRow(presetName, targetSets, targetReps, prefillSets) {
       chip.classList.add('selected');
       checkComplete(setRow);
       refreshCompleteButton();
-      // Show plain-English RIR description
-      const rir = parseInt(chip.dataset.rir);
+      // Show plain-English description — correct semantics per exercise type
+      const chipVal = parseInt(chip.dataset.rir);
       const RIR_DESCS = {
         0:'Absolute limit — could not do another rep.',
         1:'One rep left in the tank.',
@@ -5931,8 +5944,22 @@ function addExerciseRow(presetName, targetSets, targetReps, prefillSets) {
         9:'Almost no effort.',
         10:'Minimal effort — warm-up level.',
       };
+      const RPE_DESCS = {
+        1:'Barely any effort.',
+        2:'Very light — could continue for a long time.',
+        3:'Light effort — conversational.',
+        4:'Moderate — slightly elevated breathing.',
+        5:'Somewhat hard — noticeable effort.',
+        6:'Hard — controlled breathing required.',
+        7:'Very hard — difficult to speak.',
+        8:'Very intense — challenging to sustain.',
+        9:'Near maximal — close to your limit.',
+        10:'Maximal — absolute limit of effort.',
+      };
+      const isTimedRow = !!setRow.closest('.exercise-row')
+        && !!(EXERCISES_ALL[setRow.closest('.exercise-row')?.dataset.exName] || {}).timed;
       const descEl = setRow.querySelector('.rir-desc');
-      if (descEl) descEl.textContent = RIR_DESCS[rir] || '';
+      if (descEl) descEl.textContent = isTimedRow ? (RPE_DESCS[chipVal] || '') : (RIR_DESCS[chipVal] || '');
     }));
     setRow.querySelector('.set-remove').addEventListener('click', () => { SFX.pop(); setRow.remove(); [...setsList.children].forEach((r,i) => r.querySelector('.set-idx').textContent = i+1); });
     setsList.appendChild(setRow);
@@ -5976,7 +6003,12 @@ function addExerciseRow(presetName, targetSets, targetReps, prefillSets) {
   row.querySelector('.add-set-btn').addEventListener('click', () => { SFX.pop(); addSetRow(); });
   row.querySelector('.remove-x').addEventListener('click', () => row.remove());
   if (prefillSets && prefillSets.length) {
-    prefillSets.forEach(s => addSetRow(s.reps, s.weight, s.rir, s.suggestion, s.prevReps, s.prevWeight, s.prevRir));
+    // Pass the semantically correct intensity value — rpe for timed, rir for resistance
+  const isTimedPrefill = !!(exDef?.timed && exDef?.timedUnit !== 'mins');
+  prefillSets.forEach(s => addSetRow(s.reps, s.weight,
+    isTimedPrefill ? (s.rpe ?? s.rir) : s.rir,  // correct field per type
+    s.suggestion, s.prevReps, s.prevWeight,
+    isTimedPrefill ? (s.prevRpe ?? s.prevRir) : s.prevRir));
   } else if (targetSets > 0) {
     for (let i = 0; i < targetSets; i++) addSetRow(targetReps);
   } else {
@@ -6009,6 +6041,11 @@ document.getElementById('save-workout-btn')?.addEventListener('click', async () 
       const mins = secsInput ? rawVal : (isSecs ? 0 : rawVal);
       const secs = secsInput ? (Number(secsInput.value) || 0) : (isSecs ? rawVal : 0);
       const totalMins = (mins * 60 + secs) / 60;
+      // Determine whether this exercise uses RIR or RPE semantics
+      const isTimedEx  = !!(exDef.timed && exDef.timedUnit !== 'mins');
+      const isRunEx2   = !!(exDef.timed && exDef.intent === 'endurance');
+      const usesRPE    = isTimedEx || isRunEx2;
+      const chipValue  = selectedRir ? Number(selectedRir.dataset.rir) : null;
       return {
         reps: secsInput
           ? Math.max(1, Math.round(totalMins))          // run: store rounded minutes
@@ -6016,7 +6053,9 @@ document.getElementById('save-workout-btn')?.addEventListener('click', async () 
             ? Math.max(1, Math.round(secs))              // timed secs: store raw seconds
             : (Number(sr.querySelector('.set-reps')?.value) || 0), // strength: store reps
         weight: Number(sr.querySelector('.set-weight')?.value) || 0,
-        rir: selectedRir ? Number(selectedRir.dataset.rir) : null,
+        // Semantic split: resistance→rir field, timed/run→rpe field
+        rir: (!usesRPE && chipValue !== null) ? chipValue : null,
+        rpe: (usesRPE  && chipValue !== null) ? chipValue : null,
         ...(distInput ? { distKm: parseFloat(distInput.value) || 0 } : {}),
         ...(secsInput || isSecs ? { durationMins: Math.round(totalMins * 10) / 10 } : {}),
       };
@@ -6074,7 +6113,9 @@ document.getElementById('save-workout-btn')?.addEventListener('click', async () 
         : ex.name === 'Tempo Run' ? 1
         : ex.name === 'Long Run' ? 3
         : 4;
-      return { ...ex, _runSummary: runSummaryFromLogger, sets: ex.sets.map(s => ({ ...s, rir: s.rir ?? runRIR })) };
+      // Runs use objective metrics (distKm, durationMins, pace) — not synthetic RIR.
+      // RPE is an optional subjective input; do NOT inject fake RIR.
+      return { ...ex, _runSummary: runSummaryFromLogger };
     }));
     profile._lastXpResult = xpResult; // stash for debrief XP bar animation
     // Show session XP on the level banner
@@ -6427,12 +6468,75 @@ function getStatForExercise(exerciseName) {
 // ── V2 XP System ────────────────────────────────────────────────────────────
 
 // Intensity multiplier from RIR/RPE
-function intensityMult(rir) {
+// ── SEMANTIC INTENSITY ACCESSORS ─────────────────────────────────────────────
+//
+// RIR (Reps In Reserve): resistance training. 0=maximal, higher=easier.
+// RPE (Rate of Perceived Exertion): timed/skill/run. 10=maximal, lower=easier.
+// These are conceptually distinct. Do NOT mix them.
+//
+// getSetIntensity(set, exDef)
+//   Returns the semantic intensity of a stored set with full type information.
+//   Handles new schema (explicit rir/rpe) and legacy schema (rir-only).
+//
+function getSetIntensity(set, exDef) {
+  const isTimed = !!(exDef?.timed && exDef?.timedUnit !== 'mins');
+  const isRun   = !!(exDef?.timed && exDef?.intent === 'endurance');
+
+  // ── New schema: explicit rpe field present ──
+  if (set.rpe != null) {
+    return { type: 'rpe', value: set.rpe, source: 'explicit-rpe', legacy: false };
+  }
+  // ── New schema: explicit rir field, exercise is resistance ──
+  if (set.rir != null && !isTimed && !isRun) {
+    return { type: 'rir', value: set.rir, source: 'explicit-rir', legacy: false };
+  }
+
+  // ── Legacy schema: only rir field exists ──
+  if (set.rir != null) {
+    if (isTimed || isRun) {
+      // Historical timed/run workout stored RPE in rir field
+      return { type: 'rpe', value: set.rir, source: 'legacy', legacy: true };
+    }
+    // Historical resistance workout stored RIR in rir field
+    return { type: 'rir', value: set.rir, source: 'legacy', legacy: true };
+  }
+
+  // ── No intensity data ──
+  return { type: null, value: null, source: 'none', legacy: false };
+}
+
+// RIR → intensity multiplier (resistance training)
+// RIR 0 = maximal effort = 1.3×
+// RIR 1-3 = hard/moderate = 1.0-1.15×
+// RIR 4+ = comfortable = 0.85×
+function resistanceIntensityMult(rir) {
   if (rir === null || rir === undefined) return 1.0;
-  if (rir <= 1)  return 1.3;
+  if (rir <= 0)  return 1.3;
+  if (rir <= 1)  return 1.2;
   if (rir <= 3)  return 1.0;
-  if (rir <= 5)  return 0.7;
-  return 0.5;
+  if (rir <= 5)  return 0.85;
+  return 0.7;
+}
+
+// RPE → intensity multiplier (timed/skill exercises)
+// RPE 10 = maximal effort = 1.3×
+// RPE 8-9 = very hard = 1.1-1.2×
+// RPE 6-7 = moderate = 0.85-1.0×
+// RPE < 6 = easy = 0.7×
+function timedIntensityMult(rpe) {
+  if (rpe === null || rpe === undefined) return 1.0;
+  if (rpe >= 10) return 1.3;
+  if (rpe >= 9)  return 1.2;
+  if (rpe >= 8)  return 1.1;
+  if (rpe >= 7)  return 1.0;
+  if (rpe >= 6)  return 0.85;
+  return 0.7;
+}
+
+// Legacy alias — kept for any callers not yet updated.
+// Assumes RIR semantics. Do NOT use for timed/run sets.
+function intensityMult(rir) {
+  return resistanceIntensityMult(rir);
 }
 
 // Reps multiplier — log scale, caps diminishing returns on high-rep sets
@@ -6503,13 +6607,6 @@ function computeWorkoutXP(exercises) {
       // Each km of running is worth a scaled set-equivalent.
       // C=2.797 calibrated so 8.25km Tempo Run = 30 XP.
       const RUN_C = 2.797;
-      const RUN_RIR_MAP = {
-        'Hill Sprints':0, 'Interval Running':0, 'Race':0,
-        'Tempo Run':1,
-        'Long Run':3,
-      };
-      const runRir = ex.sets?.[0]?.rir ?? RUN_RIR_MAP[ex.name] ?? 4;
-
       // Prefer distKm from sets (workout logger) or runSummary passed via ex._runSummary
       let distKm = null;
       for (const s of (ex.sets || [])) {
@@ -6523,7 +6620,12 @@ function computeWorkoutXP(exercises) {
       }
 
       if (distKm && distKm > 0) {
-        const runXP = distKm * RUN_C * intensityMult(runRir);
+        // Run XP uses objective distance only.
+        // RPE is an optional subjective signal — if present, use timedIntensityMult.
+        // If absent (no user input), default to 1.0× (objective distance is authoritative).
+        const runRpe = ex.sets?.[0]?.rpe ?? null;
+        const runIntensity = runRpe != null ? timedIntensityMult(runRpe) : 1.0;
+        const runXP = distKm * RUN_C * runIntensity;
         generalXP += runXP;
         // Run training XP: endurance-primary, agility-secondary
         trainingXP.endurance += runXP * 0.8;
@@ -6541,10 +6643,18 @@ function computeWorkoutXP(exercises) {
         ? Math.round(set.durationMins * 60)   // convert stored minutes → seconds
         : Number(set.reps) || 0;
       if (reps <= 0) continue;
-      // Timed exercises store RPE (1=easy, 10=max) not RIR — convert to RIR equivalent
-      const rawVal = set.rir;
-      const effectiveRir = (isTimed && rawVal != null) ? (10 - rawVal) : rawVal;
-      const im = intensityMult(effectiveRir);
+      // Semantic intensity: use getSetIntensity to determine RIR vs RPE correctly
+      const si = getSetIntensity(set, exDef);
+      let im;
+      if (si.type === 'rpe') {
+        // Timed/skill exercise: use RPE-based multiplier directly
+        im = timedIntensityMult(si.value);
+      } else if (si.type === 'rir') {
+        // Resistance exercise: use RIR-based multiplier
+        im = resistanceIntensityMult(si.value);
+      } else {
+        im = 1.0; // no intensity data
+      }
       // Cap timed hold duration at 60s for XP — beyond that is endurance, not extra skill
       const xpReps = isTimed ? Math.min(reps, 60) : reps;
       const rm = repsMult(xpReps);
@@ -7255,6 +7365,10 @@ function getFocusStreak() {
   // Secondary: heavy low-RIR training (RIR 0-1 = maximum neural focus)
   const heavySets = myWorkouts.reduce((total, w) => {
     return total + (w.exercises||[]).reduce((t, ex) => {
+      const exDef = EXERCISES_ALL[ex.name] || {};
+      const isTimed = !!(exDef.timed && exDef.timedUnit !== 'mins');
+      const isRun   = !!(exDef.timed && exDef.intent === 'endurance');
+      if (isTimed || isRun) return t; // heavyBonus is resistance-only (RIR semantics)
       return t + (ex.sets||[]).filter(s => s.reps > 0 && s.rir != null && s.rir <= 1).length;
     }, 0);
   }, 0);
@@ -11936,7 +12050,8 @@ function renderTodayCard() {
       const tier = (EXERCISES_ALL[ex.name]||{}).skillTier || 1.0;
       return es + (ex.sets||[]).filter(s=>s.reps>0).reduce((ss, s) => {
         const rm = Math.log((s.reps||1)+1)/Math.log(13);
-        const im = s.rir<=1?1.3:s.rir<=3?1.0:s.rir<=5?0.7:0.5;
+        const _si = getSetIntensity(s, EXERCISES_ALL[ex?.name] || EXERCISES_ALL[ex] || {});
+        const im = _si.type === 'rpe' ? timedIntensityMult(_si.value) : resistanceIntensityMult(_si.type === 'rir' ? _si.value : null);
         return ss + Math.max(0.5, 2*rm*im*tier);
       }, 0);
     }, 0);
@@ -12448,7 +12563,8 @@ async function renderRaidBoss() {
       return s + (w.exercises||[]).reduce((es,ex) => {
         return es + (ex.sets||[]).filter(s=>s.reps>0).reduce((ss,set) => {
           const rm = Math.log((set.reps||1)+1) / Math.log(13);
-          const im = set.rir <= 1 ? 1.3 : set.rir <= 3 ? 1.0 : set.rir <= 5 ? 0.7 : 1.0;
+          const _si = getSetIntensity(set, EXERCISES_ALL[ex?.name] || {});
+          const im = _si.type === 'rpe' ? timedIntensityMult(_si.value) : resistanceIntensityMult(_si.type === 'rir' ? _si.value : null);
           return ss + Math.max(0.5, 2 * rm * im);
         }, 0);
       }, 0);
@@ -12477,12 +12593,20 @@ async function renderRaidBoss() {
   }
 
   function getIntensityMultiplier(uid) {
+    // Raid intensity uses RESISTANCE effort only — RIR semantics.
+    // Timed/RPE sets are excluded: RPE and RIR are on different scales
+    // and must not be averaged together.
     const uWorkouts = weekWorkouts.filter(w => w.uid === uid);
     let totalRIR = 0, count = 0;
     uWorkouts.forEach(w => {
       (w.exercises||[]).forEach(ex => {
+        const exDef = EXERCISES_ALL[ex.name] || {};
+        const isTimed = !!(exDef.timed && exDef.timedUnit !== 'mins');
+        const isRun   = !!(exDef.timed && exDef.intent === 'endurance');
+        if (isTimed || isRun) return; // skip non-resistance
         (ex.sets||[]).filter(s=>s.reps>0).forEach(s => {
-          if (s.rir !== null && s.rir !== undefined) { totalRIR += s.rir; count++; }
+          const si = getSetIntensity(s, exDef);
+          if (si.type === 'rir' && si.value !== null) { totalRIR += si.value; count++; }
         });
       });
     });
@@ -17800,7 +17924,8 @@ function renderHistoryList() {
           const tier = exDef.skillTier||1.0;
           return xs + (ex.sets||[]).filter(s=>s.reps>0).reduce((ss,s) => {
             const rm = Math.log((s.reps||1)+1)/Math.log(13);
-            const im = s.rir<=1?1.3:s.rir<=3?1.0:s.rir<=5?0.7:1.0;
+            const _si = getSetIntensity(s, EXERCISES_ALL[ex?.name] || EXERCISES_ALL[ex] || {});
+            const im = _si.type === 'rpe' ? timedIntensityMult(_si.value) : resistanceIntensityMult(_si.type === 'rir' ? _si.value : null);
             return ss + Math.max(0.5, 2*rm*im*tier);
           },0);
         },0));
@@ -18285,8 +18410,12 @@ function openWorkoutDetail(workoutId) {
           const statRank = (profile.stats || {})[stat] || 'E';
           const rankMult = RANK_MULT[statRank] || 1.0;
           const tierBase = TIER_BASE[Math.min(tier, 5)] || 10;
-          (ex.sets || []).filter(s => s.reps > 0 && s.rir != null).forEach(s => {
-            const loss = Math.floor(tierBase * rankMult * RIR_MULT(s.rir));
+          (ex.sets || []).filter(s => s.reps > 0 && (s.rir != null || s.rpe != null)).forEach(s => {
+            const _siLoss = getSetIntensity(s, exDef);
+            const _lossMult = _siLoss.type === 'rpe' ? timedIntensityMult(_siLoss.value) / 1.3
+                            : _siLoss.type === 'rir' ? RIR_MULT(_siLoss.value)
+                            : RIR_MULT(3);
+            const loss = Math.floor(tierBase * rankMult * _lossMult);
             soldierLoss[ckey] = (soldierLoss[ckey] || 0) + loss;
           });
         });
@@ -18649,9 +18778,12 @@ async function generateShadowArmySoldiers(exercises, runSummary) {
     const tierBase = TIER_BASE[Math.min(tier, 5)] || 10;
 
     ex.sets?.filter(s => s.reps > 0).forEach(s => {
-      const rawRir = s.rir ?? 3;
-      const effectiveRir = (isTimed && s.rir != null && s.rir > 5) ? (10 - s.rir) : rawRir;
-      const soldiers = Math.floor(tierBase * rankMult * RIR_MULT(effectiveRir));
+      // Semantic intensity: resistance uses RIR_MULT, timed uses timedIntensityMult
+      const _siSA = getSetIntensity(s, exDef);
+      const _saMult = _siSA.type === 'rpe' ? timedIntensityMult(_siSA.value) / 1.3
+                    : _siSA.type === 'rir' ? RIR_MULT(_siSA.value)
+                    : RIR_MULT(3);
+      const soldiers = Math.floor(tierBase * rankMult * _saMult);
       soldiersByContinent[ckey] = (soldiersByContinent[ckey] || 0) + soldiers;
     });
   });
@@ -18735,9 +18867,12 @@ async function backfillShadowArmySoldiers() {
       const tierBase = TIER_BASE[approxTier] || 10;
 
       (ex.sets || []).filter(s => s.reps > 0).forEach(s => {
-        const rawRir = s.rir ?? 3;
-        const effectiveRir = (isTimed && s.rir != null && s.rir > 5) ? (10 - s.rir) : rawRir;
-        const soldiers = Math.floor(tierBase * rankMult * RIR_MULT(effectiveRir));
+        // Semantic intensity: resistance uses RIR_MULT, timed uses timedIntensityMult
+        const _siSA2 = getSetIntensity(s, exDef);
+        const _saMult2 = _siSA2.type === 'rpe' ? timedIntensityMult(_siSA2.value) / 1.3
+                       : _siSA2.type === 'rir' ? RIR_MULT(_siSA2.value)
+                       : RIR_MULT(3);
+        const soldiers = Math.floor(tierBase * rankMult * _saMult2);
         totalByContinent[ckey] = (totalByContinent[ckey] || 0) + soldiers;
       });
     });
