@@ -96,11 +96,14 @@
     /* True viewport-level container — no constraints */
     position: fixed;
     inset: 0;
-    /* Pointer events only active when children are present */
+    /* Must sit ABOVE all persistent app UI:
+       topbar (z=5), bottom-nav (z=10), workout-pill (z=30).
+       Children stack relative to this context using their own z-indexes. */
+    z-index: 1000;
+    /* Pointer events pass through to children only */
     pointer-events: none;
-    /* Must not create a stacking context that traps children */
-    /* No transform, filter, will-change, isolation, contain */
-    z-index: 0; /* children use their own z-index */
+    /* No transform, filter, will-change, isolation, contain —
+       these would create a new stacking context that could trap children */
   }
   #overlay-host > * {
     pointer-events: auto;
@@ -722,12 +725,12 @@
 
   nav.bottom-nav{
     position:fixed;bottom:0;left:0;right:0;display:flex;justify-content:center;z-index:10;
-    /* Dark machined metal — not glass */
-    background:rgba(5,6,10,0.97);
-    backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);
-    border-top:1px solid rgba(255,255,255,0.04);
+    /* Solid background — backdrop-filter removed to prevent stacking context
+       that could render above position:fixed overlays on Safari/iOS */
+    background:rgba(5,6,10,0.98);
+    border-top:1px solid rgba(255,255,255,0.05);
     padding-bottom:env(safe-area-inset-bottom);
-    box-shadow:0 -1px 0 rgba(91,168,255,0.06), 0 -8px 24px rgba(0,0,0,0.5);
+    box-shadow:0 -1px 0 rgba(91,168,255,0.06), 0 -8px 24px rgba(0,0,0,0.6);
   }
   nav.bottom-nav .nav-inner{display:flex;width:100%;max-width:640px;}
   nav.bottom-nav button{
