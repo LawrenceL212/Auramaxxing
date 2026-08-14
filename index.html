@@ -4543,7 +4543,8 @@ function buildQuestCardHTML(idx) {
     const exDef = EXERCISES_ALL[ex.name] || {};
     const timed = exDef.timed;
     const unit = exDef.timedUnit || 'secs';
-    const repsLabel = timed ? (unit === 'mins' ? `${ex.reps}m` : `${ex.reps}s`) : `${ex.reps}r`;
+    const repsVal = ex.reps || (ex.repRange ? String(ex.repRange).match(/(\d+)/)?.[1] : null) || '?';
+    const repsLabel = timed ? (unit === 'mins' ? `${repsVal}m` : `${repsVal}s`) : `${repsVal}r`;
     const setsLabel = `${Math.min(done, ex.sets)}/${ex.sets}`;
     return `<div class="quest-check-row ${complete ? 'complete' : ''}">
       <div class="qc-box">${complete ? '◈' : ''}</div>
@@ -5014,8 +5015,16 @@ function startProgramDay(idx) {
   const rows = document.getElementById('exercise-rows');
   rows.innerHTML = '';
   day.exercises.forEach(ex => {
-    const prefillSets = progressiveOverloadSuggestion(ex.name, ex.reps);
-    addExerciseRow(ex.name, ex.sets, ex.reps, prefillSets);
+    // Support both old numeric reps and new repRange string (e.g. "6–10" or "8-12")
+    let targetReps = ex.reps;
+    if (!targetReps && ex.repRange) {
+      // Parse the lower bound of the range as the target
+      const match = String(ex.repRange).match(/(\d+)/);
+      targetReps = match ? parseInt(match[1]) : 10;
+    }
+    targetReps = targetReps || 10;
+    const prefillSets = progressiveOverloadSuggestion(ex.name, targetReps);
+    addExerciseRow(ex.name, ex.sets || 3, targetReps, prefillSets);
   });
   refreshCompleteButton();
   openWorkoutModal();
@@ -5364,7 +5373,7 @@ function renderProgramEditor(wrap) {
           ${day.exercises.map((ex,ei) => `<div class="ex-chip" draggable="true" data-di="${di}" data-ei="${ei}" style="cursor:grab;width:100%;display:flex;align-items:center;gap:6px;margin-bottom:4px;">
             <span style="color:var(--text-faint);font-size:16px;cursor:grab;padding:0 4px;">⠿</span>
             <span style="flex:1;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(ex.name)}</span>
-            <input type="number" class="ex-chip-sets" data-ei="${ei}" value="${ex.sets}" min="1" style="width:32px;text-align:center;" /><span class="ex-chip-x">×</span><input type="number" class="ex-chip-reps" data-ei="${ei}" value="${ex.reps}" min="1" style="width:32px;text-align:center;" />
+            <input type="number" class="ex-chip-sets" data-ei="${ei}" value="${ex.sets}" min="1" style="width:32px;text-align:center;" /><span class="ex-chip-x">×</span><input type="number" class="ex-chip-reps" data-ei="${ei}" value="${ex.reps ?? (ex.repRange ? String(ex.repRange).match(/(\d+)/)?.[1] : 10) ?? 10}" min="1" style="width:32px;text-align:center;" />
             <button class="remove-ex-btn" data-ei="${ei}" style="flex-shrink:0;">×</button>
           </div>`).join('')}
         </div>
@@ -5481,7 +5490,7 @@ async function openAdminProgramEditor(targetUid, targetName) {
             <span style="flex:1;">${escapeHtml(ex.name)}</span>
             <input type="number" value="${ex.sets}" min="1" style="width:36px;text-align:center;" class="admin-sets" data-di="${di}" data-ei="${ei}"/>
             <span style="color:var(--text-faint);">×</span>
-            <input type="number" value="${ex.reps}" min="1" style="width:36px;text-align:center;" class="admin-reps" data-di="${di}" data-ei="${ei}"/>
+            <input type="number" value="${ex.reps ?? (ex.repRange ? String(ex.repRange).match(/(\d+)/)?.[1] : 10) ?? 10}" min="1" style="width:36px;text-align:center;" class="admin-reps" data-di="${di}" data-ei="${ei}"/>
           </div>`).join('')}
       </div>`).join('') || '<p class="sub">No days yet.</p>';
 
