@@ -9271,11 +9271,14 @@ window.openPhotoCheckin = async (checkinDate) => {
             📏 Stand ~1.5m from camera · Chin to feet in frame · No face needed · Good lighting
           </div>
 
-          <input type="file" id="pose-file-input" accept="image/*" capture="environment" style="display:none;" />
+          <input type="file" id="pose-file-input" accept="image/*" style="display:none;" />
 
           <div style="display:flex;flex-direction:column;gap:8px;">
-            <button onclick="document.getElementById('pose-file-input').click()" style="background:rgba(91,168,255,.12);border:1px solid rgba(91,168,255,.3);color:#5BA8FF;padding:12px;border-radius:8px;cursor:pointer;font-family:var(--font-mono);font-size:12px;letter-spacing:.06em;">
-              ${capturedPhotos[pose.id] ? '📷 Retake Photo' : '📷 Take / Upload Photo'}
+            <button onclick="openInAppCamera()" style="background:rgba(91,168,255,.12);border:1px solid rgba(91,168,255,.3);color:#5BA8FF;padding:12px;border-radius:8px;cursor:pointer;font-family:var(--font-mono);font-size:12px;letter-spacing:.06em;">
+              📷 Take Photo (with countdown)
+            </button>
+            <button onclick="document.getElementById('pose-file-input').click()" style="background:rgba(139,92,255,.1);border:1px solid rgba(139,92,255,.3);color:#8B5CFF;padding:12px;border-radius:8px;cursor:pointer;font-family:var(--font-mono);font-size:12px;letter-spacing:.06em;">
+              🖼 Upload from Gallery
             </button>
 
             ${capturedPhotos[pose.id] ? `
@@ -9297,6 +9300,130 @@ window.openPhotoCheckin = async (checkinDate) => {
     document.body.appendChild(overlay);
 
     // File input handler
+    // ── In-app camera with countdown and pose overlay ──
+    window.openInAppCamera = () => {
+      const camOverlay = document.createElement('div');
+      camOverlay.id = 'cam-overlay';
+      camOverlay.style.cssText = 'position:fixed;inset:0;z-index:9700;background:#000;display:flex;flex-direction:column;font-family:var(--font-mono);';
+
+      camOverlay.innerHTML = `
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 16px;flex-shrink:0;">
+          <div style="font-size:10px;letter-spacing:.2em;color:rgba(91,168,255,.5);">◈ ${pose.label.toUpperCase()}</div>
+          <button id="cam-close" style="background:none;border:none;color:rgba(242,245,250,.4);font-size:22px;cursor:pointer;">✕</button>
+        </div>
+        <div style="position:relative;flex:1;overflow:hidden;display:flex;align-items:center;justify-content:center;background:#000;">
+          <video id="cam-video" autoplay playsinline style="width:100%;height:100%;object-fit:cover;"></video>
+          <!-- SVG pose guide overlay -->
+          <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;">
+            <div style="opacity:0.35;transform:scale(1.8);">${pose.svgGuide}</div>
+          </div>
+          <!-- Countdown display -->
+          <div id="cam-countdown" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:120px;font-weight:900;color:#5BA8FF;text-shadow:0 0 40px rgba(91,168,255,.8);opacity:0;pointer-events:none;transition:opacity .2s;"></div>
+          <!-- Instruction -->
+          <div style="position:absolute;bottom:16px;left:0;right:0;text-align:center;font-size:11px;color:rgba(242,245,250,.5);letter-spacing:.06em;">${pose.instruction}</div>
+        </div>
+        <div style="padding:16px;display:flex;flex-direction:column;gap:10px;flex-shrink:0;">
+          <button id="cam-capture-btn" style="background:rgba(91,168,255,.15);border:2px solid #5BA8FF;color:#5BA8FF;padding:14px;border-radius:50px;cursor:pointer;font-family:var(--font-mono);font-size:13px;letter-spacing:.1em;">TAP TO START 3s COUNTDOWN</button>
+          <button id="cam-switch" style="background:none;border:none;color:rgba(242,245,250,.3);font-size:11px;cursor:pointer;">🔄 Switch camera</button>
+        </div>
+        <canvas id="cam-canvas" style="display:none;"></canvas>
+      `;
+      document.body.appendChild(camOverlay);
+
+      let stream = null;
+      let facingMode = 'user'; // start front, switch to rear
+      let countdownInterval = null;
+      let counting = false;
+
+      async function startCamera(mode) {
+        if (stream) stream.getTracks().forEach(t => t.stop());
+        try {
+          stream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: mode, width: { ideal: 1280 }, height: { ideal: 720 } },
+            audio: false,
+          });
+          document.getElementById('cam-video').srcObject = stream;
+        } catch(err) {
+          camOverlay.remove();
+          showToast('Camera not available — use Upload from Gallery instead.', 'error');
+        }
+      }
+
+      function stopCamera() {
+        if (stream) stream.getTracks().forEach(t => t.stop());
+        stream = null;
+      }
+
+      function captureFrame() {
+        const video = document.getElementById('cam-video');
+        const canvas = document.getElementById('cam-canvas');
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        canvas.getContext('2d').drawImage(video, 0, 0);
+        canvas.toBlob(async blob => {
+          if (!blob) return;
+          const msgEl = document.getElementById('photo-upload-msg');
+          if (msgEl) { msgEl.style.color = '#8D98A8'; msgEl.textContent = 'Uploading...'; }
+          try {
+            const url = await uploadPosePhoto(currentUser.uid, date, pose.id, blob);
+            const reader = new FileReader();
+            reader.onload = ev => {
+              capturedPhotos[pose.id] = { url, dataUrl: ev.target.result };
+              stopCamera();
+              camOverlay.remove();
+              renderPoseModal();
+            };
+            reader.readAsDataURL(blob);
+          } catch(err) {
+            if (msgEl) { msgEl.style.color = '#FF4D67'; msgEl.textContent = 'Upload failed: ' + err.message; }
+            stopCamera();
+            camOverlay.remove();
+          }
+        }, 'image/jpeg', 0.85);
+      }
+
+      function startCountdown() {
+        if (counting) return;
+        counting = true;
+        let n = 3;
+        const btn = document.getElementById('cam-capture-btn');
+        const cd = document.getElementById('cam-countdown');
+        btn.disabled = true;
+        btn.textContent = 'Get ready...';
+        cd.style.opacity = '1';
+        cd.textContent = n;
+
+        countdownInterval = setInterval(() => {
+          n--;
+          if (n > 0) {
+            cd.textContent = n;
+            cd.style.transform = 'translate(-50%,-50%) scale(1.3)';
+            setTimeout(() => { cd.style.transform = 'translate(-50%,-50%) scale(1)'; }, 200);
+          } else {
+            clearInterval(countdownInterval);
+            cd.textContent = '📷';
+            setTimeout(() => {
+              cd.style.opacity = '0';
+              captureFrame();
+            }, 300);
+          }
+        }, 1000);
+      }
+
+      camOverlay.querySelector('#cam-capture-btn').addEventListener('click', startCountdown);
+      camOverlay.querySelector('#cam-close').addEventListener('click', () => {
+        if (countdownInterval) clearInterval(countdownInterval);
+        stopCamera();
+        camOverlay.remove();
+      });
+      camOverlay.querySelector('#cam-switch').addEventListener('click', () => {
+        facingMode = facingMode === 'user' ? 'environment' : 'user';
+        startCamera(facingMode);
+      });
+
+      startCamera('environment'); // default rear camera for body shots
+    };
+
     document.getElementById('pose-file-input').addEventListener('change', async e => {
       const file = e.target.files[0];
       if (!file) return;
