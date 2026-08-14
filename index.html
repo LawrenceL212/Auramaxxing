@@ -5314,23 +5314,7 @@ document.getElementById('save-run-btn')?.addEventListener('click', async () => {
       createdAt: serverTimestamp(),
     });
     await loadAllData();
-    // Infer intensity from run type and pace
-    const runRIR = (() => {
-      if (selectedRunType === 'Hill Sprints' || selectedRunType === 'Interval Running') return 0;
-      if (selectedRunType === 'Race') return 0;
-      if (selectedRunType === 'Tempo Run') return 1;
-      if (selectedRunType === 'Long Run') return 3;
-      if (selectedRunType === 'Easy Run') return 4;
-      // infer from pace if available — sub 5min/km = hard, 5-6 = moderate, 6+ = easy
-      if (distKm && totalMins) {
-        const paceMinKm = totalMins / distKm;
-        if (paceMinKm < 5.0) return 1;
-        if (paceMinKm < 6.0) return 2;
-        if (paceMinKm < 7.0) return 3;
-        return 4;
-      }
-      return 3;
-    })();
+    // Run intensity computed from run type and pace in computeWorkoutXP — not stored.
     // Run XP uses distance (objective) + optional RPE (subjective)
     // Do NOT store synthetic RIR — it is not RIR
     const runXpResult = await awardWorkoutXP([{ name: selectedRunType, sets: [{ reps: Math.round((distKm||5)*10), distKm: Math.round(distKm*100)/100 }] }]);
@@ -6109,12 +6093,8 @@ document.getElementById('save-workout-btn')?.addEventListener('click', async () 
       const def = EXERCISES_ALL[ex.name] || {};
       const isRun = isRunExercise(ex.name);
       if (!isRun) return ex;
-      const runRIR = ex.name === 'Hill Sprints' || ex.name === 'Interval Running' || ex.name === 'Race' ? 0
-        : ex.name === 'Tempo Run' ? 1
-        : ex.name === 'Long Run' ? 3
-        : 4;
       // Runs use objective metrics (distKm, durationMins, pace) — not synthetic RIR.
-      // RPE is an optional subjective input; do NOT inject fake RIR.
+      // Run intensity is derived from run type and pace in computeWorkoutXP.
       return { ...ex, _runSummary: runSummaryFromLogger };
     }));
     profile._lastXpResult = xpResult; // stash for debrief XP bar animation
@@ -6620,11 +6600,28 @@ function computeWorkoutXP(exercises) {
       }
 
       if (distKm && distKm > 0) {
-        // Run XP uses objective distance only.
-        // RPE is an optional subjective signal — if present, use timedIntensityMult.
-        // If absent (no user input), default to 1.0× (objective distance is authoritative).
-        const runRpe = ex.sets?.[0]?.rpe ?? null;
-        const runIntensity = runRpe != null ? timedIntensityMult(runRpe) : 1.0;
+        // Run XP: objective intensity from run type + pace.
+        // Run type is objective (player selects before the run).
+        // Pace is objective (distance ÷ duration).
+        // No subjective RPE input involved.
+        const runTypeName = ex.name;
+        const runDurMins  = ex.sets?.[0]?.durationMins ?? (distKm && distKm > 0 ? distKm * 7 : null);
+        const paceMinKm   = (runDurMins && distKm > 0) ? runDurMins / distKm : null;
+        const runIntensity = (() => {
+          // Type-based floor — preserves intended effort category
+          if (runTypeName === 'Hill Sprints' || runTypeName === 'Interval Running' || runTypeName === 'Race') return 1.3;
+          if (runTypeName === 'Tempo Run') return 1.3;
+          if (runTypeName === 'Long Run')  return 1.0;
+          if (runTypeName === 'Easy Run')  return 0.85;
+          // Pace-based fallback for other/unlabelled runs
+          if (paceMinKm !== null) {
+            if (paceMinKm < 5.0) return 1.3;
+            if (paceMinKm < 6.0) return 1.0;
+            if (paceMinKm < 7.0) return 1.0;
+            return 0.85;
+          }
+          return 1.0; // no type or pace info — neutral
+        })();
         const runXP = distKm * RUN_C * runIntensity;
         generalXP += runXP;
         // Run training XP: endurance-primary, agility-secondary
@@ -18039,15 +18036,22 @@ function openWorkoutDetail(workoutId) {
         </div>
         <div class="detail-sets-head"><span>#</span><span>${repsLabel}</span><span>kg</span><span>RIR/RPE</span><span></span></div>
         ${(ex.sets||[]).map((s,si) => {
-          const rirOptions = timed
-            ? [6,7,8,9,10].map(n=>`<option value="${n}" ${s.rir===n?'selected':''}>RPE${n}</option>`).join('')
-            : [0,1,2,3,4,5].map(n=>`<option value="${n}" ${s.rir===n?'selected':''}>RIR${n}</option>`).join('');
+          // Use correct field per schema: resistance reads rir, timed reads rpe (with legacy fallback)
+          const isSkillTimed = timed && !isRunEx; // timed skill hold (planche, handstand etc)
+          const editIntensityVal = isSkillTimed
+            ? (s.rpe ?? s.rir ?? '')    // new schema: rpe; legacy: rir interpreted as rpe
+            : (isRunEx ? '' : (s.rir ?? '')); // resistance: rir; run: no intensity edit
+          const rirOptions = isRunEx
+            ? '' // runs: no RIR/RPE dropdown
+            : isSkillTimed
+              ? [6,7,8,9,10].map(n=>`<option value="${n}" ${editIntensityVal===n?'selected':''}>RPE${n}</option>`).join('')
+              : [0,1,2,3,4,5].map(n=>`<option value="${n}" ${editIntensityVal===n?'selected':''}>RIR${n}</option>`).join('');
           return `
           <div class="detail-set-row" data-si="${si}">
             <span class="set-idx">${si+1}</span>
             <input type="number" class="edit-reps" data-ei="${ei}" data-si="${si}" value="${s.reps||0}" min="0" inputmode="decimal" style="width:52px;background:rgba(255,255,255,0.02);border:1px solid rgba(91,168,255,0.1);border-radius:4px;color:var(--text);padding:4px 6px;font-size:16px;" />
             <input type="number" class="edit-weight" data-ei="${ei}" data-si="${si}" value="${s.weight||0}" min="0" step="0.5" inputmode="decimal" style="width:52px;background:rgba(255,255,255,0.02);border:1px solid rgba(91,168,255,0.1);border-radius:4px;color:var(--text);padding:4px 6px;font-size:16px;" />
-            <select class="edit-rir" data-ei="${ei}" data-si="${si}" style="background:rgba(255,255,255,0.02);border:1px solid rgba(91,168,255,0.1);border-radius:4px;color:var(--text);padding:4px 3px;font-size:16px;width:58px;">
+            <select class="edit-rir" data-ei="${ei}" data-si="${si}" data-field="${isSkillTimed ? 'rpe' : 'rir'}" style="background:rgba(255,255,255,0.02);border:1px solid rgba(91,168,255,0.1);border-radius:4px;color:var(--text);padding:4px 3px;font-size:16px;width:58px;">
               <option value="">—</option>${rirOptions}
             </select>
             <button class="remove-set-edit-btn" data-ei="${ei}" data-si="${si}" style="background:none;border:none;color:var(--excess);font-size:16px;cursor:pointer;">×</button>
@@ -18204,7 +18208,18 @@ function openWorkoutDetail(workoutId) {
     });
     overlay.querySelectorAll('.edit-rir').forEach(inp => {
       const val = inp.value;
-      w.exercises[Number(inp.dataset.ei)].sets[Number(inp.dataset.si)].rir = val !== '' ? Number(val) : null;
+      const ei = Number(inp.dataset.ei);
+      const si = Number(inp.dataset.si);
+      const field = inp.dataset.field || 'rir'; // 'rir' for resistance, 'rpe' for timed skill
+      const numVal = val !== '' ? Number(val) : null;
+      // Write to correct semantic field; clear the other to avoid stale values
+      if (field === 'rpe') {
+        w.exercises[ei].sets[si].rpe = numVal;
+        w.exercises[ei].sets[si].rir = null; // resistance field not applicable
+      } else {
+        w.exercises[ei].sets[si].rir = numVal;
+        // Leave rpe unchanged (may be null for new schema or not present for legacy)
+      }
     });
     const btn = overlay.querySelector('#detail-save-edit');
     btn.disabled = true; btn.textContent = 'Saving…';
