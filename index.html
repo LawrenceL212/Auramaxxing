@@ -5875,15 +5875,25 @@ document.getElementById('save-workout-btn')?.addEventListener('click', async () 
       const selectedRir = sr.querySelector('.rir-chip.selected');
       const distInput = sr.querySelector('.set-dist');
       const secsInput = sr.querySelector('.set-secs');
-      const mins = Number(sr.querySelector('.set-reps')?.value) || 0;
-      const secs = Number(secsInput?.value) || 0;
-      const totalMins = secsInput ? mins + secs / 60 : mins;
+      const rawVal = Number(sr.querySelector('.set-reps')?.value) || 0;
+      const exDef = EXERCISES_ALL[name] || {};
+      const isSecs = exDef.timed && exDef.timedUnit !== 'mins';
+      // For run exercises: set-reps = minutes, set-secs = seconds (MM:SS)
+      // For timed skill exercises in secs mode: set-reps = raw seconds, no set-secs
+      // For timed exercises in mins mode: set-reps = minutes
+      const mins = secsInput ? rawVal : (isSecs ? 0 : rawVal);
+      const secs = secsInput ? (Number(secsInput.value) || 0) : (isSecs ? rawVal : 0);
+      const totalMins = (mins * 60 + secs) / 60;
       return {
-        reps: secsInput ? Math.max(1, Math.round(totalMins)) : (Number(sr.querySelector('.set-reps')?.value) || 0),
+        reps: secsInput
+          ? Math.max(1, Math.round(totalMins))          // run: store rounded minutes
+          : isSecs
+            ? Math.max(1, Math.round(secs))              // timed secs: store raw seconds
+            : (Number(sr.querySelector('.set-reps')?.value) || 0), // strength: store reps
         weight: Number(sr.querySelector('.set-weight')?.value) || 0,
         rir: selectedRir ? Number(selectedRir.dataset.rir) : null,
         ...(distInput ? { distKm: parseFloat(distInput.value) || 0 } : {}),
-        ...(secsInput ? { durationMins: Math.round(totalMins * 10) / 10 } : {}),
+        ...(secsInput || isSecs ? { durationMins: Math.round(totalMins * 10) / 10 } : {}),
       };
     }).filter(s => s.reps > 0 || s.durationMins > 0);    if (sets.length) exercises.push({ name, sets });
   });
@@ -6398,14 +6408,21 @@ function computeWorkoutXP(exercises) {
     }
 
     for (const set of (ex.sets || [])) {
-      const reps = Number(set.reps) || 0;
+      // For timed exercises use durationMins→seconds for XP calc (accurate duration)
+      // For strength use reps directly
+      const isTimed = !!exDef.timed;
+      const isSecs  = isTimed && exDef.timedUnit !== 'mins';
+      const reps = isTimed && set.durationMins != null
+        ? Math.round(set.durationMins * 60)   // convert stored minutes → seconds
+        : Number(set.reps) || 0;
       if (reps <= 0) continue;
       // Timed exercises store RPE (1=easy, 10=max) not RIR — convert to RIR equivalent
-      const isTimed = !!exDef.timed;
       const rawVal = set.rir;
       const effectiveRir = (isTimed && rawVal != null) ? (10 - rawVal) : rawVal;
       const im = intensityMult(effectiveRir);
-      const rm = repsMult(reps);
+      // Cap timed hold duration at 60s for XP — beyond that is endurance, not extra skill
+      const xpReps = isTimed ? Math.min(reps, 60) : reps;
+      const rm = repsMult(xpReps);
       const setXP = Math.max(0.5, 2 * rm * im * tier);
 
       generalXP += setXP;
