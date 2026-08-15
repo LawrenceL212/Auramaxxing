@@ -5113,7 +5113,8 @@ window.AuraGL = AuraGL;
    ══════════════════════════════════════════════════════════════════════════ */
 
 // Canonical order - index+1 is the value baked into the region-ID atlases.
-// Matches 3d/exports/hunter-regions.json. Changing this requires a re-bake.
+// Matches 3d/exports/hunter-{male,female}-regions.json. Changing this
+// order requires re-running the UV bake.
 const HUNTER_REGIONS = [
   "Upper Chest", "Middle Chest", "Lower Chest",
   "Front Shoulders", "Lateral Shoulders", "Rear Shoulders",
@@ -5140,26 +5141,23 @@ const AURA_STATE = { dormant: 0.10, stirring: 0.35, active: 0.70, surge: 1.00 };
 /* Body adapter. Everything the runtime needs to mount a body; swap this object
    and nothing downstream changes. */
 const HUNTER_BODY = {
-  url: './3d/exports/hunter-v5.glb',
-  isStandIn: false,                // MPFB2-generated athletic base, variant v5
-  frontAxis: -1,                   // body faces -Z; +1 if a replacement faces +Z
-  // Atlas alignment. PLANAR PROJECTION IS REJECTED as a production approach:
-  // validation measured 3/21 regions correct on male and 1/21 on female. The
-  // charts and the body are different poses, and a scale+offset pair cannot
-  // reconcile a limb-angle difference. Identity is kept here deliberately so no
-  // invalid calibration can ship; the region response stays disabled until the
-  // UV-space bake replaces this lookup entirely.
-  atlasFit: {
-    male:   { front: [1, 0, 1, 0], back: [1, 0, 1, 0] },
-    female: { front: [1, 0, 1, 0], back: [1, 0, 1, 0] },
+  // Body AND atlas are both per-sex. The female body is generated from its own
+  // macro/target set (variant f1) matching the parameters her region atlas was
+  // baked against; it is not a scaled male.
+  body: {
+    male:   './3d/exports/hunter-v5.glb',
+    female: './3d/exports/hunter-f1.glb',
   },
-  regionsEnabled: false,           // flipped on by the UV-space bake
+  isStandIn: false,
+  // Region atlases are baked into the body's OWN UV space
+  // (3d/source/hunter/bake_uv_regions.py -> rasterize_uv.py). Male and female
+  // are authored independently from their own measured landmarks; neither is a
+  // scaled copy of the other. R channel: 0 = unassigned, 1..21 = canonical.
   atlas: {
-    male:   { front: './3d/exports/hunter-male-front-idmap.png',
-              back:  './3d/exports/hunter-male-back-idmap.png' },
-    female: { front: './3d/exports/hunter-female-front-idmap.png',
-              back:  './3d/exports/hunter-female-back-idmap.png' },
+    male:   './3d/exports/hunter-male-regions.png',
+    female: './3d/exports/hunter-female-regions.png',
   },
+  regionsEnabled: true,
 };
 
 function buildHunterScene({ THREE, quality, tier }) {
@@ -5178,14 +5176,8 @@ function buildHunterScene({ THREE, quality, tier }) {
     uRegion:     { value: Array.from({ length: 21 }, () => new THREE.Vector4(0, 0, 0, 0)) },
     uAura:       { value: AURA_STATE.dormant },
     uAuraColor:  { value: new THREE.Color(0x5ba8ff) },
-    uAtlasFront: { value: null },
-    uAtlasBack:  { value: null },
-    uBoundsMin:  { value: new THREE.Vector3() },
-    uBoundsSize: { value: new THREE.Vector3(1, 1, 1) },
-    uFrontAxis:  { value: HUNTER_BODY.frontAxis },
-    uHasAtlas:   { value: HUNTER_BODY.regionsEnabled ? 0 : 0 },
-    uFitFront:   { value: new THREE.Vector4(1, 0, 1, 0) },
-    uFitBack:    { value: new THREE.Vector4(1, 0, 1, 0) },
+    uRegionAtlas:{ value: null },
+    uHasAtlas:   { value: 0 },
     uDebug:      { value: 0 },
   };
 
@@ -5193,38 +5185,28 @@ function buildHunterScene({ THREE, quality, tier }) {
   const atlasCache = {};
   let atlasSex = null;
   function loadAtlas(sex) {
-    // Cache per sex. Reloading on every status update created a fresh pair of
-    // textures each call and leaked GPU memory (observed 16 live textures).
-    if (sex === atlasSex) return;
-    atlasSex = sex;
-    const fit = HUNTER_BODY.atlasFit[sex] || HUNTER_BODY.atlasFit.male;
-    uniforms.uFitFront.value.fromArray(fit.front);
-    uniforms.uFitBack.value.fromArray(fit.back);
-    if (atlasCache[sex]) {
-      uniforms.uAtlasFront.value = atlasCache[sex].front;
-      uniforms.uAtlasBack.value  = atlasCache[sex].back;
-      uniforms.uHasAtlas.value = (atlasCache[sex].front && atlasCache[sex].back) ? 1 : 0;
+    const key = (sex === 'female') ? 'female' : 'male';
+    if (key === atlasSex) return;
+    atlasSex = key;
+    if (atlasCache[key]) {
+      uniforms.uRegionAtlas.value = atlasCache[key];
+      uniforms.uHasAtlas.value = HUNTER_BODY.regionsEnabled ? 1 : 0;
       return;
     }
-    atlasCache[sex] = { front: null, back: null };
-    const a = HUNTER_BODY.atlas[sex] || HUNTER_BODY.atlas.male;
-    ['front', 'back'].forEach(side => {
-      loader.load(a[side], tex => {
-        // NEAREST throughout: interpolating an ID map invents regions that do
-        // not exist between two real ones.
-        tex.magFilter = THREE.NearestFilter;
-        tex.minFilter = THREE.NearestFilter;
-        tex.generateMipmaps = false;
-        tex.colorSpace = THREE.NoColorSpace;
-        tex.flipY = false;
-        atlasCache[sex][side] = tex;
-        if (atlasSex === sex) {
-          uniforms[side === 'front' ? 'uAtlasFront' : 'uAtlasBack'].value = tex;
-          if (HUNTER_BODY.regionsEnabled &&
-              uniforms.uAtlasFront.value && uniforms.uAtlasBack.value) uniforms.uHasAtlas.value = 1;
-        }
-      }, undefined, () => { /* atlas missing: body still renders, no regions */ });
-    });
+    loader.load(HUNTER_BODY.atlas[key], tex => {
+      // NEAREST throughout: interpolating an ID map invents regions that do not
+      // exist between two real ones. flipY false matches glTF UV orientation.
+      tex.magFilter = THREE.NearestFilter;
+      tex.minFilter = THREE.NearestFilter;
+      tex.generateMipmaps = false;
+      tex.colorSpace = THREE.NoColorSpace;
+      tex.flipY = false;
+      atlasCache[key] = tex;
+      if (atlasSex === key) {
+        uniforms.uRegionAtlas.value = tex;
+        uniforms.uHasAtlas.value = HUNTER_BODY.regionsEnabled ? 1 : 0;
+      }
+    }, undefined, () => { /* atlas missing: body still renders, no regions */ });
   }
   loadAtlas('male');
 
@@ -5238,92 +5220,52 @@ function buildHunterScene({ THREE, quality, tier }) {
     Object.assign(shader.uniforms, uniforms);
     shader.vertexShader = shader.vertexShader
       .replace('#include <common>', `#include <common>
-        varying vec3 vObjPos;
-        varying vec3 vObjNrm;`)
+        varying vec2 vRegionUv;`)
       .replace('#include <begin_vertex>', `#include <begin_vertex>
-        vObjPos = position;
-        vObjNrm = normalize(normal);`);
+        // Declare our own varying rather than relying on USE_UV, which is only
+        // defined when the material happens to carry a map.
+        vRegionUv = uv;`);
 
     shader.fragmentShader = shader.fragmentShader
       .replace('#include <common>', `#include <common>
-        varying vec3 vObjPos;
-        varying vec3 vObjNrm;
+        varying vec2 vRegionUv;
         uniform float uTime;
         uniform vec4  uRegion[21];
         uniform float uAura;
         uniform vec3  uAuraColor;
-        uniform sampler2D uAtlasFront;
-        uniform sampler2D uAtlasBack;
-        uniform vec3  uBoundsMin;
-        uniform vec3  uBoundsSize;
-        uniform float uFrontAxis;
+        uniform sampler2D uRegionAtlas;
         uniform float uHasAtlas;
-        uniform vec4  uFitFront;
-        uniform vec4  uFitBack;
         uniform float uDebug;
 
-        // Planar-project the region atlas from the front and the back and blend
-        // by facing. The SVG sheets are already a front view and a back view,
-        // so this is the projection they were drawn for.
+        // Region identity is baked into the body's own UV space, so the lookup
+        // is a single texture fetch - pose-independent, view-independent, and
+        // free of the seams the rejected planar projection produced.
         vec4 sampleRegion(){
           if (uHasAtlas < 0.5) return vec4(0.0);
-          vec2 n = vec2(
-            (vObjPos.x - uBoundsMin.x) / max(uBoundsSize.x, 1e-4),
-            1.0 - (vObjPos.y - uBoundsMin.y) / max(uBoundsSize.y, 1e-4));
-          float facing = vObjNrm.z * uFrontAxis;
-          bool isFront = facing > 0.0;
-          vec4 fit = isFront ? uFitFront : uFitBack;
-          vec2 uv;
-          uv.x = (n.x - 0.5) * fit.x + 0.5 + fit.y;
-          uv.y = (n.y - 0.5) * fit.z + 0.5 + fit.w;
-          if (!isFront) uv.x = 1.0 - uv.x;      // back sheet mirrors in X
-          if (uv.x < 0.0 || uv.x > 1.0 || uv.y < 0.0 || uv.y > 1.0) return vec4(0.0);
-          float id = isFront ? texture2D(uAtlasFront, uv).r * 255.0
-                             : texture2D(uAtlasBack,  uv).r * 255.0;
-          float fw = smoothstep(-0.15, 0.35, facing);
-          float w  = isFront ? fw : (1.0 - fw);
-          int   ii  = int(floor(id + 0.5)) - 1;
+          float id = texture2D(uRegionAtlas, vRegionUv).r * 255.0;
+          int ii = int(floor(id + 0.5)) - 1;
           if (ii < 0 || ii > 20) return vec4(0.0);
-          vec4 r = uRegion[ii];
-          r.a *= w;
-          return r;
+          return uRegion[ii];
         }`)
       .replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>
         vec4 reg = sampleRegion();
 
         // Regional energy reads as light under the surface rather than paint on
-        // top: it is strongest where the surface turns away from the viewer.
+        // top: strongest where the surface turns away from the viewer.
         vec3 V = normalize(vViewPosition);
         float fres = pow(1.0 - clamp(dot(normalize(vNormal), V), 0.0, 1.0), 2.6);
 
-        // Warning states breathe; everything else holds steady.
-        float pulse = 0.85 + 0.15 * sin(uTime * 2.6);
-        float warnAmt = step(0.5, reg.a) * 0.0;
-        float regI = reg.a * mix(1.0, pulse, warnAmt);
-
         if (uDebug > 0.5) {
-          // Developer view: raw region identity, so projection alignment can be
-          // judged independently of intensity, fresnel and lighting.
-          vec2 dn = vec2(
-            (vObjPos.x - uBoundsMin.x) / max(uBoundsSize.x, 1e-4),
-            1.0 - (vObjPos.y - uBoundsMin.y) / max(uBoundsSize.y, 1e-4));
-          float dfacing = vObjNrm.z * uFrontAxis;
-          bool dFront = dfacing > 0.0;
-          vec4 dfit = dFront ? uFitFront : uFitBack;
-          vec2 duv;
-          duv.x = (dn.x - 0.5) * dfit.x + 0.5 + dfit.y;
-          duv.y = (dn.y - 0.5) * dfit.z + 0.5 + dfit.w;
-          if (!dFront) duv.x = 1.0 - duv.x;
-          float did = dFront ? texture2D(uAtlasFront, duv).r * 255.0
-                             : texture2D(uAtlasBack, duv).r * 255.0;
-          vec3 dcol = did < 0.5 ? vec3(0.02) : vec3(
+          // Developer only: raw region identity, never reachable in production.
+          float did = texture2D(uRegionAtlas, vRegionUv).r * 255.0;
+          totalEmissiveRadiance = did < 0.5 ? vec3(0.02) : vec3(
             fract(did * 0.13), fract(did * 0.37 + 0.3), fract(did * 0.71 + 0.6));
-          totalEmissiveRadiance = dcol;
         }
-        totalEmissiveRadiance += reg.rgb * regI * (0.35 + 0.85 * fres);
 
-        // Aura: a rim that belongs to the character, scaled by state. Dormant
-        // is deliberately near-invisible.
+        totalEmissiveRadiance += reg.rgb * reg.a * (0.35 + 0.85 * fres);
+
+        // Aura: a rim that belongs to the character, scaled by state. Dormant is
+        // deliberately near-invisible.
         float rimA = pow(fres, 1.25) * uAura;
         totalEmissiveRadiance += uAuraColor * rimA * 0.55;
       `);
@@ -5333,42 +5275,62 @@ function buildHunterScene({ THREE, quality, tier }) {
   let mixer = null, model = null, ready = false, frozen = false;
   let auraTarget = AURA_STATE.dormant, auraNow = AURA_STATE.dormant;
 
-  (async () => {
+  let _gl = null, _meshopt = null, _bodySex = null, _loading = false;
+
+  async function loadBody(sex) {
+    const key = (sex === 'female') ? 'female' : 'male';
+    if (key === _bodySex || _loading) return;
+    _loading = true;
     try {
-      const [{ GLTFLoader }, { MeshoptDecoder }] = await Promise.all([
-        import('three/addons/loaders/GLTFLoader.js'),
-        import('three/addons/libs/meshopt_decoder.module.js'),
-      ]);
-      const gl = new GLTFLoader();
-      gl.setMeshoptDecoder(MeshoptDecoder);
-      gl.load(HUNTER_BODY.url, (gltf) => {
-        model = gltf.scene;
-        model.traverse(o => { if (o.isMesh) { o.material = mat; o.frustumCulled = false; } });
-        const box = new THREE.Box3().setFromObject(model);
-        const size = box.getSize(new THREE.Vector3());
-        const ctr = box.getCenter(new THREE.Vector3());
-        uniforms.uBoundsMin.value.copy(box.min);
-        uniforms.uBoundsSize.value.copy(size);
-        // Frame the figure: full body, slight low angle, head near the top.
-        const fit = 3.15 / Math.max(size.y, 0.001);
-        model.scale.setScalar(fit);
-        model.position.set(-ctr.x * fit, -ctr.y * fit, -ctr.z * fit);
-        root.add(model);
-        if (gltf.animations?.length) {
-          mixer = new THREE.AnimationMixer(model);
-          gltf.animations.forEach(c => mixer.clipAction(c).play());
-        }
-        ready = true;
-      }, undefined, (e) => console.info('[Hunter] body failed to load', e));
-    } catch (e) { console.info('[Hunter] loader unavailable', e); }
-  })();
+      if (!_gl) {
+        const [{ GLTFLoader }, { MeshoptDecoder }] = await Promise.all([
+          import('three/addons/loaders/GLTFLoader.js'),
+          import('three/addons/libs/meshopt_decoder.module.js'),
+        ]);
+        _meshopt = MeshoptDecoder;
+        _gl = new GLTFLoader();
+        _gl.setMeshoptDecoder(_meshopt);
+      }
+      const gltf = await _gl.loadAsync(HUNTER_BODY.body[key]);
+      // replace any previous body so only one Hunter is ever in the scene
+      if (model) {
+        root.remove(model);
+        model.traverse(o => { if (o.isMesh) o.geometry?.dispose?.(); });
+      }
+      if (mixer) { mixer.stopAllAction(); mixer = null; }
+      model = gltf.scene;
+      model.traverse(o => { if (o.isMesh) { o.material = mat; o.frustumCulled = false; } });
+      const box = new THREE.Box3().setFromObject(model);
+      const size = box.getSize(new THREE.Vector3());
+      const ctr = box.getCenter(new THREE.Vector3());
+      const fit = 3.15 / Math.max(size.y, 0.001);
+      model.scale.setScalar(fit);
+      model.position.set(-ctr.x * fit, -ctr.y * fit, -ctr.z * fit);
+      root.add(model);
+      if (gltf.animations?.length) {
+        mixer = new THREE.AnimationMixer(model);
+        gltf.animations.forEach(c => mixer.clipAction(c).play());
+      }
+      _bodySex = key;
+      ready = true;
+    } catch (e) {
+      console.info('[Hunter] body failed to load', e);
+    } finally {
+      _loading = false;
+    }
+  }
+  loadBody('male');
 
   const api = {
     scene,
     // Consumes the app's own resolved status object. Read-only.
     setMuscleStats(stats, sex) {
       if (!stats) return;
-      if (sex) loadAtlas(sex === 'female' ? 'female' : 'male');
+      if (sex) {
+        const key = sex === 'female' ? 'female' : 'male';
+        loadAtlas(key);
+        loadBody(key);          // body and atlas always move together
+      }
       const col = new THREE.Color();
       for (let i = 0; i < 21; i++) {
         const name = HUNTER_REGIONS[i];
@@ -5383,11 +5345,6 @@ function buildHunterScene({ THREE, quality, tier }) {
     },
     setAura(state) { auraTarget = AURA_STATE[state] ?? AURA_STATE.dormant; },
     debugRegions(on) { uniforms.uDebug.value = on ? 1 : 0; },
-    setAtlasFit(side, sx, ox, sy, oy) {
-      (side === 'back' ? uniforms.uFitBack : uniforms.uFitFront).value.set(sx, ox, sy, oy);
-    },
-    getAtlasFit() { return { front: uniforms.uFitFront.value.toArray(),
-                             back: uniforms.uFitBack.value.toArray() }; },
     get ready() { return ready; },
     get body() { return HUNTER_BODY; },
     // Developer/QA only: hold the body perfectly still so region masks can be

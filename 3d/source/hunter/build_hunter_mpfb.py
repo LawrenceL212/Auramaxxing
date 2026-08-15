@@ -73,6 +73,24 @@ VARIANTS = {
     # 5. THE HUNTER - high muscle with low body fat is what produces definition;
     #    v3 showed that muscle alone just adds bulk. Shoulders and waist are
     #    pushed hard because the V-taper is the silhouette that reads at 390px.
+    # Female Hunter body. Independently parameterised - matches the macro and
+    # target set used for the female region bake in bake_uv_regions.py, so the
+    # body and its atlas describe the same geometry. Not a scaled male.
+    "f1": dict(macro=dict(gender=0.0, age=0.42, muscle=0.72, weight=0.38,
+                          proportions=0.80, height=0.50),
+               targets={
+                   "torso/measure-shoulder-dist-incr": 0.55,
+                   "torso/torso-scale-horiz-decr": 0.55,
+                   "torso/torso-muscle-dorsi-incr": 0.55,
+                   "stomach/stomach-tone-incr": 0.85,
+                   "arms/l-upperarm-muscle-incr": 0.45,
+                   "arms/r-upperarm-muscle-incr": 0.45,
+                   "arms/l-upperarm-shoulder-muscle-incr": 0.50,
+                   "arms/r-upperarm-shoulder-muscle-incr": 0.50,
+                   "legs/measure-thigh-circ-incr": 0.35,
+                   "buttocks/buttocks-volume-incr": 0.40,
+               }),
+
     "v5": dict(macro=dict(gender=1.0, age=0.42, muscle=0.90, weight=0.33,
                           proportions=0.85, height=0.62),
                targets={
