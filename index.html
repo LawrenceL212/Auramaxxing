@@ -3279,6 +3279,33 @@ const EQUIPMENT_TYPES = ["Barbell","Dumbbell","Cable","Machine","Bodyweight"];
 // Focusing = system blue (recently stimulated)
 // Excess = warm red (sore/overreached)
 // Recovering = violet (healing process active)
+// Text-readable counterpart to STATUS_COLOR. The map fills stay deliberately
+// dim (a stalled muscle should look dead); labels must still be legible.
+const STATUS_TEXT_COLOR = {
+  Stalled:    '#7E8CA3',
+  Maintaining:'#2FB8C6',
+  Growing:    '#6FFFB0',
+  Focusing:   '#5BA8FF',
+  Excess:     '#FF4D67',
+};
+
+// Presentation-only readability clamp for user-chosen colours. The stored value
+// is never modified; this only affects how it is painted on the dark surface.
+function readableInk(col, minRatio = 4.5) {
+  if (!col || typeof col !== 'string' || col[0] !== '#') return col;
+  let h = col.slice(1);
+  if (h.length === 3) h = h.split('').map(c => c + c).join('');
+  if (h.length < 6) return col;
+  const ch = [0, 2, 4].map(i => parseInt(h.slice(i, i + 2), 16));
+  const lin = c => { c /= 255; return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4); };
+  const L = c => 0.2126 * lin(c[0]) + 0.7152 * lin(c[1]) + 0.0722 * lin(c[2]);
+  const bgL = L([16, 20, 28]);
+  let cur = ch.slice(), guard = 0;
+  while (((Math.max(L(cur), bgL) + 0.05) / (Math.min(L(cur), bgL) + 0.05)) < minRatio && guard++ < 24) {
+    cur = cur.map(v => Math.min(255, Math.round(v + (255 - v) * 0.12 + 4)));
+  }
+  return '#' + cur.map(v => v.toString(16).padStart(2, '0')).join('');
+}
 const STATUS_COLOR = {
   Stalled:    '#2A3A4A',     // cold dark — dead muscle, barely visible
   Maintaining:'#2FB8C6',     // teal — active maintenance
@@ -4371,6 +4398,15 @@ const VIEW_DEPTH = { quest:0, board:1, trends:2, inventory:3, world:4, exercises
 let _lastViewDepth = 0;
 
 function switchView(name) {
+  // Presentation lifecycle: the world iframe is intentionally kept loaded, but
+  // its canvas must not keep repainting while it is off screen.
+  try {
+    const wf = document.querySelector('#view-world iframe');
+    if (wf && wf.contentWindow) {
+      wf.contentWindow.postMessage({ type: 'setActive', active: name === 'world' }, '*');
+    }
+  } catch (e) { /* iframe not ready yet — it starts paused and is told on entry */ }
+
   const newDepth = VIEW_DEPTH[name] ?? 1;
   const goingDeeper = newDepth >= _lastViewDepth;
   _lastViewDepth = newDepth;
@@ -9179,7 +9215,7 @@ function renderCharCard() {
           <div style="font-family:var(--font-display);font-size:16px;font-weight:900;color:${RANK_COLORS[dominantStat.rank]};">${dominantStat.rank}</div>
         </div>
         <div style="flex:1;padding:8px;background:rgba(255,77,103,0.03);border-top:1px solid rgba(255,77,103,0.08);border-radius:var(--radius-sm);">
-          <div style="font-family:var(--font-mono);font-size:7px;color:rgba(255,77,103,0.78);letter-spacing:.12em;margin-bottom:4px;">LIMITING</div>
+          <div style="font-family:var(--font-mono);font-size:7px;color:var(--excess);letter-spacing:.12em;margin-bottom:4px;">LIMITING</div>
           <div style="font-size:12px;color:${RANK_COLORS[weakestStat.rank]};font-weight:700;">${STAT_ICONS_FULL[weakestStat.id]} ${weakestStat.label}</div>
           <div style="font-family:var(--font-display);font-size:16px;font-weight:900;color:${RANK_COLORS[weakestStat.rank]};">${weakestStat.rank}</div>
         </div>
@@ -12725,7 +12761,7 @@ function renderPartyStatus() {
     const statusColor = done
       ? 'var(--growing)'
       : isRest
-        ? 'rgba(91,168,255,0.5)'
+        ? 'var(--text-dim)'
         : streakAtRisk
           ? 'var(--excess)'
           : 'var(--text-faint)';
@@ -13450,7 +13486,7 @@ async function renderRaidBoss() {
     const isRestToday = isRestDayFor(u.uid);
     const trainedToday = allWorkouts.some(w => w.uid === u.uid && w.date === todayStr());
     const statusText = trainedToday ? '✓ trained' : isRestToday ? '🌑 rest' : '—';
-    const statusColor = trainedToday ? 'var(--growing)' : isRestToday ? 'rgba(91,168,255,0.5)' : 'var(--text-faint)';
+    const statusColor = trainedToday ? 'var(--growing)' : isRestToday ? 'var(--text-dim)' : 'var(--text-faint)';
     const hitsWeakness = details.hitsWeakness;
     const barColor = hitsWeakness ? '#FFD66B' : goalMet ? 'var(--growing)' : isMe ? 'var(--brass)' : 'var(--violet)';
     const penaltyAp = !cleared ? getPenaltyShare(u.uid) : 0;
@@ -13929,7 +13965,7 @@ function statusCounts(stats) {
 function statusCountRow(stats) {
   const counts = statusCounts(stats);
   return `<div class="status-count-row">${Object.entries(counts).map(([k,v]) =>
-    `<span class="status-pill" style="border-color:${STATUS_COLOR[k]};color:${STATUS_COLOR[k]};">${k} ${v}</span>`).join('')}</div>`;
+    `<span class="status-pill" style="border-color:${STATUS_COLOR[k]};color:${STATUS_TEXT_COLOR[k]||STATUS_COLOR[k]};">${k} ${v}</span>`).join('')}</div>`;
 }
 
 function weightLineChart(weights) {
@@ -14111,7 +14147,7 @@ function renderTrends() {
   document.getElementById('trends-widgets').innerHTML = `
     <div class="card widget" id="widget-muscle">
       <div class="card-title"><h3>◈ Muscle Activation <span class="chev">›</span></h3></div>
-      <div class="status-pill" style="border-color:${STATUS_COLOR[topStatus[0]]};color:${STATUS_COLOR[topStatus[0]]};display:inline-flex;margin-bottom:8px;">${topStatus[0]} ${topStatus[1]}</div>
+      <div class="status-pill" style="border-color:${STATUS_COLOR[topStatus[0]]};color:${STATUS_TEXT_COLOR[topStatus[0]]||STATUS_COLOR[topStatus[0]]};display:inline-flex;margin-bottom:8px;">${topStatus[0]} ${topStatus[1]}</div>
       <div class="body-pair">${bodySvg('front', stats)}${bodySvg('back', stats)}</div>
     </div>
 
@@ -14621,9 +14657,9 @@ function renderExerciseLibrary() {
 
   const INTENT_COLOR = {
     strength:'var(--brass)', hypertrophy:'var(--violet)', explosive:'var(--excess)',
-    endurance:'#2980B9', skill:'#FFD66B', mobility:'#27AE60',
+    endurance:'#4FA3E3', skill:'#FFD66B', mobility:'#27AE60',
     defence:'var(--growing)', isometric:'var(--maintaining)', plyometric:'#F97316',
-    balance:'#A78BFA', martial:'#E74C3C', sport:'#06B6D4',
+    balance:'#A78BFA', martial:'#FF7A6B', sport:'#06B6D4',
   };
   const STAT_COLOR = {
     strength:'var(--brass)', endurance:'#FF4D67', agility:'var(--violet)',
@@ -18083,7 +18119,7 @@ function renderGuildFeed() {
         return `<div style="display:flex;align-items:flex-start;gap:8px;padding:7px 0;border-bottom:1px solid rgba(91,168,255,0.05);">
           <div style="width:6px;height:6px;border-radius:50%;background:${nameColor};margin-top:5px;flex-shrink:0;"></div>
           <div style="flex:1;min-width:0;">
-            <div style="font-size:11px;font-family:var(--font-mono);color:var(--text-dim);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;letter-spacing:.03em;"><span style="color:${nameColor};">${escapeHtml(e.name)}</span> · ${e.icon} ${e.type === 'pr' ? 'NEW RECORD' : 'HUNT CLEARED'}</div>
+            <div style="font-size:11px;font-family:var(--font-mono);color:var(--text-dim);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;letter-spacing:.03em;"><span style="color:${readableInk(nameColor)};">${escapeHtml(e.name)}</span> · ${e.icon} ${e.type === 'pr' ? 'NEW RECORD' : 'HUNT CLEARED'}</div>
             ${systemSub ? `<div style="font-size:9px;color:var(--text-faint);margin-top:1px;">${systemSub}</div>` : ''}
           </div>
           <div style="font-size:8px;font-family:var(--font-mono);color:rgba(91,168,255,0.78);flex-shrink:0;margin-top:3px;white-space:nowrap;">${dateLabel}</div>

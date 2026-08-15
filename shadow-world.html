@@ -589,7 +589,27 @@ function draw(t = 0) {
 }
 
 let lastT = 0;
+// Presentation lifecycle. The parent keeps this iframe loaded permanently, so
+// without this the canvas repainted 2048x1024 at 30fps forever behind every
+// other view, capping the whole app at ~25fps once World had been opened once.
+let swActive = false;
+let swRafQueued = false;
+window.addEventListener('message', (e) => {
+  if (e.source !== window.parent || e.data?.type !== 'setActive') return;
+  const next = !!e.data.active;
+  if (next === swActive) return;
+  swActive = next;
+  if (swActive && !swRafQueued) { swRafQueued = true; requestAnimationFrame(animate); }
+});
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden && swActive && !swRafQueued) {
+    swRafQueued = true; requestAnimationFrame(animate);
+  }
+});
 function animate(t) {
+  swRafQueued = false;
+  if (!swActive || document.hidden) return;   // idle: no rAF rescheduled
+  swRafQueued = true;
   requestAnimationFrame(animate);
   if (t-lastT < 33) return; // ~30fps for world — alive but not expensive
   lastT = t;
@@ -634,7 +654,8 @@ loadFromParent().then(() => {
     updateGateLock();
     showConquestLockOverlay();
   }, 300);
-  requestAnimationFrame(animate);
+  // Paint one frame so the map is ready, then stay idle until activated.
+  requestAnimationFrame((t) => { draw(t); });
 });
 
 function showConquestLockOverlay() {
