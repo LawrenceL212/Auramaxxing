@@ -4257,6 +4257,8 @@ if (configOk) {
       // run system checks on every login — penalties, rank-up alerts etc.
       setTimeout(() => runSystemChecks(), 800);
       setTimeout(() => ensureStatBaselines(), 1200);
+      // startup integrity check — lightweight; triggers full reconcile only if version changed
+      setTimeout(() => startupIntegrityCheck(), 2000);
     } else {
       currentUser = null;
       document.getElementById('auth-screen').style.display = 'flex';
@@ -5553,6 +5555,368 @@ function renderProgramEditor(wrap) {
     });
   }
 }
+/* =========================================================================
+   STATE RECONCILIATION SYSTEM
+   =========================================================================
+   Principle: workout history is authoritative. Derived game state is
+   reconstructable. When state is missing, stale, or inconsistent (due to
+   bugs, edits, deletes, migrations, or partial writes), this system can
+   detect and repair it without modifying source workout records.
+
+   AUTHORITATIVE (source of truth, never rewritten by reconcile):
+     workouts collection — all exercises, sets, reps, weight, RIR/RPE, dates
+
+   DERIVED (reconstructable from workouts, repaired when stale):
+     hunterXP, hunterLevel — from computeWorkoutXP across all workouts
+     statTrainingXP — from computeWorkoutXP statWeights
+     AP (level-derived) — from levelFromTotalXP rules
+     prs — from checkAndAwardPRs logic (e1RM per exercise)
+     activeDungeon.hp — from cumulative computeSessionDungeonDamage
+     shadowArmy.pool — from computeSessionArmySoldiers per workout
+     milestonesAchieved — from checkAndAwardMilestones (idempotent)
+     lastWorkoutDate — max(workout.date) for current user
+     hunterXP from milestones — reconstructable if milestone.xp stored
+
+   NOT RECONSTRUCTABLE (admin/manual state, do not overwrite):
+     auraPoints from manual admin grants
+     stat ranks (time-gated — cannot reconstruct time spent)
+     statTimeAtRank
+     inventory.earnedAt (trial completion timestamp)
+     duel state
+     shadowArmy.countries (deployment decisions)
+     streakFreeze
+   ========================================================================= */
+
+// ── Version stamp — bump to force full reconciliation after code changes ──
+const RECONCILE_VERSION = 3;
+
+// ── Reconciliation result accumulator ──────────────────────────────────────
+function makeReconcileReport() {
+  const findings = [];
+  return {
+    add(system, expected, actual, repaired, note) {
+      findings.push({ system, expected, actual, repaired, note, ts: new Date().toISOString() });
+    },
+    findings,
+    hasRepairs() { return findings.some(f => f.repaired); },
+    summary() {
+      const repaired = findings.filter(f => f.repaired).map(f => f.system);
+      const ambiguous = findings.filter(f => !f.repaired && f.note?.includes('AMBIGUOUS'));
+      return { repaired, ambiguous: ambiguous.map(f => f.system), total: findings.length };
+    },
+  };
+}
+
+// ── XP reconciliation ─────────────────────────────────────────────────────
+// Rebuilds expected hunterXP + statTrainingXP from canonical computeWorkoutXP.
+// Does NOT recalculate PR-derived AP (provenance not reliably storable).
+// Does NOT recalculate milestone-derived XP (one-time, idempotent check runs separately).
+async function reconcileXP(myWOs, report, dryRun = false) {
+  if (!currentUser || !profile) return;
+
+  // Sum XP across all workouts using the canonical function
+  let expectedXP = 0;
+  const expectedTraining = { strength:0, endurance:0, agility:0, flexibility:0, defence:0, focus:0 };
+
+  for (const w of myWOs) {
+    const result = computeWorkoutXP(w.exercises || []);
+    expectedXP += result.generalXP;
+    for (const [stat, gain] of Object.entries(result.trainingXP)) {
+      if (expectedTraining[stat] !== undefined) expectedTraining[stat] += gain;
+    }
+  }
+
+  // Add milestone XP (stored on profile.milestonesAchieved[id] — each has xp)
+  let milestoneXP = 0;
+  const achieved = profile.milestonesAchieved || {};
+  MILESTONES.forEach(m => {
+    if (achieved[m.id]) milestoneXP += (m.hunterXP || 0);
+  });
+  expectedXP += milestoneXP;
+
+  expectedXP = Math.round(expectedXP * 10) / 10;
+  const storedXP = profile.hunterXP || 0;
+  const xpDiff = Math.abs(expectedXP - storedXP);
+
+  if (xpDiff > 1.0) { // tolerance: 1 XP to avoid float drift
+    report.add('hunterXP', expectedXP, storedXP, !dryRun, `Δ = ${(expectedXP - storedXP).toFixed(1)}`);
+    if (!dryRun) {
+      const newLevel = levelFromTotalXP(expectedXP);
+      await writeUserFields({ hunterXP: expectedXP, hunterLevel: newLevel });
+      profile.hunterXP = expectedXP;
+      profile.hunterLevel = newLevel;
+    }
+  }
+
+  // Training XP caps — check each stat
+  const caps = profile.statTrainingXP || {};
+  const trainingBatch = {};
+  for (const stat of Object.keys(expectedTraining)) {
+    const expected = Math.round(expectedTraining[stat] * 10) / 10;
+    const stored   = caps[stat] || 0;
+    if (Math.abs(expected - stored) > 1.0) {
+      report.add(`statTrainingXP.${stat}`, expected, stored, !dryRun, `Δ = ${(expected - stored).toFixed(1)}`);
+      if (!dryRun) trainingBatch[`statTrainingXP.${stat}`] = Math.max(10, expected);
+    }
+  }
+  if (!dryRun && Object.keys(trainingBatch).length) {
+    await writeUserFields(trainingBatch);
+  }
+}
+
+// ── Dungeon HP reconciliation ──────────────────────────────────────────────
+// Replays all workouts since dungeon.startDate using computeSessionDungeonDamage.
+// Accounts for regen. Does not replay workouts against dungeons no longer active.
+async function reconcileDungeon(myWOs, report, dryRun = false) {
+  if (!currentUser || !profile) return;
+  const dungeon = profile.activeDungeon;
+  if (!dungeon || dungeon.cleared) return;
+
+  // Gather qualifying workouts (on or after dungeon start date)
+  const qualifying = myWOs
+    .filter(w => w.date >= dungeon.startDate)
+    .sort((a, b) => a.date.localeCompare(b.date));
+
+  if (!qualifying.length) return;
+
+  // Replay damage: start from maxHp, apply regen per idle gap, apply damage per session
+  // We use applyDungeonRegen logic per day gap between sessions
+  let simulatedHP = dungeon.maxHp;
+  let lastDate = dungeon.startDate;
+
+  for (const w of qualifying) {
+    // Apply regen for idle days between sessions
+    const idleDays = daysBetween(lastDate, w.date);
+    if (idleDays > 1 && dungeon.tier) {
+      const regenRate = DUNGEON_REGEN_RATE[dungeon.tier] || 0;
+      if (regenRate > 0) {
+        const regenAmt = Math.round(dungeon.maxHp * regenRate * (idleDays - 1));
+        simulatedHP = Math.min(dungeon.maxHp, simulatedHP + regenAmt);
+      }
+    }
+    // Apply damage from this workout using canonical function
+    const fakeDungeon = { ...dungeon, hp: simulatedHP };
+    const dmg = computeSessionDungeonDamage(fakeDungeon, w.exercises || [], w.runSummary || null);
+    simulatedHP = Math.max(0, simulatedHP - dmg);
+    lastDate = w.date;
+    if (simulatedHP <= 0) break; // dungeon would have been cleared — don't continue
+  }
+
+  // If simulatedHP reached 0 but dungeon still shows as active, it's ambiguous
+  // (the clear might not have been recorded, or the clear item was issued) — don't touch it
+  if (simulatedHP <= 0 && !dungeon.cleared) {
+    report.add('activeDungeon.hp', simulatedHP, dungeon.hp, false,
+      'AMBIGUOUS — simulated clear but dungeon still active; manual review needed');
+    return;
+  }
+
+  const expectedHP = Math.round(simulatedHP);
+  const storedHP   = Math.round(dungeon.hp || 0);
+
+  if (Math.abs(expectedHP - storedHP) > 5) { // tolerance: 5 HP
+    report.add('activeDungeon.hp', expectedHP, storedHP, !dryRun,
+      `Δ = ${expectedHP - storedHP} HP`);
+    if (!dryRun) {
+      const updated = { ...dungeon, hp: expectedHP };
+      await writeUserFields({ activeDungeon: updated });
+      profile.activeDungeon = updated;
+    }
+  }
+}
+
+// ── Shadow army pool reconciliation ───────────────────────────────────────
+// Sums computeSessionArmySoldiers across all workouts and compares to pool.
+// Only repairs pool (undeployed soldiers). Deployed soldiers in .countries are NOT touched.
+async function reconcileArmy(myWOs, report, dryRun = false) {
+  if (!currentUser || !profile) return;
+
+  const expectedPool = {};
+  for (const w of myWOs) {
+    const contrib = computeSessionArmySoldiers(w.exercises || [], w.runSummary || null);
+    for (const [ckey, count] of Object.entries(contrib)) {
+      expectedPool[ckey] = (expectedPool[ckey] || 0) + count;
+    }
+  }
+
+  const storedPool = profile.shadowArmy?.pool || {};
+  const armyBatch = {};
+  let hasDiff = false;
+
+  for (const ckey of [...new Set([...Object.keys(expectedPool), ...Object.keys(storedPool)])]) {
+    const expected = expectedPool[ckey] || 0;
+    const stored   = storedPool[ckey]   || 0;
+    if (Math.abs(expected - stored) > 2) { // tolerance: 2 soldiers
+      report.add(`shadowArmy.pool.${ckey}`, expected, stored, !dryRun,
+        `Δ = ${expected - stored}`);
+      if (!dryRun) {
+        armyBatch[`shadowArmy.pool.${ckey}`] = Math.max(0, expected);
+        hasDiff = true;
+      }
+    }
+  }
+  if (!dryRun && hasDiff) {
+    const { doc: fDoc, updateDoc: fUpdate } = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js');
+    await fUpdate(fDoc(db, 'users', currentUser.uid), armyBatch);
+  }
+}
+
+// ── PR reconciliation ──────────────────────────────────────────────────────
+// Rebuilds expected PRs from workout history using epley1RM.
+// Awards no AP (PR XP provenance not safe to reconstruct).
+// Only adds missing PRs or corrects stale e1RM values.
+async function reconcilePRs(myWOs, report, dryRun = false) {
+  if (!currentUser || !profile) return;
+  if (!prSystemUnlocked()) return;
+
+  const bw = latestBodyweightKg();
+  const expectedPRs = {}; // exName -> { e1rm, date }
+
+  for (const w of myWOs) {
+    for (const ex of (w.exercises || [])) {
+      for (const s of (ex.sets || [])) {
+        if (!s.reps || !s.weight || s.reps <= 0 || s.weight <= 0) continue;
+        const e1rm = epley1RM(s.weight, s.reps);
+        if (!expectedPRs[ex.name] || e1rm > expectedPRs[ex.name].e1rm) {
+          expectedPRs[ex.name] = { e1rm, date: w.date };
+        }
+      }
+    }
+  }
+
+  const stored = myPRs || {};
+  const toUpdate = {};
+  let hasDiff = false;
+
+  for (const [exName, expected] of Object.entries(expectedPRs)) {
+    const s = stored[exName];
+    if (!s || Math.abs(s.e1rm - expected.e1rm) > 0.5) {
+      // PR is missing or stale — update e1rm/date but preserve tier and xp if stored
+      report.add(`pr.${exName}`, expected.e1rm, s?.e1rm || 0, !dryRun,
+        s ? 'Stale e1RM' : 'Missing PR');
+      if (!dryRun) {
+        const tier = getStrengthTier(exName, expected.e1rm, bw, profile.gender || 'male');
+        toUpdate[exName] = {
+          e1rm: expected.e1rm,
+          date: expected.date,
+          tier: tier || (s?.tier || 'Unranked'),
+          xp:   s?.xp  || FLAT_PR_XP,  // preserve existing XP record
+        };
+        hasDiff = true;
+      }
+    }
+  }
+
+  if (!dryRun && hasDiff) {
+    const newPRs = { ...myPRs, ...toUpdate };
+    await setDoc(doc(db, 'prs', currentUser.uid), newPRs);
+    myPRs = newPRs;
+  }
+}
+
+// ── lastWorkoutDate reconciliation ────────────────────────────────────────
+async function reconcileLastWorkoutDate(myWOs, report, dryRun = false) {
+  if (!currentUser || !profile) return;
+  const latestDate = myWOs.map(w => w.date).sort().pop() || null;
+  const stored = profile.lastWorkoutDate;
+  if (latestDate && latestDate !== stored) {
+    report.add('lastWorkoutDate', latestDate, stored, !dryRun, '');
+    if (!dryRun) {
+      await writeUserFields({ lastWorkoutDate: latestDate });
+      profile.lastWorkoutDate = latestDate;
+    }
+  }
+}
+
+// ── Master reconciliation orchestrator ───────────────────────────────────
+// scope: 'full' | 'xp' | 'dungeon' | 'army' | 'prs' | 'milestones' | 'date'
+// dryRun: if true, detects issues but writes nothing
+async function reconcileState(scope = 'full', dryRun = false) {
+  if (!currentUser || !profile || !myWorkouts) return null;
+
+  const myWOs = myWorkouts.filter(w => w.uid === currentUser.uid);
+  const report = makeReconcileReport();
+
+  try {
+    if (scope === 'full' || scope === 'xp')         await reconcileXP(myWOs, report, dryRun);
+    if (scope === 'full' || scope === 'dungeon')     await reconcileDungeon(myWOs, report, dryRun);
+    if (scope === 'full' || scope === 'army')        await reconcileArmy(myWOs, report, dryRun);
+    if (scope === 'full' || scope === 'prs')         await reconcilePRs(myWOs, report, dryRun);
+    if (scope === 'full' || scope === 'milestones')  { try { await checkAndAwardMilestones(null); } catch(e) {} }
+    if (scope === 'full' || scope === 'date')        await reconcileLastWorkoutDate(myWOs, report, dryRun);
+  } catch(e) {
+    console.error('Reconciliation error:', e);
+  }
+
+  const summary = report.summary();
+  if (summary.repaired.length) {
+    console.log('[Reconcile] Repaired:', summary.repaired.join(', '));
+  }
+  if (summary.ambiguous.length) {
+    console.warn('[Reconcile] Ambiguous (left unchanged):', summary.ambiguous.join(', '));
+  }
+  if (dryRun && summary.total > 0) {
+    console.log('[Reconcile] Dry-run findings:', report.findings);
+  }
+
+  // Stamp last reconcile version on profile (only on full, non-dry-run)
+  if (scope === 'full' && !dryRun) {
+    await writeUserFields({ _reconcileVersion: RECONCILE_VERSION, _reconciledAt: new Date().toISOString() });
+  }
+
+  return report;
+}
+
+// ── Lightweight startup check ─────────────────────────────────────────────
+// Runs after first data load. Only triggers full reconciliation if:
+//   (a) never reconciled on this version, or
+//   (b) profile has no XP but has workouts (classic corruption case).
+// Otherwise does nothing — no expensive computation on every login.
+async function startupIntegrityCheck() {
+  if (!currentUser || !profile || !myWorkouts) return;
+  const myWOs = myWorkouts.filter(w => w.uid === currentUser.uid);
+  if (!myWOs.length) return;
+
+  const lastVersion = profile._reconcileVersion || 0;
+  const hasXP = (profile.hunterXP || 0) > 0;
+
+  // Run full reconcile if code version bumped or XP is clearly wrong
+  if (lastVersion < RECONCILE_VERSION || (!hasXP && myWOs.length > 0)) {
+    console.log('[Reconcile] Startup: running full reconciliation (version mismatch or corrupt XP)');
+    await reconcileState('full', false);
+    await loadAllData(); // refresh UI with corrected state
+    return;
+  }
+
+  // Otherwise: lightweight checks only — dungeon HP and lastWorkoutDate
+  // These are most prone to getting stale from edit/delete ops
+  const report = makeReconcileReport();
+  await reconcileDungeon(myWOs, report, false);
+  await reconcileLastWorkoutDate(myWOs, report, false);
+  if (report.hasRepairs()) {
+    console.log('[Reconcile] Startup lightweight: repaired', report.summary().repaired.join(', '));
+  }
+}
+
+// ── Admin / developer manual trigger ─────────────────────────────────────
+// Can be called from admin panel or browser console: reconcileState('full')
+window._auraReconcile = async (scope = 'full', dryRun = false) => {
+  showToast('Running reconciliation…', 'info');
+  const report = await reconcileState(scope, dryRun);
+  const s = report.summary();
+  if (dryRun) {
+    console.table(report.findings);
+    showToast(`Dry run: ${s.repaired.length} issues found — check console`, 'info');
+  } else {
+    const msg = s.repaired.length
+      ? `Reconciled: ${s.repaired.join(', ')}`
+      : 'State is consistent — nothing to repair';
+    showToast(msg, s.repaired.length ? 'success' : 'info');
+    if (s.repaired.length) await loadAllData();
+  }
+  return report;
+};
+
+
 async function saveProgram() {
   myProgram.name = document.getElementById('prog-name-input').value.trim() || 'My Plan';
   myProgram.currentDayIndex = myProgram.currentDayIndex || 0;
@@ -18317,6 +18681,62 @@ function openWorkoutDetail(workoutId) {
         await writeUserFields(editBatch);
       }
 
+      // P1#2 — Dungeon edit reconciliation: old contribution → new contribution
+      try {
+        if (profile.activeDungeon) {
+          const oldDungeonDmg = computeSessionDungeonDamage(profile.activeDungeon, originalExercises, w.runSummary || null);
+          const newDungeonDmg = computeSessionDungeonDamage(profile.activeDungeon, cleanedExercises, w.runSummary || null);
+          const dmgDelta = newDungeonDmg - oldDungeonDmg;
+          if (Math.abs(dmgDelta) > 0) {
+            const dungeon = profile.activeDungeon;
+            const currentHP = dungeon.hp || dungeon.bossHP || 0;
+            const maxHP = dungeon.maxHp || dungeon.bossMaxHP || 1000;
+            const newHP = Math.min(maxHP, Math.max(0, currentHP - dmgDelta)); // remove old, apply new
+            const updatedDungeon = { ...dungeon, hp: newHP };
+            await writeUserFields({ activeDungeon: updatedDungeon });
+            profile.activeDungeon = updatedDungeon;
+          }
+        }
+      } catch(e) { console.warn('Dungeon edit reconciliation failed:', e); }
+
+      // P1#3 — Shadow army edit reconciliation: canonical computeSessionArmySoldiers
+      try {
+        const oldArmy = computeSessionArmySoldiers(originalExercises, w.runSummary || null);
+        const newArmy = computeSessionArmySoldiers(cleanedExercises, w.runSummary || null);
+        const allKeys = new Set([...Object.keys(oldArmy), ...Object.keys(newArmy)]);
+        const armyUpdates = {};
+        let hasChange = false;
+        allKeys.forEach(ckey => {
+          const delta = (newArmy[ckey] || 0) - (oldArmy[ckey] || 0);
+          if (Math.abs(delta) > 0) {
+            const cur = profile.shadowArmy?.pool?.[ckey] || 0;
+            armyUpdates[`shadowArmy.pool.${ckey}`] = Math.max(0, cur + delta);
+            hasChange = true;
+          }
+        });
+        if (hasChange) {
+          const { doc: fDoc, updateDoc: fUpdate } = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js');
+          await fUpdate(fDoc(db, 'users', currentUser.uid), armyUpdates);
+        }
+      } catch(e) { console.warn('Shadow army edit reconciliation failed:', e); }
+
+      // P2#5 — Milestone recheck on edit
+      try { await checkAndAwardMilestones(null); } catch(e) {}
+
+      // P2#6 — lastWorkoutDate: recalculate from actual workout dates after edit
+      // myWorkouts is already refreshed by the loadAllData() call above
+      try {
+        const latestDate = myWorkouts
+          .filter(w2 => w2.uid === currentUser.uid)
+          .map(w2 => w2.date)
+          .sort()
+          .pop();
+        if (latestDate && latestDate !== profile.lastWorkoutDate) {
+          await writeUserFields({ lastWorkoutDate: latestDate });
+          profile.lastWorkoutDate = latestDate;
+        }
+      } catch(e) { console.warn('lastWorkoutDate sync failed:', e); }
+
       // reprocess achievements
       await checkAndUnlockAchievements();
       const prMsg = newPRs.length ? ` · ${newPRs.length} new PR${newPRs.length>1?'s':''}` : '';
@@ -18362,7 +18782,7 @@ function openWorkoutDetail(workoutId) {
 
     // Dungeon damage reversal
     if (profile.activeDungeon) {
-      const dmg = computeSessionDungeonDamage(w.exercises || []);
+      const dmg = computeSessionDungeonDamage(profile.activeDungeon, w.exercises || [], w.runSummary || null);
       if (dmg > 0) {
         const clearedByThis = profile.activeDungeon.clearedAt === w.date;
         if (clearedByThis) {
@@ -18438,17 +18858,36 @@ function openWorkoutDetail(workoutId) {
         myPRs = newPRs;
       }
 
-      // 4. reverse dungeon damage from this workout
+      // 3b. reverse PR-earned AP (P1#4)
+      // PR records store the XP/AP they awarded — subtract it on removal.
+      if (prsToRemove.length) {
+        const prAP = prsToRemove.reduce((sum, name) => {
+          const pr = myPRs[name];
+          return sum + (pr?.xp || FLAT_PR_XP);
+        }, 0);
+        if (prAP > 0) {
+          const newAP = Math.max(0, (profile.auraPoints || 0) - prAP);
+          await writeUserFields({ auraPoints: newAP });
+          profile.auraPoints = newAP;
+          consequences.push(`−${prAP} AP (PR rewards reversed)`);
+        }
+      }
+
+      // 4. reverse dungeon damage from this workout (P0#1 — correct args)
       try {
         if (profile.activeDungeon) {
-          const dungeonDamage = computeSessionDungeonDamage(w.exercises || []);
+          // Use canonical computeSessionDungeonDamage with correct signature
+          const dungeonDamage = computeSessionDungeonDamage(
+            profile.activeDungeon,
+            w.exercises || [],
+            w.runSummary || null
+          );
           if (dungeonDamage > 0) {
             const dungeon = profile.activeDungeon;
-            const restoredHP = Math.min(dungeon.bossMaxHP || dungeon.bossHP, (dungeon.bossHP || 0) + dungeonDamage);
+            const restoredHP = Math.min(dungeon.maxHp || dungeon.bossMaxHP || 1000, (dungeon.hp || dungeon.bossHP || 0) + dungeonDamage);
             // If dungeon was cleared by this workout, strip the earned item and restore dungeon
             const clearedByThis = dungeon.clearedAt === w.date || dungeon.clearedBy === workoutId;
             if (clearedByThis) {
-              // Remove the item earned from this dungeon clear
               const itemSlot = dungeon.rewardSlot;
               if (itemSlot && profile.inventory?.[itemSlot]?.earnedAt === w.date) {
                 await writeUserFields({ [`inventory.${itemSlot}`]: null, activeDungeon: null });
@@ -18460,7 +18899,7 @@ function openWorkoutDetail(workoutId) {
                 profile.activeDungeon = null;
               }
             } else {
-              const updatedDungeon = { ...dungeon, bossHP: restoredHP };
+              const updatedDungeon = { ...dungeon, hp: restoredHP };
               await writeUserFields({ activeDungeon: updatedDungeon });
               profile.activeDungeon = updatedDungeon;
             }
@@ -18468,35 +18907,9 @@ function openWorkoutDetail(workoutId) {
         }
       } catch(e) { console.warn('Dungeon reversal failed:', e); }
 
-      // 5. reverse shadow army soldiers from this workout
+      // 5. reverse shadow army soldiers — uses canonical computeSessionArmySoldiers (P1#3)
       try {
-        const STAT_TO_CONT = {
-          strength:'iron', focus:'shadow', agility:'swift',
-          endurance:'tide', flexibility:'wild'
-        };
-        const TIER_BASE   = { 1:10, 2:25, 3:60, 4:150, 5:400 };
-        const RANK_MULT   = { E:1.0, D:1.2, C:1.5, B:2.0, A:3.0, S:5.0 };
-        const RIR_MULT    = r => r === 0 ? 1.3 : r <= 2 ? 1.0 : r <= 4 ? 0.7 : 0.5;
-
-        const soldierLoss = {};
-        (w.exercises || []).forEach(ex => {
-          const exDef = EXERCISES_ALL[ex.name] || {};
-          const stat  = exDef.stat || 'strength';
-          const ckey  = STAT_TO_CONT[stat] || 'iron';
-          const tier  = exDef.skillTier ? Math.round(exDef.skillTier) : 1;
-          const statRank = (profile.stats || {})[stat] || 'E';
-          const rankMult = RANK_MULT[statRank] || 1.0;
-          const tierBase = TIER_BASE[Math.min(tier, 5)] || 10;
-          (ex.sets || []).filter(s => s.reps > 0 && (s.rir != null || s.rpe != null)).forEach(s => {
-            const _siLoss = getSetIntensity(s, exDef);
-            const _lossMult = _siLoss.type === 'rpe' ? timedIntensityMult(_siLoss.value) / 1.3
-                            : _siLoss.type === 'rir' ? RIR_MULT(_siLoss.value)
-                            : RIR_MULT(3);
-            const loss = Math.floor(tierBase * rankMult * _lossMult);
-            soldierLoss[ckey] = (soldierLoss[ckey] || 0) + loss;
-          });
-        });
-
+        const soldierLoss = computeSessionArmySoldiers(w.exercises || [], w.runSummary || null);
         if (Object.keys(soldierLoss).length) {
           const { doc: fDoc, updateDoc: fUpdate } = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js');
           const updates = {};
@@ -18508,8 +18921,9 @@ function openWorkoutDetail(workoutId) {
         }
       } catch(e) { console.warn('Shadow army reversal failed:', e); }
 
-      // 6. recheck achievements (some may no longer apply without this workout)
+      // 6. recheck achievements and milestones (P2#5 — milestones added)
       try { await checkAndUnlockAchievements(); } catch(e) {}
+      try { await checkAndAwardMilestones(null); } catch(e) {}
 
       overlay.remove();
       await loadAllData();
@@ -18814,10 +19228,10 @@ window._debugEvaluateClass = async () => {
 
 
 // ── Shadow Army — generate soldiers from workout ──
-async function generateShadowArmySoldiers(exercises, runSummary) {
-  if (!currentUser || !profile) return;
-
-  // Map exercise categories to continents
+// ── CANONICAL army soldier calculation (pure, no Firestore writes) ──────────
+// Called by generateShadowArmySoldiers (forward), edit reconciliation, and delete reversal.
+// Returns { continentKey: soldierCount } — always the same formula.
+function computeSessionArmySoldiers(exercises, runSummary) {
   const EXERCISE_CONTINENT = {
     compound: 'iron', isolation: 'iron',
     skill: 'shadow', calisthenics: 'shadow',
@@ -18826,20 +19240,17 @@ async function generateShadowArmySoldiers(exercises, runSummary) {
     boxing: 'court', sport: 'court', combat: 'court',
     flexibility: 'wild', climbing: 'wild', mobility: 'wild',
   };
+  const TIER_BASE = { 1:10, 2:25, 3:60, 4:150, 5:400 };
+  const RANK_MULT = { E:1.0, D:1.2, C:1.5, B:2.0, A:3.0, S:5.0 };
+  const ARMY_RIR_MULT = (rir) => rir === 0 ? 1.3 : rir <= 2 ? 1.0 : rir <= 4 ? 0.7 : 0.5;
 
-  const TIER_BASE   = { 1:10, 2:25, 3:60, 4:150, 5:400 };
-  const RANK_MULT   = { E:1.0, D:1.2, C:1.5, B:2.0, A:3.0, S:5.0 };
-  const RIR_MULT    = (rir) => rir === 0 ? 1.3 : rir <= 2 ? 1.0 : rir <= 4 ? 0.7 : 0.5;
-
-  const soldiersByContinent = {};
-
-  exercises.forEach(ex => {
+  const result = {};
+  (exercises || []).forEach(ex => {
     const exDef = EXERCISES_ALL[ex.name] || {};
     const cat   = exDef.stat || exDef.category || exDef.intent || 'compound';
     const ckey  = EXERCISE_CONTINENT[cat] || 'iron';
-    const isTimed = !!exDef.timed;
 
-    // Determine dungeon tier for this exercise
+    // Determine army tier from dungeon chain progress
     let tier = 1;
     Object.values(DUNGEON_CHAINS).forEach(chain => {
       if (chain.stat && cat.includes(chain.stat)) {
@@ -18850,32 +19261,34 @@ async function generateShadowArmySoldiers(exercises, runSummary) {
       }
     });
 
-    const statRank = (profile.stats || {})[CONTINENTS_STAT[ckey]] || 'E';
+    const statRank = (profile?.stats || {})[CONTINENTS_STAT[ckey]] || 'E';
     const rankMult = RANK_MULT[statRank] || 1.0;
     const tierBase = TIER_BASE[Math.min(tier, 5)] || 10;
 
-    ex.sets?.filter(s => s.reps > 0).forEach(s => {
-      // Semantic intensity: resistance uses RIR_MULT, timed uses timedIntensityMult
-      const _siSA = getSetIntensity(s, exDef);
-      const _saMult = _siSA.type === 'rpe' ? timedIntensityMult(_siSA.value) / 1.3
-                    : _siSA.type === 'rir' ? RIR_MULT(_siSA.value)
-                    : RIR_MULT(3);
-      const soldiers = Math.floor(tierBase * rankMult * _saMult);
-      soldiersByContinent[ckey] = (soldiersByContinent[ckey] || 0) + soldiers;
+    (ex.sets || []).filter(s => s.reps > 0).forEach(s => {
+      const _si = getSetIntensity(s, exDef);
+      const mult = _si.type === 'rpe' ? timedIntensityMult(_si.value) / 1.3
+                 : _si.type === 'rir' ? ARMY_RIR_MULT(_si.value)
+                 : ARMY_RIR_MULT(3);
+      const soldiers = Math.floor(tierBase * rankMult * mult);
+      result[ckey] = (result[ckey] || 0) + soldiers;
     });
   });
 
-  // Run sessions generate swift soldiers
-  if (runSummary?.distKm > 0) {
-    const statRank = (profile.stats || {}).agility || 'E';
-    const rankMult = RANK_MULT[statRank] || 1.0;
-    const soldiers = Math.floor(runSummary.distKm * 20 * rankMult);
-    soldiersByContinent.swift = (soldiersByContinent.swift || 0) + soldiers;
+  if ((runSummary?.distKm || 0) > 0) {
+    const rankMult = ({ E:1.0, D:1.2, C:1.5, B:2.0, A:3.0, S:5.0 })[(profile?.stats || {}).agility || 'E'] || 1.0;
+    result.swift = (result.swift || 0) + Math.floor(runSummary.distKm * 20 * rankMult);
   }
+  return result;
+}
 
+// ── Forward application of shadow army soldiers ────────────────────────────
+async function generateShadowArmySoldiers(exercises, runSummary) {
+  if (!currentUser || !profile) return;
+
+  const soldiersByContinent = computeSessionArmySoldiers(exercises, runSummary);
   if (!Object.keys(soldiersByContinent).length) return;
 
-  // Write to Firestore pool (undeployed soldiers)
   const { doc, updateDoc, increment: fsInc } = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js');
   const updates = {};
   Object.entries(soldiersByContinent).forEach(([ckey, count]) => {
@@ -18883,14 +19296,12 @@ async function generateShadowArmySoldiers(exercises, runSummary) {
   });
   await updateDoc(doc(db, 'users', currentUser.uid), updates);
 
-  // Update local profile
   if (!profile.shadowArmy) profile.shadowArmy = { pool: {}, countries: {} };
   if (!profile.shadowArmy.pool) profile.shadowArmy.pool = {};
   Object.entries(soldiersByContinent).forEach(([ckey, count]) => {
     profile.shadowArmy.pool[ckey] = (profile.shadowArmy.pool[ckey] || 0) + count;
   });
 
-  console.log('Shadow army pool updated:', soldiersByContinent);
   return soldiersByContinent;
 }
 
