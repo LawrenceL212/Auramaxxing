@@ -5140,13 +5140,13 @@ const AURA_STATE = { dormant: 0.10, stirring: 0.35, active: 0.70, surge: 1.00 };
 /* Body adapter. Everything the runtime needs to mount a body; swap this object
    and nothing downstream changes. */
 const HUNTER_BODY = {
-  url: './3d/exports/hunter-standin.glb',
-  isStandIn: true,                 // the mannequin is a technical placeholder
+  url: './3d/exports/hunter-v5.glb',
+  isStandIn: false,                // MPFB2-generated athletic base, variant v5
   frontAxis: -1,                   // body faces -Z; +1 if a replacement faces +Z
   // Atlas alignment. The SVG sheets are anatomical charts drawn with the arms
   // splayed away from the torso, so a body standing with its arms at its sides
   // needs the projection narrowed to match. Tune per body; no shader change.
-  atlasFit: { scaleX: 1.0, offsetX: 0.0, scaleY: 1.0, offsetY: 0.0 },
+  atlasFit: { scaleX: 1.0, offsetX: 0.0, scaleY: 1.0, offsetY: 0.0 },  // calibrated below
   atlas: {
     male:   { front: './3d/exports/hunter-male-front-idmap.png',
               back:  './3d/exports/hunter-male-back-idmap.png' },
