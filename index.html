@@ -810,6 +810,79 @@
     animation: viewEnterBackDepth 340ms var(--ease-cinema) both;
   }
 
+
+  /* ══════════════════════════════════════════════════════════════════════
+     SYSTEM MOMENT  (Phase 3)
+     One presentation layer for everything the System announces. Five tiers,
+     deliberately unequal: a completed set must not feel like an awakening.
+     ══════════════════════════════════════════════════════════════════════ */
+  .sm-host{ position:fixed; inset:0; z-index:900; pointer-events:none;
+            display:flex; align-items:center; justify-content:center; }
+  .sm-host[data-tier="micro"], .sm-host[data-tier="minor"]{ align-items:flex-start; }
+
+  .sm-veil{ position:absolute; inset:0; opacity:0;
+            background:radial-gradient(120% 90% at 50% 45%,
+              rgba(4,7,14,.55) 0%, rgba(3,5,10,.88) 55%, rgba(2,3,7,.97) 100%);
+            transition:opacity var(--dur-cinema) var(--ease-cinema); }
+  .sm-host[data-veil="on"] .sm-veil{ opacity:1; }
+  .sm-host[data-tier="progression"] .sm-veil,
+  .sm-host[data-tier="legendary"]  .sm-veil{ backdrop-filter:blur(3px); }
+
+  .sm-panel{ position:relative; text-align:center; padding:0 24px; max-width:min(92vw,560px); }
+
+  .sm-kicker{ font-family:var(--font-mono); font-size:clamp(8px,2.2vw,10px);
+              letter-spacing:var(--tracking-system); color:var(--brass);
+              margin-bottom:10px; text-transform:uppercase; }
+  .sm-title{ font-family:var(--font-display); font-weight:var(--weight-hero);
+             font-size:clamp(26px,8vw,54px); line-height:var(--lh-tight);
+             color:var(--text); margin:0 0 8px; letter-spacing:var(--tracking-title); }
+  .sm-body{ font-family:var(--font-body); font-size:clamp(13px,3.4vw,17px);
+            line-height:var(--lh-body); color:var(--text-dim); margin:0; }
+  .sm-glyph{ font-size:clamp(30px,10vw,64px); line-height:1; margin-bottom:14px;
+             filter:drop-shadow(0 0 18px rgba(91,168,255,.5)); }
+
+  /* Tier accents. Colour carries the weight; the shape stays constant. */
+  .sm-host[data-tier="minor"]       .sm-kicker{ color:var(--maintaining); }
+  .sm-host[data-tier="major"]       .sm-kicker{ color:var(--brass); }
+  .sm-host[data-tier="progression"] .sm-kicker{ color:var(--violet); }
+  .sm-host[data-tier="legendary"]   .sm-kicker{ color:var(--legendary); }
+  .sm-host[data-tier="legendary"]   .sm-title { color:var(--legendary);
+             text-shadow:0 0 34px rgba(255,214,107,.45); }
+  .sm-host[data-tier="progression"] .sm-title { text-shadow:0 0 28px rgba(161,127,255,.4); }
+
+  /* MICRO / MINOR ride as a slim transmission bar - no veil, no interruption. */
+  .sm-host[data-tier="micro"] .sm-panel,
+  .sm-host[data-tier="minor"] .sm-panel{
+    margin-top:calc(64px + env(safe-area-inset-top,0px));
+    background:rgba(10,13,19,.92); border:1px solid var(--border);
+    border-radius:var(--radius-md); padding:10px 16px; box-shadow:var(--depth-2);
+    display:flex; align-items:center; gap:10px; text-align:left; }
+  .sm-host[data-tier="micro"] .sm-title,
+  .sm-host[data-tier="minor"] .sm-title{ font-size:clamp(13px,3.6vw,16px); margin:0; }
+  .sm-host[data-tier="micro"] .sm-kicker,
+  .sm-host[data-tier="minor"] .sm-kicker{ margin:0 0 2px; }
+  .sm-host[data-tier="micro"] .sm-glyph,
+  .sm-host[data-tier="minor"] .sm-glyph{ font-size:20px; margin:0; filter:none; }
+  .sm-host[data-tier="micro"] .sm-body,
+  .sm-host[data-tier="minor"] .sm-body{ font-size:12px; }
+
+  /* Aura ring - only the two heavy tiers earn it. */
+  .sm-ring{ position:absolute; left:50%; top:50%; width:min(78vw,420px); aspect-ratio:1;
+            transform:translate(-50%,-50%) scale(.4); border-radius:50%;
+            border:1px solid rgba(91,168,255,.5); opacity:0; pointer-events:none; }
+  @keyframes smRing{ 0%{opacity:.85; transform:translate(-50%,-50%) scale(.35);}
+                     100%{opacity:0; transform:translate(-50%,-50%) scale(1.9);} }
+  .sm-host[data-burst="on"] .sm-ring{ animation:smRing 1100ms var(--ease-cinema) both; }
+  .sm-host[data-burst="on"] .sm-ring:nth-child(2){ animation-delay:130ms; }
+  .sm-host[data-tier="legendary"] .sm-ring{ border-color:rgba(255,214,107,.55); }
+  .sm-host[data-tier="progression"] .sm-ring{ border-color:rgba(161,127,255,.55); }
+
+  @media (prefers-reduced-motion: reduce){
+    .sm-host[data-burst="on"] .sm-ring{ animation:none; opacity:0; }
+    .sm-host[data-tier="progression"] .sm-veil,
+    .sm-host[data-tier="legendary"]  .sm-veil{ backdrop-filter:none; }
+  }
+
   /* ── Accessibility + low-power: collapse to instant state changes.
      Nothing disappears; it simply stops moving. ── */
   @media (prefers-reduced-motion: reduce){
@@ -4640,6 +4713,133 @@ const Motion = (() => {
   };
 })();
 window.Motion = Motion;
+
+/* ══════════════════════════════════════════════════════════════════════════
+   SYSTEM MOMENT ENGINE  (Phase 3)
+   Every System announcement goes through here so that importance is expressed
+   consistently. Five tiers, deliberately unequal in weight and duration.
+
+   Presentation only. It renders, waits and tears down. It never reads or writes
+   profile state, never awards anything, and never affects gameplay timing - the
+   caller has already done the work by the time a moment is shown.
+   ══════════════════════════════════════════════════════════════════════════ */
+const SystemMoment = (() => {
+  const TIERS = {
+    // tier         veil   burst  hold(ms)  build  what it is for
+    micro:       { veil:false, burst:false, hold: 1500, cinematic:false },
+    minor:       { veil:false, burst:false, hold: 2400, cinematic:false },
+    major:       { veil:true,  burst:false, hold: 2900, cinematic:true  },
+    progression: { veil:true,  burst:true,  hold: 3600, cinematic:true  },
+    legendary:   { veil:true,  burst:true,  hold: 4600, cinematic:true  },
+  };
+
+  let queue = [];
+  let running = false;
+
+  function host() {
+    let h = document.getElementById('sm-host');
+    if (!h) {
+      h = document.createElement('div');
+      h.id = 'sm-host';
+      h.className = 'sm-host';
+      h.setAttribute('aria-live', 'polite');
+      (document.getElementById('overlay-host') || document.body).appendChild(h);
+    }
+    return h;
+  }
+
+  // Moments can carry user-supplied text (display names, class names), and the
+  // panel is built with innerHTML, so escape locally rather than depending on a
+  // module-scoped helper that is not reachable from here.
+  const esc = (x) => String(x ?? '')
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+
+  function build(o, cfg) {
+    return `
+      <div class="sm-veil"></div>
+      ${cfg.burst ? '<div class="sm-ring"></div><div class="sm-ring"></div>' : ''}
+      <div class="sm-panel">
+        ${o.glyph ? `<div class="sm-glyph">${esc(o.glyph)}</div>` : ''}
+        <div>
+          ${o.kicker ? `<div class="sm-kicker">${esc(o.kicker)}</div>` : ''}
+          <h2 class="sm-title">${esc(o.title || '')}</h2>
+          ${o.body ? `<p class="sm-body">${esc(o.body)}</p>` : ''}
+        </div>
+      </div>`;
+  }
+
+  async function present(o) {
+    const cfg = TIERS[o.tier] || TIERS.minor;
+    const h = host();
+    h.dataset.tier = o.tier;
+    h.innerHTML = build(o, cfg);
+    const panel = h.querySelector('.sm-panel');
+    const title = h.querySelector('.sm-title');
+    const kicker = h.querySelector('.sm-kicker');
+
+    if (cfg.veil) h.dataset.veil = 'on';
+
+    if (cfg.cinematic && !Motion.reduced()) {
+      // quiet -> build -> impact -> reveal -> aftermath -> quiet
+      await Motion.wait(120);
+      if (kicker) Motion.transmit(kicker);
+      await Motion.play(panel, 'm-build', 700);
+      if (cfg.burst) h.dataset.burst = 'on';
+      await Motion.play(title, 'm-impact', 280);
+      try { o.onImpact?.(); } catch (e) { console.warn('SystemMoment onImpact', e); }
+      await Motion.wait(cfg.hold);
+    } else {
+      Motion.rise(panel);
+      if (kicker && !Motion.reduced()) Motion.transmit(kicker);
+      try { o.onImpact?.(); } catch (e) { console.warn('SystemMoment onImpact', e); }
+      await Motion.wait(cfg.hold);
+    }
+
+    // aftermath - fall back to quiet
+    h.removeAttribute('data-burst');
+    h.removeAttribute('data-veil');
+    await Motion.play(panel, 'm-aftermath', 950);
+    h.innerHTML = '';
+    h.removeAttribute('data-tier');
+  }
+
+  async function drain() {
+    if (running) return;
+    running = true;
+    try {
+      while (queue.length) {
+        const next = queue.shift();
+        try { await present(next); } catch (e) { console.warn('SystemMoment failed', e); }
+        await Motion.wait(180);   // a beat of silence between announcements
+      }
+    } finally {
+      running = false;
+      const h = document.getElementById('sm-host');
+      if (h) { h.innerHTML = ''; h.removeAttribute('data-tier'); }
+    }
+  }
+
+  return {
+    TIERS,
+    /* show({ tier, kicker, title, body, glyph, onImpact }) -> Promise
+       Moments never overlap; they queue and play in order. */
+    show(o) {
+      if (!o || !o.title) return Promise.resolve();
+      // A burst of micro events must not become a queue of interruptions.
+      if (o.tier === 'micro' && queue.some(q => q.tier === 'micro')) {
+        queue = queue.filter(q => q.tier !== 'micro');
+      }
+      queue.push(o);
+      const p = drain();
+      return p;
+    },
+    clear() { queue = []; },
+    get pending() { return queue.length; },
+    get busy() { return running; },
+  };
+})();
+window.SystemMoment = SystemMoment;
 
 function switchView(name) {
   // Phase 2: sequence the incoming view's cards so a screen assembles itself
