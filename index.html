@@ -3823,6 +3823,11 @@ switchBtn.addEventListener('click', () => {
   authError.textContent = '';
 });
 
+// Resolves once a signup's profile-doc handshake has settled. createUserWithEmailAndPassword
+// signs the user in immediately, firing onAuthStateChanged before users/{uid} exists — that
+// handler awaits this so it can never read or patch a document that is still being written.
+let _signupInFlight = null;
+
 async function doAuth() {
   authError.textContent = '';
   if (!configOk) { authError.textContent = 'Firebase config missing — see notice above.'; return; }
@@ -3835,9 +3840,19 @@ async function doAuth() {
   try {
     if (authMode === 'signup') {
       if (!displayName) throw new Error('Enter a name so your party recognizes you.');
-      const cred = await createUserWithEmailAndPassword(auth, email, password);
-      await updateProfile(cred.user, { displayName });
-      await setDoc(doc(db, 'users', cred.user.uid), { displayName, email, weeklyGoal: 3, createdAt: serverTimestamp() });
+      // Published before the account exists, so the auth-state handler always observes it —
+      // the gate must already be closed by the time sign-in fires. Always resolves (never
+      // rejects) so a failed signup releases the handler instead of stranding it.
+      let signupSettled;
+      _signupInFlight = new Promise(res => { signupSettled = res; });
+      try {
+        const cred = await createUserWithEmailAndPassword(auth, email, password);
+        await updateProfile(cred.user, { displayName });
+        await setDoc(doc(db, 'users', cred.user.uid), { displayName, email, weeklyGoal: 3, createdAt: serverTimestamp() });
+      } finally {
+        signupSettled();
+        _signupInFlight = null;
+      }
     } else {
       await signInWithEmailAndPassword(auth, email, password);
     }
@@ -4241,12 +4256,34 @@ if (configOk) {
   onAuthStateChanged(auth, async (user) => {
     if (user) {
       currentUser = user;
+      // Signup writes users/{uid} after sign-in fires; wait it out before reading.
+      if (_signupInFlight) await _signupInFlight;
       const snap = await getDoc(doc(db, 'users', user.uid));
-      profile = snap.exists() ? snap.data() : { displayName: user.displayName || 'You', weeklyGoal: 3 };
+      if (snap.exists()) {
+        profile = snap.data();
+      } else {
+        // Self-heal: no profile doc (deleted by an admin, or a sign-in path that never
+        // created one). Write the minimum valid profile using existing schema defaults.
+        // displayName is written only when Auth already carries an authoritative value,
+        // so the name set by doAuth() can never be clobbered by a placeholder.
+        profile = { weeklyGoal: 3 };
+        if (user.displayName) profile.displayName = user.displayName;
+        try {
+          await setDoc(doc(db, 'users', user.uid), profile, { merge: true });
+        } catch (err) {
+          console.error('Profile bootstrap failed — continuing with in-memory profile', err);
+        }
+        if (!profile.displayName) profile.displayName = 'You';
+      }
       if (!profile.stats) profile.stats = defaultStats();
       if (profile.auraPoints === undefined) profile.auraPoints = 0;
       if (!profile.email && currentUser.email) {
-        await writeUserFields({ email: currentUser.email });
+        // Best-effort backfill — must never abort onboarding and strand the auth screen.
+        try {
+          await writeUserFields({ email: currentUser.email });
+        } catch (err) {
+          console.error('Email backfill failed — continuing onboarding', err);
+        }
         profile.email = currentUser.email;
       }
       document.getElementById('user-avatar').textContent = initials(profile.displayName);
