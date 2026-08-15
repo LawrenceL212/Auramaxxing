@@ -1,0 +1,447 @@
+{
+ "regions": [
+  "Upper Chest",
+  "Middle Chest",
+  "Lower Chest",
+  "Front Shoulders",
+  "Lateral Shoulders",
+  "Rear Shoulders",
+  "Traps",
+  "Lats",
+  "Upper Back",
+  "Lower Back",
+  "Biceps",
+  "Triceps",
+  "Forearms",
+  "Upper Abs",
+  "Middle Abs",
+  "Lower Abs",
+  "Obliques",
+  "Glutes",
+  "Hamstrings",
+  "Quads",
+  "Calves"
+ ],
+ "encoding": "R channel = index+1, 0 = none",
+ "filtering": "NEAREST required",
+ "sheets": {
+  "hunter-male": {
+   "source": "anatomy.svg",
+   "atlases": {
+    "front": {
+     "file": "hunter-male-front-idmap.png",
+     "cropInSvg": [
+      51,
+      192,
+      491,
+      973
+     ],
+     "atlas": [
+      512,
+      1024
+     ],
+     "idsPresent": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      7,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17,
+      20,
+      21
+     ]
+    },
+    "back": {
+     "file": "hunter-male-back-idmap.png",
+     "cropInSvg": [
+      596,
+      139,
+      1038,
+      1024
+     ],
+     "atlas": [
+      512,
+      1024
+     ],
+     "idsPresent": [
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      17,
+      18,
+      19,
+      21
+     ]
+    }
+   },
+   "regions": {
+    "Upper Chest": {
+     "id": 1,
+     "groups": 1,
+     "paths": 2,
+     "frontPx": 5029,
+     "backPx": 0
+    },
+    "Middle Chest": {
+     "id": 2,
+     "groups": 1,
+     "paths": 2,
+     "frontPx": 5491,
+     "backPx": 0
+    },
+    "Lower Chest": {
+     "id": 3,
+     "groups": 1,
+     "paths": 2,
+     "frontPx": 5284,
+     "backPx": 0
+    },
+    "Front Shoulders": {
+     "id": 4,
+     "groups": 1,
+     "paths": 2,
+     "frontPx": 3730,
+     "backPx": 0
+    },
+    "Lateral Shoulders": {
+     "id": 5,
+     "groups": 1,
+     "paths": 3,
+     "frontPx": 2701,
+     "backPx": 0
+    },
+    "Rear Shoulders": {
+     "id": 6,
+     "groups": 1,
+     "paths": 2,
+     "frontPx": 0,
+     "backPx": 7415
+    },
+    "Traps": {
+     "id": 7,
+     "groups": 1,
+     "paths": 4,
+     "frontPx": 2638,
+     "backPx": 18162
+    },
+    "Lats": {
+     "id": 8,
+     "groups": 1,
+     "paths": 2,
+     "frontPx": 0,
+     "backPx": 14302
+    },
+    "Upper Back": {
+     "id": 9,
+     "groups": 1,
+     "paths": 6,
+     "frontPx": 0,
+     "backPx": 9066
+    },
+    "Lower Back": {
+     "id": 10,
+     "groups": 1,
+     "paths": 2,
+     "frontPx": 0,
+     "backPx": 6666
+    },
+    "Biceps": {
+     "id": 11,
+     "groups": 1,
+     "paths": 4,
+     "frontPx": 7607,
+     "backPx": 1087
+    },
+    "Triceps": {
+     "id": 12,
+     "groups": 1,
+     "paths": 6,
+     "frontPx": 1383,
+     "backPx": 5858
+    },
+    "Forearms": {
+     "id": 13,
+     "groups": 1,
+     "paths": 10,
+     "frontPx": 10396,
+     "backPx": 9964
+    },
+    "Upper Abs": {
+     "id": 14,
+     "groups": 1,
+     "paths": 2,
+     "frontPx": 3422,
+     "backPx": 0
+    },
+    "Middle Abs": {
+     "id": 15,
+     "groups": 1,
+     "paths": 4,
+     "frontPx": 6710,
+     "backPx": 0
+    },
+    "Lower Abs": {
+     "id": 16,
+     "groups": 1,
+     "paths": 2,
+     "frontPx": 6076,
+     "backPx": 0
+    },
+    "Obliques": {
+     "id": 17,
+     "groups": 2,
+     "paths": 12,
+     "frontPx": 13658,
+     "backPx": 1593
+    },
+    "Glutes": {
+     "id": 18,
+     "groups": 1,
+     "paths": 2,
+     "frontPx": 0,
+     "backPx": 14840
+    },
+    "Hamstrings": {
+     "id": 19,
+     "groups": 1,
+     "paths": 8,
+     "frontPx": 0,
+     "backPx": 24477
+    },
+    "Quads": {
+     "id": 20,
+     "groups": 1,
+     "paths": 9,
+     "frontPx": 31234,
+     "backPx": 0
+    },
+    "Calves": {
+     "id": 21,
+     "groups": 1,
+     "paths": 12,
+     "frontPx": 9611,
+     "backPx": 20356
+    }
+   }
+  },
+  "hunter-female": {
+   "source": "anatomy-female.svg",
+   "atlases": {
+    "front": {
+     "file": "hunter-female-front-idmap.png",
+     "cropInSvg": [
+      188,
+      210,
+      501,
+      888
+     ],
+     "atlas": [
+      512,
+      1024
+     ],
+     "idsPresent": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      7,
+      11,
+      13,
+      14,
+      15,
+      17,
+      20,
+      21
+     ]
+    },
+    "back": {
+     "file": "hunter-female-back-idmap.png",
+     "cropInSvg": [
+      577,
+      153,
+      904,
+      824
+     ],
+     "atlas": [
+      512,
+      1024
+     ],
+     "idsPresent": [
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      12,
+      13,
+      18,
+      19,
+      21
+     ]
+    }
+   },
+   "regions": {
+    "Upper Chest": {
+     "id": 1,
+     "groups": 1,
+     "paths": 2,
+     "frontPx": 1720,
+     "backPx": 0
+    },
+    "Middle Chest": {
+     "id": 2,
+     "groups": 1,
+     "paths": 9,
+     "frontPx": 8777,
+     "backPx": 0
+    },
+    "Lower Chest": {
+     "id": 3,
+     "groups": 1,
+     "paths": 9,
+     "frontPx": 2391,
+     "backPx": 0
+    },
+    "Front Shoulders": {
+     "id": 4,
+     "groups": 1,
+     "paths": 4,
+     "frontPx": 1771,
+     "backPx": 0
+    },
+    "Lateral Shoulders": {
+     "id": 5,
+     "groups": 1,
+     "paths": 6,
+     "frontPx": 1049,
+     "backPx": 745
+    },
+    "Rear Shoulders": {
+     "id": 6,
+     "groups": 1,
+     "paths": 2,
+     "frontPx": 0,
+     "backPx": 1892
+    },
+    "Traps": {
+     "id": 7,
+     "groups": 1,
+     "paths": 19,
+     "frontPx": 238,
+     "backPx": 11335
+    },
+    "Lats": {
+     "id": 8,
+     "groups": 1,
+     "paths": 2,
+     "frontPx": 0,
+     "backPx": 8386
+    },
+    "Upper Back": {
+     "id": 9,
+     "groups": 1,
+     "paths": 2,
+     "frontPx": 0,
+     "backPx": 2679
+    },
+    "Lower Back": {
+     "id": 10,
+     "groups": 2,
+     "paths": 4,
+     "frontPx": 0,
+     "backPx": 2711
+    },
+    "Biceps": {
+     "id": 11,
+     "groups": 1,
+     "paths": 8,
+     "frontPx": 4660,
+     "backPx": 0
+    },
+    "Triceps": {
+     "id": 12,
+     "groups": 1,
+     "paths": 4,
+     "frontPx": 0,
+     "backPx": 4008
+    },
+    "Forearms": {
+     "id": 13,
+     "groups": 1,
+     "paths": 30,
+     "frontPx": 6720,
+     "backPx": 5909
+    },
+    "Upper Abs": {
+     "id": 14,
+     "groups": 1,
+     "paths": 5,
+     "frontPx": 2610,
+     "backPx": 0
+    },
+    "Middle Abs": {
+     "id": 15,
+     "groups": 1,
+     "paths": 8,
+     "frontPx": 1766,
+     "backPx": 0
+    },
+    "Lower Abs": {
+     "id": 16,
+     "pixels": 0,
+     "groups": 1,
+     "warn": "empty"
+    },
+    "Obliques": {
+     "id": 17,
+     "groups": 2,
+     "paths": 13,
+     "frontPx": 3020,
+     "backPx": 0
+    },
+    "Glutes": {
+     "id": 18,
+     "groups": 1,
+     "paths": 26,
+     "frontPx": 0,
+     "backPx": 14675
+    },
+    "Hamstrings": {
+     "id": 19,
+     "groups": 1,
+     "paths": 17,
+     "frontPx": 0,
+     "backPx": 18566
+    },
+    "Quads": {
+     "id": 20,
+     "groups": 1,
+     "paths": 23,
+     "frontPx": 29115,
+     "backPx": 0
+    },
+    "Calves": {
+     "id": 21,
+     "groups": 1,
+     "paths": 13,
+     "frontPx": 7465,
+     "backPx": 9974
+    }
+   }
+  }
+ }
+}

@@ -1,0 +1,8 @@
+# Blender source files stay out of the repo - they are large binaries and the
+# runtime never consumes them. Only the exported assets under 3d/exports/ ship.
+*.blend
+*.blend1
+
+# Rejected prototype: procedural metaball mannequin (v1-v4). Kept locally as a
+# record of the approach that was tried and did not reach the quality bar.
+source/hunter/build_hunter.py
