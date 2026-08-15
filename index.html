@@ -682,6 +682,149 @@
   .view h2{font-size:22px;margin:0 0 4px;}
   .view .sub{color:var(--text-dim);font-size:14px;margin:0 0 20px;}
 
+  /* ══════════════════════════════════════════════════════════════════════
+     MOTION SYSTEM  (Phase 2)
+     Four levels. Normal is almost static; spectacle is earned.
+       NORMAL      -> no motion at all
+       INTERACTION -> 80-150ms physical response to touch
+       EVENT       -> 300-500ms directed emphasis
+       CINEMATIC   -> full build / impact / reveal / aftermath sequence
+     Everything animates transform + opacity only (compositor-friendly).
+     ══════════════════════════════════════════════════════════════════════ */
+
+  :root{
+    --m-stagger-step: 42ms;   /* per-item delay in a stagger run */
+    --m-build:   520ms;       /* cinematic: anticipation */
+    --m-impact:  140ms;       /* cinematic: the hit */
+    --m-reveal:  620ms;       /* cinematic: what was earned */
+    --m-after:   900ms;       /* cinematic: settle back to quiet */
+  }
+
+  /* ── Budget guard: nothing off-screen may animate.
+     Inactive views are display:none (which already halts animation), but
+     #view-world and any detached overlay host are not - so state it outright. */
+  section.view:not(.active),
+  section.view:not(.active) *,
+  [data-motion-paused],
+  [data-motion-paused] *{
+    animation-play-state: paused !important;
+  }
+
+  /* ── LEVEL 2: INTERACTION - a surface should feel like it has mass ── */
+  .m-press{ transition: transform var(--dur-snap) var(--ease-ui),
+                        filter var(--dur-fast) var(--ease-ui); }
+  .m-press:active{ transform: scale(.972); }
+  .btn, button.btn, .quest-btn{ transition: transform var(--dur-snap) var(--ease-ui); }
+  .btn:active, button.btn:active{ transform: scale(.978); }
+
+  /* ── LEVEL 3: EVENT - entrance primitives ── */
+  @keyframes mRise   { from{opacity:0; transform:translate3d(0,14px,0);}  to{opacity:1; transform:none;} }
+  @keyframes mFall   { from{opacity:0; transform:translate3d(0,-10px,0);} to{opacity:1; transform:none;} }
+  @keyframes mScaleIn{ from{opacity:0; transform:scale(.94);}             to{opacity:1; transform:scale(1);} }
+  @keyframes mSlideL { from{opacity:0; transform:translate3d(18px,0,0);}  to{opacity:1; transform:none;} }
+  @keyframes mFade   { from{opacity:0;} to{opacity:1;} }
+
+  .m-rise   { animation: mRise    var(--dur-mid)  var(--ease-cinema) both; }
+  .m-fall   { animation: mFall    var(--dur-mid)  var(--ease-cinema) both; }
+  .m-scale  { animation: mScaleIn var(--dur-mid)  var(--ease-cinema) both; }
+  .m-slide  { animation: mSlideL  var(--dur-mid)  var(--ease-cinema) both; }
+  .m-fade   { animation: mFade    var(--dur-slow) var(--ease-cinema) both; }
+
+  /* ── Stagger: children arrive in sequence, capped so a long list cannot
+     turn into a two-second wait or a hundred concurrent animations. ── */
+  .m-stagger > *{
+    animation: mRise var(--dur-mid) var(--ease-cinema) both;
+    animation-delay: calc(var(--m-i, 0) * var(--m-stagger-step));
+  }
+
+  /* ── HUD: persistent chrome settles in once, then stops ── */
+  @keyframes mHudIn{ from{opacity:0; transform:translate3d(0,-6px,0);} to{opacity:1; transform:none;} }
+  .m-hud{ animation: mHudIn var(--dur-slow) var(--ease-cinema) both; }
+
+  /* ── System transmission: text arrives as if decoded, not typed ── */
+  @keyframes mTransmit{
+    0%  { opacity:0; letter-spacing:.42em; filter:blur(5px); }
+    55% { opacity:1; letter-spacing:var(--tracking-system); filter:blur(0); }
+    100%{ opacity:1; letter-spacing:var(--tracking-system); filter:blur(0); }
+  }
+  .m-transmit{ animation: mTransmit 760ms var(--ease-cinema) both; will-change: filter, letter-spacing; }
+
+  /* ── LEVEL 3: attention - one directed pulse, never a loop ── */
+  @keyframes mAttention{
+    0%  { transform:scale(1);    filter:brightness(1); }
+    38% { transform:scale(1.045);filter:brightness(1.5); }
+    100%{ transform:scale(1);    filter:brightness(1); }
+  }
+  .m-attention{ animation: mAttention 620ms var(--ease-impact) both; }
+
+  /* ── Rank / status change: the value is replaced, not merely updated ── */
+  @keyframes mSwapOut{ to  { opacity:0; transform:translate3d(0,-8px,0) scale(.96); } }
+  @keyframes mSwapIn { from{ opacity:0; transform:translate3d(0,10px,0) scale(1.06); } }
+  .m-swap-out{ animation: mSwapOut 200ms var(--ease-ui) both; }
+  .m-swap-in { animation: mSwapIn  420ms var(--ease-impact) both; }
+
+  /* ── LEVEL 4: CINEMATIC - build / impact / reveal / aftermath ── */
+  @keyframes mBuild{
+    0%  { opacity:0; transform:scale(.86); filter:blur(9px) brightness(.5); }
+    100%{ opacity:1; transform:scale(1);   filter:blur(0)   brightness(1); }
+  }
+  @keyframes mImpact{
+    0%  { transform:scale(1);    filter:brightness(1); }
+    30% { transform:scale(1.075);filter:brightness(2.4); }
+    100%{ transform:scale(1);    filter:brightness(1); }
+  }
+  @keyframes mAftermath{ from{ opacity:1; } to{ opacity:0; } }
+  .m-build    { animation: mBuild     var(--m-build)  var(--ease-cinema) both; will-change: transform, filter; }
+  .m-impact   { animation: mImpact    var(--m-impact) var(--ease-impact) both; will-change: transform, filter; }
+  .m-reveal   { animation: mScaleIn   var(--m-reveal) var(--ease-cinema) both; }
+  .m-aftermath{ animation: mAftermath var(--m-after)  var(--ease-cinema) both; }
+
+  /* ── Depth: parallax layers for cinematic sequences only ── */
+  .m-depth-far { transform: translateZ(0) scale(1.06); opacity:.55; }
+  .m-depth-mid { transform: translateZ(0) scale(1.02); opacity:.8; }
+  .m-scrim     { position:fixed; inset:0; pointer-events:none; background:var(--scrim); z-index:0; }
+
+  /* ── Aura: intensity is a state, not a constant. Dormant unless woken. ── */
+  .m-aura{
+    --aura-i: var(--aura-dormant);
+    box-shadow: 0 0 calc(28px * var(--aura-i)) rgba(91,168,255,calc(.55 * var(--aura-i)));
+    transition: box-shadow var(--dur-cinema) var(--ease-cinema);
+  }
+  .m-aura[data-aura="stirring"]{ --aura-i: var(--aura-stirring); }
+  .m-aura[data-aura="active"]  { --aura-i: var(--aura-active); }
+  .m-aura[data-aura="surge"]   { --aura-i: var(--aura-surge); }
+
+  /* ── View transitions: keep the existing direction, add depth ── */
+  @keyframes viewEnterForwardDepth{
+    from{ opacity:0; transform:translate3d(0,22px,0) scale(.988); }
+    to  { opacity:1; transform:none; }
+  }
+  @keyframes viewEnterBackDepth{
+    from{ opacity:0; transform:translate3d(0,-14px,0) scale(1.008); }
+    to  { opacity:1; transform:none; }
+  }
+  html[data-motion="full"] [data-view-dir="forward"] section.view.active{
+    animation: viewEnterForwardDepth 340ms var(--ease-cinema) both;
+  }
+  html[data-motion="full"] [data-view-dir="back"] section.view.active{
+    animation: viewEnterBackDepth 340ms var(--ease-cinema) both;
+  }
+
+  /* ── Accessibility + low-power: collapse to instant state changes.
+     Nothing disappears; it simply stops moving. ── */
+  @media (prefers-reduced-motion: reduce){
+    *, *::before, *::after{
+      animation-duration: .01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: .01ms !important;
+      scroll-behavior: auto !important;
+    }
+    .m-transmit{ filter:none !important; letter-spacing:var(--tracking-system) !important; }
+  }
+  html[data-motion="reduced"] .m-stagger > *{ animation-delay: 0ms !important; }
+  html[data-motion="reduced"] .m-build,
+  html[data-motion="reduced"] .m-transmit{ filter:none !important; }
+
   /* ── CARDS — smoked glass material, lighting not borders ── */
   .card,.exercise-row{
     position:relative;
@@ -4397,7 +4540,118 @@ document.querySelectorAll('.bottom-nav button').forEach(btn => btn.addEventListe
 const VIEW_DEPTH = { quest:0, board:1, trends:2, inventory:3, world:4, exercises:2, history:1, feats:2 };
 let _lastViewDepth = 0;
 
+/* ══════════════════════════════════════════════════════════════════════════
+   MOTION  (Phase 2) - the single entry point for presentation movement.
+   Purely visual: it schedules classes and resolves promises. It never reads
+   or writes game state, and never affects gameplay or workout timing.
+   ══════════════════════════════════════════════════════════════════════════ */
+const Motion = (() => {
+  const mq = window.matchMedia('(prefers-reduced-motion: reduce)');
+  // A hard ceiling on concurrent decorative animations. Spectacle is rationed.
+  const MAX_CONCURRENT = 24;
+  let live = 0;
+
+  function level() { return mq.matches ? 'reduced' : 'full'; }
+  function apply() { document.documentElement.dataset.motion = level(); }
+  apply();
+  mq.addEventListener?.('change', apply);
+
+  const reduced = () => mq.matches;
+
+  // Runs an animation class and resolves when it ends (or immediately when
+  // reduced motion is on). Always self-cleans so classes never accumulate.
+  function play(el, cls, fallbackMs = 700) {
+    if (!el) return Promise.resolve();
+    if (reduced()) return Promise.resolve();
+    if (live >= MAX_CONCURRENT) return Promise.resolve();
+    live++;
+    el.classList.remove(cls);
+    void el.offsetWidth;              // restart the animation deterministically
+    el.classList.add(cls);
+    return new Promise(res => {
+      let done = false;
+      const finish = () => {
+        if (done) return;
+        done = true; live--;
+        el.classList.remove(cls);
+        el.removeEventListener('animationend', finish);
+        res();
+      };
+      el.addEventListener('animationend', finish, { once: true });
+      setTimeout(finish, fallbackMs);
+    });
+  }
+
+  const wait = ms => new Promise(r => setTimeout(r, reduced() ? 0 : ms));
+
+  return {
+    level, reduced, play, wait,
+
+    // LEVEL 3 - entrance primitives
+    rise:  el => play(el, 'm-rise', 500),
+    fall:  el => play(el, 'm-fall', 500),
+    scale: el => play(el, 'm-scale', 500),
+    fade:  el => play(el, 'm-fade', 700),
+    hud:   el => play(el, 'm-hud', 700),
+
+    // Sequenced arrival. Capped so a long list cannot stall the view or
+    // spawn a hundred simultaneous animations.
+    stagger(container, selector = ':scope > *', max = 14) {
+      if (!container || reduced()) return;
+      const kids = [...container.querySelectorAll(selector)].slice(0, max);
+      container.classList.add('m-stagger');
+      kids.forEach((k, i) => k.style.setProperty('--m-i', i));
+    },
+
+    // LEVEL 3 - one directed pulse to say "look here". Never loops.
+    attention: el => play(el, 'm-attention', 800),
+    transmit:  el => play(el, 'm-transmit', 900),
+
+    // Value replacement: old value leaves, new value lands.
+    async swap(el, writeNewValue) {
+      if (!el) return;
+      if (reduced()) { writeNewValue?.(); return; }
+      await play(el, 'm-swap-out', 260);
+      writeNewValue?.();
+      await play(el, 'm-swap-in', 480);
+    },
+
+    // Aura is a state, not an effect. Dormant unless something earns it.
+    aura(el, state = 'dormant') {
+      if (!el) return;
+      el.classList.add('m-aura');
+      if (state === 'dormant') el.removeAttribute('data-aura');
+      else el.dataset.aura = state;
+    },
+
+    // LEVEL 4 - the full cinematic shape. Phase 3's System Moment engine
+    // drives this; the timing contract lives here.
+    async sequence(el, { onBuild, onImpact, onReveal, onAftermath } = {}) {
+      if (!el) return;
+      onBuild?.();
+      await play(el, 'm-build', 700);
+      onImpact?.();
+      await play(el, 'm-impact', 260);
+      onReveal?.();
+      await play(el, 'm-reveal', 800);
+      await wait(260);
+      onAftermath?.();
+    },
+  };
+})();
+window.Motion = Motion;
+
 function switchView(name) {
+  // Phase 2: sequence the incoming view's cards so a screen assembles itself
+  // rather than appearing all at once. Capped and reduced-motion aware.
+  try {
+    const incoming = document.getElementById('view-' + name);
+    if (incoming && window.Motion) {
+      incoming.querySelectorAll('.m-stagger').forEach(n => n.classList.remove('m-stagger'));
+      Motion.stagger(incoming, ':scope > .card, :scope > section, :scope > div > .card');
+    }
+  } catch (e) { /* presentation only - never block navigation */ }
+
   // Presentation lifecycle: the world iframe is intentionally kept loaded, but
   // its canvas must not keep repainting while it is off screen.
   try {
