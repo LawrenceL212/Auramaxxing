@@ -812,6 +812,28 @@
 
 
   /* ══════════════════════════════════════════════════════════════════════
+     3D RUNTIME  (Phase 4)
+     One canvas, viewport-sized, pinned behind all UI. Never interactive.
+     ══════════════════════════════════════════════════════════════════════ */
+  #aura-gl{
+    position:fixed; inset:0; width:100%; height:100%;
+    z-index:-2;                 /* behind #app, behind the ambient canvas */
+    pointer-events:none; display:block;
+    opacity:0; transition:opacity 900ms var(--ease-cinema);
+  }
+  #aura-gl[data-ready="1"]{ opacity:1; }
+  html[data-gl="off"] #aura-gl{ display:none; }
+
+  #gl-hud{
+    position:fixed; left:8px; bottom:calc(70px + env(safe-area-inset-bottom,0px));
+    z-index:999; font-family:var(--font-mono); font-size:9px; line-height:1.5;
+    color:var(--growing); background:rgba(3,5,10,.86);
+    border:1px solid rgba(111,255,176,.25); border-radius:var(--radius-sm);
+    padding:6px 8px; pointer-events:none; white-space:pre; display:none;
+  }
+  html[data-gl-hud="1"] #gl-hud{ display:block; }
+
+  /* ══════════════════════════════════════════════════════════════════════
      SYSTEM MOMENT  (Phase 3)
      One presentation layer for everything the System announces. Five tiers,
      deliberately unequal: a completed set must not feel like an awakening.
@@ -825,8 +847,12 @@
               rgba(4,7,14,.55) 0%, rgba(3,5,10,.88) 55%, rgba(2,3,7,.97) 100%);
             transition:opacity var(--dur-cinema) var(--ease-cinema); }
   .sm-host[data-veil="on"] .sm-veil{ opacity:1; }
+  /* Any veiled tier needs the world behind it pushed out of focus, not merely
+     dimmed - screenshot QA showed sharp body copy reading straight through the
+     'major' veil and colliding with the headline. Blur scales with weight. */
+  .sm-host[data-tier="major"]      .sm-veil{ backdrop-filter:blur(2px); }
   .sm-host[data-tier="progression"] .sm-veil,
-  .sm-host[data-tier="legendary"]  .sm-veil{ backdrop-filter:blur(3px); }
+  .sm-host[data-tier="legendary"]  .sm-veil{ backdrop-filter:blur(4px); }
 
   .sm-panel{ position:relative; text-align:center; padding:0 24px; max-width:min(92vw,560px); }
 
@@ -879,6 +905,7 @@
 
   @media (prefers-reduced-motion: reduce){
     .sm-host[data-burst="on"] .sm-ring{ animation:none; opacity:0; }
+    .sm-host[data-tier="major"] .sm-veil,
     .sm-host[data-tier="progression"] .sm-veil,
     .sm-host[data-tier="legendary"]  .sm-veil{ backdrop-filter:none; }
   }
@@ -3440,6 +3467,16 @@
 </div>
 
 
+<!-- Three.js via CDN, matching how Firebase is already loaded. An import map
+     must be declared before any module script that resolves against it. -->
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.180.0/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.180.0/examples/jsm/"
+  }
+}
+</script>
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import { BASE_EXERCISES } from "./exercises.js";
@@ -4580,6 +4617,17 @@ if (configOk) {
       setTimeout(() => ensureStatBaselines(), 1200);
       // startup integrity check — lightweight; triggers full reconcile only if version changed
       setTimeout(() => startupIntegrityCheck(), 2000);
+      // Phase 4: bring up the cinematic layer after the app is interactive, so
+      // it can never delay login or data. Failure here is non-fatal by design.
+      setTimeout(async () => {
+        try {
+          if (await AuraGL.init()) {
+            AuraGL.register('ambient', buildAmbientScene);
+            AuraGL.activate('ambient');
+            AuraGL.start();
+          }
+        } catch (e) { console.info('[AuraGL] disabled:', e); }
+      }, 2600);
     } else {
       currentUser = null;
       document.getElementById('auth-screen').style.display = 'flex';
@@ -4841,7 +4889,281 @@ const SystemMoment = (() => {
 })();
 window.SystemMoment = SystemMoment;
 
+/* ══════════════════════════════════════════════════════════════════════════
+   AURA 3D RUNTIME  (Phase 4)
+
+   One WebGLRenderer, one viewport-sized canvas behind the UI, and a scene
+   router keyed to the existing view names. Later phases register scenes into
+   this runtime rather than creating renderers of their own.
+
+   Strictly presentation. It may OBSERVE view name and rank; it never computes
+   or writes XP, AP, ranks, stats, workouts, RIR/RPE, dungeon, raid, army,
+   reconciliation or Firestore data.
+
+   If WebGL is unavailable the runtime disables itself and the app is untouched.
+   ══════════════════════════════════════════════════════════════════════════ */
+const AuraGL = (() => {
+  const QUALITY = {
+    high:   { dpr: 2.0, post: 1.00, shadows: true,  particles: 900, env: 1.0 },
+    medium: { dpr: 1.5, post: 0.75, shadows: false, particles: 450, env: 0.7 },
+    low:    { dpr: 1.0, post: 0.50, shadows: false, particles: 180, env: 0.4 },
+  };
+
+  let THREE = null, renderer = null, camera = null, clock = null;
+  let canvas = null, hud = null;
+  let enabled = false, running = false, rafId = 0;
+  let tier = 'medium', caps = {};
+  let activeScene = null;
+  const scenes = new Map();          // name -> { scene, update(dt,t), enter(), exit() }
+  let currentView = null;
+  let frames = 0, fpsAccum = 0, fps = 0, lastHud = 0;
+
+  // ── capability probe -> initial tier. Measured, not guessed. ──────────────
+  function pickTier(gl) {
+    const dbg = gl.getExtension('WEBGL_debug_renderer_info');
+    const name = dbg ? String(gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL)) : '';
+    caps = {
+      renderer: name || 'unknown',
+      webgl2: typeof WebGL2RenderingContext !== 'undefined' && gl instanceof WebGL2RenderingContext,
+      maxTexture: gl.getParameter(gl.MAX_TEXTURE_SIZE),
+      dprDevice: window.devicePixelRatio || 1,
+      cores: navigator.hardwareConcurrency || 4,
+      mem: navigator.deviceMemory || 4,
+    };
+    const software = /swiftshader|llvmpipe|software|basic render/i.test(name);
+    const smallScreen = Math.min(screen.width, screen.height) <= 420;
+    if (software) return 'low';
+    if (!caps.webgl2 || caps.cores <= 4 || caps.mem <= 2) return 'low';
+    if (smallScreen || caps.cores <= 6 || caps.mem <= 4) return 'medium';
+    return 'high';
+  }
+
+  function sizeRenderer() {
+    if (!renderer) return;
+    const q = QUALITY[tier];
+    const w = window.innerWidth, h = window.innerHeight;
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, q.dpr));
+    renderer.setSize(w, h, false);
+    if (camera) { camera.aspect = w / h; camera.updateProjectionMatrix(); }
+  }
+
+  async function init() {
+    if (enabled || document.documentElement.dataset.gl === 'off') return false;
+    // Probe before importing three - never pay for the module on a device that
+    // cannot use it.
+    let probe = null;
+    try {
+      const c = document.createElement('canvas');
+      probe = c.getContext('webgl2') || c.getContext('webgl');
+    } catch (e) { probe = null; }
+    if (!probe) {
+      document.documentElement.dataset.gl = 'off';
+      console.info('[AuraGL] WebGL unavailable - cinematic layer disabled, app unaffected.');
+      return false;
+    }
+    tier = pickTier(probe);
+
+    try {
+      THREE = await import('three');
+    } catch (e) {
+      document.documentElement.dataset.gl = 'off';
+      console.info('[AuraGL] three.js failed to load - cinematic layer disabled.', e);
+      return false;
+    }
+
+    canvas = document.createElement('canvas');
+    canvas.id = 'aura-gl';
+    canvas.setAttribute('aria-hidden', 'true');
+    document.body.insertBefore(canvas, document.body.firstChild);
+
+    try {
+      renderer = new THREE.WebGLRenderer({
+        canvas, antialias: tier === 'high', alpha: true,
+        powerPreference: 'high-performance', stencil: false, depth: true,
+      });
+    } catch (e) {
+      canvas.remove();
+      document.documentElement.dataset.gl = 'off';
+      console.info('[AuraGL] renderer creation failed - cinematic layer disabled.', e);
+      return false;
+    }
+
+    renderer.setClearColor(0x000000, 0);
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.05;
+    renderer.shadowMap.enabled = QUALITY[tier].shadows;
+
+    camera = new THREE.PerspectiveCamera(46, window.innerWidth / window.innerHeight, 0.1, 120);
+    camera.position.set(0, 0, 6);
+    clock = new THREE.Clock();
+    sizeRenderer();
+
+    hud = document.createElement('div');
+    hud.id = 'gl-hud';
+    document.body.appendChild(hud);
+
+    addEventListener('resize', sizeRenderer, { passive: true });
+    // Presentation lifecycle: never render into a hidden tab.
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) stop(); else start();
+    });
+
+    enabled = true;
+    canvas.dataset.ready = '1';
+    console.info(`[AuraGL] ready - tier=${tier} renderer=${caps.renderer}`);
+    return true;
+  }
+
+  // ── scene registry. Later phases call register(); nothing else changes. ───
+  function register(name, factory) {
+    if (!enabled || scenes.has(name)) return;
+    try {
+      const s = factory({ THREE, camera, quality: QUALITY[tier], tier });
+      if (s && s.scene) scenes.set(name, s);
+    } catch (e) { console.warn('[AuraGL] scene failed to build:', name, e); }
+  }
+
+  function activate(name) {
+    if (!enabled) return;
+    const next = scenes.get(name) || scenes.get('ambient') || null;
+    if (next === activeScene) return;
+    try { activeScene?.exit?.(); } catch (e) { /* presentation only */ }
+    activeScene = next;
+    try { activeScene?.enter?.(); } catch (e) { /* presentation only */ }
+  }
+
+  function frame() {
+    if (!running) return;
+    rafId = requestAnimationFrame(frame);
+    const dt = Math.min(clock.getDelta(), 0.05);   // clamp after a tab stall
+    const t = clock.elapsedTime;
+
+    if (activeScene) {
+      try { activeScene.update?.(dt, t); } catch (e) { /* never break the loop */ }
+      renderer.render(activeScene.scene, camera);
+    }
+
+    frames++; fpsAccum += dt;
+    if (fpsAccum >= 0.5) { fps = frames / fpsAccum; frames = 0; fpsAccum = 0; }
+    if (hud && document.documentElement.dataset.glHud === '1' && t - lastHud > 0.5) {
+      lastHud = t;
+      const i = renderer.info;
+      hud.textContent =
+        `FPS   ${fps.toFixed(1)}\n` +
+        `TIER  ${tier}\n` +
+        `DPR   ${renderer.getPixelRatio().toFixed(2)}\n` +
+        `CALLS ${i.render.calls}\n` +
+        `TRIS  ${i.render.triangles}\n` +
+        `TEX   ${i.memory.textures}  GEO ${i.memory.geometries}\n` +
+        `GPU   ${String(caps.renderer).slice(0, 26)}`;
+    }
+  }
+
+  function start() { if (enabled && !running) { running = true; clock.getDelta(); rafId = requestAnimationFrame(frame); } }
+  function stop() { running = false; if (rafId) cancelAnimationFrame(rafId); rafId = 0; }
+
+  // Ordered degradation, applied only on explicit request.
+  function setTier(next) {
+    if (!enabled || !QUALITY[next] || next === tier) return;
+    tier = next;
+    renderer.shadowMap.enabled = QUALITY[tier].shadows;
+    sizeRenderer();
+    console.info('[AuraGL] quality tier ->', tier);
+  }
+
+  return {
+    init, start, stop, register, activate, setTier,
+    get enabled() { return enabled; },
+    get tier() { return tier; },
+    get caps() { return caps; },
+    get fps() { return fps; },
+    get three() { return THREE; },
+    get camera() { return camera; },
+    get renderer() { return renderer; },
+    quality: () => QUALITY[tier],
+    // Observation only: the runtime is told which view is showing.
+    onView(name) { currentView = name; activate(name); },
+    hud(on) { document.documentElement.dataset.glHud = on ? '1' : '0'; },
+    stats() {
+      if (!enabled) return { enabled: false };
+      const i = renderer.info;
+      return { enabled: true, tier, fps: +fps.toFixed(1), calls: i.render.calls,
+               triangles: i.render.triangles, textures: i.memory.textures,
+               geometries: i.memory.geometries, dpr: renderer.getPixelRatio(),
+               renderer: caps.renderer, scene: activeScene ? 'active' : 'none' };
+    },
+  };
+})();
+window.AuraGL = AuraGL;
+
+/* ── FIRST SCENE: ambient System environment ──────────────────────────────
+   Deliberately restrained. Depth, a slow drift of motes, and one soft key
+   light - enough to prove depth, lighting, camera, particles, materials,
+   lifecycle and mobile cost before anything heavier is built on top. */
+function buildAmbientScene({ THREE, quality }) {
+  const scene = new THREE.Scene();
+  scene.fog = new THREE.FogExp2(0x05070d, 0.085);
+
+  const key = new THREE.PointLight(0x5ba8ff, 26, 40);
+  key.position.set(2.6, 2.2, 4.2);
+  scene.add(key, new THREE.AmbientLight(0x16203a, 1.5));
+
+  // Motes: one BufferGeometry, one draw call, count scaled by quality tier.
+  const N = quality.particles;
+  const pos = new Float32Array(N * 3);
+  const seed = new Float32Array(N);
+  for (let i = 0; i < N; i++) {
+    pos[i * 3]     = (Math.random() - 0.5) * 26;
+    pos[i * 3 + 1] = (Math.random() - 0.5) * 16;
+    pos[i * 3 + 2] = -Math.random() * 22;
+    seed[i] = Math.random() * Math.PI * 2;
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  geo.setAttribute('aSeed', new THREE.BufferAttribute(seed, 1));
+
+  const mat = new THREE.ShaderMaterial({
+    transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
+    uniforms: { uTime: { value: 0 }, uSize: { value: quality.env * 2.4 },
+                uColor: { value: new THREE.Color(0x6fa8ff) } },
+    vertexShader: `
+      attribute float aSeed; uniform float uTime; uniform float uSize;
+      varying float vA;
+      void main(){
+        vec3 p = position;
+        p.y += sin(uTime * 0.18 + aSeed) * 0.5;
+        p.x += cos(uTime * 0.12 + aSeed * 1.7) * 0.4;
+        vec4 mv = modelViewMatrix * vec4(p, 1.0);
+        gl_PointSize = uSize * (34.0 / -mv.z);
+        vA = smoothstep(0.0, 1.0, 0.35 + 0.65 * sin(uTime * 0.5 + aSeed));
+        gl_Position = projectionMatrix * mv;
+      }`,
+    fragmentShader: `
+      uniform vec3 uColor; varying float vA;
+      void main(){
+        float d = length(gl_PointCoord - 0.5);
+        if (d > 0.5) discard;
+        float a = smoothstep(0.5, 0.0, d) * vA * 0.5;
+        gl_FragColor = vec4(uColor, a);
+      }`,
+  });
+  const motes = new THREE.Points(geo, mat);
+  scene.add(motes);
+
+  return {
+    scene,
+    update(dt, t) {
+      mat.uniforms.uTime.value = t;
+      motes.rotation.y = t * 0.008;          // barely perceptible parallax
+    },
+    exit() { /* ambient persists; nothing to tear down */ },
+  };
+}
+
 function switchView(name) {
+  // Phase 4: tell the 3D runtime which view is showing. Observation only.
+  try { window.AuraGL?.onView?.(name); } catch (e) { /* presentation only */ }
+
   // Phase 2: sequence the incoming view's cards so a screen assembles itself
   // rather than appearing all at once. Capped and reduced-motion aware.
   try {
