@@ -5587,8 +5587,45 @@ function renderProgramEditor(wrap) {
      streakFreeze
    ========================================================================= */
 
-// ── Version stamp — bump to force full reconciliation after code changes ──
-const RECONCILE_VERSION = 3;
+// ── Per-subsystem reconciliation versions ────────────────────────────────
+// Bump a subsystem version ONLY when its canonical calculation changes materially.
+// This avoids rebuilding unrelated systems when one formula changes.
+// Stored in profile._reconcileVersions.{key} — compared on startup.
+//
+// Subsystem    Formula covers
+// xp           computeWorkoutXP (generalXP + trainingXP), intensityMult scales, streak mult
+// dungeon      computeSessionDungeonDamage, applyDungeonRegen, DUNGEON_CHAINS, regen rates
+// army         computeSessionArmySoldiers, EXERCISE_CONTINENT mapping, RIR_MULT, run soldier rate
+// prs          epley1RM, getStrengthTier, PR tier definitions
+// milestones   MILESTONES array, milestone check conditions
+// date         lastWorkoutDate derivation (trivially changes rarely)
+const RECONCILE_VERSIONS = {
+  xp:         1, // bump when computeWorkoutXP / intensityMult / streak formula changes
+  dungeon:    1, // bump when computeSessionDungeonDamage / regen / chains change
+  army:       1, // bump when computeSessionArmySoldiers / continent map / RIR_MULT change
+  prs:        1, // bump when epley1RM / tier thresholds change
+  milestones: 1, // bump when MILESTONES conditions change
+  date:       1, // rarely needs bumping
+};
+
+// Convenience: returns the stored per-subsystem versions object from profile
+function storedReconcileVersions() {
+  return profile?._reconcileVersions || {};
+}
+
+// Returns true if a subsystem needs reconciliation (stored version < current)
+function subsystemNeedsReconcile(key) {
+  return (storedReconcileVersions()[key] || 0) < (RECONCILE_VERSIONS[key] || 1);
+}
+
+// Marks a subsystem as reconciled at the current version in Firestore + profile
+// Only called after successful, non-ambiguous completion.
+async function markSubsystemReconciled(key) {
+  const update = { [`_reconcileVersions.${key}`]: RECONCILE_VERSIONS[key] };
+  await writeUserFields(update);
+  if (!profile._reconcileVersions) profile._reconcileVersions = {};
+  profile._reconcileVersions[key] = RECONCILE_VERSIONS[key];
+}
 
 // ── Reconciliation result accumulator ──────────────────────────────────────
 function makeReconcileReport() {
@@ -5829,39 +5866,48 @@ async function reconcileLastWorkoutDate(myWOs, report, dryRun = false) {
 
 // ── Master reconciliation orchestrator ───────────────────────────────────
 // scope: 'full' | 'xp' | 'dungeon' | 'army' | 'prs' | 'milestones' | 'date'
-// dryRun: if true, detects issues but writes nothing
-async function reconcileState(scope = 'full', dryRun = false) {
+// dryRun: if true, detects issues but writes nothing.
+// versionForce: if true, runs even if subsystem version is current (for manual triggers).
+async function reconcileState(scope = 'full', dryRun = false, versionForce = false) {
   if (!currentUser || !profile || !myWorkouts) return null;
 
   const myWOs = myWorkouts.filter(w => w.uid === currentUser.uid);
   const report = makeReconcileReport();
 
-  try {
-    if (scope === 'full' || scope === 'xp')         await reconcileXP(myWOs, report, dryRun);
-    if (scope === 'full' || scope === 'dungeon')     await reconcileDungeon(myWOs, report, dryRun);
-    if (scope === 'full' || scope === 'army')        await reconcileArmy(myWOs, report, dryRun);
-    if (scope === 'full' || scope === 'prs')         await reconcilePRs(myWOs, report, dryRun);
-    if (scope === 'full' || scope === 'milestones')  { try { await checkAndAwardMilestones(null); } catch(e) {} }
-    if (scope === 'full' || scope === 'date')        await reconcileLastWorkoutDate(myWOs, report, dryRun);
-  } catch(e) {
-    console.error('Reconciliation error:', e);
+  // Helper: run a subsystem reconciler, then mark version on success
+  async function runSubsystem(key, fn) {
+    const needed = versionForce || subsystemNeedsReconcile(key);
+    if (!needed) return; // version is current — skip unless forced
+    try {
+      await fn();
+      // Only stamp version if: not a dry run, no ambiguous findings for this subsystem
+      if (!dryRun) {
+        const ambiguousForKey = report.findings.some(f => f.system.startsWith(key) && f.note?.includes('AMBIGUOUS'));
+        if (!ambiguousForKey) await markSubsystemReconciled(key);
+      }
+    } catch(e) {
+      console.error(`[Reconcile] ${key} failed:`, e);
+      // Do NOT mark version — will retry on next startup
+    }
   }
+
+  if (scope === 'full' || scope === 'xp')
+    await runSubsystem('xp', () => reconcileXP(myWOs, report, dryRun));
+  if (scope === 'full' || scope === 'dungeon')
+    await runSubsystem('dungeon', () => reconcileDungeon(myWOs, report, dryRun));
+  if (scope === 'full' || scope === 'army')
+    await runSubsystem('army', () => reconcileArmy(myWOs, report, dryRun));
+  if (scope === 'full' || scope === 'prs')
+    await runSubsystem('prs', () => reconcilePRs(myWOs, report, dryRun));
+  if (scope === 'full' || scope === 'milestones')
+    await runSubsystem('milestones', async () => { try { await checkAndAwardMilestones(null); } catch(e) {} });
+  if (scope === 'full' || scope === 'date')
+    await runSubsystem('date', () => reconcileLastWorkoutDate(myWOs, report, dryRun));
 
   const summary = report.summary();
-  if (summary.repaired.length) {
-    console.log('[Reconcile] Repaired:', summary.repaired.join(', '));
-  }
-  if (summary.ambiguous.length) {
-    console.warn('[Reconcile] Ambiguous (left unchanged):', summary.ambiguous.join(', '));
-  }
-  if (dryRun && summary.total > 0) {
-    console.log('[Reconcile] Dry-run findings:', report.findings);
-  }
-
-  // Stamp last reconcile version on profile (only on full, non-dry-run)
-  if (scope === 'full' && !dryRun) {
-    await writeUserFields({ _reconcileVersion: RECONCILE_VERSION, _reconciledAt: new Date().toISOString() });
-  }
+  if (summary.repaired.length)   console.log('[Reconcile] Repaired:', summary.repaired.join(', '));
+  if (summary.ambiguous.length)  console.warn('[Reconcile] Ambiguous (unchanged):', summary.ambiguous.join(', '));
+  if (dryRun && summary.total)   console.log('[Reconcile] Dry-run findings:', report.findings);
 
   return report;
 }
@@ -5876,22 +5922,29 @@ async function startupIntegrityCheck() {
   const myWOs = myWorkouts.filter(w => w.uid === currentUser.uid);
   if (!myWOs.length) return;
 
-  const lastVersion = profile._reconcileVersion || 0;
   const hasXP = (profile.hunterXP || 0) > 0;
 
-  // Run full reconcile if code version bumped or XP is clearly wrong
-  if (lastVersion < RECONCILE_VERSION || (!hasXP && myWOs.length > 0)) {
-    console.log('[Reconcile] Startup: running full reconciliation (version mismatch or corrupt XP)');
-    await reconcileState('full', false);
-    await loadAllData(); // refresh UI with corrected state
+  // Check which subsystems are out of date
+  const staleKeys = Object.keys(RECONCILE_VERSIONS).filter(k => subsystemNeedsReconcile(k));
+
+  // Also force full reconcile if XP is clearly missing (corruption case)
+  const corruptXP = !hasXP && myWOs.length > 0;
+
+  if (staleKeys.length || corruptXP) {
+    const reason = corruptXP ? 'corrupt XP' : `stale subsystems: ${staleKeys.join(', ')}`;
+    console.log(`[Reconcile] Startup: running reconciliation (${reason})`);
+    // versionForce=true so even already-current subsystems run when XP is corrupt
+    await reconcileState('full', false, corruptXP);
+    await loadAllData();
     return;
   }
 
-  // Otherwise: lightweight checks only — dungeon HP and lastWorkoutDate
-  // These are most prone to getting stale from edit/delete ops
+  // All versions current — run only lightweight checks for systems most prone to
+  // edit/delete drift (dungeon HP, lastWorkoutDate). These don't stamp versions.
   const report = makeReconcileReport();
-  await reconcileDungeon(myWOs, report, false);
-  await reconcileLastWorkoutDate(myWOs, report, false);
+  const myWOsLight = myWorkouts.filter(w => w.uid === currentUser.uid);
+  await reconcileDungeon(myWOsLight, report, false);
+  await reconcileLastWorkoutDate(myWOsLight, report, false);
   if (report.hasRepairs()) {
     console.log('[Reconcile] Startup lightweight: repaired', report.summary().repaired.join(', '));
   }
@@ -5901,7 +5954,7 @@ async function startupIntegrityCheck() {
 // Can be called from admin panel or browser console: reconcileState('full')
 window._auraReconcile = async (scope = 'full', dryRun = false) => {
   showToast('Running reconciliation…', 'info');
-  const report = await reconcileState(scope, dryRun);
+  const report = await reconcileState(scope, dryRun, true); // force all subsystems on manual trigger
   const s = report.summary();
   if (dryRun) {
     console.table(report.findings);
