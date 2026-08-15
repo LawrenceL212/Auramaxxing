@@ -1,0 +1,259 @@
+{
+ "size": 1024,
+ "pad": 3,
+ "regions": {
+  "Upper Chest": {
+   "id": 1,
+   "pixels": 41895,
+   "pctOfAssigned": 14.84,
+   "bbox": [
+    203,
+    120,
+    575,
+    287
+   ]
+  },
+  "Middle Chest": {
+   "id": 2,
+   "pixels": 18499,
+   "pctOfAssigned": 6.55,
+   "bbox": [
+    222,
+    254,
+    555,
+    354
+   ],
+   "components": 1
+  },
+  "Lower Chest": {
+   "id": 3,
+   "pixels": 9084,
+   "pctOfAssigned": 3.22,
+   "bbox": [
+    249,
+    318,
+    528,
+    384
+   ],
+   "components": 4
+  },
+  "Front Shoulders": {
+   "id": 4,
+   "pixels": 13009,
+   "pctOfAssigned": 4.61,
+   "bbox": [
+    121,
+    163,
+    656,
+    284
+   ],
+   "components": 4
+  },
+  "Lateral Shoulders": {
+   "id": 5,
+   "pixels": 8772,
+   "pctOfAssigned": 3.11,
+   "bbox": [
+    107,
+    130,
+    671,
+    311
+   ],
+   "components": 13
+  },
+  "Rear Shoulders": {
+   "id": 6,
+   "pixels": 11484,
+   "pctOfAssigned": 4.07,
+   "bbox": [
+    103,
+    92,
+    674,
+    307
+   ],
+   "components": 13
+  },
+  "Traps": {
+   "id": 7,
+   "pixels": 10394,
+   "pctOfAssigned": 3.68,
+   "bbox": [
+    212,
+    39,
+    565,
+    127
+   ],
+   "components": 3
+  },
+  "Lats": {
+   "id": 8,
+   "pixels": 14903,
+   "pctOfAssigned": 5.28,
+   "bbox": [
+    127,
+    49,
+    648,
+    388
+   ],
+   "components": 5
+  },
+  "Upper Back": {
+   "id": 9,
+   "pixels": 1733,
+   "pctOfAssigned": 0.61,
+   "bbox": [
+    120,
+    38,
+    657,
+    365
+   ],
+   "components": 10
+  },
+  "Lower Back": {
+   "id": 10,
+   "pixels": 2995,
+   "pctOfAssigned": 1.06,
+   "bbox": [
+    162,
+    401,
+    615,
+    451
+   ],
+   "components": 4
+  },
+  "Biceps": {
+   "id": 11,
+   "pixels": 6419,
+   "pctOfAssigned": 2.27,
+   "bbox": [
+    68,
+    164,
+    709,
+    232
+   ],
+   "components": 2
+  },
+  "Triceps": {
+   "id": 12,
+   "pixels": 4143,
+   "pctOfAssigned": 1.47,
+   "bbox": [
+    63,
+    126,
+    715,
+    244
+   ],
+   "components": 20
+  },
+  "Forearms": {
+   "id": 13,
+   "pixels": 6511,
+   "pctOfAssigned": 2.31,
+   "bbox": [
+    34,
+    130,
+    744,
+    225
+   ],
+   "components": 14
+  },
+  "Upper Abs": {
+   "id": 14,
+   "pixels": 3604,
+   "pctOfAssigned": 1.28,
+   "bbox": [
+    339,
+    308,
+    438,
+    407
+   ],
+   "components": 2
+  },
+  "Middle Abs": {
+   "id": 15,
+   "pixels": 4842,
+   "pctOfAssigned": 1.71,
+   "bbox": [
+    323,
+    390,
+    454,
+    446
+   ],
+   "components": 1
+  },
+  "Lower Abs": {
+   "id": 16,
+   "pixels": 6543,
+   "pctOfAssigned": 2.32,
+   "bbox": [
+    319,
+    435,
+    459,
+    502
+   ],
+   "components": 1
+  },
+  "Obliques": {
+   "id": 17,
+   "pixels": 22455,
+   "pctOfAssigned": 7.95,
+   "bbox": [
+    197,
+    352,
+    580,
+    470
+   ],
+   "components": 2
+  },
+  "Glutes": {
+   "id": 18,
+   "pixels": 10234,
+   "pctOfAssigned": 3.62,
+   "bbox": [
+    156,
+    386,
+    622,
+    499
+   ],
+   "components": 7
+  },
+  "Hamstrings": {
+   "id": 19,
+   "pixels": 34530,
+   "pctOfAssigned": 12.23,
+   "bbox": [
+    115,
+    511,
+    663,
+    699
+   ],
+   "components": 2
+  },
+  "Quads": {
+   "id": 20,
+   "pixels": 35567,
+   "pctOfAssigned": 12.6,
+   "bbox": [
+    253,
+    470,
+    525,
+    722
+   ],
+   "components": 2
+  },
+  "Calves": {
+   "id": 21,
+   "pixels": 14729,
+   "pctOfAssigned": 5.22,
+   "bbox": [
+    130,
+    673,
+    647,
+    809
+   ],
+   "components": 4
+  }
+ },
+ "assignedPixels": 282345,
+ "coveragePct": 26.93
+}

@@ -1,0 +1,454 @@
+{
+ "_doc": [
+  "Body-space definitions of the 21 canonical Auramaxxing muscle regions.",
+  "The anatomy SVGs remain the SEMANTIC authority for what each region means;",
+  "these rules are how that region is REPRESENTED on the actual 3D body.",
+  "",
+  "Coordinates are landmark-relative, never a single global affine:",
+  "  t      fraction between two named landmarks (0 = first, 1 = second)",
+  "  side   front | back | any        - from the surface normal, not position",
+  "  lat    [lo,hi] fraction of the torso half-width at that height",
+  "  part   torso | arm_upper | arm_lower | leg_upper | leg_lower | shoulder",
+  "",
+  "confidence: HIGH   boundary sits on a real measured landmark",
+  "            MEDIUM boundary is a proportional subdivision between landmarks",
+  "            LOW    boundary is a convention with no distinct landmark"
+ ],
+ "landmarks": {
+  "crown": {
+   "from": "max z of body",
+   "confidence": "HIGH"
+  },
+  "chin": {
+   "from": "base of scalp/lips cluster",
+   "confidence": "MEDIUM"
+  },
+  "shoulder": {
+   "from": "z of maximum upper-body width",
+   "confidence": "HIGH"
+  },
+  "nipple": {
+   "from": "mean z of MPFB nipple group",
+   "confidence": "HIGH"
+  },
+  "waist": {
+   "from": "z of minimum torso width between nipple and crotch",
+   "confidence": "HIGH"
+  },
+  "crotch": {
+   "from": "lowest z where the legs are still joined",
+   "confidence": "HIGH"
+  },
+  "knee": {
+   "from": "z of minimum leg width between crotch and ankle",
+   "confidence": "MEDIUM"
+  },
+  "ankle": {
+   "from": "min z of body + 4% of leg length",
+   "confidence": "MEDIUM"
+  },
+  "elbow": {
+   "from": "midpoint of shoulder->wrist along the arm axis",
+   "confidence": "MEDIUM"
+  },
+  "wrist": {
+   "from": "far end of the arm axis",
+   "confidence": "MEDIUM"
+  }
+ },
+ "regions": [
+  {
+   "id": 1,
+   "name": "Upper Chest",
+   "part": "torso",
+   "side": "front",
+   "band": [
+    "shoulder",
+    "nipple",
+    0.0,
+    0.45
+   ],
+   "lat": [
+    0.0,
+    1.0
+   ],
+   "confidence": "MEDIUM",
+   "note": "clavicular pec head, above the nipple line"
+  },
+  {
+   "id": 2,
+   "name": "Middle Chest",
+   "part": "torso",
+   "side": "front",
+   "band": [
+    "shoulder",
+    "nipple",
+    0.45,
+    0.95
+   ],
+   "lat": [
+    0.0,
+    1.0
+   ],
+   "confidence": "HIGH",
+   "note": "sternal pec at the nipple line"
+  },
+  {
+   "id": 3,
+   "name": "Lower Chest",
+   "part": "torso",
+   "side": "front",
+   "band": [
+    "nipple",
+    "waist",
+    0.0,
+    0.28
+   ],
+   "lat": [
+    0.0,
+    1.0
+   ],
+   "confidence": "MEDIUM",
+   "note": "costal pec, nipple line to pec insertion"
+  },
+  {
+   "id": 4,
+   "name": "Front Shoulders",
+   "part": "shoulder",
+   "side": "front",
+   "band": [
+    "shoulder",
+    "nipple",
+    -0.1,
+    0.55
+   ],
+   "lat": [
+    0.0,
+    1.0
+   ],
+   "confidence": "HIGH",
+   "note": "anterior deltoid"
+  },
+  {
+   "id": 5,
+   "name": "Lateral Shoulders",
+   "part": "shoulder",
+   "side": "any",
+   "band": [
+    "shoulder",
+    "nipple",
+    -0.1,
+    0.55
+   ],
+   "lat": [
+    0.78,
+    1.0
+   ],
+   "confidence": "HIGH",
+   "note": "lateral deltoid, outermost shoulder surface"
+  },
+  {
+   "id": 6,
+   "name": "Rear Shoulders",
+   "part": "shoulder",
+   "side": "back",
+   "band": [
+    "shoulder",
+    "nipple",
+    -0.1,
+    0.55
+   ],
+   "lat": [
+    0.0,
+    1.0
+   ],
+   "confidence": "HIGH",
+   "note": "posterior deltoid"
+  },
+  {
+   "id": 7,
+   "name": "Traps",
+   "part": "torso",
+   "side": "back",
+   "band": [
+    "chin",
+    "nipple",
+    0.3,
+    0.72
+   ],
+   "lat": [
+    0.0,
+    0.62
+   ],
+   "confidence": "MEDIUM",
+   "note": "upper trapezius, neck base to mid-scapula, inboard"
+  },
+  {
+   "id": 8,
+   "name": "Lats",
+   "part": "torso",
+   "side": "back",
+   "band": [
+    "shoulder",
+    "waist",
+    0.22,
+    0.95
+   ],
+   "lat": [
+    0.55,
+    1.0
+   ],
+   "confidence": "MEDIUM",
+   "note": "latissimus sweep, outboard of the spine"
+  },
+  {
+   "id": 9,
+   "name": "Upper Back",
+   "part": "torso",
+   "side": "back",
+   "band": [
+    "shoulder",
+    "waist",
+    0.1,
+    0.55
+   ],
+   "lat": [
+    0.0,
+    0.55
+   ],
+   "confidence": "MEDIUM",
+   "note": "rhomboid / mid-trap field between the scapulae"
+  },
+  {
+   "id": 10,
+   "name": "Lower Back",
+   "part": "torso",
+   "side": "back",
+   "band": [
+    "waist",
+    "crotch",
+    -0.15,
+    0.45
+   ],
+   "lat": [
+    0.0,
+    0.7
+   ],
+   "confidence": "HIGH",
+   "note": "erector spinae, waist to pelvis"
+  },
+  {
+   "id": 11,
+   "name": "Biceps",
+   "part": "arm_upper",
+   "side": "front",
+   "band": [
+    "shoulder",
+    "elbow",
+    0.2,
+    1.0
+   ],
+   "lat": [
+    0.0,
+    1.0
+   ],
+   "confidence": "HIGH",
+   "note": "anterior upper arm below the deltoid"
+  },
+  {
+   "id": 12,
+   "name": "Triceps",
+   "part": "arm_upper",
+   "side": "back",
+   "band": [
+    "shoulder",
+    "elbow",
+    0.2,
+    1.0
+   ],
+   "lat": [
+    0.0,
+    1.0
+   ],
+   "confidence": "HIGH",
+   "note": "posterior upper arm below the deltoid"
+  },
+  {
+   "id": 13,
+   "name": "Forearms",
+   "part": "arm_lower",
+   "side": "any",
+   "band": [
+    "elbow",
+    "wrist",
+    0.0,
+    1.0
+   ],
+   "lat": [
+    0.0,
+    1.0
+   ],
+   "confidence": "HIGH",
+   "note": "everything distal to the elbow"
+  },
+  {
+   "id": 14,
+   "name": "Upper Abs",
+   "part": "torso",
+   "side": "front",
+   "band": [
+    "nipple",
+    "crotch",
+    0.28,
+    0.5
+   ],
+   "lat": [
+    0.0,
+    0.55
+   ],
+   "confidence": "MEDIUM",
+   "note": "upper rectus, below the pec insertion"
+  },
+  {
+   "id": 15,
+   "name": "Middle Abs",
+   "part": "torso",
+   "side": "front",
+   "band": [
+    "nipple",
+    "crotch",
+    0.5,
+    0.72
+   ],
+   "lat": [
+    0.0,
+    0.55
+   ],
+   "confidence": "MEDIUM",
+   "note": "mid rectus at the navel"
+  },
+  {
+   "id": 16,
+   "name": "Lower Abs",
+   "part": "torso",
+   "side": "front",
+   "band": [
+    "nipple",
+    "crotch",
+    0.72,
+    1.0
+   ],
+   "lat": [
+    0.0,
+    0.55
+   ],
+   "confidence": "MEDIUM",
+   "note": "lower rectus, navel to pelvis"
+  },
+  {
+   "id": 17,
+   "name": "Obliques",
+   "part": "torso",
+   "side": "any",
+   "band": [
+    "nipple",
+    "crotch",
+    0.28,
+    1.0
+   ],
+   "lat": [
+    0.55,
+    1.0
+   ],
+   "confidence": "MEDIUM",
+   "note": "external oblique flank, outboard of the rectus"
+  },
+  {
+   "id": 18,
+   "name": "Glutes",
+   "part": "torso",
+   "side": "back",
+   "band": [
+    "waist",
+    "crotch",
+    0.45,
+    1.15
+   ],
+   "lat": [
+    0.0,
+    1.0
+   ],
+   "confidence": "HIGH",
+   "note": "gluteal mass on the pelvis; belongs to the torso, not the thigh"
+  },
+  {
+   "id": 19,
+   "name": "Hamstrings",
+   "part": "leg_upper",
+   "side": "back",
+   "band": [
+    "crotch",
+    "knee",
+    0.16,
+    1.0
+   ],
+   "lat": [
+    0.0,
+    1.0
+   ],
+   "confidence": "HIGH",
+   "note": "posterior thigh below the glute fold"
+  },
+  {
+   "id": 20,
+   "name": "Quads",
+   "part": "leg_upper",
+   "side": "front",
+   "band": [
+    "crotch",
+    "knee",
+    -0.1,
+    1.0
+   ],
+   "lat": [
+    0.0,
+    1.0
+   ],
+   "confidence": "HIGH",
+   "note": "anterior thigh"
+  },
+  {
+   "id": 21,
+   "name": "Calves",
+   "part": "leg_lower",
+   "side": "any",
+   "band": [
+    "knee",
+    "ankle",
+    0.0,
+    1.0
+   ],
+   "lat": [
+    0.0,
+    1.0
+   ],
+   "confidence": "MEDIUM",
+   "note": "whole lower leg; the 21-region taxonomy has no tibialis, so the anterior shin is folded into Calves rather than left unassigned"
+  }
+ ],
+ "female_notes": {
+  "Lower Abs": [
+   "The female anatomy SVG ships an EMPTY Lower Abs group, so the 2D muscle",
+   "map cannot highlight it. The 3D region is still defined here because the",
+   "SVG is the semantic authority, not the geometric source: the region is",
+   "anatomically real on the female body and is derived from the female",
+   "body's own landmarks. No male geometry is copied.",
+   "The 2D map remains unsupported until that SVG group is authored."
+  ],
+  "chest": [
+   "Female chest bands are measured from the female body's own nipple",
+   "landmark, which sits lower relative to the shoulder than on the male",
+   "body, so the bands are not a scaled copy of the male rules."
+  ]
+ }
+}
