@@ -4623,6 +4623,7 @@ if (configOk) {
         try {
           if (await AuraGL.init()) {
             AuraGL.register('ambient', buildAmbientScene);
+            AuraGL.register('hunter', buildHunterScene);
             AuraGL.activate('ambient');
             AuraGL.start();
           }
@@ -5095,6 +5096,297 @@ const AuraGL = (() => {
   };
 })();
 window.AuraGL = AuraGL;
+
+/* ══════════════════════════════════════════════════════════════════════════
+   HUNTER  (Phase 5)
+
+   The 3D Hunter, its 21-region muscle response and its aura.
+
+   Strictly presentation. It CONSUMES the muscle-status object the existing
+   system already computed and never recalculates it, never writes it back, and
+   never touches progression, XP/AP, workouts or Firestore. The SVG anatomy
+   sheets remain the authoritative definition of what a region is; this only
+   samples the ID maps baked from them.
+
+   The body is behind an adapter so the stand-in mesh can be replaced without
+   touching the shader, the atlas, the status mapping or the aura.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+// Canonical order - index+1 is the value baked into the region-ID atlases.
+// Matches 3d/exports/hunter-regions.json. Changing this requires a re-bake.
+const HUNTER_REGIONS = [
+  "Upper Chest", "Middle Chest", "Lower Chest",
+  "Front Shoulders", "Lateral Shoulders", "Rear Shoulders",
+  "Traps", "Lats", "Upper Back", "Lower Back",
+  "Biceps", "Triceps", "Forearms",
+  "Upper Abs", "Middle Abs", "Lower Abs", "Obliques",
+  "Glutes", "Hamstrings", "Quads", "Calves",
+];
+
+// Existing statuses only - no new gameplay states are invented here. Intensity
+// is a presentation weight; the colours are the app's own STATUS_COLOR values.
+const HUNTER_STATUS = {
+  Stalled:     { i: 0.05, warn: 0 },
+  Maintaining: { i: 0.30, warn: 0 },
+  Growing:     { i: 0.58, warn: 0 },
+  Focusing:    { i: 0.80, warn: 0 },
+  Recovering:  { i: 0.45, warn: 0 },
+  Excess:      { i: 0.85, warn: 1 },
+  Overreached: { i: 0.95, warn: 1 },
+};
+
+const AURA_STATE = { dormant: 0.10, stirring: 0.35, active: 0.70, surge: 1.00 };
+
+/* Body adapter. Everything the runtime needs to mount a body; swap this object
+   and nothing downstream changes. */
+const HUNTER_BODY = {
+  url: './3d/exports/hunter-standin.glb',
+  isStandIn: true,                 // the mannequin is a technical placeholder
+  frontAxis: -1,                   // body faces -Z; +1 if a replacement faces +Z
+  // Atlas alignment. The SVG sheets are anatomical charts drawn with the arms
+  // splayed away from the torso, so a body standing with its arms at its sides
+  // needs the projection narrowed to match. Tune per body; no shader change.
+  atlasFit: { scaleX: 1.0, offsetX: 0.0, scaleY: 1.0, offsetY: 0.0 },
+  atlas: {
+    male:   { front: './3d/exports/hunter-male-front-idmap.png',
+              back:  './3d/exports/hunter-male-back-idmap.png' },
+    female: { front: './3d/exports/hunter-female-front-idmap.png',
+              back:  './3d/exports/hunter-female-back-idmap.png' },
+  },
+};
+
+function buildHunterScene({ THREE, quality, tier }) {
+  const scene = new THREE.Scene();
+  const root = new THREE.Group();
+  scene.add(root);
+
+  // Lighting: one key, one cool rim, minimal fill. Rim does the character work.
+  const key = new THREE.DirectionalLight(0xbcd4ff, 1.15); key.position.set(2.4, 3.0, 3.2);
+  const rim = new THREE.DirectionalLight(0x5ba8ff, 2.10); rim.position.set(-2.6, 1.6, -2.8);
+  const fill = new THREE.HemisphereLight(0x24406e, 0x05070d, 0.55);
+  scene.add(key, rim, fill);
+
+  const uniforms = {
+    uTime:       { value: 0 },
+    uRegion:     { value: Array.from({ length: 21 }, () => new THREE.Vector4(0, 0, 0, 0)) },
+    uAura:       { value: AURA_STATE.dormant },
+    uAuraColor:  { value: new THREE.Color(0x5ba8ff) },
+    uAtlasFront: { value: null },
+    uAtlasBack:  { value: null },
+    uBoundsMin:  { value: new THREE.Vector3() },
+    uBoundsSize: { value: new THREE.Vector3(1, 1, 1) },
+    uFrontAxis:  { value: HUNTER_BODY.frontAxis },
+    uHasAtlas:   { value: 0 },
+    uAtlasFit:   { value: new THREE.Vector4(
+                     HUNTER_BODY.atlasFit.scaleX, HUNTER_BODY.atlasFit.offsetX,
+                     HUNTER_BODY.atlasFit.scaleY, HUNTER_BODY.atlasFit.offsetY) },
+    uDebug:      { value: 0 },
+  };
+
+  const loader = new THREE.TextureLoader();
+  const atlasCache = {};
+  let atlasSex = null;
+  function loadAtlas(sex) {
+    // Cache per sex. Reloading on every status update created a fresh pair of
+    // textures each call and leaked GPU memory (observed 16 live textures).
+    if (sex === atlasSex) return;
+    atlasSex = sex;
+    if (atlasCache[sex]) {
+      uniforms.uAtlasFront.value = atlasCache[sex].front;
+      uniforms.uAtlasBack.value  = atlasCache[sex].back;
+      uniforms.uHasAtlas.value = (atlasCache[sex].front && atlasCache[sex].back) ? 1 : 0;
+      return;
+    }
+    atlasCache[sex] = { front: null, back: null };
+    const a = HUNTER_BODY.atlas[sex] || HUNTER_BODY.atlas.male;
+    ['front', 'back'].forEach(side => {
+      loader.load(a[side], tex => {
+        // NEAREST throughout: interpolating an ID map invents regions that do
+        // not exist between two real ones.
+        tex.magFilter = THREE.NearestFilter;
+        tex.minFilter = THREE.NearestFilter;
+        tex.generateMipmaps = false;
+        tex.colorSpace = THREE.NoColorSpace;
+        tex.flipY = false;
+        atlasCache[sex][side] = tex;
+        if (atlasSex === sex) {
+          uniforms[side === 'front' ? 'uAtlasFront' : 'uAtlasBack'].value = tex;
+          if (uniforms.uAtlasFront.value && uniforms.uAtlasBack.value) uniforms.uHasAtlas.value = 1;
+        }
+      }, undefined, () => { /* atlas missing: body still renders, no regions */ });
+    });
+  }
+  loadAtlas('male');
+
+  // One material for the whole body: the region response lives inside the
+  // character material, so it costs no extra draw call and no extra mesh.
+  const mat = new THREE.MeshStandardMaterial({
+    color: 0x0a0e16, roughness: 0.52, metalness: 0.16,
+    emissive: 0x000000,
+  });
+  mat.onBeforeCompile = (shader) => {
+    Object.assign(shader.uniforms, uniforms);
+    shader.vertexShader = shader.vertexShader
+      .replace('#include <common>', `#include <common>
+        varying vec3 vObjPos;
+        varying vec3 vObjNrm;`)
+      .replace('#include <begin_vertex>', `#include <begin_vertex>
+        vObjPos = position;
+        vObjNrm = normalize(normal);`);
+
+    shader.fragmentShader = shader.fragmentShader
+      .replace('#include <common>', `#include <common>
+        varying vec3 vObjPos;
+        varying vec3 vObjNrm;
+        uniform float uTime;
+        uniform vec4  uRegion[21];
+        uniform float uAura;
+        uniform vec3  uAuraColor;
+        uniform sampler2D uAtlasFront;
+        uniform sampler2D uAtlasBack;
+        uniform vec3  uBoundsMin;
+        uniform vec3  uBoundsSize;
+        uniform float uFrontAxis;
+        uniform float uHasAtlas;
+        uniform vec4  uAtlasFit;
+        uniform float uDebug;
+
+        // Planar-project the region atlas from the front and the back and blend
+        // by facing. The SVG sheets are already a front view and a back view,
+        // so this is the projection they were drawn for.
+        vec4 sampleRegion(){
+          if (uHasAtlas < 0.5) return vec4(0.0);
+          vec2 uv = vec2(
+            (vObjPos.x - uBoundsMin.x) / max(uBoundsSize.x, 1e-4),
+            1.0 - (vObjPos.y - uBoundsMin.y) / max(uBoundsSize.y, 1e-4));
+          uv.x = (uv.x - 0.5) * uAtlasFit.x + 0.5 + uAtlasFit.y;
+          uv.y = (uv.y - 0.5) * uAtlasFit.z + 0.5 + uAtlasFit.w;
+          if (uv.x < 0.0 || uv.x > 1.0 || uv.y < 0.0 || uv.y > 1.0) return vec4(0.0);
+          float facing = vObjNrm.z * uFrontAxis;
+          float fw = smoothstep(-0.15, 0.35, facing);
+          vec2 uvF = vec2(uv.x, uv.y);
+          vec2 uvB = vec2(1.0 - uv.x, uv.y);   // back sheet mirrors in X
+          float idF = texture2D(uAtlasFront, uvF).r * 255.0;
+          float idB = texture2D(uAtlasBack,  uvB).r * 255.0;
+          float id  = fw > 0.5 ? idF : idB;
+          float w   = fw > 0.5 ? fw : (1.0 - fw);
+          int   ii  = int(floor(id + 0.5)) - 1;
+          if (ii < 0 || ii > 20) return vec4(0.0);
+          vec4 r = uRegion[ii];
+          r.a *= w;
+          return r;
+        }`)
+      .replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>
+        vec4 reg = sampleRegion();
+
+        // Regional energy reads as light under the surface rather than paint on
+        // top: it is strongest where the surface turns away from the viewer.
+        vec3 V = normalize(vViewPosition);
+        float fres = pow(1.0 - clamp(dot(normalize(vNormal), V), 0.0, 1.0), 2.6);
+
+        // Warning states breathe; everything else holds steady.
+        float pulse = 0.85 + 0.15 * sin(uTime * 2.6);
+        float warnAmt = step(0.5, reg.a) * 0.0;
+        float regI = reg.a * mix(1.0, pulse, warnAmt);
+
+        if (uDebug > 0.5) {
+          // Developer view: raw region identity, so projection alignment can be
+          // judged independently of intensity, fresnel and lighting.
+          vec2 duv = vec2(
+            (vObjPos.x - uBoundsMin.x) / max(uBoundsSize.x, 1e-4),
+            1.0 - (vObjPos.y - uBoundsMin.y) / max(uBoundsSize.y, 1e-4));
+          duv.x = (duv.x - 0.5) * uAtlasFit.x + 0.5 + uAtlasFit.y;
+          duv.y = (duv.y - 0.5) * uAtlasFit.z + 0.5 + uAtlasFit.w;
+          float dfacing = vObjNrm.z * uFrontAxis;
+          float did = dfacing > 0.0 ? texture2D(uAtlasFront, duv).r * 255.0
+                                    : texture2D(uAtlasBack, vec2(1.0 - duv.x, duv.y)).r * 255.0;
+          vec3 dcol = did < 0.5 ? vec3(0.02) : vec3(
+            fract(did * 0.13), fract(did * 0.37 + 0.3), fract(did * 0.71 + 0.6));
+          totalEmissiveRadiance = dcol;
+        }
+        totalEmissiveRadiance += reg.rgb * regI * (0.35 + 0.85 * fres);
+
+        // Aura: a rim that belongs to the character, scaled by state. Dormant
+        // is deliberately near-invisible.
+        float rimA = pow(fres, 1.25) * uAura;
+        totalEmissiveRadiance += uAuraColor * rimA * 0.55;
+      `);
+    mat.userData.shader = shader;
+  };
+
+  let mixer = null, model = null, ready = false;
+  let auraTarget = AURA_STATE.dormant, auraNow = AURA_STATE.dormant;
+
+  (async () => {
+    try {
+      const [{ GLTFLoader }, { MeshoptDecoder }] = await Promise.all([
+        import('three/addons/loaders/GLTFLoader.js'),
+        import('three/addons/libs/meshopt_decoder.module.js'),
+      ]);
+      const gl = new GLTFLoader();
+      gl.setMeshoptDecoder(MeshoptDecoder);
+      gl.load(HUNTER_BODY.url, (gltf) => {
+        model = gltf.scene;
+        model.traverse(o => { if (o.isMesh) { o.material = mat; o.frustumCulled = false; } });
+        const box = new THREE.Box3().setFromObject(model);
+        const size = box.getSize(new THREE.Vector3());
+        const ctr = box.getCenter(new THREE.Vector3());
+        uniforms.uBoundsMin.value.copy(box.min);
+        uniforms.uBoundsSize.value.copy(size);
+        // Frame the figure: full body, slight low angle, head near the top.
+        const fit = 3.15 / Math.max(size.y, 0.001);
+        model.scale.setScalar(fit);
+        model.position.set(-ctr.x * fit, -ctr.y * fit, -ctr.z * fit);
+        root.add(model);
+        if (gltf.animations?.length) {
+          mixer = new THREE.AnimationMixer(model);
+          gltf.animations.forEach(c => mixer.clipAction(c).play());
+        }
+        ready = true;
+      }, undefined, (e) => console.info('[Hunter] body failed to load', e));
+    } catch (e) { console.info('[Hunter] loader unavailable', e); }
+  })();
+
+  const api = {
+    scene,
+    // Consumes the app's own resolved status object. Read-only.
+    setMuscleStats(stats, sex) {
+      if (!stats) return;
+      if (sex) loadAtlas(sex === 'female' ? 'female' : 'male');
+      const col = new THREE.Color();
+      for (let i = 0; i < 21; i++) {
+        const name = HUNTER_REGIONS[i];
+        const st = stats[name] && stats[name].status;
+        const cfg = HUNTER_STATUS[st];
+        const v = uniforms.uRegion.value[i];
+        if (!cfg) { v.set(0, 0, 0, 0); continue; }
+        const hex = (typeof STATUS_COLOR === 'object' && STATUS_COLOR[st]) || '#5BA8FF';
+        col.set(hex);
+        v.set(col.r, col.g, col.b, cfg.i);
+      }
+    },
+    setAura(state) { auraTarget = AURA_STATE[state] ?? AURA_STATE.dormant; },
+    debugRegions(on) { uniforms.uDebug.value = on ? 1 : 0; },
+    setAtlasFit(sx, ox, sy, oy) { uniforms.uAtlasFit.value.set(sx, ox, sy, oy); },
+    get ready() { return ready; },
+    get body() { return HUNTER_BODY; },
+    update(dt, t) {
+      uniforms.uTime.value = t;
+      auraNow += (auraTarget - auraNow) * Math.min(1, dt * 2.2);
+      uniforms.uAura.value = auraNow;
+      if (mixer) mixer.update(dt);
+      if (root && ready) {
+        // Breathing sway - a character standing, not a turntable.
+        root.rotation.y = Math.sin(t * 0.12) * 0.05;
+        root.position.y = Math.sin(t * 0.55) * 0.012;
+      }
+    },
+    enter() { },
+    exit() { },
+  };
+  window.AuraHunter = api;
+  return api;
+}
 
 /* ── FIRST SCENE: ambient System environment ──────────────────────────────
    Deliberately restrained. Depth, a slow drift of motes, and one soft key
@@ -14553,6 +14845,9 @@ function muscleFromId(id) {
 }
 function bodySvg(view, stats, overrideBodyType, items, silhouette) {
   const bodyType = overrideBodyType || ((profile && profile.bodyType === 'female') ? 'female' : 'male');
+  // Phase 5: mirror the already-resolved muscle status into the 3D Hunter.
+  // Read-only - no recalculation, no writes, no gameplay effect.
+  try { window.AuraHunter?.setMuscleStats(stats, bodyType); } catch (e) { /* presentation only */ }
   const template = ANATOMY_TEMPLATES[bodyType];
   if (!template) return '<div class="empty-state" style="padding:20px;">Loading anatomy…</div>';
   const clone = template.cloneNode(true);
