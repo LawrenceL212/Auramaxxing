@@ -5047,6 +5047,7 @@ function progressiveOverloadSuggestion(exerciseName, targetReps) {
         : `~${bwPct*100}% BW (${seedWeight}kg est.)`;
       return Array(seedSets).fill(null).map(() => ({
         reps: targetReps, weight: seedWeight, rir: seedRir, suggestion: label,
+        prevRpe: null,
       }));
     }
     return null;
@@ -5078,7 +5079,7 @@ function progressiveOverloadSuggestion(exerciseName, targetReps) {
     let newWeight = prefillWeight;
 
     if (rir == null) {
-      return { reps: prefillReps, weight: prefillWeight, rir: null, suggestion: null, prevReps: prefillReps, prevWeight: prefillWeight, prevRir: null };
+      return { reps: prefillReps, weight: prefillWeight, rir: null, suggestion: null, prevReps: prefillReps, prevWeight: prefillWeight, prevRir: null, prevRpe: null };
     }
 
     const avgPrevRIR = prevTwoRIRs.length
@@ -5126,7 +5127,7 @@ function progressiveOverloadSuggestion(exerciseName, targetReps) {
       }
     }
 
-    return { reps: newReps, weight: newWeight, rir: null, suggestion, prevReps: prefillReps, prevWeight: prefillWeight, prevRir: rir };
+    return { reps: newReps, weight: newWeight, rir: null, suggestion, prevReps: prefillReps, prevWeight: prefillWeight, prevRir: isTimed ? null : rir, prevRpe: isTimed ? rir : null };
   });
 }
 
@@ -5725,18 +5726,62 @@ function addExerciseRow(presetName, targetSets, targetReps, prefillSets) {
       const weight     = Number(setRow.querySelector('.set-weight')?.value) || 0;
       const selectedRir = setRow.querySelector('.rir-chip.selected');
       const rir         = selectedRir ? Number(selectedRir.dataset.rir) : null;
-      const prevRir     = setRow.dataset.prevRir !== undefined ? Number(setRow.dataset.prevRir) : null;
+      const prevRir     = setRow.dataset.prevRir !== undefined && setRow.dataset.prevRir !== ''
+        ? Number(setRow.dataset.prevRir) : null;
+      const prevRpe     = setRow.dataset.prevRpe !== undefined && setRow.dataset.prevRpe !== ''
+        ? Number(setRow.dataset.prevRpe) : null;
 
-      // Score: e1RM-like comparison — higher weight×reps with lower RIR = better
-      // For timed: reps = duration, weight irrelevant
-      // Score: resistance uses RIR factor. Timed uses duration only (no rir/rpe factor).
-      // Do NOT apply RIR formula to RPE values.
-      const _siScore = getSetIntensity({ rir, rpe: null }, EXERCISES_ALL[row.closest('.exercise-row')?.dataset.exName] || {});
-      const rirFactor = (_siScore.type === 'rir' && rir != null) ? (6 - Math.min(rir, 5)) : 1;
-      const score     = reps * (weight > 0 ? weight : 1) * rirFactor;
-      const prevRirFactor = prevRir != null && _siScore.type === 'rir' ? (6 - Math.min(prevRir, 5)) : 1;
+      // Activity-aware performance scoring.
+      // Resistance: reps × weight × RIR-difficulty-factor  (RIR semantics)
+      // Timed/skill: duration × RPE-effort-factor           (RPE semantics)
+      // These are separate formulas — RPE never enters the resistance path, RIR never enters the timed path.
+      const _exNameScore = row.closest('.exercise-row')?.dataset.exName || '';
+      const _exDefScore  = EXERCISES_ALL[_exNameScore] || {};
+      const _siScore     = getSetIntensity({ rir, rpe: null }, _exDefScore);
+      const _isTimedScore = !!(_exDefScore.timed && _exDefScore.timedUnit !== 'mins');
+
+      // ── RESISTANCE score ──────────────────────────────────────────────────
+      // reps × effective-weight × (6 − min(RIR, 5))
+      // RIR 0 → factor 6 (hardest), RIR 5+ → factor 1 (easiest)
+      function calcResistanceScore(r, w, rirVal) {
+        const rf = (rirVal != null) ? (6 - Math.min(rirVal, 5)) : 1;
+        return r * (w > 0 ? w : 1) * rf;
+      }
+
+      // ── TIMED score ───────────────────────────────────────────────────────
+      // duration × rpeFactor, where rpeFactor is a narrow bounded multiplier.
+      // Duration is dominant; RPE shifts score by at most ±10%.
+      // RPE 6→0.90, RPE 7→0.95, RPE 8→1.00, RPE 9→1.05, RPE 10→1.10
+      // No RPE logged → factor 1.00 (neutral).
+      // This means: same-duration sets at different RPE are distinguishable,
+      // but a 30s @ RPE 9 still loses to 35s @ RPE 7 (duration dominates).
+      function rpeFactor(rpeVal) {
+        if (rpeVal == null) return 1.00;
+        if (rpeVal >= 10)   return 1.10;
+        if (rpeVal >= 9)    return 1.05;
+        if (rpeVal >= 8)    return 1.00;
+        if (rpeVal >= 7)    return 0.95;
+        return 0.90; // RPE 6 or below
+      }
+      function calcTimedScore(durationSecs, rpeVal) {
+        return durationSecs * rpeFactor(rpeVal);
+      }
+
+      // ── Current set score ─────────────────────────────────────────────────
+      // For timed: rir chip holds RPE value (written to rpe field on save, but
+      // during live comparison the chip's data-rir attr holds the RPE number).
+      const currentRpe = (_isTimedScore && rir != null) ? rir : null;
+      const score = _isTimedScore
+        ? calcTimedScore(reps, currentRpe)
+        : calcResistanceScore(reps, weight, _siScore.type === 'rir' ? rir : null);
+
+      // ── Previous set score ────────────────────────────────────────────────
+      // Explicit fields: prevRpe for timed/skill, prevRir for resistance.
+      // No field is used as a generic "previous intensity" — semantics are explicit.
       const prevScore = prevReps > 0
-        ? prevReps * (prevWeight > 0 ? prevWeight : 1) * prevRirFactor
+        ? (_isTimedScore
+            ? calcTimedScore(prevReps, prevRpe)           // timed: reads prevRpe (RPE semantics)
+            : calcResistanceScore(prevReps, prevWeight, prevRir)) // resistance: reads prevRir (RIR semantics)
         : 0;
 
       setRow.classList.remove('set-below','set-matched','set-pr');
@@ -5797,7 +5842,7 @@ function addExerciseRow(presetName, targetSets, targetReps, prefillSets) {
       }
     } catch(e) {}
   }
-  function addSetRow(prefillReps, prefillWeight, prefillRir, suggestion, prevReps, prevWeight, prevRir) {
+  function addSetRow(prefillReps, prefillWeight, prefillRir, suggestion, prevReps, prevWeight, prevRir, prevRpe) {
     const idx = setsList.children.length + 1;
     const setRow = document.createElement('div');
     setRow.className = 'set-row';
@@ -5805,11 +5850,18 @@ function addExerciseRow(presetName, targetSets, targetReps, prefillSets) {
     if (prevReps != null)   setRow.dataset.prevReps   = prevReps;
     if (prevWeight != null) setRow.dataset.prevWeight = prevWeight;
     if (prevRir != null)    setRow.dataset.prevRir    = prevRir;
+    if (prevRpe != null)    setRow.dataset.prevRpe    = prevRpe;
     // Build prev session reference tag
+    // Determine intensity label for prev-session tag
+    const _isTimedPrevTag = !!(EXERCISES_ALL[presetName || row.dataset.exName]?.timed &&
+                               EXERCISES_ALL[presetName || row.dataset.exName]?.timedUnit !== 'mins');
+    const _prevIntensityTag = _isTimedPrevTag
+      ? (prevRpe != null ? `@ RPE ${prevRpe}` : '')
+      : (prevRir != null ? `@ RIR ${prevRir}` : '');
     const prevTag = (prevReps > 0)
       ? `<div class="prev-session-ref">
            <span style="color:rgba(91,168,255,.35);font-size:9px;font-family:var(--font-mono);">LAST</span>
-           <span style="color:rgba(91,168,255,.5);font-size:9px;font-family:var(--font-mono);">${prevReps}${prevWeight > 0 ? ` × ${prevWeight}kg` : ''} ${prevRir != null ? `@ RIR ${prevRir}` : ''}</span>
+           <span style="color:rgba(91,168,255,.5);font-size:9px;font-family:var(--font-mono);">${prevReps}${prevWeight > 0 ? ` × ${prevWeight}kg` : ''} ${_prevIntensityTag}</span>
            <button type="button" class="copy-prev-btn" style="background:rgba(91,168,255,.08);border:1px solid rgba(91,168,255,.2);border-radius:4px;color:rgba(91,168,255,.6);font-size:9px;padding:1px 6px;cursor:pointer;touch-action:manipulation;font-family:var(--font-mono);">↑ Copy</button>
          </div>`
       : '';
@@ -5875,8 +5927,10 @@ function addExerciseRow(presetName, targetSets, targetReps, prefillSets) {
           weightInput.dataset.confirmed = '1';
           weightInput.dispatchEvent(new Event('input'));
         }
-        if (prevRir != null) {
-          const chip = setRow.querySelector(`.rir-chip[data-rir="${prevRir}"]`);
+        // For timed: copy prevRpe chip; for resistance: copy prevRir chip
+        const _copyIntensity = prevRpe ?? prevRir;
+        if (_copyIntensity != null) {
+          const chip = setRow.querySelector(`.rir-chip[data-rir="${_copyIntensity}"]`);
           if (chip) { chip.click(); }
         }
         copyBtn.textContent = '✓';
@@ -5992,9 +6046,10 @@ function addExerciseRow(presetName, targetSets, targetReps, prefillSets) {
     const _prefillDef = EXERCISES_ALL[presetName] || {};
     const isTimedPrefill = !!(_prefillDef.timed && _prefillDef.timedUnit !== 'mins');
     prefillSets.forEach(s => addSetRow(s.reps, s.weight,
-      isTimedPrefill ? (s.rpe ?? s.rir) : s.rir,
+      isTimedPrefill ? (s.rpe ?? s.rir) : s.rir,    // chip prefill: RPE for timed, RIR for resistance
       s.suggestion, s.prevReps, s.prevWeight,
-      isTimedPrefill ? (s.prevRpe ?? s.prevRir) : s.prevRir));
+      isTimedPrefill ? null : s.prevRir,              // prevRir: resistance only
+      isTimedPrefill ? s.prevRpe : null));             // prevRpe: timed/skill only
   } else if (targetSets > 0) {
     for (let i = 0; i < targetSets; i++) addSetRow(targetReps);
   } else {
