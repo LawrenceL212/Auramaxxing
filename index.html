@@ -22,28 +22,28 @@
 
     /* ── TEXT — white-to-muted ── */
     --text:       #F2F5FA;
-    --text-dim:   #8D98A8;
-    --text-faint: #4C5665;
+    --text-dim:   #A4B0C2;
+    --text-faint: #7E8CA3;
 
     /* ── SYSTEM BLUE — information / normal progression ── */
     --brass:      #5BA8FF;
     --brass-dim:  rgba(91,168,255,0.10);
 
     /* ── AURA VIOLET — character identity / supernatural ── */
-    --violet:     #8B5CFF;
+    --violet:     #A17FFF;
     --violet-dim: rgba(139,92,255,0.12);
 
     /* ── CONTEXT COLOURS — appear only when they mean something ── */
     --growing:    #6FFFB0;   /* success / recovery / complete */
     --maintaining:#2FB8C6;   /* maintenance zone */
-    --stalled:    #3A4560;   /* inactive */
+    --stalled:    #6B7894;   /* inactive */
     --excess:     #FF4D67;   /* danger / weakness / failure */
 
     /* ── RANK COLOURS — each rank has distinct identity, not just brightness ── */
-    --rank-e:   #3A4560;   /* dim slate — no power yet */
+    --rank-e:   #6B7894;   /* dim slate — no power yet */
     --rank-d:   #5BA8FF;   /* system blue — beginning */
     --rank-c:   #2FB8C6;   /* teal — consistent */
-    --rank-b:   #8B5CFF;   /* violet — supernatural */
+    --rank-b:   #A17FFF;   /* violet — supernatural */
     --rank-a:   #FF6B35;   /* warm orange — prestigious, powerful, NOT danger */
     --rank-s:   #FFD66B;   /* legendary gold — exceptional */
     --legendary:  #FFD66B;
@@ -87,6 +87,32 @@
     --ease-ui:      cubic-bezier(.22,1,.36,1);      /* fast → smooth settle */
     --ease-impact:  cubic-bezier(.5,-0.5,.5,1.5);   /* fast → slight overshoot */
     --ease-cinema:  cubic-bezier(.16,1,.3,1);        /* slow acceleration → long settle */
+
+    /* ── DEPTH ── atmosphere comes from light and layering, never from hiding text */
+    --depth-0:  none;                                        /* flush with the void */
+    --depth-1:  0 1px 0 rgba(255,255,255,.03),
+                0 2px 12px rgba(0,0,0,.55);                  /* resting card */
+    --depth-2:  0 1px 0 rgba(255,255,255,.05),
+                0 8px 32px rgba(0,0,0,.65);                  /* raised / focused */
+    --depth-3:  0 1px 0 rgba(255,255,255,.07),
+                0 24px 64px rgba(0,0,0,.75);                 /* modal / System moment */
+    --scrim:    radial-gradient(120% 80% at 50% 0%,
+                rgba(91,168,255,.055) 0%, transparent 60%);  /* overhead key light */
+
+    /* ── AURA ── state-driven intensity. Dormant by default; the System wakes up. */
+    --aura-dormant:   0.10;
+    --aura-stirring:  0.35;
+    --aura-active:    0.70;
+    --aura-surge:     1.00;
+    --aura-hue:       210;      /* rank-driven; overridden per rank at runtime */
+    --aura-colour:    hsl(var(--aura-hue) 100% 66%);
+
+    /* ── TYPE ── hierarchy strong enough to carry the System voice */
+    --tracking-system: .22em;   /* SYSTEM ASSESSMENT / telemetry labels */
+    --tracking-title:  .04em;
+    --weight-hero:     800;
+    --lh-tight:        1.05;
+    --lh-body:         1.55;
   }
   *{box-sizing:border-box;}
   html,body{height:100%;}
@@ -176,6 +202,21 @@
   ── */
 
   /* Root fluid scale — everything derives from viewport width */
+  /* ── PHASE 1: readable System typography ──
+     Small mono labels carry the System voice; they must be legible at 320px.
+     Minimum informational size is 11px, never below. */
+  .view h2, .char-rank-hint, .sub {
+    text-wrap: balance;
+  }
+  .view h2 {
+    letter-spacing: var(--tracking-title);
+    line-height: var(--lh-tight);
+  }
+  .view .sub {
+    color: var(--text-dim);
+    line-height: var(--lh-body);
+  }
+
   :root {
     --fluid-xs:   clamp(8px,   2.1vw, 11px);
     --fluid-sm:   clamp(10px,  2.6vw, 13px);
@@ -581,12 +622,12 @@
   #world-sidebar{width:180px;min-width:180px;height:100%;background:rgba(2,12,24,0.95);border-left:1px solid rgba(91,168,255,0.12);display:flex;flex-direction:column;overflow-y:auto;overflow-x:hidden;flex-shrink:0;}
   #world-sidebar::-webkit-scrollbar{width:3px;}
   #world-sidebar::-webkit-scrollbar-thumb{background:rgba(91,168,255,.2);}
-  .ws-head{font-size:8px;letter-spacing:.2em;color:rgba(91,168,255,.35);padding:8px 10px 4px;border-bottom:1px solid rgba(91,168,255,.06);margin-bottom:4px;}
+  .ws-head{font-size:8px;letter-spacing:.2em;color:rgba(91,168,255,0.78);padding:8px 10px 4px;border-bottom:1px solid rgba(91,168,255,.06);margin-bottom:4px;}
   .ws-row{padding:7px 10px;cursor:pointer;transition:background .15s;border-bottom:1px solid rgba(91,168,255,.04);touch-action:manipulation;}
   .ws-row:hover{background:rgba(91,168,255,.05);}
   .ws-row:active{background:rgba(91,168,255,.1);}
   .ws-name{font-size:10px;font-weight:700;display:flex;align-items:center;gap:5px;margin-bottom:3px;}
-  .ws-pool{font-size:9px;color:rgba(91,168,255,.4);margin-bottom:3px;}
+  .ws-pool{font-size:9px;color:rgba(91,168,255,0.78);margin-bottom:3px;}
   .ws-pool strong{color:#d4a017;}
   .ws-bar{height:3px;background:rgba(91,168,255,.08);border-radius:2px;overflow:hidden;display:flex;}
   .ws-seg{height:100%;}
@@ -793,7 +834,7 @@
   }
   .ex-picker-btn:hover{border-color:rgba(91,168,255,0.35);box-shadow:0 0 12px rgba(91,168,255,0.1), inset 0 1px 0 rgba(91,168,255,0.1);}
   .ex-picker-btn.placeholder{color:var(--text-faint);font-weight:400;}
-  .ex-picker-btn .chev{color:rgba(91,168,255,0.4);font-size:13px;}
+  .ex-picker-btn .chev{color:rgba(91,168,255,0.78);font-size:13px;}
   .ex-set-count{font-size:11px;color:var(--text-faint);font-family:var(--font-mono);white-space:nowrap;margin-top:14px;}
   .remove-x{background:none;border:none;color:var(--text-faint);font-size:18px;cursor:pointer;padding:0 4px;}
   .sets-list{display:flex;flex-direction:column;gap:6px;margin-top:12px;}
@@ -854,7 +895,7 @@
     100%{transform:scaleX(1);background:rgba(139,92,255,0.10);border-color:rgba(139,92,255,0.4);}
   }
   .set-idx{
-    font-family:var(--font-mono);font-size:10px;color:rgba(91,168,255,0.4);
+    font-family:var(--font-mono);font-size:10px;color:rgba(91,168,255,0.78);
     text-align:center;padding-top:10px;transition:color .3s;
   }
   .set-row.complete .set-idx{color:var(--violet);}
@@ -1130,10 +1171,10 @@
   }
   .quest-card.quest-complete::before,.quest-card.quest-complete::after{border-color:rgba(139,92,255,0.3);}
   .quest-eyebrow{
-    font-family:var(--font-mono);font-size:9px;letter-spacing:0.35em;color:rgba(91,168,255,0.5);
+    font-family:var(--font-mono);font-size:9px;letter-spacing:0.35em;color:rgba(91,168,255,0.78);
     text-align:left;margin-bottom:6px;text-transform:uppercase;
   }
-  .quest-card.quest-complete .quest-eyebrow{color:rgba(139,92,255,0.5);animation:none;}
+  .quest-card.quest-complete .quest-eyebrow{color:rgba(139,92,255,0.78);animation:none;}
   /* Day name as large typographic hero — asymmetric, left-aligned */
   .quest-flavor{
     text-align:left;font-size:22px;font-weight:800;color:var(--text);
@@ -1201,7 +1242,7 @@
     content:"◈";
   }
   .quest-check-row.complete .qc-sets,.quest-check-row.complete .qc-reps{
-    color:rgba(91,168,255,0.35);
+    color:rgba(91,168,255,0.78);
   }
 
   /* ── Quest progress bar ── */
@@ -1271,12 +1312,12 @@
   .rest-day-corner-tl,.rest-day-corner-br{content:"";position:absolute;width:14px;height:14px;border-color:rgba(91,168,255,0.3);pointer-events:none;}
   .rest-day-corner-tl{top:-1px;left:-1px;border-top:1px solid;border-left:1px solid;}
   .rest-day-corner-br{bottom:-1px;right:-1px;border-bottom:1px solid;border-right:1px solid;}
-  .rest-day-eyebrow{font-family:var(--font-mono);font-size:9px;letter-spacing:0.15em;color:rgba(91,168,255,0.4);margin:0 0 12px;}
+  .rest-day-eyebrow{font-family:var(--font-mono);font-size:9px;letter-spacing:0.15em;color:rgba(91,168,255,0.78);margin:0 0 12px;}
   .rest-day-icon{font-size:40px;margin:0 0 10px;filter:drop-shadow(0 0 12px rgba(91,168,255,0.3));}
   .rest-day-title{font-family:var(--font-head);font-size:22px;font-weight:800;letter-spacing:0.08em;color:var(--text-dim);margin:0 0 12px;text-shadow:0 0 20px rgba(91,168,255,0.2);}
   .rest-day-body{font-size:13px;color:var(--text-faint);line-height:1.6;margin:0 0 16px;}
   .rest-day-streak-shield{display:flex;align-items:center;justify-content:center;gap:10px;background:rgba(91,168,255,0.05);border:1px solid rgba(91,168,255,0.12);border-radius:4px;padding:10px 14px;margin:0 0 16px;}
-  .rest-day-log-btn{font-size:12px;color:rgba(91,168,255,0.5);border-color:rgba(91,168,255,0.15);background:transparent;width:100%;}
+  .rest-day-log-btn{font-size:12px;color:rgba(91,168,255,0.78);border-color:rgba(91,168,255,0.15);background:transparent;width:100%;}
   .rest-day-log-btn:hover{color:var(--text);border-color:rgba(91,168,255,0.4);}
   .quest-carousel{display:flex;align-items:center;gap:8px;overflow:visible;}
   .quest-carousel-card{flex:1;min-width:0;position:relative;}
@@ -1655,7 +1696,7 @@
   }
   .hunter-level-eyebrow{
     font-family:var(--font-mono);font-size:8px;letter-spacing:0.15em;
-    color:rgba(255,214,107,0.5);margin-bottom:2px;
+    color:rgba(255,214,107,0.78);margin-bottom:2px;
   }
   .hunter-level-number{
     font-family:var(--font-head);font-size:32px;font-weight:900;
@@ -1788,7 +1829,7 @@
   .streak-pill{font-family:var(--font-mono);font-size:11px;padding:3px 8px;border-radius:10px;background:rgba(255,255,255,0.02);border:1px solid rgba(91,168,255,0.1);color:var(--text-dim);white-space:nowrap;}
   .streak-pill.at-risk{background:rgba(255,77,103,0.1);border-color:var(--excess);color:var(--excess);animation:timerPulse 1.5s ease-in-out infinite;}
   .streak-pill.safe{background:rgba(139,92,255,0.1);border-color:var(--growing);color:var(--growing);}
-  .streak-pill.rest{background:rgba(91,168,255,0.06);border-color:rgba(91,168,255,0.2);color:rgba(91,168,255,0.5);}
+  .streak-pill.rest{background:rgba(91,168,255,0.06);border-color:rgba(91,168,255,0.2);color:rgba(91,168,255,0.78);}
   .status-dot.rest{background:rgba(91,168,255,0.2);border:2px solid rgba(91,168,255,0.3);}
 
   /* ── Raid Boss ── */
@@ -2391,7 +2432,7 @@
   .system-cmd-close{width:36px;height:36px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:50%;color:var(--text-faint);font-size:14px;cursor:pointer;touch-action:manipulation;display:flex;align-items:center;justify-content:center;transition:background var(--dur-fast),color var(--dur-fast);}
   .system-cmd-close:hover{background:rgba(255,77,103,0.08);color:var(--excess);}
   .system-cmd-body{flex:1;overflow-y:auto;overflow-x:hidden;padding:18px 20px calc(18px + env(safe-area-inset-bottom,0));}
-  .system-cmd-section-label{font-family:var(--font-mono);font-size:8px;color:rgba(91,168,255,0.35);letter-spacing:.25em;margin-bottom:10px;}
+  .system-cmd-section-label{font-family:var(--font-mono);font-size:8px;color:rgba(91,168,255,0.78);letter-spacing:.25em;margin-bottom:10px;}
   .system-cmd-functions{display:flex;flex-direction:column;gap:4px;}
   .sys-fn-btn{display:flex;align-items:center;gap:14px;padding:14px 16px;background:rgba(91,168,255,0.04);border:1px solid rgba(91,168,255,0.1);border-radius:var(--radius-sm);color:var(--text);cursor:pointer;touch-action:manipulation;text-align:left;width:100%;transition:background var(--dur-fast),border-color var(--dur-fast),transform var(--dur-snap);}
   .sys-fn-btn:hover{background:rgba(91,168,255,0.08);border-color:rgba(91,168,255,0.22);}
@@ -2400,10 +2441,10 @@
   .sys-fn-info{flex:1;min-width:0;}
   .sys-fn-name{font-family:var(--font-display);font-size:14px;font-weight:700;letter-spacing:.05em;margin-bottom:2px;}
   .sys-fn-desc{font-family:var(--font-mono);font-size:10px;color:var(--text-faint);}
-  .sys-fn-chevron{font-size:18px;color:rgba(91,168,255,0.3);flex-shrink:0;}
+  .sys-fn-chevron{font-size:18px;color:rgba(91,168,255,0.78);flex-shrink:0;}
   .system-cmd-settings{background:rgba(255,255,255,0.015);border:1px solid rgba(255,255,255,0.04);border-radius:var(--radius-sm);padding:14px;}
   .system-cmd-settings .field{margin-bottom:12px;}
-  .system-cmd-settings label{font-family:var(--font-mono);font-size:9px;color:rgba(91,168,255,0.4);letter-spacing:.12em;text-transform:uppercase;display:block;margin-bottom:6px;}
+  .system-cmd-settings label{font-family:var(--font-mono);font-size:9px;color:rgba(91,168,255,0.78);letter-spacing:.12em;text-transform:uppercase;display:block;margin-bottom:6px;}
   .system-cmd-settings input{background:rgba(255,255,255,0.03);border:1px solid rgba(91,168,255,0.12);border-radius:var(--radius-sm);color:var(--text);padding:8px 10px;font-family:var(--font-mono);font-size:13px;width:100%;box-sizing:border-box;}
   .modal-overlay{
     position:fixed;
@@ -2497,7 +2538,7 @@
     letter-spacing:.03em;color:var(--text);margin:0 0 2px;line-height:1.2;
   }
   .ex-set-counter{
-    font-family:var(--font-mono);font-size:11px;color:rgba(91,168,255,.6);letter-spacing:.1em;
+    font-family:var(--font-mono);font-size:11px;color:rgba(91,168,255,0.78);letter-spacing:.1em;
   }
 
   /* ── #9 SET COMPLETION FEEDBACK ── */
@@ -2520,7 +2561,7 @@
 
   /* ── #8 REST TIMER — Hunt context not stopwatch ── */
   .rest-next-preview{
-    font-family:var(--font-mono);font-size:9px;color:rgba(91,168,255,.5);
+    font-family:var(--font-mono);font-size:9px;color:rgba(91,168,255,0.78);
     letter-spacing:.08em;margin-top:4px;
   }
   .rest-timer-bar{
@@ -2537,7 +2578,7 @@
     background:var(--card-2);flex-shrink:0;flex-wrap:wrap;
   }
   .rest-timer-label{font-size:12px;color:var(--text-dim);font-weight:600;white-space:nowrap;}
-  .rest-timer-phase{font-family:var(--font-mono);font-size:8px;color:rgba(91,168,255,.4);letter-spacing:.15em;display:block;margin-top:1px;}
+  .rest-timer-phase{font-family:var(--font-mono);font-size:8px;color:rgba(91,168,255,0.78);letter-spacing:.15em;display:block;margin-top:1px;}
   .rest-timer-presets{display:flex;gap:5px;}
   .rest-preset-btn{background:var(--card);border:1px solid var(--border);color:var(--text-dim);border-radius:14px;padding:5px 10px;font-size:11.5px;cursor:pointer;}
   .rest-preset-btn:active{border-color:var(--brass);color:var(--brass);}
@@ -2570,12 +2611,12 @@
   .prev-session-ref{display:flex;align-items:center;gap:6px;padding:3px 0 3px 4px;border-left:2px solid rgba(91,168,255,.15);margin:2px 0 4px;flex-wrap:wrap;}
 
   /* ── RIR description ── */
-  .rir-desc{font-size:10px;color:rgba(91,168,255,.5);margin-top:3px;min-height:13px;font-style:italic;transition:opacity .2s;text-align:center;}
+  .rir-desc{font-size:10px;color:rgba(91,168,255,0.78);margin-top:3px;min-height:13px;font-style:italic;transition:opacity .2s;text-align:center;}
 
   /* ── Stat WHY panel ── */
   .stat-why{background:rgba(91,168,255,.04);border:1px solid rgba(91,168,255,.1);border-radius:8px;padding:10px 12px;margin-top:8px;font-size:11px;color:var(--text-dim);line-height:1.7;display:none;}
   .stat-why.open{display:block;}
-  .stat-why-head{font-family:var(--font-mono);font-size:8px;color:rgba(91,168,255,.4);letter-spacing:.1em;margin-bottom:6px;}
+  .stat-why-head{font-family:var(--font-mono);font-size:8px;color:rgba(91,168,255,0.78);letter-spacing:.1em;margin-bottom:6px;}
 
   /* ---------- History calendar ---------- */
   .cal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
@@ -2724,7 +2765,7 @@
     <div class="auth-card">
       <p class="eyebrow" style="letter-spacing:.3em;opacity:.7;">◈ SYSTEM INITIALISING ◈</p>
       <p class="wordmark">AURAMAXXING<span>.</span></p>
-      <p class="tagline" style="font-family:var(--font-mono);font-size:11px;color:rgba(91,168,255,.4);letter-spacing:.06em;margin-bottom:24px;">The System has detected a new Hunter.</p>
+      <p class="tagline" style="font-family:var(--font-mono);font-size:11px;color:rgba(91,168,255,0.78);letter-spacing:.06em;margin-bottom:24px;">The System has detected a new Hunter.</p>
       <form id="auth-form">
         <div class="field hidden" id="name-field">
           <label for="displayName" style="font-family:var(--font-mono);font-size:10px;letter-spacing:.12em;color:var(--text-faint);">HUNTER DESIGNATION</label>
@@ -2755,9 +2796,9 @@
     <p class="wordmark">AURA<span>MAXX</span></p>
     <div class="daily-timer" id="daily-timer"></div>
     <div class="user-chip">
-      <button class="icon-btn" id="settings-btn" title="System Command" style="color:rgba(91,168,255,.4);font-family:var(--font-mono);font-size:14px;">◈</button>
+      <button class="icon-btn" id="settings-btn" title="System Command" style="color:rgba(91,168,255,0.78);font-family:var(--font-mono);font-size:14px;">◈</button>
       <div class="avatar" id="user-avatar">–</div>
-      <button class="icon-btn" id="logout-btn" title="Leave the System" style="font-family:var(--font-mono);font-size:9px;letter-spacing:.08em;color:rgba(91,168,255,.35);">◈ EXIT</button>
+      <button class="icon-btn" id="logout-btn" title="Leave the System" style="font-family:var(--font-mono);font-size:9px;letter-spacing:.08em;color:rgba(91,168,255,0.78);">◈ EXIT</button>
     </div>
   </header>
 
@@ -2911,26 +2952,26 @@
           </div>
 
           <div id="power-breakdown-panel" style="display:none;background:rgba(91,168,255,.04);border:1px solid rgba(91,168,255,.08);border-radius:8px;padding:10px 14px;margin:0 0 10px;font-size:11px;">
-            <div style="font-family:var(--font-mono);font-size:8px;color:rgba(91,168,255,.4);letter-spacing:.1em;margin-bottom:8px;">◈ POWER BREAKDOWN</div>
+            <div style="font-family:var(--font-mono);font-size:8px;color:rgba(91,168,255,0.78);letter-spacing:.1em;margin-bottom:8px;">◈ POWER BREAKDOWN</div>
             <div id="power-breakdown-rows"></div>
-            <div style="font-size:9px;color:rgba(91,168,255,.3);margin-top:8px;border-top:1px solid rgba(91,168,255,.06);padding-top:6px;">Power = your stats converted to a numeric score. Train all stats to grow it.</div>
+            <div style="font-size:9px;color:rgba(91,168,255,0.78);margin-top:8px;border-top:1px solid rgba(91,168,255,.06);padding-top:6px;">Power = your stats converted to a numeric score. Train all stats to grow it.</div>
           </div>
 
           <div class="char-divider"></div>
           <div id="calibration-observation-slot"></div>
-          <div id="system-progression-hint" style="font-family:var(--font-mono);font-size:9px;color:rgba(91,168,255,0.3);letter-spacing:0.08em;text-align:center;padding:8px 0;margin-bottom:12px;line-height:1.7;cursor:pointer;" title="Tap to learn more">
+          <div id="system-progression-hint" style="font-family:var(--font-mono);font-size:9px;color:rgba(91,168,255,0.78);letter-spacing:0.08em;text-align:center;padding:8px 0;margin-bottom:12px;line-height:1.7;cursor:pointer;" title="Tap to learn more">
             ◈ THE SYSTEM OBSERVES YOUR TRAINING ◈<br>
-            <span style="color:rgba(91,168,255,0.18);">Train → XP → Level Up → AP · Spend AP to raise stats</span>
+            <span style="color:rgba(91,168,255,0.78);">Train → XP → Level Up → AP · Spend AP to raise stats</span>
           </div>
           <div class="char-stats" id="char-stats"></div>
           <p class="char-rank-hint" id="char-rank-hint"></p>
-          <button onclick="generateHunterCard()" style="width:100%;margin-top:14px;padding:11px;background:rgba(91,168,255,.04);border:1px solid rgba(91,168,255,.1);border-radius:var(--radius-md);color:rgba(91,168,255,.5);font-family:var(--font-mono);font-size:11px;letter-spacing:.1em;cursor:pointer;touch-action:manipulation;">◈ GENERATE HUNTER CARD</button>
+          <button onclick="generateHunterCard()" style="width:100%;margin-top:14px;padding:11px;background:rgba(91,168,255,.04);border:1px solid rgba(91,168,255,.1);border-radius:var(--radius-md);color:rgba(91,168,255,0.78);font-family:var(--font-mono);font-size:11px;letter-spacing:.1em;cursor:pointer;touch-action:manipulation;">◈ GENERATE HUNTER CARD</button>
           <div id="hunter-card-output" style="display:none;margin-top:12px;"></div>
           <!-- Secondary navigation — accessible from Rank screen -->
           <div style="display:flex;gap:6px;margin-top:16px;padding-top:12px;border-top:1px solid rgba(91,168,255,0.06);">
-            <button onclick="switchView('exercises')" style="flex:1;padding:8px 4px;background:transparent;border:1px solid rgba(91,168,255,0.1);border-radius:var(--radius-sm);color:rgba(91,168,255,.4);font-family:var(--font-mono);font-size:10px;letter-spacing:.08em;cursor:pointer;">Arsenal</button>
-            <button onclick="switchView('history')" style="flex:1;padding:8px 4px;background:transparent;border:1px solid rgba(91,168,255,0.1);border-radius:var(--radius-sm);color:rgba(91,168,255,.4);font-family:var(--font-mono);font-size:10px;letter-spacing:.08em;cursor:pointer;">Shadow Log</button>
-            <button onclick="switchView('feats')" style="flex:1;padding:8px 4px;background:transparent;border:1px solid rgba(91,168,255,0.1);border-radius:var(--radius-sm);color:rgba(91,168,255,.4);font-family:var(--font-mono);font-size:10px;letter-spacing:.08em;cursor:pointer;">Gates</button>
+            <button onclick="switchView('exercises')" style="flex:1;padding:8px 4px;background:transparent;border:1px solid rgba(91,168,255,0.1);border-radius:var(--radius-sm);color:rgba(91,168,255,0.78);font-family:var(--font-mono);font-size:10px;letter-spacing:.08em;cursor:pointer;">Arsenal</button>
+            <button onclick="switchView('history')" style="flex:1;padding:8px 4px;background:transparent;border:1px solid rgba(91,168,255,0.1);border-radius:var(--radius-sm);color:rgba(91,168,255,0.78);font-family:var(--font-mono);font-size:10px;letter-spacing:.08em;cursor:pointer;">Shadow Log</button>
+            <button onclick="switchView('feats')" style="flex:1;padding:8px 4px;background:transparent;border:1px solid rgba(91,168,255,0.1);border-radius:var(--radius-sm);color:rgba(91,168,255,0.78);font-family:var(--font-mono);font-size:10px;letter-spacing:.08em;cursor:pointer;">Gates</button>
           </div>
         </div>
       </div>
@@ -2965,7 +3006,7 @@
     <!-- ---- TRENDS ---- -->
     <section class="view" id="view-trends">
       <div id="trends-dashboard">
-        <div style="font-family:var(--font-mono);font-size:8px;color:rgba(91,168,255,.3);letter-spacing:.25em;margin-bottom:4px;">◈ SYSTEM CODEX</div><h2 style="margin:0 0 2px;font-size:22px;">Your Body</h2><p class="sub" style="margin-bottom:16px;">What the System has analysed.</p>
+        <div style="font-family:var(--font-mono);font-size:8px;color:rgba(91,168,255,0.78);letter-spacing:.25em;margin-bottom:4px;">◈ SYSTEM CODEX</div><h2 style="margin:0 0 2px;font-size:22px;">Your Body</h2><p class="sub" style="margin-bottom:16px;">What the System has analysed.</p>
         <!-- Body/muscle analysis FIRST — anatomy is the hero -->
         <div id="trends-widgets"></div>
         <!-- PR Records — supporting content below -->
@@ -3011,7 +3052,7 @@
     <!-- ---- HISTORY ---- -->
     <section class="view" id="view-history">
       
-      <div style="font-family:var(--font-mono);font-size:9px;color:rgba(91,168,255,.3);letter-spacing:.2em;padding:12px var(--fluid-pad) 4px;">◈ SYSTEM LOG</div>
+      <div style="font-family:var(--font-mono);font-size:9px;color:rgba(91,168,255,0.78);letter-spacing:.2em;padding:12px var(--fluid-pad) 4px;">◈ SYSTEM LOG</div>
 
       <!-- Tab toggle: Calendar / System Feed -->
       <div style="display:flex;gap:6px;margin-bottom:12px;">
@@ -3105,10 +3146,10 @@
   <div class="workout-modal">
     <div class="workout-modal-header" style="position:relative;">
   <div style="padding-right:104px;">
-    <div style="font-family:var(--font-mono);font-size:9px;letter-spacing:0.2em;color:rgba(91,168,255,0.5);margin-bottom:2px;">◈ QUEST ACTIVE ◈</div>
+    <div style="font-family:var(--font-mono);font-size:9px;letter-spacing:0.2em;color:rgba(91,168,255,0.78);margin-bottom:2px;">◈ QUEST ACTIVE ◈</div>
     <div id="logger-title" style="font-family:var(--font-display);font-size:20px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;line-height:1.1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin:0 0 2px;">HUNT ACTIVE</div>
     <div style="display:flex;justify-content:space-between;margin-top:4px;">
-      <span style="font-family:var(--font-mono);font-size:10px;color:rgba(91,168,255,.5);" id="logger-set-count" style="letter-spacing:.06em;"></span>
+      <span style="font-family:var(--font-mono);font-size:10px;color:rgba(91,168,255,0.78);" id="logger-set-count" style="letter-spacing:.06em;"></span>
       <span style="font-family:var(--font-mono);font-size:10px;color:rgba(255,214,107,0.7);transition:all 0.3s;" id="logger-xp-live">+0 XP</span>
     </div>
     <div style="height:2px;background:rgba(91,168,255,0.08);margin-top:6px;border-radius:1px;overflow:hidden;">
@@ -3131,7 +3172,7 @@
   <div class="rest-timer-display" id="rest-timer-display">—</div>
   <button type="button" class="rest-timer-stop hidden" id="rest-timer-stop">Stop</button>
     </div>
-    <div id="rest-next-preview" class="rest-next-preview" style="display:none;padding:6px 20px;background:rgba(91,168,255,0.04);border-bottom:1px solid rgba(91,168,255,0.06);font-family:var(--font-mono);font-size:10px;color:rgba(91,168,255,.5);letter-spacing:.06em;"></div>
+    <div id="rest-next-preview" class="rest-next-preview" style="display:none;padding:6px 20px;background:rgba(91,168,255,0.04);border-bottom:1px solid rgba(91,168,255,0.06);font-family:var(--font-mono);font-size:10px;color:rgba(91,168,255,0.78);letter-spacing:.06em;"></div>
     <div class="workout-modal-body">
   <div class="date-row">
     <div class="field">
@@ -3549,7 +3590,7 @@ function showEnergyFlow(exercises, xpResult, prs, onComplete) {
 
   const skipBtn = document.createElement('button');
   skipBtn.textContent = 'Continue →';
-  skipBtn.style.cssText = 'margin-top:24px;padding:10px 24px;background:rgba(91,168,255,0.06);border:1px solid rgba(91,168,255,0.15);border-radius:100px;color:rgba(91,168,255,0.5);font-family:var(--font-mono);font-size:11px;letter-spacing:.08em;cursor:pointer;touch-action:manipulation;opacity:0;transition:opacity 0.4s ease;';
+  skipBtn.style.cssText = 'margin-top:24px;padding:10px 24px;background:rgba(91,168,255,0.06);border:1px solid rgba(91,168,255,0.15);border-radius:100px;color:rgba(91,168,255,0.78);font-family:var(--font-mono);font-size:11px;letter-spacing:.08em;cursor:pointer;touch-action:manipulation;opacity:0;transition:opacity 0.4s ease;';
   // Continue button — requires explicit tap, appears after last step
   // Auto-dismiss only after 6 seconds of the full chain being visible
   const lastDelay = steps[steps.length-1].delay;
@@ -3906,7 +3947,7 @@ function startDailyTimer() {
 
     // Rest day — no countdown needed
     if (currentUser && isRestDayFor(currentUser.uid)) {
-      el.innerHTML = `<span class="daily-timer-label">Today</span><span class="daily-timer-time" style="color:rgba(91,168,255,0.6);">🌑 Rest Day</span>`;
+      el.innerHTML = `<span class="daily-timer-label">Today</span><span class="daily-timer-time" style="color:rgba(91,168,255,0.78);">🌑 Rest Day</span>`;
       return;
     }
 
@@ -3935,7 +3976,7 @@ function openSettingsModal() {
     '<div class="system-cmd-panel">',
     '  <div class="system-cmd-header">',
     '    <div>',
-    '      <div style="font-family:var(--font-mono);font-size:8px;color:rgba(91,168,255,.4);letter-spacing:.25em;margin-bottom:4px;">\u25c8 SYSTEM</div>',
+    '      <div style="font-family:var(--font-mono);font-size:8px;color:rgba(91,168,255,0.78);letter-spacing:.25em;margin-bottom:4px;">\u25c8 SYSTEM</div>',
     '      <div style="font-family:var(--font-display);font-size:18px;font-weight:900;letter-spacing:.06em;">COMMAND</div>',
     '    </div>',
     '    <button class="system-cmd-close" id="system-cmd-close">\u2715</button>',
@@ -3986,7 +4027,7 @@ function openSettingsModal() {
       '<button class="btn" id="cancel-settings" style="flex:1;font-size:13px;">Close</button>' +
       '<button class="btn btn-primary" id="save-settings" style="flex:2;font-size:13px;">Save</button>' +
     '</div>' +
-    '<button id="settings-exit-btn" style="width:100%;margin-top:8px;padding:9px;background:transparent;border:1px solid rgba(255,77,103,0.15);border-radius:var(--radius-sm);color:rgba(255,77,103,0.45);font-family:var(--font-mono);font-size:10px;letter-spacing:.1em;cursor:pointer;touch-action:manipulation;">\u25c8 EXIT SYSTEM</button>' +
+    '<button id="settings-exit-btn" style="width:100%;margin-top:8px;padding:9px;background:transparent;border:1px solid rgba(255,77,103,0.15);border-radius:var(--radius-sm);color:rgba(255,77,103,0.78);font-family:var(--font-mono);font-size:10px;letter-spacing:.1em;cursor:pointer;touch-action:manipulation;">\u25c8 EXIT SYSTEM</button>' +
     (currentUser?.uid === 'eUtGPwQBcCSO0x3xS3ZGYFGXNIT2' ?
       '<div style="margin-top:12px;padding-top:12px;border-top:1px solid rgba(255,77,103,0.08);">' +
       '<div style="font-family:var(--font-mono);font-size:8px;letter-spacing:.2em;color:var(--excess);margin-bottom:8px;">\u25c8 ADMIN</div>' +
@@ -4552,7 +4593,7 @@ function renderQuestFeed() {
   if (!myProgram || !myProgram.days || !myProgram.days.length) {
     wrap.innerHTML = `
       <div style="padding:32px 20px;text-align:center;">
-        <div style="font-family:var(--font-mono);font-size:8px;color:rgba(91,168,255,.3);letter-spacing:.25em;margin-bottom:20px;">◈ SYSTEM</div>
+        <div style="font-family:var(--font-mono);font-size:8px;color:rgba(91,168,255,0.78);letter-spacing:.25em;margin-bottom:20px;">◈ SYSTEM</div>
         <div style="font-family:var(--font-display);font-size:24px;font-weight:900;color:var(--text-dim);letter-spacing:.06em;margin-bottom:8px;">NO HUNT ASSIGNED</div>
         <p style="font-size:13px;color:var(--text-faint);margin:0 0 28px;line-height:1.7;">The System is watching.<br>You have not yet defined your training.</p>
         <button class="btn btn-primary" id="build-program-btn" style="width:auto;padding:11px 20px;">+ Create plan</button>
@@ -4761,7 +4802,7 @@ function buildQuestCardHTML(idx) {
 
     return `
       <div style="border-top:1px solid rgba(91,168,255,0.08);margin:14px 0 16px;padding-top:12px;">
-        <div style="font-family:var(--font-mono);font-size:8px;letter-spacing:.2em;color:rgba(91,168,255,.3);margin-bottom:10px;">◈ IF HUNT COMPLETED</div>
+        <div style="font-family:var(--font-mono);font-size:8px;letter-spacing:.2em;color:rgba(91,168,255,0.78);margin-bottom:10px;">◈ IF HUNT COMPLETED</div>
 
         <!-- Outcome: XP gained -->
         <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
@@ -6314,9 +6355,9 @@ function addExerciseRow(presetName, targetSets, targetReps, prefillSets) {
       : (prevRir != null ? `@ RIR ${prevRir}` : '');
     const prevTag = (prevReps > 0)
       ? `<div class="prev-session-ref">
-           <span style="color:rgba(91,168,255,.35);font-size:9px;font-family:var(--font-mono);">LAST</span>
-           <span style="color:rgba(91,168,255,.5);font-size:9px;font-family:var(--font-mono);">${prevReps}${prevWeight > 0 ? ` × ${prevWeight}kg` : ''} ${_prevIntensityTag}</span>
-           <button type="button" class="copy-prev-btn" style="background:rgba(91,168,255,.08);border:1px solid rgba(91,168,255,.2);border-radius:4px;color:rgba(91,168,255,.6);font-size:9px;padding:1px 6px;cursor:pointer;touch-action:manipulation;font-family:var(--font-mono);">↑ Copy</button>
+           <span style="color:rgba(91,168,255,0.78);font-size:9px;font-family:var(--font-mono);">LAST</span>
+           <span style="color:rgba(91,168,255,0.78);font-size:9px;font-family:var(--font-mono);">${prevReps}${prevWeight > 0 ? ` × ${prevWeight}kg` : ''} ${_prevIntensityTag}</span>
+           <button type="button" class="copy-prev-btn" style="background:rgba(91,168,255,.08);border:1px solid rgba(91,168,255,.2);border-radius:4px;color:rgba(91,168,255,0.78);font-size:9px;padding:1px 6px;cursor:pointer;touch-action:manipulation;font-family:var(--font-mono);">↑ Copy</button>
          </div>`
       : '';
     const timed = isTimed();
@@ -6348,7 +6389,7 @@ function addExerciseRow(presetName, targetSets, targetReps, prefillSets) {
                  <input type="number" class="set-reps" placeholder="00" min="0" max="${unit==='mins'?60:300}" inputmode="numeric"
                    style="width:48px;background:transparent;border:none;border-bottom:1.5px solid rgba(91,168,255,0.25);border-radius:0;color:var(--text);-webkit-text-fill-color:var(--text);padding:0 4px;font-size:16px;font-family:var(--font-mono);height:44px;text-align:center;-webkit-appearance:none;font-weight:700;" />
                  <span style="font-size:12px;color:var(--text-faint);padding:0 1px;">${unit==='mins'?'m':'s'}</span>
-                 ${unit==='secs' ? `<span style="font-size:9px;color:rgba(91,168,255,.3);font-family:var(--font-mono);letter-spacing:.05em;">SECS</span>` : ''}
+                 ${unit==='secs' ? `<span style="font-size:9px;color:rgba(91,168,255,0.78);font-family:var(--font-mono);letter-spacing:.05em;">SECS</span>` : ''}
                </div>`
              : stepper('set-reps', prefillReps || '', 0, repsStep, repsLabel)
            }
@@ -8523,13 +8564,13 @@ async function investApInStat(statId, amount) {
   if (amount > gates.maxInvestable) {
     const statLabel = STAT_DEFS.find(d => d.id === statId)?.label || statId;
     showSystemModal(`<div class="system-window" style="text-align:center;">
-      <p class="system-eyebrow" style="color:rgba(91,168,255,0.6);">◈ SYSTEM RESTRICTION ◈</p>
+      <p class="system-eyebrow" style="color:rgba(91,168,255,0.78);">◈ SYSTEM RESTRICTION ◈</p>
       <div style="font-size:32px;margin:8px 0;">🔒</div>
       <h2 class="system-title" style="font-size:18px;">Training Cap Reached</h2>
       <p class="system-body">The System will not allow investment beyond what your body has actually trained.<br><br>
         Your <span style="color:var(--brass);">${statLabel}</span> cap is <span style="color:var(--brass);">${Math.floor(gates.trainingCap)} XP</span>.<br>
         You have already invested <span style="color:var(--brass);">${gates.apInvested} AP</span>.<br><br>
-        <span style="color:rgba(91,168,255,0.6);">To raise your cap: log more ${statLabel.toLowerCase()} exercises.</span><br>
+        <span style="color:rgba(91,168,255,0.78);">To raise your cap: log more ${statLabel.toLowerCase()} exercises.</span><br>
         <span style="color:var(--text-faint);font-size:11px;">The System only rewards what you actually do.</span>
       </p>
       <button class="system-btn">Understood</button>
@@ -8588,7 +8629,7 @@ async function upgradeStatWithAp(statId) {
 // Open stat investment panel
 function showProgressionHint() {
   showSystemModal(`<div class="system-window" style="max-height:min(80dvh, 80vh);overflow-y:auto;">
-    <p class="system-eyebrow" style="color:rgba(91,168,255,0.5);letter-spacing:0.15em;">◈ SYSTEM NOTIFICATION ◈</p>
+    <p class="system-eyebrow" style="color:rgba(91,168,255,0.78);letter-spacing:0.15em;">◈ SYSTEM NOTIFICATION ◈</p>
     <div style="font-size:24px;margin:8px 0;">⚡</div>
     <h2 class="system-title" style="font-size:18px;margin-bottom:16px;">How the System works</h2>
 
@@ -8606,7 +8647,7 @@ function showProgressionHint() {
 
       <div style="margin-bottom:12px;">
         <div style="font-family:var(--font-mono);font-size:9px;color:var(--brass);letter-spacing:0.1em;margin-bottom:4px;">STEP 3 — INVEST AP</div>
-        Spend AP to raise your stats. But the System only allows investment proportional to your actual training. You cannot raise Endurance if you never train endurance. <span style="color:rgba(91,168,255,0.6);">Your training shapes your potential.</span>
+        Spend AP to raise your stats. But the System only allows investment proportional to your actual training. You cannot raise Endurance if you never train endurance. <span style="color:rgba(91,168,255,0.78);">Your training shapes your potential.</span>
       </div>
 
       <div style="margin-bottom:12px;">
@@ -9118,14 +9159,14 @@ function renderCharCard() {
     <!-- ATTRIBUTE MATRIX — spatial composition -->
     <div style="position:relative;margin-bottom:4px;">
       <!-- System analysis label -->
-      <div style="font-family:var(--font-mono);font-size:8px;color:rgba(91,168,255,0.3);letter-spacing:.2em;text-align:center;margin-bottom:12px;">◈ ATTRIBUTE MATRIX</div>
+      <div style="font-family:var(--font-mono);font-size:8px;color:rgba(91,168,255,0.78);letter-spacing:.2em;text-align:center;margin-bottom:12px;">◈ ATTRIBUTE MATRIX</div>
 
       <!-- Radar chart -->
       <div style="position:relative;">
         ${radarSvg}
         <!-- Dominant + weakest overlaid in centre -->
         <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;pointer-events:none;">
-          <div style="font-family:var(--font-mono);font-size:7px;color:rgba(91,168,255,0.3);letter-spacing:.1em;margin-bottom:2px;">POWER</div>
+          <div style="font-family:var(--font-mono);font-size:7px;color:rgba(91,168,255,0.78);letter-spacing:.1em;margin-bottom:2px;">POWER</div>
           <div style="font-family:var(--font-display);font-size:14px;font-weight:900;color:${RANK_COLORS[charRank]};line-height:1;">${power.toLocaleString()}</div>
         </div>
       </div>
@@ -9133,12 +9174,12 @@ function renderCharCard() {
       <!-- Dominant / limiting row -->
       <div style="display:flex;gap:8px;margin-top:12px;">
         <div style="flex:1;padding:8px;background:rgba(${dominantStat.idx>2?'111,255,176':'91,168,255'},0.04);border-top:1px solid rgba(${dominantStat.idx>2?'111,255,176':'91,168,255'},0.12);border-radius:var(--radius-sm);">
-          <div style="font-family:var(--font-mono);font-size:7px;color:rgba(91,168,255,0.4);letter-spacing:.12em;margin-bottom:4px;">DOMINANT</div>
+          <div style="font-family:var(--font-mono);font-size:7px;color:rgba(91,168,255,0.78);letter-spacing:.12em;margin-bottom:4px;">DOMINANT</div>
           <div style="font-size:12px;color:${RANK_COLORS[dominantStat.rank]};font-weight:700;">${STAT_ICONS_FULL[dominantStat.id]} ${dominantStat.label}</div>
           <div style="font-family:var(--font-display);font-size:16px;font-weight:900;color:${RANK_COLORS[dominantStat.rank]};">${dominantStat.rank}</div>
         </div>
         <div style="flex:1;padding:8px;background:rgba(255,77,103,0.03);border-top:1px solid rgba(255,77,103,0.08);border-radius:var(--radius-sm);">
-          <div style="font-family:var(--font-mono);font-size:7px;color:rgba(255,77,103,0.4);letter-spacing:.12em;margin-bottom:4px;">LIMITING</div>
+          <div style="font-family:var(--font-mono);font-size:7px;color:rgba(255,77,103,0.78);letter-spacing:.12em;margin-bottom:4px;">LIMITING</div>
           <div style="font-size:12px;color:${RANK_COLORS[weakestStat.rank]};font-weight:700;">${STAT_ICONS_FULL[weakestStat.id]} ${weakestStat.label}</div>
           <div style="font-family:var(--font-display);font-size:16px;font-weight:900;color:${RANK_COLORS[weakestStat.rank]};">${weakestStat.rank}</div>
         </div>
@@ -9150,8 +9191,8 @@ function renderCharCard() {
       <button onclick="this.nextElementSibling.classList.toggle('hidden');this.dataset.open=this.dataset.open==='1'?'0':'1';this.querySelector('.disc-arrow').textContent=this.dataset.open==='1'?'▾':'▸';"
         data-open="0"
         style="width:100%;display:flex;align-items:center;justify-content:space-between;padding:10px 0;background:none;border:none;border-top:1px solid rgba(91,168,255,0.08);cursor:pointer;touch-action:manipulation;">
-        <span style="font-family:var(--font-mono);font-size:8px;color:rgba(91,168,255,0.35);letter-spacing:.2em;">◈ DETAILED ANALYSIS</span>
-        <span class="disc-arrow" style="font-family:var(--font-mono);font-size:10px;color:rgba(91,168,255,.3);">▸</span>
+        <span style="font-family:var(--font-mono);font-size:8px;color:rgba(91,168,255,0.78);letter-spacing:.2em;">◈ DETAILED ANALYSIS</span>
+        <span class="disc-arrow" style="font-family:var(--font-mono);font-size:10px;color:rgba(91,168,255,0.78);">▸</span>
       </button>
       <div class="hidden" id="char-stat-rows"></div>
     </div>`;
@@ -9220,7 +9261,7 @@ function renderCharCard() {
       <span class="stat-rank ${rankCls}">${cur}</span>
       <div style="display:flex;flex-direction:column;align-items:flex-end;gap:2px;">
         <button class="${btnCls}" data-stat="${def.id}" ${isMaxed?'disabled':''}>${btnLabel}</button>
-        <button class="stat-why-btn" data-stat="${def.id}" style="background:none;border:none;color:rgba(91,168,255,.35);font-size:10px;cursor:pointer;padding:2px 4px;touch-action:manipulation;">why?</button>
+        <button class="stat-why-btn" data-stat="${def.id}" style="background:none;border:none;color:rgba(91,168,255,0.78);font-size:10px;cursor:pointer;padding:2px 4px;touch-action:manipulation;">why?</button>
       </div>
     </div>`;
   }).join('');
@@ -9361,7 +9402,7 @@ function showAwakeningModal(statLabel, oldRank, newRank, hunterName) {
         <div style="position:relative;overflow:hidden;margin:16px 0;">
           <div class="awakening-ranks" style="animation:fadeIn .4s ease .4s both;">
             <span class="awk-old rank-${oldRank.toLowerCase()}">${oldRank}</span>
-            <span class="awk-arrow" style="color:rgba(255,255,255,.2);">→</span>
+            <span class="awk-arrow" style="color:rgba(255,255,255,0.78);">→</span>
             <span class="awk-new rank-${newRank.toLowerCase()}" style="color:${rankCol};text-shadow:0 0 30px ${rankCol},0 0 60px ${rankCol}80;animation:cinematicIn .6s var(--ease-impact) .5s both;">${newRank}</span>
           </div>
           <!-- Light sweep -->
@@ -9457,7 +9498,7 @@ function showBossDefeatedModal(exerciseName, e1rm, tier, xp, percentile) {
         animation:classFadeIn 0.5s ease 0.8s both;opacity:0;">Top ${100-percentile}% worldwide</div>` : '<div style="margin-bottom:12px;"></div>'}
       <div style="background:rgba(255,214,107,0.08);border:1px solid rgba(255,214,107,0.2);border-radius:4px;padding:8px;margin-bottom:20px;
         animation:classFadeIn 0.5s ease 0.85s both;opacity:0;">
-        <div style="font-family:var(--font-mono);font-size:9px;color:rgba(255,214,107,0.5);margin-bottom:2px;">XP AWARDED</div>
+        <div style="font-family:var(--font-mono);font-size:9px;color:rgba(255,214,107,0.78);margin-bottom:2px;">XP AWARDED</div>
         <div style="font-family:var(--font-display);font-size:18px;color:#FFD66B;">+${xp} XP</div>
       </div>
       <button style="background:none;border:1px solid ${cfg.color};color:${cfg.color};
@@ -9893,13 +9934,13 @@ window.openCheckinModal = () => {
     <div style="background:rgba(22,27,37,.98);border:1px solid rgba(91,168,255,.15);border-radius:14px;padding:24px;width:100%;max-width:440px;max-height:90vh;overflow-y:auto;font-family:var(--font-mono);">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
         <div>
-          <div style="font-size:9px;letter-spacing:.25em;color:rgba(91,168,255,.4);margin-bottom:4px;">◈ WEEKLY CHECK-IN</div>
+          <div style="font-size:9px;letter-spacing:.25em;color:rgba(91,168,255,0.78);margin-bottom:4px;">◈ WEEKLY CHECK-IN</div>
           <div style="font-size:16px;font-weight:700;color:#F2F5FA;">Body Measurements</div>
         </div>
-        <button onclick="document.getElementById('checkin-modal-overlay').remove()" style="background:none;border:none;color:rgba(242,245,250,.3);font-size:20px;cursor:pointer;padding:4px;">✕</button>
+        <button onclick="document.getElementById('checkin-modal-overlay').remove()" style="background:none;border:none;color:rgba(242,245,250,0.78);font-size:20px;cursor:pointer;padding:4px;">✕</button>
       </div>
 
-      ${lastC ? `<div style="background:rgba(91,168,255,.05);border:1px solid rgba(91,168,255,.1);border-radius:8px;padding:10px 14px;margin-bottom:16px;font-size:11px;color:rgba(242,245,250,.5);">
+      ${lastC ? `<div style="background:rgba(91,168,255,.05);border:1px solid rgba(91,168,255,.1);border-radius:8px;padding:10px 14px;margin-bottom:16px;font-size:11px;color:rgba(242,245,250,0.78);">
         Last check-in: <strong style="color:#F2F5FA;">${lastC.date}</strong> &nbsp;·&nbsp;
         ${lastC.weight}kg &nbsp;·&nbsp; ${lastC.bodyFatPct?.toFixed(1)}% BF &nbsp;·&nbsp; Waist ${lastC.waist}cm
       </div>` : ''}
@@ -9916,12 +9957,12 @@ window.openCheckinModal = () => {
       </div>
 
       <div style="background:rgba(91,168,255,.04);border:1px solid rgba(91,168,255,.08);border-radius:8px;padding:12px;margin-bottom:16px;">
-        <div style="font-size:9px;letter-spacing:.15em;color:rgba(91,168,255,.4);margin-bottom:8px;">LIVE ESTIMATES</div>
-        <div id="ci-live" style="font-size:12px;color:rgba(242,245,250,.6);line-height:2;"></div>
+        <div style="font-size:9px;letter-spacing:.15em;color:rgba(91,168,255,0.78);margin-bottom:8px;">LIVE ESTIMATES</div>
+        <div id="ci-live" style="font-size:12px;color:rgba(242,245,250,0.78);line-height:2;"></div>
       </div>
 
       <div style="margin-bottom:12px;">
-        <div style="font-size:10px;color:rgba(242,245,250,.35);margin-bottom:6px;">Notes (optional)</div>
+        <div style="font-size:10px;color:rgba(242,245,250,0.78);margin-bottom:6px;">Notes (optional)</div>
         <textarea id="ci-notes" placeholder="How are you feeling? Any observations..." style="width:100%;background:rgba(255,255,255,.04);border:1px solid rgba(91,168,255,.15);border-radius:6px;color:#F2F5FA;padding:8px;font-family:var(--font-mono);font-size:16px;resize:none;height:60px;"></textarea>
       </div>
 
@@ -9946,11 +9987,11 @@ window.openCheckinModal = () => {
 
 function checkinField(label, id, unit, lastVal, placeholder, hint) {
   return `<div>
-    <div style="font-size:9px;letter-spacing:.12em;color:rgba(91,168,255,.4);margin-bottom:4px;">${label.toUpperCase()} (${unit})</div>
+    <div style="font-size:9px;letter-spacing:.12em;color:rgba(91,168,255,0.78);margin-bottom:4px;">${label.toUpperCase()} (${unit})</div>
     <input type="number" id="${id}" step="0.1" placeholder="${placeholder}"
       value="${lastVal || ''}"
       style="width:100%;background:rgba(255,255,255,.04);border:1px solid rgba(91,168,255,.15);border-radius:6px;color:#F2F5FA;padding:8px 10px;font-family:var(--font-mono);font-size:16px;font-weight:700;" />
-    <div style="font-size:9px;color:rgba(242,245,250,.2);margin-top:2px;">${hint}</div>
+    <div style="font-size:9px;color:rgba(242,245,250,0.78);margin-top:2px;">${hint}</div>
   </div>`;
 }
 
@@ -9993,7 +10034,7 @@ function updateCheckinLive() {
     }
   }
 
-  liveEl.innerHTML = lines.length ? lines.join('<br>') : '<span style="color:rgba(242,245,250,.25);">Fill in measurements to see estimates</span>';
+  liveEl.innerHTML = lines.length ? lines.join('<br>') : '<span style="color:rgba(242,245,250,0.78);">Fill in measurements to see estimates</span>';
 }
 
 window.saveCheckin = async () => {
@@ -10506,7 +10547,7 @@ function showClassRevealModal(result, previousClassName) {
     <div class="system-icon" style="font-size:56px;margin:12px 0;animation:bounceIn .6s cubic-bezier(.16,1,.3,1) .2s both;">
       ${result.activeRoots.map(r => ROOT_ICONS[r]||'').join('')}
     </div>
-    <div style="font-family:var(--font-mono);font-size:9px;color:rgba(91,168,255,.4);letter-spacing:.2em;margin-bottom:6px;animation:fadeIn .6s ease .3s both;">THE SYSTEM HAS NAMED YOU</div>
+    <div style="font-family:var(--font-mono);font-size:9px;color:rgba(91,168,255,0.78);letter-spacing:.2em;margin-bottom:6px;animation:fadeIn .6s ease .3s both;">THE SYSTEM HAS NAMED YOU</div>
     <h2 class="system-title" style="color:${col};font-size:28px;letter-spacing:.04em;animation:fadeIn .6s ease .4s both;">${escapeHtml(tier2.name)}</h2>
 
     ${isFirst ? '' : `<p style="font-size:11px;color:var(--text-faint);margin:4px 0 12px;animation:fadeIn .6s ease .45s both;">Previously: ${escapeHtml(previousClassName)}</p>`}
@@ -10522,11 +10563,11 @@ function showClassRevealModal(result, previousClassName) {
 
     <div style="display:flex;gap:16px;justify-content:center;margin-bottom:14px;animation:fadeIn .6s ease .65s both;">
       <div style="text-align:center;">
-        <div style="font-family:var(--font-mono);font-size:9px;color:rgba(91,168,255,.4);margin-bottom:2px;">RAID AFFINITY</div>
+        <div style="font-family:var(--font-mono);font-size:9px;color:rgba(91,168,255,0.78);margin-bottom:2px;">RAID AFFINITY</div>
         <div style="font-size:13px;color:${col};font-weight:700;">${tier2.raidAffinity}</div>
       </div>
       <div style="text-align:center;">
-        <div style="font-family:var(--font-mono);font-size:9px;color:rgba(91,168,255,.4);margin-bottom:2px;">DAMAGE BONUS</div>
+        <div style="font-family:var(--font-mono);font-size:9px;color:rgba(91,168,255,0.78);margin-bottom:2px;">DAMAGE BONUS</div>
         <div style="font-size:13px;color:${col};font-weight:700;">×${tier2.affinityMult.toFixed(2)}</div>
       </div>
     </div>
@@ -10758,7 +10799,7 @@ async function openHunterProfile(targetUid) {
           <p class="char-title">${targetClass}${targetTitle ? ' ' + targetTitle : ''}</p>
         </div>
         <div class="char-ap" style="text-align:right;">
-          <div style="font-family:var(--font-mono);font-size:9px;color:rgba(255,214,107,0.5);letter-spacing:0.1em;">LEVEL</div>
+          <div style="font-family:var(--font-mono);font-size:9px;color:rgba(255,214,107,0.78);letter-spacing:0.1em;">LEVEL</div>
           <span class="ap-amount" style="font-size:20px;color:#FFD66B;text-shadow:0 0 12px rgba(255,214,107,0.4);">${theirHunterLevel}</span>
           <div style="font-family:var(--font-mono);font-size:9px;color:var(--text-faint);margin-top:4px;">${theirAP} AP</div>
         </div>
@@ -12011,7 +12052,7 @@ function showLevelUpModal(newLevel, apAwarded, done) {
     </h2>
     <p class="system-body" style="color:var(--text-dim);animation:fadeInDown 0.4s ease 0.3s both;">The System acknowledges your growth.<br>Your potential expands.</p>
     <div style="background:rgba(255,214,107,0.08);border:1px solid rgba(255,214,107,0.25);border-radius:6px;padding:14px;margin:14px 0;animation:fadeInDown 0.4s ease 0.4s both;">
-      <div style="font-family:var(--font-mono);font-size:10px;color:rgba(255,214,107,0.5);margin-bottom:6px;letter-spacing:0.1em;">AURA POINTS AWARDED</div>
+      <div style="font-family:var(--font-mono);font-size:10px;color:rgba(255,214,107,0.78);margin-bottom:6px;letter-spacing:0.1em;">AURA POINTS AWARDED</div>
       <div style="font-size:28px;color:#FFD66B;font-family:var(--font-head);font-weight:900;text-shadow:0 0 20px rgba(255,214,107,0.6);">+<span id="levelup-ap">0</span> AP</div>
       <div style="font-size:11px;color:var(--text-faint);margin-top:4px;">Invest in stats to rank up</div>
     </div>
@@ -12157,7 +12198,7 @@ function showDebriefModal(exercises, apEarned, prs, done, soldiersEarned = {}) {
       <div style="font-size:36px;margin-bottom:8px;">${STAT_ICONS_D[topStatId]}</div>
       <div style="font-family:var(--font-display);font-size:22px;font-weight:900;letter-spacing:.08em;color:var(--text);">${STAT_LABELS_D[topStatId]}</div>
       <div style="font-family:var(--font-mono);font-size:11px;color:var(--growing);letter-spacing:.15em;margin-top:4px;">STIMULATED</div>
-      ${topStatRank !== 'E' ? `<div style="font-family:var(--font-mono);font-size:9px;color:rgba(91,168,255,.3);margin-top:6px;letter-spacing:.1em;">CURRENT RANK · ${topStatRank}</div>` : ''}
+      ${topStatRank !== 'E' ? `<div style="font-family:var(--font-mono);font-size:9px;color:rgba(91,168,255,0.78);margin-top:6px;letter-spacing:.1em;">CURRENT RANK · ${topStatRank}</div>` : ''}
     </div>` : '';
 
   // ── PR MOMENT — each PR gets weight, not a row ──
@@ -12193,7 +12234,7 @@ function showDebriefModal(exercises, apEarned, prs, done, soldiersEarned = {}) {
   const xpHtml = generalXP > 0 ? `
     <div style="margin-bottom:14px;animation:achieveIn .5s var(--ease-cinema) .35s both;">
       <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px;">
-        <span style="font-family:var(--font-mono);font-size:8px;color:rgba(91,168,255,.4);letter-spacing:.15em;">HUNTER LEVEL ${hunterLevel}</span>
+        <span style="font-family:var(--font-mono);font-size:8px;color:rgba(91,168,255,0.78);letter-spacing:.15em;">HUNTER LEVEL ${hunterLevel}</span>
         <span style="font-family:var(--font-mono);font-size:11px;color:var(--legendary);">+${Math.round(generalXP)} XP</span>
       </div>
       ${multHtml}
@@ -12206,7 +12247,7 @@ function showDebriefModal(exercises, apEarned, prs, done, soldiersEarned = {}) {
   // ── LEVEL UP ──
   const levelUpHtml = levelUps.length ? `
     <div style="background:rgba(255,214,107,0.06);border-top:1px solid rgba(255,214,107,0.2);padding:12px;margin-bottom:14px;text-align:center;animation:achieveIn .5s var(--ease-cinema) .15s both;">
-      <div style="font-family:var(--font-mono);font-size:8px;color:rgba(255,214,107,.5);letter-spacing:.2em;margin-bottom:4px;">◈ LEVEL UP ◈</div>
+      <div style="font-family:var(--font-mono);font-size:8px;color:rgba(255,214,107,0.78);letter-spacing:.2em;margin-bottom:4px;">◈ LEVEL UP ◈</div>
       ${levelUps.map(lu => `
         <div style="font-family:var(--font-display);font-size:22px;font-weight:900;color:var(--legendary);">Level ${lu.level}</div>
         <div style="font-size:11px;color:var(--text-dim);margin-top:2px;">+${lu.ap} AP unlocked</div>
@@ -12222,7 +12263,7 @@ function showDebriefModal(exercises, apEarned, prs, done, soldiersEarned = {}) {
         <span style="font-size:11px;color:var(--text-dim);">${dungeon.name || chain.label || 'Dungeon'}</span>
         <span style="font-family:var(--font-mono);font-size:12px;color:var(--violet);font-weight:800;">-${Math.round(dungeonDmg)} HP</span>
       </div>
-      <div style="font-family:var(--font-mono);font-size:8px;color:rgba(139,92,255,.4);margin-top:2px;letter-spacing:.1em;">${dungeonHpPct}% HP REMAINING</div>
+      <div style="font-family:var(--font-mono);font-size:8px;color:rgba(139,92,255,0.78);margin-top:2px;letter-spacing:.1em;">${dungeonHpPct}% HP REMAINING</div>
     </div>`;
   })() : '';
 
@@ -12233,7 +12274,7 @@ function showDebriefModal(exercises, apEarned, prs, done, soldiersEarned = {}) {
         <span style="font-size:11px;color:var(--text-dim);">Raid Boss</span>
         <span style="font-family:var(--font-mono);font-size:12px;color:var(--excess);font-weight:800;">${raidDmg.toFixed(1)} dmg</span>
       </div>
-      <div style="font-family:var(--font-mono);font-size:8px;color:rgba(255,77,103,.4);margin-top:2px;letter-spacing:.1em;">CONTRIBUTION RECORDED</div>
+      <div style="font-family:var(--font-mono);font-size:8px;color:rgba(255,77,103,0.78);margin-top:2px;letter-spacing:.1em;">CONTRIBUTION RECORDED</div>
     </div>` : '';
 
   // ── SESSION SUMMARY — compact stats ──
@@ -12258,7 +12299,7 @@ function showDebriefModal(exercises, apEarned, prs, done, soldiersEarned = {}) {
   el.innerHTML = `
     <div class="debrief-window">
       <div style="text-align:center;padding-bottom:14px;border-bottom:1px solid rgba(91,168,255,0.08);margin-bottom:14px;animation:achieveIn .4s var(--ease-cinema) both;">
-        <div style="font-family:var(--font-mono);font-size:8px;color:rgba(91,168,255,.4);letter-spacing:.25em;margin-bottom:8px;">◈ SYSTEM RECORD</div>
+        <div style="font-family:var(--font-mono);font-size:8px;color:rgba(91,168,255,0.78);letter-spacing:.25em;margin-bottom:8px;">◈ SYSTEM RECORD</div>
         <div style="font-family:var(--font-display);font-size:26px;font-weight:900;letter-spacing:.06em;">HUNT COMPLETE</div>
       </div>
 
@@ -12290,21 +12331,21 @@ function showDebriefModal(exercises, apEarned, prs, done, soldiersEarned = {}) {
               <span style="font-size:16px;">${m.icon}</span>
               <div style="flex:1;">
                 <div style="font-size:11px;color:${m.hex};font-weight:700;">${m.name}</div>
-                <div style="font-size:9px;color:rgba(91,168,255,.4);">${m.stat}</div>
+                <div style="font-size:9px;color:rgba(91,168,255,0.78);">${m.stat}</div>
               </div>
               <div style="text-align:right;">
                 <div style="font-family:var(--font-mono);font-size:14px;color:${m.hex};font-weight:800;">+${n}</div>
-                <div style="font-size:8px;color:rgba(91,168,255,.3);">soldiers</div>
+                <div style="font-size:8px;color:rgba(91,168,255,0.78);">soldiers</div>
               </div>
             </div>`;
           }).join('');
         return `<div style="background:rgba(91,168,255,0.04);border:1px solid rgba(91,168,255,0.12);border-radius:10px;padding:12px;margin-bottom:14px;">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
-            <p style="font-size:10px;font-family:var(--font-mono);color:rgba(91,168,255,.5);letter-spacing:0.08em;margin:0;">⚔ SHADOW ARMY</p>
+            <p style="font-size:10px;font-family:var(--font-mono);color:rgba(91,168,255,0.78);letter-spacing:0.08em;margin:0;">⚔ SHADOW ARMY</p>
             <span style="font-family:var(--font-mono);font-size:11px;color:#d4a017;font-weight:700;">+${total} soldiers earned</span>
           </div>
           ${rows}
-          <div style="font-size:10px;color:rgba(91,168,255,.3);margin-top:6px;">Deploy in Shadow World → claim territory</div>
+          <div style="font-size:10px;color:rgba(91,168,255,0.78);margin-top:6px;">Deploy in Shadow World → claim territory</div>
         </div>`;
       })() : ''}
 
@@ -12326,7 +12367,7 @@ function showDebriefModal(exercises, apEarned, prs, done, soldiersEarned = {}) {
 
       ${apEarned ? `
         <div style="background:rgba(255,214,107,0.06);border:1px solid rgba(255,214,107,0.15);border-radius:6px;padding:10px;margin-bottom:12px;text-align:center;">
-          <div style="font-family:var(--font-mono);font-size:9px;color:rgba(255,214,107,0.5);margin-bottom:4px;">LEVEL-UP REWARD</div>
+          <div style="font-family:var(--font-mono);font-size:9px;color:rgba(255,214,107,0.78);margin-bottom:4px;">LEVEL-UP REWARD</div>
           <div style="font-size:20px;color:#FFD66B;font-weight:700;">+${apEarned} AP</div>
         </div>` : ''}
 
@@ -12903,7 +12944,7 @@ function renderCompetitionBoard() {
           const isDefeated = defeatUntil && defeatUntil >= todayStr();
           if (!wins && !losses) return '';
           return '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:4px;padding-top:4px;border-top:1px solid rgba(91,168,255,0.06);">'
-            + '<span style="font-size:9px;font-family:var(--font-mono);color:rgba(91,168,255,0.4);">⚔ ' + wins + 'W ' + losses + 'L' + (streak > 0 ? ' · ' + streak + ' streak' : '') + (title ? ' · ' + title : '') + '</span>'
+            + '<span style="font-size:9px;font-family:var(--font-mono);color:rgba(91,168,255,0.78);">⚔ ' + wins + 'W ' + losses + 'L' + (streak > 0 ? ' · ' + streak + ' streak' : '') + (title ? ' · ' + title : '') + '</span>'
             + (isDefeated ? '<span style="font-size:8px;color:var(--excess);">✗ ' + defeatedBy + '</span>' : '')
           + '</div>';
         })()
@@ -13384,7 +13425,7 @@ async function renderRaidBoss() {
     const nextCandidates = NAMED_BOSSES.filter(b => b.weakness === nextWeakest);
     const nextBossPreview = nextCandidates.length ? nextCandidates[0] : NAMED_BOSSES[(weekNum+1) % NAMED_BOSSES.length];
     return `<div style="background:rgba(255,214,107,0.05);border:1px solid rgba(255,214,107,0.15);border-radius:4px;padding:8px 10px;margin-top:8px;">
-      <div style="font-family:var(--font-mono);font-size:9px;color:rgba(255,214,107,0.5);letter-spacing:0.1em;margin-bottom:3px;">◈ GATE FORMING — NEXT WEEK ◈</div>
+      <div style="font-family:var(--font-mono);font-size:9px;color:rgba(255,214,107,0.78);letter-spacing:0.1em;margin-bottom:3px;">◈ GATE FORMING — NEXT WEEK ◈</div>
       <div style="font-size:12px;color:#FFD66B;">The System detects your weakness: <strong>${nextBossPreview.weaknessLabel}</strong></div>
       <div style="font-size:11px;color:var(--text-faint);margin-top:2px;">Next week's gate will test this. Train accordingly.</div>
     </div>`;
@@ -14218,9 +14259,9 @@ function renderTrends() {
             ${c.vtaperRatio ? `<span>VT:${c.vtaperRatio}×</span>` : ''}
           </div>`).join('');
         return `
-          <div style="font-size:9px;letter-spacing:.1em;color:rgba(91,168,255,.4);margin-bottom:8px;">LATEST · ${last.date}</div>
+          <div style="font-size:9px;letter-spacing:.1em;color:rgba(91,168,255,0.78);margin-bottom:8px;">LATEST · ${last.date}</div>
           ${rowHtml}
-          <div style="margin-top:12px;font-size:9px;letter-spacing:.1em;color:rgba(91,168,255,.3);margin-bottom:6px;">HISTORY</div>
+          <div style="margin-top:12px;font-size:9px;letter-spacing:.1em;color:rgba(91,168,255,0.78);margin-bottom:6px;">HISTORY</div>
           ${history}
         `;
       })()}
@@ -14371,7 +14412,7 @@ function renderMuscleDetail() {
               ? `${s.sets7 ?? s.volume} sets this week${s.mev!=null?' · MEV '+s.mev+' MAV '+s.mav:''}`
               : `${s.volume.toLocaleString()} planned emphasis`;
           const recoveryLine = isPast && s.recoveryLabel
-            ? `<div style="font-size:9px;color:rgba(91,168,255,.35);margin-top:1px;">${s.recoveryLabel}${s.daysSince < 99 ? ' · last '+s.daysSince+'d ago' : ''}</div>`
+            ? `<div style="font-size:9px;color:rgba(91,168,255,0.78);margin-top:1px;">${s.recoveryLabel}${s.daysSince < 99 ? ' · last '+s.daysSince+'d ago' : ''}</div>`
             : '';
           return `<div class="muscle-detail-row" data-m="${m}">
             <div class="muscle-detail-row-top">
@@ -14659,7 +14700,7 @@ const EXERCISE_INTENTS = [
 ];
 
 function buildIntentSelect(id, currentValue='') {
-  return `<select id="${id}" style="margin-top:4px;border-color:${currentValue ? 'rgba(91,168,255,0.2)' : 'var(--excess)'};transition:border-color .2s;">
+  return `<select id="${id}" style="margin-top:4px;border-color:${currentValue ? 'var(--text-faint)' : 'var(--excess)'};transition:border-color .2s;">
     <option value="">— Select training type (required) —</option>
     ${EXERCISE_INTENTS.map(i =>
       `<option value="${i.value}" ${i.value===currentValue?'selected':''}>${i.label} — ${i.desc} → ${i.stat} cap</option>`
@@ -14678,7 +14719,7 @@ function openAddExerciseModal() {
   overlay.className = 'modal-overlay';
   overlay.innerHTML = `
     <div class="modal">
-      <p class="system-eyebrow" style="color:rgba(91,168,255,0.5);font-family:var(--font-mono);font-size:9px;letter-spacing:0.15em;margin-bottom:12px;">◈ NEW EXERCISE ◈</p>
+      <p class="system-eyebrow" style="color:rgba(91,168,255,0.78);font-family:var(--font-mono);font-size:9px;letter-spacing:0.15em;margin-bottom:12px;">◈ NEW EXERCISE ◈</p>
       <h3 style="margin:0 0 4px;">Add Exercise</h3>
       <p style="font-size:12px;color:var(--text-faint);margin:0 0 16px;">All fields are required for correct XP and stat tracking.</p>
 
@@ -14766,7 +14807,7 @@ function openAddExerciseModal() {
       const intent = EXERCISE_INTENTS.find(i => i.value === val);
       hint.style.color = 'var(--text-faint)';
       hint.innerHTML = `Trains: <span style="color:${intent.color};">${intent.label}</span> → raises your <strong>${intent.stat}</strong> cap`;
-      sel.style.borderColor = 'rgba(91,168,255,0.2)';
+      sel.style.borderColor = 'var(--text-faint)';
     } else {
       hint.style.color = 'var(--excess)';
       hint.textContent = '⚠ Required — determines which stat Training Cap grows when you log this exercise';
@@ -14840,7 +14881,7 @@ function openEditExerciseModal(name) {
 
   overlay.innerHTML = `
     <div class="modal">
-      <p class="system-eyebrow" style="color:rgba(91,168,255,0.5);font-family:var(--font-mono);font-size:9px;letter-spacing:0.15em;margin-bottom:12px;">◈ EDIT EXERCISE ◈</p>
+      <p class="system-eyebrow" style="color:rgba(91,168,255,0.78);font-family:var(--font-mono);font-size:9px;letter-spacing:0.15em;margin-bottom:12px;">◈ EDIT EXERCISE ◈</p>
       <h3 style="margin:0 0 4px;">Edit Exercise</h3>
       ${isBaseExercise ? `<p style="font-size:12px;color:var(--text-dim);margin:0 0 12px;">Default exercise — changes saved as personal override.</p>` : ''}
       ${isBroken ? `<div style="background:rgba(255,77,103,0.08);border:1px solid rgba(255,77,103,0.3);border-radius:6px;padding:10px 12px;margin-bottom:14px;font-size:12px;color:var(--excess);">
@@ -14915,7 +14956,7 @@ function openEditExerciseModal(name) {
       const intent = EXERCISE_INTENTS.find(i => i.value === val);
       hint.style.color = 'var(--text-faint)';
       hint.innerHTML = `Trains: <span style="color:${intent.color};">${intent.label}</span> → raises your <strong>${intent.stat}</strong> cap`;
-      sel.style.borderColor = 'rgba(91,168,255,0.2)';
+      sel.style.borderColor = 'var(--text-faint)';
     } else {
       hint.style.color = 'var(--excess)';
       hint.textContent = '⚠ Required — determines which stat Training Cap grows when you log this exercise';
@@ -16936,9 +16977,9 @@ function renderWorldSidebar() {
 
     return `<div class="ws-row" onclick="focusWorldContinent('${m.ckey}')">
       <div class="ws-name" style="color:${m.hex}">${m.icon} ${m.name}</div>
-      <div class="ws-pool">Pool: <strong>${pool||'—'}</strong>${pool?` <span style="color:rgba(91,168,255,.3)">${m.armyKey}</span>`:`<span style="color:rgba(91,168,255,.2)"> train ${m.stat}</span>`}</div>
+      <div class="ws-pool">Pool: <strong>${pool||'—'}</strong>${pool?` <span style="color:rgba(91,168,255,0.78)">${m.armyKey}</span>`:`<span style="color:rgba(91,168,255,0.78)"> train ${m.stat}</span>`}</div>
       <div class="ws-bar">${segments||''}</div>
-      <div class="ws-owned" style="color:rgba(91,168,255,.35)">${holderText||'unclaimed'}${myHeld?` · <span style="color:#d4a017">you: ${myHeld}/6</span>`:''}</div>
+      <div class="ws-owned" style="color:rgba(91,168,255,0.78)">${holderText||'unclaimed'}${myHeld?` · <span style="color:#d4a017">you: ${myHeld}/6</span>`:''}</div>
     </div>`;
   }).join('');
 }
@@ -17162,10 +17203,10 @@ function renderInventory() {
     if (!item) return `
       <div style="display:flex;flex-direction:column;align-items:center;gap:5px;">
         <div style="width:58px;height:74px;border:1px dashed rgba(91,168,255,0.1);border-radius:10px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;background:rgba(0,0,0,0.25);">
-          <div style="color:rgba(91,168,255,0.12);">${icon}</div>
-          <div style="font-family:var(--font-mono);font-size:6px;color:rgba(91,168,255,0.1);letter-spacing:0.1em;">EMPTY</div>
+          <div style="color:rgba(91,168,255,0.78);">${icon}</div>
+          <div style="font-family:var(--font-mono);font-size:6px;color:rgba(91,168,255,0.78);letter-spacing:0.1em;">EMPTY</div>
         </div>
-        <div style="font-family:var(--font-mono);font-size:7px;color:rgba(91,168,255,0.18);letter-spacing:0.05em;">${SLOT_LABELS[slot].toUpperCase()}</div>
+        <div style="font-family:var(--font-mono);font-size:7px;color:rgba(91,168,255,0.78);letter-spacing:0.05em;">${SLOT_LABELS[slot].toUpperCase()}</div>
       </div>`;
 
     const statLines = item.statBonus
@@ -17198,7 +17239,7 @@ function renderInventory() {
           <div style="font-size:12px;color:var(--text-dim);line-height:1.7;margin-bottom:14px;font-style:italic;padding:10px;background:rgba(0,0,0,0.2);border-radius:8px;">"${escapeHtml(item.desc)}"</div>
           ${item.statBonus ? `
           <div style="background:rgba(0,0,0,0.25);border-radius:8px;padding:10px;margin-bottom:12px;">
-            <div style="font-family:var(--font-mono);font-size:8px;color:rgba(91,168,255,0.35);letter-spacing:0.1em;margin-bottom:8px;">STAT BONUSES</div>
+            <div style="font-family:var(--font-mono);font-size:8px;color:rgba(91,168,255,0.78);letter-spacing:0.1em;margin-bottom:8px;">STAT BONUSES</div>
             <div style="display:flex;flex-wrap:wrap;gap:6px;">
               ${Object.entries(item.statBonus).map(([s,v])=>`
                 <div style="background:rgba(91,168,255,0.06);border:1px solid ${rColor.replace(/[\d.]+\)$/, '0.2)')};border-radius:6px;padding:5px 8px;text-align:center;min-width:48px;">
@@ -17209,11 +17250,11 @@ function renderInventory() {
           </div>` : ''}
           <div style="display:flex;justify-content:space-between;align-items:center;font-size:10px;color:var(--text-faint);margin-bottom:${ITEM_EXPLANATIONS[item.name] ? '10px' : '14px'};padding:6px 0;border-top:1px solid rgba(91,168,255,0.08);">
             <span>×${item.dmgMult?.toFixed(2)||'1.00'} dungeon damage mult</span>
-            ${item.earnedAt ? `<span style="color:var(--growing);">✓ Trial earned</span>` : `<span style="color:rgba(91,168,255,0.3);">Inferred from logs</span>`}
+            ${item.earnedAt ? `<span style="color:var(--growing);">✓ Trial earned</span>` : `<span style="color:rgba(91,168,255,0.78);">Inferred from logs</span>`}
           </div>
           ${ITEM_EXPLANATIONS[item.name] ? `
           <div style="background:rgba(91,168,255,0.04);border:1px solid rgba(91,168,255,0.1);border-left:3px solid ${rColor};border-radius:0 6px 6px 0;padding:10px 12px;margin-bottom:14px;">
-            <div style="font-family:var(--font-mono);font-size:8px;color:rgba(91,168,255,0.4);letter-spacing:0.1em;margin-bottom:6px;">WHAT THIS MEANS</div>
+            <div style="font-family:var(--font-mono);font-size:8px;color:rgba(91,168,255,0.78);letter-spacing:0.1em;margin-bottom:6px;">WHAT THIS MEANS</div>
             <div style="font-size:11px;color:var(--text-dim);line-height:1.7;">${ITEM_EXPLANATIONS[item.name]}</div>
           </div>` : ''}
           <button class="btn btn-sm" style="width:100%;" onclick="document.getElementById('${modalId}').style.display='none'">Close</button>
@@ -17251,7 +17292,7 @@ function renderInventory() {
         const canEnter = isNext && !activeDungeon; // can only enter if no active dungeon
 
         return `<div style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;background:${cleared?`rgba(${item?.rarity==='Legendary'?'255,215,0':'61,165,255'},0.06)`:isActiveDungeon?'rgba(139,92,255,0.08)':'rgba(0,0,0,0.2)'};border:1px solid ${cleared?rColor:isActiveDungeon?'rgba(139,92,255,0.5)':'rgba(91,168,255,0.08)'};margin-bottom:4px;${isNext&&!cleared?'border-style:dashed;':''}">
-          <div style="font-family:var(--font-mono);font-size:10px;color:${cleared?rColor:isActiveDungeon?'var(--violet)':'rgba(91,168,255,0.2)'};min-width:16px;">T${tier}</div>
+          <div style="font-family:var(--font-mono);font-size:10px;color:${cleared?rColor:isActiveDungeon?'var(--violet)':'var(--text-faint)'};min-width:16px;">T${tier}</div>
           <div style="flex:1;">
             <div style="font-size:12px;font-weight:600;color:${cleared?rColor:isActiveDungeon?'var(--violet)':'var(--text-faint)'};">${cleared?'✓ ':isActiveDungeon?'⚔ ACTIVE — ':isNext?'⚔ ':''} ${escapeHtml(item?.name||dungeon.name)}</div>
             ${isNext&&!cleared?`<div style="font-size:10px;color:var(--text-dim);margin-top:2px;line-height:1.5;">${escapeHtml(dungeon.bossDesc)}</div>`:''}
@@ -17259,7 +17300,7 @@ function renderInventory() {
           </div>
           ${canEnter?`<button class="btn btn-sm" style="font-size:10px;padding:4px 10px;white-space:nowrap;" onclick="startDungeon('${chain.key}',${tier})">Enter</button>`:''}
           ${isActiveDungeon?`<div style="font-size:10px;color:var(--violet);">Active</div>`:''}
-          ${!isNext&&!cleared&&!isActiveDungeon?`<div style="font-size:10px;color:rgba(91,168,255,0.2);">${item?.rarity||''}</div>`:''}
+          ${!isNext&&!cleared&&!isActiveDungeon?`<div style="font-size:10px;color:rgba(91,168,255,0.78);">${item?.rarity||''}</div>`:''}
           ${cleared?`<div style="font-size:10px;color:${rColor};">${item?.rarity||''}</div>`:''}
         </div>`;
       }).join('');
@@ -17275,18 +17316,18 @@ function renderInventory() {
             <div style="font-family:var(--font-display);font-size:14px;letter-spacing:0.04em;color:${highestCleared>0?chainColor:'var(--text-faint)'};">${chain.label}</div>
             <div style="font-size:11px;color:var(--text-faint);margin-top:2px;">${chain.desc}</div>
           </div>
-          <div style="font-family:var(--font-mono);font-size:11px;color:${highestCleared>0?chainColor:'rgba(91,168,255,0.2)'};">
+          <div style="font-family:var(--font-mono);font-size:11px;color:${highestCleared>0?chainColor:'var(--text-faint)'};">
             ${isFullyCleared?'★ COMPLETE':highestCleared>0?`T${highestCleared}/5`:'Locked'}
           </div>
         </div>
         ${tiersHtml}
         ${storedOverride?`<div style="font-size:10px;color:var(--brass);margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,214,107,0.1);">⭐ Trial item: ${escapeHtml(storedItem.name)}</div>`:''}
-        ${isFullyCleared && chain.slot === 'weapon' ? `<div style="font-family:var(--font-mono);font-size:8px;color:rgba(91,168,255,0.18);letter-spacing:0.06em;margin-top:8px;padding-top:6px;border-top:1px solid rgba(91,168,255,0.06);">The System acknowledges this chain is complete. There is one weapon it will not discuss here.</div>` : ''}
+        ${isFullyCleared && chain.slot === 'weapon' ? `<div style="font-family:var(--font-mono);font-size:8px;color:rgba(91,168,255,0.78);letter-spacing:0.06em;margin-top:8px;padding-top:6px;border-top:1px solid rgba(91,168,255,0.06);">The System acknowledges this chain is complete. There is one weapon it will not discuss here.</div>` : ''}
       </div>`;
     }).join('');
 
     return `<div style="margin-bottom:24px;">
-      <div style="font-family:var(--font-mono);font-size:10px;color:rgba(91,168,255,0.4);letter-spacing:0.15em;margin-bottom:10px;">── ${slotLabel.toUpperCase()} ──</div>
+      <div style="font-family:var(--font-mono);font-size:10px;color:rgba(91,168,255,0.78);letter-spacing:0.15em;margin-bottom:10px;">── ${slotLabel.toUpperCase()} ──</div>
       ${chainsHtml}
     </div>`;
   }).join('');
@@ -17343,7 +17384,7 @@ function renderInventory() {
           z-index:0;"></div>
 
         <div style="position:relative;z-index:1;padding:16px 16px 8px;">
-          <div style="font-family:var(--font-mono);font-size:8px;color:rgba(91,168,255,0.3);letter-spacing:.2em;margin-bottom:12px;">◈ ARMOURY</div>
+          <div style="font-family:var(--font-mono);font-size:8px;color:rgba(91,168,255,0.78);letter-spacing:.2em;margin-bottom:12px;">◈ ARMOURY</div>
 
           <!-- View toggle — integrated into stage not separate card -->
           <div style="display:flex;gap:6px;margin-bottom:12px;">
@@ -17353,7 +17394,7 @@ function renderInventory() {
               this.style.opacity='1'; this.style.borderColor='rgba(91,168,255,0.4)';
               document.getElementById('inv-view-back').style.opacity='0.4'; document.getElementById('inv-view-back').style.borderColor='rgba(91,168,255,0.1)';
             ">FRONT</button>
-            <button id="inv-view-back" style="flex:1;font-size:11px;padding:7px;font-family:var(--font-mono);background:rgba(91,168,255,0.04);border:1px solid rgba(91,168,255,0.1);border-radius:var(--radius-sm);color:rgba(91,168,255,0.4);cursor:pointer;letter-spacing:.06em;opacity:0.6;" onclick="
+            <button id="inv-view-back" style="flex:1;font-size:11px;padding:7px;font-family:var(--font-mono);background:rgba(91,168,255,0.04);border:1px solid rgba(91,168,255,0.1);border-radius:var(--radius-sm);color:rgba(91,168,255,0.78);cursor:pointer;letter-spacing:.06em;opacity:0.6;" onclick="
               document.getElementById('inv-body-back').style.display='block';
               document.getElementById('inv-body-front').style.display='none';
               this.style.opacity='1'; this.style.borderColor='rgba(91,168,255,0.4)'; this.style.color='var(--brass)';
@@ -17368,12 +17409,12 @@ function renderInventory() {
             <div id="inv-body-front">${bodySvg('front', {}, profile.bodyType || 'male', getEffectiveInventory(), true)}</div>
             <div id="inv-body-back" style="display:none;">${bodySvg('back', {}, profile.bodyType || 'male', getEffectiveInventory(), true)}</div>
           </div>
-          <div style="font-size:9px;font-family:var(--font-mono);color:rgba(91,168,255,0.2);text-align:center;padding-bottom:12px;letter-spacing:.06em;">Equipped zones illuminated · Unlit = training status</div>
+          <div style="font-size:9px;font-family:var(--font-mono);color:rgba(91,168,255,0.78);text-align:center;padding-bottom:12px;letter-spacing:.06em;">Equipped zones illuminated · Unlit = training status</div>
         </div>
 
         <!-- Equipped loadout — part of the stage, not a separate card -->
         <div style="border-top:1px solid rgba(255,255,255,0.04);padding:12px 16px 16px;position:relative;z-index:1;">
-          <div style="font-family:var(--font-mono);font-size:8px;color:rgba(91,168,255,0.3);letter-spacing:.2em;margin-bottom:12px;">◈ CURRENT LOADOUT</div>
+          <div style="font-family:var(--font-mono);font-size:8px;color:rgba(91,168,255,0.78);letter-spacing:.2em;margin-bottom:12px;">◈ CURRENT LOADOUT</div>
           <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;text-align:center;">
             ${equippedHtml}
           </div>
@@ -17381,7 +17422,7 @@ function renderInventory() {
       </div>
 
       <!-- Dungeon chains -->
-      <div style="font-family:var(--font-mono);font-size:10px;color:rgba(91,168,255,0.4);letter-spacing:0.15em;margin-bottom:16px;">── DUNGEON CHAINS ──</div>
+      <div style="font-family:var(--font-mono);font-size:10px;color:rgba(91,168,255,0.78);letter-spacing:0.15em;margin-bottom:16px;">── DUNGEON CHAINS ──</div>
       <p style="font-size:12px;color:var(--text-dim);margin:0 0 16px;line-height:1.6;">Each chain is a series of dungeons. Clear them to earn items. ⚔ marks your next boss fight. Tap <em>Enter</em> to make it active.</p>
 
       ${chainHtml}
@@ -17393,7 +17434,7 @@ function renderFeats() {
   if (!el) return;
   el.innerHTML = `
     <div style="padding-bottom:8px;">
-      <div style="font-family:var(--font-mono);font-size:8px;color:rgba(91,168,255,.3);letter-spacing:.25em;margin-bottom:6px;">◈ SYSTEM GATES</div><div style="font-family:var(--font-display);font-size:22px;letter-spacing:0.04em;margin:0 0 4px;">GATES</div>
+      <div style="font-family:var(--font-mono);font-size:8px;color:rgba(91,168,255,0.78);letter-spacing:.25em;margin-bottom:6px;">◈ SYSTEM GATES</div><div style="font-family:var(--font-display);font-size:22px;letter-spacing:0.04em;margin:0 0 4px;">GATES</div>
       <p style="font-size:13px;color:var(--text-dim);margin:0 0 16px;">Trials. Progressions. Goals. The System tracks what you pursue.</p>
       <div class="feat-tabs">
         <button class="feat-tab ${featsActiveTab==='achievements'?'active':''}" data-tab="achievements">Achievements</button>
@@ -17443,7 +17484,7 @@ async function renderTrialsTab(el) {
           <div style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:rgba(91,168,255,0.04);border-radius:6px;border:1px solid rgba(91,168,255,0.08);">
             <span style="font-size:16px;">${r.icon}</span>
             <div>
-              <div style="font-family:var(--font-mono);font-size:10px;color:rgba(91,168,255,0.5);">${key}</div>
+              <div style="font-family:var(--font-mono);font-size:10px;color:rgba(91,168,255,0.78);">${key}</div>
               <div style="font-size:11px;color:var(--text-dim);">${r.desc}</div>
             </div>
           </div>`).join('')}
@@ -17513,13 +17554,13 @@ async function renderTrialsTab(el) {
         </div>
         ${nextTier ? `
         <div style="padding:8px 10px;background:rgba(91,168,255,0.04);border-radius:6px;border:1px dashed rgba(91,168,255,0.2);">
-          <div style="font-family:var(--font-mono);font-size:8px;color:rgba(91,168,255,0.4);margin-bottom:4px;">NEXT EVOLUTION</div>
+          <div style="font-family:var(--font-mono);font-size:8px;color:rgba(91,168,255,0.78);margin-bottom:4px;">NEXT EVOLUTION</div>
           <div style="font-size:12px;color:var(--text-dim);">${escapeHtml(nextTier.name)} — requires root score ${nextTier.minScore}+</div>
         </div>` : `<div style="font-size:11px;color:${col};padding:8px;text-align:center;">★ Maximum tier reached on this path</div>`}
       </div>
 
       <!-- Trial section -->
-      <div style="font-family:var(--font-mono);font-size:10px;color:rgba(91,168,255,0.4);letter-spacing:0.15em;margin-bottom:10px;">── CLASS TRIAL ──</div>
+      <div style="font-family:var(--font-mono);font-size:10px;color:rgba(91,168,255,0.78);letter-spacing:0.15em;margin-bottom:10px;">── CLASS TRIAL ──</div>
       ${trialCompleted ? `
         <div style="background:rgba(78,205,120,0.08);border:1px solid rgba(78,205,120,0.3);border-radius:10px;padding:14px;text-align:center;">
           <div style="font-size:20px;margin-bottom:6px;">✓</div>
@@ -17534,7 +17575,7 @@ async function renderTrialsTab(el) {
         </div>` :
       hasKey && tier2 ? `
         <div style="background:rgba(0,0,0,0.3);border:1px solid rgba(91,168,255,0.15);border-radius:10px;padding:14px;">
-          <div style="font-family:var(--font-mono);font-size:9px;color:rgba(91,168,255,0.5);letter-spacing:0.1em;margin-bottom:8px;">TRIAL AVAILABLE</div>
+          <div style="font-family:var(--font-mono);font-size:9px;color:rgba(91,168,255,0.78);letter-spacing:0.1em;margin-bottom:8px;">TRIAL AVAILABLE</div>
           <div style="font-size:14px;font-weight:700;margin-bottom:6px;">${escapeHtml(tier2.trialName)}</div>
           <div style="font-size:12px;color:var(--text-dim);line-height:1.6;margin-bottom:12px;">${escapeHtml(tier2.trialDesc)}</div>
           <p style="font-size:11px;color:var(--text-faint);margin-bottom:12px;">7 days. One attempt. The System does not extend deadlines.</p>
@@ -17934,24 +17975,24 @@ function renderGuildHeader() {
 
   el.innerHTML = `
     <div style="background:radial-gradient(ellipse 600px 120px at 50% 0%,rgba(91,168,255,0.08),transparent),var(--card);border:1px solid rgba(91,168,255,.15);border-radius:14px;padding:16px;margin-bottom:14px;text-align:center;">
-      <div style="font-family:var(--font-mono);font-size:8px;color:rgba(91,168,255,.35);letter-spacing:.2em;margin-bottom:6px;">◈ HUNTER PARTY</div>
+      <div style="font-family:var(--font-mono);font-size:8px;color:rgba(91,168,255,0.78);letter-spacing:.2em;margin-bottom:6px;">◈ HUNTER PARTY</div>
       <div style="font-size:20px;font-weight:900;color:var(--brass);letter-spacing:.06em;margin-bottom:12px;">${guildTitle}</div>
       <div style="display:flex;justify-content:space-around;gap:8px;">
         <div style="text-align:center;">
           <div style="font-family:var(--font-mono);font-size:18px;font-weight:800;color:var(--brass);">${totalWorkouts}</div>
-          <div style="font-size:8px;color:rgba(91,168,255,.4);letter-spacing:.08em;margin-top:2px;">TOTAL HUNTS</div>
+          <div style="font-size:8px;color:rgba(91,168,255,0.78);letter-spacing:.08em;margin-top:2px;">TOTAL HUNTS</div>
         </div>
         <div style="text-align:center;">
           <div style="font-family:var(--font-mono);font-size:18px;font-weight:800;color:#61a5ff;">${totalPower.toLocaleString()}</div>
-          <div style="font-size:8px;color:rgba(91,168,255,.4);letter-spacing:.08em;margin-top:2px;">PARTY POWER</div>
+          <div style="font-size:8px;color:rgba(91,168,255,0.78);letter-spacing:.08em;margin-top:2px;">PARTY POWER</div>
         </div>
         <div style="text-align:center;">
           <div style="font-family:var(--font-mono);font-size:18px;font-weight:800;color:var(--growing);">${thisWeekWOs}</div>
-          <div style="font-size:8px;color:rgba(91,168,255,.4);letter-spacing:.08em;margin-top:2px;">THIS WEEK</div>
+          <div style="font-size:8px;color:rgba(91,168,255,0.78);letter-spacing:.08em;margin-top:2px;">THIS WEEK</div>
         </div>
         <div style="text-align:center;">
           <div style="font-family:var(--font-mono);font-size:18px;font-weight:800;color:#ff6b35;">${avgStreak}d</div>
-          <div style="font-size:8px;color:rgba(91,168,255,.4);letter-spacing:.08em;margin-top:2px;">AVG STREAK</div>
+          <div style="font-size:8px;color:rgba(91,168,255,0.78);letter-spacing:.08em;margin-top:2px;">AVG STREAK</div>
         </div>
       </div>
     </div>`;
@@ -18027,7 +18068,7 @@ function renderGuildFeed() {
   };
 
   el.innerHTML = `
-    <div style="font-family:var(--font-mono);font-size:9px;color:rgba(91,168,255,.4);letter-spacing:.15em;margin-bottom:8px;">◈ SYSTEM RECORD</div>
+    <div style="font-family:var(--font-mono);font-size:9px;color:rgba(91,168,255,0.78);letter-spacing:.15em;margin-bottom:8px;">◈ SYSTEM RECORD</div>
     <div style="display:flex;flex-direction:column;gap:2px;">
       ${recent.map(e => {
         const nameColor = PLAYER_COLORS[e.uid] || 'var(--text)';
@@ -18045,7 +18086,7 @@ function renderGuildFeed() {
             <div style="font-size:11px;font-family:var(--font-mono);color:var(--text-dim);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;letter-spacing:.03em;"><span style="color:${nameColor};">${escapeHtml(e.name)}</span> · ${e.icon} ${e.type === 'pr' ? 'NEW RECORD' : 'HUNT CLEARED'}</div>
             ${systemSub ? `<div style="font-size:9px;color:var(--text-faint);margin-top:1px;">${systemSub}</div>` : ''}
           </div>
-          <div style="font-size:8px;font-family:var(--font-mono);color:rgba(91,168,255,.2);flex-shrink:0;margin-top:3px;white-space:nowrap;">${dateLabel}</div>
+          <div style="font-size:8px;font-family:var(--font-mono);color:rgba(91,168,255,0.78);flex-shrink:0;margin-top:3px;white-space:nowrap;">${dateLabel}</div>
         </div>`;
       }).join('')}
     </div>`;
@@ -18079,19 +18120,19 @@ function renderMonthlyReport() {
   const monthName = now.toLocaleDateString(undefined,{month:'long'});
 
   return `<div style="background:var(--card);border:1px solid rgba(91,168,255,.12);border-radius:12px;padding:14px;margin-bottom:14px;">
-    <div style="font-family:var(--font-mono);font-size:8px;color:rgba(91,168,255,.4);letter-spacing:.15em;margin-bottom:10px;">◈ ${monthName.toUpperCase()} REPORT</div>
+    <div style="font-family:var(--font-mono);font-size:8px;color:rgba(91,168,255,0.78);letter-spacing:.15em;margin-bottom:10px;">◈ ${monthName.toUpperCase()} REPORT</div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;">
       <div style="flex:1;min-width:80px;background:var(--card-2);border-radius:8px;padding:10px;text-align:center;">
         <div style="font-family:var(--font-mono);font-size:18px;font-weight:800;color:var(--brass);">${thisMonthWOs.length}</div>
-        <div style="font-size:9px;color:rgba(91,168,255,.4);margin-top:2px;">SESSIONS</div>
+        <div style="font-size:9px;color:rgba(91,168,255,0.78);margin-top:2px;">SESSIONS</div>
       </div>
       <div style="flex:1;min-width:80px;background:var(--card-2);border-radius:8px;padding:10px;text-align:center;">
         <div style="font-family:var(--font-mono);font-size:18px;font-weight:800;color:#61a5ff;">${thisVol>=1000?(thisVol/1000).toFixed(1)+'t':Math.round(thisVol)+'kg'}</div>
-        <div style="font-size:9px;color:rgba(91,168,255,.4);margin-top:2px;">VOLUME</div>
+        <div style="font-size:9px;color:rgba(91,168,255,0.78);margin-top:2px;">VOLUME</div>
       </div>
       ${lastVol > 0 ? `<div style="flex:1;min-width:80px;background:var(--card-2);border-radius:8px;padding:10px;text-align:center;">
         <div style="font-family:var(--font-mono);font-size:18px;font-weight:800;color:${volChange>=0?'var(--growing)':'var(--excess)'};">${volChange>=0?'+':''}${volChange}%</div>
-        <div style="font-size:9px;color:rgba(91,168,255,.4);margin-top:2px;">VS LAST MONTH</div>
+        <div style="font-size:9px;color:rgba(91,168,255,0.78);margin-top:2px;">VS LAST MONTH</div>
       </div>` : ''}
     </div>
   </div>`;
@@ -18138,17 +18179,19 @@ function renderProgressionRoadmap() {
 
   el.innerHTML = `
     <div style="margin-bottom:16px;">
-      <div style="font-family:var(--font-mono);font-size:9px;color:rgba(91,168,255,.4);letter-spacing:.15em;margin-bottom:10px;">◈ YOUR JOURNEY</div>
+      <div style="font-family:var(--font-mono);font-size:9px;color:rgba(91,168,255,0.78);letter-spacing:.15em;margin-bottom:10px;">◈ YOUR JOURNEY</div>
       <div style="position:relative;">
         <div style="position:absolute;left:15px;top:0;bottom:0;width:1px;background:linear-gradient(180deg,rgba(91,168,255,.3),rgba(91,168,255,.05));"></div>
         ${milestones.map((m, i) => {
           const isCurrent = i === firstIncomplete;
           const col = m.done ? 'var(--growing)' : isCurrent ? 'var(--brass)' : 'rgba(91,168,255,.2)';
+          // Structural alpha (rings, rails) may stay faint — label text may not.
+          const colText = m.done ? 'var(--growing)' : isCurrent ? 'var(--brass)' : 'var(--text-faint)';
           return `<div style="display:flex;align-items:flex-start;gap:12px;padding:6px 0;position:relative;">
             <div style="width:30px;height:30px;border-radius:50%;background:${m.done?'rgba(78,205,120,.15)':isCurrent?'rgba(255,214,107,.12)':'rgba(91,168,255,.05)'};border:1.5px solid ${col};display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;z-index:1;">${m.done?'✓':m.icon}</div>
             <div style="padding-top:4px;flex:1;">
-              <div style="font-size:12px;font-weight:700;color:${col};">${m.label}${isCurrent?' ←':''}</div>
-              <div style="font-size:10px;color:rgba(91,168,255,.35);margin-top:1px;">${m.sub}</div>
+              <div style="font-size:12px;font-weight:700;color:${colText};">${m.label}${isCurrent?' ←':''}</div>
+              <div style="font-size:10px;color:rgba(91,168,255,0.78);margin-top:1px;">${m.sub}</div>
             </div>
           </div>`;
         }).join('')}
@@ -18171,38 +18214,38 @@ window.generateHunterCard = () => {
   const statRows = STAT_DEFS.map(d => {
     const rank = stats[d.id]||'E';
     return `<div style="display:flex;justify-content:space-between;align-items:center;padding:3px 0;border-bottom:1px solid rgba(91,168,255,.06);">
-      <span style="font-family:'Courier New',monospace;font-size:10px;color:rgba(255,255,255,.5);">${STAT_ICONS_CARD[d.id]||d.id.slice(0,3).toUpperCase()}</span>
+      <span style="font-family:'Courier New',monospace;font-size:10px;color:rgba(255,255,255,0.78);">${STAT_ICONS_CARD[d.id]||d.id.slice(0,3).toUpperCase()}</span>
       <span style="font-family:'Courier New',monospace;font-size:11px;color:${RANK_COLORS_CARD[rank]||'#fff'};font-weight:700;">${rank}</span>
     </div>`;
   }).join('');
 
   const cardHTML = `
     <div id="generated-hunter-card" style="background:linear-gradient(135deg,#05070D,#0d1428);border:1px solid rgba(91,168,255,.3);border-radius:16px;padding:20px;max-width:300px;margin:0 auto;font-family:'Courier New',monospace;box-shadow:0 0 40px rgba(91,168,255,.15);">
-      <div style="font-size:8px;color:rgba(91,168,255,.4);letter-spacing:.2em;margin-bottom:12px;text-align:center;">◈ AURAMAXXING · HUNTER PROFILE ◈</div>
+      <div style="font-size:8px;color:rgba(91,168,255,0.78);letter-spacing:.2em;margin-bottom:12px;text-align:center;">◈ AURAMAXXING · HUNTER PROFILE ◈</div>
       <div style="text-align:center;margin-bottom:16px;">
         <div style="font-size:22px;font-weight:900;color:#fff;letter-spacing:.04em;">${escapeHtml(name).toUpperCase()}</div>
         <div style="font-size:28px;font-weight:900;color:${RANK_COLORS_CARD[charRank]||'#fff'};margin:4px 0;">${charRank} RANK</div>
-        <div style="font-size:11px;color:rgba(255,255,255,.5);">${escapeHtml(cls)}</div>
+        <div style="font-size:11px;color:rgba(255,255,255,0.78);">${escapeHtml(cls)}</div>
       </div>
       <div style="display:flex;justify-content:space-around;margin-bottom:16px;padding:12px 0;border-top:1px solid rgba(91,168,255,.1);border-bottom:1px solid rgba(91,168,255,.1);">
         <div style="text-align:center;">
           <div style="font-size:20px;font-weight:800;color:var(--brass,#FFD66B);">${power.toLocaleString()}</div>
-          <div style="font-size:8px;color:rgba(255,255,255,.4);letter-spacing:.1em;">POWER</div>
+          <div style="font-size:8px;color:rgba(255,255,255,0.78);letter-spacing:.1em;">POWER</div>
         </div>
         <div style="text-align:center;">
           <div style="font-size:20px;font-weight:800;color:#61a5ff;">${ap.toLocaleString()}</div>
-          <div style="font-size:8px;color:rgba(255,255,255,.4);letter-spacing:.1em;">AP</div>
+          <div style="font-size:8px;color:rgba(255,255,255,0.78);letter-spacing:.1em;">AP</div>
         </div>
         <div style="text-align:center;">
           <div style="font-size:20px;font-weight:800;color:#4ecd78;">${streak}</div>
-          <div style="font-size:8px;color:rgba(255,255,255,.4);letter-spacing:.1em;">STREAK</div>
+          <div style="font-size:8px;color:rgba(255,255,255,0.78);letter-spacing:.1em;">STREAK</div>
         </div>
       </div>
       <div style="margin-bottom:12px;">${statRows}</div>
-      <div style="font-size:8px;color:rgba(91,168,255,.25);text-align:center;letter-spacing:.1em;">POWER YOU EARNED IN REAL LIFE</div>
+      <div style="font-size:8px;color:rgba(91,168,255,0.78);text-align:center;letter-spacing:.1em;">POWER YOU EARNED IN REAL LIFE</div>
     </div>
     <div style="display:flex;gap:8px;margin-top:10px;">
-      <button onclick="this.parentElement.parentElement.style.display='none'" style="flex:1;padding:10px;background:rgba(91,168,255,.08);border:1px solid rgba(91,168,255,.2);border-radius:8px;color:rgba(91,168,255,.6);font-family:'Courier New',monospace;font-size:11px;cursor:pointer;">✕ Close</button>
+      <button onclick="this.parentElement.parentElement.style.display='none'" style="flex:1;padding:10px;background:rgba(91,168,255,.08);border:1px solid rgba(91,168,255,.2);border-radius:8px;color:rgba(91,168,255,0.78);font-family:'Courier New',monospace;font-size:11px;cursor:pointer;">✕ Close</button>
       <button onclick="copyHunterCard()" style="flex:1;padding:10px;background:rgba(255,214,107,.1);border:1px solid rgba(255,214,107,.3);border-radius:8px;color:#d4a017;font-family:'Courier New',monospace;font-size:11px;cursor:pointer;">📋 Copy Text</button>
     </div>`;
 
@@ -18363,10 +18406,10 @@ function renderSystemFeed() {
           <div style="font-size:12px;color:${e.colour};font-weight:700;">${e.title}</div>
           <div style="font-size:10px;color:var(--text-faint);margin-top:1px;">${e.sub}</div>
         </div>
-        <div style="font-size:9px;font-family:var(--font-mono);color:rgba(91,168,255,.25);flex-shrink:0;margin-top:3px;">${e.time.slice(0,5)}</div>
+        <div style="font-size:9px;font-family:var(--font-mono);color:rgba(91,168,255,0.78);flex-shrink:0;margin-top:3px;">${e.time.slice(0,5)}</div>
       </div>`).join('');
     return `<div style="margin-bottom:16px;">
-      <div style="font-family:var(--font-mono);font-size:9px;color:rgba(91,168,255,.4);letter-spacing:.12em;margin-bottom:6px;padding-bottom:4px;border-bottom:1px solid rgba(91,168,255,.08);">◈ ${label}</div>
+      <div style="font-family:var(--font-mono);font-size:9px;color:rgba(91,168,255,0.78);letter-spacing:.12em;margin-bottom:6px;padding-bottom:4px;border-bottom:1px solid rgba(91,168,255,.08);">◈ ${label}</div>
       ${rows}
     </div>`;
   }).join('');
@@ -18455,7 +18498,7 @@ function renderHistoryList() {
               }).join('<br/>')}</div>
               <div style="margin-top:6px;display:flex;gap:10px;font-family:var(--font-mono);font-size:9px;color:var(--text-faint);">
                 <span>${totalSets} sets</span>
-                ${sessionXP > 0 ? `<span style="color:rgba(255,214,107,0.6);">+${sessionXP} XP</span>` : ''}
+                ${sessionXP > 0 ? `<span style="color:rgba(255,214,107,0.78);">+${sessionXP} XP</span>` : ''}
               </div>
             </div>
             ${isMe ? `<button type="button" class="history-detail-btn" data-wid="${w.id}">View ›</button>` : ''}
@@ -19051,19 +19094,19 @@ function maybeShowStreakFreezeNotice() {
   modal.innerHTML = `
     <div style="max-width:340px;width:92vw;text-align:center;padding:32px 24px;background:linear-gradient(160deg,rgba(5,7,13,0.98),rgba(10,15,30,0.98));border:1px solid rgba(255,214,107,0.4);border-radius:20px;box-shadow:0 0 80px rgba(255,214,107,0.15),0 0 200px rgba(255,214,107,0.05);">
       <div style="font-size:52px;margin-bottom:12px;">👑</div>
-      <div style="font-family:var(--font-mono);font-size:9px;color:rgba(255,214,107,0.6);letter-spacing:0.2em;margin-bottom:10px;">◈ SYSTEM ANNOUNCEMENT ◈</div>
+      <div style="font-family:var(--font-mono);font-size:9px;color:rgba(255,214,107,0.78);letter-spacing:0.2em;margin-bottom:10px;">◈ SYSTEM ANNOUNCEMENT ◈</div>
       <div style="font-family:var(--font-display);font-size:22px;color:rgba(255,214,107,1);letter-spacing:0.05em;margin-bottom:6px;text-shadow:0 0 20px rgba(255,214,107,0.5);">YOUR STREAK IS SAFE</div>
-      <div style="font-family:var(--font-mono);font-size:10px;color:rgba(255,214,107,0.5);letter-spacing:0.1em;margin-bottom:20px;">BY DIVINE INTERVENTION</div>
+      <div style="font-family:var(--font-mono);font-size:10px;color:rgba(255,214,107,0.78);letter-spacing:0.1em;margin-bottom:20px;">BY DIVINE INTERVENTION</div>
       <p style="font-size:13px;color:var(--text-dim);line-height:1.8;margin-bottom:16px;">
         The all-knowing, all-seeing, supremely humble and breathtakingly intelligent
         <strong style="color:rgba(255,214,107,0.9);">Lawrence Lechuga</strong>
         — visionary, architect of this very System, and certified goat —
         has <em>personally</em> intervened to shield your streak from the ravages of this holiday.
       </p>
-      <p style="font-size:12px;color:rgba(255,214,107,0.6);line-height:1.7;margin-bottom:20px;">
+      <p style="font-size:12px;color:rgba(255,214,107,0.78);line-height:1.7;margin-bottom:20px;">
         In his boundless wisdom and characteristic humility, he has frozen your streak so that your absence counts for nothing. You owe him. You know you do.
       </p>
-      <div style="font-family:var(--font-mono);font-size:9px;color:rgba(255,214,107,0.3);letter-spacing:0.1em;margin-bottom:20px;">— THE SYSTEM, on behalf of Lawrence —</div>
+      <div style="font-family:var(--font-mono);font-size:9px;color:rgba(255,214,107,0.78);letter-spacing:0.1em;margin-bottom:20px;">— THE SYSTEM, on behalf of Lawrence —</div>
       <button style="width:100%;padding:14px;background:linear-gradient(135deg,rgba(255,214,107,0.15),rgba(255,214,107,0.08));border:1px solid rgba(255,214,107,0.4);border-radius:10px;color:rgba(255,214,107,0.9);font-family:var(--font-display);font-size:14px;letter-spacing:0.08em;cursor:pointer;" onclick="this.closest('div[style*=fixed]').remove()">I AM GRATEFUL. PROCEED.</button>
     </div>`;
   getOverlayHost().appendChild(modal);
@@ -19085,7 +19128,7 @@ function showUpdateNotice() {
   overlay.innerHTML = `
     <div style="background:var(--card);border:1px solid rgba(91,168,255,0.2);border-radius:20px 20px 16px 16px;max-width:440px;width:min(95vw, 640px);max-height:min(80dvh, 80vh);overflow-y:auto;box-shadow:0 -4px 60px rgba(91,168,255,0.15);">
       <div style="position:sticky;top:0;background:var(--card);border-radius:20px 20px 0 0;padding:20px 20px 12px;border-bottom:1px solid rgba(91,168,255,0.08);">
-        <div style="font-family:var(--font-mono);font-size:9px;color:rgba(91,168,255,0.5);letter-spacing:0.15em;margin-bottom:6px;">◈ SYSTEM UPDATE · ${UPDATE_VERSION}</div>
+        <div style="font-family:var(--font-mono);font-size:9px;color:rgba(91,168,255,0.78);letter-spacing:0.15em;margin-bottom:6px;">◈ SYSTEM UPDATE · ${UPDATE_VERSION}</div>
         <div style="font-family:var(--font-display);font-size:20px;letter-spacing:0.04em;">What's New</div>
         <div style="font-size:12px;color:var(--text-dim);margin-top:4px;">Big changes while you were training. Here's what the System added.</div>
       </div>
@@ -19677,7 +19720,7 @@ async function sendGateDuel(targetUid) {
       <strong style="color:var(--excess);">They will choose the exercise, the metric, the intensity, the duration — everything.</strong><br><br>
       You have no say in the terms. You only decide: is this worth it?
     </p>
-    <div style="font-family:var(--font-mono);font-size:9px;color:rgba(91,168,255,0.2);letter-spacing:0.08em;margin-bottom:12px;border-top:1px solid rgba(91,168,255,0.06);padding-top:10px;">
+    <div style="font-family:var(--font-mono);font-size:9px;color:rgba(91,168,255,0.78);letter-spacing:0.08em;margin-bottom:12px;border-top:1px solid rgba(91,168,255,0.06);padding-top:10px;">
       The System keeps a record of every duel ever fought.<br>
       Somewhere in that record, there is a weapon with no name.
     </div>
@@ -20048,7 +20091,7 @@ function showDuelResultModal(duelData, winnerId, loserId, cScore, dScore, apWage
 
   const col = isWinner ? 'rgba(255,214,107,1)' : 'var(--excess)';
   const trophy = trophyTier && isWinner ? `<div style="margin:12px 0;padding:10px;background:rgba(255,214,107,0.06);border:1px solid rgba(255,214,107,0.2);border-radius:8px;">
-    <div style="font-size:11px;color:rgba(255,214,107,0.6);font-family:var(--font-mono);margin-bottom:4px;">TROPHY UNLOCKED</div>
+    <div style="font-size:11px;color:rgba(255,214,107,0.78);font-family:var(--font-mono);margin-bottom:4px;">TROPHY UNLOCKED</div>
     <div style="font-size:14px;font-weight:700;color:rgba(255,214,107,0.9);">${trophyTier.name}</div>
     <div style="font-size:11px;color:var(--text-dim);">${trophyTier.rarity} · ${trophyTier.desc}</div>
   </div>` : '';
@@ -20073,31 +20116,31 @@ function showDuelResultModal(duelData, winnerId, loserId, cScore, dScore, apWage
     </p>
     ${isWinner ? `<p style="font-size:11px;color:var(--text-dim);">Win streak: ${winnerTier.minStreak <= 1 ? '1' : duelData.challengerId === winnerId ? duelData.challengerStreak+1 : duelData.defenderStreak+1} · Title: ${winnerTier.title}</p>` : '<p style="font-size:11px;color:var(--excess);">Your win streak has been reset to 0. You cannot challenge for 7 days.</p>'}
     ${trophy}
-    ${trophyTier?.tier === 4 && isWinner ? `<div style="font-family:var(--font-mono);font-size:9px;color:rgba(91,168,255,0.25);letter-spacing:0.08em;margin-top:8px;border-top:1px solid rgba(91,168,255,0.06);padding-top:8px;">The System records show one entry beyond this.<br>No name. No holder. The record simply says: it exists.</div>` : ''}
+    ${trophyTier?.tier === 4 && isWinner ? `<div style="font-family:var(--font-mono);font-size:9px;color:rgba(91,168,255,0.78);letter-spacing:0.08em;margin-top:8px;border-top:1px solid rgba(91,168,255,0.06);padding-top:8px;">The System records show one entry beyond this.<br>No name. No holder. The record simply says: it exists.</div>` : ''}
     ${territoryResult ? `
     <div style="background:rgba(0,0,0,0.3);border:1px solid rgba(91,168,255,0.1);border-radius:8px;padding:10px;margin-top:10px;font-size:11px;">
-      <div style="font-family:var(--font-mono);font-size:8px;color:rgba(91,168,255,0.4);letter-spacing:0.1em;margin-bottom:6px;">◈ SHADOW ARMY — TERRITORIAL BATTLE</div>
+      <div style="font-family:var(--font-mono);font-size:8px;color:rgba(91,168,255,0.78);letter-spacing:0.1em;margin-bottom:6px;">◈ SHADOW ARMY — TERRITORIAL BATTLE</div>
       ${territoryResult.countryTransfers
         ? `<div style="color:var(--growing);margin-bottom:4px;">⚑ Territory seized — country claimed</div>`
         : `<div style="color:var(--excess);margin-bottom:4px;">⚔ Attack repelled — territory held</div>`}
       <div style="display:flex;gap:8px;">
         <div style="flex:1;text-align:center;">
           <div style="font-size:14px;font-weight:700;color:var(--excess);">-${territoryResult.attackerLosses.toLocaleString()}</div>
-          <div style="font-size:9px;color:rgba(91,168,255,0.4);">YOUR LOSSES</div>
+          <div style="font-size:9px;color:rgba(91,168,255,0.78);">YOUR LOSSES</div>
           <div style="font-size:10px;color:var(--text-dim);">${territoryResult.newAttackerSoldiers.toLocaleString()} remain</div>
         </div>
         <div style="flex:1;text-align:center;">
           <div style="font-size:14px;font-weight:700;color:var(--growing);">-${territoryResult.defenderLosses.toLocaleString()}</div>
-          <div style="font-size:9px;color:rgba(91,168,255,0.4);">ENEMY LOSSES</div>
+          <div style="font-size:9px;color:rgba(91,168,255,0.78);">ENEMY LOSSES</div>
           <div style="font-size:10px;color:var(--text-dim);">${territoryResult.newDefenderSoldiers.toLocaleString()} remain</div>
         </div>
         <div style="flex:1;text-align:center;">
           <div style="font-size:14px;font-weight:700;color:var(--brass);">${territoryResult.powerRatio}%</div>
-          <div style="font-size:9px;color:rgba(91,168,255,0.4);">YOUR POWER</div>
+          <div style="font-size:9px;color:rgba(91,168,255,0.78);">YOUR POWER</div>
           <div style="font-size:10px;color:var(--text-dim);">vs their army</div>
         </div>
       </div>
-      <div style="font-size:9px;color:rgba(91,168,255,0.3);margin-top:6px;">Train more to rebuild. Lost soldiers don't return.</div>
+      <div style="font-size:9px;color:rgba(91,168,255,0.78);margin-top:6px;">Train more to rebuild. Lost soldiers don't return.</div>
     </div>` : ''}
     <button class="system-btn ${isWinner?'success':''}">Acknowledged</button>
   </div>`);
