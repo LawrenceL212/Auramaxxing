@@ -36,7 +36,11 @@ TARGETS = {
              "arms/l-upperarm-muscle-incr": 0.75, "arms/r-upperarm-muscle-incr": 0.75,
              "arms/l-upperarm-shoulder-muscle-incr": 0.85, "arms/r-upperarm-shoulder-muscle-incr": 0.85,
              "legs/measure-thigh-circ-incr": 0.45, "buttocks/buttocks-volume-incr": 0.30},
-    "female": {},
+    "female": {"torso/measure-shoulder-dist-incr": 0.55, "torso/torso-scale-horiz-decr": 0.55,
+               "torso/torso-muscle-dorsi-incr": 0.55, "stomach/stomach-tone-incr": 0.85,
+               "arms/l-upperarm-muscle-incr": 0.45, "arms/r-upperarm-muscle-incr": 0.45,
+               "arms/l-upperarm-shoulder-muscle-incr": 0.50, "arms/r-upperarm-shoulder-muscle-incr": 0.50,
+               "legs/measure-thigh-circ-incr": 0.35, "buttocks/buttocks-volume-incr": 0.40},
 }
 macro = TargetService.get_default_macro_info_dict()
 macro.update(MACRO[SEX])

@@ -58,6 +58,15 @@ for name, w in TARGETS[SEX].items():
         except Exception:
             continue
 print(f"[BAKE] {SEX}: verts={len(body.data.vertices)}")
+print(f"[BAKE] macro requested: {MACRO[SEX]}")
+print(f"[BAKE] macro dict sent: gender={macro.get('gender')} muscle={macro.get('muscle')} "
+      f"weight={macro.get('weight')} height={macro.get('height')}")
+try:
+    from bl_ext.user_default.mpfb.services.targetservice import TargetService as _TS
+    print(f"[BAKE] macro read back: {_TS.get_macro_info_dict_from_basemesh(body)}")
+except Exception as _e:
+    print("[BAKE] macro read back failed:", _e)
+print(f"[BAKE] dimensions: {body.dimensions.x:.3f} x {body.dimensions.y:.3f} x {body.dimensions.z:.3f}")
 
 # ── landmark measurement, from the mesh ─────────────────────────────────────
 gidx = {g.name: g.index for g in body.vertex_groups}
@@ -67,7 +76,25 @@ def group_verts(name):
     return np.array([v.index for v in body.data.vertices
                      if any(ge.group == i and ge.weight > 0 for ge in v.groups)], dtype=int)
 
-co = np.array([v.co[:] for v in body.data.vertices], dtype=float)   # Blender Z-up
+# Macro sliders and body targets are applied as SHAPE KEYS, so
+# body.data.vertices[i].co returns the BASIS mesh - the neutral base, identical
+# for both sexes. Every landmark must be measured on the EVALUATED mesh instead.
+# The Mask modifier removes helper geometry and would change the vertex count,
+# breaking index alignment with the vertex groups. Disable it for measurement.
+_masks = [m for m in body.modifiers if m.type == 'MASK']
+_mask_state = [(m, m.show_viewport) for m in _masks]
+for m in _masks:
+    m.show_viewport = False
+_dg = bpy.context.evaluated_depsgraph_get()
+_eval = body.evaluated_get(_dg)
+_emesh = _eval.to_mesh()
+co = np.array([v.co[:] for v in _emesh.vertices], dtype=float)   # Blender Z-up
+_eval_nrm = np.array([v.normal[:] for v in _emesh.vertices], dtype=float)
+_eval.to_mesh_clear()
+for m, st in _mask_state:
+    m.show_viewport = st
+print(f"[BAKE] measuring on evaluated mesh: {len(co)} verts, "
+      f"height={co[:,2].max()-co[:,2].min():.3f}")
 X, Y, Z = co[:, 0], co[:, 1], co[:, 2]
 
 body_v = group_verts("body")
@@ -138,7 +165,10 @@ for f in np.arange(0.0, 1.0, 0.04):
 # knee = narrowest leg band between crotch and ankle
 ankle_z = ground + H * 0.04
 narrow, knee_z = 1e9, (crotch_z + ankle_z) / 2
-for f in np.arange(0.25, 0.75, 0.02):
+# Bracket the search around where a knee can actually be (roughly the middle
+# of the crotch->ankle span). The wider 0.25-0.75 window let the narrowest band
+# land near the ankle, putting "knee" at 0.204 of stature against ~0.28 expected.
+for f in np.arange(0.38, 0.62, 0.015):
     z0 = ankle_z + (crotch_z - ankle_z) * f
     m = is_body & (Z >= z0) & (Z < z0 + H * 0.015) & (X > 0.005)
     if m.sum() > 10:
@@ -150,7 +180,7 @@ LM = {"crown": crown, "chin": chin, "shoulder": shoulder_z, "nipple": nipple_z,
 print("[BAKE] landmarks:", {k: round((v - ground) / H, 3) for k, v in LM.items()})
 
 # ── per-vertex classification ───────────────────────────────────────────────
-nrm = np.array([v.normal[:] for v in body.data.vertices], dtype=float)
+nrm = _eval_nrm
 # Verify the facing convention empirically rather than assuming it: the nipple
 # group is unambiguously anterior, so its mean Y tells us which way is front.
 FRONT_SIGN = -1.0
