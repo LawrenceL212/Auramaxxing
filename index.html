@@ -962,21 +962,46 @@
      One presentation layer for everything the System announces. Five tiers,
      deliberately unequal: a completed set must not feel like an awakening.
      ══════════════════════════════════════════════════════════════════════ */
-  .sm-host{ position:fixed; inset:0; z-index:900; pointer-events:none;
+  .sm-host{ position:fixed; inset:0; z-index:1120; pointer-events:none;
             display:flex; align-items:center; justify-content:center; }
   .sm-host[data-tier="micro"], .sm-host[data-tier="minor"]{ align-items:flex-start; }
+  /* When the Hunter is staged, lifting the camera alone does not help: the
+     panel is vertically centred, so the announcement still lands on the body.
+     In portrait the text drops into the space the lift opens - the same
+     figure-above / System-below composition used by the opening cinematic.
+     4/5 is the aspect form of the runtime's own height > width * 1.25 test.
+     Landscape keeps the centred composition; there is no vertical room. */
+  @media (max-aspect-ratio: 4/5){
+    html[data-moment="hero"] .sm-host{ align-items:flex-end; padding-bottom:9vh; }
+  }
+  /* Landscape: text left, Hunter right - the figure is shifted by the camera. */
+  @media (min-aspect-ratio: 4/5){
+    html[data-moment="hero"] .sm-host{ justify-content:flex-start; }
+    html[data-moment="hero"] .sm-panel{ text-align:left; padding-left:6vw;
+                                        max-width:min(54vw,520px); }
+  }
 
-  .sm-veil{ position:absolute; inset:0; opacity:0;
+  /* The veil is a SIBLING layer, not a child of .sm-host. The host carries
+     a z-index and so creates a stacking context; with the veil inside it, the
+     3D canvas could never sit between the two and the aura surge fired at
+     impact was never visible. The stage also has to clear #overlay-host (1000)
+     or an open modal is left undimmed and its body copy reads through the
+     headline. Veil 1100 -> Hunter 1110 -> announcement 1120. */
+  #sm-veil{ position:fixed; inset:0; z-index:1100; pointer-events:none; opacity:0;
             background:radial-gradient(120% 90% at 50% 45%,
               rgba(4,7,14,.55) 0%, rgba(3,5,10,.88) 55%, rgba(2,3,7,.97) 100%);
             transition:opacity var(--dur-cinema) var(--ease-cinema); }
-  .sm-host[data-veil="on"] .sm-veil{ opacity:1; }
+  #sm-veil[data-veil="on"]{ opacity:1; }
+  /* Progression and legendary raise the Hunter above the veil so the surge
+     reads. The veil's blur applies to what is behind it - the app - so the
+     figure itself stays sharp while the interface falls out of focus. */
+  html[data-moment="hero"] #aura-gl{ z-index:1110 !important; opacity:1 !important; }
   /* Any veiled tier needs the world behind it pushed out of focus, not merely
      dimmed - screenshot QA showed sharp body copy reading straight through the
      'major' veil and colliding with the headline. Blur scales with weight. */
-  .sm-host[data-tier="major"]      .sm-veil{ backdrop-filter:blur(2px); }
-  .sm-host[data-tier="progression"] .sm-veil,
-  .sm-host[data-tier="legendary"]  .sm-veil{ backdrop-filter:blur(4px); }
+  #sm-veil[data-tier="major"]{ backdrop-filter:blur(2px); }
+  #sm-veil[data-tier="progression"],
+  #sm-veil[data-tier="legendary"]{ backdrop-filter:blur(4px); }
 
   .sm-panel{ position:relative; text-align:center; padding:0 24px; max-width:min(92vw,560px); }
 
@@ -4923,9 +4948,70 @@ const SystemMoment = (() => {
       h.id = 'sm-host';
       h.className = 'sm-host';
       h.setAttribute('aria-live', 'polite');
-      (document.getElementById('overlay-host') || document.body).appendChild(h);
+      // body, not #overlay-host: the stage has to sit ABOVE the overlay host so
+      // an open modal is veiled too, and the veil/canvas/panel must share one
+      // stacking context to interleave the Hunter between veil and text.
+      document.body.appendChild(h);
     }
     return h;
+  }
+
+  // The veil mounts on BODY, not #overlay-host. The overlay host carries
+  // z-index 1000 and creates its own stacking context, so a veil inside it
+  // would always sit above a root-level canvas no matter its z-index. On body
+  // the three layers share the root context and interleave as intended:
+  //   veil 1100  <  #aura-gl 1110  <  .sm-host 1120
+  function veilLayer() {
+    let v = document.getElementById('sm-veil');
+    if (!v) {
+      v = document.createElement('div');
+      v.id = 'sm-veil';
+      document.body.appendChild(v);
+    }
+    return v;
+  }
+
+  // Tiers heavy enough to be worth interrupting the interface for.
+  const HERO = { progression: 1, legendary: 1 };
+
+  // Framing for a staged Hunter. Same treatment as the opening cinematic:
+  // portrait aims low so the figure occupies the upper frame and the
+  // announcement gets clear space beneath it instead of landing on the body.
+  let camRestore = null;
+  function frameHunter() {
+    const cam = window.AuraGL && AuraGL.camera;
+    if (!cam) return;
+    camRestore = { pos: cam.position.clone() };
+    const portrait = window.innerHeight > window.innerWidth * 1.25;
+    cam.position.set(0, 0, portrait ? 5.6 : 5.3);
+    cam.lookAt(0, portrait ? -0.58 : 0.05, 0);
+    // Landscape has no vertical room to drop the text below the figure, so it
+    // composes sideways instead - System text left, Hunter held right. The
+    // frustum is shifted rather than the model moved, so the shared scene is
+    // never mutated and the restore is exact.
+    if (!portrait) {
+      const w = window.innerWidth, h = window.innerHeight;
+      cam.setViewOffset(w, h, -Math.round(w * 0.17), 0, w, h);
+      camRestore.viewOffset = true;
+    }
+  }
+  function unframeHunter() {
+    const cam = window.AuraGL && AuraGL.camera;
+    if (!cam || !camRestore) { camRestore = null; return; }
+    cam.position.copy(camRestore.pos);
+    cam.lookAt(0, 0, 0);
+    if (camRestore.viewOffset) { try { cam.clearViewOffset(); } catch (e) {} }
+    camRestore = null;
+  }
+
+  function clearStage() {
+    const v = document.getElementById('sm-veil');
+    if (v) { v.removeAttribute('data-veil'); v.removeAttribute('data-tier'); }
+    if (document.documentElement.dataset.moment === 'hero') {
+      unframeHunter();
+      try { AuraGL.stage(null); } catch (e) { /* presentation only */ }
+    }
+    document.documentElement.removeAttribute('data-moment');
   }
 
   // Moments can carry user-supplied text (display names, class names), and the
@@ -4937,7 +5023,6 @@ const SystemMoment = (() => {
 
   function build(o, cfg) {
     return `
-      <div class="sm-veil"></div>
       ${cfg.burst ? '<div class="sm-ring"></div><div class="sm-ring"></div>' : ''}
       <div class="sm-panel">
         ${o.glyph ? `<div class="sm-glyph">${esc(o.glyph)}</div>` : ''}
@@ -4958,7 +5043,21 @@ const SystemMoment = (() => {
     const title = h.querySelector('.sm-title');
     const kicker = h.querySelector('.sm-kicker');
 
-    if (cfg.veil) h.dataset.veil = 'on';
+    if (cfg.veil) {
+      const v = veilLayer();
+      v.dataset.tier = o.tier;
+      // force a frame so the opacity transition actually runs from 0
+      void v.offsetWidth;
+      v.dataset.veil = 'on';
+      // Only the heavy tiers pull the Hunter forward. Promoting the canvas
+      // is not enough on its own - the Hunter scene has to be the one being
+      // rendered, or the veil sits over the ambient field and the aura surge
+      // lights nothing.
+      if (HERO[o.tier] && window.AuraGL && AuraGL.enabled && window.AuraHunter?.ready) {
+        document.documentElement.dataset.moment = 'hero';
+        try { AuraGL.stage('hunter'); frameHunter(); } catch (e) { /* presentation only */ }
+      }
+    }
 
     if (cfg.cinematic && !Motion.reduced()) {
       // quiet -> build -> impact -> reveal -> aftermath -> quiet
@@ -4979,6 +5078,7 @@ const SystemMoment = (() => {
     // aftermath - fall back to quiet
     h.removeAttribute('data-burst');
     h.removeAttribute('data-veil');
+    clearStage();
     await Motion.play(panel, 'm-aftermath', 950);
     h.innerHTML = '';
     h.removeAttribute('data-tier');
@@ -4997,6 +5097,7 @@ const SystemMoment = (() => {
       running = false;
       const h = document.getElementById('sm-host');
       if (h) { h.innerHTML = ''; h.removeAttribute('data-tier'); }
+      clearStage();
     }
   }
 
@@ -5014,7 +5115,7 @@ const SystemMoment = (() => {
       const p = drain();
       return p;
     },
-    clear() { queue = []; },
+    clear() { queue = []; clearStage(); },
     get pending() { return queue.length; },
     get busy() { return running; },
   };
@@ -5215,6 +5316,11 @@ const AuraGL = (() => {
     quality: () => QUALITY[tier],
     // Observation only: the runtime is told which view is showing.
     onView(name) { currentView = name; activate(name); },
+    // Presentation-only scene override for cinematics. Deliberately does NOT
+    // touch currentView, so stage(null) always returns to whatever view the
+    // app believes it is on.
+    stage(name) { activate(name || currentView); },
+    get view() { return currentView; },
     hud(on) { document.documentElement.dataset.glHud = on ? '1' : '0'; },
     stats() {
       if (!enabled) return { enabled: false };
@@ -5485,6 +5591,19 @@ function buildHunterScene({ THREE, quality, tier }) {
       }
     },
     setAura(state) { auraTarget = AURA_STATE[state] ?? AURA_STATE.dormant; },
+    // Cinematic focus on one region. Purely visual and self-restoring: it
+    // overrides the uniform, never the muscle-status data that produced it.
+    pulseRegion(name, status = 'Focusing', ms = 2200) {
+      const i = HUNTER_REGIONS.indexOf(name);
+      if (i < 0) return;
+      const v = uniforms.uRegion.value[i];
+      const prev = v.clone();
+      const cfg = HUNTER_STATUS[status] || HUNTER_STATUS.Focusing;
+      const hex = (typeof STATUS_COLOR === 'object' && STATUS_COLOR[status]) || '#5BA8FF';
+      const col = new THREE.Color(hex);
+      v.set(col.r, col.g, col.b, cfg.i);
+      setTimeout(() => { try { v.copy(prev); } catch (e) {} }, ms);
+    },
     // Cinematic hooks. Presentation only - they touch lights and camera framing,
     // never game state.
     setReveal(v) { reveal = Math.max(0, Math.min(1, v)); applyReveal(); },
@@ -5860,6 +5979,179 @@ const SystemOpening = (() => {
   };
 })();
 window.SystemOpening = SystemOpening;
+
+/* ══════════════════════════════════════════════════════════════════════════
+   PROGRESSION CINEMATICS  (Phase 7)
+
+   Presents progression events. It READS an event descriptor that the existing
+   gameplay systems produce and decides only HOW that event is shown - which
+   System Moment tier, what the Hunter does, which region is focused. It
+   computes no XP, no levels, no ranks, no class, and writes nothing.
+
+   Tier assignment follows the existing event semantics, not invented rules.
+   ══════════════════════════════════════════════════════════════════════════ */
+const ProgressionCinema = (() => {
+  // event type -> System Moment tier. Deliberately unequal.
+  const TIER = {
+    'xp':               'micro',
+    'set':              'micro',
+    'pr':               'minor',
+    'performance':      'minor',
+    'milestone':        'major',
+    'item':             'major',
+    'dungeon-clear':    'major',
+    'level-up':         'progression',
+    'stat-breakthrough':'progression',
+    'rank-up':          'progression',
+    'class-awakening':  'legendary',
+    'raid-clear':       'legendary',
+  };
+
+  // Which aura state each weight class settles the Hunter into.
+  const AURA = { micro: null, minor: 'stirring', major: 'stirring',
+                 progression: 'active', legendary: 'surge' };
+
+  const H = () => window.AuraHunter;
+
+  function build(ev) {
+    const t = ev.type;
+    const S = (typeof STAT_DEFS !== 'undefined' && STAT_DEFS) || [];
+    const statLabel = id => (S.find(d => d.id === id) || {}).label || id;
+
+    switch (t) {
+      case 'xp':
+        return { kicker: 'TRAINING XP', title: `+${ev.amount ?? 0} XP`,
+                 body: ev.source || '' };
+      case 'set':
+        return { kicker: 'SET LOGGED', title: ev.exercise || 'SET',
+                 body: ev.detail || '' };
+      case 'pr':
+        return { kicker: 'NEW PERSONAL RECORD', glyph: '▲',
+                 title: ev.exercise || 'PERSONAL RECORD',
+                 body: ev.detail || '', region: ev.region };
+      case 'performance':
+        return { kicker: 'PERFORMANCE', glyph: '▲',
+                 title: ev.title || 'IMPROVED', body: ev.detail || '' };
+      case 'milestone':
+        return { kicker: 'MILESTONE', glyph: '⚔',
+                 title: ev.label || 'MILESTONE', body: ev.sub || '' };
+      case 'item':
+        return { kicker: `ITEM ACQUIRED${ev.rarity ? ' · ' + ev.rarity.toUpperCase() : ''}`,
+                 glyph: ev.icon || '🎒',
+                 title: ev.name || 'ITEM', body: ev.desc || '' };
+      case 'dungeon-clear':
+        return { kicker: 'DUNGEON CLEARED', glyph: '⚔',
+                 title: ev.name || 'DUNGEON', body: ev.sub || '' };
+      case 'level-up':
+        return { kicker: 'SYSTEM · LEVEL UP', glyph: '◈',
+                 title: `LEVEL ${ev.to ?? ''}`.trim(),
+                 body: ev.apGained ? `+${ev.apGained} AP AVAILABLE` : '' };
+      case 'stat-breakthrough':
+        return { kicker: 'STAT BREAKTHROUGH', glyph: '◈',
+                 title: `${statLabel(ev.stat).toUpperCase()} — ${ev.to ?? ''}`.trim(),
+                 body: ev.from ? `ADVANCED FROM ${ev.from}` : '',
+                 stat: ev.stat };
+      case 'rank-up':
+        return { kicker: 'HUNTER RANK ADVANCED', glyph: '👑',
+                 title: `RANK ${ev.to ?? ''}`.trim(),
+                 body: ev.title || '', rank: ev.to };
+      case 'class-awakening':
+        return { kicker: 'CLASS AWAKENING', glyph: '◈',
+                 title: (ev.className || 'CLASSIFIED').toUpperCase(),
+                 body: ev.desc || 'The System names what you are.' };
+      case 'raid-clear':
+        return { kicker: 'RAID CLEARED', glyph: '💀',
+                 title: ev.name || 'RAID BOSS', body: ev.sub || '' };
+      default:
+        return { kicker: 'SYSTEM', title: String(t || '').toUpperCase() };
+    }
+  }
+
+  async function present(ev) {
+    if (!ev || !ev.type) return false;
+    const tier = TIER[ev.type] || 'minor';
+    const o = build(ev);
+    const hunter = H();
+
+    const onImpact = () => {
+      try {
+        const aura = AURA[tier];
+        if (aura && hunter) hunter.setAura(aura);
+        // A PR focuses the muscle it belongs to, using the region name the
+        // event already carries. No status is computed here.
+        if (o.region && hunter) hunter.pulseRegion(o.region, 'Focusing', 2600);
+        if (tier === 'legendary' || tier === 'progression') {
+          setTimeout(() => { try { hunter?.setAura('active'); } catch (e) {} }, 2400);
+          setTimeout(() => { try { hunter?.setAura('dormant'); } catch (e) {} }, 5200);
+        } else if (aura) {
+          setTimeout(() => { try { hunter?.setAura('dormant'); } catch (e) {} }, 3200);
+        }
+      } catch (e) { /* presentation only */ }
+    };
+
+    return SystemMoment.show({
+      tier, kicker: o.kicker, title: o.title, body: o.body,
+      glyph: o.glyph, onImpact,
+    });
+  }
+
+  return { TIER, present, tierFor: t => TIER[t] || 'minor' };
+})();
+window.ProgressionCinema = ProgressionCinema;
+
+/* ── DEVELOPER-ONLY event fixtures ────────────────────────────────────────
+   Deterministic descriptors for QA. They are built from real profile state
+   where it exists so the presentation shows genuine values, but they NEVER
+   write to profile, Firestore, XP, AP, stats or inventory - they only feed the
+   presenter. Exposed solely when the dev flag is set, and never in production.
+
+   Enable:  localStorage.setItem('aura.dev', '1')  (or ?dev=1)
+   Trigger: window.__qaTriggerMoment('rank-up')
+   ───────────────────────────────────────────────────────────────────────── */
+function __auraDevEnabled() {
+  try {
+    if (new URLSearchParams(location.search).get('dev') === '1') return true;
+    return localStorage.getItem('aura.dev') === '1';
+  } catch (e) { return false; }
+}
+
+function __auraMomentFixtures() {
+  const p = (typeof profile === 'object' && profile) || {};
+  const rank = (typeof charRankFromStats === 'function' && p.stats)
+    ? charRankFromStats(p.stats) : 'E';
+  const ranks = (typeof RANK_TIERS !== 'undefined' && RANK_TIERS) || ['E','D','C','B','A','S'];
+  const nextRank = ranks[Math.min(ranks.indexOf(rank) + 1, ranks.length - 1)];
+  const lvl = p.hunterLevel || 1;
+  return {
+    'xp':                { type:'xp', amount: 42, source: 'Bench Press · 4 sets' },
+    'set':               { type:'set', exercise: 'Bench Press', detail: '8 × 60kg · RIR 2' },
+    'pr':                { type:'pr', exercise: 'Squat', detail: '+4.5kg e1RM · strongest in 3 weeks',
+                           region: 'Quads' },
+    'performance':       { type:'performance', title: 'VOLUME UP 18%', detail: 'vs your 4-week average' },
+    'milestone':         { type:'milestone', label: 'FIRST DUNGEON', sub: 'The gates have opened.' },
+    'item':              { type:'item', name: 'SHADOW GREAVES', rarity: 'Rare', icon: '🥾',
+                           desc: 'Earned by proving lower-body endurance.' },
+    'dungeon-clear':     { type:'dungeon-clear', name: 'GATE OF EMBERS', sub: 'Boss defeated · rewards released.' },
+    'level-up':          { type:'level-up', to: lvl + 1, apGained: 10 },
+    'stat-breakthrough': { type:'stat-breakthrough', stat: 'strength', from: 'E', to: 'D' },
+    'rank-up':           { type:'rank-up', to: nextRank, title: 'The System revises its assessment.' },
+    'class-awakening':   { type:'class-awakening', className: 'Shadow Monarch',
+                           desc: 'The System names what you are.' },
+    'raid-clear':        { type:'raid-clear', name: 'THE HOLLOW KING', sub: 'Party contribution recorded.' },
+  };
+}
+
+if (__auraDevEnabled()) {
+  window.__qaTriggerMoment = (name) => {
+    const f = __auraMomentFixtures();
+    const ev = f[name];
+    if (!ev) { console.warn('[QA] unknown moment:', name, Object.keys(f)); return false; }
+    ProgressionCinema.present(ev);
+    return true;
+  };
+  window.__qaMomentList = () => Object.keys(__auraMomentFixtures());
+  console.info('[QA] dev moment triggers enabled - __qaTriggerMoment(name)');
+}
 
 function switchView(name) {
   // Phase 4: tell the 3D runtime which view is showing. Observation only.
