@@ -2,6 +2,17 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Mandatory final phase
+
+Before any production merge or push, **Phase 11 — Full System Integrity /
+Regression** must pass. See [PHASE-11-REGRESSION.md](PHASE-11-REGRESSION.md) for
+the 17-area checklist, the pre-cinematic performance baseline to compare
+against, the gameplay-immutability audit command, and the register of already
+known defects, blockers and expected-UNVERIFIED areas.
+
+The cinematic work is not complete until that regression passes. A feature that
+cannot be safely tested is marked UNVERIFIED, never PASS.
+
 ## Prime directive — this is a stable production game with live user data
 
 Real users have accumulated progression state in Firestore that **cannot be regenerated from nothing**. Presentation, visual, and UI work must not alter gameplay behaviour.
