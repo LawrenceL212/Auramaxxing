@@ -4773,6 +4773,7 @@ if (configOk) {
           if (await AuraGL.init()) {
             AuraGL.register('ambient', buildAmbientScene);
             AuraGL.register('hunter', buildHunterScene);
+            AuraGL.register('reward', buildRewardScene);
             AuraGL.activate('ambient');
             AuraGL.start();
             // Opening cinematic runs only once the Hunter has actually loaded,
@@ -5091,6 +5092,7 @@ const SystemMoment = (() => {
       while (queue.length) {
         const next = queue.shift();
         try { await present(next); } catch (e) { console.warn('SystemMoment failed', e); }
+        try { next._settle?.(); } catch (e) { /* presentation only */ }
         await Motion.wait(180);   // a beat of silence between announcements
       }
     } finally {
@@ -5111,11 +5113,22 @@ const SystemMoment = (() => {
       if (o.tier === 'micro' && queue.some(q => q.tier === 'micro')) {
         queue = queue.filter(q => q.tier !== 'micro');
       }
+      // Each moment carries its own resolver. show() previously returned
+      // drain(), which resolves immediately when a drain is already running -
+      // so awaiting a moment while another was in flight returned at once and
+      // let chained cinematics overlap. Surfaced by the Phase 8 dungeon chain.
+      let settle;
+      const p = new Promise(res => { settle = res; });
+      o._settle = settle;
       queue.push(o);
-      const p = drain();
+      drain();
       return p;
     },
-    clear() { queue = []; clearStage(); },
+    clear() {
+      const dropped = queue; queue = [];
+      dropped.forEach(q => { try { q._settle?.(); } catch (e) {} });
+      clearStage();
+    },
     get pending() { return queue.length; },
     get busy() { return running; },
   };
@@ -5321,6 +5334,8 @@ const AuraGL = (() => {
     // app believes it is on.
     stage(name) { activate(name || currentView); },
     get view() { return currentView; },
+    // Read-only access to a registered scene so a cinematic can drive it.
+    sceneOf(name) { return scenes.get(name) || null; },
     hud(on) { document.documentElement.dataset.glHud = on ? '1' : '0'; },
     stats() {
       if (!enabled) return { enabled: false };
@@ -5408,6 +5423,57 @@ function buildHunterScene({ THREE, quality, tier }) {
   const rim = new THREE.DirectionalLight(0x5ba8ff, RIM_I); rim.position.set(-2.6, 1.6, -2.8);
   const fill = new THREE.HemisphereLight(0x24406e, 0x05070d, FILL_I);
   scene.add(key, rim, fill);
+
+  /* Environment. The Hunter has to be standing somewhere for a dungeon to read
+     as a place rather than a caption. Built once, hidden by default, and driven
+     entirely by presentation state - it holds no gameplay data.
+     ENV_MODES: none | dungeon | raid  */
+  const ENV_MODES = {
+    none:    { fog: null,     ground: 0,    rim: 0x5ba8ff, key: 0xbcd4ff },
+    dungeon: { fog: 0x070a14, ground: 0.55, rim: 0x8b5cff, key: 0x9fb4e0 },
+    raid:    { fog: 0x120610, ground: 0.75, rim: 0xff5c6b, key: 0xffc9a0 },
+  };
+  const ground = new THREE.Mesh(
+    new THREE.CircleGeometry(7.5, 48),
+    new THREE.MeshStandardMaterial({ color: 0x0a0f1c, roughness: 0.95, metalness: 0.1,
+                                     transparent: true, opacity: 0 }));
+  ground.rotation.x = -Math.PI / 2;
+  ground.position.y = -1.02;
+  ground.visible = false;
+  scene.add(ground);
+  // A ring of standing forms reads as an enclosure without a model or a texture.
+  const pillars = new THREE.Group();
+  pillars.visible = false;
+  const pMat = new THREE.MeshStandardMaterial({ color: 0x121a2c, roughness: 0.9,
+                                                transparent: true, opacity: 0 });
+  for (let i = 0; i < 10; i++) {
+    const a = (i / 10) * Math.PI * 2;
+    const p = new THREE.Mesh(new THREE.BoxGeometry(0.34, 5.2, 0.34), pMat);
+    p.position.set(Math.cos(a) * 5.4, 1.4, Math.sin(a) * 5.4 - 1.2);
+    pillars.add(p);
+  }
+  scene.add(pillars);
+  let envMode = 'none', envAmt = 0, envTarget = 0;
+  function setEnvironment(mode) {
+    const cfg = ENV_MODES[mode] || ENV_MODES.none;
+    envMode = ENV_MODES[mode] ? mode : 'none';
+    envTarget = envMode === 'none' ? 0 : 1;
+    if (cfg.fog) scene.fog = new THREE.FogExp2(cfg.fog, 0.085);
+    rim.color.setHex(cfg.rim);
+    key.color.setHex(cfg.key);
+    if (envTarget) { ground.visible = true; pillars.visible = true; }
+  }
+  function updateEnvironment(dt) {
+    const d = envTarget - envAmt;
+    if (Math.abs(d) < 0.001) { envAmt = envTarget; }
+    else envAmt += d * Math.min(1, dt * 2.6);
+    const cfg = ENV_MODES[envMode] || ENV_MODES.none;
+    ground.material.opacity = cfg.ground * envAmt;
+    pMat.opacity = 0.9 * envAmt;
+    if (envAmt <= 0.001 && envTarget === 0) {
+      ground.visible = false; pillars.visible = false; scene.fog = null;
+    }
+  }
   // Reveal is a lighting state, not an opacity fade: the rim arrives first so
   // the silhouette reads before any surface detail does.
   let reveal = 1;
@@ -5621,7 +5687,10 @@ function buildHunterScene({ THREE, quality, tier }) {
     // isolated by differencing frames. Idle motion otherwise moves the whole
     // silhouette between captures and swamps the region being measured.
     freeze(on) { frozen = !!on; },
+    // Presentation environment around the figure: none | dungeon | raid.
+    setEnvironment,
     update(dt, t) {
+      updateEnvironment(dt);
       uniforms.uTime.value = frozen ? 0 : t;
       auraNow += (auraTarget - auraNow) * Math.min(1, dt * 2.2);
       uniforms.uAura.value = auraNow;
@@ -5646,6 +5715,228 @@ function buildHunterScene({ THREE, quality, tier }) {
    Deliberately restrained. Depth, a slow drift of motes, and one soft key
    light - enough to prove depth, lighting, camera, particles, materials,
    lifecycle and mobile cost before anything heavier is built on top. */
+/* ══════════════════════════════════════════════════════════════════════════
+   REWARD STAGE  (Phase 8a)
+
+   A reward that matters should arrive as an object, not a line of text. The
+   scene materialises a procedurally built item, holds it under a rim light,
+   turns it slowly, and hands off to the System for identification.
+
+   Everything is generated from primitives - no new asset downloads, no new
+   runtime dependency, and nothing to fail at load.
+
+   EQUIPMENT FORWARD-COMPATIBILITY
+   createItemMesh(slot, rarity) is deliberately free of scene/stage state. It
+   returns a Group whose userData.anchor names the Hunter attach point that a
+   later persistent-equipment phase would parent it to:
+       weapon -> 'hand.R'   armour -> 'chest'
+       boots  -> 'feet'     accessory -> 'orbit'
+   That phase can reuse this factory as-is; only the parenting changes.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+// Rarity drives light, emissive strength and particle count - nothing else.
+// Colours are the app's own rarity palette, matching showDungeonClearModal.
+const REWARD_RARITY = {
+  Common:    { col: 0xa0a0a0, emissive: 0.25, particles: 90,  light: 1.0 },
+  Uncommon:  { col: 0x4ecd78, emissive: 0.40, particles: 130, light: 1.3 },
+  Rare:      { col: 0x5ba8ff, emissive: 0.60, particles: 180, light: 1.7 },
+  Epic:      { col: 0x8b5cff, emissive: 0.85, particles: 240, light: 2.2 },
+  Legendary: { col: 0xffd66b, emissive: 1.15, particles: 320, light: 2.8 },
+};
+const REWARD_ANCHOR = { weapon: 'hand.R', armour: 'chest', boots: 'feet', accessory: 'orbit' };
+
+function createItemMesh(THREE, slot, rarity) {
+  const r = REWARD_RARITY[rarity] || REWARD_RARITY.Rare;
+  const g = new THREE.Group();
+  const mat = new THREE.MeshStandardMaterial({
+    color: r.col, emissive: r.col, emissiveIntensity: r.emissive,
+    metalness: 0.85, roughness: 0.28, transparent: true, opacity: 1,
+  });
+  // Lifted off near-black: at 0x1a2030 the grip and fuller read as holes cut
+  // through the object rather than as a second material.
+  const dark = new THREE.MeshStandardMaterial({
+    color: 0x3d4761, metalness: 0.75, roughness: 0.5,
+    transparent: true, opacity: 1,
+  });
+
+  if (slot === 'weapon') {
+    // A blade is FLAT. A 4-sided cylinder scaled on Z gives a diamond cross
+    // section that catches the rim light along an edge, which is what makes it
+    // read as a sword rather than a spike.
+    const blade = new THREE.Mesh(new THREE.CylinderGeometry(0.105, 0.19, 0.92, 4), mat);
+    blade.scale.z = 0.34;
+    blade.rotation.y = Math.PI / 4;
+    blade.position.y = 0.40;
+    const tip = new THREE.Mesh(new THREE.ConeGeometry(0.105, 0.30, 4), mat);
+    tip.scale.z = 0.34;
+    tip.rotation.y = Math.PI / 4;
+    tip.position.y = 1.01;
+    const guard = new THREE.Mesh(new THREE.BoxGeometry(0.46, 0.09, 0.14), mat);
+    guard.position.y = -0.09;
+    const guardTip = new THREE.Mesh(new THREE.OctahedronGeometry(0.068, 0), mat);
+    guardTip.position.set(0.25, -0.09, 0); guardTip.scale.set(1, 0.7, 0.7);
+    const guardTip2 = guardTip.clone(); guardTip2.position.x = -0.25;
+    const grip = new THREE.Mesh(new THREE.CylinderGeometry(0.052, 0.058, 0.34, 10), dark);
+    grip.position.y = -0.29;
+    const pommel = new THREE.Mesh(new THREE.OctahedronGeometry(0.088, 0), mat);
+    pommel.position.y = -0.50; pommel.scale.y = 0.8;
+    g.add(blade, tip, guard, guardTip, guardTip2, grip, pommel);
+  } else if (slot === 'armour') {
+    const chest = new THREE.Mesh(new THREE.SphereGeometry(
+      0.52, 20, 14, 0, Math.PI * 2, 0, Math.PI * 0.62), mat);
+    chest.scale.set(1, 1.15, 0.72);
+    chest.rotation.x = Math.PI;
+    chest.position.y = 0.18;
+    const collar = new THREE.Mesh(new THREE.TorusGeometry(0.26, 0.045, 8, 24), mat);
+    collar.rotation.x = Math.PI / 2;
+    collar.position.y = 0.34;
+    const belt = new THREE.Mesh(new THREE.TorusGeometry(0.40, 0.05, 8, 26), dark);
+    belt.rotation.x = Math.PI / 2;
+    belt.position.y = -0.36;
+    g.add(chest, collar, belt);
+  } else if (slot === 'boots') {
+    for (const sx of [-1, 1]) {
+      const shin = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.17, 0.62, 10), mat);
+      shin.position.set(sx * 0.21, 0.14, 0);
+      const foot = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.13, 0.44), dark);
+      foot.position.set(sx * 0.21, -0.23, 0.09);
+      const cuff = new THREE.Mesh(new THREE.TorusGeometry(0.15, 0.038, 8, 18), mat);
+      cuff.rotation.x = Math.PI / 2;
+      cuff.position.set(sx * 0.21, 0.45, 0);
+      g.add(shin, foot, cuff);
+    }
+  } else {
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(0.46, 0.055, 14, 44), mat);
+    const inner = new THREE.Mesh(new THREE.TorusGeometry(0.30, 0.032, 10, 34), mat);
+    inner.rotation.x = Math.PI / 2.6;
+    const inner2 = new THREE.Mesh(new THREE.TorusGeometry(0.30, 0.032, 10, 34), mat);
+    inner2.rotation.y = Math.PI / 2.6;
+    const core = new THREE.Mesh(new THREE.OctahedronGeometry(0.17, 0), mat);
+    g.add(ring, inner, inner2, core);
+  }
+
+  g.userData.anchor = REWARD_ANCHOR[slot] || 'orbit';
+  g.userData.rarity = rarity;
+  g.userData.materials = [mat, dark];
+  return g;
+}
+
+function buildRewardScene({ THREE, quality }) {
+  const scene = new THREE.Scene();
+  const root = new THREE.Group();
+  scene.add(root);
+
+  const key  = new THREE.DirectionalLight(0xcfe0ff, 1.1); key.position.set(2.2, 2.8, 3.0);
+  const rim  = new THREE.DirectionalLight(0x5ba8ff, 1.8); rim.position.set(-2.4, 1.4, -2.6);
+  const fill = new THREE.HemisphereLight(0x1d3358, 0x04060c, 0.5);
+  const glow = new THREE.PointLight(0x5ba8ff, 0, 9);   // rarity light, driven below
+  glow.position.set(0, 0.1, 1.4);
+  scene.add(key, rim, fill, glow);
+
+  // Convergence particles. One buffer, reused by every reveal - allocating per
+  // reward would churn GPU memory on a screen the user may open repeatedly.
+  const MAX_P = quality && quality.particles === false ? 0 : 320;
+  let pGeo = null, pts = null, pStart = null, pEnd = null;
+  if (MAX_P) {
+    pGeo = new THREE.BufferGeometry();
+    const pos = new Float32Array(MAX_P * 3);
+    pStart = new Float32Array(MAX_P * 3);
+    pEnd = new Float32Array(MAX_P * 3);
+    for (let i = 0; i < MAX_P; i++) {
+      // start on a wide shell, end near the item surface
+      const a = Math.random() * Math.PI * 2, b = Math.acos(2 * Math.random() - 1);
+      const R = 3.4 + Math.random() * 1.8, r2 = 0.34 + Math.random() * 0.5;
+      pStart[i*3] = Math.sin(b)*Math.cos(a)*R;
+      pStart[i*3+1] = Math.cos(b)*R*0.7;
+      pStart[i*3+2] = Math.sin(b)*Math.sin(a)*R;
+      pEnd[i*3] = Math.sin(b)*Math.cos(a)*r2;
+      pEnd[i*3+1] = Math.cos(b)*r2*1.5;
+      pEnd[i*3+2] = Math.sin(b)*Math.sin(a)*r2;
+      pos[i*3] = pStart[i*3]; pos[i*3+1] = pStart[i*3+1]; pos[i*3+2] = pStart[i*3+2];
+    }
+    pGeo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    pts = new THREE.Points(pGeo, new THREE.PointsMaterial({
+      color: 0x5ba8ff, size: 0.035, transparent: true, opacity: 0,
+      depthWrite: false, blending: THREE.AdditiveBlending,
+    }));
+    scene.add(pts);
+  }
+
+  let item = null;          // current item Group
+  let mat = 0;              // materialisation 0..1
+  let spin = 0, active = false, count = 0;
+
+  function clearItem() {
+    if (!item) return;
+    root.remove(item);
+    item.traverse(o => { o.geometry?.dispose?.(); });
+    (item.userData.materials || []).forEach(m => m.dispose?.());
+    item = null;
+  }
+
+  return {
+    scene,
+    /* present({slot, rarity}) - build and materialise. Presentation only. */
+    present(def) {
+      clearItem();
+      const rarity = (def && def.rarity) || 'Rare';
+      const cfg = REWARD_RARITY[rarity] || REWARD_RARITY.Rare;
+      item = createItemMesh(THREE, (def && def.slot) || 'weapon', rarity);
+      // Presentation pose: turned off-axis and tilted, so the object has depth
+      // instead of reading as a flat glyph.
+      root.rotation.set(0.11, 0, 0.13);
+      root.add(item);
+      mat = 0; spin = 0; active = true;
+      count = Math.min(MAX_P, cfg.particles);
+      glow.color.setHex(cfg.col);
+      rim.color.setHex(cfg.col);
+      if (pts) {
+        pts.material.color.setHex(cfg.col);
+        pGeo.setDrawRange(0, count);
+      }
+      return item;
+    },
+    setMaterialise(v) { mat = Math.max(0, Math.min(1, v)); },
+    // The shared camera sits at z=6 for the Hunter, which leaves a 1-unit object
+    // tiny. Framing is applied on enter and cleared on exit.
+    frame(camera) {
+      if (!camera) return;
+      const portrait = window.innerHeight > window.innerWidth * 1.25;
+      // z chosen so a ~1.5-unit object clears the frame with margin at every
+      // aspect - the first pass cropped the blade off the top in portrait.
+      camera.position.set(0, 0.18, portrait ? 4.1 : 3.3);
+      camera.lookAt(0, 0.18, 0);
+    },
+    get itemGroup() { return item; },
+    update(dt) {
+      if (!active || !item) return;
+      spin += dt * 0.55;
+      item.rotation.y = spin;
+      // ease the arrival: fast in, settling
+      const e = 1 - Math.pow(1 - mat, 3);
+      item.scale.setScalar(0.35 + 0.65 * e);
+      item.position.y = (1 - e) * -0.35;
+      const cfg = REWARD_RARITY[item.userData.rarity] || REWARD_RARITY.Rare;
+      (item.userData.materials || []).forEach(m => { m.opacity = e; });
+      glow.intensity = cfg.light * e;
+      if (pts) {
+        const pos = pGeo.attributes.position.array;
+        for (let i = 0; i < count; i++) {
+          const k = i * 3;
+          pos[k]   = pStart[k]   + (pEnd[k]   - pStart[k]) * e;
+          pos[k+1] = pStart[k+1] + (pEnd[k+1] - pStart[k+1]) * e;
+          pos[k+2] = pStart[k+2] + (pEnd[k+2] - pStart[k+2]) * e;
+        }
+        pGeo.attributes.position.needsUpdate = true;
+        // bright while converging, gone once the object has arrived
+        pts.material.opacity = Math.sin(Math.min(1, e) * Math.PI) * 0.9;
+      }
+    },
+    enter() { active = true; },
+    exit() { active = false; clearItem(); },
+  };
+}
+
 function buildAmbientScene({ THREE, quality }) {
   const scene = new THREE.Scene();
   scene.fog = new THREE.FogExp2(0x05070d, 0.085);
@@ -6150,8 +6441,196 @@ if (__auraDevEnabled()) {
     return true;
   };
   window.__qaMomentList = () => Object.keys(__auraMomentFixtures());
+
+  // Phase 8 world fixtures. Same rule as Phase 7: descriptors only, no writes,
+  // no gameplay state touched. Dungeon/raid/world states are hard to reach
+  // naturally, so QA drives the presentation directly.
+  const __worldFixtures = () => ({
+    'dungeon-entry':  () => WorldCinema.dungeonEntry(
+        { bossName: 'GATE OF EMBERS', tier: 3, hp: 6000, maxHp: 6000 }),
+    'dungeon-damage-light': () => showDungeonDamageNotif(
+        { damage: 120, newHp: 5880, maxHp: 6000 }, null),
+    'dungeon-damage-heavy': () => showDungeonDamageNotif(
+        { damage: 1450, newHp: 900, maxHp: 6000 }, null),
+    'dungeon-clear':  () => WorldCinema.dungeonClear(
+        ITEM_DEFINITIONS['legs_3'] || { name:'SHADOW GREAVES', slot:'boots',
+          rarity:'Rare', desc:'Earned by proving lower-body endurance.', icon:'🥾' },
+        { bossName: 'GATE OF EMBERS', tier: 3 }),
+    'reward-common':    () => WorldCinema.rewardReveal({ name:'IRON EDGE', slot:'weapon', rarity:'Common', desc:'A plain blade.' }),
+    'reward-rare':      () => WorldCinema.rewardReveal({ name:'TIDE BREAKER', slot:'weapon', rarity:'Rare', desc:'Proven against the current.' }),
+    'reward-epic':      () => WorldCinema.rewardReveal({ name:'VOID PLATE', slot:'armour', rarity:'Epic', desc:'It remembers every impact.' }),
+    'reward-legendary': () => WorldCinema.rewardReveal({ name:'EXCALIBUR', slot:'weapon', rarity:'Legendary', desc:'Earned through dominance.' }),
+    'reward-boots':     () => WorldCinema.rewardReveal({ name:'SHADOW GREAVES', slot:'boots', rarity:'Epic', desc:'Lower-body endurance, proven.' }),
+    'reward-accessory': () => WorldCinema.rewardReveal({ name:'FOCUS SIGIL', slot:'accessory', rarity:'Legendary', desc:'The System keeps its own record.' }),
+    'world-event':    () => WorldCinema.worldEvent({ tier:'major', kicker:'TERRITORY CLAIMED',
+        title:'SOUTH KOREA', body:'Your shadow army holds the region.', glyph:'🌐' }),
+    'world-event-major': () => WorldCinema.worldEvent({ tier:'legendary', kicker:'WORLD EVENT',
+        title:'GATE SURGE', body:'Every territory reports activity.', glyph:'🌐' }),
+  });
+  window.__qaTriggerWorld = (name) => {
+    const f = __worldFixtures()[name];
+    if (!f) { console.warn('[QA] unknown world event:', name, Object.keys(__worldFixtures())); return false; }
+    f(); return true;
+  };
+  window.__qaWorldList = () => Object.keys(__worldFixtures());
   console.info('[QA] dev moment triggers enabled - __qaTriggerMoment(name)');
 }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   WORLD CINEMA  (Phase 8)
+
+   Dungeon, raid and world-event presentation. Orchestrates systems that already
+   exist - the Phase 4 runtime, the Phase 5 Hunter, the Phase 7 moment stage -
+   and renders nothing itself.
+
+   It is handed state the gameplay has already decided and chooses only how much
+   weight to give it. Notably it does NOT decide whether a dungeon cleared, how
+   much damage was dealt, or which item dropped.
+   ══════════════════════════════════════════════════════════════════════════ */
+const WorldCinema = (() => {
+  const wait = (ms) => new Promise(r => setTimeout(r, ms));
+  const reduced = () => { try { return Motion.reduced(); } catch (e) { return false; } };
+
+  function stage(scene, env) {
+    try {
+      if (!window.AuraGL || !AuraGL.enabled) return false;
+      AuraGL.stage(scene);
+      if (env !== undefined && window.AuraHunter) AuraHunter.setEnvironment(env);
+      document.documentElement.dataset.moment = 'hero';
+      return true;
+    } catch (e) { return false; }
+  }
+  function unstage() {
+    try {
+      if (window.AuraHunter) AuraHunter.setEnvironment('none');
+      if (window.AuraGL) AuraGL.stage(null);
+    } catch (e) { /* presentation only */ }
+    document.documentElement.removeAttribute('data-moment');
+  }
+  // The veil is the Phase 7 layer; reuse it rather than inventing a second one.
+  function veil(on, tier) {
+    let v = document.getElementById('sm-veil');
+    if (!v) {
+      v = document.createElement('div'); v.id = 'sm-veil';
+      document.body.appendChild(v);
+    }
+    if (on) { v.dataset.tier = tier || 'major'; void v.offsetWidth; v.dataset.veil = 'on'; }
+    else { v.removeAttribute('data-veil'); v.removeAttribute('data-tier'); }
+  }
+
+  /* ── DUNGEON ENTRY ──────────────────────────────────────────────────────
+     environment transition -> Hunter enters -> identification -> encounter */
+  async function dungeonEntry(d) {
+    if (!d) return;
+    const name = d.bossName || 'Unknown Boss';
+    if (reduced() || !stage('hunter', 'dungeon')) {
+      return SystemMoment.show({ tier: 'major', kicker: 'DUNGEON ENTERED',
+        title: name, body: `TIER ${d.tier || 1} · TRAIN TO DEAL DAMAGE`, glyph: '⚔' });
+    }
+    veil(true, 'major');
+    try { AuraHunter.setAura('stirring'); } catch (e) {}
+    await wait(900);                                  // the space arrives first
+    try { AuraHunter.setAura('active'); } catch (e) {}
+    await wait(700);                                  // the Hunter settles in it
+    await SystemMoment.show({ tier: 'major', kicker: 'DUNGEON ENTERED',
+      title: name, body: `TIER ${d.tier || 1} · TRAIN TO DEAL DAMAGE`, glyph: '⚔' });
+    try { AuraHunter.setAura('dormant'); } catch (e) {}
+    veil(false); unstage();
+  }
+
+  /* ── DAMAGE WEIGHT ──────────────────────────────────────────────────────
+     Not every hit is a cinematic. Weight is classified from numbers the
+     gameplay already produced: the share of the boss's health removed, and
+     whether the boss has been driven into its last quarter. */
+  function damageWeight(result) {
+    if (!result || !result.maxHp) return 'light';
+    const share = result.damage / result.maxHp;
+    const left = result.newHp / result.maxHp;
+    if (share >= 0.15 || (left <= 0.25 && share >= 0.05)) return 'heavy';
+    if (share >= 0.05) return 'solid';
+    return 'light';
+  }
+
+  /* ── DUNGEON CLEAR ──────────────────────────────────────────────────────
+     decisive moment -> environment response -> silence -> reward -> System */
+  async function dungeonClear(item, d) {
+    const rarity = (item && item.rarity) || 'Rare';
+    const legendary = rarity === 'Legendary' || rarity === 'Epic';
+    if (reduced() || !stage('hunter', 'dungeon')) {
+      await SystemMoment.show({ tier: 'progression', kicker: 'DUNGEON CLEARED',
+        title: (d && d.bossName) || 'BOSS DEFEATED', body: 'THE DUNGEON HAS FALLEN', glyph: '⚔' });
+      return rewardReveal(item);
+    }
+    veil(true, 'progression');
+    // decisive moment - the strike lands
+    try { AuraHunter.setAura('surge'); } catch (e) {}
+    await wait(520);
+    // environment response - the space lets go
+    try { AuraHunter.setEnvironment('none'); } catch (e) {}
+    await wait(620);
+    // silence - deliberately empty, this is what makes the reveal land
+    try { AuraHunter.setAura('dormant'); } catch (e) {}
+    await wait(760);
+    unstage(); veil(false);
+    await SystemMoment.show({ tier: 'progression', kicker: 'DUNGEON CLEARED',
+      title: (d && d.bossName) || 'BOSS DEFEATED',
+      body: 'THE DUNGEON HAS FALLEN', glyph: '⚔' });
+    // reward reveal, then System recognition
+    await rewardReveal(item);
+    if (item) {
+      await SystemMoment.show({ tier: legendary ? 'legendary' : 'major',
+        kicker: `${String(rarity).toUpperCase()} · ${String(item.slot || '').toUpperCase()}`,
+        title: item.name || 'ITEM ACQUIRED', body: item.desc || '', glyph: item.icon || '◈' });
+    }
+  }
+
+  /* ── REWARD ─────────────────────────────────────────────────────────────
+     The object materialises, holds, and turns. Uses the Phase 8a reward scene;
+     if it is unavailable the caller still gets its System identification. */
+  async function rewardReveal(item) {
+    if (!item) return;
+    if (reduced() || !window.AuraGL || !AuraGL.enabled) return;
+    let sc = null;
+    try { sc = AuraGL.sceneOf && AuraGL.sceneOf('reward'); } catch (e) {}
+    if (!sc || !sc.present) return;
+    try {
+      sc.present({ slot: item.slot, rarity: item.rarity });
+      stage('reward');
+      try { sc.frame(AuraGL.camera); } catch (e) { /* presentation only */ }
+      veil(true, item.rarity === 'Legendary' ? 'legendary' : 'progression');
+      const T = 1150;                       // materialisation
+      const t0 = performance.now();
+      await new Promise(res => {
+        const step = () => {
+          const k = Math.min(1, (performance.now() - t0) / T);
+          sc.setMaterialise(k);
+          k < 1 ? requestAnimationFrame(step) : res();
+        };
+        step();
+      });
+      await wait(1500);                     // hold - let the object be looked at
+    } catch (e) { /* presentation only */ }
+    // restore the shared camera for whatever renders next
+    try { const c = AuraGL.camera; if (c) { c.position.set(0, 0, 6); c.lookAt(0, 0, 0); } }
+    catch (e) { /* presentation only */ }
+    veil(false); unstage();
+  }
+
+  /* ── WORLD / TERRITORY EVENTS ───────────────────────────────────────────
+     Larger than a toast, using the existing moment engine. */
+  function worldEvent(ev) {
+    if (!ev) return Promise.resolve();
+    return SystemMoment.show({
+      tier: ev.tier || 'major',
+      kicker: ev.kicker || 'WORLD EVENT',
+      title: ev.title || '', body: ev.body || '', glyph: ev.glyph || '🌐',
+    });
+  }
+
+  return { dungeonEntry, dungeonClear, rewardReveal, damageWeight, worldEvent,
+           _stage: stage, _unstage: unstage, _veil: veil, wait };
+})();
+window.WorldCinema = WorldCinema;
 
 function switchView(name) {
   // Phase 4: tell the 3D runtime which view is showing. Observation only.
@@ -11127,6 +11606,18 @@ function renderCharCard() {
 // ── Dungeon damage notification ──
 function showDungeonDamageNotif(result, done) {
   const dungeon = profile.activeDungeon || {};
+  // A heavy hit earns a moment; ordinary chip damage keeps the quiet banner, so
+  // routine training never becomes exhausting to watch. The classification
+  // reads the damage numbers the gameplay already produced.
+  try {
+    if (WorldCinema.damageWeight(result) === 'heavy' && window.SystemMoment) {
+      SystemMoment.show({
+        tier: 'minor', kicker: '⚔ CRITICAL DAMAGE',
+        title: `-${Number(result.damage || 0).toLocaleString()}`,
+        body: `${dungeon.bossName || 'Boss'} · ${Math.round(result.newHp).toLocaleString()} HP REMAINING`,
+      });
+    }
+  } catch (e) { /* presentation only - the banner below is the real path */ }
   const hpPct = Math.max(0, (result.newHp / result.maxHp) * 100);
   const hpColor = hpPct > 60 ? 'var(--growing)' : hpPct > 30 ? 'var(--brass)' : 'var(--excess)';
   const banner = document.createElement('div');
@@ -11148,7 +11639,22 @@ function showDungeonDamageNotif(result, done) {
 }
 
 // ── Dungeon clear modal ──
+// The cinematic runs first and the existing claim modal follows it unchanged,
+// so the item is still claimed through exactly the same path.
 function showDungeonClearModal(item, done) {
+  let ran = false;
+  const present = () => { if (ran) return; ran = true; _showDungeonClearModal(item, done); };
+  try {
+    const d = profile.activeDungeon || _lastClearedDungeon || {};
+    Promise.resolve(WorldCinema.dungeonClear(item, d)).then(present, present);
+  } catch (e) { present(); }
+}
+
+// The dungeon is nulled out by checkDungeonClear before the modal is shown, so
+// keep the last one for presentation - a name to put on screen, nothing more.
+let _lastClearedDungeon = null;
+
+function _showDungeonClearModal(item, done) {
   const rColor = ({Common:'rgba(160,160,160,0.9)',Uncommon:'rgba(78,205,120,0.9)',Rare:'rgba(91,168,255,0.9)',Epic:'rgba(139,92,255,0.9)',Legendary:'rgba(255,214,107,1.0)'})[item.rarity] || 'rgba(91,168,255,0.9)';
   const statBonusHtml = item.statBonus
     ? Object.entries(item.statBonus).map(([s,v])=>`<span style="background:rgba(91,168,255,0.1);border:1px solid rgba(91,168,255,0.2);border-radius:4px;padding:2px 8px;font-family:var(--font-mono);font-size:11px;color:${rColor};">+${v} ${s} cap</span>`).join('')
@@ -18357,6 +18863,9 @@ async function startDungeon(chainKey, tier) {
   profile.activeDungeon = dungeon;
   renderInventory();
   showToast(`⚔ ${chain.dungeons[tier-1]?.name} dungeon entered. Train to deal damage.`, 'success');
+  // Presentation only, and deliberately after the write and the toast: the
+  // cinematic can never delay or block entering the dungeon.
+  try { WorldCinema.dungeonEntry(dungeon); } catch (e) { /* presentation only */ }
 }
 
 async function checkDungeonClear(exercises, runSummary) {
@@ -18377,6 +18886,7 @@ async function checkDungeonClear(exercises, runSummary) {
   if (cleared) {
     const itemKey = `${dungeon.chainKey}_${dungeon.tier}`;
     const item = ITEM_DEFINITIONS[itemKey];
+    try { _lastClearedDungeon = { ...dungeon }; } catch (e) { /* presentation only */ }
     if (item) {
       const invUpdate = { [`inventory.${dungeon.slot}`]: { ...item, condition: 100, earnedAt: todayStr() } };
       await writeUserFields({ activeDungeon: null, ...invUpdate });
@@ -18801,6 +19311,15 @@ window.focusWorldContinent = (ckey) => {
 
 // ── Handle Shadow World iframe requests ──
 window.addEventListener('message', async (e) => {
+  // The world iframe announces when its listeners are live. Restate the active
+  // state then, because the setActive sent at creation time can be lost.
+  if (e.data?.type === 'shadowWorldReady') {
+    try {
+      const active = document.querySelector('section.view.active')?.id === 'view-world';
+      e.source?.postMessage({ type: 'setActive', active }, '*');
+    } catch (err) { /* presentation only */ }
+    return;
+  }
   const iframe = document.querySelector('#view-world iframe');
   if (!iframe) return;
 

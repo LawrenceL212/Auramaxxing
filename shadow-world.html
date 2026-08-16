@@ -311,7 +311,9 @@ GAME_COUNTRIES.forEach(gc => gcPolyMap[gc.id] = []);
 
 // ── CANVAS ──
 const canvas = document.getElementById('c');
-const ctx = canvas.getContext('2d');
+// `let`, not `const`: buildBaseLayer() temporarily retargets the shared
+// drawing helpers (traceRing, drawTerritoryBoundaries) at the offscreen base.
+let ctx = canvas.getContext('2d');
 const W = 2048, H = 1024;
 canvas.width = W; canvas.height = H;
 
@@ -405,66 +407,64 @@ function isAntarcticaUnlocked() {
 }
 
 // ── DRAW ──
-function draw(t = 0) {
-  ctx.clearRect(0, 0, W, H);
-  ctx.fillStyle = '#020912';
-  ctx.fillRect(0, 0, W, H);
+/* ── DEPTH / ATMOSPHERE (Phase 8) ─────────────────────────────────────────
+   An equirectangular map is flat by construction. These layers give it a body:
+   limb darkening towards the edges, a horizon haze, and a vignette. They never
+   change, so they are rasterised once and blitted - the per-frame cost is two
+   drawImage calls, which is why the 30fps budget is unaffected. */
+let _depthLayer = null, _lockLayer = null;
 
-  // ── PHASE I: Ambient atmospheric layer ──
-  // Slow breathing light — the world feels alive
-  const breathe = 0.5 + Math.sin(t * 0.0008) * 0.1;
-  const atmGrad = ctx.createRadialGradient(W*0.3, H*0.2, 0, W*0.3, H*0.2, W*0.5);
-  atmGrad.addColorStop(0, `rgba(91,168,255,${0.015 * breathe})`);
-  atmGrad.addColorStop(1, 'transparent');
-  ctx.fillStyle = atmGrad; ctx.fillRect(0, 0, W, H);
+function buildDepthLayer() {
+  const c = document.createElement('canvas'); c.width = W; c.height = H;
+  const d = c.getContext('2d');
+  // limb darkening - the world curves away at the edges
+  const lg = d.createLinearGradient(0, 0, W, 0);
+  lg.addColorStop(0,    'rgba(1,4,10,0.62)');
+  lg.addColorStop(0.16, 'rgba(1,4,10,0.16)');
+  lg.addColorStop(0.5,  'rgba(1,4,10,0)');
+  lg.addColorStop(0.84, 'rgba(1,4,10,0.16)');
+  lg.addColorStop(1,    'rgba(1,4,10,0.62)');
+  d.fillStyle = lg; d.fillRect(0, 0, W, H);
+  // poles fall away as well, so the sphere reads in both axes
+  const vg = d.createLinearGradient(0, 0, 0, H);
+  vg.addColorStop(0,    'rgba(1,4,10,0.70)');
+  vg.addColorStop(0.22, 'rgba(1,4,10,0.10)');
+  vg.addColorStop(0.78, 'rgba(1,4,10,0.10)');
+  vg.addColorStop(1,    'rgba(1,4,10,0.70)');
+  d.fillStyle = vg; d.fillRect(0, 0, W, H);
+  // upper-atmosphere haze - a cold rim of light above the horizon line
+  const hz = d.createLinearGradient(0, H * 0.06, 0, H * 0.30);
+  hz.addColorStop(0, 'rgba(91,168,255,0.055)');
+  hz.addColorStop(1, 'transparent');
+  d.fillStyle = hz; d.fillRect(0, 0, W, H * 0.30);
+  const hz2 = d.createLinearGradient(0, H * 0.94, 0, H * 0.72);
+  hz2.addColorStop(0, 'rgba(139,92,255,0.045)');
+  hz2.addColorStop(1, 'transparent');
+  d.fillStyle = hz2; d.fillRect(0, H * 0.72, W, H * 0.28);
+  // corner vignette
+  const rg = d.createRadialGradient(W/2, H/2, H*0.28, W/2, H/2, W*0.62);
+  rg.addColorStop(0, 'transparent');
+  rg.addColorStop(1, 'rgba(0,2,6,0.55)');
+  d.fillStyle = rg; d.fillRect(0, 0, W, H);
+  return c;
+}
 
-  const atmGrad2 = ctx.createRadialGradient(W*0.7, H*0.7, 0, W*0.7, H*0.7, W*0.4);
-  atmGrad2.addColorStop(0, `rgba(139,92,255,${0.01 * breathe})`);
-  atmGrad2.addColorStop(1, 'transparent');
-  ctx.fillStyle = atmGrad2; ctx.fillRect(0, 0, W, H);
+// Exploration lock is existing state (EXPLORATION_UNLOCKS_AT). The map is shown
+// as scanned-but-not-yet-open rather than simply greyed out.
+function buildLockLayer() {
+  const c = document.createElement('canvas'); c.width = W; c.height = H;
+  const d = c.getContext('2d');
+  d.fillStyle = 'rgba(2,6,14,0.55)'; d.fillRect(0, 0, W, H);
+  d.strokeStyle = 'rgba(91,168,255,0.07)'; d.lineWidth = 1;
+  for (let y = 0; y < H; y += 4) { d.beginPath(); d.moveTo(0, y); d.lineTo(W, y); d.stroke(); }
+  return c;
+}
 
-  // Grid
-  ctx.strokeStyle = 'rgba(61,165,255,0.04)';
-  ctx.lineWidth = 0.5;
-  for(let lat=-75;lat<=75;lat+=15){const[,y]=ll2px(0,lat);ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();}
-  for(let lon=-180;lon<=180;lon+=30){const[x]=ll2px(lon,0);ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke();}
-
-  const antarcticaUnlocked = isAntarcticaUnlocked();
-
-  // ── Step 1: Fill country polygons ──
-  COUNTRIES_GEO.forEach(country => {
-    const gc = nameToGame[country.n];
-    if (!gc) return;
-    const isAntarctica = gc.ckey === 'antarctica';
-    if (isAntarctica && !antarcticaUnlocked) {
-      // Fog — very dark
-      country.r.forEach(ring => {
-        ctx.beginPath(); traceRing(ring);
-        ctx.fillStyle = '#03070f';
-        ctx.strokeStyle = 'rgba(148,163,184,0.06)';
-        ctx.lineWidth = 0.5;
-        ctx.fill(); ctx.stroke();
-      });
-      return;
-    }
-    const state = LIVE_COUNTRIES[gc.id];
-    const p = state?.ownerUid ? PLAYERS[state.ownerUid] : null;
-    const pulse = p ? 0.75 + Math.sin(t*0.003 + (ll2px(gc.lon||0,gc.lat||0)[0])*0.001)*0.12 : 1;
-    const fillCol = p ? `rgba(${p.r},${p.g},${p.b},${pulse})` : '#09162a';
-    const strokeCol = p ? `rgba(${p.r},${p.g},${p.b},0.45)` : 'rgba(61,165,255,0.1)';
-    country.r.forEach(ring => {
-      ctx.beginPath(); traceRing(ring);
-      ctx.fillStyle = fillCol;
-      ctx.strokeStyle = strokeCol;
-      ctx.lineWidth = p ? 1.0 : 0.4;
-      ctx.fill(); ctx.stroke();
-    });
-  });
-
-  // ── Step 2: Territory boundary outlines ──
+// Territory outlines. Extracted so the static base can render them too.
+function drawTerritoryBoundaries(auk) {
   GAME_COUNTRIES.forEach(gc => {
     const isAntarctica = gc.ckey === 'antarctica';
-    if (isAntarctica && !antarcticaUnlocked) return;
+    if (isAntarctica && !auk) return;
     const b = gcBounds[gc.id];
     if (!b || !b.rings.length) return;
     const state = LIVE_COUNTRIES[gc.id];
@@ -491,6 +491,107 @@ function draw(t = 0) {
     ctx.setLineDash([]);
     ctx.restore();
   });
+
+  // ── DEPTH (Phase 8) ──
+  // Composited here, not at the end: depth belongs to the environment, so it
+  // lands on the ocean and landmasses but NOT on the continent labels, country
+  // markers or soldier counts drawn below. Measured - blitting it over the top
+  // dimmed the whole informational layer by ~17%.
+  if (!_depthLayer) _depthLayer = buildDepthLayer();
+  ctx.drawImage(_depthLayer, 0, 0);
+}
+
+/* Static base. Everything that does not animate, rasterised once.
+   Keyed on the world state it depends on, so ownership changes rebuild it. */
+let _baseLayer = null, _baseKey = '';
+function baseKey() {
+  const owners = Object.keys(LIVE_COUNTRIES).sort()
+    .map(k => k + ':' + (LIVE_COUNTRIES[k]?.ownerUid || '')).join(',');
+  return (isAntarcticaUnlocked() ? 'a1' : 'a0') + '|' + owners;
+}
+function buildBaseLayer() {
+  const c = document.createElement('canvas'); c.width = W; c.height = H;
+  const b = c.getContext('2d');
+  const prev = ctx;                 // draw helpers below write through `ctx`
+  try {
+    ctx = b;
+    ctx.fillStyle = '#020912'; ctx.fillRect(0, 0, W, H);
+    // atmosphere at its mid point - the breathing is re-applied per frame
+    const a1 = ctx.createRadialGradient(W*0.3, H*0.2, 0, W*0.3, H*0.2, W*0.5);
+    a1.addColorStop(0, 'rgba(91,168,255,0.0075)'); a1.addColorStop(1, 'transparent');
+    ctx.fillStyle = a1; ctx.fillRect(0, 0, W, H);
+    const a2 = ctx.createRadialGradient(W*0.7, H*0.7, 0, W*0.7, H*0.7, W*0.4);
+    a2.addColorStop(0, 'rgba(139,92,255,0.005)'); a2.addColorStop(1, 'transparent');
+    ctx.fillStyle = a2; ctx.fillRect(0, 0, W, H);
+    // graticule
+    ctx.strokeStyle = 'rgba(61,165,255,0.04)'; ctx.lineWidth = 0.5;
+    for (let lat=-75; lat<=75; lat+=15){ const[,y]=ll2px(0,lat); ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W,y); ctx.stroke(); }
+    for (let lon=-180; lon<=180; lon+=30){ const[x]=ll2px(lon,0); ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,H); ctx.stroke(); }
+    const auk = isAntarcticaUnlocked();
+    // landmasses - owned ones are painted here unanimated and re-pulsed per frame
+    COUNTRIES_GEO.forEach(country => {
+      const gc = nameToGame[country.n];
+      if (!gc) return;
+      const isAnt = gc.ckey === 'antarctica';
+      if (isAnt && !auk) {
+        country.r.forEach(ring => { ctx.beginPath(); traceRing(ring);
+          ctx.fillStyle = '#03070f'; ctx.strokeStyle = 'rgba(148,163,184,0.06)';
+          ctx.lineWidth = 0.5; ctx.fill(); ctx.stroke(); });
+        return;
+      }
+      const st = LIVE_COUNTRIES[gc.id];
+      const p = st?.ownerUid ? PLAYERS[st.ownerUid] : null;
+      country.r.forEach(ring => { ctx.beginPath(); traceRing(ring);
+        ctx.fillStyle = p ? `rgba(${p.r},${p.g},${p.b},0.8)` : '#09162a';
+        ctx.strokeStyle = p ? `rgba(${p.r},${p.g},${p.b},0.45)` : 'rgba(61,165,255,0.1)';
+        ctx.lineWidth = p ? 1.0 : 0.4; ctx.fill(); ctx.stroke(); });
+    });
+    drawTerritoryBoundaries(auk);
+    if (!_depthLayer) _depthLayer = buildDepthLayer();
+    ctx.drawImage(_depthLayer, 0, 0);
+  } finally { ctx = prev; }
+  return c;
+}
+
+function draw(t = 0) {
+  // Static base: background, atmosphere, graticule, every landmass, boundaries
+  // and depth. Rebuilt only when the world state it depends on changes.
+  const key = baseKey();
+  if (!_baseLayer || key !== _baseKey) { _baseLayer = buildBaseLayer(); _baseKey = key; }
+  ctx.clearRect(0, 0, W, H);
+  ctx.drawImage(_baseLayer, 0, 0);
+
+  // The breathing light is the only animated part of the atmosphere, so it is
+  // re-applied over the base rather than making the base per-frame work.
+  const breathe = 0.5 + Math.sin(t * 0.0008) * 0.1;
+  const atm = ctx.createRadialGradient(W*0.3, H*0.2, 0, W*0.3, H*0.2, W*0.5);
+  atm.addColorStop(0, `rgba(91,168,255,${0.015 * (breathe - 0.5) + 0.0075})`);
+  atm.addColorStop(1, 'transparent');
+  ctx.fillStyle = atm; ctx.fillRect(0, 0, W, H);
+
+  const antarcticaUnlocked = isAntarcticaUnlocked();
+
+  // ── Only owned territories animate ──
+  // Unowned landmasses are already in the base and are never re-traced; this is
+  // what returns the world view to full frame rate while still animating.
+  COUNTRIES_GEO.forEach(country => {
+    const gc = nameToGame[country.n];
+    if (!gc) return;
+    if (gc.ckey === 'antarctica' && !antarcticaUnlocked) return;
+    const state = LIVE_COUNTRIES[gc.id];
+    const p = state?.ownerUid ? PLAYERS[state.ownerUid] : null;
+    if (!p) return;
+    const pulse = 0.75 + Math.sin(t*0.003 + (ll2px(gc.lon||0, gc.lat||0)[0])*0.001)*0.12;
+    country.r.forEach(ring => {
+      ctx.beginPath(); traceRing(ring);
+      ctx.fillStyle = `rgba(${p.r},${p.g},${p.b},${pulse})`;
+      ctx.strokeStyle = `rgba(${p.r},${p.g},${p.b},0.45)`;
+      ctx.lineWidth = 1.0;
+      ctx.fill(); ctx.stroke();
+    });
+  });
+
+  drawTerritoryBoundaries(antarcticaUnlocked);
 
   // ── Step 3: Continent name labels ──
   const CC = {northAmerica:[42,-100],southAmerica:[-20,-58],europe:[54,14],africa:[5,20],asia:[42,82],australia:[-28,134],antarctica:[-78,0]};
@@ -586,6 +687,53 @@ function draw(t = 0) {
       ctx.fillRect(barX, barY+3, barW*fillPct, barH);
     }
   });
+
+  // ── COMPOSITE: exploration state, entry transition ──
+  // (depth is composited earlier, under the markers - see below)
+  if (isExplorationLocked()) {
+    if (!_lockLayer) _lockLayer = buildLockLayer();
+    ctx.drawImage(_lockLayer, 0, 0);
+    // a slow sweep, so the lock reads as scanning rather than as a dead screen
+    const sy = ((t * 0.06) % (H + 260)) - 130;
+    const sg = ctx.createLinearGradient(0, sy - 130, 0, sy + 130);
+    sg.addColorStop(0, 'transparent');
+    sg.addColorStop(0.5, 'rgba(91,168,255,0.055)');
+    sg.addColorStop(1, 'transparent');
+    ctx.fillStyle = sg; ctx.fillRect(0, sy - 130, W, 260);
+  }
+
+  // Entry transition - the world resolves in rather than snapping on.
+  if (_swEnterFrom !== null) {
+    const k = Math.min(1, (t - _swEnterFrom) / 900);
+    if (k >= 1) { _swEnterFrom = null; }
+    else {
+      ctx.fillStyle = `rgba(2,6,14,${(1 - k) * 0.92})`;
+      ctx.fillRect(0, 0, W, H);
+      const bandY = H * (1 - k);
+      const bg = ctx.createLinearGradient(0, bandY - 90, 0, bandY + 90);
+      bg.addColorStop(0, 'transparent');
+      bg.addColorStop(0.5, `rgba(91,168,255,${0.16 * (1 - k)})`);
+      bg.addColorStop(1, 'transparent');
+      ctx.fillStyle = bg; ctx.fillRect(0, bandY - 90, W, 180);
+    }
+  }
+}
+// Set when the view becomes active, so entering the world is a transition.
+let _swEnterFrom = null;
+let _swEnterRaf = 0;
+/* The transition must drive its own frames. animate() only runs while the
+   parent has marked the view active, and a single draw would otherwise leave
+   the 0.92-alpha entry wash painted over the map permanently. This loop is
+   bounded by the transition itself and stops as soon as it completes, so no
+   permanent render loop is added. */
+function startEnterTransition() {
+  _swEnterFrom = performance.now();
+  if (_swEnterRaf) cancelAnimationFrame(_swEnterRaf);
+  const step = (t) => {
+    draw(t);
+    _swEnterRaf = (_swEnterFrom !== null) ? requestAnimationFrame(step) : 0;
+  };
+  _swEnterRaf = requestAnimationFrame(step);
 }
 
 let lastT = 0;
@@ -599,6 +747,7 @@ window.addEventListener('message', (e) => {
   const next = !!e.data.active;
   if (next === swActive) return;
   swActive = next;
+  if (swActive) startEnterTransition();
   if (swActive && !swRafQueued) { swRafQueued = true; requestAnimationFrame(animate); }
 });
 document.addEventListener('visibilitychange', () => {
@@ -643,6 +792,11 @@ function loadFromParent() {
       }
     });
     window.parent.postMessage({ type:'requestShadowWorldData' }, PARENT_ORIGIN);
+  // The parent creates this iframe lazily and posts setActive immediately, so
+  // that message can arrive before this module attaches its listener and be
+  // lost - leaving the canvas drawn once and never animating. Announce
+  // readiness and let the parent restate the current view.
+  window.parent.postMessage({ type:'shadowWorldReady' }, PARENT_ORIGIN);
   });
 }
 
