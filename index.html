@@ -917,14 +917,16 @@
   html[data-opening="1"] #sys-skip{ opacity:1; pointer-events:auto; }
   #sys-skip:hover, #sys-skip:active{ color:var(--text); }
 
-  /* Portrait phones: the Hunter sits high, text sits low, so they never fight
-     for the same band of the screen. */
-  @media (max-aspect-ratio:3/4){
-    #sys-open{ align-items:flex-end; }
-    #sys-open .beats{ padding-bottom:calc(7dvh + env(safe-area-inset-bottom,0px)); }
-    /* the ring reads as a horizon behind the raised figure */
-    #sys-open .ring{ top:38%; }
-  }
+  /* Portrait: the Hunter sits high, text sits low, so they never fight for the
+     same band of the screen. Keyed on html[data-orient] rather than an
+     aspect-ratio query so the opening composes from the same source of truth as
+     the System Moments and the 3D camera - an aspect query could not tell a
+     tablet from a phone, and 768x1024 sits exactly on the 3/4 boundary. */
+  html[data-orient="portrait"] #sys-open{ align-items:flex-end; }
+  html[data-orient="portrait"] #sys-open .beats{
+    padding-bottom:calc(7dvh + env(safe-area-inset-bottom,0px)); }
+  /* the ring reads as a horizon behind the raised figure */
+  html[data-orient="portrait"] #sys-open .ring{ top:38%; }
   /* Landscape: text moves off-centre so the figure stays the focal point. */
   @media (max-height:520px) and (orientation:landscape){
     #sys-open{ align-items:center; justify-content:flex-start; }
@@ -1113,9 +1115,11 @@
 
   @media (prefers-reduced-motion: reduce){
     .sm-host[data-burst="on"] .sm-ring{ animation:none; opacity:0; }
-    .sm-host[data-tier="major"] .sm-veil,
-    .sm-host[data-tier="progression"] .sm-veil,
-    .sm-host[data-tier="legendary"]  .sm-veil{ backdrop-filter:none; }
+    /* #sm-veil, not .sm-host .sm-veil: Phase 7 moved the veil out of the host
+       onto body so the Hunter could render between veil and text. These rules
+       kept the old descendant selector and silently stopped matching, which
+       meant reduced-motion users were still getting backdrop blur. */
+    #sm-veil{ backdrop-filter:none !important; -webkit-backdrop-filter:none !important; }
   }
 
   /* ── Accessibility + low-power: collapse to instant state changes.
@@ -3960,6 +3964,15 @@ function startAmbientSystem() {
   let running = true;
   let lastTime = 0;
 
+  // Fully occluded by a fullscreen cinematic? Then painting it is pure waste -
+  // the opening sits at z 1040 and a veiled System Moment at 1100, both opaque
+  // over this layer at z 0. Cheaper than stopping and restarting the loop, and
+  // it cannot desynchronise because it is evaluated per frame.
+  const occluded = () => {
+    const d = document.documentElement.dataset;
+    return d.opening === '1' || d.moment === 'hero';
+  };
+
   function tick(time) {
     if (!running) return;
     requestAnimationFrame(tick);
@@ -3967,6 +3980,7 @@ function startAmbientSystem() {
     // Throttle to ~20fps for performance
     if (time - lastTime < 50) return;
     lastTime = time;
+    if (occluded()) return;
 
     // Pause if page hidden
     if (document.hidden) return;
@@ -5167,6 +5181,13 @@ const SystemMoment = (() => {
       </div>`;
   }
 
+  /* Hold is READING TIME, not motion. Motion.wait collapses to 0 under
+     prefers-reduced-motion, which is right for animation sequencing but wrong
+     here: it made every System Moment appear and vanish within a frame, so a
+     reduced-motion user could never read the announcement. Reduce motion,
+     not legibility - the animations still collapse via Motion.play. */
+  const hold = (ms) => new Promise(r => setTimeout(r, ms));
+
   async function present(o) {
     const cfg = TIERS[o.tier] || TIERS.minor;
     const h = host();
@@ -5200,12 +5221,12 @@ const SystemMoment = (() => {
       if (cfg.burst) h.dataset.burst = 'on';
       await Motion.play(title, 'm-impact', 280);
       try { o.onImpact?.(); } catch (e) { console.warn('SystemMoment onImpact', e); }
-      await Motion.wait(cfg.hold);
+      await hold(cfg.hold);
     } else {
       Motion.rise(panel);
       if (kicker && !Motion.reduced()) Motion.transmit(kicker);
       try { o.onImpact?.(); } catch (e) { console.warn('SystemMoment onImpact', e); }
-      await Motion.wait(cfg.hold);
+      await hold(cfg.hold);
     }
 
     // aftermath - fall back to quiet
@@ -5260,6 +5281,14 @@ const SystemMoment = (() => {
       const dropped = queue; queue = [];
       dropped.forEach(q => { try { q._settle?.(); } catch (e) {} });
       clearStage();
+    },
+    /* The single veil implementation. WorldCinema drove its own copy of this,
+       which meant two functions creating and styling the same element. */
+    veil(on, tier) {
+      const v = veilLayer();
+      if (on) { v.dataset.tier = tier || 'major'; void v.offsetWidth; v.dataset.veil = 'on'; }
+      else { v.removeAttribute('data-veil'); v.removeAttribute('data-tier'); }
+      return v;
     },
     get pending() { return queue.length; },
     get busy() { return running; },
@@ -6710,16 +6739,8 @@ const WorldCinema = (() => {
     } catch (e) { /* presentation only */ }
     document.documentElement.removeAttribute('data-moment');
   }
-  // The veil is the Phase 7 layer; reuse it rather than inventing a second one.
-  function veil(on, tier) {
-    let v = document.getElementById('sm-veil');
-    if (!v) {
-      v = document.createElement('div'); v.id = 'sm-veil';
-      document.body.appendChild(v);
-    }
-    if (on) { v.dataset.tier = tier || 'major'; void v.offsetWidth; v.dataset.veil = 'on'; }
-    else { v.removeAttribute('data-veil'); v.removeAttribute('data-tier'); }
-  }
+  // Delegates to the moment engine's veil - one implementation, one element.
+  const veil = (on, tier) => SystemMoment.veil(on, tier);
 
   /* ── DUNGEON ENTRY ──────────────────────────────────────────────────────
      environment transition -> Hunter enters -> identification -> encounter */
