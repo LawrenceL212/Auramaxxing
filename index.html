@@ -1010,7 +1010,14 @@
               margin-bottom:10px; text-transform:uppercase; }
   .sm-title{ font-family:var(--font-display); font-weight:var(--weight-hero);
              font-size:clamp(26px,8vw,54px); line-height:var(--lh-tight);
-             color:var(--text); margin:0 0 8px; letter-spacing:var(--tracking-title); }
+             color:var(--text); margin:0 0 8px; letter-spacing:var(--tracking-title);
+             /* Titles carry real names - boss names in particular run long.
+                Nothing may spill its box; a single over-wide word breaks. */
+             overflow-wrap:anywhere; }
+  /* Long titles step the type down rather than overflowing. Measured against
+     'ANTARES THE SOVEREIGN BEAST', which spilled at 844x390. */
+  .sm-title[data-long="1"]{ font-size:clamp(22px,5.6vw,38px); }
+  .sm-title[data-long="2"]{ font-size:clamp(19px,4.6vw,30px); letter-spacing:.02em; }
   .sm-body{ font-family:var(--font-body); font-size:clamp(13px,3.4vw,17px);
             line-height:var(--lh-body); color:var(--text-dim); margin:0; }
   .sm-glyph{ font-size:clamp(30px,10vw,64px); line-height:1; margin-bottom:14px;
@@ -5029,7 +5036,8 @@ const SystemMoment = (() => {
         ${o.glyph ? `<div class="sm-glyph">${esc(o.glyph)}</div>` : ''}
         <div>
           ${o.kicker ? `<div class="sm-kicker">${esc(o.kicker)}</div>` : ''}
-          <h2 class="sm-title">${esc(o.title || '')}</h2>
+          <h2 class="sm-title"${(() => { const n = String(o.title || '').length;
+            return n > 26 ? ' data-long="2"' : n > 15 ? ' data-long="1"' : ''; })()}>${esc(o.title || '')}</h2>
           ${o.body ? `<p class="sm-body">${esc(o.body)}</p>` : ''}
         </div>
       </div>`;
@@ -5453,6 +5461,53 @@ function buildHunterScene({ THREE, quality, tier }) {
     pillars.add(p);
   }
   scene.add(pillars);
+  /* Boss presence. A mass behind and above the Hunter, deliberately built from
+     the same primitive vocabulary as the environment. Its job is scale: at ~4x
+     the Hunter's height it makes the figure read as small, which no amount of
+     type size can do. Hidden unless a raid cinematic asks for it. */
+  const boss = new THREE.Group();
+  boss.visible = false;
+  const bossMat = new THREE.MeshStandardMaterial({
+    color: 0x0b0d16, roughness: 0.92, metalness: 0.15,
+    transparent: true, opacity: 0 });
+  const bossEye = new THREE.MeshBasicMaterial({ color: 0xff5c6b, transparent: true, opacity: 0 });
+  const torso = new THREE.Mesh(new THREE.CylinderGeometry(1.15, 1.85, 4.4, 7), bossMat);
+  torso.position.y = 2.6;
+  const head = new THREE.Mesh(new THREE.OctahedronGeometry(0.95, 0), bossMat);
+  head.position.y = 5.3; head.scale.set(1, 1.25, 0.9);
+  for (const sx of [-1, 1]) {
+    const horn = new THREE.Mesh(new THREE.ConeGeometry(0.22, 1.5, 5), bossMat);
+    horn.position.set(sx * 0.62, 5.9, -0.15);
+    horn.rotation.z = sx * -0.42;
+    boss.add(horn);
+    const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.30, 0.44, 3.5, 6), bossMat);
+    arm.position.set(sx * 1.85, 2.9, -0.3);
+    arm.rotation.z = sx * 0.30;
+    boss.add(arm);
+    const eye = new THREE.Mesh(new THREE.SphereGeometry(0.14, 10, 8), bossEye);
+    eye.position.set(sx * 0.34, 5.42, 0.72);
+    boss.add(eye);
+  }
+  boss.add(torso, head);
+  boss.position.set(0, -1.0, -5.2);
+  scene.add(boss);
+  let bossAmt = 0, bossTarget = 0;
+  function setBoss(on, hex) {
+    bossTarget = on ? 1 : 0;
+    if (on) {
+      boss.visible = true;
+      if (hex) { try { bossEye.color.set(hex); } catch (e) {} }
+    }
+  }
+  function updateBoss(dt, t) {
+    const d = bossTarget - bossAmt;
+    bossAmt += Math.abs(d) < 0.002 ? d : d * Math.min(1, dt * 2.2);
+    bossMat.opacity = 0.97 * bossAmt;
+    bossEye.opacity = bossAmt * (0.75 + Math.sin(t * 2.6) * 0.25);
+    boss.position.y = -1.0 + (1 - bossAmt) * -1.4;   // rises into place
+    if (bossAmt <= 0.002 && bossTarget === 0) boss.visible = false;
+  }
+
   let envMode = 'none', envAmt = 0, envTarget = 0;
   function setEnvironment(mode) {
     const cfg = ENV_MODES[mode] || ENV_MODES.none;
@@ -5689,8 +5744,11 @@ function buildHunterScene({ THREE, quality, tier }) {
     freeze(on) { frozen = !!on; },
     // Presentation environment around the figure: none | dungeon | raid.
     setEnvironment,
+    // Raid boss presence. Presentation only - carries no raid state.
+    setBoss,
     update(dt, t) {
       updateEnvironment(dt);
+      updateBoss(dt, t);
       uniforms.uTime.value = frozen ? 0 : t;
       auraNow += (auraTarget - auraNow) * Math.min(1, dt * 2.2);
       uniforms.uAura.value = auraNow;
@@ -6462,6 +6520,20 @@ if (__auraDevEnabled()) {
     'reward-legendary': () => WorldCinema.rewardReveal({ name:'EXCALIBUR', slot:'weapon', rarity:'Legendary', desc:'Earned through dominance.' }),
     'reward-boots':     () => WorldCinema.rewardReveal({ name:'SHADOW GREAVES', slot:'boots', rarity:'Epic', desc:'Lower-body endurance, proven.' }),
     'reward-accessory': () => WorldCinema.rewardReveal({ name:'FOCUS SIGIL', slot:'accessory', rarity:'Legendary', desc:'The System keeps its own record.' }),
+    'raid-damage':    () => WorldCinema.raidMoment({ kind:'damage',
+        boss:{ name:'ANTARES THE SOVEREIGN BEAST' }, title:'-18,400',
+        detail:'ANTARES · 62% HP REMAINING' }),
+    'raid-phase':     () => WorldCinema.raidMoment({ kind:'phase',
+        boss:{ name:'ANTARES THE SOVEREIGN BEAST', eye:0xffd66b },
+        title:'ENRAGED', detail:'The boss stops holding back.' }),
+    'raid-victory':   () => WorldCinema.raidMoment({ kind:'victory',
+        boss:{ name:'ANTARES THE SOVEREIGN BEAST', eye:0xffd66b },
+        detail:'The party stands. The gate closes.' }),
+    'raid-victory-reward': () => WorldCinema.raidMoment({ kind:'victory',
+        boss:{ name:'ANTARES THE SOVEREIGN BEAST', eye:0xffd66b },
+        detail:'The party stands. The gate closes.',
+        item:{ name:'EXCALIBUR', slot:'weapon', rarity:'Legendary',
+               desc:'Earned through dominance.' } }),
     'world-event':    () => WorldCinema.worldEvent({ tier:'major', kicker:'TERRITORY CLAIMED',
         title:'SOUTH KOREA', body:'Your shadow army holds the region.', glyph:'🌐' }),
     'world-event-major': () => WorldCinema.worldEvent({ tier:'legendary', kicker:'WORLD EVENT',
@@ -6616,6 +6688,86 @@ const WorldCinema = (() => {
     veil(false); unstage();
   }
 
+  /* ── RAID ───────────────────────────────────────────────────────────────
+     Scale first, spectacle rationed. Normal raid updates stay quiet; the heavy
+     treatment is reserved for major damage, phase transitions and victory. */
+
+  // Framing for a raid: back and low, so the Hunter is small under the boss.
+  function frameRaid() {
+    const cam = window.AuraGL && AuraGL.camera;
+    if (!cam) return;
+    const portrait = window.innerHeight > window.innerWidth * 1.25;
+    cam.position.set(0, portrait ? 1.5 : 1.2, portrait ? 11.5 : 9.5);
+    cam.lookAt(0, portrait ? 1.9 : 1.6, -3);
+  }
+  function unframeRaid() {
+    const cam = window.AuraGL && AuraGL.camera;
+    if (!cam) return;
+    cam.position.set(0, 0, 6); cam.lookAt(0, 0, 0);
+  }
+
+  async function raidStage(colour) {
+    if (!stage('hunter', 'raid')) return false;
+    try { AuraHunter.setBoss(true, colour); } catch (e) {}
+    frameRaid();
+    return true;
+  }
+  function raidUnstage() {
+    try { AuraHunter.setBoss(false); } catch (e) {}
+    unframeRaid();
+    unstage();
+  }
+
+  /* raidMoment({kind, boss, detail})
+       'damage'  a major damage moment      - weighted, not every update
+       'phase'   a phase transition
+       'victory' the raid falls
+     `boss` and `detail` come from the raid view's already-resolved state. */
+  async function raidMoment(ev) {
+    if (!ev) return;
+    const kind = ev.kind || 'damage';
+    const name = (ev.boss && ev.boss.name) || 'RAID BOSS';
+    const colour = (ev.boss && ev.boss.eye) || 0xff5c6b;
+
+    if (kind === 'damage') {
+      // Deliberately the lightest of the three - a raid reports damage often.
+      return SystemMoment.show({ tier: 'minor', kicker: '⚔ MAJOR DAMAGE',
+        title: ev.title || 'HEAVY STRIKE', body: ev.detail || name });
+    }
+
+    const heavy = kind === 'victory';
+    if (reduced() || !(await raidStage(colour))) {
+      return SystemMoment.show({
+        tier: heavy ? 'legendary' : 'progression',
+        kicker: heavy ? 'RAID CLEARED' : 'PHASE TRANSITION',
+        title: heavy ? name : (ev.title || 'THE BOSS CHANGES'),
+        body: ev.detail || '', glyph: heavy ? '💀' : '◈' });
+    }
+
+    veil(true, heavy ? 'legendary' : 'progression');
+    try { AuraHunter.setAura('stirring'); } catch (e) {}
+    await wait(1000);                       // the boss rises - let it be seen
+    if (heavy) {
+      try { AuraHunter.setAura('surge'); } catch (e) {}
+      await wait(700);                      // the decisive blow
+      try { AuraHunter.setBoss(false); } catch (e) {}
+      await wait(900);                      // the mass goes down
+      try { AuraHunter.setAura('active'); } catch (e) {}
+      await wait(500);                      // aftermath, held quiet
+    } else {
+      try { AuraHunter.setAura('active'); } catch (e) {}
+      await wait(600);
+    }
+    await SystemMoment.show({
+      tier: heavy ? 'legendary' : 'progression',
+      kicker: heavy ? 'RAID CLEARED' : 'PHASE TRANSITION',
+      title: heavy ? name : (ev.title || 'THE BOSS CHANGES'),
+      body: ev.detail || '', glyph: heavy ? '💀' : '◈' });
+    try { AuraHunter.setAura('dormant'); } catch (e) {}
+    veil(false); raidUnstage();
+    if (heavy && ev.item) await rewardReveal(ev.item);
+  }
+
   /* ── WORLD / TERRITORY EVENTS ───────────────────────────────────────────
      Larger than a toast, using the existing moment engine. */
   function worldEvent(ev) {
@@ -6628,6 +6780,7 @@ const WorldCinema = (() => {
   }
 
   return { dungeonEntry, dungeonClear, rewardReveal, damageWeight, worldEvent,
+           raidMoment,
            _stage: stage, _unstage: unstage, _veil: veil, wait };
 })();
 window.WorldCinema = WorldCinema;
