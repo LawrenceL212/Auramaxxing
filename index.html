@@ -914,7 +914,9 @@
      for the same band of the screen. */
   @media (max-aspect-ratio:3/4){
     #sys-open{ align-items:flex-end; }
-    #sys-open .beats{ padding-bottom:11vh; }
+    #sys-open .beats{ padding-bottom:7vh; }
+    /* the ring reads as a horizon behind the raised figure */
+    #sys-open .ring{ top:38%; }
   }
   /* Landscape: text moves off-centre so the figure stays the focal point. */
   @media (max-height:520px) and (orientation:landscape){
@@ -5671,6 +5673,15 @@ const SystemOpening = (() => {
     });
   }
 
+  // Portrait composition. Landscape places the System text beside the Hunter;
+  // portrait has no side room, so instead of centring the figure and letting
+  // text fall across the legs, the camera aims low. That lifts the Hunter into
+  // the upper frame and opens deliberate negative space beneath him for the
+  // System block. The figure is NOT scaled down - only the aim changes, so the
+  // sense of height and depth is preserved.
+  const isPortrait = () => window.innerHeight > window.innerWidth * 1.25;
+  const lookY = () => (isPortrait() ? -0.58 : 0.05);
+
   // Camera language: a deliberate, very slow push-in with a little drift.
   function camera(from, to, ms) {
     const cam = window.AuraGL?.camera;
@@ -5684,7 +5695,7 @@ const SystemOpening = (() => {
           from[0] + (to[0] - from[0]) * e,
           from[1] + (to[1] - from[1]) * e,
           from[2] + (to[2] - from[2]) * e);
-        cam.lookAt(0, 0.05, 0);
+        cam.lookAt(0, lookY(), 0);
         if (k < 1) requestAnimationFrame(tick); else res();
       })();
     });
@@ -5718,15 +5729,19 @@ const SystemOpening = (() => {
     try { window.AuraGL?.activate?.('hunter'); } catch (e) {}
 
     const cam = window.AuraGL?.camera;
+    // A touch more distance in portrait: the figure sits higher, so the frame
+    // needs a little more headroom. 5.6 against 5.3 - not a shrink.
+    const pf = isPortrait();
     const near = [0, 0.15, 4.6], far = [0, 0.35, 9.5];
-    if (cam) { cam.position.set(far[0], far[1], far[2]); cam.lookAt(0, 0.05, 0); }
+    const midZ = pf ? 7.2 : 6.9, endZ = pf ? 5.6 : 5.3;
+    if (cam) { cam.position.set(far[0], far[1], far[2]); cam.lookAt(0, lookY(), 0); }
 
     if (!first) {
       // Returning Hunter: recognition only, ~700ms.
       cue('sys-recognise', 0.34);
       voidLevel(0.35, 0.75);
       H?.setReveal?.(1);
-      camera(far, near, 620);
+      camera(far, [0, 0.18, endZ], 620);
       say('so-kicker', 'SYSTEM · WELCOME BACK');
       say('so-line', (profile?.displayName || 'HUNTER').toUpperCase(), '2');
       H?.setAura?.('active');
@@ -5749,7 +5764,7 @@ const SystemOpening = (() => {
     clearBeats();
     voidLevel(0.86, 0.97);
     ramp(v => H?.setReveal?.(v), 0, 0.42, 1500);
-    camera(far, [0, 0.28, 6.9], 2600);
+    camera(far, [0, 0.28, midZ], 2600);
     await beat(1500);
 
     say('so-kicker', '◈ PRESENCE CONFIRMED');
@@ -5764,7 +5779,7 @@ const SystemOpening = (() => {
 
     /* ── 5. RECOGNITION - real state only, never invented ──────────────── */
     cue('sys-recognise', 0.4);
-    camera([0, 0.28, 6.9], [0, 0.18, 5.3], 2200);
+    camera([0, 0.28, midZ], [0, 0.18, endZ], 2200);
     say('so-kicker', '◈ HUNTER IDENTIFIED');
     say('so-line', (profile?.displayName || 'HUNTER').toUpperCase(), '2');
     await beat(900);
