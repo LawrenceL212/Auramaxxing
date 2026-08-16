@@ -149,7 +149,11 @@ if (process.argv.includes('--check')) {
       console.error(`FAIL ${label} is missing — run the extractor`);
       failed = true; continue;
     }
-    if (readFileSync(path, 'utf8') !== expected) {
+    // Compare line-ending agnostically: git may check these out as CRLF on
+    // Windows, and a spurious drift failure would train people to ignore the
+    // one guard that keeps shadow comparisons meaningful.
+    const norm = (t) => t.split(String.fromCharCode(13,10)).join(String.fromCharCode(10));
+    if (norm(readFileSync(path, 'utf8')) !== norm(expected)) {
       console.error(`FAIL ${label} is STALE.`);
       console.error('     The client source changed without regenerating the server mirror.');
       console.error('     Shadow comparisons would be meaningless. Run:');
