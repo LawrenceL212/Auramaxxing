@@ -7042,6 +7042,11 @@ function switchView(name) {
     renderQuestFeed();
   }
 }
+// The module scope is not the global scope. Three secondary-nav buttons use
+// inline onclick="switchView(...)" (Arsenal / Shadow Log / Gates), and inline
+// handlers resolve against window - so without this they threw ReferenceError
+// and did nothing. Same convention as the other 19 exports in this file.
+window.switchView = switchView;
 
 /* =========================================================================
    DATA LOAD
