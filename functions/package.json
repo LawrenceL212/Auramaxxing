@@ -1,0 +1,21 @@
+{
+  "name": "auramaxxing-functions",
+  "version": "1.0.0",
+  "description": "Trusted backend \u00e2\u20ac\u201d Phase 1, AP ledger shadow mode. Observational only.",
+  "type": "module",
+  "private": true,
+  "engines": {
+    "node": "22"
+  },
+  "main": "index.js",
+  "scripts": {
+    "generate": "node tools/extract-formulas.mjs",
+    "check:drift": "node tools/extract-formulas.mjs --check",
+    "test": "node --test \"test/*.test.mjs\"",
+    "verify": "npm run check:drift && npm run test"
+  },
+  "dependencies": {
+    "firebase-admin": "^12.6.0",
+    "firebase-functions": "^6.1.0"
+  }
+}

@@ -1,0 +1,273 @@
+/* GENERATED — verbatim mirror of /exercises.js, produced by
+   functions/tools/extract-formulas.mjs. Do not edit by hand. */
+// Base exercise library — muscle groups, equipment, bodyweight percentages, timed flags.
+// Each exercise now also has:
+//   intent: what physical quality it primarily develops
+//   statWeights: how Training XP is distributed across the 6 stats
+//   skillTier (optional): multiplier for calisthenics skill exercises (1.0–2.2)
+//
+// Intents: strength | hypertrophy | explosive | endurance | skill | mobility | defence |
+//          isometric | plyometric | balance | martial | sport
+//
+// Stats: strength | endurance | agility | focus | flexibility | defence
+//
+// Merged with each user's custom exercises at runtime (see rebuildExercisesAll in index.html).
+
+export const BASE_EXERCISES = {
+
+  // CHEST
+  "Bench Press":              { intent:"strength",    statWeights:{ strength:1.0 },                              muscles:{ "Middle Chest":1, "Triceps":0.6, "Front Shoulders":0.3 }, equipment:"Barbell" },
+  "Incline Bench Press":      { intent:"strength",    statWeights:{ strength:1.0 },                              muscles:{ "Upper Chest":1, "Front Shoulders":0.6, "Triceps":0.3 }, equipment:"Barbell" },
+  "Incline Dumbbell Press":   { intent:"strength",    statWeights:{ strength:1.0 },                              muscles:{ "Upper Chest":1, "Front Shoulders":0.6, "Triceps":0.3 }, equipment:"Dumbbell" },
+  "Dumbbell Fly":             { intent:"hypertrophy", statWeights:{ strength:0.8, defence:0.2 },                muscles:{ "Middle Chest":1, "Front Shoulders":0.2 }, equipment:"Dumbbell" },
+  "Push Up":                  { intent:"strength",    statWeights:{ strength:0.9, defence:0.1 },                muscles:{ "Middle Chest":1, "Triceps":0.6, "Front Shoulders":0.3 }, equipment:"Bodyweight", bwPercent:0.67 },
+  "Dips":                     { intent:"strength",    statWeights:{ strength:0.8, focus:0.2 },                   muscles:{ "Lower Chest":1, "Triceps":0.6, "Front Shoulders":0.3 }, equipment:"Bodyweight", bwPercent:0.85 },
+  "Decline Bench Press":      { intent:"strength",    statWeights:{ strength:1.0 },                              muscles:{ "Lower Chest":1, "Triceps":0.6, "Front Shoulders":0.2 }, equipment:"Barbell" },
+  "Decline Dumbbell Press":   { intent:"strength",    statWeights:{ strength:1.0 },                              muscles:{ "Lower Chest":1, "Triceps":0.6, "Front Shoulders":0.2 }, equipment:"Dumbbell" },
+  "Incline Dumbbell Fly":     { intent:"hypertrophy", statWeights:{ strength:0.8, defence:0.2 },                muscles:{ "Upper Chest":1, "Front Shoulders":0.3 }, equipment:"Dumbbell" },
+  "Decline Dumbbell Fly":     { intent:"hypertrophy", statWeights:{ strength:0.8, defence:0.2 },                muscles:{ "Lower Chest":1, "Front Shoulders":0.2 }, equipment:"Dumbbell" },
+  "Cable Crossover":          { intent:"hypertrophy", statWeights:{ strength:0.8, focus:0.2 },                   muscles:{ "Middle Chest":1, "Front Shoulders":0.2 }, equipment:"Cable" },
+  "Single-Arm Cable Crossover": { intent:"hypertrophy", statWeights:{ strength:0.8, focus:0.2 },                muscles:{ "Middle Chest":1, "Front Shoulders":0.2 }, equipment:"Cable" },
+  "Cable Fly Low-to-High":    { intent:"hypertrophy", statWeights:{ strength:0.8, focus:0.2 },                   muscles:{ "Upper Chest":1, "Front Shoulders":0.3 }, equipment:"Cable" },
+  "Cable Fly High-to-Low":    { intent:"hypertrophy", statWeights:{ strength:0.8, focus:0.2 },                   muscles:{ "Lower Chest":1, "Front Shoulders":0.2 }, equipment:"Cable" },
+  "Pec Deck Machine":         { intent:"hypertrophy", statWeights:{ strength:0.8, defence:0.2 },                muscles:{ "Middle Chest":1 }, equipment:"Machine" },
+  "Svend Press":              { intent:"hypertrophy", statWeights:{ strength:0.9, focus:0.1 },                   muscles:{ "Middle Chest":1, "Front Shoulders":0.2 }, equipment:"Dumbbell" },
+  "Dumbbell Pullover":        { intent:"strength",    statWeights:{ strength:0.8, defence:0.2 },                muscles:{ "Lats":1, "Middle Chest":0.3, "Triceps":0.2 }, equipment:"Dumbbell" },
+  "Incline Push Up":          { intent:"strength",    statWeights:{ strength:0.9, defence:0.1 },                muscles:{ "Lower Chest":1, "Triceps":0.3, "Front Shoulders":0.2 }, equipment:"Bodyweight", bwPercent:0.55 },
+  "Decline Push Up":          { intent:"strength",    statWeights:{ strength:0.9, defence:0.1 },                muscles:{ "Upper Chest":1, "Front Shoulders":0.6, "Triceps":0.3 }, equipment:"Bodyweight", bwPercent:0.75 },
+  "Diamond Push Up":          { intent:"skill",       statWeights:{ strength:0.7, focus:0.3 },    skillTier:1.2,  muscles:{ "Triceps":1, "Middle Chest":0.6, "Front Shoulders":0.3 }, equipment:"Bodyweight", bwPercent:0.75 },
+  "Wide Push Up":             { intent:"strength",    statWeights:{ strength:0.9, defence:0.1 },                muscles:{ "Middle Chest":1, "Front Shoulders":0.3 }, equipment:"Bodyweight", bwPercent:0.67 },
+  "Archer Push Up":           { intent:"skill",       statWeights:{ strength:0.6, focus:0.4 },    skillTier:1.4,  muscles:{ "Middle Chest":1, "Triceps":0.6, "Front Shoulders":0.3 }, equipment:"Bodyweight", bwPercent:0.67 },
+  "Ring Dips":                { intent:"skill",       statWeights:{ strength:0.6, focus:0.4 },    skillTier:1.2,  muscles:{ "Lower Chest":1, "Triceps":0.6, "Front Shoulders":0.3 }, equipment:"Bodyweight", bwPercent:0.85 },
+
+  // SHOULDERS
+  "Overhead Press":           { intent:"strength",    statWeights:{ strength:1.0 },                              muscles:{ "Front Shoulders":1, "Lateral Shoulders":0.6, "Triceps":0.6, "Upper Abs":0.2 }, equipment:"Barbell" },
+  "Lateral Raise":            { intent:"defence",    statWeights:{ defence:0.8, strength:0.2 },                muscles:{ "Lateral Shoulders":1, "Traps":0.2 }, equipment:"Dumbbell" },
+  "Front Raise":              { intent:"defence",    statWeights:{ defence:0.8, strength:0.2 },                muscles:{ "Front Shoulders":1, "Upper Chest":0.2 }, equipment:"Dumbbell" },
+  "Rear Delt Fly":            { intent:"defence",    statWeights:{ defence:1.0 },                              muscles:{ "Rear Shoulders":1, "Upper Back":0.6, "Traps":0.2 }, equipment:"Dumbbell" },
+  "Arnold Press":             { intent:"strength",    statWeights:{ strength:0.8, defence:0.2 },                muscles:{ "Front Shoulders":1, "Lateral Shoulders":0.6, "Triceps":0.3 }, equipment:"Dumbbell" },
+  "Dumbbell Shoulder Press":  { intent:"strength",    statWeights:{ strength:1.0 },                              muscles:{ "Front Shoulders":1, "Lateral Shoulders":0.6, "Triceps":0.6 }, equipment:"Dumbbell" },
+  "Machine Shoulder Press":   { intent:"strength",    statWeights:{ strength:1.0 },                              muscles:{ "Front Shoulders":1, "Lateral Shoulders":0.3, "Triceps":0.6 }, equipment:"Machine" },
+  "Push Press":               { intent:"explosive",   statWeights:{ agility:0.5, strength:0.5 },                 muscles:{ "Front Shoulders":1, "Lateral Shoulders":0.6, "Triceps":0.6, "Quads":0.3, "Hip Flexors":0.2 }, equipment:"Barbell" },
+  "Cable Lateral Raise":      { intent:"defence",    statWeights:{ defence:0.8, strength:0.2 },                muscles:{ "Lateral Shoulders":1, "Traps":0.2 }, equipment:"Cable" },
+  "Standing One-Arm Cable Lateral Raise": { intent:"defence", statWeights:{ defence:0.8, focus:0.2 },         muscles:{ "Lateral Shoulders":1, "Traps":0.2 }, equipment:"Cable" },
+  "Plate Front Raise":        { intent:"defence",    statWeights:{ defence:0.8, strength:0.2 },                muscles:{ "Front Shoulders":1, "Upper Chest":0.2, "Lateral Shoulders":0.2 }, equipment:"Barbell" },
+  "Upright Row":              { intent:"strength",    statWeights:{ strength:0.8, defence:0.2 },                muscles:{ "Lateral Shoulders":1, "Traps":0.6, "Biceps":0.2 }, equipment:"Barbell" },
+  "Cuban Press":              { intent:"defence",    statWeights:{ defence:0.9, strength:0.1 },                muscles:{ "Lateral Shoulders":0.7, "Rear Shoulders":0.7, "Front Shoulders":0.4, "Traps":0.2 }, equipment:"Dumbbell" },
+  "Cable Rear Delt Fly":      { intent:"defence",    statWeights:{ defence:1.0 },                              muscles:{ "Rear Shoulders":1, "Upper Back":0.3 }, equipment:"Cable" },
+  "Face Pull":                { intent:"defence",    statWeights:{ defence:1.0 },                              muscles:{ "Rear Shoulders":1, "Upper Back":0.6, "Traps":0.3 }, equipment:"Cable" },
+  "Cable Standing Supinated Face Pull (Rope)": { intent:"defence", statWeights:{ defence:1.0 },               muscles:{ "Rear Shoulders":1, "Upper Back":0.6, "Traps":0.3 }, equipment:"Cable" },
+  "Reverse Pec Deck":         { intent:"defence",    statWeights:{ defence:1.0 },                              muscles:{ "Rear Shoulders":1, "Upper Back":0.3 }, equipment:"Machine" },
+  "Pike Push Up":             { intent:"skill",       statWeights:{ focus:0.6, strength:0.4 },   skillTier:1.2,  muscles:{ "Front Shoulders":1, "Lateral Shoulders":0.3, "Triceps":0.6 }, equipment:"Bodyweight", bwPercent:0.7 },
+  "Handstand Push Up":        { intent:"skill",       statWeights:{ focus:0.7, strength:0.3 },   skillTier:2.0,  muscles:{ "Front Shoulders":1, "Lateral Shoulders":0.6, "Triceps":0.6 }, equipment:"Bodyweight", bwPercent:1.0 },
+  "Wall Walk":                { intent:"skill",       statWeights:{ focus:0.6, strength:0.4 },   skillTier:1.2,  muscles:{ "Front Shoulders":1, "Upper Abs":0.6, "Lats":0.2 }, equipment:"Bodyweight" },
+  "Pseudo Planche Push Up":   { intent:"skill",       statWeights:{ focus:0.6, strength:0.4 },   skillTier:1.2,  muscles:{ "Front Shoulders":1, "Middle Chest":0.6, "Triceps":0.4 }, equipment:"Bodyweight", bwPercent:0.67 },
+  "Pseudo planche push up":   { intent:"skill",       statWeights:{ focus:0.6, strength:0.4 },   skillTier:1.2,  muscles:{ "Front Shoulders":1, "Middle Chest":0.6, "Triceps":0.4 }, equipment:"Bodyweight", bwPercent:0.67 },
+
+  // BACK
+  "Deadlift":                 { intent:"strength",    statWeights:{ strength:1.0 },                              muscles:{ "Lower Back":1, "Glutes":1, "Hamstrings":0.6, "Lats":0.6, "Traps":0.6, "Quads":0.3, "Forearms":0.3 }, equipment:"Barbell" },
+  "Pull Up":                  { intent:"strength",    statWeights:{ strength:0.8, focus:0.2 },                   muscles:{ "Lats":1, "Upper Back":0.6, "Biceps":0.6, "Forearms":0.3 }, equipment:"Bodyweight", bwPercent:1.0 },
+  "Lat Pulldown":             { intent:"strength",    statWeights:{ strength:0.9, defence:0.1 },                muscles:{ "Lats":1, "Upper Back":0.3, "Biceps":0.6 }, equipment:"Cable" },
+  "Wide Neutral-Grip Lat Pulldown": { intent:"strength", statWeights:{ strength:0.9, defence:0.1 },            muscles:{ "Lats":1, "Upper Back":0.4, "Biceps":0.5 }, equipment:"Cable" },
+  "Barbell Row":              { intent:"strength",    statWeights:{ strength:1.0 },                              muscles:{ "Upper Back":1, "Lats":0.6, "Biceps":0.6, "Traps":0.3, "Lower Back":0.2 }, equipment:"Barbell" },
+  "Seated Cable Row":         { intent:"strength",    statWeights:{ strength:0.9, defence:0.1 },                muscles:{ "Upper Back":1, "Lats":0.6, "Biceps":0.6 }, equipment:"Cable" },
+  "T-Bar Row":                { intent:"strength",    statWeights:{ strength:1.0 },                              muscles:{ "Upper Back":1, "Lats":0.6, "Biceps":0.6, "Lower Back":0.2 }, equipment:"Machine" },
+  "One-Arm Dumbbell Row":     { intent:"strength",    statWeights:{ strength:0.9, focus:0.1 },                   muscles:{ "Lats":1, "Upper Back":0.6, "Biceps":0.6 }, equipment:"Dumbbell" },
+  "Sumo Deadlift":            { intent:"strength",    statWeights:{ strength:1.0 },                              muscles:{ "Glutes":1, "Quads":0.6, "Hamstrings":0.6, "Lower Back":0.4, "Traps":0.3 }, equipment:"Barbell" },
+  "Stiff-Leg Deadlift":       { intent:"strength",    statWeights:{ strength:0.9, defence:0.1 },                muscles:{ "Hamstrings":1, "Lower Back":0.6, "Glutes":0.3 }, equipment:"Barbell" },
+  "Rack Pull":                { intent:"strength",    statWeights:{ strength:1.0 },                              muscles:{ "Traps":1, "Upper Back":0.6, "Lower Back":0.6, "Forearms":0.3 }, equipment:"Barbell" },
+  "Chin Up":                  { intent:"strength",    statWeights:{ strength:0.8, focus:0.2 },                   muscles:{ "Lats":1, "Biceps":1, "Upper Back":0.3, "Forearms":0.2 }, equipment:"Bodyweight", bwPercent:1.0 },
+  "Wide Grip Pull Up":        { intent:"strength",    statWeights:{ strength:0.8, focus:0.2 },                   muscles:{ "Lats":1, "Upper Back":0.6, "Biceps":0.3 }, equipment:"Bodyweight", bwPercent:1.0 },
+  "Neutral Grip Pull Up":     { intent:"strength",    statWeights:{ strength:0.8, focus:0.2 },                   muscles:{ "Lats":1, "Biceps":0.6, "Upper Back":0.3, "Forearms":0.2 }, equipment:"Bodyweight", bwPercent:1.0 },
+  "Commando Pull Up":         { intent:"skill",       statWeights:{ strength:0.6, focus:0.4 },   skillTier:1.4,  muscles:{ "Lats":1, "Biceps":0.6, "Upper Back":0.3, "Obliques":0.2 }, equipment:"Bodyweight", bwPercent:1.0 },
+  "Muscle Up":                { intent:"skill",       statWeights:{ focus:0.6, strength:0.4 },   skillTier:2.0,  muscles:{ "Lats":1, "Triceps":1, "Upper Back":0.6, "Biceps":0.6, "Middle Chest":0.3 }, equipment:"Bodyweight", bwPercent:1.0 },
+  "Inverted Row":             { intent:"strength",    statWeights:{ strength:0.9, defence:0.1 },                muscles:{ "Upper Back":1, "Lats":0.6, "Biceps":0.6, "Rear Shoulders":0.3 }, equipment:"Bodyweight", bwPercent:0.7 },
+  "Close Grip Lat Pulldown":  { intent:"strength",    statWeights:{ strength:0.9, defence:0.1 },                muscles:{ "Lats":1, "Biceps":0.6, "Upper Back":0.3 }, equipment:"Cable" },
+  "Straight Arm Pulldown":    { intent:"strength",    statWeights:{ strength:0.8, defence:0.2 },                muscles:{ "Lats":1, "Triceps":0.3 }, equipment:"Cable" },
+  "Cable Standing Straight-Arm Lat Pushdown (Rope)": { intent:"strength", statWeights:{ strength:0.8, defence:0.2 }, muscles:{ "Lats":1, "Triceps":0.3 }, equipment:"Cable" },
+  "Pendlay Row":              { intent:"strength",    statWeights:{ strength:1.0 },                              muscles:{ "Upper Back":1, "Lats":0.6, "Biceps":0.6, "Lower Back":0.2 }, equipment:"Barbell" },
+  "Chest Supported Row":      { intent:"strength",    statWeights:{ strength:0.9, defence:0.1 },                muscles:{ "Upper Back":1, "Lats":0.3, "Biceps":0.6, "Rear Shoulders":0.3 }, equipment:"Machine" },
+  "Meadows Row":              { intent:"strength",    statWeights:{ strength:0.9, focus:0.1 },                   muscles:{ "Lats":1, "Upper Back":0.6, "Biceps":0.6 }, equipment:"Barbell" },
+  "Good Morning":             { intent:"strength",    statWeights:{ strength:0.9, defence:0.1 },                muscles:{ "Hamstrings":1, "Lower Back":1, "Glutes":0.6 }, equipment:"Barbell" },
+  "Back Extension":           { intent:"defence",    statWeights:{ defence:0.8, strength:0.2 },                muscles:{ "Lower Back":1, "Glutes":0.6, "Hamstrings":0.6 }, equipment:"Bodyweight" },
+  "Superman":                 { intent:"defence",    statWeights:{ defence:1.0 },                              muscles:{ "Lower Back":1, "Glutes":0.6, "Rear Shoulders":0.2 }, equipment:"Bodyweight" },
+  "Dumbbell Shrugs":          { intent:"defence",    statWeights:{ defence:0.9, strength:0.1 },                muscles:{ "Traps":1, "Forearms":0.2 }, equipment:"Dumbbell" },
+  "Farmers Carry":            { intent:"strength",    statWeights:{ strength:0.6, focus:0.4 },                   muscles:{ "Traps":1, "Forearms":1 }, equipment:"Dumbbell", timed:true },
+  "Dead Hang":                { intent:"strength",    statWeights:{ strength:0.6, focus:0.4 },                   muscles:{ "Forearms":1, "Lats":0.3 }, equipment:"Bodyweight", timed:true, bwPercent:1.0 },
+  "Scapula Push Up":          { intent:"defence",    statWeights:{ defence:1.0 },                              muscles:{ "Traps":0.6, "Upper Back":1, "Rear Shoulders":0.4 }, equipment:"Bodyweight" },
+  "Scapular Push Up":         { intent:"defence",    statWeights:{ defence:1.0 },                              muscles:{ "Traps":0.6, "Upper Back":1, "Rear Shoulders":0.4 }, equipment:"Bodyweight" },
+  "Scapula Pull Up":          { intent:"defence",    statWeights:{ defence:0.9, focus:0.1 },                   muscles:{ "Traps":1, "Upper Back":0.6, "Lats":0.4 }, equipment:"Bodyweight" },
+
+  // ARMS
+  "Barbell Curl":             { intent:"strength",    statWeights:{ strength:1.0 },                              muscles:{ "Biceps":1, "Forearms":0.3 }, equipment:"Barbell" },
+  "Dumbbell Curl":            { intent:"strength",    statWeights:{ strength:1.0 },                              muscles:{ "Biceps":1, "Forearms":0.3 }, equipment:"Dumbbell" },
+  "Alternate Incline Dumbbell Curl": { intent:"strength", statWeights:{ strength:0.9, focus:0.1 },              muscles:{ "Biceps":1, "Forearms":0.2 }, equipment:"Dumbbell" },
+  "Hammer Curl":              { intent:"strength",    statWeights:{ strength:0.7, defence:0.3 },                muscles:{ "Biceps":0.6, "Forearms":1 }, equipment:"Dumbbell" },
+  "Preacher Curl":            { intent:"hypertrophy", statWeights:{ strength:0.9, defence:0.1 },                muscles:{ "Biceps":1 }, equipment:"Barbell" },
+  "EZ Bar Curl":              { intent:"strength",    statWeights:{ strength:1.0 },                              muscles:{ "Biceps":1, "Forearms":0.3 }, equipment:"Barbell" },
+  "Cable Curl":               { intent:"hypertrophy", statWeights:{ strength:0.9, defence:0.1 },                muscles:{ "Biceps":1, "Forearms":0.2 }, equipment:"Cable" },
+  "Concentration Curl":       { intent:"hypertrophy", statWeights:{ strength:0.9, focus:0.1 },                   muscles:{ "Biceps":1 }, equipment:"Dumbbell" },
+  "Spider Curl":              { intent:"hypertrophy", statWeights:{ strength:0.9, defence:0.1 },                muscles:{ "Biceps":1 }, equipment:"Barbell" },
+  "Zottman Curl":             { intent:"strength",    statWeights:{ strength:0.7, defence:0.3 },                muscles:{ "Biceps":0.6, "Forearms":1 }, equipment:"Dumbbell" },
+  "Tricep Pushdown":          { intent:"strength",    statWeights:{ strength:1.0 },                              muscles:{ "Triceps":1 }, equipment:"Cable" },
+  "Skull Crusher":            { intent:"strength",    statWeights:{ strength:1.0 },                              muscles:{ "Triceps":1 }, equipment:"Barbell" },
+  "Overhead Tricep Extension":{ intent:"strength",    statWeights:{ strength:1.0 },                              muscles:{ "Triceps":1 }, equipment:"Dumbbell" },
+  "Close Grip Bench Press":   { intent:"strength",    statWeights:{ strength:1.0 },                              muscles:{ "Triceps":1, "Middle Chest":0.6, "Front Shoulders":0.3 }, equipment:"Barbell" },
+  "Tricep Kickback":          { intent:"hypertrophy", statWeights:{ strength:0.9, defence:0.1 },                muscles:{ "Triceps":1 }, equipment:"Dumbbell" },
+  "JM Press":                 { intent:"strength",    statWeights:{ strength:1.0 },                              muscles:{ "Triceps":1, "Middle Chest":0.3 }, equipment:"Barbell" },
+  "Bench Dip":                { intent:"strength",    statWeights:{ strength:0.9, defence:0.1 },                muscles:{ "Triceps":1, "Lower Chest":0.3, "Front Shoulders":0.3 }, equipment:"Bodyweight", bwPercent:0.75 },
+  "Wrist Curl":               { intent:"defence",    statWeights:{ defence:0.8, agility:0.2 },                 muscles:{ "Forearms":1 }, equipment:"Dumbbell" },
+  "Reverse Wrist Curl":       { intent:"defence",    statWeights:{ defence:0.8, agility:0.2 },                 muscles:{ "Forearms":1 }, equipment:"Dumbbell" },
+  "Ring triceps extension":   { intent:"skill",       statWeights:{ strength:0.6, focus:0.4 },   skillTier:1.2,  muscles:{ "Triceps":1, "Front Shoulders":0.2 }, equipment:"Bodyweight" },
+
+  // CORE
+  "Crunch":                   { intent:"strength",    statWeights:{ strength:0.6, endurance:0.4 },               muscles:{ "Upper Abs":1 }, equipment:"Bodyweight" },
+  "Plank":                    { intent:"isometric",   statWeights:{ strength:0.5, endurance:0.5 },               muscles:{ "Upper Abs":0.6, "Lower Abs":0.6, "Obliques":0.3, "Front Shoulders":0.2 }, equipment:"Bodyweight", timed:true },
+  "Hanging Leg Raise":        { intent:"skill",       statWeights:{ focus:0.5, agility:0.5 },                    muscles:{ "Lower Abs":1, "Hip Flexors":0.6, "Forearms":0.2 }, equipment:"Bodyweight" },
+  "Cable Crunch":             { intent:"strength",    statWeights:{ strength:0.7, endurance:0.3 },               muscles:{ "Upper Abs":1, "Middle Abs":0.3 }, equipment:"Cable" },
+  "Russian Twist":            { intent:"strength",    statWeights:{ strength:0.6, agility:0.4 },                 muscles:{ "Obliques":1, "Upper Abs":0.3 }, equipment:"Bodyweight" },
+  "Reverse Crunch":           { intent:"strength",    statWeights:{ strength:0.6, focus:0.4 },                   muscles:{ "Lower Abs":1, "Hip Flexors":0.3 }, equipment:"Bodyweight" },
+  "Bicycle Crunch":           { intent:"strength",    statWeights:{ strength:0.5, agility:0.5 },                 muscles:{ "Obliques":1, "Upper Abs":0.6 }, equipment:"Bodyweight" },
+  "Side Plank":               { intent:"isometric",   statWeights:{ strength:0.5, endurance:0.5 },               muscles:{ "Obliques":1, "Lateral Shoulders":0.2 }, equipment:"Bodyweight", timed:true },
+  "Hanging Knee Raise":       { intent:"skill",       statWeights:{ focus:0.5, agility:0.5 },    skillTier:1.0,  muscles:{ "Lower Abs":1, "Hip Flexors":0.6, "Forearms":0.2 }, equipment:"Bodyweight" },
+  "Toes to Bar":              { intent:"skill",       statWeights:{ focus:0.6, agility:0.4 },    skillTier:1.4,  muscles:{ "Lower Abs":1, "Hip Flexors":0.6, "Forearms":0.3 }, equipment:"Bodyweight" },
+  "Cable Woodchopper":        { intent:"strength",    statWeights:{ strength:0.5, agility:0.5 },                 muscles:{ "Obliques":1, "Upper Abs":0.3, "Lats":0.2 }, equipment:"Cable" },
+  "V-Up":                     { intent:"strength",    statWeights:{ strength:0.6, focus:0.4 },                   muscles:{ "Upper Abs":1, "Lower Abs":1, "Hip Flexors":0.6 }, equipment:"Bodyweight" },
+  "Mountain Climber":         { intent:"endurance",   statWeights:{ endurance:0.5, agility:0.5 },                muscles:{ "Lower Abs":1, "Hip Flexors":0.6, "Front Shoulders":0.3 }, equipment:"Bodyweight", timed:true },
+  "Ab Wheel Rollout":         { intent:"skill",       statWeights:{ focus:0.5, strength:0.5 },   skillTier:1.2,  muscles:{ "Upper Abs":1, "Lower Abs":0.6, "Lats":0.3, "Triceps":0.2 }, equipment:"Bodyweight" },
+  "Dragon Flag":              { intent:"skill",       statWeights:{ focus:0.6, strength:0.4 },   skillTier:1.7,  muscles:{ "Lower Abs":1, "Upper Abs":0.6, "Hip Flexors":0.3, "Lats":0.2 }, equipment:"Bodyweight" },
+  "Sit Up":                   { intent:"strength",    statWeights:{ strength:0.7, endurance:0.3 },               muscles:{ "Upper Abs":1, "Hip Flexors":0.6, "Middle Abs":0.3 }, equipment:"Bodyweight" },
+  "Decline Sit Up":           { intent:"strength",    statWeights:{ strength:0.7, endurance:0.3 },               muscles:{ "Upper Abs":1, "Hip Flexors":0.6, "Middle Abs":0.3 }, equipment:"Bodyweight" },
+  "Flutter Kicks":            { intent:"endurance",   statWeights:{ agility:0.6, endurance:0.4 },                muscles:{ "Lower Abs":1, "Hip Flexors":0.6 }, equipment:"Bodyweight", timed:true },
+  "L-Sit":                    { intent:"skill",       statWeights:{ focus:0.7, strength:0.3 },   skillTier:1.7,  muscles:{ "Lower Abs":1, "Hip Flexors":1, "Triceps":0.3, "Front Shoulders":0.2 }, equipment:"Bodyweight", timed:true },
+  "Lying Leg Raise":          { intent:"strength",    statWeights:{ strength:0.6, focus:0.4 },                   muscles:{ "Lower Abs":1, "Hip Flexors":0.6 }, equipment:"Bodyweight" },
+
+  // LEGS
+  "Squat":                    { intent:"strength",    statWeights:{ strength:1.0 },                              muscles:{ "Quads":1, "Glutes":1, "Hamstrings":0.3, "Lower Back":0.2, "Hip Flexors":0.2 }, equipment:"Barbell" },
+  "Front Squat":              { intent:"strength",    statWeights:{ strength:0.9, focus:0.1 },                   muscles:{ "Quads":1, "Glutes":0.6, "Hip Flexors":0.2, "Upper Back":0.2 }, equipment:"Barbell" },
+  "Leg Press":                { intent:"strength",    statWeights:{ strength:1.0 },                              muscles:{ "Quads":1, "Glutes":0.6, "Hamstrings":0.2 }, equipment:"Machine" },
+  "Lunges":                   { intent:"strength",    statWeights:{ strength:0.7, agility:0.3 },                 muscles:{ "Quads":1, "Glutes":1, "Hamstrings":0.3, "Hip Flexors":0.2 }, equipment:"Dumbbell", bwPercent:0.5 },
+  "Leg Extension":            { intent:"hypertrophy", statWeights:{ strength:0.8, defence:0.2 },                muscles:{ "Quads":1 }, equipment:"Machine" },
+  "Leg Curl":                 { intent:"hypertrophy", statWeights:{ strength:0.8, defence:0.2 },                muscles:{ "Hamstrings":1 }, equipment:"Machine" },
+  "Romanian Deadlift":        { intent:"strength",    statWeights:{ strength:0.9, defence:0.1 },                muscles:{ "Hamstrings":1, "Glutes":0.6, "Lower Back":0.6 }, equipment:"Barbell" },
+  "Hip Thrust":               { intent:"strength",    statWeights:{ strength:0.9, defence:0.1 },                muscles:{ "Glutes":1, "Hamstrings":0.6 }, equipment:"Barbell" },
+  "Calf Raise":               { intent:"endurance",   statWeights:{ endurance:0.8, defence:0.2 },               muscles:{ "Calves":1 }, equipment:"Machine" },
+  "Standing Calf Raise":      { intent:"endurance",   statWeights:{ endurance:0.8, defence:0.2 },               muscles:{ "Calves":1 }, equipment:"Machine" },
+  "Seated Calf Raise":        { intent:"endurance",   statWeights:{ endurance:0.8, defence:0.2 },               muscles:{ "Calves":1 }, equipment:"Machine" },
+  "Donkey Calf Raise":        { intent:"endurance",   statWeights:{ endurance:0.8, defence:0.2 },               muscles:{ "Calves":1 }, equipment:"Machine" },
+  "Single Leg Calf Raise":    { intent:"balance",     statWeights:{ endurance:0.5, focus:0.3, agility:0.2 },     muscles:{ "Calves":1 }, equipment:"Bodyweight" },
+  "Hack Squat":               { intent:"strength",    statWeights:{ strength:1.0 },                              muscles:{ "Quads":1, "Glutes":0.6, "Hamstrings":0.2 }, equipment:"Machine" },
+  "Bulgarian Split Squat":    { intent:"strength",    statWeights:{ strength:0.6, agility:0.4 },                 muscles:{ "Quads":1, "Glutes":1, "Hamstrings":0.3, "Hip Flexors":0.2 }, equipment:"Dumbbell" },
+  "Goblet Squat":             { intent:"strength",    statWeights:{ strength:0.8, agility:0.2 },                 muscles:{ "Quads":1, "Glutes":0.6, "Upper Back":0.2 }, equipment:"Dumbbell" },
+  "Pistol Squat":             { intent:"skill",       statWeights:{ agility:0.6, strength:0.4 },   skillTier:1.4, muscles:{ "Quads":1, "Glutes":0.6, "Hip Flexors":0.3 }, equipment:"Bodyweight", bwPercent:0.72 },
+  "Jump Squat":               { intent:"plyometric",  statWeights:{ agility:0.7, strength:0.3 },                 muscles:{ "Quads":1, "Glutes":1, "Calves":0.6 }, equipment:"Bodyweight", bwPercent:0.56 },
+  "Wall Sit":                 { intent:"isometric",   statWeights:{ endurance:0.7, strength:0.3 },               muscles:{ "Quads":1, "Glutes":0.3 }, equipment:"Bodyweight", timed:true },
+  "Bodyweight Squat":         { intent:"strength",    statWeights:{ strength:0.8, endurance:0.2 },               muscles:{ "Quads":1, "Glutes":0.6 }, equipment:"Bodyweight", bwPercent:0.56 },
+  "Walking Lunge":            { intent:"strength",    statWeights:{ strength:0.6, agility:0.4 },                 muscles:{ "Quads":1, "Glutes":1, "Hamstrings":0.3, "Calves":0.2 }, equipment:"Dumbbell", bwPercent:0.5 },
+  "Reverse Lunge":            { intent:"strength",    statWeights:{ strength:0.6, agility:0.4 },                 muscles:{ "Quads":1, "Glutes":1, "Hip Flexors":0.2 }, equipment:"Dumbbell", bwPercent:0.5 },
+  "Step Up":                  { intent:"strength",    statWeights:{ strength:0.7, agility:0.3 },                 muscles:{ "Quads":1, "Glutes":1, "Hamstrings":0.2, "Hip Flexors":0.2 }, equipment:"Dumbbell", bwPercent:0.8 },
+  "Nordic Curl":              { intent:"skill",       statWeights:{ strength:0.7, agility:0.3 },   skillTier:1.2, muscles:{ "Hamstrings":1, "Lower Back":0.3, "Glutes":0.2 }, equipment:"Bodyweight", bwPercent:0.8 },
+  "Glute Bridge":             { intent:"strength",    statWeights:{ strength:0.8, defence:0.2 },                muscles:{ "Glutes":1, "Hamstrings":0.6 }, equipment:"Bodyweight", bwPercent:0.5 },
+  "Cable Kickback":           { intent:"hypertrophy", statWeights:{ strength:0.8, defence:0.2 },                muscles:{ "Glutes":1, "Hamstrings":0.3 }, equipment:"Cable" },
+  "Burpee":                   { intent:"plyometric",  statWeights:{ agility:0.5, endurance:0.5 },                muscles:{ "Quads":0.6, "Glutes":0.6, "Front Shoulders":0.6, "Triceps":0.3, "Upper Abs":0.3 }, equipment:"Bodyweight" },
+  "Bear Crawl":               { intent:"endurance",   statWeights:{ endurance:0.5, agility:0.5 },                muscles:{ "Front Shoulders":0.6, "Upper Abs":0.6, "Triceps":0.3, "Hip Flexors":0.3 }, equipment:"Bodyweight", timed:true },
+  "Box Jump":                 { intent:"plyometric",  statWeights:{ agility:0.7, strength:0.3 },                 muscles:{ "Quads":1, "Glutes":1, "Calves":0.6 }, equipment:"Bodyweight" },
+
+  // RUNNING & CARDIO
+  "Running":          { intent:"endurance",  statWeights:{ endurance:0.9, defence:0.1 },           muscles:{ "Quads":0.6, "Hamstrings":0.6, "Glutes":0.6, "Calves":1, "Hip Flexors":0.3 }, equipment:"Bodyweight", timed:true, timedUnit:"mins" },
+  "Easy Run":         { intent:"endurance",  statWeights:{ endurance:0.9, defence:0.1 },           muscles:{ "Quads":0.6, "Hamstrings":0.6, "Glutes":0.6, "Calves":1, "Hip Flexors":0.3 }, equipment:"Bodyweight", timed:true, timedUnit:"mins" },
+  "Tempo Run":        { intent:"endurance",  statWeights:{ endurance:0.8, agility:0.2 },            muscles:{ "Quads":0.6, "Hamstrings":0.6, "Glutes":0.6, "Calves":1, "Hip Flexors":0.3 }, equipment:"Bodyweight", timed:true, timedUnit:"mins" },
+  "Long Run":         { intent:"endurance",  statWeights:{ endurance:0.95, defence:0.05 },         muscles:{ "Quads":0.6, "Hamstrings":0.6, "Glutes":0.6, "Calves":1, "Hip Flexors":0.3 }, equipment:"Bodyweight", timed:true, timedUnit:"mins" },
+  "Race":             { intent:"endurance",  statWeights:{ endurance:0.8, focus:0.2 },              muscles:{ "Quads":0.6, "Hamstrings":0.6, "Glutes":0.6, "Calves":1, "Hip Flexors":0.3 }, equipment:"Bodyweight", timed:true, timedUnit:"mins" },
+  "Sprinting":        { intent:"explosive",  statWeights:{ agility:0.7, endurance:0.2, strength:0.1 }, muscles:{ "Quads":1, "Hamstrings":1, "Glutes":1, "Calves":0.6, "Hip Flexors":0.6 }, equipment:"Bodyweight" },
+  "Interval Running": { intent:"endurance",  statWeights:{ endurance:0.6, agility:0.4 },            muscles:{ "Quads":0.6, "Hamstrings":0.6, "Glutes":0.6, "Calves":1, "Hip Flexors":0.3 }, equipment:"Bodyweight", timed:true, timedUnit:"mins" },
+  "Hill Sprints":     { intent:"explosive",  statWeights:{ agility:0.5, strength:0.3, endurance:0.2 }, muscles:{ "Quads":1, "Glutes":1, "Hamstrings":0.6, "Calves":0.6, "Hip Flexors":0.6 }, equipment:"Bodyweight", timed:true, timedUnit:"mins" },
+  "Treadmill Run":    { intent:"endurance",  statWeights:{ endurance:0.9, defence:0.1 },           muscles:{ "Quads":0.6, "Hamstrings":0.6, "Glutes":0.6, "Calves":1, "Hip Flexors":0.3 }, equipment:"Machine", timed:true, timedUnit:"mins" },
+  "Stair Climb":      { intent:"endurance",  statWeights:{ endurance:0.7, strength:0.3 },           muscles:{ "Quads":1, "Glutes":1, "Calves":0.6, "Hamstrings":0.3 }, equipment:"Machine", timed:true, timedUnit:"mins" },
+  "Jump Rope":        { intent:"endurance",  statWeights:{ agility:0.6, endurance:0.4 },            muscles:{ "Calves":1, "Quads":0.3, "Front Shoulders":0.2 }, equipment:"Bodyweight", timed:true, timedUnit:"mins" },
+
+  // ROCK CLIMBING
+  "Bouldering":           { intent:"sport", statWeights:{ focus:0.35, strength:0.35, agility:0.2, endurance:0.1 }, muscles:{ "Forearms":1, "Lats":0.9, "Upper Back":0.7, "Biceps":0.7, "Front Shoulders":0.5, "Upper Abs":0.4, "Quads":0.3 }, equipment:"Bodyweight", timed:true, timedUnit:"mins" },
+  "Sport Climbing":       { intent:"sport", statWeights:{ focus:0.3, strength:0.3, endurance:0.3, agility:0.1 },   muscles:{ "Forearms":1, "Lats":0.9, "Upper Back":0.6, "Biceps":0.6, "Quads":0.5, "Calves":0.4, "Upper Abs":0.3 }, equipment:"Bodyweight", timed:true, timedUnit:"mins" },
+  "Top Rope Climbing":    { intent:"sport", statWeights:{ strength:0.4, focus:0.3, endurance:0.2, agility:0.1 },   muscles:{ "Forearms":0.9, "Lats":0.8, "Upper Back":0.6, "Biceps":0.5, "Quads":0.4, "Calves":0.3 }, equipment:"Bodyweight", timed:true, timedUnit:"mins" },
+  "Traditional Climbing": { intent:"sport", statWeights:{ focus:0.35, strength:0.3, endurance:0.25, agility:0.1 }, muscles:{ "Forearms":1, "Lats":0.9, "Upper Back":0.7, "Biceps":0.6, "Quads":0.5, "Calves":0.4, "Upper Abs":0.3 }, equipment:"Bodyweight", timed:true, timedUnit:"mins" },
+
+  // SWIMMING
+  "Freestyle Swimming":   { intent:"sport", statWeights:{ endurance:0.5, strength:0.25, defence:0.15, agility:0.1 }, muscles:{ "Lats":1, "Front Shoulders":0.9, "Triceps":0.7, "Upper Back":0.6, "Glutes":0.4, "Quads":0.3, "Calves":0.3 }, equipment:"Bodyweight", timed:true, timedUnit:"mins" },
+  "Breaststroke Swimming":{ intent:"sport", statWeights:{ endurance:0.5, strength:0.25, defence:0.15, agility:0.1 }, muscles:{ "Front Shoulders":0.9, "Lats":0.7, "Quads":0.7, "Inner Thighs":0.6, "Triceps":0.5, "Glutes":0.4 }, equipment:"Bodyweight", timed:true, timedUnit:"mins" },
+  "Butterfly Swimming":   { intent:"sport", statWeights:{ strength:0.35, endurance:0.4, agility:0.15, defence:0.1 }, muscles:{ "Lats":1, "Front Shoulders":1, "Triceps":0.8, "Upper Back":0.7, "Glutes":0.6, "Lower Back":0.5, "Upper Abs":0.5 }, equipment:"Bodyweight", timed:true, timedUnit:"mins" },
+  "Backstroke Swimming":  { intent:"sport", statWeights:{ endurance:0.5, strength:0.25, defence:0.25 },             muscles:{ "Lats":1, "Upper Back":0.8, "Rear Shoulders":0.7, "Biceps":0.6, "Glutes":0.4, "Quads":0.3 }, equipment:"Bodyweight", timed:true, timedUnit:"mins" },
+  "Open Water Swimming":  { intent:"sport", statWeights:{ endurance:0.55, strength:0.25, focus:0.1, defence:0.1 }, muscles:{ "Lats":1, "Front Shoulders":0.8, "Upper Back":0.6, "Triceps":0.6, "Glutes":0.4, "Quads":0.3 }, equipment:"Bodyweight", timed:true, timedUnit:"mins" },
+  "HIIT Swimming":        { intent:"sport", statWeights:{ endurance:0.4, strength:0.3, agility:0.2, defence:0.1 }, muscles:{ "Lats":1, "Front Shoulders":1, "Triceps":0.8, "Upper Back":0.7, "Glutes":0.5, "Quads":0.4 }, equipment:"Bodyweight", timed:true, timedUnit:"mins" },
+
+  // FLEXIBILITY & MOBILITY
+  "German Hang":                  { intent:"mobility", statWeights:{ flexibility:0.7, defence:0.3 },               muscles:{ "Front Shoulders":1, "Biceps":0.8, "Forearms":0.6, "Upper Back":0.5, "Chest":0.4 }, equipment:"Bodyweight", timed:true, timedUnit:"secs" },
+  "German hang":                  { intent:"mobility", statWeights:{ flexibility:0.7, defence:0.3 },               muscles:{ "Front Shoulders":1, "Biceps":0.8, "Forearms":0.6, "Upper Back":0.5, "Chest":0.4 }, equipment:"Bodyweight", timed:true, timedUnit:"secs" },
+  "German Hang Progression":      { intent:"mobility", statWeights:{ flexibility:0.7, defence:0.3 },               muscles:{ "Front Shoulders":1, "Biceps":0.9, "Forearms":0.7, "Upper Back":0.5, "Chest":0.5 }, equipment:"Bodyweight", timed:true, timedUnit:"secs" },
+  "Front Splits":                 { intent:"mobility", statWeights:{ flexibility:1.0 },                             muscles:{ "Hip Flexors":1, "Hamstrings":1, "Quads":0.6, "Glutes":0.4, "Inner Thighs":0.3 }, equipment:"Bodyweight", timed:true, timedUnit:"secs" },
+  "Side Splits":                  { intent:"mobility", statWeights:{ flexibility:1.0 },                             muscles:{ "Inner Thighs":1, "Hip Flexors":0.8, "Hamstrings":0.7, "Glutes":0.4 }, equipment:"Bodyweight", timed:true, timedUnit:"secs" },
+  "Middle Splits":                { intent:"mobility", statWeights:{ flexibility:1.0 },                             muscles:{ "Inner Thighs":1, "Hip Flexors":0.9, "Hamstrings":0.6, "Glutes":0.3 }, equipment:"Bodyweight", timed:true, timedUnit:"secs" },
+  "Pike Stretch":                 { intent:"mobility", statWeights:{ flexibility:0.9, defence:0.1 },               muscles:{ "Hamstrings":1, "Lower Back":0.5, "Calves":0.4 }, equipment:"Bodyweight", timed:true, timedUnit:"secs" },
+  "Hip Flexor Stretch":           { intent:"mobility", statWeights:{ flexibility:0.9, defence:0.1 },               muscles:{ "Hip Flexors":1, "Quads":0.5, "Glutes":0.3 }, equipment:"Bodyweight", timed:true, timedUnit:"secs" },
+  "Pancake Stretch":              { intent:"mobility", statWeights:{ flexibility:1.0 },                             muscles:{ "Inner Thighs":1, "Hamstrings":0.9, "Lower Back":0.4 }, equipment:"Bodyweight", timed:true, timedUnit:"secs" },
+  "Shoulder Flexibility Training":{ intent:"mobility", statWeights:{ flexibility:0.8, defence:0.2 },               muscles:{ "Front Shoulders":0.8, "Rear Shoulders":0.8, "Triceps":0.4, "Upper Back":0.4 }, equipment:"Bodyweight", timed:true, timedUnit:"secs" },
+  "Thoracic Mobility":            { intent:"mobility", statWeights:{ flexibility:0.7, defence:0.3 },               muscles:{ "Upper Back":1, "Rear Shoulders":0.6, "Lower Back":0.4 }, equipment:"Bodyweight", timed:true, timedUnit:"secs" },
+  "Hip Mobility Routine":         { intent:"mobility", statWeights:{ flexibility:0.8, defence:0.2 },               muscles:{ "Hip Flexors":1, "Inner Thighs":0.8, "Glutes":0.6, "Hamstrings":0.5 }, equipment:"Bodyweight", timed:true, timedUnit:"mins" },
+  "Full Body Stretching":         { intent:"mobility", statWeights:{ flexibility:0.9, defence:0.1 },               muscles:{ "Hamstrings":0.6, "Hip Flexors":0.6, "Inner Thighs":0.5, "Upper Back":0.5, "Front Shoulders":0.4, "Calves":0.4 }, equipment:"Bodyweight", timed:true, timedUnit:"mins" },
+  "Yoga":                         { intent:"mobility", statWeights:{ flexibility:0.7, defence:0.2, focus:0.1 },    muscles:{ "Hip Flexors":0.8, "Hamstrings":0.7, "Upper Back":0.6, "Inner Thighs":0.6, "Front Shoulders":0.5, "Lower Back":0.5 }, equipment:"Bodyweight", timed:true, timedUnit:"mins" },
+
+  // CYCLING
+  "Cycling":            { intent:"endurance", statWeights:{ endurance:0.8, strength:0.2 },              muscles:{ "Quads":1, "Hamstrings":0.7, "Glutes":0.8, "Calves":0.7, "Hip Flexors":0.4 }, equipment:"Bodyweight", timed:true, timedUnit:"mins" },
+  "Road Cycling":       { intent:"endurance", statWeights:{ endurance:0.8, strength:0.2 },              muscles:{ "Quads":1, "Hamstrings":0.7, "Glutes":0.8, "Calves":0.7, "Hip Flexors":0.4 }, equipment:"Bodyweight", timed:true, timedUnit:"mins" },
+  "Mountain Biking":    { intent:"sport",     statWeights:{ endurance:0.5, strength:0.3, agility:0.2 }, muscles:{ "Quads":1, "Hamstrings":0.7, "Glutes":0.8, "Calves":0.6, "Upper Back":0.4, "Front Shoulders":0.4, "Forearms":0.5, "Upper Abs":0.3 }, equipment:"Bodyweight", timed:true, timedUnit:"mins" },
+  "Stationary Bike":    { intent:"endurance", statWeights:{ endurance:0.85, defence:0.15 },            muscles:{ "Quads":1, "Hamstrings":0.6, "Glutes":0.7, "Calves":0.6, "Hip Flexors":0.3 }, equipment:"Machine", timed:true, timedUnit:"mins" },
+  "Spin Class":         { intent:"endurance", statWeights:{ endurance:0.8, agility:0.2 },               muscles:{ "Quads":1, "Hamstrings":0.7, "Glutes":0.8, "Calves":0.6, "Hip Flexors":0.4 }, equipment:"Machine", timed:true, timedUnit:"mins" },
+  "Cycling Intervals":  { intent:"explosive", statWeights:{ agility:0.4, endurance:0.4, strength:0.2 }, muscles:{ "Quads":1, "Hamstrings":0.8, "Glutes":0.8, "Calves":0.6, "Hip Flexors":0.4 }, equipment:"Bodyweight", timed:true, timedUnit:"mins" },
+
+  // RACKET SPORTS
+  "Tennis":             { intent:"sport", statWeights:{ agility:0.4, endurance:0.3, focus:0.2, strength:0.1 }, muscles:{ "Forearms":1, "Front Shoulders":0.8, "Lateral Shoulders":0.6, "Obliques":0.7, "Quads":0.6, "Calves":0.6, "Upper Back":0.4 }, equipment:"Bodyweight", timed:true, timedUnit:"mins" },
+  "Tennis Drills":      { intent:"sport", statWeights:{ agility:0.5, endurance:0.3, focus:0.2 },               muscles:{ "Forearms":0.9, "Front Shoulders":0.7, "Obliques":0.6, "Quads":0.7, "Calves":0.6, "Hip Flexors":0.4 }, equipment:"Bodyweight", timed:true, timedUnit:"mins" },
+
+  // TEAM SPORTS
+  "Football (Soccer)":  { intent:"sport", statWeights:{ agility:0.4, endurance:0.4, strength:0.1, focus:0.1 },  muscles:{ "Quads":1, "Hamstrings":0.9, "Calves":0.8, "Glutes":0.6, "Hip Flexors":0.5, "Upper Abs":0.2 }, equipment:"Bodyweight", timed:true, timedUnit:"mins" },
+  "Football Drills":    { intent:"sport", statWeights:{ agility:0.5, endurance:0.3, focus:0.2 },                muscles:{ "Quads":1, "Hamstrings":0.8, "Calves":0.7, "Glutes":0.5, "Hip Flexors":0.6 }, equipment:"Bodyweight", timed:true, timedUnit:"mins" },
+  "American Football":  { intent:"sport", statWeights:{ strength:0.35, endurance:0.35, agility:0.2, focus:0.1 },muscles:{ "Quads":1, "Hamstrings":0.8, "Glutes":0.7, "Front Shoulders":0.5, "Upper Back":0.5, "Triceps":0.4, "Calves":0.5 }, equipment:"Bodyweight", timed:true, timedUnit:"mins" },
+  "Basketball":         { intent:"sport", statWeights:{ agility:0.45, endurance:0.35, strength:0.1, focus:0.1 },muscles:{ "Quads":1, "Calves":0.9, "Glutes":0.7, "Hamstrings":0.6, "Front Shoulders":0.4, "Forearms":0.3, "Upper Abs":0.3 }, equipment:"Bodyweight", timed:true, timedUnit:"mins" },
+  "Basketball Drills":  { intent:"sport", statWeights:{ agility:0.5, endurance:0.3, focus:0.2 },                muscles:{ "Quads":1, "Calves":0.8, "Glutes":0.6, "Hamstrings":0.5, "Hip Flexors":0.5, "Front Shoulders":0.3 }, equipment:"Bodyweight", timed:true, timedUnit:"mins" },
+
+  // BOXING & MARTIAL ARTS
+  "Boxing — Bag Work":      { intent:"martial", statWeights:{ agility:0.4, endurance:0.3, focus:0.2, strength:0.1 }, muscles:{ "Front Shoulders":1, "Triceps":0.8, "Obliques":0.8, "Upper Abs":0.7, "Forearms":0.7, "Quads":0.4, "Calves":0.4 }, equipment:"Bodyweight", timed:true, timedUnit:"mins" },
+  "Boxing — Sparring":      { intent:"martial", statWeights:{ agility:0.4, endurance:0.3, focus:0.2, strength:0.1 }, muscles:{ "Front Shoulders":1, "Triceps":0.8, "Obliques":0.8, "Upper Abs":0.7, "Forearms":0.7, "Quads":0.5, "Calves":0.5, "Hip Flexors":0.4 }, equipment:"Bodyweight", timed:true, timedUnit:"mins" },
+  "Boxing — Shadow Boxing": { intent:"martial", statWeights:{ agility:0.4, endurance:0.3, focus:0.2, strength:0.1 }, muscles:{ "Front Shoulders":0.9, "Triceps":0.7, "Obliques":0.7, "Upper Abs":0.6, "Forearms":0.5, "Quads":0.3, "Calves":0.3 }, equipment:"Bodyweight", timed:true, timedUnit:"mins" },
+  "Boxing — Pad Work":      { intent:"martial", statWeights:{ agility:0.35, endurance:0.3, focus:0.25, strength:0.1 },muscles:{ "Front Shoulders":1, "Triceps":0.9, "Obliques":0.8, "Upper Abs":0.7, "Forearms":0.8, "Quads":0.4, "Calves":0.4 }, equipment:"Bodyweight", timed:true, timedUnit:"mins" },
+
+  // CALISTHENICS — FRONT LEVER PROGRESSION
+  "Tuck Front Lever":         { intent:"skill", statWeights:{ focus:0.7, strength:0.3 }, skillTier:1.2, muscles:{ "Lats":1, "Upper Abs":0.6, "Biceps":0.3, "Forearms":0.3 }, equipment:"Bodyweight", timed:true, bwPercent:1.0 },
+  "Advanced Tuck Front Lever":{ intent:"skill", statWeights:{ focus:0.7, strength:0.3 }, skillTier:1.4, muscles:{ "Lats":1, "Upper Abs":0.6, "Lower Abs":0.3, "Biceps":0.3, "Forearms":0.3 }, equipment:"Bodyweight", timed:true, bwPercent:1.0 },
+  "Single Leg Front Lever":   { intent:"skill", statWeights:{ focus:0.7, strength:0.3 }, skillTier:1.7, muscles:{ "Lats":1, "Lower Abs":0.6, "Upper Abs":0.6, "Biceps":0.3, "Forearms":0.3 }, equipment:"Bodyweight", timed:true, bwPercent:1.0 },
+  "Straddle Front Lever":     { intent:"skill", statWeights:{ focus:0.7, strength:0.3 }, skillTier:1.7, muscles:{ "Lats":1, "Lower Abs":0.6, "Upper Abs":0.6, "Biceps":0.3, "Forearms":0.3 }, equipment:"Bodyweight", timed:true, bwPercent:1.0 },
+  "Front Lever":              { intent:"skill", statWeights:{ focus:0.7, strength:0.3 }, skillTier:2.0, muscles:{ "Lats":1, "Lower Abs":1, "Upper Abs":0.6, "Biceps":0.3, "Forearms":0.6 }, equipment:"Bodyweight", timed:true, bwPercent:1.0 },
+  "Front Lever Row":          { intent:"skill", statWeights:{ focus:0.6, strength:0.4 }, skillTier:1.4, muscles:{ "Lats":1, "Upper Back":0.6, "Biceps":0.6 }, equipment:"Bodyweight" },
+  "Front Lever Raise":        { intent:"skill", statWeights:{ focus:0.7, strength:0.3 }, skillTier:1.4, muscles:{ "Lats":1, "Lower Abs":0.6, "Upper Abs":0.6 }, equipment:"Bodyweight" },
+  "Ice Cream Makers":         { intent:"skill", statWeights:{ focus:0.6, strength:0.4 }, skillTier:1.7, muscles:{ "Lats":1, "Upper Abs":0.6, "Triceps":0.3 }, equipment:"Bodyweight" },
+
+  // CALISTHENICS — BACK LEVER & SKIN THE CAT
+  "Skin The Cat":             { intent:"skill", statWeights:{ focus:0.5, flexibility:0.3, strength:0.2 }, skillTier:1.2, muscles:{ "Lats":0.6, "Front Shoulders":0.6, "Upper Abs":0.3, "Biceps":0.3 }, equipment:"Bodyweight" },
+
+  // CALISTHENICS — HANDSTAND PROGRESSION
+  "Wall Handstand Hold":          { intent:"skill",   statWeights:{ focus:0.7, strength:0.3 }, skillTier:1.2, muscles:{ "Front Shoulders":1, "Lateral Shoulders":0.6, "Triceps":0.2, "Upper Abs":0.3, "Forearms":0.2 }, equipment:"Bodyweight", timed:true },
+  "Freestanding Handstand Hold":  { intent:"balance", statWeights:{ focus:0.7, agility:0.3 }, skillTier:2.0, muscles:{ "Front Shoulders":1, "Lateral Shoulders":0.6, "Upper Abs":0.6, "Forearms":0.3 }, equipment:"Bodyweight", timed:true },
+  "Chest-to-Wall Handstand Hold": { intent:"skill",   statWeights:{ focus:0.6, strength:0.4 }, skillTier:1.4, muscles:{ "Front Shoulders":1, "Lateral Shoulders":0.3, "Upper Abs":0.6, "Lower Back":0.2 }, equipment:"Bodyweight", timed:true },
+  "Handstand Shoulder Taps":      { intent:"balance", statWeights:{ focus:0.6, agility:0.4 }, skillTier:1.7, muscles:{ "Front Shoulders":1, "Lateral Shoulders":0.6, "Upper Abs":0.6, "Obliques":0.3 }, equipment:"Bodyweight", timed:true },
+  "Deficit Handstand Push Up":    { intent:"skill",   statWeights:{ focus:0.6, strength:0.4 }, skillTier:2.2, muscles:{ "Front Shoulders":1, "Lateral Shoulders":0.6, "Triceps":1 }, equipment:"Bodyweight", bwPercent:1.0 },
+  "Handstand Push Up Negative":   { intent:"skill",   statWeights:{ focus:0.6, strength:0.4 }, skillTier:1.7, muscles:{ "Front Shoulders":1, "Lateral Shoulders":0.6, "Triceps":0.6 }, equipment:"Bodyweight", bwPercent:1.0 },
+  "Frog Stand":                   { intent:"skill",   statWeights:{ focus:0.6, strength:0.4 }, skillTier:1.2, muscles:{ "Front Shoulders":1, "Upper Abs":0.6, "Forearms":0.3, "Triceps":0.3 }, equipment:"Bodyweight", timed:true },
+
+  // CALISTHENICS — PLANCHE PROGRESSION
+  "Planche Lean":         { intent:"skill", statWeights:{ focus:0.6, strength:0.4 }, skillTier:1.2, muscles:{ "Front Shoulders":1, "Middle Chest":0.6, "Forearms":0.6, "Lower Abs":0.3 }, equipment:"Bodyweight", timed:true, bwPercent:1.0 },
+  "Tuck Planche":         { intent:"skill", statWeights:{ focus:0.7, strength:0.3 }, skillTier:1.2, muscles:{ "Front Shoulders":1, "Lower Abs":0.6, "Middle Chest":0.3, "Triceps":0.6, "Forearms":0.3 }, equipment:"Bodyweight", timed:true, bwPercent:1.0 },
+  "Advanced Tuck Planche":{ intent:"skill", statWeights:{ focus:0.7, strength:0.3 }, skillTier:1.4, muscles:{ "Front Shoulders":1, "Lower Abs":0.6, "Middle Chest":0.3, "Triceps":0.6, "Forearms":0.3 }, equipment:"Bodyweight", timed:true, bwPercent:1.0 },
+  "Straddle Planche":     { intent:"skill", statWeights:{ focus:0.7, strength:0.3 }, skillTier:1.7, muscles:{ "Front Shoulders":1, "Lower Abs":0.6, "Middle Chest":0.6, "Triceps":0.6, "Forearms":0.6 }, equipment:"Bodyweight", timed:true, bwPercent:1.0 },
+  "Full Planche":         { intent:"skill", statWeights:{ focus:0.7, strength:0.3 }, skillTier:2.0, muscles:{ "Front Shoulders":1, "Lower Abs":0.6, "Middle Chest":0.6, "Triceps":0.6, "Forearms":0.6 }, equipment:"Bodyweight", timed:true, bwPercent:1.0 },
+  "Planche Push Up":      { intent:"skill", statWeights:{ focus:0.7, strength:0.3 }, skillTier:2.2, muscles:{ "Front Shoulders":1, "Middle Chest":0.6, "Triceps":0.6 }, equipment:"Bodyweight" },
+};
