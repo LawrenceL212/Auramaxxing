@@ -812,6 +812,128 @@
 
 
   /* ══════════════════════════════════════════════════════════════════════
+     OPENING CINEMATIC  (Phase 6) - "Enter the System"
+     VOID -> SIGNAL -> PRESENCE -> RECOGNITION -> AWAKENING -> REVEAL
+     ══════════════════════════════════════════════════════════════════════ */
+  #sys-open{
+    position:fixed; inset:0; z-index:880; pointer-events:none;
+    display:flex; align-items:center; justify-content:center;
+    opacity:0; transition:opacity 420ms var(--ease-cinema);
+  }
+  html[data-opening="1"] #sys-open{ opacity:1; pointer-events:auto; }
+  html[data-opening="done"] #sys-open{ opacity:0; pointer-events:none; }
+
+  /* The void. Starts opaque and thins out as the Hunter is revealed, so the
+     figure emerges from darkness rather than fading in over it. */
+  #sys-open .void{
+    position:absolute; inset:0; background:#01020400;
+    background:radial-gradient(120% 90% at 50% 55%,
+      rgba(4,7,14,var(--void-c,1)) 0%, rgba(1,2,4,var(--void-e,1)) 70%);
+    transition:opacity 700ms var(--ease-cinema);
+  }
+  /* The cinematic lives behind the void but in front of the app shell. */
+  /* Scoped to "1" deliberately: [data-opening] alone also matches "done", which
+     kept the canvas above the interface during the hand-off and left the Hunter
+     painted over the UI. At "done" the canvas drops back behind the app. */
+  html[data-opening="1"] #aura-gl{ z-index:882 !important; opacity:1 !important; }
+  html[data-opening="1"] #app{ opacity:0 !important; pointer-events:none !important;
+    transition:opacity 620ms var(--ease-cinema); }
+  html[data-opening="done"] #app{ transition:opacity 620ms var(--ease-cinema); }
+  html[data-opening="done"] #app{ opacity:1 !important; }
+
+  #sys-open .beats{
+    position:relative; z-index:884; text-align:center; padding:0 26px;
+    /* width:100% matters: as a flex item this box otherwise shrink-to-fits the
+       shortest line (measured at 184px), and the nowrap System labels then
+       overflow their own box and read as clipped. */
+    width:100%; max-width:min(94vw,620px); pointer-events:none;
+  }
+  #sys-open .kicker{
+    font-family:var(--font-mono); font-size:clamp(8px,2.3vw,11px);
+    letter-spacing:var(--tracking-system); color:var(--brass);
+    text-transform:uppercase; opacity:0; margin-bottom:12px;
+  }
+  #sys-open .line{
+    font-family:var(--font-display); font-weight:var(--weight-hero);
+    font-size:clamp(21px,6.6vw,44px); line-height:var(--lh-tight);
+    color:var(--text); letter-spacing:var(--tracking-title);
+    opacity:0; margin:0 0 6px;
+  }
+  #sys-open .sub{
+    font-family:var(--font-body); font-size:clamp(12px,3.2vw,16px);
+    color:var(--text-dim); opacity:0; margin:0;
+  }
+  #sys-open .rank{
+    font-family:var(--font-display); font-size:clamp(30px,10vw,62px);
+    font-weight:var(--weight-hero); opacity:0; margin:10px 0 0;
+  }
+  /* The shared m-transmit opens at .42em tracking, which overflows a 390px
+     viewport and clipped "HUNTER IDENTIFIED" to "NTER IDENTI". The opening uses
+     a narrower decode so the line always fits. */
+  @keyframes soTransmit{
+    0%  { opacity:0; letter-spacing:.20em; filter:blur(4px); }
+    55% { opacity:1; letter-spacing:var(--tracking-system); filter:blur(0); }
+    100%{ opacity:1; letter-spacing:var(--tracking-system); filter:blur(0); }
+  }
+  #sys-open [data-in="1"]{ animation:soTransmit 760ms var(--ease-cinema) forwards; }
+  #sys-open .kicker, #sys-open .sub{
+    white-space:nowrap; overflow:visible;
+    max-width:100%; text-overflow:clip;
+  }
+  /* Very narrow screens: let the System labels shrink rather than clip. */
+  @media (max-width:360px){
+    #sys-open .kicker{ font-size:8px; letter-spacing:.14em; }
+    #sys-open .sub{ font-size:11px; }
+  }
+  #sys-open [data-in="2"]{ animation:mRise 620ms var(--ease-cinema) forwards; }
+
+  /* Signal ring - one expanding pulse marking the System's first contact. */
+  #sys-open .ring{
+    position:absolute; left:50%; top:50%; width:min(72vw,380px); aspect-ratio:1;
+    border-radius:50%; border:1px solid rgba(91,168,255,.45);
+    transform:translate(-50%,-50%) scale(.2); opacity:0; z-index:883;
+  }
+  html[data-opening] #sys-open .ring[data-pulse="1"]{
+    animation:smRing 1600ms var(--ease-cinema) forwards;
+  }
+
+  #sys-skip{
+    position:fixed; z-index:890; right:14px;
+    bottom:calc(18px + env(safe-area-inset-bottom,0px));
+    font-family:var(--font-mono); font-size:10px; letter-spacing:.18em;
+    color:var(--text-faint); background:rgba(3,5,10,.55);
+    border:1px solid var(--border); border-radius:var(--radius-sm);
+    padding:8px 12px; cursor:pointer; opacity:0; pointer-events:none;
+    transition:opacity 400ms var(--ease-cinema), color 200ms;
+    touch-action:manipulation;
+  }
+  html[data-opening="1"] #sys-skip{ opacity:1; pointer-events:auto; }
+  #sys-skip:hover, #sys-skip:active{ color:var(--text); }
+
+  /* Portrait phones: the Hunter sits high, text sits low, so they never fight
+     for the same band of the screen. */
+  @media (max-aspect-ratio:3/4){
+    #sys-open{ align-items:flex-end; }
+    #sys-open .beats{ padding-bottom:11vh; }
+  }
+  /* Landscape: text moves off-centre so the figure stays the focal point. */
+  @media (max-height:520px) and (orientation:landscape){
+    #sys-open{ align-items:center; justify-content:flex-start; }
+    #sys-open .beats{ text-align:left; padding-left:6vw; max-width:46vw; }
+    #sys-open .ring{ left:64%; }
+  }
+
+  /* No WebGL: a composed 2D fallback rather than a blank screen. */
+  html[data-gl="off"] #sys-open .void{
+    background:radial-gradient(90% 70% at 50% 45%,
+      rgba(28,54,96,.55) 0%, rgba(3,5,10,1) 70%);
+  }
+
+  @media (prefers-reduced-motion: reduce){
+    #sys-open .ring{ animation:none !important; opacity:0 !important; }
+  }
+
+  /* ══════════════════════════════════════════════════════════════════════
      3D RUNTIME  (Phase 4)
      One canvas, viewport-sized, pinned behind all UI. Never interactive.
      ══════════════════════════════════════════════════════════════════════ */
@@ -4626,6 +4748,13 @@ if (configOk) {
             AuraGL.register('hunter', buildHunterScene);
             AuraGL.activate('ambient');
             AuraGL.start();
+            // Opening cinematic runs only once the Hunter has actually loaded,
+            // so it can never delay auth, data load or first interaction.
+            const waitHunter = (tries = 0) => {
+              if (window.AuraHunter?.ready) { SystemOpening.start(); return; }
+              if (tries < 40) setTimeout(() => waitHunter(tries + 1), 250);
+            };
+            waitHunter();
           }
         } catch (e) { console.info('[AuraGL] disabled:', e); }
       }, 2600);
@@ -5166,10 +5295,20 @@ function buildHunterScene({ THREE, quality, tier }) {
   scene.add(root);
 
   // Lighting: one key, one cool rim, minimal fill. Rim does the character work.
-  const key = new THREE.DirectionalLight(0xbcd4ff, 1.15); key.position.set(2.4, 3.0, 3.2);
-  const rim = new THREE.DirectionalLight(0x5ba8ff, 2.10); rim.position.set(-2.6, 1.6, -2.8);
-  const fill = new THREE.HemisphereLight(0x24406e, 0x05070d, 0.55);
+  const KEY_I = 1.15, RIM_I = 2.10, FILL_I = 0.55;
+  const key = new THREE.DirectionalLight(0xbcd4ff, KEY_I); key.position.set(2.4, 3.0, 3.2);
+  const rim = new THREE.DirectionalLight(0x5ba8ff, RIM_I); rim.position.set(-2.6, 1.6, -2.8);
+  const fill = new THREE.HemisphereLight(0x24406e, 0x05070d, FILL_I);
   scene.add(key, rim, fill);
+  // Reveal is a lighting state, not an opacity fade: the rim arrives first so
+  // the silhouette reads before any surface detail does.
+  let reveal = 1;
+  function applyReveal() {
+    const r = reveal;
+    rim.intensity  = RIM_I  * Math.min(1, r * 1.9);
+    key.intensity  = KEY_I  * Math.max(0, (r - 0.35) / 0.65);
+    fill.intensity = FILL_I * Math.max(0, (r - 0.55) / 0.45);
+  }
 
   const uniforms = {
     uTime:       { value: 0 },
@@ -5344,6 +5483,16 @@ function buildHunterScene({ THREE, quality, tier }) {
       }
     },
     setAura(state) { auraTarget = AURA_STATE[state] ?? AURA_STATE.dormant; },
+    // Cinematic hooks. Presentation only - they touch lights and camera framing,
+    // never game state.
+    setReveal(v) { reveal = Math.max(0, Math.min(1, v)); applyReveal(); },
+    sweepLight(t) {
+      // a narrow key travelling across the body, revealing form as it passes
+      rim.position.set(-2.6 + 5.2 * t, 1.6 + 0.5 * Math.sin(t * Math.PI), -2.8 + 1.6 * t);
+    },
+    resetLights() { reveal = 1; applyReveal();
+      rim.position.set(-2.6, 1.6, -2.8); },
+    get root() { return root; },
     debugRegions(on) { uniforms.uDebug.value = on ? 1 : 0; },
     get ready() { return ready; },
     get body() { return HUNTER_BODY; },
@@ -5435,6 +5584,267 @@ function buildAmbientScene({ THREE, quality }) {
     exit() { /* ambient persists; nothing to tear down */ },
   };
 }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   OPENING CINEMATIC  (Phase 6) - "Enter the System"
+
+   VOID -> SIGNAL -> PRESENCE -> RECOGNITION -> AWAKENING -> REVEAL
+
+   Orchestration only. It drives the Phase 4 runtime, the Phase 5 Hunter and the
+   Phase 2 motion primitives; it owns no rendering of its own and duplicates
+   nothing from the System Moment engine. It reads real profile state and never
+   writes any, and it can never block authentication or data loading - it runs
+   after the app is already interactive and can be skipped at any point.
+   ══════════════════════════════════════════════════════════════════════════ */
+const SystemOpening = (() => {
+  const SEEN_KEY = 'aura.opening.seen';     // presentation preference only
+  let running = false, skipped = false, host = null;
+  const sfx = {};
+
+  function audio(name) {
+    if (!SFX?.soundOn?.()) return null;
+    try {
+      if (!sfx[name]) {
+        const a = new Audio(`./3d/exports/audio/${name}.ogg`);
+        a.preload = 'auto'; a.volume = 0.55; sfx[name] = a;
+      }
+      return sfx[name];
+    } catch (e) { return null; }
+  }
+  function cue(name, vol = 0.55) {
+    const a = audio(name);
+    if (!a) return;
+    try { a.currentTime = 0; a.volume = vol; a.play()?.catch(() => {}); } catch (e) {}
+  }
+
+  function build() {
+    host = document.getElementById('sys-open');
+    if (host) return host;
+    host = document.createElement('div');
+    host.id = 'sys-open';
+    host.innerHTML =
+      '<div class="void"></div><div class="ring"></div>' +
+      '<div class="beats">' +
+        '<div class="kicker" id="so-kicker"></div>' +
+        '<h1 class="line" id="so-line"></h1>' +
+        '<p class="sub" id="so-sub"></p>' +
+        '<div class="rank" id="so-rank"></div>' +
+      '</div>';
+    document.body.appendChild(host);
+    const skip = document.createElement('button');
+    skip.id = 'sys-skip';
+    skip.type = 'button';
+    skip.textContent = 'SKIP ▸';
+    skip.addEventListener('click', () => { skipped = true; });
+    document.body.appendChild(skip);
+    return host;
+  }
+
+  const el = id => document.getElementById(id);
+  function say(id, text, mode = '1') {
+    const n = el(id);
+    if (!n) return;
+    n.textContent = text || '';
+    n.removeAttribute('data-in');
+    void n.offsetWidth;
+    n.setAttribute('data-in', mode);
+  }
+  function clearBeats() {
+    ['so-kicker', 'so-line', 'so-sub', 'so-rank'].forEach(id => {
+      const n = el(id); if (n) { n.textContent = ''; n.removeAttribute('data-in'); }
+    });
+  }
+  const voidLevel = (c, e) => {
+    host?.style.setProperty('--void-c', c);
+    host?.style.setProperty('--void-e', e);
+  };
+
+  // Cooperative wait: any beat can be cut short by SKIP.
+  function beat(ms) {
+    return new Promise(res => {
+      if (skipped || Motion.reduced()) return res();
+      const t0 = performance.now();
+      (function tick() {
+        if (skipped || performance.now() - t0 >= ms) return res();
+        requestAnimationFrame(tick);
+      })();
+    });
+  }
+
+  // Camera language: a deliberate, very slow push-in with a little drift.
+  function camera(from, to, ms) {
+    const cam = window.AuraGL?.camera;
+    if (!cam) return Promise.resolve();
+    return new Promise(res => {
+      const t0 = performance.now();
+      (function tick() {
+        const k = skipped ? 1 : Math.min(1, (performance.now() - t0) / ms);
+        const e = 1 - Math.pow(1 - k, 3);              // ease-out cubic
+        cam.position.set(
+          from[0] + (to[0] - from[0]) * e,
+          from[1] + (to[1] - from[1]) * e,
+          from[2] + (to[2] - from[2]) * e);
+        cam.lookAt(0, 0.05, 0);
+        if (k < 1) requestAnimationFrame(tick); else res();
+      })();
+    });
+  }
+
+  function ramp(fn, from, to, ms) {
+    return new Promise(res => {
+      const t0 = performance.now();
+      (function tick() {
+        const k = skipped ? 1 : Math.min(1, (performance.now() - t0) / ms);
+        fn(from + (to - from) * k);
+        if (k < 1) requestAnimationFrame(tick); else res();
+      })();
+    });
+  }
+
+  function hunterReady() {
+    return !!(window.AuraGL?.enabled && window.AuraHunter?.ready);
+  }
+
+  async function run(mode) {
+    const H = window.AuraHunter;
+    const first = mode === 'first';
+    document.documentElement.dataset.opening = '1';
+    build(); clearBeats();
+    voidLevel(1, 1);
+
+    const sex = (profile && profile.bodyType === 'female') ? 'female' : 'male';
+    try { H?.setMuscleStats?.({}, sex); } catch (e) {}
+    try { H?.setReveal?.(0); H?.setAura?.('dormant'); } catch (e) {}
+    try { window.AuraGL?.activate?.('hunter'); } catch (e) {}
+
+    const cam = window.AuraGL?.camera;
+    const near = [0, 0.15, 4.6], far = [0, 0.35, 9.5];
+    if (cam) { cam.position.set(far[0], far[1], far[2]); cam.lookAt(0, 0.05, 0); }
+
+    if (!first) {
+      // Returning Hunter: recognition only, ~700ms.
+      cue('sys-recognise', 0.34);
+      voidLevel(0.35, 0.75);
+      H?.setReveal?.(1);
+      camera(far, near, 620);
+      say('so-kicker', 'SYSTEM · WELCOME BACK');
+      say('so-line', (profile?.displayName || 'HUNTER').toUpperCase(), '2');
+      H?.setAura?.('active');
+      await beat(640);
+      return finish();
+    }
+
+    /* ── 1. VOID ───────────────────────────────────────────────────────── */
+    await beat(620);
+
+    /* ── 2. SIGNAL ─────────────────────────────────────────────────────── */
+    cue('sys-pulse', 0.5);
+    const ring = host.querySelector('.ring');
+    if (ring) { ring.setAttribute('data-pulse', '1'); }
+    say('so-kicker', '◈ SIGNAL DETECTED');
+    await beat(1150);
+
+    /* ── 3. PRESENCE - rim first, so silhouette reads before surface ───── */
+    cue('sys-arrival', 0.45);
+    clearBeats();
+    voidLevel(0.86, 0.97);
+    ramp(v => H?.setReveal?.(v), 0, 0.42, 1500);
+    camera(far, [0, 0.28, 6.9], 2600);
+    await beat(1500);
+
+    say('so-kicker', '◈ PRESENCE CONFIRMED');
+    voidLevel(0.62, 0.92);
+    await beat(900);
+
+    /* ── 4. FORM - a narrow light travels across the body ──────────────── */
+    clearBeats();
+    ramp(t => H?.sweepLight?.(t), 0, 1, 1400);
+    await ramp(v => H?.setReveal?.(v), 0.42, 0.88, 1400);
+    voidLevel(0.34, 0.8);
+
+    /* ── 5. RECOGNITION - real state only, never invented ──────────────── */
+    cue('sys-recognise', 0.4);
+    camera([0, 0.28, 6.9], [0, 0.18, 5.3], 2200);
+    say('so-kicker', '◈ HUNTER IDENTIFIED');
+    say('so-line', (profile?.displayName || 'HUNTER').toUpperCase(), '2');
+    await beat(900);
+
+    try {
+      const rank = (typeof charRankFromStats === 'function' && profile?.stats)
+        ? charRankFromStats(profile.stats) : null;
+      if (rank) {
+        const rn = el('so-rank');
+        if (rn) {
+          rn.style.color = (typeof RANK_COLORS === 'object' && RANK_COLORS[rank]) || 'var(--brass)';
+          say('so-rank', rank, '2');
+        }
+        say('so-sub', `RANK ${rank} · LEVEL ${profile?.hunterLevel || 1}`);
+      } else {
+        say('so-sub', 'UNCLASSIFIED · THE SYSTEM IS WATCHING');
+      }
+    } catch (e) { /* presentation only */ }
+    await beat(1000);
+
+    /* ── 6. AWAKENING ──────────────────────────────────────────────────── */
+    H?.setAura?.('stirring');
+    await beat(500);
+    H?.setAura?.('active');
+    await beat(450);
+    cue('sys-surge', 0.5);
+    H?.setAura?.('surge');
+    await ramp(v => H?.setReveal?.(v), 0.88, 1, 700);
+    voidLevel(0.12, 0.62);
+    await beat(700);
+    H?.setAura?.('active');
+
+    /* ── 7. REVEAL ─────────────────────────────────────────────────────── */
+    cue('sys-reveal', 0.4);
+    clearBeats();
+    say('so-kicker', '◈ SYSTEM ONLINE');
+    await beat(620);
+    return finish();
+  }
+
+  function finish() {
+    const H = window.AuraHunter;
+    try { H?.resetLights?.(); H?.setAura?.('dormant'); } catch (e) {}
+    const cam = window.AuraGL?.camera;
+    if (cam) { cam.position.set(0, 0, 6); cam.lookAt(0, 0, 0); }
+    voidLevel(0, 0);
+    document.documentElement.dataset.opening = 'done';
+    setTimeout(() => {
+      host?.remove(); host = null;
+      document.getElementById('sys-skip')?.remove();
+      delete document.documentElement.dataset.opening;
+      try { window.AuraGL?.activate?.('ambient'); } catch (e) {}
+    }, 700);
+    try { localStorage.setItem(SEEN_KEY, '1'); } catch (e) {}
+    running = false;
+    return true;
+  }
+
+  return {
+    get running() { return running; },
+    skip() { skipped = true; },
+    /* start({force}) - never blocks auth or data; returns immediately if the
+       runtime is not up, so a WebGL failure simply means no cinematic. */
+    async start(opts = {}) {
+      if (running) return false;
+      let seen = false;
+      try { seen = !!localStorage.getItem(SEEN_KEY); } catch (e) {}
+      const mode = (opts.force === 'first' || !seen) ? 'first' : 'return';
+      if (!hunterReady() && !opts.force) {
+        // No WebGL: mark seen and let the app present normally.
+        try { localStorage.setItem(SEEN_KEY, '1'); } catch (e) {}
+        return false;
+      }
+      running = true; skipped = false;
+      try { await run(mode); } catch (e) { console.info('[Opening] aborted', e); finish(); }
+      return true;
+    },
+  };
+})();
+window.SystemOpening = SystemOpening;
 
 function switchView(name) {
   // Phase 4: tell the 3D runtime which view is showing. Observation only.
