@@ -2,6 +2,15 @@
 
   blender --background --python style_hunter.py -- --variant m1|f2 [--export OUT.glb]
 
+Pack for the runtime with (flags are NOT optional):
+  gltfpack -i hunter-XX-raw.glb -o hunter-XX.glb -cc -kn -kv -vtf
+    -kn  keep node names (equipment attach_* points)
+    -kv  keep vertex attributes: no material references a texture, so without
+         this gltfpack strips the body UVs and the 21-region atlas goes dead
+    -vtf float UVs: quantized UVs store their dequantization scale in a
+         material texture transform, which textureless materials cannot carry -
+         quantized UVs collapse to ~0..0.06 and every region samples as 0
+
 Replaces the mannequin look of build_hunter_mpfb.py's exports. Root cause of the
 old flat physique: set_target_value silently no-ops when the target was never
 loaded as a shape key, and the load_target fallback was called with a bare name
