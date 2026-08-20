@@ -1,0 +1,58 @@
+<!doctype html><html><head><meta name=viewport content="width=device-width">
+<script type="importmap">
+{"imports":{"three":"https://unpkg.com/three@0.180.0/build/three.module.js",
+"three/addons/":"https://unpkg.com/three@0.180.0/examples/jsm/"}}</script>
+<style>body{margin:0;background:#05070d}</style></head><body><script type="module">
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
+const q = new URLSearchParams(location.search);
+const file = q.get('glb') || 'hunter-m1.glb';
+const aura = parseFloat(q.get('aura') || '0.10');
+const camz = parseFloat(q.get('camz') || '0');   // 0=full body, 1=face
+const renderer = new THREE.WebGLRenderer({antialias:true});
+renderer.setSize(innerWidth, innerHeight);
+document.body.appendChild(renderer.domElement);
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x05070d);
+const key = new THREE.DirectionalLight(0xd3dfff, 1.55); key.position.set(2.4,3.0,3.2);
+const rim = new THREE.DirectionalLight(0x5ba8ff, 2.10); rim.position.set(-2.6,1.6,-2.8);
+const fill = new THREE.HemisphereLight(0x24406e, 0x05070d, 0.70);
+scene.add(key, rim, fill);
+const mat = new THREE.MeshStandardMaterial({color:0x0c1220, roughness:0.48, metalness:0.14});
+mat.onBeforeCompile = s => {
+  s.uniforms.uAura = {value: aura};
+  s.fragmentShader = s.fragmentShader
+    .replace('#include <common>', '#include <common>\nuniform float uAura;')
+    .replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>
+      vec3 V = normalize(vViewPosition);
+      float fres = pow(1.0 - clamp(dot(normalize(vNormal), V), 0.0, 1.0), 2.6);
+      totalEmissiveRadiance += vec3(0.357,0.659,1.0) * pow(fres,1.25) * uAura * 0.55;`);
+};
+const gl = new GLTFLoader(); gl.setMeshoptDecoder(MeshoptDecoder);
+const g = await gl.loadAsync('../../exports/' + file);
+const model = g.scene; const iris = []; const matnames = [];
+model.traverse(o => {
+  if (!o.isMesh) return;
+  o.frustumCulled = false;
+  const mats = Array.isArray(o.material)?o.material:[o.material];
+  mats.forEach(m => matnames.push(m.name));
+  const styled = mats.some(m => m && /^Hunter_(Hair|Sclera|Iris)Mat/.test(m.name));
+  if (styled) { mats.forEach(m => { if (m.name==='Hunter_IrisMat') iris.push(m); }); return; }
+  o.material = mat;
+});
+const lift = Math.max(0, aura - 0.30) / 0.70;
+iris.forEach(m => m.emissiveIntensity = 0.12 + lift * 1.5);
+const box = new THREE.Box3().setFromObject(model);
+const size = box.getSize(new THREE.Vector3()), ctr = box.getCenter(new THREE.Vector3());
+const fit = 3.15/Math.max(size.y,0.001);
+model.scale.setScalar(fit);
+model.position.set(-ctr.x*fit, -ctr.y*fit, -ctr.z*fit);
+scene.add(model);
+const cam = new THREE.PerspectiveCamera(38, innerWidth/innerHeight, 0.1, 100);
+if (camz > 0.5) { cam.position.set(0.25, 1.25, 1.15); cam.lookAt(0, 1.30, 0); }
+else { cam.position.set(0, 0.15, 5.4); cam.lookAt(0, 0, 0); }
+renderer.render(scene, cam);
+console.log('MATS', JSON.stringify([...new Set(matnames)]));
+document.title='done';
+</script></body></html>

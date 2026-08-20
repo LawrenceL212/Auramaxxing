@@ -1,0 +1,28 @@
+<!doctype html><html><head><script type="importmap">
+{"imports":{"three":"https://unpkg.com/three@0.180.0/build/three.module.js",
+"three/addons/":"https://unpkg.com/three@0.180.0/examples/jsm/"}}</script></head>
+<body><script type="module">
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
+const out = [];
+try {
+  const gl = new GLTFLoader(); gl.setMeshoptDecoder(MeshoptDecoder);
+  for (const f of ['hunter-m1.glb','hunter-f2.glb']) {
+    const g = await gl.loadAsync('../../exports/' + f);
+    let meshes = [], tris = 0, iris = 0, attach = 0;
+    g.scene.traverse(o => {
+      if (o.isMesh) { meshes.push(o.name);
+        tris += (o.geometry.index ? o.geometry.index.count : o.geometry.attributes.position.count) / 3;
+        (Array.isArray(o.material)?o.material:[o.material]).forEach(m=>{ if(m.name==='Hunter_IrisMat') iris++; });
+      }
+      if ((o.name||'').startsWith('attach_')) attach++;
+    });
+    out.push(`${f}: meshes=[${meshes}] tris=${Math.round(tris)} iris=${iris} attach=${attach} anims=${g.animations.length}`);
+  }
+  out.push('SMOKE_OK');
+} catch (e) { out.push('SMOKE_FAIL ' + e.message); }
+document.title = 'done';
+console.log(out.join('\n'));
+const d = document.createElement('pre'); d.textContent = out.join('\n'); document.body.append(d);
+</script></body></html>

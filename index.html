@@ -5558,8 +5558,8 @@ const HUNTER_BODY = {
   // macro/target set (variant f1) matching the parameters her region atlas was
   // baked against; it is not a scaled male.
   body: {
-    male:   './3d/exports/hunter-v5.glb',
-    female: './3d/exports/hunter-f1.glb',
+    male:   './3d/exports/hunter-m1.glb',
+    female: './3d/exports/hunter-f2.glb',
   },
   isStandIn: false,
   // Region atlases are baked into the body's OWN UV space
@@ -5578,9 +5578,10 @@ function buildHunterScene({ THREE, quality, tier }) {
   const root = new THREE.Group();
   scene.add(root);
 
-  // Lighting: one key, one cool rim, minimal fill. Rim does the character work.
-  const KEY_I = 1.15, RIM_I = 2.10, FILL_I = 0.55;
-  const key = new THREE.DirectionalLight(0xbcd4ff, KEY_I); key.position.set(2.4, 3.0, 3.2);
+  // Lighting: key/fill/rim. The key is strong enough to model the face and the
+  // chest/lat forms on its own; the rim still does the silhouette work.
+  const KEY_I = 1.55, RIM_I = 2.10, FILL_I = 0.70;
+  const key = new THREE.DirectionalLight(0xd3dfff, KEY_I); key.position.set(2.4, 3.0, 3.2);
   const rim = new THREE.DirectionalLight(0x5ba8ff, RIM_I); rim.position.set(-2.6, 1.6, -2.8);
   const fill = new THREE.HemisphereLight(0x24406e, 0x05070d, FILL_I);
   scene.add(key, rim, fill);
@@ -5734,7 +5735,7 @@ function buildHunterScene({ THREE, quality, tier }) {
   // One material for the whole body: the region response lives inside the
   // character material, so it costs no extra draw call and no extra mesh.
   const mat = new THREE.MeshStandardMaterial({
-    color: 0x0a0e16, roughness: 0.52, metalness: 0.16,
+    color: 0x0c1220, roughness: 0.48, metalness: 0.14,
     emissive: 0x000000,
   });
   mat.onBeforeCompile = (shader) => {
@@ -5795,6 +5796,7 @@ function buildHunterScene({ THREE, quality, tier }) {
 
   let mixer = null, model = null, ready = false, frozen = false;
   let auraTarget = AURA_STATE.dormant, auraNow = AURA_STATE.dormant;
+  let irisMats = [];   // eye materials from the GLB; emissive driven by Aura
 
   let _gl = null, _meshopt = null, _bodySex = null, _loading = false;
 
@@ -5820,7 +5822,27 @@ function buildHunterScene({ THREE, quality, tier }) {
       }
       if (mixer) { mixer.stopAllAction(); mixer = null; }
       model = gltf.scene;
-      model.traverse(o => { if (o.isMesh) { o.material = mat; o.frustumCulled = false; } });
+      // The region shader belongs to the body ONLY. Hair and eyes are styled
+      // meshes that keep their exported materials; the iris materials are
+      // collected so the Aura state can breathe through the eyes.
+      irisMats = [];
+      model.traverse(o => {
+        if (!o.isMesh) return;
+        o.frustumCulled = false;
+        // Identify by MATERIAL name: gltfpack renames mesh objects (mesh_0…)
+        // but material names survive compression. Hunter_* materials belong to
+        // the styled hair/eye meshes and are kept; everything else is the body
+        // and receives the region shader.
+        const mats = Array.isArray(o.material) ? o.material : [o.material];
+        const styled = mats.some(m => m && /^Hunter_(Hair|Sclera|Iris)Mat/.test(m.name));
+        if (styled) {
+          for (const m of mats) {
+            if (m && m.name === 'Hunter_IrisMat') irisMats.push(m);
+          }
+          return;
+        }
+        o.material = mat;
+      });
       const box = new THREE.Box3().setFromObject(model);
       const size = box.getSize(new THREE.Vector3());
       const ctr = box.getCenter(new THREE.Vector3());
@@ -5905,6 +5927,13 @@ function buildHunterScene({ THREE, quality, tier }) {
       uniforms.uTime.value = frozen ? 0 : t;
       auraNow += (auraTarget - auraNow) * Math.min(1, dt * 2.2);
       uniforms.uAura.value = auraNow;
+      // Eyes: restrained at dormant, visibly lit from 'active' upward. The
+      // slow sine keeps a surge from reading as a static glow.
+      if (irisMats.length) {
+        const lift = Math.max(0, auraNow - 0.30) / 0.70;
+        const ei = 0.12 + lift * (1.5 + Math.sin(t * 1.8) * 0.25 * lift);
+        for (const m of irisMats) m.emissiveIntensity = ei;
+      }
       if (mixer && !frozen) mixer.update(dt);
       if (root && ready) {
         if (frozen) { root.rotation.y = 0; root.position.y = 0; }
