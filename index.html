@@ -5814,7 +5814,10 @@ function buildHunterScene({ THREE, quality, tier }) {
         _gl = new GLTFLoader();
         _gl.setMeshoptDecoder(_meshopt);
       }
-      const gltf = await _gl.loadAsync(HUNTER_BODY.body[key]);
+      // Dev-only cache-bust: __hunterDevBust is set exclusively by the
+      // ?dev=hunter preview boot, so production URLs are byte-identical.
+      const bust = window.__hunterDevBust ? ('?v=' + window.__hunterDevBust) : '';
+      const gltf = await _gl.loadAsync(HUNTER_BODY.body[key] + bust);
       // replace any previous body so only one Hunter is ever in the scene
       if (model) {
         root.remove(model);
@@ -5917,6 +5920,17 @@ function buildHunterScene({ THREE, quality, tier }) {
     // isolated by differencing frames. Idle motion otherwise moves the whole
     // silhouette between captures and swamps the region being measured.
     freeze(on) { frozen = !!on; },
+    // Developer/QA only - state introspection and iteration hooks for the
+    // ?dev=hunter preview. Presentation-only: no gameplay state involved.
+    get sex() { return _bodySex; },
+    get auraLevel() { return auraNow; },
+    get animTime() { return mixer ? mixer.time : 0; },
+    restartAnim() { try { mixer?.setTime(0); } catch (e) {} },
+    reloadBody(sex) {
+      const key = sex || _bodySex || 'male';
+      _bodySex = null;            // drop the cache so the GLB refetches
+      return loadBody(key);
+    },
     // Presentation environment around the figure: none | dungeon | raid.
     setEnvironment,
     // Raid boss presence. Presentation only - carries no raid state.
@@ -6736,6 +6750,154 @@ if (__auraDevEnabled()) {
   window.__qaWorldList = () => Object.keys(__worldFixtures());
   console.info('[QA] dev moment triggers enabled - __qaTriggerMoment(name)');
 }
+
+/* ── DEVELOPER-ONLY live Hunter preview ───────────────────────────────────
+   Enable:  ?dev=hunter   (or localStorage.setItem('aura.dev', 'hunter'))
+
+   Drives the PRODUCTION systems only - AuraGL, buildHunterScene, AuraHunter,
+   the region shader, the aura states and the real GLB assets. It never
+   duplicates the scene, and it never reads or writes gameplay state, profile,
+   XP/AP or Firestore. Works before login (it is pure presentation), and is
+   completely inert unless the dev flag is present.
+
+   Iteration loop: export a new GLB -> refresh the browser (every load in dev
+   mode cache-busts the body URLs) or press RELOAD GLB in the panel.
+   ───────────────────────────────────────────────────────────────────────── */
+function __hunterDevRequested() {
+  try {
+    if (new URLSearchParams(location.search).get('dev') === 'hunter') return true;
+    return localStorage.getItem('aura.dev') === 'hunter';
+  } catch (e) { return false; }
+}
+
+if (__hunterDevRequested()) (function HunterDevPreview() {
+  // Fresh assets on every dev load; production never sets this.
+  window.__hunterDevBust = Date.now();
+
+  const H = () => window.AuraHunter;
+  let sex = 'male', auraState = 'dormant', camName = 'full', lightName = 'cinematic';
+
+  const CAMS = {
+    full:   { pos: [0, 0.15, 5.4],  look: [0, 0, 0] },
+    front:  { pos: [0, 0.3, 4.4],   look: [0, 0.2, 0] },
+    back:   { pos: [0, 0.3, -4.4],  look: [0, 0.2, 0] },
+    '34L':  { pos: [-3.2, 0.4, 3.6], look: [0, 0.1, 0] },
+    '34R':  { pos: [3.2, 0.4, 3.6],  look: [0, 0.1, 0] },
+    face:   { pos: [0.25, 1.25, 1.15], look: [0, 1.30, 0] },
+  };
+  function setCam(name) {
+    const c = CAMS[name]; if (!c || !window.AuraGL?.camera) return;
+    camName = name;
+    const cam = AuraGL.camera;
+    try { cam.clearViewOffset(); } catch (e) {}
+    cam.position.set(...c.pos); cam.lookAt(...c.look);
+  }
+  function setLight(name) {
+    lightName = name; const h = H(); if (!h) return;
+    if (name === 'neutral')      { h.setEnvironment('none'); h.resetLights(); h.setAura('dormant'); auraState = 'dormant'; }
+    else if (name === 'cinematic'){ h.setEnvironment('dungeon'); h.resetLights(); }
+    else if (name === 'aura')    { h.setEnvironment('none'); h.resetLights(); h.setAura('surge'); auraState = 'surge'; }
+  }
+  function regionStats(mode, region) {
+    const s = {};
+    if (mode === 'single' && region) s[region] = { status: 'Focusing' };
+    else if (mode === 'all') HUNTER_REGIONS.forEach(r => { s[r] = { status: 'Growing' }; });
+    else if (mode === 'multi') {
+      ['Upper Chest', 'Lats', 'Quads', 'Biceps'].forEach(r => { s[r] = { status: 'Growing' }; });
+      s['Lower Back'] = { status: 'Overreached' };
+    }
+    return s;
+  }
+
+  function panel() {
+    if (document.getElementById('hunter-dev')) return;
+    const el = document.createElement('div');
+    el.id = 'hunter-dev';
+    el.style.cssText =
+      'position:fixed;top:8px;left:8px;z-index:1300;max-width:196px;' +
+      'background:rgba(5,8,15,.88);border:1px solid rgba(91,168,255,.35);' +
+      'border-radius:8px;padding:8px;font:10px/1.6 monospace;color:#9fc2ff;' +
+      'max-height:92vh;overflow-y:auto';
+    const b = (label, fn, group) =>
+      `<button data-g="${group}" data-a="${label}" style="margin:1px;padding:2px 6px;` +
+      `background:#0b1428;border:1px solid rgba(91,168,255,.3);border-radius:4px;` +
+      `color:#9fc2ff;font:10px monospace;cursor:pointer">${label}</button>`;
+    el.innerHTML =
+      `<div style="letter-spacing:.12em;color:#5ba8ff">HUNTER DEV</div>` +
+      `<div>BODY ${b('male','','body')}${b('female','','body')}${b('RELOAD GLB','','reload')}</div>` +
+      `<div>AURA ${['dormant','stirring','active','surge'].map(a=>b(a,'','aura')).join('')}</div>` +
+      `<div>ANIM ${b('play','','anim')}${b('pause','','anim')}${b('restart','','anim')}</div>` +
+      `<div>CAM ${Object.keys(CAMS).map(c=>b(c,'','cam')).join('')}</div>` +
+      `<div>LIGHT ${b('neutral','','light')}${b('cinematic','','light')}${b('aura','','light')}</div>` +
+      `<div>MUSCLE ${b('none','','mus')}${b('multi','','mus')}${b('all','','mus')}</div>` +
+      `<select id="hdev-region" style="width:100%;background:#0b1428;color:#9fc2ff;` +
+      `border:1px solid rgba(91,168,255,.3);border-radius:4px;font:10px monospace">` +
+      `<option value="">— single region —</option>` +
+      HUNTER_REGIONS.map(r=>`<option>${r}</option>`).join('') + `</select>` +
+      `<pre id="hdev-stat" style="margin:4px 0 0;color:#6d87b8"></pre>` +
+      `<div>${b('debug regions','','dbg')}${b('close','','close')}</div>`;
+    document.body.appendChild(el);
+
+    el.addEventListener('click', (ev) => {
+      const t = ev.target.closest('button'); if (!t) return;
+      const g = t.dataset.g, a = t.dataset.a, h = H();
+      if (!h) return;
+      if (g === 'body')   { sex = a; h.setMuscleStats(regionStats('none'), sex); }
+      if (g === 'reload') { window.__hunterDevBust = Date.now(); h.reloadBody(sex); }
+      if (g === 'aura')   { auraState = a; h.setAura(a); }
+      if (g === 'anim')   { a === 'play' ? h.freeze(false) : a === 'pause' ? h.freeze(true) : h.restartAnim(); }
+      if (g === 'cam')    setCam(a);
+      if (g === 'light')  setLight(a);
+      if (g === 'mus')    h.setMuscleStats(regionStats(a), sex);
+      if (g === 'dbg')    { el.dataset.dbg = el.dataset.dbg === '1' ? '0' : '1'; h.debugRegions(el.dataset.dbg === '1'); }
+      if (g === 'close')  { el.remove(); document.documentElement.removeAttribute('data-moment'); AuraGL.hud(false); }
+    });
+    el.querySelector('#hdev-region').addEventListener('change', (ev) => {
+      if (ev.target.value) H()?.setMuscleStats(regionStats('single', ev.target.value), sex);
+    });
+
+    // status readout - supplements the AuraGL HUD (FPS/calls/tris)
+    setInterval(() => {
+      const h = H(), s = document.getElementById('hdev-stat');
+      if (!h || !s) return;
+      s.textContent =
+        `body  ${h.sex || 'loading'}\n` +
+        `aura  ${auraState} (${(h.auraLevel ?? 0).toFixed(2)})\n` +
+        `anim  ${h.animTime.toFixed(2)}s\n` +
+        `cam   ${camName}  light ${lightName}\n` +
+        `tier  ${AuraGL.tier}`;
+    }, 500);
+  }
+
+  async function boot(tries = 0) {
+    // The login path may have already initialised the runtime; init() and
+    // register() are both idempotent, so this composes with a logged-in app.
+    try {
+      if (!AuraGL.enabled && !(await AuraGL.init())) {
+        console.warn('[HunterDev] WebGL unavailable'); return;
+      }
+      AuraGL.register('hunter', buildHunterScene);
+      AuraGL.stage('hunter');
+      AuraGL.start();
+      // Promote the canvas the same way hero moments do, so the preview is
+      // visible over the auth screen / UI without any new CSS.
+      document.documentElement.dataset.moment = 'hero';
+      AuraGL.hud(true);
+      // the promoted canvas (z 1110) would cover the stock HUD (z 999)
+      const hudEl = document.getElementById('gl-hud');
+      if (hudEl) hudEl.style.zIndex = '1290';
+      panel();
+      setCam('full');
+      console.info('[HunterDev] live preview active');
+    } catch (e) {
+      if (tries < 20) setTimeout(() => boot(tries + 1), 500);
+      else console.warn('[HunterDev] failed to start', e);
+    }
+  }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => boot());
+  } else boot();
+})();
 
 /* ══════════════════════════════════════════════════════════════════════════
    WORLD CINEMA  (Phase 8)
