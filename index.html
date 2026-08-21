@@ -4845,17 +4845,17 @@ if (configOk) {
         try {
           if (await AuraGL.init()) {
             AuraGL.register('ambient', buildAmbientScene);
-            AuraGL.register('hunter', buildHunterScene);
+            AuraGL.register('core', buildSystemCoreScene);
             AuraGL.register('reward', buildRewardScene);
             AuraGL.activate('ambient');
             AuraGL.start();
-            // Opening cinematic runs only once the Hunter has actually loaded,
-            // so it can never delay auth, data load or first interaction.
-            const waitHunter = (tries = 0) => {
-              if (window.AuraHunter?.ready) { SystemOpening.start(); return; }
-              if (tries < 40) setTimeout(() => waitHunter(tries + 1), 250);
+            // Opening cinematic runs only once the core scene is up, so it can
+            // never delay auth, data load or first interaction.
+            const waitCore = (tries = 0) => {
+              if (window.AuraCore?.ready) { SystemOpening.start(); return; }
+              if (tries < 40) setTimeout(() => waitCore(tries + 1), 250);
             };
-            waitHunter();
+            waitCore();
           }
         } catch (e) { console.info('[AuraGL] disabled:', e); }
       }, 2600);
@@ -5097,7 +5097,7 @@ const SystemMoment = (() => {
       h.setAttribute('aria-live', 'polite');
       // body, not #overlay-host: the stage has to sit ABOVE the overlay host so
       // an open modal is veiled too, and the veil/canvas/panel must share one
-      // stacking context to interleave the Hunter between veil and text.
+      // stacking context to interleave the staged scene between veil and text.
       document.body.appendChild(h);
     }
     return h;
@@ -5121,11 +5121,11 @@ const SystemMoment = (() => {
   // Tiers heavy enough to be worth interrupting the interface for.
   const HERO = { progression: 1, legendary: 1 };
 
-  // Framing for a staged Hunter. Same treatment as the opening cinematic:
+  // Framing for the staged System core. Same treatment as the opening:
   // portrait aims low so the figure occupies the upper frame and the
   // announcement gets clear space beneath it instead of landing on the body.
   let camRestore = null;
-  function frameHunter() {
+  function frameStage() {
     const cam = window.AuraGL && AuraGL.camera;
     if (!cam) return;
     camRestore = { pos: cam.position.clone() };
@@ -5141,7 +5141,7 @@ const SystemMoment = (() => {
       camRestore.viewOffset = true;
     }
   }
-  function unframeHunter() {
+  function unframeStage() {
     const cam = window.AuraGL && AuraGL.camera;
     if (!cam || !camRestore) { camRestore = null; return; }
     cam.position.copy(camRestore.pos);
@@ -5154,7 +5154,7 @@ const SystemMoment = (() => {
     const v = document.getElementById('sm-veil');
     if (v) { v.removeAttribute('data-veil'); v.removeAttribute('data-tier'); }
     if (document.documentElement.dataset.moment === 'hero') {
-      unframeHunter();
+      unframeStage();
       try { AuraGL.stage(null); } catch (e) { /* presentation only */ }
     }
     document.documentElement.removeAttribute('data-moment');
@@ -5203,13 +5203,13 @@ const SystemMoment = (() => {
       // force a frame so the opacity transition actually runs from 0
       void v.offsetWidth;
       v.dataset.veil = 'on';
-      // Only the heavy tiers pull the Hunter forward. Promoting the canvas
-      // is not enough on its own - the Hunter scene has to be the one being
+      // Only the heavy tiers pull the System core forward. Promoting the canvas
+      // is not enough on its own - the core scene has to be the one being
       // rendered, or the veil sits over the ambient field and the aura surge
       // lights nothing.
-      if (HERO[o.tier] && window.AuraGL && AuraGL.enabled && window.AuraHunter?.ready) {
+      if (HERO[o.tier] && window.AuraGL && AuraGL.enabled && window.AuraCore?.ready) {
         document.documentElement.dataset.moment = 'hero';
-        try { AuraGL.stage('hunter'); frameHunter(); } catch (e) { /* presentation only */ }
+        try { AuraGL.stage('core'); frameStage(); } catch (e) { /* presentation only */ }
       }
     }
 
@@ -5511,83 +5511,34 @@ const AuraGL = (() => {
 window.AuraGL = AuraGL;
 
 /* ══════════════════════════════════════════════════════════════════════════
-   HUNTER  (Phase 5)
+   SYSTEM CORE  (Phase 5R - replaces the removed 3D Hunter)
 
-   The 3D Hunter, its 21-region muscle response and its aura.
+   The non-character centrepiece of the cinematic layer: a faceted System
+   sigil - core, counter-rotating rings, orbiting shards - built from the same
+   primitive vocabulary as the dungeon environment and the raid boss. It keeps
+   everything the cinematics already speak: aura states, reveal choreography,
+   the light sweep, the dungeon/raid environment and the boss presence.
 
-   Strictly presentation. It CONSUMES the muscle-status object the existing
-   system already computed and never recalculates it, never writes it back, and
-   never touches progression, XP/AP, workouts or Firestore. The SVG anatomy
-   sheets remain the authoritative definition of what a region is; this only
-   samples the ID maps baked from them.
-
-   The body is behind an adapter so the stand-in mesh can be replaced without
-   touching the shader, the atlas, the status mapping or the aura.
+   Strictly presentation. No gameplay state is read or written here. The 2D
+   anatomy SVGs remain the authoritative muscle-region presentation.
    ══════════════════════════════════════════════════════════════════════════ */
-
-// Canonical order - index+1 is the value baked into the region-ID atlases.
-// Matches 3d/exports/hunter-{male,female}-regions.json. Changing this
-// order requires re-running the UV bake.
-const HUNTER_REGIONS = [
-  "Upper Chest", "Middle Chest", "Lower Chest",
-  "Front Shoulders", "Lateral Shoulders", "Rear Shoulders",
-  "Traps", "Lats", "Upper Back", "Lower Back",
-  "Biceps", "Triceps", "Forearms",
-  "Upper Abs", "Middle Abs", "Lower Abs", "Obliques",
-  "Glutes", "Hamstrings", "Quads", "Calves",
-];
-
-// Existing statuses only - no new gameplay states are invented here. Intensity
-// is a presentation weight; the colours are the app's own STATUS_COLOR values.
-const HUNTER_STATUS = {
-  Stalled:     { i: 0.05, warn: 0 },
-  Maintaining: { i: 0.30, warn: 0 },
-  Growing:     { i: 0.58, warn: 0 },
-  Focusing:    { i: 0.80, warn: 0 },
-  Recovering:  { i: 0.45, warn: 0 },
-  Excess:      { i: 0.85, warn: 1 },
-  Overreached: { i: 0.95, warn: 1 },
-};
 
 const AURA_STATE = { dormant: 0.10, stirring: 0.35, active: 0.70, surge: 1.00 };
 
-/* Body adapter. Everything the runtime needs to mount a body; swap this object
-   and nothing downstream changes. */
-const HUNTER_BODY = {
-  // Body AND atlas are both per-sex. The female body is generated from its own
-  // macro/target set (variant f1) matching the parameters her region atlas was
-  // baked against; it is not a scaled male.
-  body: {
-    male:   './3d/exports/hunter-v5.glb',
-    female: './3d/exports/hunter-f1.glb',
-  },
-  isStandIn: false,
-  // Region atlases are baked into the body's OWN UV space
-  // (3d/source/hunter/bake_uv_regions.py -> rasterize_uv.py). Male and female
-  // are authored independently from their own measured landmarks; neither is a
-  // scaled copy of the other. R channel: 0 = unassigned, 1..21 = canonical.
-  atlas: {
-    male:   './3d/exports/hunter-male-regions.png',
-    female: './3d/exports/hunter-female-regions.png',
-  },
-  regionsEnabled: true,
-};
-
-function buildHunterScene({ THREE, quality, tier }) {
+function buildSystemCoreScene({ THREE, quality, tier }) {
   const scene = new THREE.Scene();
   const root = new THREE.Group();
   scene.add(root);
 
-  // Lighting: one key, one cool rim, minimal fill. Rim does the character work.
+  // Lighting: one key, one cool rim, minimal fill. Rim does the form work.
   const KEY_I = 1.15, RIM_I = 2.10, FILL_I = 0.55;
   const key = new THREE.DirectionalLight(0xbcd4ff, KEY_I); key.position.set(2.4, 3.0, 3.2);
   const rim = new THREE.DirectionalLight(0x5ba8ff, RIM_I); rim.position.set(-2.6, 1.6, -2.8);
   const fill = new THREE.HemisphereLight(0x24406e, 0x05070d, FILL_I);
   scene.add(key, rim, fill);
 
-  /* Environment. The Hunter has to be standing somewhere for a dungeon to read
-     as a place rather than a caption. Built once, hidden by default, and driven
-     entirely by presentation state - it holds no gameplay data.
+  /* Environment. Kept from the previous phase unchanged: a staged scene needs
+     a place, and the dungeon/raid cinematics drive it. Presentation only.
      ENV_MODES: none | dungeon | raid  */
   const ENV_MODES = {
     none:    { fog: null,     ground: 0,    rim: 0x5ba8ff, key: 0xbcd4ff },
@@ -5614,10 +5565,9 @@ function buildHunterScene({ THREE, quality, tier }) {
     pillars.add(p);
   }
   scene.add(pillars);
-  /* Boss presence. A mass behind and above the Hunter, deliberately built from
-     the same primitive vocabulary as the environment. Its job is scale: at ~4x
-     the Hunter's height it makes the figure read as small, which no amount of
-     type size can do. Hidden unless a raid cinematic asks for it. */
+  /* Boss presence. A mass behind and above the core, deliberately built from
+     the same primitive vocabulary as the environment. Its job is scale.
+     Hidden unless a raid cinematic asks for it. */
   const boss = new THREE.Group();
   boss.visible = false;
   const bossMat = new THREE.MeshStandardMaterial({
@@ -5692,233 +5642,96 @@ function buildHunterScene({ THREE, quality, tier }) {
     fill.intensity = FILL_I * Math.max(0, (r - 0.55) / 0.45);
   }
 
-  const uniforms = {
-    uTime:       { value: 0 },
-    uRegion:     { value: Array.from({ length: 21 }, () => new THREE.Vector4(0, 0, 0, 0)) },
-    uAura:       { value: AURA_STATE.dormant },
-    uAuraColor:  { value: new THREE.Color(0x5ba8ff) },
-    uRegionAtlas:{ value: null },
-    uHasAtlas:   { value: 0 },
-    uDebug:      { value: 0 },
-  };
-
-  const loader = new THREE.TextureLoader();
-  const atlasCache = {};
-  let atlasSex = null;
-  function loadAtlas(sex) {
-    const key = (sex === 'female') ? 'female' : 'male';
-    if (key === atlasSex) return;
-    atlasSex = key;
-    if (atlasCache[key]) {
-      uniforms.uRegionAtlas.value = atlasCache[key];
-      uniforms.uHasAtlas.value = HUNTER_BODY.regionsEnabled ? 1 : 0;
-      return;
-    }
-    loader.load(HUNTER_BODY.atlas[key], tex => {
-      // NEAREST throughout: interpolating an ID map invents regions that do not
-      // exist between two real ones. flipY false matches glTF UV orientation.
-      tex.magFilter = THREE.NearestFilter;
-      tex.minFilter = THREE.NearestFilter;
-      tex.generateMipmaps = false;
-      tex.colorSpace = THREE.NoColorSpace;
-      tex.flipY = false;
-      atlasCache[key] = tex;
-      if (atlasSex === key) {
-        uniforms.uRegionAtlas.value = tex;
-        uniforms.uHasAtlas.value = HUNTER_BODY.regionsEnabled ? 1 : 0;
-      }
-    }, undefined, () => { /* atlas missing: body still renders, no regions */ });
-  }
-  loadAtlas('male');
-
-  // One material for the whole body: the region response lives inside the
-  // character material, so it costs no extra draw call and no extra mesh.
-  const mat = new THREE.MeshStandardMaterial({
-    color: 0x0a0e16, roughness: 0.52, metalness: 0.16,
-    emissive: 0x000000,
+  /* ── the System sigil ─────────────────────────────────────────────────────
+     Faceted core, two counter-rotating rings, a belt of orbiting shards.
+     Flat-shaded on purpose: the sharp geometric read IS the System's face. */
+  const coreMat = new THREE.MeshStandardMaterial({
+    color: 0x04060c, roughness: 0.68, metalness: 0.12, flatShading: true,
+    emissive: 0x1c49b8, emissiveIntensity: 0.06,
   });
-  mat.onBeforeCompile = (shader) => {
-    Object.assign(shader.uniforms, uniforms);
-    shader.vertexShader = shader.vertexShader
-      .replace('#include <common>', `#include <common>
-        varying vec2 vRegionUv;`)
-      .replace('#include <begin_vertex>', `#include <begin_vertex>
-        // Declare our own varying rather than relying on USE_UV, which is only
-        // defined when the material happens to carry a map.
-        vRegionUv = uv;`);
-
-    shader.fragmentShader = shader.fragmentShader
-      .replace('#include <common>', `#include <common>
-        varying vec2 vRegionUv;
-        uniform float uTime;
-        uniform vec4  uRegion[21];
-        uniform float uAura;
-        uniform vec3  uAuraColor;
-        uniform sampler2D uRegionAtlas;
-        uniform float uHasAtlas;
-        uniform float uDebug;
-
-        // Region identity is baked into the body's own UV space, so the lookup
-        // is a single texture fetch - pose-independent, view-independent, and
-        // free of the seams the rejected planar projection produced.
-        vec4 sampleRegion(){
-          if (uHasAtlas < 0.5) return vec4(0.0);
-          float id = texture2D(uRegionAtlas, vRegionUv).r * 255.0;
-          int ii = int(floor(id + 0.5)) - 1;
-          if (ii < 0 || ii > 20) return vec4(0.0);
-          return uRegion[ii];
-        }`)
-      .replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>
-        vec4 reg = sampleRegion();
-
-        // Regional energy reads as light under the surface rather than paint on
-        // top: strongest where the surface turns away from the viewer.
-        vec3 V = normalize(vViewPosition);
-        float fres = pow(1.0 - clamp(dot(normalize(vNormal), V), 0.0, 1.0), 2.6);
-
-        if (uDebug > 0.5) {
-          // Developer only: raw region identity, never reachable in production.
-          float did = texture2D(uRegionAtlas, vRegionUv).r * 255.0;
-          totalEmissiveRadiance = did < 0.5 ? vec3(0.02) : vec3(
-            fract(did * 0.13), fract(did * 0.37 + 0.3), fract(did * 0.71 + 0.6));
-        }
-
-        totalEmissiveRadiance += reg.rgb * reg.a * (0.35 + 0.85 * fres);
-
-        // Aura: a rim that belongs to the character, scaled by state. Dormant is
-        // deliberately near-invisible.
-        float rimA = pow(fres, 1.25) * uAura;
-        totalEmissiveRadiance += uAuraColor * rimA * 0.55;
-      `);
-    mat.userData.shader = shader;
-  };
-
-  let mixer = null, model = null, ready = false, frozen = false;
-  let auraTarget = AURA_STATE.dormant, auraNow = AURA_STATE.dormant;
-
-  let _gl = null, _meshopt = null, _bodySex = null, _loading = false;
-
-  async function loadBody(sex) {
-    const key = (sex === 'female') ? 'female' : 'male';
-    if (key === _bodySex || _loading) return;
-    _loading = true;
-    try {
-      if (!_gl) {
-        const [{ GLTFLoader }, { MeshoptDecoder }] = await Promise.all([
-          import('three/addons/loaders/GLTFLoader.js'),
-          import('three/addons/libs/meshopt_decoder.module.js'),
-        ]);
-        _meshopt = MeshoptDecoder;
-        _gl = new GLTFLoader();
-        _gl.setMeshoptDecoder(_meshopt);
-      }
-      const gltf = await _gl.loadAsync(HUNTER_BODY.body[key]);
-      // replace any previous body so only one Hunter is ever in the scene
-      if (model) {
-        root.remove(model);
-        model.traverse(o => { if (o.isMesh) o.geometry?.dispose?.(); });
-      }
-      if (mixer) { mixer.stopAllAction(); mixer = null; }
-      model = gltf.scene;
-      model.traverse(o => { if (o.isMesh) { o.material = mat; o.frustumCulled = false; } });
-      const box = new THREE.Box3().setFromObject(model);
-      const size = box.getSize(new THREE.Vector3());
-      const ctr = box.getCenter(new THREE.Vector3());
-      const fit = 3.15 / Math.max(size.y, 0.001);
-      model.scale.setScalar(fit);
-      model.position.set(-ctr.x * fit, -ctr.y * fit, -ctr.z * fit);
-      root.add(model);
-      if (gltf.animations?.length) {
-        mixer = new THREE.AnimationMixer(model);
-        gltf.animations.forEach(c => mixer.clipAction(c).play());
-      }
-      _bodySex = key;
-      ready = true;
-    } catch (e) {
-      console.info('[Hunter] body failed to load', e);
-    } finally {
-      _loading = false;
-    }
+  const ringMat = new THREE.MeshStandardMaterial({
+    color: 0x05070d, roughness: 0.62, metalness: 0.2,
+    emissive: 0x5a35c9, emissiveIntensity: 0.10,
+  });
+  const shardMat = new THREE.MeshStandardMaterial({
+    color: 0x05070d, roughness: 0.60, metalness: 0.15, flatShading: true,
+    emissive: 0x2e63d8, emissiveIntensity: 0.12,
+  });
+  const core = new THREE.Mesh(new THREE.OctahedronGeometry(0.46, 1), coreMat);
+  core.scale.set(1, 1.35, 1);
+  const ring1 = new THREE.Mesh(new THREE.TorusGeometry(0.95, 0.020, 8, 72), ringMat);
+  ring1.rotation.x = Math.PI / 2.25;
+  const ring2 = new THREE.Mesh(new THREE.TorusGeometry(1.18, 0.014, 8, 72), ringMat);
+  ring2.rotation.x = Math.PI / 1.75; ring2.rotation.y = 0.5;
+  const shards = new THREE.Group();
+  const shardList = [];
+  for (let i = 0; i < 12; i++) {
+    const s = new THREE.Mesh(new THREE.OctahedronGeometry(0.055, 0), shardMat);
+    s.scale.y = 1.8;
+    shards.add(s);
+    shardList.push({ m: s, a: (i / 12) * Math.PI * 2, r: 1.42 + (i % 3) * 0.10,
+                     y: ((i % 4) - 1.5) * 0.16, sp: 0.8 + (i % 5) * 0.10 });
   }
-  loadBody('male');
+  root.add(core, ring1, ring2, shards);
+  root.scale.setScalar(0.78);
+  root.scale.setScalar(0.78);
+
+  let ready = true, frozen = false;
+  let auraTarget = AURA_STATE.dormant, auraNow = AURA_STATE.dormant;
+  let flareAmt = 0;
 
   const api = {
     scene,
-    // Consumes the app's own resolved status object. Read-only.
-    setMuscleStats(stats, sex) {
-      if (!stats) return;
-      if (sex) {
-        const key = sex === 'female' ? 'female' : 'male';
-        loadAtlas(key);
-        loadBody(key);          // body and atlas always move together
-      }
-      const col = new THREE.Color();
-      for (let i = 0; i < 21; i++) {
-        const name = HUNTER_REGIONS[i];
-        const st = stats[name] && stats[name].status;
-        const cfg = HUNTER_STATUS[st];
-        const v = uniforms.uRegion.value[i];
-        if (!cfg) { v.set(0, 0, 0, 0); continue; }
-        const hex = (typeof STATUS_COLOR === 'object' && STATUS_COLOR[st]) || '#5BA8FF';
-        col.set(hex);
-        v.set(col.r, col.g, col.b, cfg.i);
-      }
-    },
     setAura(state) { auraTarget = AURA_STATE[state] ?? AURA_STATE.dormant; },
-    // Cinematic focus on one region. Purely visual and self-restoring: it
-    // overrides the uniform, never the muscle-status data that produced it.
-    pulseRegion(name, status = 'Focusing', ms = 2200) {
-      const i = HUNTER_REGIONS.indexOf(name);
-      if (i < 0) return;
-      const v = uniforms.uRegion.value[i];
-      const prev = v.clone();
-      const cfg = HUNTER_STATUS[status] || HUNTER_STATUS.Focusing;
-      const hex = (typeof STATUS_COLOR === 'object' && STATUS_COLOR[status]) || '#5BA8FF';
-      const col = new THREE.Color(hex);
-      v.set(col.r, col.g, col.b, cfg.i);
-      setTimeout(() => { try { v.copy(prev); } catch (e) {} }, ms);
-    },
-    // Cinematic hooks. Presentation only - they touch lights and camera framing,
-    // never game state.
+    // A brief energy flare. Replaces the removed per-region muscle pulse as
+    // the "something just happened" response; carries no region semantics.
+    flare(ms = 2200) { flareAmt = 1; },
+    // Compatibility: progression events may still name a region; the core
+    // answers with a flare. The 21-region system lives in the 2D anatomy SVGs.
+    pulseRegion() { flareAmt = 1; },
+    // Cinematic hooks. Presentation only - lights and framing, never state.
     setReveal(v) { reveal = Math.max(0, Math.min(1, v)); applyReveal(); },
     sweepLight(t) {
-      // a narrow key travelling across the body, revealing form as it passes
+      // a narrow key travelling across the sigil, revealing form as it passes
       rim.position.set(-2.6 + 5.2 * t, 1.6 + 0.5 * Math.sin(t * Math.PI), -2.8 + 1.6 * t);
     },
     resetLights() { reveal = 1; applyReveal();
       rim.position.set(-2.6, 1.6, -2.8); },
     get root() { return root; },
-    debugRegions(on) { uniforms.uDebug.value = on ? 1 : 0; },
     get ready() { return ready; },
-    get body() { return HUNTER_BODY; },
-    // Developer/QA only: hold the body perfectly still so region masks can be
-    // isolated by differencing frames. Idle motion otherwise moves the whole
-    // silhouette between captures and swamps the region being measured.
     freeze(on) { frozen = !!on; },
-    // Presentation environment around the figure: none | dungeon | raid.
+    // Presentation environment around the sigil: none | dungeon | raid.
     setEnvironment,
     // Raid boss presence. Presentation only - carries no raid state.
     setBoss,
     update(dt, t) {
       updateEnvironment(dt);
       updateBoss(dt, t);
-      uniforms.uTime.value = frozen ? 0 : t;
       auraNow += (auraTarget - auraNow) * Math.min(1, dt * 2.2);
-      uniforms.uAura.value = auraNow;
-      if (mixer && !frozen) mixer.update(dt);
-      if (root && ready) {
-        if (frozen) { root.rotation.y = 0; root.position.y = 0; }
-        else {
-          // Breathing sway - a character standing, not a turntable.
-          root.rotation.y = Math.sin(t * 0.12) * 0.05;
-          root.position.y = Math.sin(t * 0.55) * 0.012;
-        }
+      flareAmt = Math.max(0, flareAmt - dt * 0.9);
+      if (frozen) return;
+      const energy = auraNow + flareAmt * 0.6;
+      const pulse = 1 + Math.sin(t * 2.1) * 0.10 * energy;
+      coreMat.emissiveIntensity  = (0.04 + energy * 0.40) * pulse;
+      ringMat.emissiveIntensity  = 0.06 + energy * 0.38;
+      shardMat.emissiveIntensity = 0.08 + energy * 0.50;
+      core.rotation.y = t * (0.12 + energy * 0.55);
+      ring1.rotation.z = t * (0.16 + energy * 0.70);
+      ring2.rotation.z = -t * (0.11 + energy * 0.55);
+      for (const s of shardList) {
+        const a = s.a + t * s.sp * (0.25 + energy * 1.1);
+        s.m.position.set(Math.cos(a) * s.r, s.y + Math.sin(t * 0.9 + s.a * 3) * 0.05,
+                         Math.sin(a) * s.r);
+        s.m.rotation.y = a;
       }
+      // slow presence sway - an object holding station, not a turntable
+      root.rotation.y = Math.sin(t * 0.12) * 0.05;
+      root.position.y = Math.sin(t * 0.55) * 0.02;
     },
     enter() { },
     exit() { },
   };
-  window.AuraHunter = api;
+  window.AuraCore = api;
   return api;
 }
 
@@ -6108,7 +5921,7 @@ function buildRewardScene({ THREE, quality }) {
       return item;
     },
     setMaterialise(v) { mat = Math.max(0, Math.min(1, v)); },
-    // The shared camera sits at z=6 for the Hunter, which leaves a 1-unit object
+    // The shared camera sits at z=6 by default, which leaves a 1-unit object
     // tiny. Framing is applied on enter and cleared on exit.
     frame(camera) {
       if (!camera) return;
@@ -6297,12 +6110,10 @@ const SystemOpening = (() => {
     });
   }
 
-  // Portrait composition. Landscape places the System text beside the Hunter;
-  // portrait has no side room, so instead of centring the figure and letting
-  // text fall across the legs, the camera aims low. That lifts the Hunter into
-  // the upper frame and opens deliberate negative space beneath him for the
-  // System block. The figure is NOT scaled down - only the aim changes, so the
-  // sense of height and depth is preserved.
+  // Portrait composition. Landscape places the System text beside the staged
+  // form; portrait has no side room, so the camera aims low. That lifts the
+  // System core into the upper frame and opens deliberate negative space
+  // beneath it for the text block. Only the aim changes, never the scale.
   // Phase 9: the opening reads the shared profile too, so a tablet is no longer
   // given the phone-portrait framing and a desktop the phone-landscape one.
   const isPortrait = () => Profile.portrait;
@@ -6338,21 +6149,19 @@ const SystemOpening = (() => {
     });
   }
 
-  function hunterReady() {
-    return !!(window.AuraGL?.enabled && window.AuraHunter?.ready);
+  function coreReady() {
+    return !!(window.AuraGL?.enabled && window.AuraCore?.ready);
   }
 
   async function run(mode) {
-    const H = window.AuraHunter;
+    const H = window.AuraCore;
     const first = mode === 'first';
     document.documentElement.dataset.opening = '1';
     build(); clearBeats();
     voidLevel(1, 1);
 
-    const sex = (profile && profile.bodyType === 'female') ? 'female' : 'male';
-    try { H?.setMuscleStats?.({}, sex); } catch (e) {}
     try { H?.setReveal?.(0); H?.setAura?.('dormant'); } catch (e) {}
-    try { window.AuraGL?.activate?.('hunter'); } catch (e) {}
+    try { window.AuraGL?.activate?.('core'); } catch (e) {}
 
     const cam = window.AuraGL?.camera;
     // The settle distance is the profile's own framing distance, so the opening
@@ -6387,7 +6196,7 @@ const SystemOpening = (() => {
     say('so-kicker', '◈ SIGNAL DETECTED');
     await beat(1150);
 
-    /* ── 3. PRESENCE - rim first, so silhouette reads before surface ───── */
+    /* ── 3. GEOMETRY - rim first, so the sigil's form reads before surface */
     cue('sys-arrival', 0.45);
     clearBeats();
     voidLevel(0.86, 0.97);
@@ -6395,12 +6204,13 @@ const SystemOpening = (() => {
     camera(far, [0, 0.28, midZ], 2600);
     await beat(1500);
 
-    say('so-kicker', '◈ PRESENCE CONFIRMED');
+    say('so-kicker', '◈ SYSTEM GEOMETRY RESOLVED');
     voidLevel(0.62, 0.92);
     await beat(900);
 
-    /* ── 4. FORM - a narrow light travels across the body ──────────────── */
+    /* ── 4. TELEMETRY - a narrow light travels across the sigil ────────── */
     clearBeats();
+    say('so-kicker', '◈ TELEMETRY LINKED');
     ramp(t => H?.sweepLight?.(t), 0, 1, 1400);
     await ramp(v => H?.setReveal?.(v), 0.42, 0.88, 1400);
     voidLevel(0.34, 0.8);
@@ -6449,7 +6259,7 @@ const SystemOpening = (() => {
   }
 
   function finish() {
-    const H = window.AuraHunter;
+    const H = window.AuraCore;
     try { H?.resetLights?.(); H?.setAura?.('dormant'); } catch (e) {}
     const cam = window.AuraGL?.camera;
     if (cam) { cam.position.set(0, 0, 6); cam.lookAt(0, 0, 0); }
@@ -6476,7 +6286,7 @@ const SystemOpening = (() => {
       let seen = false;
       try { seen = !!localStorage.getItem(SEEN_KEY); } catch (e) {}
       const mode = (opts.force === 'first' || !seen) ? 'first' : 'return';
-      if (!hunterReady() && !opts.force) {
+      if (!coreReady() && !opts.force) {
         // No WebGL: mark seen and let the app present normally.
         try { localStorage.setItem(SEEN_KEY, '1'); } catch (e) {}
         return false;
@@ -6494,7 +6304,7 @@ window.SystemOpening = SystemOpening;
 
    Presents progression events. It READS an event descriptor that the existing
    gameplay systems produce and decides only HOW that event is shown - which
-   System Moment tier, what the Hunter does, which region is focused. It
+   System Moment tier and how the System core responds. It
    computes no XP, no levels, no ranks, no class, and writes nothing.
 
    Tier assignment follows the existing event semantics, not invented rules.
@@ -6516,11 +6326,11 @@ const ProgressionCinema = (() => {
     'raid-clear':       'legendary',
   };
 
-  // Which aura state each weight class settles the Hunter into.
+  // Which aura state each weight class settles the System core into.
   const AURA = { micro: null, minor: 'stirring', major: 'stirring',
                  progression: 'active', legendary: 'surge' };
 
-  const H = () => window.AuraHunter;
+  const H = () => window.AuraCore;
 
   function build(ev) {
     const t = ev.type;
@@ -6588,7 +6398,9 @@ const ProgressionCinema = (() => {
         if (aura && hunter) hunter.setAura(aura);
         // A PR focuses the muscle it belongs to, using the region name the
         // event already carries. No status is computed here.
-        if (o.region && hunter) hunter.pulseRegion(o.region, 'Focusing', 2600);
+        // A PR answers with an energy flare; the region itself is presented by
+        // the 2D anatomy heatmap, which remains the muscle-region authority.
+        if (o.region && hunter) hunter.flare?.(2600);
         if (tier === 'legendary' || tier === 'progression') {
           setTimeout(() => { try { hunter?.setAura('active'); } catch (e) {} }, 2400);
           setTimeout(() => { try { hunter?.setAura('dormant'); } catch (e) {} }, 5200);
@@ -6705,6 +6517,18 @@ if (__auraDevEnabled()) {
     f(); return true;
   };
   window.__qaWorldList = () => Object.keys(__worldFixtures());
+  // Boots the cinematic layer exactly as the login path does, so the 3D
+  // presentation can be QA'd without an authenticated session. Dev flag only;
+  // registers the same scenes, writes nothing.
+  window.__qaBootGL = async () => {
+    if (!(await AuraGL.init()) && !AuraGL.enabled) return false;
+    AuraGL.register('ambient', buildAmbientScene);
+    AuraGL.register('core', buildSystemCoreScene);
+    AuraGL.register('reward', buildRewardScene);
+    AuraGL.activate('ambient');
+    AuraGL.start();
+    return true;
+  };
   console.info('[QA] dev moment triggers enabled - __qaTriggerMoment(name)');
 }
 
@@ -6727,14 +6551,14 @@ const WorldCinema = (() => {
     try {
       if (!window.AuraGL || !AuraGL.enabled) return false;
       AuraGL.stage(scene);
-      if (env !== undefined && window.AuraHunter) AuraHunter.setEnvironment(env);
+      if (env !== undefined && window.AuraCore) AuraCore.setEnvironment(env);
       document.documentElement.dataset.moment = 'hero';
       return true;
     } catch (e) { return false; }
   }
   function unstage() {
     try {
-      if (window.AuraHunter) AuraHunter.setEnvironment('none');
+      if (window.AuraCore) AuraCore.setEnvironment('none');
       if (window.AuraGL) AuraGL.stage(null);
     } catch (e) { /* presentation only */ }
     document.documentElement.removeAttribute('data-moment');
@@ -6747,18 +6571,18 @@ const WorldCinema = (() => {
   async function dungeonEntry(d) {
     if (!d) return;
     const name = d.bossName || 'Unknown Boss';
-    if (reduced() || !stage('hunter', 'dungeon')) {
+    if (reduced() || !stage('core', 'dungeon')) {
       return SystemMoment.show({ tier: 'major', kicker: 'DUNGEON ENTERED',
         title: name, body: `TIER ${d.tier || 1} · TRAIN TO DEAL DAMAGE`, glyph: '⚔' });
     }
     veil(true, 'major');
-    try { AuraHunter.setAura('stirring'); } catch (e) {}
+    try { AuraCore.setAura('stirring'); } catch (e) {}
     await wait(900);                                  // the space arrives first
-    try { AuraHunter.setAura('active'); } catch (e) {}
+    try { AuraCore.setAura('active'); } catch (e) {}
     await wait(700);                                  // the Hunter settles in it
     await SystemMoment.show({ tier: 'major', kicker: 'DUNGEON ENTERED',
       title: name, body: `TIER ${d.tier || 1} · TRAIN TO DEAL DAMAGE`, glyph: '⚔' });
-    try { AuraHunter.setAura('dormant'); } catch (e) {}
+    try { AuraCore.setAura('dormant'); } catch (e) {}
     veil(false); unstage();
   }
 
@@ -6780,20 +6604,20 @@ const WorldCinema = (() => {
   async function dungeonClear(item, d) {
     const rarity = (item && item.rarity) || 'Rare';
     const legendary = rarity === 'Legendary' || rarity === 'Epic';
-    if (reduced() || !stage('hunter', 'dungeon')) {
+    if (reduced() || !stage('core', 'dungeon')) {
       await SystemMoment.show({ tier: 'progression', kicker: 'DUNGEON CLEARED',
         title: (d && d.bossName) || 'BOSS DEFEATED', body: 'THE DUNGEON HAS FALLEN', glyph: '⚔' });
       return rewardReveal(item);
     }
     veil(true, 'progression');
     // decisive moment - the strike lands
-    try { AuraHunter.setAura('surge'); } catch (e) {}
+    try { AuraCore.setAura('surge'); } catch (e) {}
     await wait(520);
     // environment response - the space lets go
-    try { AuraHunter.setEnvironment('none'); } catch (e) {}
+    try { AuraCore.setEnvironment('none'); } catch (e) {}
     await wait(620);
     // silence - deliberately empty, this is what makes the reveal land
-    try { AuraHunter.setAura('dormant'); } catch (e) {}
+    try { AuraCore.setAura('dormant'); } catch (e) {}
     await wait(760);
     unstage(); veil(false);
     await SystemMoment.show({ tier: 'progression', kicker: 'DUNGEON CLEARED',
@@ -6868,13 +6692,13 @@ const WorldCinema = (() => {
   }
 
   async function raidStage(colour) {
-    if (!stage('hunter', 'raid')) return false;
-    try { AuraHunter.setBoss(true, colour); } catch (e) {}
+    if (!stage('core', 'raid')) return false;
+    try { AuraCore.setBoss(true, colour); } catch (e) {}
     frameRaid();
     return true;
   }
   function raidUnstage() {
-    try { AuraHunter.setBoss(false); } catch (e) {}
+    try { AuraCore.setBoss(false); } catch (e) {}
     unframeRaid();
     unstage();
   }
@@ -6906,17 +6730,17 @@ const WorldCinema = (() => {
     }
 
     veil(true, heavy ? 'legendary' : 'progression');
-    try { AuraHunter.setAura('stirring'); } catch (e) {}
+    try { AuraCore.setAura('stirring'); } catch (e) {}
     await wait(1000);                       // the boss rises - let it be seen
     if (heavy) {
-      try { AuraHunter.setAura('surge'); } catch (e) {}
+      try { AuraCore.setAura('surge'); } catch (e) {}
       await wait(700);                      // the decisive blow
-      try { AuraHunter.setBoss(false); } catch (e) {}
+      try { AuraCore.setBoss(false); } catch (e) {}
       await wait(900);                      // the mass goes down
-      try { AuraHunter.setAura('active'); } catch (e) {}
+      try { AuraCore.setAura('active'); } catch (e) {}
       await wait(500);                      // aftermath, held quiet
     } else {
-      try { AuraHunter.setAura('active'); } catch (e) {}
+      try { AuraCore.setAura('active'); } catch (e) {}
       await wait(600);
     }
     await SystemMoment.show({
@@ -6924,7 +6748,7 @@ const WorldCinema = (() => {
       kicker: heavy ? 'RAID CLEARED' : 'PHASE TRANSITION',
       title: heavy ? name : (ev.title || 'THE BOSS CHANGES'),
       body: ev.detail || '', glyph: heavy ? '💀' : '◈' });
-    try { AuraHunter.setAura('dormant'); } catch (e) {}
+    try { AuraCore.setAura('dormant'); } catch (e) {}
     veil(false); raidUnstage();
     if (heavy && ev.item) await rewardReveal(ev.item);
   }
@@ -16373,7 +16197,6 @@ function bodySvg(view, stats, overrideBodyType, items, silhouette) {
   const bodyType = overrideBodyType || ((profile && profile.bodyType === 'female') ? 'female' : 'male');
   // Phase 5: mirror the already-resolved muscle status into the 3D Hunter.
   // Read-only - no recalculation, no writes, no gameplay effect.
-  try { window.AuraHunter?.setMuscleStats(stats, bodyType); } catch (e) { /* presentation only */ }
   const template = ANATOMY_TEMPLATES[bodyType];
   if (!template) return '<div class="empty-state" style="padding:20px;">Loading anatomy…</div>';
   const clone = template.cloneNode(true);
