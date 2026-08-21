@@ -6109,6 +6109,19 @@ const SystemOpening = (() => {
       })();
     });
   }
+  // READING TIME, not motion: the appreciation hold survives
+  // prefers-reduced-motion (same rule as SystemMoment.hold - reduce motion,
+  // not legibility) but is still cut short by SKIP.
+  function hold(ms) {
+    return new Promise(res => {
+      if (skipped) return res();
+      const t0 = performance.now();
+      (function tick() {
+        if (skipped || performance.now() - t0 >= ms) return res();
+        setTimeout(tick, 120);
+      })();
+    });
+  }
 
   // Portrait composition. Landscape places the System text beside the staged
   // form; portrait has no side room, so the camera aims low. That lifts the
@@ -6215,7 +6228,7 @@ const SystemOpening = (() => {
     await ramp(v => H?.setReveal?.(v), 0.42, 0.88, 1400);
     voidLevel(0.34, 0.8);
 
-    /* ── 5. RECOGNITION - real state only, never invented ──────────────── */
+    /* ── 5. RECOGNITION (build) - real state only, never invented ──────── */
     cue('sys-recognise', 0.4);
     camera([0, 0.28, midZ], [0, 0.18, endZ], 2200);
     say('so-kicker', '◈ HUNTER IDENTIFIED');
@@ -6236,25 +6249,30 @@ const SystemOpening = (() => {
         say('so-sub', 'UNCLASSIFIED · THE SYSTEM IS WATCHING');
       }
     } catch (e) { /* presentation only */ }
-    await beat(1000);
+    await beat(800);
 
-    /* ── 6. AWAKENING ──────────────────────────────────────────────────── */
+    /* ── 6. AWAKENING (reveal) - the energy completes the composition ──── */
     H?.setAura?.('stirring');
-    await beat(500);
-    H?.setAura?.('active');
-    await beat(450);
+    await beat(400);
     cue('sys-surge', 0.5);
     H?.setAura?.('surge');
     await ramp(v => H?.setReveal?.(v), 0.88, 1, 700);
     voidLevel(0.12, 0.62);
-    await beat(700);
-    H?.setAura?.('active');
+    await beat(500);
 
-    /* ── 7. REVEAL ─────────────────────────────────────────────────────── */
-    cue('sys-reveal', 0.4);
+    /* ── 7. APPRECIATION - the completed frame simply stands ─────────────
+       Nothing new arrives here on purpose: name, rank and level stay put,
+       the aura settles from surge to a breathing 'active', and the player
+       gets time to actually read their own identity. Reading time survives
+       reduced-motion; SKIP still cuts it short. */
+    H?.setAura?.('active');
+    cue('sys-reveal', 0.32);
+    await hold(2600);
+
+    /* ── 8. AFTERMATH - clean hand-off back to the application ─────────── */
     clearBeats();
     say('so-kicker', '◈ SYSTEM ONLINE');
-    await beat(620);
+    await beat(850);
     return finish();
   }
 
