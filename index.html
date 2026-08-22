@@ -6274,9 +6274,13 @@ const SystemOpening = (() => {
     await hold(2600);
 
     /* ── 8. AFTERMATH - clean hand-off back to the application ─────────── */
+    /* hold(), not beat(): this is the sign-off the player reads, so it is
+       reading time like the appreciation hold above. beat() resolves at once
+       under prefers-reduced-motion, which left SYSTEM ONLINE on screen for a
+       single frame. SKIP still cuts it short. */
     clearBeats();
     say('so-kicker', '◈ SYSTEM ONLINE');
-    await beat(850);
+    await hold(850);
     return finish();
   }
 
