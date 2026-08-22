@@ -5325,6 +5325,9 @@ const AuraGL = (() => {
   let enabled = false, running = false, rafId = 0;
   let tier = 'medium', caps = {};
   let activeScene = null;
+  let activeName = null;             // which scene is on screen, by name
+  let lastAmbientRender = 0;         // ambient renders on a cadence, not every frame
+  const AMBIENT_FRAME = 1 / 30;      // seconds between ambient renders
   const scenes = new Map();          // name -> { scene, update(dt,t), enter(), exit() }
   let currentView = null;
   let frames = 0, fpsAccum = 0, fps = 0, lastHud = 0;
@@ -5440,6 +5443,7 @@ const AuraGL = (() => {
     if (next === activeScene) return;
     try { activeScene?.exit?.(); } catch (e) { /* presentation only */ }
     activeScene = next;
+    activeName = scenes.has(name) ? name : (scenes.has('ambient') ? 'ambient' : null);
     try { activeScene?.enter?.(); } catch (e) { /* presentation only */ }
   }
 
@@ -5451,7 +5455,16 @@ const AuraGL = (() => {
 
     if (activeScene) {
       try { activeScene.update?.(dt, t); } catch (e) { /* never break the loop */ }
-      renderer.render(activeScene.scene, camera);
+      /* The ambient wash is a slow background effect but was rendering on every
+         animation frame - on a high-refresh display that is ~165 renders a second
+         for a scene that reads identically at 30, and it cost the whole page about
+         20fps. Cinematic scenes (the opening core, reward moments) still render at
+         full rate, so nothing the Hunter actually watches is throttled. */
+      const ambient = activeName === 'ambient';
+      if (!ambient || t - lastAmbientRender >= AMBIENT_FRAME) {
+        if (ambient) lastAmbientRender = t;
+        renderer.render(activeScene.scene, camera);
+      }
     }
 
     frames++; fpsAccum += dt;
