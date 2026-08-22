@@ -8664,6 +8664,78 @@ function addExerciseRow(presetName, targetSets, targetReps, prefillSets) {
       `<button type="button" class="rir-chip" data-rir="${n}" style="${n>=9?'border-color:rgba(255,77,103,0.4);':n>=7?'border-color:rgba(255,214,107,0.4);':''}">${n}</button>`
     ).join('')}</div><div class="rir-desc"></div>`;
   }
+  /* The label and chip scale always come from usesRPE(), never from a value
+     captured when the row was built. */
+  function intensityControl(prefillValue) {
+    const rpe = usesRPE();
+    return `<span class="set-row-rir-label">${rpe ? 'RPE' : 'RIR'}</span>`
+         + (rpe ? rpeChips(prefillValue) : rirChips(prefillValue));
+  }
+  /* Set rows are created before an exercise is chosen, so a row built for RIR
+     can later belong to a timed movement that logs RPE. Rebuild the intensity
+     control of every set row whose rendered scale no longer matches the chosen
+     exercise. Nothing else in the row is touched, and rows already on the right
+     scale are left completely alone so a resistance->resistance swap keeps its
+     entered values.
+     The previous selection is deliberately NOT carried across a scale change:
+     RIR and RPE are inverse scales, so reusing the number would silently invert
+     the effort it records. The Hunter re-picks on the correct scale instead. */
+  function rebuildIntensityScale() {
+    const wantRPE = usesRPE();
+    setsList.querySelectorAll('.set-row').forEach(setRow => {
+      const holder = setRow.querySelector('.set-row-rir');
+      if (!holder) return;
+      const hasRPE = !!holder.querySelector('.rir-chips[data-scale="rpe"]');
+      if (hasRPE === wantRPE) return;          // already correct - leave untouched
+      holder.innerHTML = intensityControl(null);
+      wireChips(setRow);
+      checkComplete(setRow);
+    });
+    refreshCompleteButton();
+  }
+  /* Chip listeners live here so both the initial build and a later scale
+     rebuild wire an identical control. */
+  function wireChips(setRow) {
+    setRow.querySelectorAll('.rir-chip').forEach(chip => chip.addEventListener('click', () => {
+      SFX.chipSelect();
+      setRow.querySelectorAll('.rir-chip').forEach(c => c.classList.remove('selected'));
+      chip.classList.add('selected');
+      checkComplete(setRow);
+      refreshCompleteButton();
+      // Show plain-English description — correct semantics per exercise type
+      const chipVal = parseInt(chip.dataset.rir);
+      const RIR_DESCS = {
+        0:'Absolute limit — could not do another rep.',
+        1:'One rep left in the tank.',
+        2:'Could probably do 2 more.',
+        3:'3 reps left — moderately hard.',
+        4:'4 reps left — comfortable.',
+        5:'5 reps left — fairly easy.',
+        6:'6+ reps left — light effort.',
+        7:'Very easy — lots left.',
+        8:'Extremely easy.',
+        9:'Almost no effort.',
+        10:'Minimal effort — warm-up level.',
+      };
+      const RPE_DESCS = {
+        1:'Barely any effort.',
+        2:'Very light — could continue for a long time.',
+        3:'Light effort — conversational.',
+        4:'Moderate — slightly elevated breathing.',
+        5:'Somewhat hard — noticeable effort.',
+        6:'Hard — controlled breathing required.',
+        7:'Very hard — difficult to speak.',
+        8:'Very intense — challenging to sustain.',
+        9:'Near maximal — close to your limit.',
+        10:'Maximal — absolute limit of effort.',
+      };
+      /* same predicate as the chips above, so the wording can never describe a
+         different scale than the one being shown */
+      const isTimedRow = usesRPE();
+      const descEl = setRow.querySelector('.rir-desc');
+      if (descEl) descEl.textContent = isTimedRow ? (RPE_DESCS[chipVal] || '') : (RIR_DESCS[chipVal] || '');
+    }));
+  }
   function checkComplete(setRow) {
     const repsInput = setRow.querySelector('.set-reps');
     const reps = Number(repsInput?.value) || 0;
@@ -8859,8 +8931,7 @@ function addExerciseRow(presetName, targetSets, targetReps, prefillSets) {
       ${suggTag}
       ${prevTag}
       <div class="set-row-rir">
-        <span class="set-row-rir-label">${timed ? 'RPE' : 'RIR'}</span>
-        ${timed ? rpeChips(prefillRir) : rirChips(prefillRir)}
+        ${intensityControl(prefillRir)}
       </div>`;
     // Copy previous set button
     const copyBtn = setRow.querySelector('.copy-prev-btn');
@@ -8913,44 +8984,7 @@ function addExerciseRow(presetName, targetSets, targetReps, prefillSets) {
       inp.dataset.confirmed = '1'; // typing into any field counts as confirmation
       checkComplete(setRow);
     }));
-    setRow.querySelectorAll('.rir-chip').forEach(chip => chip.addEventListener('click', () => {
-      SFX.chipSelect();
-      setRow.querySelectorAll('.rir-chip').forEach(c => c.classList.remove('selected'));
-      chip.classList.add('selected');
-      checkComplete(setRow);
-      refreshCompleteButton();
-      // Show plain-English description — correct semantics per exercise type
-      const chipVal = parseInt(chip.dataset.rir);
-      const RIR_DESCS = {
-        0:'Absolute limit — could not do another rep.',
-        1:'One rep left in the tank.',
-        2:'Could probably do 2 more.',
-        3:'3 reps left — moderately hard.',
-        4:'4 reps left — comfortable.',
-        5:'5 reps left — fairly easy.',
-        6:'6+ reps left — light effort.',
-        7:'Very easy — lots left.',
-        8:'Extremely easy.',
-        9:'Almost no effort.',
-        10:'Minimal effort — warm-up level.',
-      };
-      const RPE_DESCS = {
-        1:'Barely any effort.',
-        2:'Very light — could continue for a long time.',
-        3:'Light effort — conversational.',
-        4:'Moderate — slightly elevated breathing.',
-        5:'Somewhat hard — noticeable effort.',
-        6:'Hard — controlled breathing required.',
-        7:'Very hard — difficult to speak.',
-        8:'Very intense — challenging to sustain.',
-        9:'Near maximal — close to your limit.',
-        10:'Maximal — absolute limit of effort.',
-      };
-      const isTimedRow = !!setRow.closest('.exercise-row')
-        && !!(EXERCISES_ALL[setRow.closest('.exercise-row')?.dataset.exName] || {}).timed;
-      const descEl = setRow.querySelector('.rir-desc');
-      if (descEl) descEl.textContent = isTimedRow ? (RPE_DESCS[chipVal] || '') : (RIR_DESCS[chipVal] || '');
-    }));
+    wireChips(setRow);
     setRow.querySelector('.set-remove').addEventListener('click', () => { SFX.pop(); setRow.remove(); [...setsList.children].forEach((r,i) => r.querySelector('.set-idx').textContent = i+1); });
     setsList.appendChild(setRow);
     tableHead.classList.remove('hidden');
@@ -8960,6 +8994,15 @@ function addExerciseRow(presetName, targetSets, targetReps, prefillSets) {
   function isTimed() {
     const def = EXERCISES_ALL[row.dataset.exName] || {};
     return !!def.timed;
+  }
+  /* Which intensity scale this exercise logs on. Mirrors the save path's own
+     usesRPE predicate exactly, so the control the Hunter sees can never
+     disagree with the field the set is written to. isTimed() alone is not the
+     same test: a timed exercise measured in minutes still logs RIR unless it
+     is an endurance/run movement. */
+  function usesRPE() {
+    const def = EXERCISES_ALL[row.dataset.exName] || {};
+    return !!(def.timed && (def.timedUnit !== 'mins' || def.intent === 'endurance'));
   }
   function timedUnit() {
     const def = EXERCISES_ALL[row.dataset.exName] || {};
@@ -8981,6 +9024,10 @@ function addExerciseRow(presetName, targetSets, targetReps, prefillSets) {
     pickerLabel.textContent = name;
     pickerBtn.classList.remove('placeholder');
     refreshTags();
+    /* Phase 11: the set rows may have been built before this exercise was
+       chosen. If the scale changed, the intensity control is rebuilt so RIR/RPE
+       on screen always matches the field the save writes. */
+    rebuildIntensityScale();
     // Update the workout modal heading to show current exercise name
     const titleEl = document.getElementById('logger-title');
     if (titleEl && name) {
