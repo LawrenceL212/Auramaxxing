@@ -7061,8 +7061,14 @@ async function loadAllData() {
   setTimeout(() => { try { renderExerciseLibrary(); } catch(e) {} }, 100);
   setTimeout(() => { try { renderCalendar(); } catch(e) {} }, 150);
   startDailyTimer();
-  setTimeout(() => { try { maybeShowStreakFreezeNotice(); } catch(e) {} }, 600);
-  setTimeout(() => { try { maybeShowUpdateNotice(); } catch(e) {} }, 800);
+  // Queued, not raced: these two fired on independent timers and could stack
+  // two fullscreen blur layers on top of each other.
+  setTimeout(() => {
+    try {
+      StartupNotices.queue(maybeShowStreakFreezeNotice);
+      StartupNotices.queue(maybeShowUpdateNotice);
+    } catch (e) {}
+  }, 600);
   setTimeout(() => { try { checkPendingDuels(); } catch(e) {} }, 1000);
   setTimeout(() => { try { backfillShadowArmySoldiers(); } catch(e) { console.warn('Backfill failed:', e); } }, 1500);
   // Start living ambient system — runs always in background
@@ -21723,6 +21729,50 @@ window.abandonDungeon = async () => {
   showToast('Dungeon abandoned.', 'error');
 };
 
+/* ── Startup notice queue ────────────────────────────────────────────────
+   Full-screen startup notices are shown one at a time, never stacked. Two were
+   fired on independent timers, so a Hunter with both pending got two
+   overlapping fullscreen backdrop-filter layers - one notice buried behind the
+   other, and the page compositing two blurs every frame (~23fps while up).
+   Each entry is a function that either shows its notice and returns the overlay
+   element, or returns nothing when it decides it has nothing to show. The next
+   entry runs only once the previous overlay has left the DOM, so every existing
+   dismissal path (button, backdrop click, persistence write) keeps working
+   untouched - the queue only watches for the element going away. */
+const StartupNotices = (() => {
+  const pending = [];
+  let showing = null, watcher = null;
+
+  function stopWatch() { try { watcher?.disconnect(); } catch (e) {} watcher = null; }
+
+  function watch() {
+    if (watcher) return;
+    watcher = new MutationObserver(() => {
+      if (!showing || !showing.isConnected) advance();
+    });
+    watcher.observe(getOverlayHost(), { childList: true });
+  }
+
+  function advance() {
+    if (showing && showing.isConnected) return;      // current notice still up
+    showing = null;
+    while (pending.length) {
+      let el = null;
+      try { el = pending.shift()(); } catch (e) { console.warn('[StartupNotices]', e); }
+      if (el && el.isConnected) { showing = el; watch(); return; }
+      // that notice declined to show - fall straight through to the next
+    }
+    stopWatch();
+  }
+
+  return {
+    queue(fn) { pending.push(fn); advance(); },
+    get active() { return !!(showing && showing.isConnected); },
+    get waiting() { return pending.length; },
+  };
+})();
+window.StartupNotices = StartupNotices;
+
 // ── Update notice ──
 const UPDATE_VERSION = 'v20260811';
 
@@ -21752,12 +21802,13 @@ function maybeShowStreakFreezeNotice() {
   getOverlayHost().appendChild(modal);
   modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
   SFX.classAssigned?.();
+  return modal;
 }
 
 function maybeShowUpdateNotice() {
   const key = `aura_update_dismissed_${currentUser?.uid || 'anon'}_${UPDATE_VERSION}`;
   if (localStorage.getItem(key)) return;
-  showUpdateNotice();
+  return showUpdateNotice();
 }
 
 function showUpdateNotice() {
@@ -21822,6 +21873,7 @@ function showUpdateNotice() {
   });
   overlay.querySelector('#update-notice-close').addEventListener('click', () => overlay.remove());
   overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+  return overlay;
 }
 
 window.showUpdateNotice = showUpdateNotice;
