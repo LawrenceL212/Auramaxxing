@@ -1399,15 +1399,15 @@
     color:var(--violet)!important;
     box-shadow:0 0 8px rgba(139,92,255,0.2)!important;
   }
-  .rir-chip[data-rir="0"].selected,
-  .rir-chip[data-rir="1"].selected{
+  .rir-chips:not([data-scale="rpe"]) .rir-chip[data-rir="0"].selected,
+  .rir-chips:not([data-scale="rpe"]) .rir-chip[data-rir="1"].selected{
     background:rgba(255,77,103,0.12)!important;
     border-color:var(--excess)!important;
     color:var(--excess)!important;
     box-shadow:0 0 8px rgba(255,77,103,0.2)!important;
   }
-  .rir-chip[data-rpe="9"].selected,
-  .rir-chip[data-rpe="10"].selected{
+  .rir-chips[data-scale="rpe"] .rir-chip[data-rir="9"].selected,
+  .rir-chips[data-scale="rpe"] .rir-chip[data-rir="10"].selected{
     background:rgba(255,77,103,0.12)!important;
     border-color:var(--excess)!important;
     color:var(--excess)!important;
@@ -1415,9 +1415,11 @@
   }
   .set-row.complete{background:var(--brass-dim);}
   .set-row-main{display:contents;}
-  .set-row-rir{grid-column:2 / 4;display:flex;align-items:center;gap:6px;padding-top:4px;}
+  .set-row-rir{grid-column:2 / 4;display:flex;align-items:center;gap:6px;padding-top:4px;flex-wrap:wrap;min-width:0;}
   .set-row-rir-label{font-size:10px;color:var(--text-dim);white-space:nowrap;font-weight:600;}
-  .rir-chips{display:flex;gap:4px;align-items:center;flex-shrink:0;}
+  /* Chips wrap onto as many lines as the row width needs — .set-row is overflow:hidden,
+     so a non-shrinking single line silently clipped the high chips on narrow phones. */
+  .rir-chips{display:flex;gap:4px;align-items:center;flex-wrap:wrap;min-width:0;}
   .rir-chip{
     width:34px;height:34px;border-radius:6px;border:1px solid var(--border);
     background:var(--card-2);color:var(--text-faint);font-size:13px;cursor:pointer;
@@ -3066,7 +3068,9 @@
   .prev-session-ref{display:flex;align-items:center;gap:6px;padding:3px 0 3px 4px;border-left:2px solid rgba(91,168,255,.15);margin:2px 0 4px;flex-wrap:wrap;}
 
   /* ── RIR description ── */
-  .rir-desc{font-size:10px;color:rgba(91,168,255,0.78);margin-top:3px;min-height:13px;font-style:italic;transition:opacity .2s;text-align:center;}
+  /* Always its own full-width line under the chips — as a shrinkable flex sibling it
+     collapsed into a squeezed column on narrow phones. flex-basis:100% forces the break. */
+  .rir-desc{flex:0 0 100%;font-size:10px;color:rgba(91,168,255,0.78);margin-top:3px;min-height:13px;font-style:italic;transition:opacity .2s;text-align:center;}
 
   /* ── Stat WHY panel ── */
   .stat-why{background:rgba(91,168,255,.04);border:1px solid rgba(91,168,255,.1);border-radius:8px;padding:10px 12px;margin-top:8px;font-size:11px;color:var(--text-dim);line-height:1.7;display:none;}
@@ -8648,9 +8652,9 @@ function addExerciseRow(presetName, targetSets, targetReps, prefillSets) {
   }
 
   function rpeChips(prefillRpe) {
-    return `<div class="rir-chips" title="Rate of Perceived Exertion (1=easy, 10=max)">${[1,2,3,4,5,6,7,8,9,10].map(n =>
+    return `<div class="rir-chips" data-scale="rpe" title="Rate of Perceived Exertion (1=easy, 10=max)">${[1,2,3,4,5,6,7,8,9,10].map(n =>
       `<button type="button" class="rir-chip" data-rir="${n}" style="${n>=9?'border-color:rgba(255,77,103,0.4);':n>=7?'border-color:rgba(255,214,107,0.4);':''}">${n}</button>`
-    ).join('')}</div>`;
+    ).join('')}</div><div class="rir-desc"></div>`;
   }
   function checkComplete(setRow) {
     const repsInput = setRow.querySelector('.set-reps');
