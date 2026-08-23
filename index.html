@@ -3255,7 +3255,7 @@
     <p class="wordmark">AURA<span>MAXX</span></p>
     <div class="daily-timer" id="daily-timer"></div>
     <div class="user-chip">
-      <button class="icon-btn" id="settings-btn" title="System Command" style="color:rgba(91,168,255,0.78);font-family:var(--font-mono);font-size:14px;">◈</button>
+      <button class="icon-btn" id="settings-btn" title="System Command" aria-label="System Command, more destinations" style="color:rgba(91,168,255,0.78);font-family:var(--font-mono);font-size:14px;">◈</button>
       <div class="avatar" id="user-avatar">–</div>
       <button class="icon-btn" id="logout-btn" title="Leave the System" style="font-family:var(--font-mono);font-size:9px;letter-spacing:.08em;color:rgba(91,168,255,0.78);">◈ EXIT</button>
     </div>
@@ -3577,13 +3577,6 @@
           <path d="M12 3 C10 3 8 5 8 8 L8 10 C8 11 7 12 6 12 C7 12 8 13 8 14 L8 18 C8 21 10 22 12 22 C14 22 16 21 16 18 L16 14 C16 13 17 12 18 12 C17 12 16 11 16 10 L16 8 C16 5 14 3 12 3Z"/>
         </svg>Codex
       </button>
-      <button data-view="exercises">
-        <!-- Shield — Arsenal -->
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M12 3 L20 7 L20 13 C20 17.4 16.4 21.1 12 22 C7.6 21.1 4 17.4 4 13 L4 7 Z"/>
-          <path d="M9 12 L11 14 L15 10"/>
-        </svg>Arsenal
-      </button>
       <button data-view="world">
         <!-- Territory/world sigil — World -->
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
@@ -3593,6 +3586,15 @@
           <path d="M3.5 15 L20.5 15"/>
           <path d="M12 3 C9 6 9 9 12 12 C15 15 15 18 12 21"/>
         </svg>World
+      </button>
+      <button data-nav="more" aria-label="More destinations">
+        <!-- Four sigils — More. Sharp geometry to match the other System marks. -->
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="4" y="4" width="6" height="6"/>
+          <rect x="14" y="4" width="6" height="6"/>
+          <rect x="4" y="14" width="6" height="6"/>
+          <rect x="14" y="14" width="6" height="6"/>
+        </svg>More
       </button>
     </div>
   </nav>
@@ -4473,9 +4475,12 @@ function startDailyTimer() {
   render();
   dailyTimerInterval = setInterval(render, 1000);
 }
-document.getElementById('settings-btn')?.addEventListener('click', () => openSettingsModal());
+document.getElementById('settings-btn')?.addEventListener('click', () => openSystemCommand());
 
-function openSettingsModal() {
+/* Secondary-destination sheet. Reached from the More nav slot and from the
+   header's System Command control. Renamed from openSettingsModal because it
+   now carries four navigation destinations, not settings alone. */
+function openSystemCommand() {
   const overlay = document.createElement('div');
   overlay.className = 'system-overlay system-cmd-overlay';
   overlay.innerHTML = [
@@ -4488,8 +4493,13 @@ function openSettingsModal() {
     '    <button class="system-cmd-close" id="system-cmd-close">\u2715</button>',
     '  </div>',
     '  <div class="system-cmd-body">',
-    '    <div class="system-cmd-section-label">\u25c8 SYSTEM FUNCTIONS</div>',
+    '    <div class="system-cmd-section-label">\u25c8 DESTINATIONS</div>',
     '    <div class="system-cmd-functions">',
+    '      <button class="sys-fn-btn" data-view="exercises">',
+    '        <div class="sys-fn-glyph">🛡</div>',
+    '        <div class="sys-fn-info"><div class="sys-fn-name">ARSENAL</div><div class="sys-fn-desc">Exercise library · Custom movements</div></div>',
+    '        <div class="sys-fn-chevron">›</div>',
+    '      </button>',
     '      <button class="sys-fn-btn" data-view="history">',
     '        <div class="sys-fn-glyph">\ud83d\udcdc</div>',
     '        <div class="sys-fn-info"><div class="sys-fn-name">SHADOW LOG</div><div class="sys-fn-desc">Historical records of every Hunt</div></div>',
@@ -4888,12 +4898,18 @@ document.addEventListener('click', function unlockAudioClick() {
 document.querySelectorAll('.bottom-nav button').forEach(btn => btn.addEventListener('click', () => {
   SFX.unlock();
   SFX.vibrate([6]);
+  // The More slot is a surface, not a view: it opens the secondary-destination
+  // sheet. Every other slot navigates directly.
+  if (btn.dataset.nav === 'more') { openSystemCommand(); return; }
   switchView(btn.dataset.view);
 }));
 // ── #2 DIRECTIONAL TRANSITIONS ──
 // Navigation hierarchy: hunt(0) → board(1) → trends(2) → inventory(3) → world(4)
 // Moving right = going deeper = slide up. Moving left = returning = slide down.
 const VIEW_DEPTH = { quest:0, board:1, trends:2, inventory:3, world:4, exercises:2, history:1, feats:2 };
+/* Which bottom-nav slot owns each destination. Views reached through the More
+   sheet keep More lit, so the bar is never left with nothing selected. */
+const NAV_PARENT = { exercises:'more', history:'more', feats:'more', inventory:'more' };
 let _lastViewDepth = 0;
 
 /* ══════════════════════════════════════════════════════════════════════════
@@ -6847,7 +6863,9 @@ function switchView(name) {
   const viewEl = document.getElementById('view-' + name);
   if (!viewEl) { console.warn('switchView: no element for view', name); return; }
   viewEl.classList.add('active');
-  document.querySelectorAll('.bottom-nav button').forEach(b => b.classList.toggle('active', b.dataset.view === name));
+  const _navKey = NAV_PARENT[name] || name;
+  document.querySelectorAll('.bottom-nav button').forEach(b =>
+    b.classList.toggle('active', (b.dataset.view || b.dataset.nav) === _navKey));
 
   // World iframe stays loaded — section CSS handles visibility
   if (name === 'world') {
