@@ -5534,12 +5534,23 @@ function buildSystemCoreScene({ THREE, quality, tier }) {
   const root = new THREE.Group();
   scene.add(root);
 
-  // Lighting: one key, one cool rim, minimal fill. Rim does the form work.
-  const KEY_I = 1.15, RIM_I = 2.10, FILL_I = 0.55;
-  const key = new THREE.DirectionalLight(0xbcd4ff, KEY_I); key.position.set(2.4, 3.0, 3.2);
-  const rim = new THREE.DirectionalLight(0x5ba8ff, RIM_I); rim.position.set(-2.6, 1.6, -2.8);
-  const fill = new THREE.HemisphereLight(0x24406e, 0x05070d, FILL_I);
-  scene.add(key, rim, fill);
+  // Lighting: key, rim, hemisphere fill + a dim warm ground bounce.
+  // Dark polished metal needs at least two separated specular sources to show
+  // its form — otherwise it reads as a silhouette with one bright streak.
+  const KEY_I = 1.40, RIM_I = 1.80, FILL_I = 0.50;
+  // Key: slightly warmer than before — not orange, but not pure blue-white.
+  // The core metal should catch a cool-white highlight, not a blue one.
+  const key = new THREE.DirectionalLight(0xd0deff, KEY_I); key.position.set(2.4, 3.0, 3.2);
+  // Rim: slightly less intense — previously dominated and washed the specular.
+  const rim = new THREE.DirectionalLight(0x4a8aff, RIM_I); rim.position.set(-2.6, 1.6, -2.8);
+  // Hemisphere: lift sky slightly so dark metal has something to reflect
+  // on its top surfaces. Ground stays near-void.
+  const fill = new THREE.HemisphereLight(0x1a2d5a, 0x04050a, FILL_I);
+  // Warm ground bounce — very dim. Catches the underside of rings and the
+  // bottom faces of the core. Prevents total blackness on the bottom half.
+  const bounce = new THREE.PointLight(0x1a1060, 0.45, 8, 1.5);
+  bounce.position.set(0.4, -2.8, 1.6);
+  scene.add(key, rim, fill, bounce);
 
   /* Environment. Kept from the previous phase unchanged: a staged scene needs
      a place, and the dungeon/raid cinematics drive it. Presentation only.
@@ -5647,35 +5658,90 @@ function buildSystemCoreScene({ THREE, quality, tier }) {
   }
 
   /* ── the System sigil ─────────────────────────────────────────────────────
-     Faceted core, two counter-rotating rings, a belt of orbiting shards.
-     Flat-shaded on purpose: the sharp geometric read IS the System's face. */
+     Dark forged iron object — NOT a crystal. The core is polished obsidian
+     metal; the rings are thin polished steel; the shards are bladed iron.
+     Glow is internal (PointLight) not surface emissive, so it reads as
+     heat from inside a dense object rather than anime neon paint. */
+
+  // ── Materials ────────────────────────────────────────────────────────────
+  // Forged iron/obsidian core: nearly black, high metalness, low roughness
+  // so it catches hard specular highlights from the key and the inner light.
+  // Tiny emissive — just enough to define the silhouette when everything else
+  // is dark. The real glow comes from innerLight below.
   const coreMat = new THREE.MeshStandardMaterial({
-    color: 0x04060c, roughness: 0.68, metalness: 0.12, flatShading: true,
-    emissive: 0x1c49b8, emissiveIntensity: 0.06,
+    color: 0x080c14,
+    roughness: 0.18,
+    metalness: 0.88,
+    flatShading: false,
+    emissive: 0x0d1f4a,
+    emissiveIntensity: 0.08,
   });
+
+  // Polished dark steel rings: higher metalness, lower roughness than core
+  // so they produce sharp, thin specular streaks as they rotate — steel, not plastic.
   const ringMat = new THREE.MeshStandardMaterial({
-    color: 0x05070d, roughness: 0.62, metalness: 0.2,
-    emissive: 0x5a35c9, emissiveIntensity: 0.10,
+    color: 0x06090f,
+    roughness: 0.10,
+    metalness: 0.94,
+    emissive: 0x0a1a3a,
+    emissiveIntensity: 0.05,
   });
+
+  // Bladed iron shards: same forged iron family, flat-shaded so each face
+  // reads as a separate plane catching light differently — deliberate faceting
+  // of a physical object, not an anime gem.
   const shardMat = new THREE.MeshStandardMaterial({
-    color: 0x05070d, roughness: 0.60, metalness: 0.15, flatShading: true,
-    emissive: 0x2e63d8, emissiveIntensity: 0.12,
+    color: 0x07090f,
+    roughness: 0.22,
+    metalness: 0.85,
+    flatShading: true,
+    emissive: 0x0c1a40,
+    emissiveIntensity: 0.06,
   });
-  const core = new THREE.Mesh(new THREE.OctahedronGeometry(0.46, 1), coreMat);
+
+  // ── Geometry ─────────────────────────────────────────────────────────────
+  // detail=2 gives 32 triangular faces — enough for a smooth metal form
+  // without becoming a sphere. The vertical stretch makes it read as a
+  // standing geometric solid rather than a diamond.
+  const core = new THREE.Mesh(new THREE.OctahedronGeometry(0.46, 2), coreMat);
   core.scale.set(1, 1.35, 1);
-  const ring1 = new THREE.Mesh(new THREE.TorusGeometry(0.95, 0.020, 8, 72), ringMat);
+
+  // Rings: tube section thicker (0.028 / 0.020) so they have physical mass
+  // and the highlight is a visible streak rather than a hairline.
+  // radialSegments=12 gives the tube a solid round cross-section.
+  const ring1 = new THREE.Mesh(new THREE.TorusGeometry(0.95, 0.028, 12, 96), ringMat);
   ring1.rotation.x = Math.PI / 2.25;
-  const ring2 = new THREE.Mesh(new THREE.TorusGeometry(1.18, 0.014, 8, 72), ringMat);
+  const ring2 = new THREE.Mesh(new THREE.TorusGeometry(1.18, 0.020, 12, 96), ringMat);
   ring2.rotation.x = Math.PI / 1.75; ring2.rotation.y = 0.5;
+
+  // Shards: elongated blades, flat-shaded deliberately — each face is a
+  // polished iron plane, not a crystal facet.
   const shards = new THREE.Group();
   const shardList = [];
   for (let i = 0; i < 12; i++) {
-    const s = new THREE.Mesh(new THREE.OctahedronGeometry(0.055, 0), shardMat);
-    s.scale.y = 1.8;
+    const s = new THREE.Mesh(new THREE.OctahedronGeometry(0.052, 0), shardMat);
+    s.scale.set(0.7, 2.2, 0.7); // thinner, longer blade profile
     shards.add(s);
     shardList.push({ m: s, a: (i / 12) * Math.PI * 2, r: 1.42 + (i % 3) * 0.10,
                      y: ((i % 4) - 1.5) * 0.16, sp: 0.8 + (i % 5) * 0.10 });
   }
+
+  // ── Internal light — the heat source inside a forge ───────────────────────
+  // This is the key realism change. Instead of surface emissive painting the
+  // object blue, a PointLight inside the core casts real light onto the metal
+  // surfaces: the rings catch it on their inner curve, the core faces nearest
+  // the light brighten, the shards at different distances vary in intensity.
+  // All of this is physically correct specular/diffuse response, not emissive glow.
+  const innerLight = new THREE.PointLight(0x4a7fff, 0.9, 3.2, 2.0);
+  innerLight.position.set(0, 0, 0);
+  root.add(innerLight);
+
+  // A second, dimmer inner light offset upward catches the underside of ring1
+  // and the top faces of the core — gives the object more internal complexity.
+  const innerLight2 = new THREE.PointLight(0x3060cc, 0.35, 2.4, 2.0);
+  innerLight2.position.set(0, 0.3, 0);
+  root.add(innerLight2);
+
   root.add(core, ring1, ring2, shards);
   root.scale.setScalar(0.78);
   root.scale.setScalar(0.78);
@@ -5715,13 +5781,28 @@ function buildSystemCoreScene({ THREE, quality, tier }) {
       flareAmt = Math.max(0, flareAmt - dt * 0.9);
       if (frozen) return;
       const energy = auraNow + flareAmt * 0.6;
-      const pulse = 1 + Math.sin(t * 2.1) * 0.10 * energy;
-      coreMat.emissiveIntensity  = (0.04 + energy * 0.40) * pulse;
-      ringMat.emissiveIntensity  = 0.06 + energy * 0.38;
-      shardMat.emissiveIntensity = 0.08 + energy * 0.50;
-      core.rotation.y = t * (0.12 + energy * 0.55);
-      ring1.rotation.z = t * (0.16 + energy * 0.70);
-      ring2.rotation.z = -t * (0.11 + energy * 0.55);
+      const pulse = 1 + Math.sin(t * 2.1) * 0.08 * energy;
+      // Emissive stays very low — just defines silhouette. Real glow = innerLight.
+      coreMat.emissiveIntensity  = (0.04 + energy * 0.08) * pulse;
+      ringMat.emissiveIntensity  = 0.03 + energy * 0.06;
+      shardMat.emissiveIntensity = 0.04 + energy * 0.10;
+      // Internal PointLight: this is where the "molten core" effect comes from.
+      // Dormant: dim, barely bleeds past the core surface.
+      // Active: lights the inner curves of both rings.
+      // Surge: strong enough to cast on the shards and briefly flare.
+      const innerBase = 0.55 + energy * 2.8;
+      const innerPulse = innerBase * (1 + Math.sin(t * 2.1) * 0.10 * Math.max(0.2, energy));
+      innerLight.intensity  = innerPulse;
+      innerLight2.intensity = (0.18 + energy * 0.9) * pulse;
+      // Shift inner light color: dormant=cold blue, surge=warmer blue-white
+      const cr = 0.29 + energy * 0.18;
+      const cg = 0.42 + energy * 0.16;
+      innerLight.color.setRGB(cr, cg, 1.0);
+      // Slow deliberate rotation — heavy forged metal, not a toy.
+      // Energy barely accelerates the rotation; the object has mass.
+      core.rotation.y = t * (0.10 + energy * 0.18);
+      ring1.rotation.z = t * (0.14 + energy * 0.22);
+      ring2.rotation.z = -t * (0.09 + energy * 0.16);
       for (const s of shardList) {
         const a = s.a + t * s.sp * (0.25 + energy * 1.1);
         s.m.position.set(Math.cos(a) * s.r, s.y + Math.sin(t * 0.9 + s.a * 3) * 0.05,
