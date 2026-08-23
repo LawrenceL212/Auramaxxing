@@ -1527,9 +1527,24 @@
     0%,100% { box-shadow:0 0 16px rgba(255,214,107,0.12), inset 0 1px 0 rgba(255,255,255,0.06); }
     50%      { box-shadow:0 0 32px rgba(255,214,107,0.28), inset 0 1px 0 rgba(255,255,255,0.1); }
   }
-  #save-workout-btn:not(.hidden) {
+  #save-workout-btn:not(.hidden):not([disabled]) {
     animation: questBtnPulse 2s ease-in-out infinite;
-  }bottom:0;margin-top:20px;padding-bottom:env(safe-area-inset-bottom, 0);background:var(--bg);padding-top:12px;z-index:10;}
+  }
+  /* This rule had lost its selector: the declarations below were orphaned after
+     the brace above and silently dropped by the parser, which is why the save
+     action was never sticky and sat below the fold. */
+  .save-bar{
+    position:sticky;bottom:0;margin-top:20px;
+    padding-bottom:max(16px, env(safe-area-inset-bottom, 0));
+    background:var(--bg);padding-top:12px;z-index:10;
+    border-top:1px solid rgba(91,168,255,0.10);
+  }
+  /* States the requirement rather than making the action disappear. */
+  .save-hint{
+    font-family:var(--font-mono);font-size:10px;letter-spacing:.06em;
+    color:var(--text-faint);text-align:center;margin:7px 0 0;
+  }
+  #save-workout-btn[disabled]{opacity:.42;cursor:not-allowed;filter:saturate(.5);}
 
   /* Toast notifications — replaces alert() on mobile */
   /* ── TOAST — System notification pill ── */
@@ -3673,6 +3688,7 @@
   <button class="btn add-exercise-btn" id="add-exercise-btn" style="font-family:var(--font-mono);letter-spacing:.06em;">+ Add Exercise</button>
   <div class="save-bar">
     <button class="btn btn-primary hidden" id="save-workout-btn">⚔ Complete Quest</button>
+    <p class="save-hint hidden" id="save-hint"></p>
     <p class="save-msg hidden" id="save-msg" style="font-family:var(--font-mono);font-size:11px;letter-spacing:.08em;">◈ HUNT CLEARED</p>
   </div>
     </div>
@@ -7803,11 +7819,17 @@ function closeWorkoutModal(discard = false) {
 }
 
 // Show/hide Complete Quest button based on whether all target sets are done
+/* The save action used to vanish until the workout was valid, so there was
+   nothing to aim at and nothing explaining what was missing. Same validity
+   condition, but the button now stays present in its sticky bar and states its
+   own requirement while that requirement is unmet. The condition is unchanged:
+   at least one set with reps > 0, and every such set carrying an effort rating. */
 function refreshCompleteButton() {
   const btn = document.getElementById('save-workout-btn');
+  const hint = document.getElementById('save-hint');
   if (!btn) return;
+  btn.classList.remove('hidden');
   const rows = document.querySelectorAll('#exercise-rows .exercise-row');
-  if (!rows.length) { btn.classList.add('hidden'); return; }
   const completedSets = [];
   rows.forEach(row => {
     row.querySelectorAll('.set-row').forEach(sr => {
@@ -7815,9 +7837,17 @@ function refreshCompleteButton() {
       if (reps > 0) completedSets.push(sr);
     });
   });
-  if (!completedSets.length) { btn.classList.add('hidden'); return; }
-  const allRIRSelected = completedSets.every(sr => sr.querySelector('.rir-chip.selected') !== null);
-  btn.classList.toggle('hidden', !allRIRSelected);
+  const unrated = completedSets.filter(sr => sr.querySelector('.rir-chip.selected') === null);
+  let reason = '';
+  if (!rows.length)               reason = 'Choose an exercise to begin';
+  else if (!completedSets.length) reason = 'Log at least one completed set';
+  else if (unrated.length === 1)  reason = 'One set still needs an effort rating';
+  else if (unrated.length > 1)    reason = unrated.length + ' sets still need an effort rating';
+  btn.disabled = !!reason;
+  if (hint) {
+    hint.textContent = reason;
+    hint.classList.toggle('hidden', !reason);
+  }
 }
 document.getElementById('end-workout-modal')?.addEventListener('click', () => {
   if (!window.confirm('End this workout?\n\nAll your logged sets will be lost.')) return;
