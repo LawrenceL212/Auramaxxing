@@ -572,10 +572,18 @@
   /* ---------- Shell ---------- */
   html,body{height:100%;overflow:hidden;}
   #app{display:none;height:100dvh;flex-direction:column;overflow:hidden;}
+  /* Three deliberate zones — BRAND | STATUS | ACTIONS. Previously three flex
+     children under space-between with no shrink budget: at 390px the status
+     block was left ~74px for ~70px of text and wrapped into the wordmark. The
+     centre column is the only one allowed to shrink, and it truncates rather
+     than wrapping, so brand and actions are never compromised. */
   header.topbar{
-    position:sticky;top:0;z-index:5;display:flex;align-items:center;
-    justify-content:space-between;
-    padding:max(12px, env(safe-area-inset-top)) 20px 12px;
+    position:sticky;top:0;z-index:5;
+    display:grid;
+    grid-template-columns:auto minmax(0,1fr) auto;
+    align-items:center;
+    column-gap:clamp(8px,3vw,16px);
+    padding:max(12px, env(safe-area-inset-top)) clamp(12px,4vw,20px) 12px;
     border-bottom:none;
     /* Solid background replaces backdrop-filter — prevents creation of a stacking
        context that traps position:fixed children (Safari/iOS bug with backdrop-filter
@@ -587,8 +595,8 @@
     /* Bottom edge lighting to maintain visual separation without blur */
     border-bottom: 1px solid rgba(91,168,255,0.07);
   }
-  header.topbar .wordmark{font-size:18px;margin:0;text-align:left;text-shadow:none;}
-  .user-chip{display:flex;align-items:center;gap:10px;}
+  header.topbar .wordmark{font-size:clamp(15px,4.6vw,18px);margin:0;text-align:left;text-shadow:none;white-space:nowrap;}
+  .user-chip{display:flex;align-items:center;gap:clamp(2px,1.5vw,10px);justify-self:end;}
   .avatar{width:32px;height:32px;border-radius:50%;background:var(--brass-dim);color:var(--brass);display:flex;align-items:center;justify-content:center;font-family:var(--font-display);font-size:13px;font-weight:700;}
   .icon-btn{background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:13px;min-width:44px;min-height:44px;display:inline-flex;align-items:center;justify-content:center;touch-action:manipulation;transition:color .15s, transform .1s;}
   .icon-btn:hover{color:var(--text);}
@@ -596,9 +604,10 @@
   #settings-btn{font-size:18px;padding:4px 6px;}
 
   /* ---------- Daily quest timer ---------- */
-  .daily-timer{display:flex;flex-direction:column;align-items:center;gap:1px;cursor:default;}
-  .daily-timer-label{font-size:9px;text-transform:uppercase;letter-spacing:0.1em;color:var(--text-faint);}
-  .daily-timer-time{font-family:var(--font-mono);font-size:14px;color:var(--brass);letter-spacing:0.05em;transition:color .3s;}
+  /* Status is the one zone allowed to yield: it truncates, never wraps. */
+  .daily-timer{display:flex;flex-direction:column;align-items:center;gap:1px;cursor:default;min-width:0;overflow:hidden;}
+  .daily-timer-label{font-size:9px;text-transform:uppercase;letter-spacing:0.1em;color:var(--text-faint);white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis;}
+  .daily-timer-time{font-family:var(--font-mono);font-size:clamp(12px,3.4vw,14px);color:var(--brass);letter-spacing:0.05em;transition:color .3s;white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis;}
   .daily-timer-time.urgent{color:var(--excess);animation:timerPulse 1s ease-in-out infinite;}
   .daily-timer-time.safe{color:var(--growing);}
   @keyframes timerPulse{0%,100%{opacity:1;}50%{opacity:0.4;}}
