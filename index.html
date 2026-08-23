@@ -3335,6 +3335,104 @@
   .chain-step-sessions{font-size:10px;font-family:var(--font-mono);color:var(--text-faint);margin-left:auto;}
   .empty-state .display{font-size:16px;color:var(--text-dim);margin-bottom:6px;}
 
+  /* ══════════════════════════════════════════════════════════════════════
+     RESPONSIVE LAYER — six proof-of-concept migrations
+
+     Each component below declares a boundary and composes against it. None
+     asks what device it is on. Placed last so it composes over the existing
+     component rules rather than rewriting them.
+     ══════════════════════════════════════════════════════════════════════ */
+
+  /* ── 1. APP HEADER ───────────────────────────────────────────────────
+     Contract: brand never yields, actions never yield, status yields first.
+     At a comfortable boundary status stops being a squeezed afterthought; at
+     an expanded boundary the whole composition gains room. */
+  header.topbar{ container-type:inline-size; container-name:topbar; }
+  @container topbar (min-width: 30rem){
+    header.topbar{ column-gap:var(--sp-lg); padding-inline:var(--sp-lg); }
+    .daily-timer{ flex-direction:row; align-items:baseline; gap:var(--sp-xs); }
+    .daily-timer-label{ font-size:10px; }
+    .daily-timer-time{ font-size:clamp(14px,1.4vw,17px); }
+  }
+  @container topbar (min-width: 46rem){
+    header.topbar{ column-gap:var(--sp-xl); }
+    .daily-timer{ gap:var(--sp-sm); }
+    .daily-timer-time{ font-size:clamp(16px,1.5vw,20px); letter-spacing:.08em; }
+    .user-chip{ gap:var(--sp-sm); }
+    header.topbar .wordmark{ font-size:clamp(18px,1.7vw,23px); letter-spacing:.06em; }
+  }
+
+  /* ── 2. NAVIGATION ───────────────────────────────────────────────────
+     The 640px cap made a 1920px display show a phone-width tab bar. The bar
+     now tracks the same shell contract and breathes with it. */
+  nav.bottom-nav{ container-type:inline-size; container-name:nav; }
+  nav.bottom-nav .nav-inner{ max-width:min(var(--shell-max), 100%) !important; }
+  @container nav (min-width: 30rem){
+    .bottom-nav button{ font-size:11px; letter-spacing:.06em; }
+  }
+  @container nav (min-width: 46rem){
+    nav.bottom-nav .nav-inner{ padding-inline:var(--sp-lg); }
+    .bottom-nav button{ font-size:12px; letter-spacing:.09em; }
+    .bottom-nav button svg{ width:21px; height:21px; }
+  }
+
+  /* ── 3. CARD ─────────────────────────────────────────────────────────
+     A card is a boundary, so its contents compose against the card rather
+     than the window. Padding rides the shared space scale. */
+  .card{ container-type:inline-size; container-name:card; padding:var(--sp-md); }
+  @container card (min-width: 30rem){
+    .card{ padding:var(--sp-lg); }
+  }
+
+  /* ── 4. MODAL ────────────────────────────────────────────────────────
+     Fluid between a readable floor and a meaningful ceiling instead of a
+     fixed 760px step, and a boundary so contents respond to the panel. */
+  .workout-modal{
+    container-type:inline-size; container-name:sheet;
+    max-width:min(96vw, clamp(360px, 82vw, 1080px)) !important;
+  }
+  .modal{ max-width:min(94vw, clamp(340px, 60vw, 760px)) !important; }
+
+  /* ── 5. WORKOUT SET — reference implementation ───────────────────────
+     SET | HEADER | PERFORMANCE | EFFORT | HISTORY | FEEDBACK | ACTIONS
+     Compact: performance, then effort, stacked.
+     Comfortable: effort shares the line with performance, feedback beside it.
+     The chips never consult a viewport — they fit as many targets of at least
+     --chip-min as the row they are actually in allows. */
+  .set-row{ container-type:inline-size; container-name:set; }
+  .rir-chips{
+    display:grid !important;
+    grid-template-columns:repeat(auto-fit, minmax(var(--chip-min), var(--chip-max))) !important;
+    gap:var(--sp-2xs) !important;
+    justify-content:start;
+    /* auto-fit can only count tracks against a definite inline size. As a bare
+       flex item the grid would size to content and collapse to one column, so
+       the flex line has to hand it the room it is entitled to. */
+    flex:1 1 auto;
+    min-width:0;
+  }
+  .rir-chips .rir-chip{ width:100% !important; min-width:var(--chip-min) !important; }
+  /* Input contract: minimum usable, preferred, maximum meaningful. A column
+     1fr wide is not a reason for a two-digit number to occupy 365px — the
+     control stops growing once it can no longer use the room, and centres
+     under its already-centred column header rather than stranding the space. */
+  .set-row .stepper{ max-width:min(100%, 208px); margin-inline:auto; }
+  .set-row .stepper input{ max-width:112px; }
+  @container set (min-width: 30rem){
+    .set-row-rir{ grid-column:2 / -1; }
+    .rir-desc{ flex:1 1 auto; text-align:left; margin-top:0; padding-left:var(--sp-xs); }
+  }
+
+  /* ── 6. DATA / STAT PANEL ────────────────────────────────────────────
+     Three stacked rows on a phone; real columns the moment columns fit. The
+     panel counts its own room — it is never told a device width. */
+  #objectives-strip{
+    display:grid !important;
+    grid-template-columns:repeat(auto-fit, minmax(min(240px, 100%), 1fr)) !important;
+    gap:var(--sp-xs) !important;
+    align-items:stretch;
+  }
+  #objectives-strip .obj-card{ border-top:1px solid rgba(91,168,255,0.06); }
 </style>
 </head>
 <body>
