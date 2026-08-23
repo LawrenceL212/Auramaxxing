@@ -1539,6 +1539,25 @@
     background:var(--bg);padding-top:12px;z-index:10;
     border-top:1px solid rgba(91,168,255,0.10);
   }
+  /* System-styled discard confirmation — named outcomes, not OK/Cancel. */
+  .sys-confirm-overlay{
+    position:fixed;inset:0;z-index:900;display:flex;align-items:center;
+    justify-content:center;padding:24px;background:rgba(2,4,8,0.86);
+  }
+  .sys-confirm-panel{
+    max-width:340px;width:100%;padding:26px 22px 20px;text-align:center;
+    background:linear-gradient(160deg,rgba(8,11,18,0.99),rgba(12,17,28,0.99));
+    border:1px solid rgba(255,77,103,0.28);border-radius:14px;
+    box-shadow:0 0 60px rgba(255,77,103,0.10), 0 20px 60px rgba(0,0,0,0.7);
+  }
+  .sys-confirm-eyebrow{font-family:var(--font-mono);font-size:8px;letter-spacing:.25em;color:rgba(255,77,103,0.7);margin-bottom:8px;}
+  .sys-confirm-title{font-family:var(--font-display);font-size:19px;letter-spacing:.05em;margin:0 0 8px;color:var(--text);}
+  .sys-confirm-body{font-size:12.5px;color:var(--text-dim);margin:0 0 20px;line-height:1.6;}
+  .sys-confirm-actions{display:flex;flex-direction:column;gap:9px;}
+  .sys-confirm-keep{width:100%;background:rgba(91,168,255,0.14)!important;border:1px solid rgba(91,168,255,0.45)!important;color:#7dbaff!important;min-height:46px;}
+  .sys-confirm-discard{width:100%;background:transparent!important;border:1px solid rgba(255,77,103,0.35)!important;color:rgba(255,77,103,0.9)!important;min-height:44px;font-size:13px;}
+  .sys-confirm-discard:active{background:rgba(255,77,103,0.12)!important;}
+
   /* States the requirement rather than making the action disappear. */
   .save-hint{
     font-family:var(--font-mono);font-size:10px;letter-spacing:.06em;
@@ -3657,8 +3676,11 @@
     </div>
   </div>
   <div style="position:absolute;top:0;right:0;display:flex;gap:8px;">
-    <button id="minimise-workout-modal" style="width:44px;height:44px;display:flex;align-items:center;justify-content:center;background:rgba(91,168,255,0.1);border:1px solid rgba(91,168,255,0.3);border-radius:8px;color:#61a5ff;font-size:20px;cursor:pointer;touch-action:manipulation;">−</button>
-    <button id="end-workout-modal" style="width:44px;height:44px;display:flex;align-items:center;justify-content:center;background:rgba(255,77,103,0.1);border:1px solid rgba(255,77,103,0.35);border-radius:8px;color:#ff3d5a;font-size:18px;cursor:pointer;touch-action:manipulation;">✕</button>
+    <!-- Minimise is the common intent (check something, come back) and now
+         carries the visual weight. Discard stays reachable and obvious but no
+         longer dominates the header; it takes its danger colour on interaction. -->
+    <button id="minimise-workout-modal" title="Minimise — keep this hunt running" aria-label="Minimise, keep this hunt running" style="min-width:44px;height:44px;padding:0 14px;display:flex;align-items:center;justify-content:center;gap:6px;background:rgba(91,168,255,0.16);border:1px solid rgba(91,168,255,0.45);border-radius:8px;color:#7dbaff;font-family:var(--font-mono);font-size:11px;letter-spacing:.08em;cursor:pointer;touch-action:manipulation;"><span style="font-size:18px;line-height:1;">−</span>KEEP</button>
+    <button id="end-workout-modal" title="Discard this hunt" aria-label="Discard this hunt" style="width:44px;height:44px;display:flex;align-items:center;justify-content:center;background:transparent;border:1px solid rgba(255,255,255,0.10);border-radius:8px;color:var(--text-faint);font-size:16px;cursor:pointer;touch-action:manipulation;transition:color .15s,border-color .15s,background .15s;" onmouseover="this.style.color='#ff3d5a';this.style.borderColor='rgba(255,77,103,0.45)';this.style.background='rgba(255,77,103,0.08)';" onmouseout="this.style.color='var(--text-faint)';this.style.borderColor='rgba(255,255,255,0.10)';this.style.background='transparent';">✕</button>
   </div>
     </div>
     <div class="rest-timer-bar">
@@ -7849,8 +7871,48 @@ function refreshCompleteButton() {
     hint.classList.toggle('hidden', !reason);
   }
 }
-document.getElementById('end-workout-modal')?.addEventListener('click', () => {
-  if (!window.confirm('End this workout?\n\nAll your logged sets will be lost.')) return;
+/* System-styled confirmation with named outcomes, replacing window.confirm's
+   OK/Cancel. Resolves true only when the Hunter explicitly chooses to discard;
+   backdrop click and Escape both mean "keep logging". */
+function confirmDiscardHunt(setCount) {
+  return new Promise(resolve => {
+    const ov = document.createElement('div');
+    ov.className = 'system-overlay sys-confirm-overlay';
+    const lost = setCount === 1 ? '1 logged set will be lost.'
+               : setCount > 1  ? setCount + ' logged sets will be lost.'
+               : 'Nothing has been logged yet.';
+    ov.innerHTML =
+      '<div class="sys-confirm-panel" role="alertdialog" aria-modal="true" aria-labelledby="sys-confirm-title">' +
+        '<div class="sys-confirm-eyebrow">◈ SYSTEM</div>' +
+        '<h2 class="sys-confirm-title" id="sys-confirm-title">DISCARD THIS HUNT?</h2>' +
+        '<p class="sys-confirm-body">' + lost + '</p>' +
+        '<div class="sys-confirm-actions">' +
+          '<button class="btn sys-confirm-keep" id="sys-confirm-keep">Keep logging</button>' +
+          '<button class="btn sys-confirm-discard" id="sys-confirm-discard">Discard sets</button>' +
+        '</div>' +
+      '</div>';
+    const onKey = e => { if (e.key === 'Escape') done(false); };
+    const done = v => {
+      try { ov.remove(); } catch (e) {}
+      document.removeEventListener('keydown', onKey);
+      resolve(v);
+    };
+    getOverlayHost().appendChild(ov);
+    ov.querySelector('#sys-confirm-keep').addEventListener('click', () => done(false));
+    ov.querySelector('#sys-confirm-discard').addEventListener('click', () => done(true));
+    ov.addEventListener('click', e => { if (e.target === ov) done(false); });
+    document.addEventListener('keydown', onKey);
+    ov.querySelector('#sys-confirm-keep').focus();
+  });
+}
+window.confirmDiscardHunt = confirmDiscardHunt;
+
+document.getElementById('end-workout-modal')?.addEventListener('click', async () => {
+  let logged = 0;
+  document.querySelectorAll('#exercise-rows .set-row').forEach(sr => {
+    if ((Number(sr.querySelector('.set-reps')?.value) || 0) > 0) logged++;
+  });
+  if (!(await confirmDiscardHunt(logged))) return;
   closeWorkoutModal(true); // true = discard
 });
 document.getElementById('minimise-workout-modal')?.addEventListener('click', () => {
