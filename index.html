@@ -7214,6 +7214,16 @@ function buildQuestCardHTML(idx) {
     ? (day.assignedDays||[]).includes(today)
     : idx === rotationIdx;
   const allComplete = isQuestComplete(idx);
+  /* A streak is only exposed on a day the programme actually schedules. In
+     rotation mode isActiveDay only means "this is the current rotation day",
+     which stays true on rest days — so this card claimed STREAK AT RISK while
+     the RECOVERY PHASE notice directly above it said STREAK PROTECTED. Read the
+     same schedule that notice reads (an empty schedule means every day trains).
+     Presentation state only — computeStreak and the streak data are untouched. */
+  const scheduledToday = !(myProgram.schedule && myProgram.schedule.length)
+    || myProgram.schedule.includes(today);
+  const isRecoveryDay = isActiveDay && !scheduledToday;
+  const streakAtRisk  = isActiveDay && scheduledToday && !allComplete;
 
   // find the best matching workout this week for this day (by exercise overlap)
   function getBestMatchWorkout() {
@@ -7256,9 +7266,11 @@ function buildQuestCardHTML(idx) {
   // flavor variable removed — dead code
   const warning = allComplete
     ? '✓ QUEST CLEARED — STREAK SECURED'
-    : isActiveDay
+    : streakAtRisk
       ? '⚠ INCOMPLETE — STREAK AT RISK'
-      : `LAST LOGGED: ${fmtDaysAgo(day.lastDate).toUpperCase()}`;
+      : isRecoveryDay
+        ? '◈ RECOVERY DAY — THIS SESSION IS OPTIONAL'
+        : `LAST LOGGED: ${fmtDaysAgo(day.lastDate).toUpperCase()}`;
   function buildRewardsPreview() {
     if (allComplete) return '';
     const streak = computeStreak(currentUser.uid);
@@ -7337,7 +7349,7 @@ function buildQuestCardHTML(idx) {
   return `
     <div class="quest-eyebrow">◈ DAILY HUNT</div>
     <p class="quest-flavor">
-      <span class="quest-flavor-sub">${isActiveDay ? '⚠ ACTIVE — STREAK AT RISK' : myProgram.scheduleMode === 'fixed' && day.assignedDays?.length ? `SCHEDULED · ${day.assignedDays.join(', ')}` : `DAY ${idx+1} OF ${myProgram.days.length}`}</span>
+      <span class="quest-flavor-sub">${streakAtRisk ? '⚠ ACTIVE — STREAK AT RISK' : isRecoveryDay ? '◈ RECOVERY DAY — OPTIONAL' : allComplete && isActiveDay ? '✓ ACTIVE — QUEST CLEARED' : myProgram.scheduleMode === 'fixed' && day.assignedDays?.length ? `SCHEDULED · ${day.assignedDays.join(', ')}` : `DAY ${idx+1} OF ${myProgram.days.length}`}</span>
       ${escapeHtml(day.name)}
     </p>
     <div class="quest-goal-label">OBJECTIVES · ${completedExercises}/${totalExercises} CLEARED</div>
