@@ -1355,16 +1355,31 @@
   }
   .set-row.complete .set-idx{color:var(--violet);}
   /* Upgrade stepper inputs to feel like system terminals */
+  /* The value field is the primary interaction of the whole workout flow. At
+     0.12 border opacity over a dark card it read as an empty black gap between
+     the − and + buttons, with nothing to say it was tappable. Raise the border
+     to a visible weight, thicken the underline the way the timed input already
+     does, and hold a minimum width so one-, two- and three-digit values do not
+     reflow the row. */
   .stepper input{
     background:rgba(0,0,0,0.35)!important;
-    border:1px solid rgba(91,168,255,0.12)!important;
+    border:1px solid rgba(91,168,255,0.28)!important;
+    border-bottom:2px solid rgba(91,168,255,0.45)!important;
     border-radius:4px!important;
+    min-width:56px!important;
     color:var(--text)!important;
     font-family:var(--font-mono)!important;
     font-size:15px!important;
     font-weight:700!important;
     text-align:center!important;
     transition:border-color .15s, box-shadow .15s, background .15s!important;
+  }
+  /* Resting hint: the field states its own unit rather than sitting blank. */
+  .stepper input::placeholder{
+    color:rgba(91,168,255,0.42)!important;
+    -webkit-text-fill-color:rgba(91,168,255,0.42);
+    font-weight:600!important;
+    opacity:1;
   }
   .stepper input:focus{
     border-color:rgba(91,168,255,0.5)!important;
@@ -8686,7 +8701,7 @@ function addExerciseRow(presetName, targetSets, targetReps, prefillSets) {
   function stepper(cls, value, min, step, label) {
     return `<div class="stepper">
       <button type="button" class="step-down">−</button>
-      <input type="text" inputmode="none" readonly class="${cls}" value="${value ?? ''}" data-min="${min}" data-step="${step}" data-is-weight="${cls==='set-weight'?'1':'0'}" data-label="${label||''}" />
+      <input type="text" inputmode="none" readonly class="${cls}" value="${value ?? ''}" placeholder="0" aria-label="${label || (cls === 'set-weight' ? 'Weight' : 'Reps')}" data-min="${min}" data-step="${step}" data-is-weight="${cls==='set-weight'?'1':'0'}" data-label="${label||''}" />
       <button type="button" class="step-up">+</button>
     </div>`;
   }
