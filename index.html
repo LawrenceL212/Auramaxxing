@@ -229,6 +229,76 @@
     --fluid-gap:  clamp(8px,   2.2vw, 14px);
   }
 
+  /* ══════════════════════════════════════════════════════════════════════
+     RESPONSIVE FOUNDATION
+
+     Components ask "how much room do I actually have", not "what device am I
+     on". Three ideas, nothing more:
+
+       1. one bounded space scale        --sp-*
+       2. boundaries you can query       .cq
+       3. compositions that count        .l-auto / .l-chips
+
+     Everything else is a component contract written as custom properties, so a
+     component can be dropped into any container and compose correctly without
+     knowing the viewport. Device-width media queries stay only where a genuine
+     application-level decision is being made (shell chrome, orientation).
+     ══════════════════════════════════════════════════════════════════════ */
+  :root{
+    /* Space rhythm. Bounded on both ends so spacing can never run away with
+       the viewport, and never collapses below a usable floor. */
+    --sp-3xs: clamp(2px,  0.4vw,  4px);
+    --sp-2xs: clamp(4px,  0.8vw,  7px);
+    --sp-xs:  clamp(6px,  1.2vw, 11px);
+    --sp-sm:  clamp(9px,  1.7vw, 15px);
+    --sp-md:  clamp(13px, 2.4vw, 22px);
+    --sp-lg:  clamp(18px, 3.2vw, 32px);
+    --sp-xl:  clamp(24px, 4.4vw, 48px);
+
+    /* Contracts every interactive component inherits. */
+    --tap-min:  44px;
+    --chip-min: 34px;
+    --chip-max: 46px;
+
+    /* Component boundary states, in rem so they track text, not device pixels.
+       Named for the room available, not for a product category. */
+    --bp-comfortable: 30rem;   /* ~480px of container */
+    --bp-expanded:    46rem;   /* ~736px of container */
+
+    /* The app shell grows with the display rather than capping at a phone
+       column. At 390 it floors to full width; at 1440 it reaches ~1037; at
+       1920 it tops out at 1280.
+       The ceiling is set from a measured cost curve, not taste. Painting a
+       wider shell costs frames, and the curve knees between 640 and 960:
+         1440 viewport -> 640:63fps  800:57  960:50  1100:49  1280:48  1440:45
+       960 was this app's own previous desktop cap, so everything past it is
+       new ground bought at ~1-2fps. 1280 keeps large displays comfortably
+       inside budget while still being twice the old phone column. */
+    --shell-max: clamp(640px, 72vw, 1280px);
+  }
+
+  /* Declare a measurable boundary. Any element carrying .cq becomes the thing
+     its descendants size themselves against. */
+  .cq{ container-type: inline-size; }
+
+  /* Composition that counts: a column exists only when a real one fits.
+     min(...,100%) keeps it from overflowing a container narrower than --col-min. */
+  .l-auto{
+    display:grid;
+    grid-template-columns:repeat(auto-fit, minmax(min(var(--col-min, 220px), 100%), 1fr));
+    gap:var(--l-gap, var(--sp-sm));
+    align-items:start;
+  }
+
+  /* Fit as many targets as the box allows, never below the touch minimum and
+     never ballooning past --chip-max. No width is assumed anywhere. */
+  .l-chips{
+    display:grid;
+    grid-template-columns:repeat(auto-fit, minmax(var(--chip-min), var(--chip-max)));
+    gap:var(--sp-2xs);
+    justify-content:start;
+  }
+
   /* Main view area — adapts padding to screen size */
   main.view-area {
     padding: var(--fluid-pad) var(--fluid-pad) calc(100px + env(safe-area-inset-bottom, 0));
@@ -427,7 +497,7 @@
       --fluid-pad: clamp(18px, 2.5vw, 32px);
       --fluid-gap: clamp(12px, 1.8vw, 20px);
     }
-    main.view-area { max-width: 760px; padding-bottom: calc(90px + env(safe-area-inset-bottom, 0)); }
+    main.view-area { padding-bottom: calc(90px + env(safe-area-inset-bottom, 0)); }
     .bottom-nav .nav-inner { max-width: 600px; }
     .bottom-nav button { font-size: 11px; padding: 12px 4px 10px; }
     /* Tablet: char screen gets more breathing room */
@@ -447,7 +517,7 @@
     }
     #app { display: grid; grid-template-rows: auto 1fr auto; min-height: 100dvh; }
     main.view-area {
-      max-width: 860px;
+      /* max-width retired — --shell-max is the single contract. */
       padding: var(--fluid-pad) var(--fluid-pad) calc(80px + env(safe-area-inset-bottom, 0));
     }
     /* Desktop nav — use more of the space */
@@ -466,7 +536,7 @@
 
   /* ── WIDE DESKTOP: 1440px+ ── */
   @media (min-width: 1440px) {
-    main.view-area { max-width: 960px; }
+    /* max-width retired — --shell-max scales continuously to 1440px. */
   }
 
   /* ── LANDSCAPE PHONE: short viewport, wide ── */
@@ -617,7 +687,9 @@
        stacking context that trapped position:fixed descendants of this element */
     /* Use dvh-aware padding — accounts for iOS browser chrome */
     padding: var(--fluid-pad) var(--fluid-pad) calc(80px + env(safe-area-inset-bottom, 0));
-    max-width:640px;margin:0 auto;width:100%;
+    /* One contract. The escalating 640/760/860/960 breakpoints below are gone;
+       the shell now grows continuously with the display. */
+    max-width:var(--shell-max);margin:0 auto;width:100%;
     /* Prevent content from causing horizontal scroll */
     box-sizing:border-box;
   }
@@ -3262,6 +3334,7 @@
   .chain-step-name.current{color:var(--brass);font-weight:700;}
   .chain-step-sessions{font-size:10px;font-family:var(--font-mono);color:var(--text-faint);margin-left:auto;}
   .empty-state .display{font-size:16px;color:var(--text-dim);margin-bottom:6px;}
+
 </style>
 </head>
 <body>
