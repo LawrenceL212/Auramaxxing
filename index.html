@@ -3348,14 +3348,16 @@
      At a comfortable boundary status stops being a squeezed afterthought; at
      an expanded boundary the whole composition gains room. */
   header.topbar{ container-type:inline-size; container-name:topbar; }
+  /* A container cannot be styled by its own query — header.topbar{...} inside
+     @container topbar was inert. The header's own box is width-driven anyway,
+     so it takes a bounded fluid value; only its children are queried. */
+  header.topbar{ column-gap:clamp(8px, 3vw, 40px); }
   @container topbar (min-width: 30rem){
-    header.topbar{ column-gap:var(--sp-lg); padding-inline:var(--sp-lg); }
     .daily-timer{ flex-direction:row; align-items:baseline; gap:var(--sp-xs); }
     .daily-timer-label{ font-size:10px; }
     .daily-timer-time{ font-size:clamp(14px,1.4vw,17px); }
   }
   @container topbar (min-width: 46rem){
-    header.topbar{ column-gap:var(--sp-xl); }
     .daily-timer{ gap:var(--sp-sm); }
     .daily-timer-time{ font-size:clamp(16px,1.5vw,20px); letter-spacing:.08em; }
     .user-chip{ gap:var(--sp-sm); }
@@ -3379,10 +3381,9 @@
   /* ── 3. CARD ─────────────────────────────────────────────────────────
      A card is a boundary, so its contents compose against the card rather
      than the window. Padding rides the shared space scale. */
-  .card{ container-type:inline-size; container-name:card; padding:var(--sp-md); }
-  @container card (min-width: 30rem){
-    .card{ padding:var(--sp-lg); }
-  }
+  .card{ container-type:inline-size; container-name:card; padding:clamp(13px, 2.6vw, 32px); }
+  /* Same constraint: the card cannot query itself, so its padding is a
+     bounded fluid value. The boundary it declares is for its children. */
 
   /* ── 4. MODAL ────────────────────────────────────────────────────────
      Fluid between a readable floor and a meaningful ceiling instead of a
@@ -3433,6 +3434,47 @@
     align-items:stretch;
   }
   #objectives-strip .obj-card{ border-top:1px solid rgba(91,168,255,0.06); }
+
+  /* ── 7. QUEST CARD ───────────────────────────────────────────────────
+     The exercise row is grid-template-columns:28px 1fr auto auto, so the name
+     column absorbed every spare pixel and shoved the set count to the far
+     edge — a 600px gap between "Bench Press" and "0/2 sets" on a wide card.
+
+     Stretching one row is the wrong use of the space. The useful expansion is
+     more of the list visible at once, so the list gains columns and each row
+     stays inside a bounded column where 1fr has almost no slack to absorb.
+     The card counts its own room; no viewport is consulted. */
+  .quest-card{ container-type:inline-size; container-name:quest; }
+  .quest-checklist{
+    display:grid;
+    grid-template-columns:repeat(auto-fit, minmax(min(340px, 100%), 1fr));
+    column-gap:var(--sp-xl);
+    row-gap:0;
+  }
+  /* min-width:0 lets the name yield inside its track instead of forcing the row
+     wider. It is deliberately allowed to wrap: truncating every name on a
+     320px phone loses information the Hunter needs mid-set, and the row has
+     vertical room to spare. Nothing is clipped at any width. */
+  .quest-check-row .qc-name{ min-width:0; overflow-wrap:anywhere; }
+  @container quest (min-width: 30rem){
+    .quest-check-row{ column-gap:var(--sp-sm); padding-block:var(--sp-xs); }
+  }
+  /* Compact boundary. The row is 28px | 1fr | auto | auto, and inside a ~150px
+     card the 1fr name track collapses to zero — measured w:0 — so the exercise
+     name vanished entirely behind overflow:hidden. It was masked by a
+     max-width:359px rule applying ellipsis to a zero-width box.
+     Below this boundary the name takes the whole line and its metadata drops
+     beneath it. Priority yields in order: the name is what the Hunter needs
+     mid-set, the counts are secondary. */
+  @container quest (max-width: 26rem){
+    .quest-check-row{ grid-template-columns:28px minmax(0,1fr) auto; row-gap:1px; }
+    .quest-check-row .qc-name{
+      grid-column:2 / -1;
+      white-space:normal; overflow:visible; text-overflow:clip;
+    }
+    .quest-check-row .qc-sets{ grid-column:2; text-align:left; }
+    .quest-check-row .qc-reps{ grid-column:3; text-align:right; }
+  }
 </style>
 </head>
 <body>
@@ -12061,11 +12103,11 @@ function renderCharCard() {
           <span style="font-size:9px;font-family:var(--font-mono);color:var(--brass);">${invested}${!isMaxed ? ` / ${nextRankCost}` : ''}</span>
         </div>
         <div style="height:3px;background:rgba(91,168,255,0.08);border-radius:2px;overflow:visible;position:relative;">
-          <div style="position:absolute;top:0;left:0;height:100%;width:${capPct.toFixed(0)}%;background:rgba(91,168,255,0.15);border-radius:2px;" title="Training cap: ${trainingCap} AP"></div>
+          <div style="position:absolute;top:0;left:0;height:100%;width:${capPct.toFixed(0)}%;background:rgba(91,168,255,0.15);border-radius:2px;" title="Training cap: ${Math.round(trainingCap)} AP"></div>
           <div style="position:absolute;top:0;left:0;height:100%;width:${investPct.toFixed(0)}%;background:var(--brass);border-radius:2px;box-shadow:0 0 4px var(--brass);transition:width 0.6s ease;"></div>
         </div>
         <div style="font-size:9px;font-family:var(--font-mono);color:var(--text-faint);margin-top:2px;">
-          Training cap: ${trainingCap} XP ${trainingCap < nextRankCost && !isMaxed ? `· need ${nextRankCost - trainingCap} more XP to unlock D rank` : ''}
+          Training cap: ${Math.round(trainingCap)} XP ${trainingCap < nextRankCost && !isMaxed ? `· need ${Math.round(nextRankCost - trainingCap)} more XP to unlock D rank` : ''}
         </div>
       </div>`;
 
@@ -15332,7 +15374,9 @@ function renderObjectivesStrip() {
       sub: closest.pct >= 100
         ? '✓ Ready to rank up'
         : capShort
-          ? `Training cap: ${closest.cap} AP — train ${closest.label.toLowerCase()} to unlock`
+          /* Display precision only. closest.cap keeps its exact value; this
+             was rendering as "Training cap: 81.98010819043728 AP". */
+          ? `Training cap: ${Math.round(closest.cap)} AP — train ${closest.label.toLowerCase()} to unlock`
           : `${apLeft} AP to go`,
     });
   }
