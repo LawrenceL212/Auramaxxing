@@ -11,6 +11,26 @@
 //
 // Merged with each user's custom exercises at runtime (see rebuildExercisesAll in index.html).
 
+// ── REGION NAME REMAP (2026-08-24) ─────────────────────────────────────────
+// Two region names used here existed in NEITHER anatomy.svg NOR
+// anatomy-female.svg, so that emphasis was silently dropped from the heatmap
+// in both views:
+//
+//   "Chest"        -> "Middle Chest"   3 entries (the German Hang group)
+//   "Inner Thighs" -> "Hamstrings"     8 entries
+//
+// "Inner Thighs" -> "Hamstrings" is an EXPLICIT TEMPORARY PROXY, not an
+// anatomical claim. The current region taxonomy has no adductor / inner-thigh
+// region, so adductor emphasis is parked on the nearest posterior-chain region
+// that does exist rather than being discarded. It is anatomically WRONG and is
+// meant to be revisited when the taxonomy gains an adductor region; at that
+// point these eight entries should be moved back.
+//
+// 7 of the 8 already carried a Hamstrings value, so the two were merged with
+// max() — an existing emphasis is never lowered. A plain rename would have
+// produced a duplicate object key and silently kept only the last value.
+// ───────────────────────────────────────────────────────────────────────────
+
 export const BASE_EXERCISES = {
 
   // CHEST
@@ -192,27 +212,27 @@ export const BASE_EXERCISES = {
 
   // SWIMMING
   "Freestyle Swimming":   { intent:"sport", statWeights:{ endurance:0.5, strength:0.25, defence:0.15, agility:0.1 }, muscles:{ "Lats":1, "Front Shoulders":0.9, "Triceps":0.7, "Upper Back":0.6, "Glutes":0.4, "Quads":0.3, "Calves":0.3 }, equipment:"Bodyweight", timed:true, timedUnit:"mins" },
-  "Breaststroke Swimming":{ intent:"sport", statWeights:{ endurance:0.5, strength:0.25, defence:0.15, agility:0.1 }, muscles:{ "Front Shoulders":0.9, "Lats":0.7, "Quads":0.7, "Inner Thighs":0.6, "Triceps":0.5, "Glutes":0.4 }, equipment:"Bodyweight", timed:true, timedUnit:"mins" },
+  "Breaststroke Swimming":{ intent:"sport", statWeights:{ endurance:0.5, strength:0.25, defence:0.15, agility:0.1 }, muscles:{ "Front Shoulders":0.9, "Lats":0.7, "Quads":0.7, "Hamstrings":0.6, "Triceps":0.5, "Glutes":0.4 }, equipment:"Bodyweight", timed:true, timedUnit:"mins" },
   "Butterfly Swimming":   { intent:"sport", statWeights:{ strength:0.35, endurance:0.4, agility:0.15, defence:0.1 }, muscles:{ "Lats":1, "Front Shoulders":1, "Triceps":0.8, "Upper Back":0.7, "Glutes":0.6, "Lower Back":0.5, "Upper Abs":0.5 }, equipment:"Bodyweight", timed:true, timedUnit:"mins" },
   "Backstroke Swimming":  { intent:"sport", statWeights:{ endurance:0.5, strength:0.25, defence:0.25 },             muscles:{ "Lats":1, "Upper Back":0.8, "Rear Shoulders":0.7, "Biceps":0.6, "Glutes":0.4, "Quads":0.3 }, equipment:"Bodyweight", timed:true, timedUnit:"mins" },
   "Open Water Swimming":  { intent:"sport", statWeights:{ endurance:0.55, strength:0.25, focus:0.1, defence:0.1 }, muscles:{ "Lats":1, "Front Shoulders":0.8, "Upper Back":0.6, "Triceps":0.6, "Glutes":0.4, "Quads":0.3 }, equipment:"Bodyweight", timed:true, timedUnit:"mins" },
   "HIIT Swimming":        { intent:"sport", statWeights:{ endurance:0.4, strength:0.3, agility:0.2, defence:0.1 }, muscles:{ "Lats":1, "Front Shoulders":1, "Triceps":0.8, "Upper Back":0.7, "Glutes":0.5, "Quads":0.4 }, equipment:"Bodyweight", timed:true, timedUnit:"mins" },
 
   // FLEXIBILITY & MOBILITY
-  "German Hang":                  { intent:"mobility", statWeights:{ flexibility:0.7, defence:0.3 },               muscles:{ "Front Shoulders":1, "Biceps":0.8, "Forearms":0.6, "Upper Back":0.5, "Chest":0.4 }, equipment:"Bodyweight", timed:true, timedUnit:"secs" },
-  "German hang":                  { intent:"mobility", statWeights:{ flexibility:0.7, defence:0.3 },               muscles:{ "Front Shoulders":1, "Biceps":0.8, "Forearms":0.6, "Upper Back":0.5, "Chest":0.4 }, equipment:"Bodyweight", timed:true, timedUnit:"secs" },
-  "German Hang Progression":      { intent:"mobility", statWeights:{ flexibility:0.7, defence:0.3 },               muscles:{ "Front Shoulders":1, "Biceps":0.9, "Forearms":0.7, "Upper Back":0.5, "Chest":0.5 }, equipment:"Bodyweight", timed:true, timedUnit:"secs" },
-  "Front Splits":                 { intent:"mobility", statWeights:{ flexibility:1.0 },                             muscles:{ "Hip Flexors":1, "Hamstrings":1, "Quads":0.6, "Glutes":0.4, "Inner Thighs":0.3 }, equipment:"Bodyweight", timed:true, timedUnit:"secs" },
-  "Side Splits":                  { intent:"mobility", statWeights:{ flexibility:1.0 },                             muscles:{ "Inner Thighs":1, "Hip Flexors":0.8, "Hamstrings":0.7, "Glutes":0.4 }, equipment:"Bodyweight", timed:true, timedUnit:"secs" },
-  "Middle Splits":                { intent:"mobility", statWeights:{ flexibility:1.0 },                             muscles:{ "Inner Thighs":1, "Hip Flexors":0.9, "Hamstrings":0.6, "Glutes":0.3 }, equipment:"Bodyweight", timed:true, timedUnit:"secs" },
+  "German Hang":                  { intent:"mobility", statWeights:{ flexibility:0.7, defence:0.3 },               muscles:{ "Front Shoulders":1, "Biceps":0.8, "Forearms":0.6, "Upper Back":0.5, "Middle Chest":0.4 }, equipment:"Bodyweight", timed:true, timedUnit:"secs" },
+  "German hang":                  { intent:"mobility", statWeights:{ flexibility:0.7, defence:0.3 },               muscles:{ "Front Shoulders":1, "Biceps":0.8, "Forearms":0.6, "Upper Back":0.5, "Middle Chest":0.4 }, equipment:"Bodyweight", timed:true, timedUnit:"secs" },
+  "German Hang Progression":      { intent:"mobility", statWeights:{ flexibility:0.7, defence:0.3 },               muscles:{ "Front Shoulders":1, "Biceps":0.9, "Forearms":0.7, "Upper Back":0.5, "Middle Chest":0.5 }, equipment:"Bodyweight", timed:true, timedUnit:"secs" },
+  "Front Splits":                 { intent:"mobility", statWeights:{ flexibility:1.0 },                             muscles:{ "Hip Flexors":1, "Hamstrings":1, "Quads":0.6, "Glutes":0.4 }, equipment:"Bodyweight", timed:true, timedUnit:"secs" },
+  "Side Splits":                  { intent:"mobility", statWeights:{ flexibility:1.0 },                             muscles:{ "Hip Flexors":0.8, "Hamstrings":1, "Glutes":0.4 }, equipment:"Bodyweight", timed:true, timedUnit:"secs" },
+  "Middle Splits":                { intent:"mobility", statWeights:{ flexibility:1.0 },                             muscles:{ "Hip Flexors":0.9, "Hamstrings":1, "Glutes":0.3 }, equipment:"Bodyweight", timed:true, timedUnit:"secs" },
   "Pike Stretch":                 { intent:"mobility", statWeights:{ flexibility:0.9, defence:0.1 },               muscles:{ "Hamstrings":1, "Lower Back":0.5, "Calves":0.4 }, equipment:"Bodyweight", timed:true, timedUnit:"secs" },
   "Hip Flexor Stretch":           { intent:"mobility", statWeights:{ flexibility:0.9, defence:0.1 },               muscles:{ "Hip Flexors":1, "Quads":0.5, "Glutes":0.3 }, equipment:"Bodyweight", timed:true, timedUnit:"secs" },
-  "Pancake Stretch":              { intent:"mobility", statWeights:{ flexibility:1.0 },                             muscles:{ "Inner Thighs":1, "Hamstrings":0.9, "Lower Back":0.4 }, equipment:"Bodyweight", timed:true, timedUnit:"secs" },
+  "Pancake Stretch":              { intent:"mobility", statWeights:{ flexibility:1.0 },                             muscles:{ "Hamstrings":1, "Lower Back":0.4 }, equipment:"Bodyweight", timed:true, timedUnit:"secs" },
   "Shoulder Flexibility Training":{ intent:"mobility", statWeights:{ flexibility:0.8, defence:0.2 },               muscles:{ "Front Shoulders":0.8, "Rear Shoulders":0.8, "Triceps":0.4, "Upper Back":0.4 }, equipment:"Bodyweight", timed:true, timedUnit:"secs" },
   "Thoracic Mobility":            { intent:"mobility", statWeights:{ flexibility:0.7, defence:0.3 },               muscles:{ "Upper Back":1, "Rear Shoulders":0.6, "Lower Back":0.4 }, equipment:"Bodyweight", timed:true, timedUnit:"secs" },
-  "Hip Mobility Routine":         { intent:"mobility", statWeights:{ flexibility:0.8, defence:0.2 },               muscles:{ "Hip Flexors":1, "Inner Thighs":0.8, "Glutes":0.6, "Hamstrings":0.5 }, equipment:"Bodyweight", timed:true, timedUnit:"mins" },
-  "Full Body Stretching":         { intent:"mobility", statWeights:{ flexibility:0.9, defence:0.1 },               muscles:{ "Hamstrings":0.6, "Hip Flexors":0.6, "Inner Thighs":0.5, "Upper Back":0.5, "Front Shoulders":0.4, "Calves":0.4 }, equipment:"Bodyweight", timed:true, timedUnit:"mins" },
-  "Yoga":                         { intent:"mobility", statWeights:{ flexibility:0.7, defence:0.2, focus:0.1 },    muscles:{ "Hip Flexors":0.8, "Hamstrings":0.7, "Upper Back":0.6, "Inner Thighs":0.6, "Front Shoulders":0.5, "Lower Back":0.5 }, equipment:"Bodyweight", timed:true, timedUnit:"mins" },
+  "Hip Mobility Routine":         { intent:"mobility", statWeights:{ flexibility:0.8, defence:0.2 },               muscles:{ "Hip Flexors":1, "Glutes":0.6, "Hamstrings":0.8 }, equipment:"Bodyweight", timed:true, timedUnit:"mins" },
+  "Full Body Stretching":         { intent:"mobility", statWeights:{ flexibility:0.9, defence:0.1 },               muscles:{ "Hamstrings":0.6, "Hip Flexors":0.6, "Upper Back":0.5, "Front Shoulders":0.4, "Calves":0.4 }, equipment:"Bodyweight", timed:true, timedUnit:"mins" },
+  "Yoga":                         { intent:"mobility", statWeights:{ flexibility:0.7, defence:0.2, focus:0.1 },    muscles:{ "Hip Flexors":0.8, "Hamstrings":0.7, "Upper Back":0.6, "Front Shoulders":0.5, "Lower Back":0.5 }, equipment:"Bodyweight", timed:true, timedUnit:"mins" },
 
   // CYCLING
   "Cycling":            { intent:"endurance", statWeights:{ endurance:0.8, strength:0.2 },              muscles:{ "Quads":1, "Hamstrings":0.7, "Glutes":0.8, "Calves":0.7, "Hip Flexors":0.4 }, equipment:"Bodyweight", timed:true, timedUnit:"mins" },
