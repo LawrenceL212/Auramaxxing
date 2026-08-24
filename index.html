@@ -9590,7 +9590,8 @@ document.getElementById('save-workout-btn')?.addEventListener('click', async () 
       return { distKm, durationMins, pace, type: runExercise.name, unit: 'km' };
     })() : null;
 
-    await addDoc(collection(db, 'workouts'), {
+    // ref retained so the debrief's RIR editor can write back to this exact doc
+    const savedWorkoutRef = await addDoc(collection(db, 'workouts'), {
       uid: currentUser.uid, displayName: profile.displayName, date, time, exercises,
       programDayIndex: activeDayIndex ?? null, createdAt: serverTimestamp(),
       ...(runSummaryFromLogger ? { isRun: true, runSummary: runSummaryFromLogger } : {}),
@@ -9667,7 +9668,8 @@ document.getElementById('save-workout-btn')?.addEventListener('click', async () 
             queueNotif(done => showLevelUpModal(lu.level, lu.ap, done));
           }
         }
-        queueNotif(done => showDebriefModal(exercises, xpResult?.apEarned || 0, prs, done, soldiersEarned));
+        queueNotif(done => showDebriefModal(exercises, xpResult?.apEarned || 0, prs, done, soldiersEarned,
+          [{ id: savedWorkoutRef.id, exercises }]));
         if (dungeonResult?.cleared && dungeonResult?.item) {
           queueNotif(done => showDungeonClearModal(dungeonResult.item, done));
         } else if (dungeonResult?.damage > 0) {
@@ -15161,7 +15163,11 @@ function checkPersistentQuestBanner() {
   }
 }
 
-function showDebriefModal(exercises, apEarned, prs, done, soldiersEarned = {}) {
+/* sourceWorkouts: the workout document(s) this debrief is reporting on, so the
+   inline RIR editor writes back to the session it is actually showing. Omitted
+   or empty falls back to today's workouts, which is only correct for a debrief
+   that is in fact about today. */
+function showDebriefModal(exercises, apEarned, prs, done, soldiersEarned = {}, sourceWorkouts = null) {
   const totalSets = exercises.reduce((n, ex) => n + (ex.sets||[]).filter(s=>s.reps>0).length, 0);
   const totalVol = exercises.reduce((n, ex) =>
     n + (ex.sets||[]).filter(s=>s.reps>0 && s.weight>0).reduce((v,s) => v + s.reps * s.weight, 0), 0);
@@ -15424,17 +15430,48 @@ function showDebriefModal(exercises, apEarned, prs, done, soldiersEarned = {}) {
     if (!Object.keys(rirSelections).length) { showToast('The System needs your effort rating — tap a RIR value for each exercise.', 'error'); return; }
     saveRirBtn.disabled = true; saveRirBtn.textContent = 'Saving…';
     try {
-      const today = todayStr();
-      const todayWorkout = myWorkouts.find(w => w.uid === currentUser.uid && w.date === today);
-      if (todayWorkout) {
-        const updatedExercises = (todayWorkout.exercises||[]).map(ex => {
+      /* Write back to the workout(s) this debrief represents, not to whatever
+         happens to be today's. The old code looked up today's workout
+         unconditionally, so a rating entered while replaying a historical
+         session was written into an unrelated document — and on a day with no
+         workout it silently did nothing. */
+      const targets = (sourceWorkouts && sourceWorkouts.length)
+        ? sourceWorkouts
+        : myWorkouts.filter(w => w.uid === currentUser.uid && w.date === todayStr());
+      let written = 0;
+      for (const wk of targets) {
+        if (!wk || !wk.id) continue;
+        let docTouched = false;
+        const updatedExercises = (wk.exercises || []).map(ex => {
           if (!(ex.name in rirSelections)) return ex;
-          return { ...ex, sets: (ex.sets||[]).map(s => s.rir == null ? { ...s, rir: rirSelections[ex.name] } : s) };
+          /* Never write rir onto an exercise that logs on the RPE scale. The
+             editor already excludes them, but the write path enforces the same
+             split independently so the two can never disagree. */
+          const exDef = EXERCISES_ALL[ex.name] || {};
+          if (exDef.timed && (exDef.timedUnit !== 'mins' || exDef.intent === 'endurance')) return ex;
+          let exTouched = false;
+          const sets = (ex.sets || []).map(s => {
+            // only fill genuinely unrated sets — never overwrite an existing rating
+            if (s.reps > 0 && s.rir == null && s.rpe == null) {
+              exTouched = true;
+              return { ...s, rir: rirSelections[ex.name] };
+            }
+            return s;
+          });
+          if (!exTouched) return ex;
+          docTouched = true;
+          return { ...ex, sets };
         });
-        await updateDoc(doc(db, 'workouts', todayWorkout.id), { exercises: updatedExercises });
+        if (!docTouched) continue;
+        await updateDoc(doc(db, 'workouts', wk.id), { exercises: updatedExercises });
+        written++;
+      }
+      if (written) {
         await loadAllData();
         showToast('RIR saved — progression will use this next session.', 'success');
-        el.querySelector('#rir-editor-rows').closest('div[style]').remove();
+        el.querySelector('#rir-editor-rows')?.closest('div[style]')?.remove();
+      } else {
+        showToast('Those sets already carry an effort rating — nothing to update.', 'error');
       }
     } catch(err) { showToast('Could not save: ' + err.message, 'error'); }
     saveRirBtn.disabled = false; saveRirBtn.textContent = 'Save RIR';
@@ -15670,7 +15707,9 @@ function renderTodayCard() {
     // Recompute XP for the replayed sessions so the debrief bar reflects them
     const { generalXP, trainingXP } = computeWorkoutXP(allExercises);
     profile._lastXpResult = { generalXP, trainingXP, levelUps: [], apEarned: 0 };
-    showDebriefModal(allExercises, 0, todayPRList);
+    // today can hold more than one session — pass them all so the editor writes
+    // to whichever document actually contains the unrated exercise
+    showDebriefModal(allExercises, 0, todayPRList, undefined, {}, todayWorkouts);
   });
 }
 
@@ -21697,7 +21736,7 @@ function openWorkoutDetail(workoutId) {
     // Calculate XP from this workout's exercises directly
     const { generalXP, trainingXP } = computeWorkoutXP(w.exercises || []);
     profile._lastXpResult = { generalXP, trainingXP, levelUps: [], apEarned: 0 };
-    showDebriefModal(w.exercises||[], 0, datePRs);
+    showDebriefModal(w.exercises||[], 0, datePRs, undefined, {}, [w]);
   });
 
   let editing = false;
