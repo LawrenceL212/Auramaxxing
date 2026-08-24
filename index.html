@@ -3466,6 +3466,51 @@
      Below this boundary the name takes the whole line and its metadata drops
      beneath it. Priority yields in order: the name is what the Hunter needs
      mid-set, the counts are secondary. */
+  /* ── 9. RANK / CODEX METRIC GRIDS ────────────────────────────────────
+     Four metric containers, all failing the same way. .stat-grid-3 held a hard
+     three columns at every size — 85px per cell at 320 (cramped past reading)
+     and 376px at 1920 (a label and an 18px value marooned in a rectangle).
+     .party-dash-grid held a hard two. .char-stats and .superlatives-grid were
+     not grids at all, so every child ran the full width of the card and the
+     desktop canvas bought nothing.
+
+     Column count now follows the container in every case. Values, labels and
+     the underlying metrics are untouched — only how many of them sit beside
+     each other. */
+
+  /* Metric groups whose children should fill the room they are given. The
+     column count rises with the container, so wide screens show more metrics
+     at once rather than wider ones. */
+  .superlatives-grid,
+  .party-dash-grid{
+    display:grid !important;
+    grid-template-columns:repeat(auto-fit, minmax(min(200px, 100%), 1fr)) !important;
+    gap:var(--sp-sm) !important;
+    align-items:start;
+  }
+
+  /* The compact metric trio. It gains a column when one genuinely fits and
+     drops to two rather than crushing three into 85px, but it stops growing at
+     a width where a short label and its value still read as a unit — past that
+     the card's remaining room becomes deliberate breathing space instead of
+     three stretched rectangles. */
+  .stat-grid-3{
+    display:grid !important;
+    grid-template-columns:repeat(auto-fit, minmax(min(120px, 100%), 1fr)) !important;
+    gap:var(--sp-sm) !important;
+    max-width:min(100%, 760px);
+    align-items:start;
+  }
+
+  /* Rank attribute groups were a flex column: two children stacked full-width,
+     1177px each at 1920. They sit side by side as soon as a real column fits. */
+  .char-stats{
+    display:grid !important;
+    grid-template-columns:repeat(auto-fit, minmax(min(300px, 100%), 1fr));
+    gap:var(--sp-sm) var(--sp-lg);
+    align-items:start;
+  }
+
   /* ── 8. EXERCISE LIBRARY ROW ─────────────────────────────────────────
      .ex-grid carried a global `grid-template-columns:1fr !important`, so the
      library was one column at every size and each card stretched to the whole
