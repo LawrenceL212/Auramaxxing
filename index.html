@@ -3955,6 +3955,64 @@
     margin-top: 5px;
     font-variant-numeric: tabular-nums;
   }
+
+  /* ── HUNT COMPLETION STATE ──
+     One completion object on the quest card: what is done, what remains, what
+     completion means. Sized from the quest container like the rest of the card. */
+  .hunt-status{
+    border:1px solid rgba(91,168,255,0.12);
+    border-radius:8px;
+    background:rgba(91,168,255,0.03);
+    padding:clamp(9px,2cqi,14px) clamp(10px,2cqi,15px);
+    margin:0 0 clamp(9px,2cqi,14px);
+    display:flex;
+    flex-direction:column;
+    gap:clamp(5px,1.2cqi,8px);
+  }
+  .hs-head{
+    display:flex; align-items:baseline; justify-content:space-between;
+    gap:8px; flex-wrap:wrap;
+  }
+  .hs-label{
+    font-family:var(--font-mono);
+    font-size:clamp(8.5px,1.5cqi,10.5px);
+    letter-spacing:.18em;
+    color:rgba(91,168,255,0.85);
+  }
+  .hs-count{
+    font-family:var(--font-mono);
+    font-size:clamp(9px,1.5cqi,11px);
+    letter-spacing:.06em;
+    color:var(--text);
+    font-variant-numeric:tabular-nums;
+  }
+  .hs-line{
+    font-size:clamp(10.5px,1.7cqi,12.5px);
+    line-height:1.45;
+    color:var(--text-dim);
+  }
+  .hunt-status .quest-progress-bar-wrap{ margin:0; }
+
+  /* Clear — the only celebratory state, and it stays quiet: the debrief is
+     where completion is actually paid off. */
+  .hunt-clear{
+    border-color:rgba(139,92,255,0.30);
+    background:rgba(139,92,255,0.06);
+  }
+  .hunt-clear .hs-label{ color:var(--violet); }
+  .hunt-clear .hs-line{ color:var(--text); }
+
+  /* Recovery — deliberately neutral. Nothing amber, nothing red, no warning
+     glyph: resting on a scheduled rest day is the programme working. */
+  .hunt-recovery{
+    border-color:rgba(91,168,255,0.10);
+    background:rgba(91,168,255,0.02);
+  }
+  .hunt-recovery .hs-label{ color:var(--text-faint); }
+  .hunt-recovery .hs-count{ color:var(--text-faint); }
+
+  .hunt-active{ border-color:rgba(255,214,107,0.22); background:rgba(255,214,107,0.04); }
+  .hunt-active .hs-label{ color:var(--brass); }
 </style>
 </head>
 <body>
@@ -7994,7 +8052,11 @@ function buildQuestCardHTML(idx) {
 
   const checklist = day.exercises.map(ex => {
     const done = setsForChecklist(ex.name);
-    const complete = allComplete || done >= ex.sets;
+    /* Tick from the row's OWN sets, not from the day-level cleared flag. The
+       flag goes true as soon as any session exists for this day in the week,
+       so every row rendered as complete while still displaying "1/3 sets" —
+       the tick contradicting the count beside it. */
+    const complete = done >= ex.sets;
     const exDef = EXERCISES_ALL[ex.name] || {};
     const timed = exDef.timed;
     const unit = exDef.timedUnit || 'secs';
@@ -8010,13 +8072,8 @@ function buildQuestCardHTML(idx) {
     </div>`;
   }).join('');
   // flavor variable removed — dead code
-  const warning = allComplete
-    ? '✓ QUEST CLEARED — STREAK SECURED'
-    : streakAtRisk
-      ? '⚠ INCOMPLETE — STREAK AT RISK'
-      : isRecoveryDay
-        ? '◈ RECOVERY DAY — THIS SESSION IS OPTIONAL'
-        : `LAST LOGGED: ${fmtDaysAgo(day.lastDate).toUpperCase()}`;
+  // `warning` removed: it was already unused (nothing interpolated it) and held
+  // the loss-framed copy the hunt status replaces.
   function buildRewardsPreview() {
     if (allComplete) return '';
     const streak = computeStreak(currentUser.uid);
@@ -8085,25 +8142,97 @@ function buildQuestCardHTML(idx) {
       </div>`;
   }
 
-  const totalExercises = day.exercises.length;
-  const completedExercises = day.exercises.filter(ex => {
-    const done = setsForChecklist(ex.name);
-    return allComplete || done >= ex.sets;
-  }).length;
-  const progressPct = totalExercises > 0 ? (completedExercises / totalExercises * 100).toFixed(0) : 0;
+  /* ── HUNT COMPLETION STATE ────────────────────────────────────────────────
+     One completion object built from the day's own programmed work, so it can
+     only be advanced by logging real sets — never by opening the app.
+
+     Progress is measured in SETS, not in whole exercises. The bar previously
+     only moved when an entire exercise finished, so the first four sets of a
+     five-set objective read as no progress at all; a partial Hunt looked
+     identical to an untouched one.
+
+     Nothing here is a new currency, badge or streak: it is the same programmed
+     sets the checklist already shows, stated as a completion state.
+     ──────────────────────────────────────────────────────────────────────── */
+  /* These counts are always the REAL logged sets. isQuestComplete() clears a day
+     as soon as any session exists for it this week, which is the established
+     rule and is left alone — but folding that into the set totals would have
+     the panel report 21/21 after a single logged set. The flag decides the
+     LABEL; it never invents numbers. */
+  const objectives = day.exercises.map(ex => {
+    const logged = setsForChecklist(ex.name);
+    return {
+      name: ex.name,
+      done: Math.min(logged, ex.sets),
+      target: ex.sets,
+      complete: logged >= ex.sets,
+    };
+  });
+  const totalExercises     = objectives.length;
+  const completedExercises = objectives.filter(o => o.complete).length;
+  const setsTarget = objectives.reduce((n, o) => n + o.target, 0);
+  const setsDone   = objectives.reduce((n, o) => n + o.done, 0);
+  const setsLeft   = Math.max(0, setsTarget - setsDone);
+  const nextObj    = objectives.find(o => !o.complete);
+  const started    = setsDone > 0;
+  const progressPct = setsTarget > 0 ? Math.min(100, (setsDone / setsTarget) * 100).toFixed(0) : 0;
+
+  // What the day's work develops — same mapping the rewards preview uses.
+  const huntStats = [...new Set(day.exercises.map(ex => getStatForExercise(ex.name)).filter(Boolean))];
+  const STAT_LABELS_H = { strength:'Strength', endurance:'Endurance', agility:'Agility',
+                          focus:'Focus', defence:'Defence', flexibility:'Flexibility' };
+  const huntStatLine = huntStats.map(s => STAT_LABELS_H[s] || s).join(' · ');
+
+  const plural = (n, w) => `${n} ${w}${n === 1 ? '' : 's'}`;
+
+  /* Recovery is a state of the programme, not a failure to train. It is never
+     framed as something lost. */
+  const huntState = isRecoveryDay
+    ? { cls: 'recovery', label: 'RECOVERY',
+        line: 'Training is optional today — resting costs you nothing.' }
+    : allComplete
+      ? (setsDone >= setsTarget
+          ? { cls: 'clear', label: 'HUNT CLEAR',
+              line: `Every objective met · ${plural(setsTarget, 'set')} logged${huntStatLine ? ` · ${huntStatLine} trained` : ''}` }
+          /* The day counts as cleared (a session exists for it this week) but
+             the programmed work isn't finished. Say both: claiming CLEAR at
+             38% would remove any reason to finish, and claiming IN PROGRESS
+             would contradict the cleared button beside it. */
+          : setsDone > 0
+            ? { cls: 'active', label: 'SESSION LOGGED',
+                line: `${setsDone} of ${plural(setsTarget, 'set')} · ${setsLeft} more to finish every objective` }
+            /* cleared by a session earlier in the week — say so rather than
+               showing a cleared badge over an empty count for today */
+            : { cls: 'clear', label: 'HUNT CLEAR',
+                line: 'Already logged earlier this week — nothing due today.' })
+      : started
+        ? { cls: 'active', label: 'IN PROGRESS',
+            line: `${plural(setsLeft, 'set')} to go${nextObj ? ` · next: ${nextObj.name} (${nextObj.target - nextObj.done})` : ''}` }
+        : { cls: 'open', label: 'HUNT OPEN',
+            line: `${plural(setsTarget, 'set')} across ${plural(totalExercises, 'objective')}${huntStatLine ? ` · builds ${huntStatLine}` : ''}` };
+
+  const huntStatusHtml = `
+    <div class="hunt-status hunt-${huntState.cls}">
+      <div class="hs-head">
+        <span class="hs-label">◈ ${huntState.label}</span>
+        <span class="hs-count">${setsDone}/${setsTarget} SETS · ${completedExercises}/${totalExercises} OBJ</span>
+      </div>
+      ${isRecoveryDay && !started ? '' : `
+      <div class="quest-progress-bar-wrap" title="${setsDone} of ${setsTarget} sets logged">
+        <div class="quest-progress-bar" style="width:${progressPct}%"></div>
+      </div>`}
+      <div class="hs-line">${escapeHtml(huntState.line)}</div>
+    </div>`;
 
   return `
     <div class="quest-eyebrow">◈ DAILY HUNT</div>
     <p class="quest-flavor">
-      <span class="quest-flavor-sub">${streakAtRisk ? '⚠ ACTIVE — STREAK AT RISK' : isRecoveryDay ? '◈ RECOVERY DAY — OPTIONAL' : allComplete && isActiveDay ? '✓ ACTIVE — QUEST CLEARED' : myProgram.scheduleMode === 'fixed' && day.assignedDays?.length ? `SCHEDULED · ${day.assignedDays.join(', ')}` : `DAY ${idx+1} OF ${myProgram.days.length}`}</span>
+      <span class="quest-flavor-sub">${streakAtRisk ? '◈ ACTIVE — OBJECTIVE OPEN' : isRecoveryDay ? '◈ RECOVERY DAY — OPTIONAL' : allComplete && isActiveDay ? '✓ ACTIVE — HUNT CLEAR' :myProgram.scheduleMode === 'fixed' && day.assignedDays?.length ? `SCHEDULED · ${day.assignedDays.join(', ')}` : `DAY ${idx+1} OF ${myProgram.days.length}`}</span>
       ${escapeHtml(day.name)}
     </p>
-    <div class="quest-goal-label">OBJECTIVES · ${completedExercises}/${totalExercises} CLEARED</div>
-    <div class="quest-progress-bar-wrap" title="${completedExercises}/${totalExercises} exercises complete">
-      <div class="quest-progress-bar" style="width:${progressPct}%"></div>
-    </div>
+    ${huntStatusHtml}
     <div class="quest-checklist">${checklist}</div>
-    ${allComplete ? '<p class="quest-warning">✓ HUNT CLEARED — STREAK SECURED</p>' : isActiveDay ? '<p class="quest-warning">⚠ INCOMPLETE — LOG YOUR SETS</p>' : `<p class="quest-warning" style="color:var(--text-faint);">LAST LOGGED: ${fmtDaysAgo(day.lastDate).toUpperCase()}</p>`}
+    ${allComplete || isActiveDay ? '' : `<p class="quest-warning" style="color:var(--text-faint);">LAST LOGGED: ${fmtDaysAgo(day.lastDate).toUpperCase()}</p>`}
     ${buildRewardsPreview()}
     <button class="quest-complete-btn quest-begin-btn">${allComplete ? '✓ CLEARED' : (isActiveDay ? 'BEGIN HUNT' : 'LOG SESSION →')}</button>`;
 }
