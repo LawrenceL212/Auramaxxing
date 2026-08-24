@@ -3916,6 +3916,45 @@
   }
   .pk-empty-sub{ font-size: clamp(11px, 1.7cqi, 13px); color: var(--text-faint); margin: 0; }
 
+
+  /* ── COMPETENCE PROOF — the debrief's lead ── */
+  .db-proof{
+    text-align: center;
+    padding: clamp(14px, 3cqi, 24px) clamp(12px, 2.4cqi, 20px);
+    margin-bottom: clamp(10px, 2cqi, 16px);
+    border: 1px solid rgba(78,205,120,0.22);
+    border-radius: 10px;
+    background: linear-gradient(180deg, rgba(78,205,120,0.07), rgba(78,205,120,0.02));
+    animation: achieveIn .5s var(--ease-cinema) .08s both;
+  }
+  .db-proof-eyebrow{
+    font-family: var(--font-mono);
+    font-size: clamp(7.5px, 1.4cqi, 9.5px);
+    letter-spacing: .2em;
+    color: rgba(78,205,120,0.85);
+    margin-bottom: clamp(6px, 1.4cqi, 10px);
+  }
+  .db-proof-headline{
+    font-family: var(--font-display);
+    font-size: clamp(16px, 3.6cqi, 27px);
+    font-weight: 900;
+    line-height: 1.15;
+    color: var(--text);
+    text-wrap: balance;
+  }
+  .db-proof-ex{
+    font-size: clamp(11px, 1.9cqi, 14px);
+    color: var(--growing);
+    font-weight: 700;
+    margin-top: 5px;
+  }
+  .db-proof-detail{
+    font-family: var(--font-mono);
+    font-size: clamp(9px, 1.5cqi, 11.5px);
+    color: var(--text-faint);
+    margin-top: 5px;
+    font-variant-numeric: tabular-nums;
+  }
 </style>
 </head>
 <body>
@@ -15691,6 +15730,113 @@ function checkPersistentQuestBanner() {
   }
 }
 
+/* ── COMPETENCE PROOF ──────────────────────────────────────────────────────
+   Evidence that the Hunter actually improved, drawn from the authoritative
+   `workouts` record by comparing this session against the last session that
+   contained the same exercise.
+
+   Rules this follows deliberately:
+   · It reports a COMPARISON, never a score. "Same load, +2 reps" is evidence;
+     "+37 XP" is not.
+   · RIR rising is not a negative signal. At identical load and reps a higher
+     RIR means the same work cost less effort, which is the single most honest
+     improvement signal available here. A LOWER RIR at the same work is not
+     claimed as a decline — it is simply not offered as proof, because it is
+     equally consistent with fatigue, and nothing here is ever coloured red for
+     merely differing from last time.
+   · No claim is made without like-for-like grounds. Load and rep evidence is
+     preferred over effort evidence, and estimated-1RM evidence is used only as
+     a fallback and only past a margin that a rounding difference can't reach.
+   · Reads only. No formula, no stored value, no write.
+   ───────────────────────────────────────────────────────────────────────── */
+function buildCompetenceProof(exercises, sourceWorkouts) {
+  if (!currentUser || !Array.isArray(myWorkouts) || !Array.isArray(exercises)) return null;
+
+  // Documents that ARE this session must never be compared against themselves.
+  const selfIds = new Set((sourceWorkouts || []).map(w => w && w.id).filter(Boolean));
+
+  const perfSets = (ex) => (ex.sets || []).filter(s => s && s.reps > 0);
+  // The set that best represents the session for this exercise: heaviest, then
+  // most reps. For bodyweight work (weight 0) that reduces to most reps.
+  const topSet = (sets) => sets.reduce((best, s) => {
+    if (!best) return s;
+    const w = Number(s.weight) || 0, bw = Number(best.weight) || 0;
+    if (w !== bw) return w > bw ? s : best;
+    return (Number(s.reps) || 0) > (Number(best.reps) || 0) ? s : best;
+  }, null);
+
+  const mine = myWorkouts
+    .filter(w => w && w.uid === currentUser.uid && !selfIds.has(w.id))
+    .slice()
+    .sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));
+
+  const candidates = [];
+
+  for (const ex of exercises) {
+    if (!ex || !ex.name) continue;
+    const cur = topSet(perfSets(ex));
+    if (!cur) continue;
+
+    const exDef = EXERCISES_ALL[ex.name] || {};
+    // Timed/run work is measured in seconds or minutes, not reps x load; its
+    // "reps" field carries duration, so the load/rep comparisons below would be
+    // meaningless. Endurance progression deserves its own treatment later.
+    if (exDef.timed) continue;
+
+    let prevEx = null;
+    for (const w of mine) {
+      const hit = (w.exercises || []).find(e => e && e.name === ex.name);
+      if (hit && perfSets(hit).length) { prevEx = hit; break; }
+    }
+    if (!prevEx) continue;
+    const prev = topSet(perfSets(prevEx));
+    if (!prev) continue;
+
+    const cw = Number(cur.weight) || 0,  pw = Number(prev.weight) || 0;
+    const cr = Number(cur.reps) || 0,    pr = Number(prev.reps) || 0;
+    const cRir = (cur.rir == null) ? null : Number(cur.rir);
+    const pRir = (prev.rir == null) ? null : Number(prev.rir);
+
+    // 1 — same load, more reps
+    if (cw === pw && cr > pr) {
+      candidates.push({ rank: 3, name: ex.name,
+        headline: `+${cr - pr} rep${cr - pr === 1 ? '' : 's'} at the same load`,
+        detail: cw > 0
+          ? `${cr} x ${cw}kg today · ${pr} x ${pw}kg last time`
+          : `${cr} reps today · ${pr} reps last time` });
+      continue;
+    }
+    // 2 — same reps, more load
+    if (cr === pr && cw > pw && pw > 0) {
+      const d = Math.round((cw - pw) * 10) / 10;
+      candidates.push({ rank: 3, name: ex.name,
+        headline: `+${d}kg for the same reps`,
+        detail: `${cr} x ${cw}kg today · ${pr} x ${pw}kg last time` });
+      continue;
+    }
+    // 3 — identical work, more left in reserve
+    if (cw === pw && cr === pr && cRir != null && pRir != null && cRir > pRir) {
+      candidates.push({ rank: 2, name: ex.name,
+        headline: `Same work, ${cRir - pRir} more in reserve`,
+        detail: `${cr} x ${cw}kg at RIR ${cRir} · last time RIR ${pRir}` });
+      continue;
+    }
+    // 4 — fallback: estimated 1RM, only past a margin rounding can't produce
+    if (cw > 0 && pw > 0) {
+      const ce = epley1RM(cw, cr), pe = epley1RM(pw, pr);
+      if (pe > 0 && ce > pe * 1.02) {
+        candidates.push({ rank: 1, name: ex.name,
+          headline: `Estimated 1RM up ${Math.round(((ce - pe) / pe) * 100)}%`,
+          detail: `${cr} x ${cw}kg today · ${pr} x ${pw}kg last time` });
+      }
+    }
+  }
+
+  if (!candidates.length) return null;
+  candidates.sort((a, b) => b.rank - a.rank);
+  return candidates[0];
+}
+
 /* sourceWorkouts: the workout document(s) this debrief is reporting on, so the
    inline RIR editor writes back to the session it is actually showing. Omitted
    or empty falls back to today's workouts, which is only correct for a debrief
@@ -15853,6 +15999,20 @@ function showDebriefModal(exercises, apEarned, prs, done, soldiersEarned = {}, s
      block above superseded it ("each PR gets weight, not a row") but the old
      markup was left behind, so it is removed rather than revived: reviving it
      would list every PR twice. */
+  /* The lead of the debrief: evidence the Hunter improved, when the record can
+     actually show it. Falls through silently to the stat hero below when there
+     is no like-for-like comparison to make — a first session with an exercise
+     has nothing to prove against, and inventing a claim there would be exactly
+     the badge theatre this is meant to replace. */
+  const proof = buildCompetenceProof(exercises, sourceWorkouts);
+  const proofHtml = proof ? `
+    <div class="db-proof">
+      <div class="db-proof-eyebrow">◈ SYSTEM READING · EVIDENCE</div>
+      <div class="db-proof-headline">${escapeHtml(proof.headline)}</div>
+      <div class="db-proof-ex">${escapeHtml(proof.name)}</div>
+      <div class="db-proof-detail">${escapeHtml(proof.detail)}</div>
+    </div>` : '';
+
   /* Does anything belong in the secondary region? Derived from the same
      conditions the blocks themselves use, so the column is never emitted empty
      (an empty grid track would reserve dead space at wide sizes). */
@@ -15871,6 +16031,7 @@ function showDebriefModal(exercises, apEarned, prs, done, soldiersEarned = {}, s
       <div class="db-body${hasSecondary ? ' db-has-secondary' : ''}">
         <div class="db-col db-primary">
           ${levelUpHtml}
+          ${proofHtml}
           ${primaryHero}
           ${prHtml}
           ${summaryHtml}
