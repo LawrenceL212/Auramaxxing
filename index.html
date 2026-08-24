@@ -3862,7 +3862,13 @@ function drainNotifQueue() {
   try {
     fn(done);
   } catch (e) {
-    console.warn('Notification failed:', e);
+    /* console.error, not warn: a throw here is a broken notification, and at
+       warn level it stayed invisible to console-error QA — which is how the
+       completion debrief shipped non-functional. Still swallowed rather than
+       rethrown, because drainNotifQueue runs synchronously from queueNotif and
+       a rethrow would propagate into the save path; done() below keeps the
+       queue draining so one broken notification cannot wedge the rest. */
+    console.error('Notification failed:', e);
     done();
   }
 }
@@ -14799,6 +14805,25 @@ function showDebriefModal(exercises, apEarned, prs, done, soldiersEarned = {}) {
   const streak = computeStreak(currentUser.uid);
   const tierEmojis = { Elite:'👑', Advanced:'💀', Intermediate:'⚔️', Novice:'🗡️', Beginner:'🛡️' };
 
+  /* Exercises whose performed sets never received an intensity rating. Drives
+     the inline RIR editor further down. Restored: this was referenced but
+     never defined, so showDebriefModal threw a ReferenceError on every call
+     and drainNotifQueue swallowed it as a warning.
+
+     The original test was `s.rir == null`, written before the RIR/RPE split.
+     The save path (~9560) now stores `rir: null` on every timed/run set by
+     design, so that test would flag every RPE exercise as missing its RIR and
+     the editor would write a `rir` value onto a set whose intensity legitimately
+     lives in `rpe`. The scale check below mirrors the save path's own usesRPE
+     predicate exactly, so only exercises that actually log RIR can reach the
+     editor, and a set already rated on either scale is never treated as blank. */
+  const missingRIR = exercises.filter(ex => {
+    const exDef = EXERCISES_ALL[ex.name] || {};
+    const usesRPE = !!(exDef.timed && (exDef.timedUnit !== 'mins' || exDef.intent === 'endurance'));
+    if (usesRPE) return false;
+    return (ex.sets || []).some(s => s.reps > 0 && s.rir == null && s.rpe == null);
+  });
+
   const xpResult = profile._lastXpResult || null;
   const generalXP = xpResult?.generalXP || 0;
   const trainingXP = xpResult?.trainingXP || {};
@@ -14925,6 +14950,12 @@ function showDebriefModal(exercises, apEarned, prs, done, soldiersEarned = {}) {
       </div>
     </div>`;
 
+  /* A legacy "Personal Records" row list used to sit below the Shadow Army
+     block, interpolating a prRows binding that no longer exists — a second
+     latent ReferenceError, fired only by a session that set a PR. The PR MOMENT
+     block above superseded it ("each PR gets weight, not a row") but the old
+     markup was left behind, so it is removed rather than revived: reviving it
+     would list every PR twice. */
   const el = document.createElement('div');
   el.className = 'debrief-overlay';
   el.innerHTML = `
@@ -14979,10 +15010,6 @@ function showDebriefModal(exercises, apEarned, prs, done, soldiersEarned = {}) {
           <div style="font-size:10px;color:rgba(91,168,255,0.78);margin-top:6px;">Deploy in Shadow World → claim territory</div>
         </div>`;
       })() : ''}
-
-      ${prs.length ? `
-        <p style="font-size:11px;color:var(--text-faint);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;">🏆 Personal Records</p>
-        <div class="debrief-prs">${prRows}</div>` : ''}
 
       ${missingRIR.length ? `
         <div style="background:rgba(255,77,103,0.08);border:1px solid rgba(255,77,103,0.3);border-radius:8px;padding:12px;margin-bottom:14px;">
