@@ -3560,6 +3560,139 @@
     .quest-check-row .qc-sets{ grid-column:2; text-align:left; }
     .quest-check-row .qc-reps{ grid-column:3; text-align:right; }
   }
+
+  /* ═══════════════════════════════════════════════════════════════════════
+     DEBRIEF — boundary-driven migration
+
+     DEBRIEF BOUNDARY (.debrief-window, container-name: debrief)
+       ├── HEADER      .db-header    — SYSTEM RESULT
+       ├── BODY        .db-body      — scrolls; never the page
+       │     ├── .db-primary   result → what you did → how you progressed
+       │     └── .db-secondary what changed + the RIR repair (secondary)
+       └── ACTIONS     .db-actions   — pinned, always reachable
+
+     The window is a three-row grid: header and actions size to content, the
+     body takes the remainder and scrolls inside itself. That is the "simplest
+     robust equivalent" of a height query — the primary action is never pushed
+     off-screen, so it needs no scrolling to reach at any height.
+     ═══════════════════════════════════════════════════════════════════════ */
+
+  .debrief-overlay{
+    --db-gutter: clamp(10px, 3vw, 28px);
+    /* pan-y, not none. `touch-action:none` disabled finger panning on the very
+       element that owns the scroll: on any viewport shorter than the window the
+       primary action was reachable by mouse wheel but NOT by touch. Background
+       scroll is prevented by lockBodyScroll() (body{position:fixed}) through the
+       BLOCKING observer — not by this property — so relaxing it costs no
+       blocking behaviour, and overscroll-behavior:contain keeps the scroll from
+       chaining out, which is the other thing `none` was covering. */
+    touch-action: pan-y;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    /* justify-content:center on a scroll container makes overflow above the
+       start edge unreachable. Start-aligned + auto block margins centres while
+       it fits without ever clipping the top. */
+    justify-content: flex-start;
+    padding: var(--db-gutter);
+    padding-top: max(var(--db-gutter), env(safe-area-inset-top, 0px));
+    padding-bottom: max(var(--db-gutter), env(safe-area-inset-bottom, 0px));
+  }
+
+  .debrief-window{
+    /* Bounded fluid width — not a 420px phone column floating on a 1920 canvas */
+    max-width: min(94vw, 560px) !important;
+    container-type: inline-size;
+    container-name: debrief;
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr) auto;
+    /* resolves against the overlay's content box = viewport minus its padding,
+       so the window can never exceed the space actually available */
+    max-height: 100%;
+    margin-block: auto;
+    padding: clamp(14px, 3.2cqi, 26px) clamp(13px, 3cqi, 24px) !important;
+    gap: clamp(9px, 2cqi, 15px);
+  }
+  /* Desktop: spend the extra space, but stay bounded so lines stay readable */
+  @media (min-width: 900px){
+    .debrief-window{ max-width: min(72vw, 900px) !important; }
+  }
+  /* When vertical space is the scarce axis, spend the horizontal axis instead:
+     a wider window becomes two columns and roughly halves the scroll distance.
+     Keyed to available height, not to any device. */
+  @media (max-height: 560px) and (min-width: 620px){
+    .debrief-window{ max-width: min(96vw, 1100px) !important; }
+  }
+
+  .db-header{
+    text-align: center;
+    padding-bottom: clamp(9px, 2.4cqi, 16px);
+    border-bottom: 1px solid rgba(91,168,255,0.08);
+    animation: achieveIn .4s var(--ease-cinema) both;
+  }
+  .db-eyebrow{
+    font-family: var(--font-mono);
+    font-size: clamp(7.5px, 1.5cqi, 10px);
+    color: rgba(91,168,255,0.78);
+    letter-spacing: .25em;
+    margin-bottom: clamp(5px, 1.3cqi, 9px);
+  }
+  .db-title{
+    font-family: var(--font-display);
+    font-size: clamp(19px, 5cqi, 38px);
+    font-weight: 900;
+    letter-spacing: .06em;
+    line-height: 1.05;
+  }
+
+  .db-body{
+    min-height: 0;              /* let the 1fr row actually shrink */
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    touch-action: pan-y;
+    -webkit-overflow-scrolling: touch;
+    display: flex;
+    flex-direction: column;
+    scrollbar-width: thin;
+  }
+  .db-col{ min-width: 0; }
+  /* stacked order already is: result → what you did → how you progressed,
+     then everything secondary. Nothing to reorder at narrow widths. */
+
+  @container debrief (min-width: 620px){
+    .db-body.db-has-secondary{
+      display: grid;
+      grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+      align-items: start;
+      column-gap: clamp(14px, 3cqi, 30px);
+    }
+  }
+
+  .db-actions{
+    padding-top: clamp(8px, 2cqi, 14px);
+    border-top: 1px solid rgba(91,168,255,0.08);
+  }
+  .db-actions .debrief-close-btn{
+    min-height: var(--tap-min, 44px);
+    padding: clamp(11px, 2.3cqi, 17px);
+    font-size: clamp(12px, 2.3cqi, 15px);
+  }
+
+  /* the last block in a column shouldn't add trailing space above the divider */
+  .db-col > *:last-child{ margin-bottom: 0 !important; }
+
+  /* Short viewport: the headline is sized from the window's INLINE size, so a
+     wide landscape window rendered a 38px title exactly where vertical space is
+     scarcest. Trade headline scale for body room whenever height is the
+     constrained axis. Must stay AFTER the base .db-title rule — same
+     specificity, so source order decides. */
+  @media (max-height: 560px){
+    .debrief-window{ padding-block: clamp(9px, 2cqi, 14px) !important; gap: clamp(6px, 1.4cqi, 10px); }
+    .db-title{ font-size: clamp(17px, 3.2cqi, 25px); }
+    .db-eyebrow{ margin-bottom: 3px; }
+    .db-header{ padding-bottom: clamp(6px, 1.4cqi, 10px); }
+    .db-actions{ padding-top: clamp(6px, 1.4cqi, 10px); }
+  }
+
 </style>
 </head>
 <body>
@@ -9659,7 +9792,13 @@ document.getElementById('save-workout-btn')?.addEventListener('click', async () 
 
       // ── PHASE E: Energy flow causality chain ──
       showEnergyFlow(exercises, xpResult, prs, () => {
-        showQuestClearBanner(xpResult?.apEarned || 0, prs.length, false, xpResult?.generalXP || 0);
+        /* The debrief queued below is the completion payoff. The quest-clear
+           banner used to fire here as well, carrying the same "Hunt Complete"
+           headline and the same XP, so the two stacked and the Hunter saw one
+           moment reported twice. Record the clear, and let the debrief own it.
+           The flash, SFX and floating AP stay: those are transition cues, not a
+           second copy of the result. XP and AP values are unchanged. */
+        markQuestClearedToday();
         SFX.questComplete();
         screenFlash('rgba(255,214,107,0.06)', 180);
         if (xpResult?.apEarned > 0) floatNumber(`+${xpResult.apEarned} AP`, 'var(--legendary)');
@@ -15103,6 +15242,13 @@ if (!document.getElementById('levelup-keyframes')) {
   document.head.appendChild(style);
 }
 
+/* Marks today as cleared so the persistent banner can be restored on a later
+   load. Split out from showQuestClearBanner so the save path can record the
+   clear without also drawing a banner that duplicates the debrief. */
+function markQuestClearedToday() {
+  localStorage.setItem('aura_quest_clear_date_' + (currentUser?.uid || 'anon'), todayStr());
+}
+
 function showQuestClearBanner(apEarned, prCount, persistent = false, generalXP = 0) {
   document.querySelectorAll('.quest-clear-banner').forEach(b => b.remove());
 
@@ -15125,8 +15271,7 @@ function showQuestClearBanner(apEarned, prCount, persistent = false, generalXP =
   getOverlayHost().appendChild(banner);
 
   if (!persistent) {
-    // save to localStorage so it persists for the rest of the day
-    localStorage.setItem('aura_quest_clear_date_' + (currentUser?.uid || 'anon'), todayStr());
+    markQuestClearedToday();
     // spawn particles
     setTimeout(() => {
       const container = banner.querySelector('#qcb-particles');
@@ -15234,7 +15379,7 @@ function showDebriefModal(exercises, apEarned, prs, done, soldiersEarned = {}, s
           <span style="font-size:20px;">🏆</span>
           <div style="flex:1;min-width:0;">
             <div style="font-size:12px;color:var(--text);font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(p.exercise)}</div>
-            <div style="font-size:10px;color:var(--violet);font-family:var(--font-mono);">${p.tier ? `${tierEmojis[p.tier]} ${p.tier}` : 'NEW RECORD'}</div>
+            <div style="font-size:10px;color:var(--violet);font-family:var(--font-mono);">${p.tier ? `${tierEmojis[p.tier] || '◆'} ${p.tier}` : 'NEW RECORD'}</div>
           </div>
         </div>`).join('')}
     </div>` : '';
@@ -15325,20 +15470,31 @@ function showDebriefModal(exercises, apEarned, prs, done, soldiersEarned = {}, s
      block above superseded it ("each PR gets weight, not a row") but the old
      markup was left behind, so it is removed rather than revived: reviving it
      would list every PR twice. */
+  /* Does anything belong in the secondary region? Derived from the same
+     conditions the blocks themselves use, so the column is never emitted empty
+     (an empty grid track would reserve dead space at wide sizes). */
+  const hasSecondary = !!(dungeonHtml || raidHtml || apEarned || missingRIR.length
+    || Object.keys(soldiersEarned).length);
+
   const el = document.createElement('div');
   el.className = 'debrief-overlay';
   el.innerHTML = `
     <div class="debrief-window">
-      <div style="text-align:center;padding-bottom:14px;border-bottom:1px solid rgba(91,168,255,0.08);margin-bottom:14px;animation:achieveIn .4s var(--ease-cinema) both;">
-        <div style="font-family:var(--font-mono);font-size:8px;color:rgba(91,168,255,0.78);letter-spacing:.25em;margin-bottom:8px;">◈ SYSTEM RECORD</div>
-        <div style="font-family:var(--font-display);font-size:26px;font-weight:900;letter-spacing:.06em;">HUNT COMPLETE</div>
-      </div>
+      <header class="db-header">
+        <div class="db-eyebrow">◈ SYSTEM RECORD</div>
+        <div class="db-title">HUNT COMPLETE</div>
+      </header>
 
-      ${levelUpHtml}
-      ${primaryHero}
-      ${prHtml}
-      ${xpHtml}
-      ${summaryHtml}
+      <div class="db-body${hasSecondary ? ' db-has-secondary' : ''}">
+        <div class="db-col db-primary">
+          ${levelUpHtml}
+          ${primaryHero}
+          ${prHtml}
+          ${summaryHtml}
+          ${xpHtml}
+        </div>
+
+        ${hasSecondary ? `<div class="db-col db-secondary">
       ${dungeonHtml}
       ${raidHtml}
 
@@ -15397,8 +15553,12 @@ function showDebriefModal(exercises, apEarned, prs, done, soldiersEarned = {}, s
           <div style="font-family:var(--font-mono);font-size:9px;color:rgba(255,214,107,0.78);margin-bottom:4px;">LEVEL-UP REWARD</div>
           <div style="font-size:20px;color:#FFD66B;font-weight:700;">+${apEarned} AP</div>
         </div>` : ''}
+        </div>` : ''}
+      </div>
 
-      <button class="debrief-close-btn">Back to the Hunt</button>
+      <div class="db-actions">
+        <button class="debrief-close-btn">Back to the Hunt</button>
+      </div>
     </div>`;
 
   getOverlayHost().appendChild(el);
