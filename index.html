@@ -3693,6 +3693,229 @@
     .db-actions{ padding-top: clamp(6px, 1.4cqi, 10px); }
   }
 
+
+  /* ═══════════════════════════════════════════════════════════════════════
+     EXERCISE PICKER — boundary-driven migration
+
+     PICKER BOUNDARY (.ex-picker-modal, container-name: picker)
+       ├── CONTROLS  search + filters (sticky)
+       └── LIST      sections, each an auto-fit grid of exercise cards
+
+     Columns come from the picker's OWN width, not the viewport, so the same
+     rules hold whether it is a phone sheet or a wide desktop panel.
+     ═══════════════════════════════════════════════════════════════════════ */
+
+  .ex-picker-overlay{
+    /* The shared .modal-overlay sets touch-action:none, and touch-action is
+       resolved along the ancestor chain — so it also blocked finger panning of
+       the list INSIDE the sheet, leaving 200+ exercises scrollable by wheel
+       only. Body scroll is held by lockBodyScroll(), not by this property. */
+    touch-action: pan-y;
+  }
+
+  .ex-picker-modal{
+    container-type: inline-size;
+    container-name: picker;
+    display: flex;
+    flex-direction: column;
+    gap: clamp(8px, 1.6cqi, 14px);
+    overflow: hidden;              /* the LIST scrolls, not the sheet */
+    max-height: 88dvh;
+  }
+  /* Width grows continuously with the shell instead of stepping at a device
+     breakpoint — the 640px sheet capped the picker at two columns, and a
+     media-query step made the column count jump 1 -> 3 with nothing in
+     between. Bounded at both ends so cards never become giant empty
+     rectangles and never crush the exercise name. */
+  .ex-picker-modal{ max-width: min(94vw, clamp(520px, 76vw, 1040px)) !important; }
+
+  .ex-picker-modal > h3{ flex: 0 0 auto; margin-bottom: 0; }
+
+  .picker-controls{
+    flex: 0 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: clamp(6px, 1.4cqi, 10px);
+  }
+  .picker-controls .lib-search{ width: 100%; min-height: var(--tap-min, 44px); }
+
+  .picker-filters{
+    display: flex;
+    flex-wrap: wrap;               /* narrow: filters wrap to more rows */
+    align-items: center;
+    gap: 6px;
+  }
+  .pf-chips{ display: flex; flex-wrap: wrap; gap: 6px; min-width: 0; }
+  .pf-chip{
+    min-height: 32px;
+    padding: 5px 11px;
+    border-radius: 999px;
+    border: 1px solid rgba(91,168,255,0.18);
+    background: rgba(91,168,255,0.04);
+    color: var(--text-dim);
+    font-family: var(--font-mono);
+    font-size: clamp(9.5px, 1.5cqi, 11.5px);
+    letter-spacing: .04em;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: border-color .12s, background .12s, color .12s;
+  }
+  .pf-chip:hover{ border-color: rgba(91,168,255,0.4); color: var(--text); }
+  .pf-chip.active{
+    background: rgba(91,168,255,0.14);
+    border-color: var(--brass);
+    color: var(--text);
+  }
+  .pf-muscle{
+    min-height: 32px;
+    flex: 1 1 140px;
+    min-width: 120px;
+    max-width: 100%;
+    background: var(--card-2);
+    color: var(--text);
+    border: 1px solid rgba(91,168,255,0.18);
+    border-radius: 6px;
+    padding: 5px 8px;
+    font-size: clamp(11px, 1.6cqi, 13px);
+  }
+  /* Wide enough: filters sit on one line beside each other rather than stacking */
+  @container picker (min-width: 620px){
+    .picker-filters{ flex-wrap: nowrap; }
+    .pf-chips{ flex-wrap: wrap; flex: 1 1 auto; }
+    .pf-muscle{ flex: 0 0 190px; }
+  }
+
+  .picker-list{
+    flex: 1 1 auto;
+    min-height: 0;
+    max-height: none;              /* was min(50dvh,50vh) — the sheet bounds it now */
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    touch-action: pan-y;
+    -webkit-overflow-scrolling: touch;
+    margin-top: 0;
+    scrollbar-width: thin;
+  }
+
+  .pk-section{ margin-bottom: clamp(10px, 2cqi, 18px); }
+  .pk-head{
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 6px 2px 5px;
+    /* Solid, not a fade: cards scrolling under a partly-transparent header
+       showed through it. */
+    background: #0a1018;
+    border-bottom: 1px solid rgba(91,168,255,0.10);
+  }
+  .pk-title{
+    font-family: var(--font-mono);
+    font-size: clamp(8.5px, 1.4cqi, 10.5px);
+    letter-spacing: .18em;
+    color: rgba(91,168,255,0.82);
+  }
+  .pk-sub{
+    font-family: var(--font-mono);
+    font-size: clamp(8px, 1.3cqi, 10px);
+    color: var(--text-faint);
+    text-align: right;
+    min-width: 0;
+  }
+
+  /* One column while narrow; more only when the PICKER is wide enough that a
+     card still has room for its name. auto-fit counts the columns itself. */
+  .pk-grid{
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+  @container picker (min-width: 560px){
+    .pk-grid{ grid-template-columns: repeat(auto-fit, minmax(min(250px, 100%), 1fr)); }
+  }
+
+  .picker-list .picker-item{
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    width: 100%;
+    min-height: var(--tap-min, 44px);
+    padding: clamp(9px, 1.8cqi, 13px) clamp(10px, 1.8cqi, 13px);
+    border: 1px solid rgba(91,168,255,0.10);
+    border-top: 1px solid rgba(91,168,255,0.10);   /* beats the flat-list rule */
+    border-radius: 8px;
+    background: rgba(91,168,255,0.025);
+    text-align: left;
+    cursor: pointer;
+    font: inherit;
+    color: inherit;
+    transition: border-color .12s, background .12s;
+  }
+  .picker-list .picker-item:hover{
+    border-color: rgba(91,168,255,0.32);
+    background: rgba(91,168,255,0.06);
+  }
+  .picker-list .picker-item:active{ background: var(--card-2); }
+
+  .pi-main{ display: flex; flex-direction: column; gap: 3px; min-width: 0; flex: 1 1 auto; }
+  .picker-list .pi-name{
+    font-size: clamp(12.5px, 2cqi, 15px);
+    font-weight: 600;
+    line-height: 1.25;
+    /* wrap, never ellipsis: truncating turned 8/8 names into prefixes at 320px */
+    overflow-wrap: anywhere;
+  }
+  .pi-meta{ display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; min-width: 0; }
+  .picker-list .pi-muscle{
+    font-size: clamp(10px, 1.5cqi, 11.5px);
+    color: var(--brass);
+    margin-top: 0;
+  }
+  .pi-intent{
+    font-family: var(--font-mono);
+    font-size: clamp(8.5px, 1.3cqi, 10px);
+    color: var(--text-faint);
+    letter-spacing: .06em;
+  }
+  .pi-variant{
+    font-family: var(--font-mono);
+    font-size: clamp(8px, 1.2cqi, 9.5px);
+    letter-spacing: .05em;
+    color: #FFD66B;
+    background: rgba(255,214,107,0.10);
+    border: 1px solid rgba(255,214,107,0.28);
+    border-radius: 3px;
+    padding: 1px 5px;
+  }
+  .picker-list .pi-equip{
+    flex: 0 0 auto;
+    font-size: clamp(9px, 1.4cqi, 10px);
+    white-space: nowrap;
+  }
+  /* Secondary metadata yields before the name does, least useful first: the
+     intent word goes early, equipment only when the row is genuinely tiny.
+     A 390px phone keeps name + muscle + equipment — the useful triad. */
+  @container picker (max-width: 380px){
+    .pi-intent{ display: none; }
+  }
+  @container picker (max-width: 290px){
+    .picker-list .pi-equip{ display: none; }
+  }
+
+  .picker-empty{ text-align: center; padding: clamp(22px, 6cqi, 44px) 12px; }
+  .pk-empty-title{
+    font-family: var(--font-mono);
+    font-size: clamp(11px, 2cqi, 14px);
+    letter-spacing: .22em;
+    color: rgba(91,168,255,0.82);
+    margin-bottom: 6px;
+  }
+  .pk-empty-sub{ font-size: clamp(11px, 1.7cqi, 13px); color: var(--text-faint); margin: 0; }
+
 </style>
 </head>
 <body>
@@ -9188,38 +9411,198 @@ async function openAdminProgramEditor(targetUid, targetName) {
 /* ---- ad-hoc exercise logger ---- */
 const exerciseRows = document.getElementById('exercise-rows');
 
+/* ── EXERCISE PICKER ──────────────────────────────────────────────────────
+   Sections are derived from data that actually exists, never fabricated:
+
+     TODAY'S PROGRAM  the day being logged (activeDayIndex), else the program's
+                      current rotation day. Omitted when there is no program.
+     RECENT           distinct exercise names from real logged workouts.
+     ALL EXERCISES    everything else, alphabetical.
+
+   There is no favourites state anywhere in the app, so no FAVOURITES section
+   is rendered — inventing one would mean inventing the data behind it.
+
+   Searching collapses the sections into a single complete result list, so an
+   exercise can never appear twice in one view. Names, ids and metadata are
+   read-only here: this is presentation, search and filtering only.
+   ───────────────────────────────────────────────────────────────────────── */
 function openExercisePicker(onSelect) {
   const overlay = document.createElement('div');
-  overlay.className = 'modal-overlay';
+  overlay.className = 'modal-overlay ex-picker-overlay';
   overlay.innerHTML = `
-    <div class="modal">
+    <div class="modal ex-picker-modal">
       <h3>Choose an exercise</h3>
-      <input type="text" class="lib-search" id="picker-search" placeholder="Search exercises…" />
+      <div class="picker-controls">
+        <input type="text" class="lib-search" id="picker-search" autocomplete="off"
+               placeholder="Search exercises…" aria-label="Search exercises" />
+        <div class="picker-filters" id="picker-filters"></div>
+      </div>
       <div class="picker-list" id="picker-list"></div>
     </div>`;
   getOverlayHost().appendChild(overlay);
   lockBodyScroll();
-  const searchEl = overlay.querySelector('#picker-search');
-  const listEl = overlay.querySelector('#picker-list');
+
+  const searchEl  = overlay.querySelector('#picker-search');
+  const listEl    = overlay.querySelector('#picker-list');
+  const filtersEl = overlay.querySelector('#picker-filters');
+
+  const ALL_NAMES = Object.keys(EXERCISES_ALL).sort((a, b) => a.localeCompare(b));
+
+  /* Filter vocabularies come from the library itself, so a user's custom
+     exercises contribute their equipment and muscles like any other entry. */
+  const EQUIPMENT = [...new Set(ALL_NAMES
+    .map(n => (EXERCISES_ALL[n] || {}).equipment).filter(Boolean))].sort();
+  const MUSCLES = [...new Set(ALL_NAMES
+    .flatMap(n => Object.keys((EXERCISES_ALL[n] || {}).muscles || {})))].sort();
+
+  /* Names that differ only by case or punctuation are flagged, not merged:
+     they are separate ids and may be referenced by saved workouts. */
+  const DUPE_SIBLINGS = (() => {
+    const byKey = {}, out = {};
+    ALL_NAMES.forEach(n => {
+      const k = n.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+      (byKey[k] = byKey[k] || []).push(n);
+    });
+    Object.values(byKey).forEach(group => {
+      if (group.length > 1) group.forEach(n => { out[n] = group.filter(x => x !== n); });
+    });
+    return out;
+  })();
+
+  let activeEquip = '';
+  let activeMuscle = '';
+
+  filtersEl.innerHTML = `
+    <div class="pf-chips" role="group" aria-label="Filter by equipment">
+      <button type="button" class="pf-chip active" data-eq="">All</button>
+      ${EQUIPMENT.map(e =>
+        `<button type="button" class="pf-chip" data-eq="${escapeHtml(e)}">${escapeHtml(e)}</button>`).join('')}
+    </div>
+    <select class="pf-muscle" id="pf-muscle" aria-label="Filter by muscle">
+      <option value="">All muscles</option>
+      ${MUSCLES.map(m => `<option value="${escapeHtml(m)}">${escapeHtml(m)}</option>`).join('')}
+    </select>`;
+
+  /* Which exercises the day being logged calls for. activeDayIndex is set when
+     a programmed day is started; otherwise fall back to the program's current
+     rotation day. No program, or no match, and the section simply doesn't render. */
+  function programmedDay() {
+    if (!myProgram || !Array.isArray(myProgram.days) || !myProgram.days.length) return null;
+    const idx = (activeDayIndex !== null && activeDayIndex !== undefined)
+      ? activeDayIndex
+      : (Number.isInteger(myProgram.currentDayIndex) ? myProgram.currentDayIndex : null);
+    const day = (idx !== null) ? myProgram.days[idx] : null;
+    if (!day) return null;
+    const names = [...new Set((day.exercises || [])
+      .map(e => e && e.name).filter(n => n && EXERCISES_ALL[n]))];
+    return names.length ? { label: day.name || '', names } : null;
+  }
+
+  /* Real recency from logged history — most recent distinct names, newest first. */
+  function recentNames(limit = 8) {
+    if (!currentUser || !Array.isArray(myWorkouts)) return [];
+    const mine = myWorkouts
+      .filter(w => w && w.uid === currentUser.uid)
+      .slice()
+      .sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));
+    const out = [];
+    for (const w of mine) {
+      for (const ex of (w.exercises || [])) {
+        const n = ex && ex.name;
+        if (!n || !EXERCISES_ALL[n] || out.includes(n)) continue;
+        out.push(n);
+        if (out.length >= limit) return out;
+      }
+    }
+    return out;
+  }
+
+  function matches(name, q) {
+    const def = EXERCISES_ALL[name] || {};
+    if (activeEquip && (def.equipment || '') !== activeEquip) return false;
+    if (activeMuscle && !Object.keys(def.muscles || {}).includes(activeMuscle)) return false;
+    if (!q) return true;
+    const hay = [name, def.equipment || '', def.intent || '',
+      Object.keys(def.muscles || {}).join(' ')].join(' ').toLowerCase();
+    return hay.includes(q);
+  }
+
+  function card(name) {
+    const def = EXERCISES_ALL[name] || {};
+    const primary = Object.keys(def.muscles || {})[0] || '';
+    const dupes = DUPE_SIBLINGS[name];
+    return `<button type="button" class="picker-item" data-name="${escapeHtml(name)}">
+      <span class="pi-main">
+        <span class="pi-name">${escapeHtml(name)}</span>
+        <span class="pi-meta">
+          ${primary ? `<span class="pi-muscle">${escapeHtml(primary)}</span>` : ''}
+          ${def.intent ? `<span class="pi-intent">${escapeHtml(def.intent)}</span>` : ''}
+          ${dupes ? `<span class="pi-variant" title="Stored separately from: ${escapeHtml(dupes.join(', '))}">variant spelling</span>` : ''}
+        </span>
+      </span>
+      ${def.equipment ? `<span class="pi-equip">${escapeHtml(def.equipment)}</span>` : ''}
+    </button>`;
+  }
+
+  function section(title, sub, names) {
+    if (!names.length) return '';
+    return `<section class="pk-section">
+      <header class="pk-head">
+        <span class="pk-title">${escapeHtml(title)}</span>
+        ${sub ? `<span class="pk-sub">${escapeHtml(sub)}</span>` : ''}
+      </header>
+      <div class="pk-grid">${names.map(card).join('')}</div>
+    </section>`;
+  }
+
   function renderList() {
-    const q = searchEl.value.toLowerCase();
-    const names = Object.keys(EXERCISES_ALL).sort().filter(n => n.toLowerCase().includes(q));
-    listEl.innerHTML = names.map(n => {
-      const def = EXERCISES_ALL[n];
-      const primary = Object.keys(def.muscles || {})[0] || '';
-      return `<div class="picker-item" data-name="${escapeHtml(n)}">
-        <div><div class="pi-name">${escapeHtml(n)}</div><div class="pi-muscle">${primary}</div></div>
-        <span class="pi-equip">${def.equipment || ''}</span>
+    const q = searchEl.value.trim().toLowerCase();
+    const pool = ALL_NAMES.filter(n => matches(n, q));
+    let html = '';
+
+    if (q) {
+      // Search collapses the sections: one complete list, nothing listed twice.
+      html = section(`RESULTS`, `${pool.length} match${pool.length === 1 ? '' : 'es'}`, pool);
+    } else {
+      const prog = programmedDay();
+      const progShown = prog ? prog.names.filter(n => pool.includes(n)) : [];
+      const recent = recentNames().filter(n => pool.includes(n) && !progShown.includes(n));
+      const promoted = new Set([...progShown, ...recent]);
+      const rest = pool.filter(n => !promoted.has(n));
+      html += section("TODAY'S PROGRAM",
+        prog && prog.label ? `${prog.label} · queued for this session` : 'queued for this session',
+        progShown);
+      html += section('RECENT', 'from your logged sessions', recent);
+      html += section('ALL EXERCISES', `${rest.length}`, rest);
+    }
+
+    listEl.innerHTML = html || `
+      <div class="picker-empty">
+        <div class="pk-empty-title">NO MATCHES</div>
+        <p class="pk-empty-sub">Try another exercise name or filter.</p>
       </div>`;
-    }).join('') || `<p class="empty-state" style="padding:20px 0;">No matches.</p>`;
+
     listEl.querySelectorAll('.picker-item').forEach(item => item.addEventListener('click', () => {
       SFX.pop();
       onSelect(item.dataset.name);
       overlay.remove(); unlockBodyScroll();
     }));
   }
+
+  filtersEl.querySelectorAll('.pf-chip').forEach(chip => chip.addEventListener('click', () => {
+    activeEquip = chip.dataset.eq || '';
+    filtersEl.querySelectorAll('.pf-chip').forEach(c => c.classList.toggle('active', c === chip));
+    renderList();
+  }));
+  filtersEl.querySelector('#pf-muscle').addEventListener('change', e => {
+    activeMuscle = e.target.value || '';
+    renderList();
+  });
+
   searchEl.addEventListener('input', renderList);
-  overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
+  overlay.addEventListener('click', (e) => {
+    if (e.target === overlay) { overlay.remove(); unlockBodyScroll(); }
+  });
   renderList();
   searchEl.focus();
 }
