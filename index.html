@@ -3466,6 +3466,46 @@
      Below this boundary the name takes the whole line and its metadata drops
      beneath it. Priority yields in order: the name is what the Hunter needs
      mid-set, the counts are secondary. */
+  /* ── 8. EXERCISE LIBRARY ROW ─────────────────────────────────────────
+     .ex-grid carried a global `grid-template-columns:1fr !important`, so the
+     library was one column at every size and each card stretched to the whole
+     shell — a 1213px-wide card holding a short name and an Edit link at 1920.
+     Columns now form whenever a real one fits. */
+  .ex-grid{
+    grid-template-columns:repeat(auto-fit, minmax(min(320px, 100%), 1fr)) !important;
+    gap:var(--sp-sm) !important;
+  }
+
+  /* The card composes against its own width without needing a query, so it
+     behaves identically wherever it is embedded. The name always owns a full
+     line — secondary metadata can never take the space the exercise name
+     needs — and everything after it flows into as many columns as the card
+     can actually support. Narrow card: one column, stacked as before. Wide
+     card: muscle, equipment, badges and actions share the line instead of
+     stacking into dead vertical space. */
+  .ex-grid{ align-items:start; }
+  .ex-card{
+    display:grid;
+    grid-template-columns:repeat(auto-fit, minmax(min(150px, 100%), 1fr));
+    gap:var(--sp-2xs) var(--sp-sm);
+    align-content:start;
+    /* Without this every child stretches to the tallest item on its row, which
+       inflated the stat badges into tall rectangles. */
+    align-items:start;
+  }
+  .ex-card > *{ min-width:0; }
+  .ex-card .ex-name{
+    grid-column:1 / -1;
+    min-width:0; overflow-wrap:anywhere;
+  }
+  /* These were block elements stacked with margins; as grid items the margins
+     would fight the gap. */
+  .ex-card .ex-muscle,
+  .ex-card .ex-technique-link,
+  .ex-card .ex-edit-link{ margin:0; align-self:center; }
+  .ex-card .ex-edit-link{ min-height:var(--tap-min); display:flex; align-items:center; }
+  .ex-card .ex-technique-link{ min-height:var(--tap-min); display:flex; align-items:center; }
+
   @container quest (max-width: 26rem){
     .quest-check-row{ grid-template-columns:28px minmax(0,1fr) auto; row-gap:1px; }
     .quest-check-row .qc-name{
