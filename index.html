@@ -15648,7 +15648,11 @@ function renderCompetitionBoard() {
       // Challenge button — only on other hunters, only if no active duel
       + (!isMe && !(profile?.duels?.activeDuelId) ? (
           '<button style="width:100%;margin-top:8px;padding:6px;font-size:11px;font-family:var(--font-mono);letter-spacing:0.05em;color:var(--excess);background:rgba(255,77,103,0.06);border:1px solid rgba(255,77,103,0.2);border-radius:6px;cursor:pointer;" onclick="event.stopPropagation();sendGateDuel(\'' + r.uid + '\')">⚔ GATE DUEL</button>'
-        ) : (!isMe && profile?.duels?.activeDuelId ? '<div style="font-size:9px;color:var(--text-faint);text-align:center;margin-top:6px;font-family:var(--font-mono);">Active duel in progress</div>' : ''))
+        ) : (!isMe && profile?.duels?.activeDuelId ? (
+          /* Was a dead-end label. A challenge the defender never answered left
+             the Hunter with no way out and no way to challenge anyone else. */
+          '<button style="width:100%;margin-top:6px;padding:5px;font-size:9px;font-family:var(--font-mono);letter-spacing:0.05em;color:var(--text-faint);background:transparent;border:1px solid rgba(91,168,255,0.14);border-radius:6px;cursor:pointer;" onclick="event.stopPropagation();withdrawGateDuel()">Active duel in progress · withdraw</button>'
+        ) : ''))
     + '</div>';
   }).join('') || '';
 
@@ -22942,14 +22946,32 @@ async function checkPendingDuels() {
       const { doc: getDoc2, getDoc } = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js');
       const { doc } = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js');
       const dSnap = await getDoc(doc(db, 'duels', activeDuelId));
-      if (dSnap.exists()) {
+      if (!dSnap.exists()) {
+        /* Dangling pointer: the duel it names is gone. Left alone this blocks
+           every future challenge forever. */
+        await clearMyActiveDuel();
+      } else {
         const d = dSnap.data();
         if (d.status === 'active' && d.endDate < todayStr()) {
           await resolveGateDuel(activeDuelId, d);
+        } else if (d.status === 'complete' || d.status === 'forfeited') {
+          // already finished — stop it holding the Gate shut
+          await clearMyActiveDuel();
         }
       }
     }
-  } catch(e) { console.warn('Duel check error:', e); }
+  } catch(e) {
+    /* console.error, not warn: when this fails the Hunter is simply never told
+       they were challenged, which is indistinguishable from nobody challenging
+       them. A silent warn is how that stayed invisible. */
+    console.error('Gate Duel check failed:', e);
+    const denied = (e && e.code === 'permission-denied')
+      || /insufficient permissions|Missing or insufficient/i.test((e && e.message) || '');
+    if (denied && !duelSystemUnreachable) {
+      duelSystemUnreachable = true;   // state it once per session, not per check
+      showToast('Gate Duels are unavailable — the System cannot reach the duel record.', 'error');
+    }
+  }
 }
 
 // ── Show incoming challenge notice ──
@@ -22973,9 +22995,85 @@ function showIncomingDuelNotice(duelId, duel) {
   SFX.classAssigned?.();
 }
 
+/* ── GATE DUEL — ESCAPE PATHS ─────────────────────────────────────────────
+   profile.duels.activeDuelId was only ever cleared inside resolveGateDuel(),
+   which is reachable only when a duel is already status:'active' AND past its
+   endDate. A duel that never left 'pending' — because the defender never
+   designed the fight — could therefore never be cleared, and the pointer stayed
+   set forever:
+
+     · sendGateDuel() returns early with "You already have an active Gate Duel"
+     · every hunter row shows "Active duel in progress" instead of a button
+
+   One unanswered challenge permanently disabled the whole feature, with no
+   withdraw, no cancel and no expiry. 'forfeited' was documented in the schema
+   at the top of this section but implemented nowhere.
+   ──────────────────────────────────────────────────────────────────────── */
+
+// Set when the duel record can't be reached, so the failure is stated once
+// instead of being swallowed and read as "nobody challenged you".
+let duelSystemUnreachable = false;
+
+function duelErrorMessage(e, action) {
+  const code = (e && e.code) || '';
+  if (code === 'permission-denied' || /insufficient permissions|Missing or insufficient/i.test((e && e.message) || '')) {
+    return 'The System cannot reach the duel record. Gate Duels are unavailable until the server grants access.';
+  }
+  return `Could not ${action}: ${(e && e.message) || e}`;
+}
+
+async function clearMyActiveDuel() {
+  const { doc, updateDoc } = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js');
+  await updateDoc(doc(db, 'users', currentUser.uid), { 'duels.activeDuelId': null });
+  if (!profile.duels) profile.duels = {};
+  profile.duels.activeDuelId = null;
+  /* Repaint now: the startup repair runs after the board has already drawn, so
+     without this the Gate stays visibly shut until the Hunter navigates away
+     and back. renderCompetitionBoard() no-ops when the board isn't mounted. */
+  try { renderCompetitionBoard(); } catch (_) {}
+}
+
+/* Withdraw a challenge the defender never accepted. Only the challenger, and
+   only while the duel is still 'pending' — once terms are set the fight is
+   real and has to end at the Gate. No win or loss is recorded: nothing was
+   contested, so nothing is scored. */
+async function withdrawGateDuel() {
+  if (!currentUser || !profile) return;
+  const duelId = profile.duels && profile.duels.activeDuelId;
+  if (!duelId) return;
+  try {
+    const { doc, getDoc, updateDoc } = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js');
+    const snap = await getDoc(doc(db, 'duels', duelId));
+
+    if (!snap.exists()) {
+      await clearMyActiveDuel();
+      showToast('That duel no longer exists — your Gate is clear.', 'success');
+      renderCompetitionBoard();
+      return;
+    }
+    const duel = snap.data();
+    if (duel.challengerId !== currentUser.uid) {
+      showToast('Only the challenger can withdraw a challenge.', 'error');
+      return;
+    }
+    if (duel.status !== 'pending') {
+      showToast('The terms are set — this duel can only end at the Gate.', 'error');
+      return;
+    }
+    await updateDoc(doc(db, 'duels', duelId), { status: 'forfeited', resolvedAt: todayStr() });
+    await clearMyActiveDuel();
+    showToast('Challenge withdrawn. Nothing was contested, so nothing is recorded.', 'success');
+    renderCompetitionBoard();
+  } catch (e) {
+    console.error('Gate Duel withdraw failed:', e);
+    showToast(duelErrorMessage(e, 'withdraw the challenge'), 'error');
+  }
+}
+
 window.sendGateDuel = sendGateDuel;
 window.openDuelDesigner = openDuelDesigner;
 window.checkPendingDuels = checkPendingDuels;
+window.withdrawGateDuel = withdrawGateDuel;
 
 </script>
 </body>

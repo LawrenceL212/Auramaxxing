@@ -292,6 +292,58 @@ remembering for any future QA on live data:
 
 ---
 
+## Gate Duels — blocked on a Firestore rule (2026-08-25)
+
+**Client-side deadlock: FIXED** (see `fix/gate-duels`). **Server-side access:
+BLOCKED — needs deployment, not deployed.**
+
+`duels` has no `match` block in the published rules, and SETUP.md's rules
+listing covers only `users`, `workouts`, `programs`, `customExercises` and
+`bodyweight`. A collection with no rule is denied to everyone the admin
+catch-all does not cover, so for every non-admin Hunter:
+
+- `checkPendingDuels()` cannot read the collection, so a defender is never
+  shown an incoming challenge
+- the confirm handler in `sendGateDuel()` cannot `addDoc`
+- `resolveGateDuel()` writes to BOTH participants' user documents, which is a
+  cross-user write and is denied regardless
+
+Note the admin uid (`index.html:4543`) passes the catch-all, so testing while
+signed in as admin makes duels look functional. Any duel verification must be
+read as admin-only unless run from a normal account.
+
+Proposed rule — **merge into the existing rules, do not replace them**:
+
+```
+match /duels/{duelId} {
+  // both participants can read their own duel
+  allow read: if request.auth != null
+              && (resource.data.challengerId == request.auth.uid
+               || resource.data.defenderId  == request.auth.uid);
+
+  // a challenger may only create a duel in their own name, as pending
+  allow create: if request.auth != null
+                && request.resource.data.challengerId == request.auth.uid
+                && request.resource.data.status == 'pending';
+
+  // either participant may advance their own duel
+  allow update: if request.auth != null
+                && (resource.data.challengerId == request.auth.uid
+                 || resource.data.defenderId  == request.auth.uid);
+
+  allow delete: if false;
+}
+```
+
+`resolveGateDuel()` writing to the opponent's `users/{uid}` document is NOT
+solved by the above and should not be solved by loosening `users` — settlement
+belongs in a trusted backend (see the backend phase). Until then duel
+resolution stays admin-only.
+
+**Status: prepared, NOT deployed. Requires Firebase console access.**
+
+---
+
 ## Reporting
 
 Final report must contain: PASS · FAIL · WARNINGS · KNOWN LIMITATIONS ·
