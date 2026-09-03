@@ -15876,6 +15876,10 @@ function checkPersistentQuestBanner() {
    · No claim is made without like-for-like grounds. Load and rep evidence is
      preferred over effort evidence, and estimated-1RM evidence is used only as
      a fallback and only past a margin that a rounding difference can't reach.
+   · Timed, skill and endurance work is compared on its own terms — duration,
+     distance and pace — because its `reps` field carries duration, not
+     repetitions. It rates on RPE, which runs OPPOSITE to RIR, so the reserve
+     test is inverted there: a lower RPE at the same work is the improvement.
    · Reads only. No formula, no stored value, no write.
    ───────────────────────────────────────────────────────────────────────── */
 function buildCompetenceProof(exercises, sourceWorkouts) {
@@ -15907,10 +15911,6 @@ function buildCompetenceProof(exercises, sourceWorkouts) {
     if (!cur) continue;
 
     const exDef = EXERCISES_ALL[ex.name] || {};
-    // Timed/run work is measured in seconds or minutes, not reps x load; its
-    // "reps" field carries duration, so the load/rep comparisons below would be
-    // meaningless. Endurance progression deserves its own treatment later.
-    if (exDef.timed) continue;
 
     let prevEx = null;
     for (const w of mine) {
@@ -15918,6 +15918,76 @@ function buildCompetenceProof(exercises, sourceWorkouts) {
       if (hit && perfSets(hit).length) { prevEx = hit; break; }
     }
     if (!prevEx) continue;
+
+    /* ── TIMED, SKILL AND ENDURANCE ────────────────────────────────────────
+       Three quarters of the library is timed, and it used to be skipped
+       outright — the whole calisthenics-skill and endurance side of the app
+       could prove nothing. Their `reps` field carries DURATION, not
+       repetitions, so the load/rep comparisons below are meaningless for
+       them; they need their own like-for-like tests.
+
+       These rate on RPE, which runs opposite to RIR: a LOWER RPE means the
+       same work cost less effort. So the reserve test is inverted here, and
+       inverted deliberately — a rising RPE is not reported as a decline, for
+       the same reason a falling RIR isn't: it is equally consistent with
+       fatigue. */
+    if (exDef.timed) {
+      const isRun = exDef.intent === 'endurance';
+      const dur = (s) => Number(s.durationMins) || Number(s.reps) || 0;
+      const rpeOf = (s) => (s.rpe == null ? null : Number(s.rpe));
+
+      if (isRun) {
+        // Longest run by distance is the like-for-like comparison.
+        const byDist = (sets) => sets.reduce((b, s) =>
+          (!b || (Number(s.distKm) || 0) > (Number(b.distKm) || 0)) ? s : b, null);
+        const c = byDist(perfSets(ex)), p = byDist(perfSets(prevEx));
+        if (!c || !p) continue;
+        const cd = Number(c.distKm) || 0, pd = Number(p.distKm) || 0;
+        const cm = dur(c), pm = dur(p);
+        if (cd > 0 && pd > 0) {
+          if (cd > pd) {
+            candidates.push({ rank: 3, name: ex.name,
+              headline: `+${Math.round((cd - pd) * 100) / 100}km further`,
+              detail: `${cd}km today · ${pd}km last time` });
+            continue;
+          }
+          // same distance, less time — a genuine pace improvement
+          if (cd === pd && cm > 0 && pm > 0 && cm < pm) {
+            candidates.push({ rank: 3, name: ex.name,
+              headline: `Same ${cd}km, ${Math.round((pm - cm) * 10) / 10} min faster`,
+              detail: `${cm} min today · ${pm} min last time` });
+            continue;
+          }
+        }
+        continue;
+      }
+
+      // Holds and skill work: the longest set is the record that matters.
+      const byDur = (sets) => sets.reduce((b, s) => (!b || dur(s) > dur(b)) ? s : b, null);
+      const c = byDur(perfSets(ex)), p = byDur(perfSets(prevEx));
+      if (!c || !p) continue;
+      const cd = dur(c), pd = dur(p);
+      if (!cd || !pd) continue;
+      const mins = exDef.timedUnit === 'mins';
+      const unit = mins ? 'min' : 's';
+      const show = (n) => (mins ? Math.round(n * 10) / 10 : Math.round(n));
+
+      if (cd > pd) {
+        candidates.push({ rank: 3, name: ex.name,
+          headline: `+${show(cd - pd)}${unit} on your best hold`,
+          detail: `${show(cd)}${unit} today · ${show(pd)}${unit} last time` });
+        continue;
+      }
+      // Identical hold at a lower RPE — same work, less effort.
+      const cRpe = rpeOf(c), pRpe = rpeOf(p);
+      if (cd === pd && cRpe != null && pRpe != null && cRpe < pRpe) {
+        candidates.push({ rank: 2, name: ex.name,
+          headline: `Same ${show(cd)}${unit} hold, less effort`,
+          detail: `RPE ${cRpe} today · RPE ${pRpe} last time` });
+      }
+      continue;
+    }
+
     const prev = topSet(perfSets(prevEx));
     if (!prev) continue;
 
