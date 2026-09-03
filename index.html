@@ -4013,6 +4013,50 @@
 
   .hunt-active{ border-color:rgba(255,214,107,0.22); background:rgba(255,214,107,0.04); }
   .hunt-active .hs-label{ color:var(--brass); }
+  /* ── ACTIVE DUEL PANEL ── */
+  .duel-panel{
+    border:1px solid rgba(255,77,103,0.28);
+    background:linear-gradient(180deg, rgba(255,77,103,0.07), rgba(255,77,103,0.02));
+    margin-bottom:12px;
+  }
+  .duel-panel-eyebrow{
+    font-family:var(--font-mono); font-size:9px; letter-spacing:.18em;
+    color:var(--excess); margin-bottom:6px;
+  }
+  .duel-panel-vs{
+    font-family:var(--font-display); font-size:clamp(15px,3.2vw,20px);
+    font-weight:800; color:var(--text); margin-bottom:8px;
+  }
+  .duel-panel-terms{ display:flex; flex-wrap:wrap; gap:6px; margin-bottom:10px; }
+  .duel-panel-terms span{
+    font-family:var(--font-mono); font-size:9.5px; letter-spacing:.04em;
+    color:var(--text-dim); background:rgba(91,168,255,0.06);
+    border:1px solid rgba(91,168,255,0.14); border-radius:4px; padding:3px 7px;
+  }
+  .duel-panel-scores{
+    display:flex; align-items:center; justify-content:center; gap:14px;
+    padding:10px 0; border-top:1px solid rgba(255,77,103,0.14);
+    border-bottom:1px solid rgba(255,77,103,0.14); margin-bottom:8px;
+  }
+  .duel-panel-scores > div{ text-align:center; min-width:0; }
+  .dp-score{
+    font-family:var(--font-display); font-size:clamp(18px,4vw,26px); font-weight:900;
+    color:var(--text); font-variant-numeric:tabular-nums;
+  }
+  .dp-who{
+    font-family:var(--font-mono); font-size:8px; letter-spacing:.12em;
+    color:var(--text-faint); margin-top:2px;
+    overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:12ch;
+  }
+  .dp-sep{ color:var(--text-faint); font-size:14px; }
+  .duel-panel-note{ font-size:11px; line-height:1.55; color:var(--text-faint); margin:0; }
+  .duel-panel-withdraw{
+    width:100%; margin-top:10px; padding:7px; font-family:var(--font-mono);
+    font-size:10px; letter-spacing:.05em; color:var(--text-dim);
+    background:transparent; border:1px solid rgba(91,168,255,0.16);
+    border-radius:6px; cursor:pointer;
+  }
+  .duel-panel-withdraw:hover{ border-color:rgba(91,168,255,0.4); color:var(--text); }
 </style>
 </head>
 <body>
@@ -6382,12 +6426,23 @@ function buildSystemCoreScene({ THREE, quality, tier }) {
   const root = new THREE.Group();
   scene.add(root);
 
-  // Lighting: one key, one cool rim, minimal fill. Rim does the form work.
-  const KEY_I = 1.15, RIM_I = 2.10, FILL_I = 0.55;
-  const key = new THREE.DirectionalLight(0xbcd4ff, KEY_I); key.position.set(2.4, 3.0, 3.2);
-  const rim = new THREE.DirectionalLight(0x5ba8ff, RIM_I); rim.position.set(-2.6, 1.6, -2.8);
-  const fill = new THREE.HemisphereLight(0x24406e, 0x05070d, FILL_I);
-  scene.add(key, rim, fill);
+  // Lighting: key, rim, hemisphere fill + a dim warm ground bounce.
+  // Dark polished metal needs at least two separated specular sources to show
+  // its form — otherwise it reads as a silhouette with one bright streak.
+  const KEY_I = 1.40, RIM_I = 1.80, FILL_I = 0.50;
+  // Key: slightly warmer than before — not orange, but not pure blue-white.
+  // The core metal should catch a cool-white highlight, not a blue one.
+  const key = new THREE.DirectionalLight(0xd0deff, KEY_I); key.position.set(2.4, 3.0, 3.2);
+  // Rim: slightly less intense — previously dominated and washed the specular.
+  const rim = new THREE.DirectionalLight(0x4a8aff, RIM_I); rim.position.set(-2.6, 1.6, -2.8);
+  // Hemisphere: lift sky slightly so dark metal has something to reflect
+  // on its top surfaces. Ground stays near-void.
+  const fill = new THREE.HemisphereLight(0x1a2d5a, 0x04050a, FILL_I);
+  // Warm ground bounce — very dim. Catches the underside of rings and the
+  // bottom faces of the core. Prevents total blackness on the bottom half.
+  const bounce = new THREE.PointLight(0x1a1060, 0.45, 8, 1.5);
+  bounce.position.set(0.4, -2.8, 1.6);
+  scene.add(key, rim, fill, bounce);
 
   /* Environment. Kept from the previous phase unchanged: a staged scene needs
      a place, and the dungeon/raid cinematics drive it. Presentation only.
@@ -6495,35 +6550,90 @@ function buildSystemCoreScene({ THREE, quality, tier }) {
   }
 
   /* ── the System sigil ─────────────────────────────────────────────────────
-     Faceted core, two counter-rotating rings, a belt of orbiting shards.
-     Flat-shaded on purpose: the sharp geometric read IS the System's face. */
+     Dark forged iron object — NOT a crystal. The core is polished obsidian
+     metal; the rings are thin polished steel; the shards are bladed iron.
+     Glow is internal (PointLight) not surface emissive, so it reads as
+     heat from inside a dense object rather than anime neon paint. */
+
+  // ── Materials ────────────────────────────────────────────────────────────
+  // Forged iron/obsidian core: nearly black, high metalness, low roughness
+  // so it catches hard specular highlights from the key and the inner light.
+  // Tiny emissive — just enough to define the silhouette when everything else
+  // is dark. The real glow comes from innerLight below.
   const coreMat = new THREE.MeshStandardMaterial({
-    color: 0x04060c, roughness: 0.68, metalness: 0.12, flatShading: true,
-    emissive: 0x1c49b8, emissiveIntensity: 0.06,
+    color: 0x080c14,
+    roughness: 0.18,
+    metalness: 0.88,
+    flatShading: false,
+    emissive: 0x0d1f4a,
+    emissiveIntensity: 0.08,
   });
+
+  // Polished dark steel rings: higher metalness, lower roughness than core
+  // so they produce sharp, thin specular streaks as they rotate — steel, not plastic.
   const ringMat = new THREE.MeshStandardMaterial({
-    color: 0x05070d, roughness: 0.62, metalness: 0.2,
-    emissive: 0x5a35c9, emissiveIntensity: 0.10,
+    color: 0x06090f,
+    roughness: 0.10,
+    metalness: 0.94,
+    emissive: 0x0a1a3a,
+    emissiveIntensity: 0.05,
   });
+
+  // Bladed iron shards: same forged iron family, flat-shaded so each face
+  // reads as a separate plane catching light differently — deliberate faceting
+  // of a physical object, not an anime gem.
   const shardMat = new THREE.MeshStandardMaterial({
-    color: 0x05070d, roughness: 0.60, metalness: 0.15, flatShading: true,
-    emissive: 0x2e63d8, emissiveIntensity: 0.12,
+    color: 0x07090f,
+    roughness: 0.22,
+    metalness: 0.85,
+    flatShading: true,
+    emissive: 0x0c1a40,
+    emissiveIntensity: 0.06,
   });
-  const core = new THREE.Mesh(new THREE.OctahedronGeometry(0.46, 1), coreMat);
+
+  // ── Geometry ─────────────────────────────────────────────────────────────
+  // detail=2 gives 32 triangular faces — enough for a smooth metal form
+  // without becoming a sphere. The vertical stretch makes it read as a
+  // standing geometric solid rather than a diamond.
+  const core = new THREE.Mesh(new THREE.OctahedronGeometry(0.46, 2), coreMat);
   core.scale.set(1, 1.35, 1);
-  const ring1 = new THREE.Mesh(new THREE.TorusGeometry(0.95, 0.020, 8, 72), ringMat);
+
+  // Rings: tube section thicker (0.028 / 0.020) so they have physical mass
+  // and the highlight is a visible streak rather than a hairline.
+  // radialSegments=12 gives the tube a solid round cross-section.
+  const ring1 = new THREE.Mesh(new THREE.TorusGeometry(0.95, 0.028, 12, 96), ringMat);
   ring1.rotation.x = Math.PI / 2.25;
-  const ring2 = new THREE.Mesh(new THREE.TorusGeometry(1.18, 0.014, 8, 72), ringMat);
+  const ring2 = new THREE.Mesh(new THREE.TorusGeometry(1.18, 0.020, 12, 96), ringMat);
   ring2.rotation.x = Math.PI / 1.75; ring2.rotation.y = 0.5;
+
+  // Shards: elongated blades, flat-shaded deliberately — each face is a
+  // polished iron plane, not a crystal facet.
   const shards = new THREE.Group();
   const shardList = [];
   for (let i = 0; i < 12; i++) {
-    const s = new THREE.Mesh(new THREE.OctahedronGeometry(0.055, 0), shardMat);
-    s.scale.y = 1.8;
+    const s = new THREE.Mesh(new THREE.OctahedronGeometry(0.052, 0), shardMat);
+    s.scale.set(0.7, 2.2, 0.7); // thinner, longer blade profile
     shards.add(s);
     shardList.push({ m: s, a: (i / 12) * Math.PI * 2, r: 1.42 + (i % 3) * 0.10,
                      y: ((i % 4) - 1.5) * 0.16, sp: 0.8 + (i % 5) * 0.10 });
   }
+
+  // ── Internal light — the heat source inside a forge ───────────────────────
+  // This is the key realism change. Instead of surface emissive painting the
+  // object blue, a PointLight inside the core casts real light onto the metal
+  // surfaces: the rings catch it on their inner curve, the core faces nearest
+  // the light brighten, the shards at different distances vary in intensity.
+  // All of this is physically correct specular/diffuse response, not emissive glow.
+  const innerLight = new THREE.PointLight(0x4a7fff, 0.9, 3.2, 2.0);
+  innerLight.position.set(0, 0, 0);
+  root.add(innerLight);
+
+  // A second, dimmer inner light offset upward catches the underside of ring1
+  // and the top faces of the core — gives the object more internal complexity.
+  const innerLight2 = new THREE.PointLight(0x3060cc, 0.35, 2.4, 2.0);
+  innerLight2.position.set(0, 0.3, 0);
+  root.add(innerLight2);
+
   root.add(core, ring1, ring2, shards);
   root.scale.setScalar(0.78);
   root.scale.setScalar(0.78);
@@ -6563,13 +6673,28 @@ function buildSystemCoreScene({ THREE, quality, tier }) {
       flareAmt = Math.max(0, flareAmt - dt * 0.9);
       if (frozen) return;
       const energy = auraNow + flareAmt * 0.6;
-      const pulse = 1 + Math.sin(t * 2.1) * 0.10 * energy;
-      coreMat.emissiveIntensity  = (0.04 + energy * 0.40) * pulse;
-      ringMat.emissiveIntensity  = 0.06 + energy * 0.38;
-      shardMat.emissiveIntensity = 0.08 + energy * 0.50;
-      core.rotation.y = t * (0.12 + energy * 0.55);
-      ring1.rotation.z = t * (0.16 + energy * 0.70);
-      ring2.rotation.z = -t * (0.11 + energy * 0.55);
+      const pulse = 1 + Math.sin(t * 2.1) * 0.08 * energy;
+      // Emissive stays very low — just defines silhouette. Real glow = innerLight.
+      coreMat.emissiveIntensity  = (0.04 + energy * 0.08) * pulse;
+      ringMat.emissiveIntensity  = 0.03 + energy * 0.06;
+      shardMat.emissiveIntensity = 0.04 + energy * 0.10;
+      // Internal PointLight: this is where the "molten core" effect comes from.
+      // Dormant: dim, barely bleeds past the core surface.
+      // Active: lights the inner curves of both rings.
+      // Surge: strong enough to cast on the shards and briefly flare.
+      const innerBase = 0.55 + energy * 2.8;
+      const innerPulse = innerBase * (1 + Math.sin(t * 2.1) * 0.10 * Math.max(0.2, energy));
+      innerLight.intensity  = innerPulse;
+      innerLight2.intensity = (0.18 + energy * 0.9) * pulse;
+      // Shift inner light color: dormant=cold blue, surge=warmer blue-white
+      const cr = 0.29 + energy * 0.18;
+      const cg = 0.42 + energy * 0.16;
+      innerLight.color.setRGB(cr, cg, 1.0);
+      // Slow deliberate rotation — heavy forged metal, not a toy.
+      // Energy barely accelerates the rotation; the object has mass.
+      core.rotation.y = t * (0.10 + energy * 0.18);
+      ring1.rotation.z = t * (0.14 + energy * 0.22);
+      ring2.rotation.z = -t * (0.09 + energy * 0.16);
       for (const s of shardList) {
         const a = s.a + t * s.sp * (0.25 + energy * 1.1);
         s.m.position.set(Math.cos(a) * s.r, s.y + Math.sin(t * 0.9 + s.a * 3) * 0.05,
@@ -16765,7 +16890,8 @@ function renderCompetitionBoard() {
   const STAT_ICONS = { strength:'⚔️', endurance:'🔥', agility:'⚡', focus:'🎯', defence:'🛡️', flexibility:'💫' };
   const RANK_ORDER = ['S','A','B','C','D','E'];
 
-  el.innerHTML = rows.map((r, i) => {
+  const duelPanelHtml = buildActiveDuelPanel();
+  el.innerHTML = duelPanelHtml + rows.map((r, i) => {
     const isMe = r.uid === currentUser.uid;
     const isRival = rival && r.uid === rival.uid;
     const isChaser = chaser && r.uid === chaser.uid;
@@ -16916,7 +17042,11 @@ function renderCompetitionBoard() {
       // Challenge button — only on other hunters, only if no active duel
       + (!isMe && !(profile?.duels?.activeDuelId) ? (
           '<button style="width:100%;margin-top:8px;padding:6px;font-size:11px;font-family:var(--font-mono);letter-spacing:0.05em;color:var(--excess);background:rgba(255,77,103,0.06);border:1px solid rgba(255,77,103,0.2);border-radius:6px;cursor:pointer;" onclick="event.stopPropagation();sendGateDuel(\'' + r.uid + '\')">⚔ GATE DUEL</button>'
-        ) : (!isMe && profile?.duels?.activeDuelId ? '<div style="font-size:9px;color:var(--text-faint);text-align:center;margin-top:6px;font-family:var(--font-mono);">Active duel in progress</div>' : ''))
+        ) : (!isMe && profile?.duels?.activeDuelId ? (
+          /* Was a dead-end label. A challenge the defender never answered left
+             the Hunter with no way out and no way to challenge anyone else. */
+          '<button style="width:100%;margin-top:6px;padding:5px;font-size:9px;font-family:var(--font-mono);letter-spacing:0.05em;color:var(--text-faint);background:transparent;border:1px solid rgba(91,168,255,0.14);border-radius:6px;cursor:pointer;" onclick="event.stopPropagation();withdrawGateDuel()">Active duel in progress · withdraw</button>'
+        ) : ''))
     + '</div>';
   }).join('') || '';
 
@@ -24211,13 +24341,40 @@ async function checkPendingDuels() {
       const { doc } = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js');
       const dSnap = await getDoc(doc(db, 'duels', activeDuelId));
       if (dSnap.exists()) {
+        // cached so the board can state the terms without an async fetch
+        activeDuelCache = { id: dSnap.id, ...dSnap.data() };
+        maybeAnnounceDuelTerms(activeDuelCache);
+        try { renderCompetitionBoard(); } catch (_) {}
+      } else {
+        activeDuelCache = null;
+      }
+      if (!dSnap.exists()) {
+        /* Dangling pointer: the duel it names is gone. Left alone this blocks
+           every future challenge forever. */
+        await clearMyActiveDuel();
+      } else {
         const d = dSnap.data();
         if (d.status === 'active' && d.endDate < todayStr()) {
-          await resolveGateDuel(activeDuelId, d);
+          // server-first; falls back to the client path if unreachable
+          await settleGateDuel(activeDuelId, d);
+        } else if (d.status === 'complete' || d.status === 'forfeited') {
+          // already finished — stop it holding the Gate shut
+          await clearMyActiveDuel();
         }
       }
     }
-  } catch(e) { console.warn('Duel check error:', e); }
+  } catch(e) {
+    /* console.error, not warn: when this fails the Hunter is simply never told
+       they were challenged, which is indistinguishable from nobody challenging
+       them. A silent warn is how that stayed invisible. */
+    console.error('Gate Duel check failed:', e);
+    const denied = (e && e.code === 'permission-denied')
+      || /insufficient permissions|Missing or insufficient/i.test((e && e.message) || '');
+    if (denied && !duelSystemUnreachable) {
+      duelSystemUnreachable = true;   // state it once per session, not per check
+      showToast('Gate Duels are unavailable — the System cannot reach the duel record.', 'error');
+    }
+  }
 }
 
 // ── Show incoming challenge notice ──
@@ -24241,9 +24398,252 @@ function showIncomingDuelNotice(duelId, duel) {
   SFX.classAssigned?.();
 }
 
+/* ── ACTIVE DUEL PANEL ────────────────────────────────────────────────────
+   The defender designed the fight and the challenger was never told what it
+   was. addDuelNotification() writes its message into the ACTING player's own
+   in-memory profile — 'terms_set' notifies the defender about their own
+   decision, and reaches the challenger never. Nothing anywhere rendered a
+   duel's spec, so a Hunter with an active duel knew only "Active duel in
+   progress": not the exercise, the metric, the effort ceiling, the number of
+   sessions required, nor the deadline.
+
+   This panel states the terms to both sides and shows both live scores,
+   computed by the existing getDuelScore() over logged workouts. That is also
+   the answer to "how does the System know you did it": nothing is claimed or
+   submitted — both scores are read from the workouts each Hunter logged inside
+   the duel window, so training IS the entry.
+
+   Read-only. No new duel state, no new rule, no schema change.
+   ──────────────────────────────────────────────────────────────────────── */
+let activeDuelCache = null;   // { id, ...duelDoc } — filled by checkPendingDuels
+
+function buildActiveDuelPanel() {
+  const duel = activeDuelCache;
+  if (!duel || !currentUser) return '';
+  const iAmChallenger = duel.challengerId === currentUser.uid;
+  const opponent = iAmChallenger ? duel.defenderName : duel.challengerName;
+
+  // Terms not set yet — say so plainly instead of leaving a silent wall.
+  if (duel.status === 'pending') {
+    return `<div class="card duel-panel">
+      <div class="duel-panel-eyebrow">◈ GATE DUEL — AWAITING TERMS</div>
+      <div class="duel-panel-vs">vs ${escapeHtml(opponent || 'Hunter')}</div>
+      <p class="duel-panel-note">${iAmChallenger
+        ? 'They design the fight. Until they set the terms there is nothing to train for.'
+        : 'You have not set the terms yet. Open the challenge to design the fight.'}</p>
+      ${iAmChallenger ? '<button class="duel-panel-withdraw" onclick="withdrawGateDuel()">Withdraw challenge</button>' : ''}
+    </div>`;
+  }
+  if (duel.status !== 'active' || !duel.spec) return '';
+
+  const spec = duel.spec;
+  const metricLabel = (DUEL_METRICS[spec.metric] && DUEL_METRICS[spec.metric].label) || spec.metric;
+  const daysLeft = Math.max(0, daysBetween(todayStr(), duel.endDate));
+
+  // Same scoring the resolver uses — no separate tally to drift out of sync.
+  let myScore = 0, theirScore = 0;
+  try {
+    const window_ = allWorkouts.filter(w => w.date >= duel.startDate && w.date <= duel.endDate);
+    myScore    = getDuelScore(spec, window_, currentUser.uid);
+    theirScore = getDuelScore(spec, window_, iAmChallenger ? duel.defenderId : duel.challengerId);
+  } catch (e) { console.error('Duel score preview failed:', e); }
+
+  const fmt = (n) => n < 0 ? 'forfeit' : (Math.round(n * 10) / 10).toLocaleString();
+  const terms = [
+    spec.exercise ? escapeHtml(spec.exercise) : null,
+    metricLabel,
+    (spec.minRIR != null && spec.minRIR < 5) ? `RIR ${spec.minRIR} or harder` : null,
+    spec.minSessions > 1 ? `${spec.minSessions} sessions minimum` : null,
+    spec.minWeightPct ? `${spec.minWeightPct}% bodyweight minimum` : null,
+  ].filter(Boolean);
+
+  return `<div class="card duel-panel duel-panel-live">
+    <div class="duel-panel-eyebrow">◈ GATE DUEL — OPEN · ${daysLeft === 0 ? 'ENDS TODAY' : daysLeft + 'D LEFT'}</div>
+    <div class="duel-panel-vs">vs ${escapeHtml(opponent || 'Hunter')}</div>
+    <div class="duel-panel-terms">${terms.map(t => `<span>${t}</span>`).join('')}</div>
+    <div class="duel-panel-scores">
+      <div><div class="dp-score">${fmt(myScore)}</div><div class="dp-who">YOU</div></div>
+      <div class="dp-sep">·</div>
+      <div><div class="dp-score">${fmt(theirScore)}</div><div class="dp-who">${escapeHtml((opponent || 'THEM').toUpperCase())}</div></div>
+    </div>
+    <p class="duel-panel-note">Your score is read from the sets you log. Train the terms and it moves — there is nothing to submit.</p>
+  </div>`;
+}
+
+/* Announce ONCE, to the challenger, that the terms now exist. Acknowledgement
+   is kept in localStorage rather than on the duel document: the challenger
+   cannot write the defender's record, and this is a per-device read receipt,
+   not shared state. */
+function maybeAnnounceDuelTerms(duel) {
+  if (!duel || duel.status !== 'active' || !duel.spec) return;
+  if (duel.challengerId !== currentUser.uid) return;   // the defender set them
+  const key = 'aura_duel_terms_seen_' + duel.id;
+  try { if (localStorage.getItem(key)) return; localStorage.setItem(key, '1'); } catch (_) {}
+
+  const spec = duel.spec;
+  const metricLabel = (DUEL_METRICS[spec.metric] && DUEL_METRICS[spec.metric].label) || spec.metric;
+  const daysLeft = Math.max(0, daysBetween(todayStr(), duel.endDate));
+  queueNotif(done => {
+    const el = document.createElement('div');
+    el.className = 'modal-overlay';
+    el.innerHTML = `<div class="modal" style="max-width:360px;">
+      <div style="font-family:var(--font-mono);font-size:9px;color:var(--excess);letter-spacing:0.2em;margin-bottom:8px;">⚔ GATE DUEL — TERMS SET</div>
+      <h3 style="margin-bottom:6px;">${escapeHtml(duel.defenderName || 'They')} chose the fight.</h3>
+      <p style="font-size:12px;color:var(--text-dim);line-height:1.7;margin-bottom:14px;">
+        <strong style="color:var(--text);">${escapeHtml(spec.exercise || 'Any exercise')}</strong> · ${escapeHtml(metricLabel)}<br>
+        ${spec.minRIR != null && spec.minRIR < 5 ? `Sets must be RIR ${spec.minRIR} or harder.<br>` : ''}
+        ${spec.minSessions > 1 ? `${spec.minSessions} sessions minimum.<br>` : ''}
+        ${daysLeft === 0 ? 'It ends today.' : `${daysLeft} days remain.`}
+      </p>
+      <button class="btn btn-primary" id="duel-terms-ok" style="width:100%;">Understood</button>
+    </div>`;
+    getOverlayHost().appendChild(el);
+    const close = () => { el.remove(); done(); };
+    el.querySelector('#duel-terms-ok').addEventListener('click', close);
+    el.addEventListener('click', e => { if (e.target === el) close(); });
+  });
+}
+
+/* ── DUEL SETTLEMENT — SERVER FIRST, CLIENT FALLBACK ──────────────────────
+   Settlement writes to BOTH hunters' user documents, which is a cross-user
+   write no Firestore rule can authorise. The client path below therefore only
+   ever completed for the admin uid; for everyone else duels never settled.
+   The resolveGateDuel Cloud Function does it with Admin privileges.
+
+   This wrapper is a drop-in: it prefers the function and falls back to the
+   existing client path when the function is unreachable, so the app behaves
+   exactly as it does today until the function is deployed, and switches over
+   with no further change the moment it is.
+
+   Fallback is deliberately narrow. It fires only when the function could not
+   be REACHED (not deployed, offline, blocked). If the function ran and
+   rejected — not a participant, duel already settled, not ended yet — that is
+   an authoritative answer and re-running the client path would risk paying AP
+   twice. Those surface as errors instead.
+   ───────────────────────────────────────────────────────────────────────── */
+function duelFunctionUnreachable(e) {
+  const code = String((e && e.code) || '');
+  // firebase callable codes; 'internal' is what an undeployed callable returns
+  return code === 'functions/not-found' || code === 'functions/unavailable'
+      || code === 'functions/internal'  || code === 'functions/deadline-exceeded'
+      || code === 'not-found' || code === 'unavailable' || code === 'internal'
+      || /Failed to fetch|NetworkError|ERR_/i.test(String((e && e.message) || ''));
+}
+
+async function settleGateDuel(duelId, duelData) {
+  try {
+    const { getFunctions, httpsCallable } =
+      await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-functions.js');
+    const call = httpsCallable(getFunctions(app), 'resolveGateDuel');
+    const res = (await call({ duelId })).data || {};
+
+    /* Rebuild the reward objects from the client's own tables using the two
+       inputs the function returns, so the result modal can never disagree with
+       what the rest of the app renders. */
+    const winnerTier = getDuelStreakTier(res.winnerStreak || 1);
+    const trophyTier = getDuelTrophyTier(res.winnerTotalWins || 0);
+
+    activeDuelCache = null;
+    if (!profile.duels) profile.duels = {};
+    profile.duels.activeDuelId = null;
+    await loadAllData();
+
+    showDuelResultModal(duelData, res.winnerId, res.loserId,
+      res.challengerScore, res.defenderScore, res.apWager,
+      trophyTier, winnerTier, res.territoryResult || null);
+    return true;
+  } catch (e) {
+    if (duelFunctionUnreachable(e)) {
+      console.warn('Duel settlement function unreachable — falling back to the client path.', e);
+      await resolveGateDuel(duelId, duelData);
+      return true;
+    }
+    console.error('Gate Duel settlement failed:', e);
+    showToast(duelErrorMessage(e, 'settle the duel'), 'error');
+    return false;
+  }
+}
+
+/* ── GATE DUEL — ESCAPE PATHS ─────────────────────────────────────────────
+   profile.duels.activeDuelId was only ever cleared inside resolveGateDuel(),
+   which is reachable only when a duel is already status:'active' AND past its
+   endDate. A duel that never left 'pending' — because the defender never
+   designed the fight — could therefore never be cleared, and the pointer stayed
+   set forever:
+
+     · sendGateDuel() returns early with "You already have an active Gate Duel"
+     · every hunter row shows "Active duel in progress" instead of a button
+
+   One unanswered challenge permanently disabled the whole feature, with no
+   withdraw, no cancel and no expiry. 'forfeited' was documented in the schema
+   at the top of this section but implemented nowhere.
+   ──────────────────────────────────────────────────────────────────────── */
+
+// Set when the duel record can't be reached, so the failure is stated once
+// instead of being swallowed and read as "nobody challenged you".
+let duelSystemUnreachable = false;
+
+function duelErrorMessage(e, action) {
+  const code = (e && e.code) || '';
+  if (code === 'permission-denied' || /insufficient permissions|Missing or insufficient/i.test((e && e.message) || '')) {
+    return 'The System cannot reach the duel record. Gate Duels are unavailable until the server grants access.';
+  }
+  return `Could not ${action}: ${(e && e.message) || e}`;
+}
+
+async function clearMyActiveDuel() {
+  const { doc, updateDoc } = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js');
+  await updateDoc(doc(db, 'users', currentUser.uid), { 'duels.activeDuelId': null });
+  if (!profile.duels) profile.duels = {};
+  profile.duels.activeDuelId = null;
+  activeDuelCache = null;
+  /* Repaint now: the startup repair runs after the board has already drawn, so
+     without this the Gate stays visibly shut until the Hunter navigates away
+     and back. renderCompetitionBoard() no-ops when the board isn't mounted. */
+  try { renderCompetitionBoard(); } catch (_) {}
+}
+
+/* Withdraw a challenge the defender never accepted. Only the challenger, and
+   only while the duel is still 'pending' — once terms are set the fight is
+   real and has to end at the Gate. No win or loss is recorded: nothing was
+   contested, so nothing is scored. */
+async function withdrawGateDuel() {
+  if (!currentUser || !profile) return;
+  const duelId = profile.duels && profile.duels.activeDuelId;
+  if (!duelId) return;
+  try {
+    const { doc, getDoc, updateDoc } = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js');
+    const snap = await getDoc(doc(db, 'duels', duelId));
+
+    if (!snap.exists()) {
+      await clearMyActiveDuel();
+      showToast('That duel no longer exists — your Gate is clear.', 'success');
+      renderCompetitionBoard();
+      return;
+    }
+    const duel = snap.data();
+    if (duel.challengerId !== currentUser.uid) {
+      showToast('Only the challenger can withdraw a challenge.', 'error');
+      return;
+    }
+    if (duel.status !== 'pending') {
+      showToast('The terms are set — this duel can only end at the Gate.', 'error');
+      return;
+    }
+    await updateDoc(doc(db, 'duels', duelId), { status: 'forfeited', resolvedAt: todayStr() });
+    await clearMyActiveDuel();
+    showToast('Challenge withdrawn. Nothing was contested, so nothing is recorded.', 'success');
+    renderCompetitionBoard();
+  } catch (e) {
+    console.error('Gate Duel withdraw failed:', e);
+    showToast(duelErrorMessage(e, 'withdraw the challenge'), 'error');
+  }
+}
+
 window.sendGateDuel = sendGateDuel;
 window.openDuelDesigner = openDuelDesigner;
 window.checkPendingDuels = checkPendingDuels;
+window.withdrawGateDuel = withdrawGateDuel;
 
 </script>
 </body>
