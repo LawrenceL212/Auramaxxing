@@ -1,0 +1,17 @@
+{
+  "name": "auramaxxing-functions",
+  "description": "Trusted server-side settlement for Auramaxxing Gate Duels",
+  "private": true,
+  "main": "index.js",
+  "engines": { "node": "20" },
+  "scripts": {
+    "gen": "node generate-exercise-scale.mjs",
+    "lint": "node --check index.js && node --check lib/scoring.js && node --check lib/rewards.js && node --check lib/exercise-scale.js",
+    "serve": "firebase emulators:start --only functions",
+    "deploy": "firebase deploy --only functions:resolveGateDuel"
+  },
+  "dependencies": {
+    "firebase-admin": "^12.1.0",
+    "firebase-functions": "^4.9.0"
+  }
+}
