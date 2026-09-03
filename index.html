@@ -3204,6 +3204,51 @@
   .chain-step-name.current{color:var(--brass);font-weight:700;}
   .chain-step-sessions{font-size:10px;font-family:var(--font-mono);color:var(--text-faint);margin-left:auto;}
   .empty-state .display{font-size:16px;color:var(--text-dim);margin-bottom:6px;}
+
+  /* ── ACTIVE DUEL PANEL ── */
+  .duel-panel{
+    border:1px solid rgba(255,77,103,0.28);
+    background:linear-gradient(180deg, rgba(255,77,103,0.07), rgba(255,77,103,0.02));
+    margin-bottom:12px;
+  }
+  .duel-panel-eyebrow{
+    font-family:var(--font-mono); font-size:9px; letter-spacing:.18em;
+    color:var(--excess); margin-bottom:6px;
+  }
+  .duel-panel-vs{
+    font-family:var(--font-display); font-size:clamp(15px,3.2vw,20px);
+    font-weight:800; color:var(--text); margin-bottom:8px;
+  }
+  .duel-panel-terms{ display:flex; flex-wrap:wrap; gap:6px; margin-bottom:10px; }
+  .duel-panel-terms span{
+    font-family:var(--font-mono); font-size:9.5px; letter-spacing:.04em;
+    color:var(--text-dim); background:rgba(91,168,255,0.06);
+    border:1px solid rgba(91,168,255,0.14); border-radius:4px; padding:3px 7px;
+  }
+  .duel-panel-scores{
+    display:flex; align-items:center; justify-content:center; gap:14px;
+    padding:10px 0; border-top:1px solid rgba(255,77,103,0.14);
+    border-bottom:1px solid rgba(255,77,103,0.14); margin-bottom:8px;
+  }
+  .duel-panel-scores > div{ text-align:center; min-width:0; }
+  .dp-score{
+    font-family:var(--font-display); font-size:clamp(18px,4vw,26px); font-weight:900;
+    color:var(--text); font-variant-numeric:tabular-nums;
+  }
+  .dp-who{
+    font-family:var(--font-mono); font-size:8px; letter-spacing:.12em;
+    color:var(--text-faint); margin-top:2px;
+    overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:12ch;
+  }
+  .dp-sep{ color:var(--text-faint); font-size:14px; }
+  .duel-panel-note{ font-size:11px; line-height:1.55; color:var(--text-faint); margin:0; }
+  .duel-panel-withdraw{
+    width:100%; margin-top:10px; padding:7px; font-family:var(--font-mono);
+    font-size:10px; letter-spacing:.05em; color:var(--text-dim);
+    background:transparent; border:1px solid rgba(91,168,255,0.16);
+    border-radius:6px; cursor:pointer;
+  }
+  .duel-panel-withdraw:hover{ border-color:rgba(91,168,255,0.4); color:var(--text); }
 </style>
 </head>
 <body>
@@ -15497,7 +15542,8 @@ function renderCompetitionBoard() {
   const STAT_ICONS = { strength:'⚔️', endurance:'🔥', agility:'⚡', focus:'🎯', defence:'🛡️', flexibility:'💫' };
   const RANK_ORDER = ['S','A','B','C','D','E'];
 
-  el.innerHTML = rows.map((r, i) => {
+  const duelPanelHtml = buildActiveDuelPanel();
+  el.innerHTML = duelPanelHtml + rows.map((r, i) => {
     const isMe = r.uid === currentUser.uid;
     const isRival = rival && r.uid === rival.uid;
     const isChaser = chaser && r.uid === chaser.uid;
@@ -22946,6 +22992,14 @@ async function checkPendingDuels() {
       const { doc: getDoc2, getDoc } = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js');
       const { doc } = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js');
       const dSnap = await getDoc(doc(db, 'duels', activeDuelId));
+      if (dSnap.exists()) {
+        // cached so the board can state the terms without an async fetch
+        activeDuelCache = { id: dSnap.id, ...dSnap.data() };
+        maybeAnnounceDuelTerms(activeDuelCache);
+        try { renderCompetitionBoard(); } catch (_) {}
+      } else {
+        activeDuelCache = null;
+      }
       if (!dSnap.exists()) {
         /* Dangling pointer: the duel it names is gone. Left alone this blocks
            every future challenge forever. */
@@ -22995,6 +23049,112 @@ function showIncomingDuelNotice(duelId, duel) {
   SFX.classAssigned?.();
 }
 
+/* ── ACTIVE DUEL PANEL ────────────────────────────────────────────────────
+   The defender designed the fight and the challenger was never told what it
+   was. addDuelNotification() writes its message into the ACTING player's own
+   in-memory profile — 'terms_set' notifies the defender about their own
+   decision, and reaches the challenger never. Nothing anywhere rendered a
+   duel's spec, so a Hunter with an active duel knew only "Active duel in
+   progress": not the exercise, the metric, the effort ceiling, the number of
+   sessions required, nor the deadline.
+
+   This panel states the terms to both sides and shows both live scores,
+   computed by the existing getDuelScore() over logged workouts. That is also
+   the answer to "how does the System know you did it": nothing is claimed or
+   submitted — both scores are read from the workouts each Hunter logged inside
+   the duel window, so training IS the entry.
+
+   Read-only. No new duel state, no new rule, no schema change.
+   ──────────────────────────────────────────────────────────────────────── */
+let activeDuelCache = null;   // { id, ...duelDoc } — filled by checkPendingDuels
+
+function buildActiveDuelPanel() {
+  const duel = activeDuelCache;
+  if (!duel || !currentUser) return '';
+  const iAmChallenger = duel.challengerId === currentUser.uid;
+  const opponent = iAmChallenger ? duel.defenderName : duel.challengerName;
+
+  // Terms not set yet — say so plainly instead of leaving a silent wall.
+  if (duel.status === 'pending') {
+    return `<div class="card duel-panel">
+      <div class="duel-panel-eyebrow">◈ GATE DUEL — AWAITING TERMS</div>
+      <div class="duel-panel-vs">vs ${escapeHtml(opponent || 'Hunter')}</div>
+      <p class="duel-panel-note">${iAmChallenger
+        ? 'They design the fight. Until they set the terms there is nothing to train for.'
+        : 'You have not set the terms yet. Open the challenge to design the fight.'}</p>
+      ${iAmChallenger ? '<button class="duel-panel-withdraw" onclick="withdrawGateDuel()">Withdraw challenge</button>' : ''}
+    </div>`;
+  }
+  if (duel.status !== 'active' || !duel.spec) return '';
+
+  const spec = duel.spec;
+  const metricLabel = (DUEL_METRICS[spec.metric] && DUEL_METRICS[spec.metric].label) || spec.metric;
+  const daysLeft = Math.max(0, daysBetween(todayStr(), duel.endDate));
+
+  // Same scoring the resolver uses — no separate tally to drift out of sync.
+  let myScore = 0, theirScore = 0;
+  try {
+    const window_ = allWorkouts.filter(w => w.date >= duel.startDate && w.date <= duel.endDate);
+    myScore    = getDuelScore(spec, window_, currentUser.uid);
+    theirScore = getDuelScore(spec, window_, iAmChallenger ? duel.defenderId : duel.challengerId);
+  } catch (e) { console.error('Duel score preview failed:', e); }
+
+  const fmt = (n) => n < 0 ? 'forfeit' : (Math.round(n * 10) / 10).toLocaleString();
+  const terms = [
+    spec.exercise ? escapeHtml(spec.exercise) : null,
+    metricLabel,
+    (spec.minRIR != null && spec.minRIR < 5) ? `RIR ${spec.minRIR} or harder` : null,
+    spec.minSessions > 1 ? `${spec.minSessions} sessions minimum` : null,
+    spec.minWeightPct ? `${spec.minWeightPct}% bodyweight minimum` : null,
+  ].filter(Boolean);
+
+  return `<div class="card duel-panel duel-panel-live">
+    <div class="duel-panel-eyebrow">◈ GATE DUEL — OPEN · ${daysLeft === 0 ? 'ENDS TODAY' : daysLeft + 'D LEFT'}</div>
+    <div class="duel-panel-vs">vs ${escapeHtml(opponent || 'Hunter')}</div>
+    <div class="duel-panel-terms">${terms.map(t => `<span>${t}</span>`).join('')}</div>
+    <div class="duel-panel-scores">
+      <div><div class="dp-score">${fmt(myScore)}</div><div class="dp-who">YOU</div></div>
+      <div class="dp-sep">·</div>
+      <div><div class="dp-score">${fmt(theirScore)}</div><div class="dp-who">${escapeHtml((opponent || 'THEM').toUpperCase())}</div></div>
+    </div>
+    <p class="duel-panel-note">Your score is read from the sets you log. Train the terms and it moves — there is nothing to submit.</p>
+  </div>`;
+}
+
+/* Announce ONCE, to the challenger, that the terms now exist. Acknowledgement
+   is kept in localStorage rather than on the duel document: the challenger
+   cannot write the defender's record, and this is a per-device read receipt,
+   not shared state. */
+function maybeAnnounceDuelTerms(duel) {
+  if (!duel || duel.status !== 'active' || !duel.spec) return;
+  if (duel.challengerId !== currentUser.uid) return;   // the defender set them
+  const key = 'aura_duel_terms_seen_' + duel.id;
+  try { if (localStorage.getItem(key)) return; localStorage.setItem(key, '1'); } catch (_) {}
+
+  const spec = duel.spec;
+  const metricLabel = (DUEL_METRICS[spec.metric] && DUEL_METRICS[spec.metric].label) || spec.metric;
+  const daysLeft = Math.max(0, daysBetween(todayStr(), duel.endDate));
+  queueNotif(done => {
+    const el = document.createElement('div');
+    el.className = 'modal-overlay';
+    el.innerHTML = `<div class="modal" style="max-width:360px;">
+      <div style="font-family:var(--font-mono);font-size:9px;color:var(--excess);letter-spacing:0.2em;margin-bottom:8px;">⚔ GATE DUEL — TERMS SET</div>
+      <h3 style="margin-bottom:6px;">${escapeHtml(duel.defenderName || 'They')} chose the fight.</h3>
+      <p style="font-size:12px;color:var(--text-dim);line-height:1.7;margin-bottom:14px;">
+        <strong style="color:var(--text);">${escapeHtml(spec.exercise || 'Any exercise')}</strong> · ${escapeHtml(metricLabel)}<br>
+        ${spec.minRIR != null && spec.minRIR < 5 ? `Sets must be RIR ${spec.minRIR} or harder.<br>` : ''}
+        ${spec.minSessions > 1 ? `${spec.minSessions} sessions minimum.<br>` : ''}
+        ${daysLeft === 0 ? 'It ends today.' : `${daysLeft} days remain.`}
+      </p>
+      <button class="btn btn-primary" id="duel-terms-ok" style="width:100%;">Understood</button>
+    </div>`;
+    getOverlayHost().appendChild(el);
+    const close = () => { el.remove(); done(); };
+    el.querySelector('#duel-terms-ok').addEventListener('click', close);
+    el.addEventListener('click', e => { if (e.target === el) close(); });
+  });
+}
+
 /* ── GATE DUEL — ESCAPE PATHS ─────────────────────────────────────────────
    profile.duels.activeDuelId was only ever cleared inside resolveGateDuel(),
    which is reachable only when a duel is already status:'active' AND past its
@@ -23027,6 +23187,7 @@ async function clearMyActiveDuel() {
   await updateDoc(doc(db, 'users', currentUser.uid), { 'duels.activeDuelId': null });
   if (!profile.duels) profile.duels = {};
   profile.duels.activeDuelId = null;
+  activeDuelCache = null;
   /* Repaint now: the startup repair runs after the board has already drawn, so
      without this the Gate stays visibly shut until the Hunter navigates away
      and back. renderCompetitionBoard() no-ops when the board isn't mounted. */
