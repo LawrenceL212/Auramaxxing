@@ -99,20 +99,17 @@ them.
 ```
 match /duels/{duelId} {
   allow read: if request.auth != null
-              && (resource.data.challengerId == request.auth.uid
-               || resource.data.defenderId  == request.auth.uid);
-
+    && (resource.data.challengerId == request.auth.uid
+     || resource.data.defenderId  == request.auth.uid);
   allow create: if request.auth != null
-                && request.resource.data.challengerId == request.auth.uid
-                && request.resource.data.status == 'pending';
-
+    && request.resource.data.challengerId == request.auth.uid
+    && request.resource.data.status == 'pending';
   // participants may set terms and withdraw, but NEVER settle:
   // 'complete' is written only by the Cloud Function, which bypasses rules.
   allow update: if request.auth != null
-                && (resource.data.challengerId == request.auth.uid
-                 || resource.data.defenderId  == request.auth.uid)
-                && request.resource.data.status in ['active', 'forfeited'];
-
+    && (resource.data.challengerId == request.auth.uid
+     || resource.data.defenderId  == request.auth.uid)
+    && request.resource.data.status != 'complete';
   allow delete: if false;
 }
 ```
@@ -125,10 +122,25 @@ firebase deploy --only functions:resolveGateDuel
 
 Test against the emulator first if you prefer: `npm run serve`.
 
-### 4. Switch the client over
+### 4. Switch the client over — ALREADY DONE
 
-**Only after the function is live.** In `index.html`, `checkPendingDuels()`
-currently calls the client-side settlement:
+`index.html` already routes settlement through `settleGateDuel()`, which calls
+the function first and falls back to the client path if it is **unreachable**
+(not deployed, offline, blocked). So the app behaves exactly as it does today
+until you deploy, and switches over on its own the moment you do — no client
+change is needed at deploy time.
+
+The fallback is deliberately narrow: it fires only when the function could not
+be REACHED. If the function ran and rejected — not a participant, already
+settled, not ended yet — that is an authoritative answer, and re-running the
+client path could pay AP twice. Those surface as errors instead.
+
+The client-side `resolveGateDuel()` is kept in place as that fallback. Remove
+it only once the function has settled real duels.
+
+<details><summary>What the wiring looks like</summary>
+
+Previously `checkPendingDuels()` called the client settlement directly:
 
 ```js
 if (d.status === 'active' && d.endDate < todayStr()) {
@@ -153,8 +165,7 @@ if (d.status === 'active' && d.endDate < todayStr()) {
 }
 ```
 
-The client-side `resolveGateDuel()` should be **left in place** until the
-function has settled real duels successfully — it is the fallback.
+</details>
 
 ## Verifying after deploy
 

@@ -91,7 +91,16 @@ exports.resolveGateDuel = functions.https.onCall(async (data, context) => {
     throw new functions.https.HttpsError('permission-denied', 'You are not in this duel.');
   }
   if (duel.status === 'complete') {
-    return { alreadyResolved: true, winnerId: duel.winnerId, loserId: duel.loserId };
+    // Settled by the other participant a moment ago — hand back enough for the
+    // client to render the same result modal rather than showing nothing.
+    return {
+      alreadyResolved: true,
+      winnerId: duel.winnerId, loserId: duel.loserId,
+      challengerScore: duel.challengerScore, defenderScore: duel.defenderScore,
+      apWager: duel.apWager,
+      winnerStreak: duel.winnerStreak, winnerTotalWins: duel.winnerTotalWins,
+      territoryResult: duel.territoryResult || null,
+    };
   }
   if (duel.status !== 'active') {
     throw new functions.https.HttpsError('failed-precondition',
@@ -206,6 +215,7 @@ exports.resolveGateDuel = functions.https.onCall(async (data, context) => {
       winnerId, loserId,
       challengerScore, defenderScore,
       apWager,
+      winnerStreak, winnerTotalWins,
       territoryResult,
       resolvedAt: todayStr(),
       resolvedBy: 'cloud-function',
@@ -266,6 +276,9 @@ exports.resolveGateDuel = functions.https.onCall(async (data, context) => {
     apWager,
     duelTitle: winnerTier.title,
     trophyTier: (trophyTier && trophyTier.tier) || 0,
+    // the client rebuilds winnerTier/trophyTier from its own tables using these,
+    // so the result modal can never disagree with what the app renders elsewhere
+    winnerStreak, winnerTotalWins,
     territoryResult,
   };
 });

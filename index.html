@@ -23007,7 +23007,8 @@ async function checkPendingDuels() {
       } else {
         const d = dSnap.data();
         if (d.status === 'active' && d.endDate < todayStr()) {
-          await resolveGateDuel(activeDuelId, d);
+          // server-first; falls back to the client path if unreachable
+          await settleGateDuel(activeDuelId, d);
         } else if (d.status === 'complete' || d.status === 'forfeited') {
           // already finished — stop it holding the Gate shut
           await clearMyActiveDuel();
@@ -23153,6 +23154,66 @@ function maybeAnnounceDuelTerms(duel) {
     el.querySelector('#duel-terms-ok').addEventListener('click', close);
     el.addEventListener('click', e => { if (e.target === el) close(); });
   });
+}
+
+/* ── DUEL SETTLEMENT — SERVER FIRST, CLIENT FALLBACK ──────────────────────
+   Settlement writes to BOTH hunters' user documents, which is a cross-user
+   write no Firestore rule can authorise. The client path below therefore only
+   ever completed for the admin uid; for everyone else duels never settled.
+   The resolveGateDuel Cloud Function does it with Admin privileges.
+
+   This wrapper is a drop-in: it prefers the function and falls back to the
+   existing client path when the function is unreachable, so the app behaves
+   exactly as it does today until the function is deployed, and switches over
+   with no further change the moment it is.
+
+   Fallback is deliberately narrow. It fires only when the function could not
+   be REACHED (not deployed, offline, blocked). If the function ran and
+   rejected — not a participant, duel already settled, not ended yet — that is
+   an authoritative answer and re-running the client path would risk paying AP
+   twice. Those surface as errors instead.
+   ───────────────────────────────────────────────────────────────────────── */
+function duelFunctionUnreachable(e) {
+  const code = String((e && e.code) || '');
+  // firebase callable codes; 'internal' is what an undeployed callable returns
+  return code === 'functions/not-found' || code === 'functions/unavailable'
+      || code === 'functions/internal'  || code === 'functions/deadline-exceeded'
+      || code === 'not-found' || code === 'unavailable' || code === 'internal'
+      || /Failed to fetch|NetworkError|ERR_/i.test(String((e && e.message) || ''));
+}
+
+async function settleGateDuel(duelId, duelData) {
+  try {
+    const { getFunctions, httpsCallable } =
+      await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-functions.js');
+    const call = httpsCallable(getFunctions(app), 'resolveGateDuel');
+    const res = (await call({ duelId })).data || {};
+
+    /* Rebuild the reward objects from the client's own tables using the two
+       inputs the function returns, so the result modal can never disagree with
+       what the rest of the app renders. */
+    const winnerTier = getDuelStreakTier(res.winnerStreak || 1);
+    const trophyTier = getDuelTrophyTier(res.winnerTotalWins || 0);
+
+    activeDuelCache = null;
+    if (!profile.duels) profile.duels = {};
+    profile.duels.activeDuelId = null;
+    await loadAllData();
+
+    showDuelResultModal(duelData, res.winnerId, res.loserId,
+      res.challengerScore, res.defenderScore, res.apWager,
+      trophyTier, winnerTier, res.territoryResult || null);
+    return true;
+  } catch (e) {
+    if (duelFunctionUnreachable(e)) {
+      console.warn('Duel settlement function unreachable — falling back to the client path.', e);
+      await resolveGateDuel(duelId, duelData);
+      return true;
+    }
+    console.error('Gate Duel settlement failed:', e);
+    showToast(duelErrorMessage(e, 'settle the duel'), 'error');
+    return false;
+  }
 }
 
 /* ── GATE DUEL — ESCAPE PATHS ─────────────────────────────────────────────
