@@ -9398,70 +9398,33 @@ function huntingStateToday(uid) {
   return 'pending';
 }
 
+/* Streak = the number of DISTINCT DAYS this Hunter has trained, all time.
+
+   Previously this walked backwards from today counting consecutive days,
+   skipping scheduled rest days and frozen holiday windows, and stopping at the
+   first missed training day. That made it fragile in ways that had nothing to
+   do with training: a holiday nobody remembered to freeze, or an outage where
+   the app would not load, wiped a month of consistency to zero.
+
+   Counting distinct trained days keeps the thing it is supposed to measure —
+   you only move it by training — while removing every way to lose it for
+   reasons outside the Hunter's control. It also retires the whole class of
+   retroactive repair: no freeze windows, no rest-day bookkeeping, nothing to
+   patch after the fact.
+
+   NOTE on the two mechanisms this makes inert:
+   · streakFreeze is no longer read here. The field, its admin toggle and its
+     auto-expiry are left in place rather than ripped out, so existing records
+     stay readable and nothing else that inspects the field breaks.
+   · scheduled rest days no longer need special handling, since a day without
+     training simply is not counted rather than breaking a chain.
+
+   XP: this feeds STREAK_XP_MULT via hunterRank() in the save path only.
+   Reconciliation never calls computeStreak, so stored XP is NOT rewritten —
+   the new multiplier applies to future sessions only, and no
+   RECONCILE_VERSIONS bump is required. */
 function computeStreak(uid) {
-  const dates = new Set(allWorkouts.filter(w => w.uid === uid).map(w => w.date));
-  let schedule = null;
-  if (uid === currentUser?.uid && myProgram?.schedule?.length) {
-    schedule = myProgram.schedule;
-  } else {
-    const user = allUsers.find(u => u.uid === uid);
-    if (user?.schedule?.length) schedule = user.schedule;
-  }
-
-  // Streak freeze — admin toggle. While active:true every day is a rest day.
-  // Once unfrozen (active:false), the from→to window stays skipped permanently.
-  const userRecord = allUsers.find(u => u.uid === uid) || (uid === currentUser?.uid ? profile : null);
-  const freeze = userRecord?.streakFreeze;
-  const isFrozen = (dateStr) => {
-    if (!freeze) return false;
-    // Still frozen — any date from freeze.from onwards is a rest day
-    if (freeze.active) return dateStr >= freeze.from;
-    // Unfrozen — only the recorded window is skipped
-    return freeze.to ? (dateStr >= freeze.from && dateStr <= freeze.to) : false;
-  };
-
-  const WEEKDAYS_FULL = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
-
-  // Returns true if a given date string is a scheduled rest day —
-  // works for BOTH fixed and rotation mode. In rotation mode, the schedule
-  // array still records which weekdays training runs on (e.g. Mon-Fri), so
-  // any day NOT in that array is an explicit rest day and should not break
-  // the streak. Previously this only applied to fixed mode, which is why
-  // "I'm just a girl"'s Saturday rest day broke her streak even though
-  // Sat/Sun were clearly marked off in her rotation-mode schedule.
-  // Streak: any day with a logged workout counts, regardless of schedule.
-  // Rest days in the schedule are skipped (don't break the streak) but
-  // unscheduled days where the user DID train still count — bonus sessions
-  // should never penalise the streak.
-  function isScheduledRestDay(dateStr) {
-    if (!schedule || schedule.length === 0) return false;
-    if (schedule.length >= 7) return false;
-    const dow = WEEKDAYS_FULL[new Date(dateStr + 'T12:00:00').getDay()].slice(0,3);
-    // Only treat as a rest day if it's explicitly off the schedule AND no workout was logged
-    return !schedule.includes(dow) && !dates.has(dateStr);
-  }
-
-  const hasToday = dates.has(todayStr());
-  let streak = 0;
-  let i = hasToday ? 0 : 1;
-
-  // Walk backwards, skipping scheduled rest days and frozen holiday dates
-  while (true) {
-    const dayStr = todayStr(daysAgo(i));
-    if (isScheduledRestDay(dayStr) || isFrozen(dayStr)) {
-      i++;
-      if (i > 730) break;
-      continue;
-    }
-    if (dates.has(dayStr)) {
-      streak++;
-      i++;
-    } else {
-      break;
-    }
-  }
-
-  return streak;
+  return new Set(allWorkouts.filter(w => w.uid === uid).map(w => w.date)).size;
 }
 function countSince(uid, sinceDate) {
   const sinceDateStr = todayStr(sinceDate);
@@ -14191,8 +14154,9 @@ async function openStreakFreezePanel(uid, name) {
   overlay.innerHTML = `<div class="modal" style="max-width:380px;">
     <h3 style="margin-bottom:4px;">❄ Streak Freeze — ${escapeHtml(name)}</h3>
     <p style="font-size:12px;color:var(--text-dim);margin:0 0 16px;">
-      While frozen, every day is treated as a rest day — the streak pauses.
-      When you unfreeze, normal rules resume from that day forward.
+      The streak now counts distinct days trained, so it cannot be broken by a
+      missed day and does not need protecting. Freezing no longer changes it.
+      The control is kept only so existing freeze records stay readable.
     </p>
     <div style="padding:12px;background:rgba(91,168,255,0.04);border:1px solid rgba(91,168,255,0.12);border-radius:8px;margin-bottom:16px;font-size:12px;color:var(--text-dim);">
       Status: <strong style="color:${isFrozenNow ? 'var(--brass)' : 'var(--growing)'};">
@@ -14206,7 +14170,7 @@ async function openStreakFreezePanel(uid, name) {
       }
       <button class="btn btn-sm" id="freeze-cancel" style="flex:1;color:var(--text-dim);">Cancel</button>
     </div>
-    ${isFrozenNow ? `<p style="font-size:10px;color:var(--text-faint);margin-top:8px;line-height:1.5;">Unfreezing resumes normal rules today. If they don't train today they will lose their streak.</p>` : ''}
+    ${isFrozenNow ? `<p style="font-size:10px;color:var(--text-faint);margin-top:8px;line-height:1.5;">Unfreezing has no effect on the streak — days trained are counted regardless.</p>` : ''}
   </div>`;
 
   getOverlayHost().appendChild(overlay);
