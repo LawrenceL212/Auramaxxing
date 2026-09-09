@@ -7988,6 +7988,7 @@ document.getElementById('save-run-btn')?.addEventListener('click', async () => {
 
   const btn = document.getElementById('save-run-btn');
   btn.disabled = true; btn.textContent = 'Saving…';
+  let runSaved = false;
   try {
     // save as a workout with one exercise — the run type
     const sets = [{ reps: Math.round(totalMins) || 1, weight: 0, distKm: Math.round(distKm*100)/100, pace: paceStr, notes }];
@@ -8002,6 +8003,7 @@ document.getElementById('save-run-btn')?.addEventListener('click', async () => {
       programDayIndex: null,
       createdAt: serverTimestamp(),
     });
+    runSaved = true;   // past this point the run EXISTS — never say otherwise
     await loadAllData();
     // Run intensity computed from run type and pace in computeWorkoutXP — not stored.
     // Run XP uses distance (objective) + optional RPE (subjective)
@@ -8016,7 +8018,26 @@ document.getElementById('save-run-btn')?.addEventListener('click', async () => {
     ['run-distance','run-mins','run-secs','run-notes'].forEach(id => { document.getElementById(id).value = ''; });
     document.getElementById('run-pace-display').textContent = '';
   } catch(err) {
-    showToast('Could not save: ' + err.message, 'error');
+    /* The run document is written before loadAllData() and the XP award, either
+       of which can fail on its own. Reporting "Could not save" there was false —
+       the run was already recorded — and it left the modal open with the button
+       live, so the Hunter tapped again. That is exactly how one run on
+       2026-09-07 became fourteen identical documents in nine seconds while the
+       Firestore rules were denying reads.
+
+       If the write landed, close the form and say so honestly. */
+    if (runSaved) {
+      console.error('Run saved, but a later step failed:', err);
+      showToast('Run logged. Some updates could not be applied — reload to refresh.', 'success');
+      document.getElementById('run-modal-overlay')?.classList.add('hidden');
+      unlockBodyScroll();
+      ['run-distance','run-mins','run-secs','run-notes'].forEach(id => {
+        const el = document.getElementById(id); if (el) el.value = '';
+      });
+    } else {
+      console.error('Run save failed:', err);
+      showToast('Could not save: ' + err.message, 'error');
+    }
   }
   btn.disabled = false; btn.textContent = 'Save Run';
 });
@@ -9256,6 +9277,7 @@ document.getElementById('save-workout-btn')?.addEventListener('click', async () 
 
   const btn = document.getElementById('save-workout-btn');
   btn.disabled = true; btn.textContent = 'Saving…';
+  let savedWorkoutRef = null;
   try {
     // Build runSummary for any run exercises logged in the workout logger
     const runExercise = exercises.find(ex => {
@@ -9272,8 +9294,10 @@ document.getElementById('save-workout-btn')?.addEventListener('click', async () 
       return { distKm, durationMins, pace, type: runExercise.name, unit: 'km' };
     })() : null;
 
-    // ref retained so the debrief's RIR editor can write back to this exact doc
-    const savedWorkoutRef = await addDoc(collection(db, 'workouts'), {
+    /* Ref retained so the debrief's RIR editor can write back to this exact doc,
+       and so the catch below can tell "the write failed" from "the write landed
+       but a later step did not". */
+    savedWorkoutRef = await addDoc(collection(db, 'workouts'), {
       uid: currentUser.uid, displayName: profile.displayName, date, time, exercises,
       programDayIndex: activeDayIndex ?? null, createdAt: serverTimestamp(),
       ...(runSummaryFromLogger ? { isRun: true, runSummary: runSummaryFromLogger } : {}),
@@ -9360,7 +9384,23 @@ document.getElementById('save-workout-btn')?.addEventListener('click', async () 
       });
     }, 600);
  } catch (err) {
-    showToast('The System encountered an error. Try again.', 'error');
+    /* Tell a failed WRITE apart from a failed follow-up. The workout document is
+       written first; everything after it — profile fields, programme rotation,
+       XP, the reload — can fail on its own. This previously showed "Try again"
+       and re-enabled the button with the modal still open, while the workout was
+       already saved. During the rules outage that turned one session into
+       fourteen identical documents for one Hunter: every retry wrote another row
+       and then reported failure again.
+
+       Once the write has landed, never invite a retry. */
+    if (savedWorkoutRef) {
+      console.error('Workout saved, but a later step failed:', err);
+      showToast('Workout saved. Some updates could not be applied — reload to refresh.', 'success');
+      try { closeWorkoutModal(false); } catch (_) {}
+    } else {
+      console.error('Workout save failed:', err);
+      showToast('The System encountered an error. Try again.', 'error');
+    }
   } finally {
     btn.disabled = false; btn.textContent = '⚔ Complete Quest';
   }
