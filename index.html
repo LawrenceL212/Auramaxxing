@@ -3845,7 +3845,8 @@ import { getArchetypeChains } from "./archetype-chains.js";
 import { getAutoAchievements } from "./auto-achievements.js";
 import { computeStreakFrom, STREAK_RULES_START, shiftDay } from "./streak.js";
 import { detectReEntry, reEntryPlan, directiveProgress, formatMeasure, DIRECTIVE_METRICS,
-         countdown, formatCountdown, timeElapsedFraction, buildDirectivesICS } from "./goals.js";
+         countdown, formatCountdown, timeElapsedFraction, buildDirectivesICS,
+         buildWidgetConfig } from "./goals.js";
 import {
   getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword,
   onAuthStateChanged, signOut, updateProfile
@@ -10069,17 +10070,21 @@ function openDirectiveEditor(id) {
         (existing ? '<button class="btn btn-sm" id="dir-delete" style="flex:1;color:var(--excess);">Remove</button>'
                   : '<button class="btn btn-sm" id="dir-cancel" style="flex:1;">Cancel</button>') +
       '</div>' +
-      '<button class="btn btn-sm" id="dir-ics" style="width:100%;margin-top:8px;">' +
-        '📅 Remind me on my phone</button>' +
+      '<div style="display:flex;gap:8px;margin-top:8px;">' +
+        '<button class="btn btn-sm" id="dir-ics" style="flex:1;">📅 Remind me</button>' +
+        '<button class="btn btn-sm" id="dir-widget" style="flex:1;">📱 Widget config</button>' +
+      '</div>' +
       '<p style="font-size:10.5px;color:var(--text-faint);margin:7px 0 0;line-height:1.45;">' +
-        'Adds your dated directives to your phone\'s calendar, with alerts 30 days, ' +
-        '7 days and 1 day out. The app cannot notify you on its own — your calendar can.</p>' +
+        '<strong>Remind me</strong> adds your dated directives to your phone\'s calendar, ' +
+        'with alerts 30, 7 and 1 days out — the app has no way to notify you on its own. ' +
+        '<strong>Widget config</strong> is for the home screen countdown (see widget/README.md).</p>' +
     '</div>';
   getOverlayHost().appendChild(el);
   const close = () => { el.remove(); unlockBodyScroll(); };
   el.addEventListener('click', e => { if (e.target === el) close(); });
   el.querySelector('#dir-cancel')?.addEventListener('click', close);
   el.querySelector('#dir-ics')?.addEventListener('click', exportDirectivesToCalendar);
+  el.querySelector('#dir-widget')?.addEventListener('click', copyWidgetConfig);
 
   el.querySelector('#dir-save').addEventListener('click', async () => {
     const title = el.querySelector('#dir-title').value.trim();
@@ -10158,6 +10163,36 @@ function exportDirectivesToCalendar() {
   }
 }
 window.exportDirectivesToCalendar = exportDirectivesToCalendar;
+
+/* The widget config, generated rather than hand-kept. Two copies of the same
+   deadline drift, and the one on the home screen is the one that would go
+   quietly stale. */
+async function copyWidgetConfig() {
+  const cfg = buildWidgetConfig(activeDirectives(), directiveContext());
+  try {
+    await navigator.clipboard.writeText(cfg);
+    showToast('Widget config copied. Paste it into the Scriptable script.', 'success');
+  } catch (e) {
+    // Clipboard needs a secure context and a user gesture; show it to copy by hand.
+    const el = document.createElement('div');
+    el.className = 'modal-overlay';
+    el.innerHTML = '<div class="modal" style="max-width:460px;">' +
+      '<h3 style="margin:0 0 8px;">Widget config</h3>' +
+      '<p style="font-size:12px;color:var(--text-dim);margin:0 0 10px;">' +
+        'Copy this and paste it over the DIRECTIVES block in the Scriptable script.</p>' +
+      '<textarea readonly rows="10" style="width:100%;background:var(--card-2);color:var(--text);' +
+        'border:1px solid rgba(91,168,255,0.18);border-radius:6px;padding:9px;' +
+        'font-family:var(--font-mono);font-size:11px;">' + escapeHtml(cfg) + '</textarea>' +
+      '<button class="btn btn-primary" id="wc-close" style="width:100%;margin-top:10px;">Done</button>' +
+    '</div>';
+    getOverlayHost().appendChild(el);
+    const done = () => { el.remove(); unlockBodyScroll(); };
+    el.querySelector('#wc-close').addEventListener('click', done);
+    el.addEventListener('click', ev => { if (ev.target === el) done(); });
+    el.querySelector('textarea').select();
+  }
+}
+window.copyWidgetConfig = copyWidgetConfig;
 
 /* Streak = consecutive qualifying days ending today. A day qualifies when the
    Hunter trained, when the programme schedules it as a rest day, when a freeze

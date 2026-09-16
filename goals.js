@@ -306,3 +306,33 @@ export function buildDirectivesICS(directives, now = Date.now()) {
   lines.push('END:VCALENDAR');
   return lines.map(icsFold).join('\r\n') + '\r\n';
 }
+
+/**
+ * The DIRECTIVES block for the iOS home screen widget (widget/README.md).
+ *
+ * iOS home screen widgets are WidgetKit, which is native Swift only — a PWA
+ * cannot publish one. The supported route is a host app that runs scripts, so
+ * the app generates the config rather than making the Hunter keep the same
+ * dates correct in two places by hand.
+ *
+ * @param ctx { workouts, today, bodyweightKg } — the same context directives
+ *             are scored against, so the widget opens at the real numbers.
+ */
+export function buildWidgetConfig(directives, ctx) {
+  const list = (directives || []).filter((d) => d && d.title && d.targetDate);
+  const entries = list.map((d) => {
+    const p = ctx ? directiveProgress(d, ctx) : null;
+    const e = { title: d.title, date: d.targetDate };
+    if (d.why) e.why = d.why;
+    if (p && p.target > 0) {
+      e.now = Number(p.current.toFixed(2));
+      e.target = Number(p.target);
+      if (p.unit) e.unit = p.unit;
+    }
+    return e;
+  });
+  const body = entries.length
+    ? entries.map((e) => '  ' + JSON.stringify(e)).join(',\n')
+    : '  // Set a directive with a target date in Auramaxxing first.';
+  return 'const DIRECTIVES = [\n' + body + '\n];';
+}
