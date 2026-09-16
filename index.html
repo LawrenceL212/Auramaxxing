@@ -6387,14 +6387,20 @@ const SystemOpening = (() => {
     return new Promise(res => {
       const t0 = performance.now();
       (function tick() {
-        const k = skipped ? 1 : Math.min(1, (performance.now() - t0) / ms);
-        const e = 1 - Math.pow(1 - k, 3);              // ease-out cubic
-        cam.position.set(
-          from[0] + (to[0] - from[0]) * e,
-          from[1] + (to[1] - from[1]) * e,
-          from[2] + (to[2] - from[2]) * e);
-        cam.lookAt(0, lookY(), 0);
-        if (k < 1) requestAnimationFrame(tick); else res();
+        /* A throw here lands in a rAF callback, outside this executor — so the
+           promise would neither resolve nor reject and the opening would hang
+           with #app still at opacity 0. Resolve on failure: a dropped camera
+           move is a cosmetic loss, a stranded opening hides the whole app. */
+        try {
+          const k = skipped ? 1 : Math.min(1, (performance.now() - t0) / ms);
+          const e = 1 - Math.pow(1 - k, 3);            // ease-out cubic
+          cam.position.set(
+            from[0] + (to[0] - from[0]) * e,
+            from[1] + (to[1] - from[1]) * e,
+            from[2] + (to[2] - from[2]) * e);
+          cam.lookAt(0, lookY(), 0);
+          if (k < 1) requestAnimationFrame(tick); else res();
+        } catch (err) { res(); }
       })();
     });
   }
@@ -6403,9 +6409,12 @@ const SystemOpening = (() => {
     return new Promise(res => {
       const t0 = performance.now();
       (function tick() {
-        const k = skipped ? 1 : Math.min(1, (performance.now() - t0) / ms);
-        fn(from + (to - from) * k);
-        if (k < 1) requestAnimationFrame(tick); else res();
+        // Same contract as camera(): never leave the promise unsettled.
+        try {
+          const k = skipped ? 1 : Math.min(1, (performance.now() - t0) / ms);
+          fn(from + (to - from) * k);
+          if (k < 1) requestAnimationFrame(tick); else res();
+        } catch (err) { res(); }
       })();
     });
   }
@@ -6533,11 +6542,16 @@ const SystemOpening = (() => {
   }
 
   function finish() {
-    const H = window.AuraCore;
-    try { H?.resetLights?.(); H?.setAura?.('dormant'); } catch (e) {}
-    const cam = window.AuraGL?.camera;
-    if (cam) { cam.position.set(0, 0, 6); cam.lookAt(0, 0, 0); }
-    voidLevel(0, 0);
+    /* Everything before the dataset flip is cosmetic teardown; the flip is what
+       gives the Hunter their app back. Nothing cosmetic may be allowed to throw
+       its way past it, so the teardown is guarded as a block. */
+    try {
+      const H = window.AuraCore;
+      try { H?.resetLights?.(); H?.setAura?.('dormant'); } catch (e) {}
+      const cam = window.AuraGL?.camera;
+      if (cam) { cam.position.set(0, 0, 6); cam.lookAt(0, 0, 0); }
+      voidLevel(0, 0);
+    } catch (e) { console.warn('[Opening] teardown failed, releasing anyway', e); }
     document.documentElement.dataset.opening = 'done';
     setTimeout(() => {
       host?.remove(); host = null;
@@ -6566,7 +6580,21 @@ const SystemOpening = (() => {
         return false;
       }
       running = true; skipped = false;
+      /* The opening hides #app outright. A throw is recoverable via the catch
+         below, but a HANG is not — the animation helpers resolve from
+         requestAnimationFrame, which does not fire while the tab is in the
+         background, so an app opened and immediately backgrounded can sit here
+         forever with its UI invisible behind the System core. This deadline is
+         the only thing that can end that state. The longest path is ~11s. */
+      const deadline = setTimeout(() => {
+        if (running) {
+          console.warn('[Opening] exceeded its deadline — releasing the app.');
+          skipped = true;
+          try { finish(); } catch (e) { document.documentElement.dataset.opening = 'done'; }
+        }
+      }, 16000);
       try { await run(mode); } catch (e) { console.info('[Opening] aborted', e); finish(); }
+      finally { clearTimeout(deadline); }
       return true;
     },
   };
@@ -6821,16 +6849,41 @@ const WorldCinema = (() => {
   const wait = (ms) => new Promise(r => setTimeout(r, ms));
   const reduced = () => { try { return Motion.reduced(); } catch (e) { return false; } };
 
+  /* data-moment="hero" pulls #aura-gl from z-index -2 to 1110 — in front of the
+     whole app. That is correct for the length of a cinematic and catastrophic
+     for one millisecond longer: the canvas is opaque, so a staged sequence that
+     never reaches unstage() leaves the Hunter looking at the System core with
+     their name, their stats and every control sealed behind it.
+
+     Reaching unstage() by falling off the end of a function is not good enough.
+     These sequences await timers, moment promises and WebGL work; any of those
+     can throw or simply never settle. So: every caller unstages in a finally,
+     and this watchdog is the backstop for the never-settles case, which no
+     finally can catch. The longest sequence here is comfortably under 12s. */
+  const HERO_MAX_MS = 12000;
+  let heroWatchdog = null;
+
   function stage(scene, env) {
     try {
       if (!window.AuraGL || !AuraGL.enabled) return false;
       AuraGL.stage(scene);
       if (env !== undefined && window.AuraCore) AuraCore.setEnvironment(env);
       document.documentElement.dataset.moment = 'hero';
+      clearTimeout(heroWatchdog);
+      heroWatchdog = setTimeout(() => {
+        if (document.documentElement.dataset.moment === 'hero') {
+          console.warn('[WorldCinema] hero stage exceeded ' + HERO_MAX_MS +
+            'ms — releasing the canvas so the UI is not left covered.');
+          unstage();
+          try { veil(false); } catch (e) { /* presentation only */ }
+        }
+      }, HERO_MAX_MS);
       return true;
     } catch (e) { return false; }
   }
   function unstage() {
+    clearTimeout(heroWatchdog);
+    heroWatchdog = null;
     try {
       if (window.AuraCore) AuraCore.setEnvironment('none');
       if (window.AuraGL) AuraGL.stage(null);
@@ -6850,14 +6903,15 @@ const WorldCinema = (() => {
         title: name, body: `TIER ${d.tier || 1} · TRAIN TO DEAL DAMAGE`, glyph: '⚔' });
     }
     veil(true, 'major');
-    try { AuraCore.setAura('stirring'); } catch (e) {}
-    await wait(900);                                  // the space arrives first
-    try { AuraCore.setAura('active'); } catch (e) {}
-    await wait(700);                                  // the Hunter settles in it
-    await SystemMoment.show({ tier: 'major', kicker: 'DUNGEON ENTERED',
-      title: name, body: `TIER ${d.tier || 1} · TRAIN TO DEAL DAMAGE`, glyph: '⚔' });
-    try { AuraCore.setAura('dormant'); } catch (e) {}
-    veil(false); unstage();
+    try {
+      try { AuraCore.setAura('stirring'); } catch (e) {}
+      await wait(900);                                // the space arrives first
+      try { AuraCore.setAura('active'); } catch (e) {}
+      await wait(700);                                // the Hunter settles in it
+      await SystemMoment.show({ tier: 'major', kicker: 'DUNGEON ENTERED',
+        title: name, body: `TIER ${d.tier || 1} · TRAIN TO DEAL DAMAGE`, glyph: '⚔' });
+      try { AuraCore.setAura('dormant'); } catch (e) {}
+    } finally { veil(false); unstage(); }
   }
 
   /* ── DAMAGE WEIGHT ──────────────────────────────────────────────────────
@@ -6884,16 +6938,20 @@ const WorldCinema = (() => {
       return rewardReveal(item);
     }
     veil(true, 'progression');
-    // decisive moment - the strike lands
-    try { AuraCore.setAura('surge'); } catch (e) {}
-    await wait(520);
-    // environment response - the space lets go
-    try { AuraCore.setEnvironment('none'); } catch (e) {}
-    await wait(620);
-    // silence - deliberately empty, this is what makes the reveal land
-    try { AuraCore.setAura('dormant'); } catch (e) {}
-    await wait(760);
-    unstage(); veil(false);
+    /* The canvas is released partway through, before the reveal — that is the
+       point of the silence. The finally only guarantees it, so a throw in the
+       staged half cannot leave the core sitting over the UI. */
+    try {
+      // decisive moment - the strike lands
+      try { AuraCore.setAura('surge'); } catch (e) {}
+      await wait(520);
+      // environment response - the space lets go
+      try { AuraCore.setEnvironment('none'); } catch (e) {}
+      await wait(620);
+      // silence - deliberately empty, this is what makes the reveal land
+      try { AuraCore.setAura('dormant'); } catch (e) {}
+      await wait(760);
+    } finally { unstage(); veil(false); }
     await SystemMoment.show({ tier: 'progression', kicker: 'DUNGEON CLEARED',
       title: (d && d.bossName) || 'BOSS DEFEATED',
       body: 'THE DUNGEON HAS FALLEN', glyph: '⚔' });
@@ -7004,26 +7062,27 @@ const WorldCinema = (() => {
     }
 
     veil(true, heavy ? 'legendary' : 'progression');
-    try { AuraCore.setAura('stirring'); } catch (e) {}
-    await wait(1000);                       // the boss rises - let it be seen
-    if (heavy) {
-      try { AuraCore.setAura('surge'); } catch (e) {}
-      await wait(700);                      // the decisive blow
-      try { AuraCore.setBoss(false); } catch (e) {}
-      await wait(900);                      // the mass goes down
-      try { AuraCore.setAura('active'); } catch (e) {}
-      await wait(500);                      // aftermath, held quiet
-    } else {
-      try { AuraCore.setAura('active'); } catch (e) {}
-      await wait(600);
-    }
-    await SystemMoment.show({
-      tier: heavy ? 'legendary' : 'progression',
-      kicker: heavy ? 'RAID CLEARED' : 'PHASE TRANSITION',
-      title: heavy ? name : (ev.title || 'THE BOSS CHANGES'),
-      body: ev.detail || '', glyph: heavy ? '💀' : '◈' });
-    try { AuraCore.setAura('dormant'); } catch (e) {}
-    veil(false); raidUnstage();
+    try {
+      try { AuraCore.setAura('stirring'); } catch (e) {}
+      await wait(1000);                     // the boss rises - let it be seen
+      if (heavy) {
+        try { AuraCore.setAura('surge'); } catch (e) {}
+        await wait(700);                    // the decisive blow
+        try { AuraCore.setBoss(false); } catch (e) {}
+        await wait(900);                    // the mass goes down
+        try { AuraCore.setAura('active'); } catch (e) {}
+        await wait(500);                    // aftermath, held quiet
+      } else {
+        try { AuraCore.setAura('active'); } catch (e) {}
+        await wait(600);
+      }
+      await SystemMoment.show({
+        tier: heavy ? 'legendary' : 'progression',
+        kicker: heavy ? 'RAID CLEARED' : 'PHASE TRANSITION',
+        title: heavy ? name : (ev.title || 'THE BOSS CHANGES'),
+        body: ev.detail || '', glyph: heavy ? '💀' : '◈' });
+      try { AuraCore.setAura('dormant'); } catch (e) {}
+    } finally { veil(false); raidUnstage(); }
     if (heavy && ev.item) await rewardReveal(ev.item);
   }
 
