@@ -3249,6 +3249,74 @@
     border-radius:6px; cursor:pointer;
   }
   .duel-panel-withdraw:hover{ border-color:rgba(91,168,255,0.4); color:var(--text); }
+
+  /* ── DIRECTIVES — the reason underneath the reps ── */
+  #directives-strip{ display:flex; flex-direction:column; gap:8px; margin-bottom:10px; }
+  .directive-card{
+    border:1px solid rgba(255,214,107,0.26);
+    background:linear-gradient(180deg, rgba(255,214,107,0.07), rgba(255,214,107,0.02));
+    border-radius:10px; padding:clamp(11px,2.4vw,16px); cursor:pointer;
+    transition:border-color .12s, background .12s;
+  }
+  .directive-card:hover{ border-color:rgba(255,214,107,0.5); }
+  .directive-head{ display:flex; align-items:baseline; justify-content:space-between; gap:8px; margin-bottom:6px; }
+  .directive-eyebrow{
+    font-family:var(--font-mono); font-size:8.5px; letter-spacing:.2em; color:var(--brass);
+  }
+  .directive-days{ font-family:var(--font-mono); font-size:9.5px; color:var(--text-faint); }
+  .directive-days.overdue{ color:var(--excess); }
+  .directive-title{
+    font-family:var(--font-display); font-size:clamp(16px,3.8vw,22px); font-weight:900;
+    letter-spacing:.02em; color:var(--text); line-height:1.15; margin-bottom:8px;
+    text-wrap:balance;
+  }
+  .directive-bar-wrap{
+    height:4px; background:rgba(91,168,255,0.10); border-radius:2px; overflow:hidden; margin-bottom:5px;
+  }
+  .directive-bar{
+    height:100%; background:linear-gradient(90deg, var(--brass), #FFE9A8);
+    border-radius:2px; transition:width .8s cubic-bezier(0.16,1,0.3,1);
+  }
+  .directive-measure{
+    font-family:var(--font-mono); font-size:10px; color:var(--text-dim);
+    font-variant-numeric:tabular-nums;
+  }
+  .directive-empty{
+    display:flex; flex-direction:column; gap:3px; width:100%; text-align:left;
+    border:1px dashed rgba(91,168,255,0.22); background:transparent; cursor:pointer;
+    border-radius:10px; padding:clamp(11px,2.4vw,16px); color:inherit; font:inherit;
+  }
+  .directive-empty:hover{ border-color:rgba(255,214,107,0.45); }
+  .directive-empty-eyebrow{ font-family:var(--font-mono); font-size:8.5px; letter-spacing:.2em; color:var(--text-faint); }
+  .directive-empty-main{ font-family:var(--font-display); font-size:clamp(14px,3.2vw,18px); font-weight:800; color:var(--text); }
+  .directive-empty-sub{ font-size:11px; color:var(--text-faint); }
+
+  /* ── RE-ENTRY — a way back in, not a verdict ── */
+  .reentry-panel{ max-width:400px; text-align:center; }
+  .reentry-eyebrow{
+    font-family:var(--font-mono); font-size:9px; letter-spacing:.25em;
+    color:var(--growing); margin-bottom:10px;
+  }
+  .reentry-title{
+    font-family:var(--font-display); font-size:clamp(19px,4.4vw,25px); font-weight:900;
+    margin:0 0 10px; text-wrap:balance;
+  }
+  .reentry-body{ font-size:12.5px; line-height:1.7; color:var(--text-dim); margin:0 0 16px; }
+  .reentry-terms{
+    display:flex; gap:8px; margin-bottom:10px;
+  }
+  .reentry-term{
+    flex:1; border:1px solid rgba(78,205,120,0.24); background:rgba(78,205,120,0.05);
+    border-radius:8px; padding:9px 6px;
+  }
+  .reentry-term span{
+    display:block; font-family:var(--font-mono); font-size:8px; letter-spacing:.14em;
+    color:var(--text-faint); margin-bottom:3px;
+  }
+  .reentry-term strong{
+    font-family:var(--font-display); font-size:14px; color:var(--growing); font-weight:800;
+  }
+  .reentry-note{ font-size:10.5px; line-height:1.55; color:var(--text-faint); margin:0 0 16px; }
 </style>
 </head>
 <body>
@@ -3313,6 +3381,7 @@
 
       <!-- ── HUNT SCREEN — mission not a form ── -->
       <!-- Objectives float at top — data not a card -->
+      <div id="directives-strip" style="padding:var(--fluid-pad) var(--fluid-pad) 0;"></div>
       <div id="objectives-strip" style="padding:var(--fluid-pad) var(--fluid-pad) 0;"></div>
 
       <!-- Quest feed fills the space — the card IS the screen -->
@@ -3745,6 +3814,7 @@ import { PROGRESSION_CHAINS } from "./progression-chains.js";
 import { getArchetypeChains } from "./archetype-chains.js";
 import { getAutoAchievements } from "./auto-achievements.js";
 import { computeStreakFrom, STREAK_RULES_START, shiftDay } from "./streak.js";
+import { detectReEntry, reEntryPlan, directiveProgress, formatMeasure, DIRECTIVE_METRICS } from "./goals.js";
 import {
   getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword,
   onAuthStateChanged, signOut, updateProfile
@@ -7058,6 +7128,7 @@ function switchView(name) {
   if (name === 'history') renderCalendar();
   if (name === 'quest') {
     renderObjectivesStrip();
+  try { renderDirectivesStrip(); } catch (_) {}
     if (myProgram && myProgram.days && myProgram.days.length) {
       if (myProgram.scheduleMode === 'fixed') {
         const today = todayWeekday();
@@ -7135,6 +7206,7 @@ async function loadAllData() {
   populateExerciseSelects();
   renderQuestFeed();
   renderObjectivesStrip();
+  try { renderDirectivesStrip(); } catch (_) {}
   maybeSpawnWeaknessTrial().catch(console.warn);
   setTimeout(() => { try { renderBoard(); } catch(e) { console.error(e); } }, 0);
   setTimeout(() => { try { renderTrends(); } catch(e) {} }, 50);
@@ -7154,6 +7226,9 @@ async function loadAllData() {
      check and unguarded by a timer: until these land the Hunter's sessions
      exist only in this device's localStorage. */
   flushPendingWorkouts().catch(e => console.error('Held-workout flush failed:', e));
+  // After the flush, so a held session counts and re-entry does not fire on a
+  // gap the Hunter has already closed.
+  setTimeout(() => { try { showReEntryMoment(); } catch(e) { console.error('Re-entry check failed:', e); } }, 1600);
   setTimeout(() => { try { backfillShadowArmySoldiers(); } catch(e) { console.warn('Backfill failed:', e); } }, 1500);
   // Start living ambient system — runs always in background
   startAmbientSystem();
@@ -7340,7 +7415,13 @@ function isQuestComplete(idx) {
 
 function buildQuestCardHTML(idx) {
   const rotationIdx = myProgram.currentDayIndex % myProgram.days.length;
-  const day = myProgram.days[idx];
+  const rawDay = myProgram.days[idx];
+  /* On the first Hunt back after a gap the programmed sets are halved, which is
+     what the re-entry notice promises. The stored programme is untouched — this
+     is only a view of it, and it reverts the moment a session closes the gap. */
+  const day = (reEntryActive() && rawDay)
+    ? { ...rawDay, exercises: reEntryPlan(rawDay.exercises || []) }
+    : rawDay;
   const today = todayWeekday();
   const isActiveDay = myProgram.scheduleMode === 'fixed'
     ? (day.assignedDays||[]).includes(today)
@@ -9670,6 +9751,201 @@ async function selfUnfreezeStreak() {
 window.selfFreezeStreak = selfFreezeStreak;
 window.selfUnfreezeStreak = selfUnfreezeStreak;
 window.flushPendingWorkouts = flushPendingWorkouts;
+
+/* ── RE-ENTRY ─────────────────────────────────────────────────────────────
+   Shown once when a Hunter returns after a gap. It states the gap plainly and
+   then gets out of the way: no scolding, no dead-streak screen, one action.
+   The week's target drops to a single session and the first Hunt back is cut
+   in half, so the cheapest thing in the app is the thing that restarts them. */
+
+function reEntryContext() {
+  return {
+    today: todayStr(),
+    workoutDates: new Set(myWorkouts.map(w => w.date)),
+    acknowledgedFor: profile?.reEntry?.acknowledgedFor || null,
+  };
+}
+
+/** True while a re-entry is live — read by the quest card to cut the Hunt. */
+function reEntryActive() {
+  const r = detectReEntry(reEntryContext());
+  return r.isReEntry;
+}
+
+async function showReEntryMoment() {
+  const r = detectReEntry(reEntryContext());
+  if (!r.isReEntry || r.alreadyAcknowledged) return;
+
+  const el = document.createElement('div');
+  el.className = 'modal-overlay reentry-overlay';
+  el.innerHTML =
+    '<div class="modal reentry-panel">' +
+      '<div class="reentry-eyebrow">◈ GATE REOPENED</div>' +
+      '<h3 class="reentry-title">The System held your place.</h3>' +
+      '<p class="reentry-body">' +
+        'It has been <strong>' + r.gapDays + ' days</strong> since your last Hunt. ' +
+        'Nothing has been taken from you — your record, your rank and your ' +
+        'progress are exactly where you left them.' +
+      '</p>' +
+      '<div class="reentry-terms">' +
+        '<div class="reentry-term"><span>THIS WEEK</span><strong>1 session</strong></div>' +
+        '<div class="reentry-term"><span>FIRST HUNT</span><strong>half sets</strong></div>' +
+      '</div>' +
+      '<p class="reentry-note">Re-entry terms. One session clears the Gate; the ' +
+        'programme returns to full the moment you do.</p>' +
+      '<button class="btn btn-primary" id="reentry-go" style="width:100%;">Begin the Hunt</button>' +
+      '<button class="btn btn-sm" id="reentry-later" style="width:100%;margin-top:8px;color:var(--text-dim);">Not today</button>' +
+    '</div>';
+  getOverlayHost().appendChild(el);
+
+  const close = async () => {
+    el.remove();
+    unlockBodyScroll();
+    /* Acknowledge against the session returned FROM, so this gap asks once and
+       a later, separate gap asks again. */
+    try {
+      const mark = { acknowledgedFor: r.lastDate, gapDays: r.gapDays, at: todayStr() };
+      await writeUserFields({ reEntry: mark });
+      profile.reEntry = mark;
+    } catch (e) { console.error('Could not record re-entry:', e); }
+  };
+  el.querySelector('#reentry-later').addEventListener('click', close);
+  el.querySelector('#reentry-go').addEventListener('click', async () => {
+    await close();
+    switchView('quest');
+    renderQuestFeed();
+  });
+}
+
+/* ── DIRECTIVES ───────────────────────────────────────────────────────────
+   The reason underneath the reps. A weekly session count is a chore; "half
+   marathon" and a date you are training toward are not. Rendered above the
+   Hunt so it is the first thing seen, not buried in a settings screen. */
+
+function activeDirectives() {
+  return (profile?.directives || []).filter(d => d && d.title);
+}
+
+function directiveContext() {
+  return {
+    workouts: myWorkouts,
+    today: todayStr(),
+    bodyweightKg: latestBodyweightKg() || 0,
+  };
+}
+
+function renderDirectivesStrip() {
+  const el = document.getElementById('directives-strip');
+  if (!el) return;
+  const list = activeDirectives();
+  if (!list.length) {
+    el.innerHTML =
+      '<button class="directive-empty" id="directive-add-empty">' +
+        '<span class="directive-empty-eyebrow">◈ NO DIRECTIVE SET</span>' +
+        '<span class="directive-empty-main">What are you training for?</span>' +
+        '<span class="directive-empty-sub">A half marathon. A date. Something worth reaching.</span>' +
+      '</button>';
+    el.querySelector('#directive-add-empty')?.addEventListener('click', openDirectiveEditor);
+    return;
+  }
+
+  const ctx = directiveContext();
+  el.innerHTML = list.map(d => {
+    const p = directiveProgress(d, ctx);
+    const hasBar = p.target > 0;
+    const days = p.daysLeft;
+    const dayLine = days === null ? ''
+      : p.overdue ? '<span class="directive-days overdue">' + Math.abs(days) + 'd past</span>'
+      : '<span class="directive-days">' + days + ' days left</span>';
+    return '<div class="directive-card" data-id="' + escapeHtml(d.id || '') + '">' +
+      '<div class="directive-head">' +
+        '<span class="directive-eyebrow">◈ DIRECTIVE</span>' + dayLine +
+      '</div>' +
+      '<div class="directive-title">' + escapeHtml(d.title) + '</div>' +
+      (hasBar
+        ? '<div class="directive-bar-wrap"><div class="directive-bar" style="width:' + p.pct.toFixed(1) + '%"></div></div>' +
+          '<div class="directive-measure">' +
+            formatMeasure(p.current, p.metric) + ' / ' + formatMeasure(p.target, p.metric) +
+            ' ' + escapeHtml(p.unit) + '</div>'
+        : '<div class="directive-measure">' + escapeHtml(d.note || 'No measure — the date is the target.') + '</div>') +
+    '</div>';
+  }).join('');
+
+  el.querySelectorAll('.directive-card').forEach(card =>
+    card.addEventListener('click', () => openDirectiveEditor(card.dataset.id)));
+}
+
+function openDirectiveEditor(id) {
+  const existing = activeDirectives().find(d => d.id === id) || null;
+  const el = document.createElement('div');
+  el.className = 'modal-overlay';
+  const metricOpts = Object.entries(DIRECTIVE_METRICS).map(([k, m]) =>
+    '<option value="' + k + '"' + (existing?.metric === k ? ' selected' : '') + '>' +
+      m.label + (m.unit ? ' (' + m.unit + ')' : '') + '</option>').join('');
+  el.innerHTML =
+    '<div class="modal" style="max-width:420px;">' +
+      '<p class="system-eyebrow" style="color:rgba(91,168,255,0.78);font-family:var(--font-mono);font-size:9px;letter-spacing:.15em;margin-bottom:10px;">◈ DIRECTIVE</p>' +
+      '<h3 style="margin:0 0 4px;">' + (existing ? 'Edit directive' : 'What are you training for?') + '</h3>' +
+      '<p style="font-size:12px;color:var(--text-dim);margin:0 0 14px;">Name the thing. The System will track it against your record.</p>' +
+      '<div class="field"><label>Directive</label>' +
+        '<input id="dir-title" maxlength="60" placeholder="Run a half marathon" value="' + escapeHtml(existing?.title || '') + '" /></div>' +
+      '<div class="field"><label>Target date <span style="color:var(--text-faint);">(optional)</span></label>' +
+        '<input id="dir-date" type="date" value="' + escapeHtml(existing?.targetDate || '') + '" /></div>' +
+      '<div class="field"><label>Measure</label>' +
+        '<select id="dir-metric" style="width:100%;background:var(--card-2);color:var(--text);border:1px solid rgba(91,168,255,0.18);border-radius:6px;padding:8px;">' +
+        metricOpts + '</select></div>' +
+      '<div class="field"><label>Target value <span style="color:var(--text-faint);">(optional)</span></label>' +
+        '<input id="dir-target" type="number" step="0.1" placeholder="21.1" value="' + (existing?.target ?? '') + '" /></div>' +
+      '<div style="display:flex;gap:8px;margin-top:14px;">' +
+        '<button class="btn btn-primary" id="dir-save" style="flex:2;">Set directive</button>' +
+        (existing ? '<button class="btn btn-sm" id="dir-delete" style="flex:1;color:var(--excess);">Remove</button>'
+                  : '<button class="btn btn-sm" id="dir-cancel" style="flex:1;">Cancel</button>') +
+      '</div>' +
+    '</div>';
+  getOverlayHost().appendChild(el);
+  const close = () => { el.remove(); unlockBodyScroll(); };
+  el.addEventListener('click', e => { if (e.target === el) close(); });
+  el.querySelector('#dir-cancel')?.addEventListener('click', close);
+
+  el.querySelector('#dir-save').addEventListener('click', async () => {
+    const title = el.querySelector('#dir-title').value.trim();
+    if (!title) { showToast('Give the directive a name.', 'error'); return; }
+    const metric = el.querySelector('#dir-metric').value;
+    const target = parseFloat(el.querySelector('#dir-target').value) || 0;
+    const entry = {
+      id: existing?.id || ('dir_' + Date.now()),
+      title,
+      targetDate: el.querySelector('#dir-date').value || null,
+      metric,
+      target,
+      // Scope the measure to work done from now on, so a directive set today
+      // does not open already half complete on the back of old training.
+      since: existing?.since || todayStr(),
+      // A cut runs downward, so remember where it started.
+      startValue: existing?.startValue
+        ?? (metric === 'body_weight_kg' ? (latestBodyweightKg() || 0) : 0),
+      createdAt: existing?.createdAt || todayStr(),
+    };
+    const list = activeDirectives().filter(d => d.id !== entry.id).concat([entry]);
+    try {
+      await writeUserFields({ directives: list });
+      profile.directives = list;
+      close(); renderDirectivesStrip();
+      showToast('Directive set. It will follow you.', 'success');
+    } catch (e) { showToast('Could not save: ' + (e?.message || e), 'error'); }
+  });
+
+  el.querySelector('#dir-delete')?.addEventListener('click', async () => {
+    const list = activeDirectives().filter(d => d.id !== existing.id);
+    try {
+      await writeUserFields({ directives: list });
+      profile.directives = list;
+      close(); renderDirectivesStrip();
+    } catch (e) { showToast('Could not remove: ' + (e?.message || e), 'error'); }
+  });
+}
+
+window.openDirectiveEditor = openDirectiveEditor;
 
 /* Streak = consecutive qualifying days ending today. A day qualifies when the
    Hunter trained, when the programme schedules it as a rest day, when a freeze
