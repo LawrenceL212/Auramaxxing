@@ -3321,6 +3321,73 @@
   .directive-empty-main{ font-family:var(--font-display); font-size:clamp(14px,3.2vw,18px); font-weight:800; color:var(--text); }
   .directive-empty-sub{ font-size:11px; color:var(--text-faint); }
 
+  /* ── HABIT CURVE ──────────────────────────────────────────────────────
+     One series, so no legend — the title names it. The rule badge uses status
+     colours, which are never reused for the curve itself, and always carries a
+     word as well as a colour so it never depends on hue alone. */
+  #habit-card-wrap{ margin-bottom:10px; }
+  .habit-card{
+    border:1px solid var(--border); background:var(--card);
+    border-radius:12px; padding:clamp(12px,2.6vw,17px);
+  }
+  .habit-head{ display:flex; align-items:center; justify-content:space-between; gap:9px; margin-bottom:11px; }
+  .habit-eyebrow{ font-family:var(--font-mono); font-size:8.5px; letter-spacing:.2em; color:var(--text-faint); }
+  .habit-rule{
+    font-family:var(--font-mono); font-size:8.5px; letter-spacing:.11em;
+    padding:3px 8px; border-radius:99px; white-space:nowrap;
+    border:1px solid currentColor;
+  }
+  .habit-rule.held    { color:var(--growing); }
+  .habit-rule.at-risk { color:var(--rank-s); }
+  .habit-rule.broken  { color:var(--excess); }
+  .habit-rule.unstarted{ color:var(--text-faint); }
+
+  /* The hero figure: the one number the card leads with. */
+  .habit-hero{ display:flex; align-items:baseline; gap:8px; margin-bottom:2px; }
+  .habit-pct{
+    font-family:var(--font-display); font-size:clamp(34px,8.5vw,48px); font-weight:900;
+    line-height:1; color:var(--brass); font-variant-numeric:tabular-nums;
+  }
+  .habit-hero-label{ font-size:11.5px; color:var(--text-dim); line-height:1.3; }
+  .habit-sentence{ font-size:12px; color:var(--text-dim); margin:9px 0 2px; line-height:1.45; }
+
+  .habit-chart{ width:100%; height:auto; display:block; margin:10px 0 2px; touch-action:pan-y; }
+  .habit-chart .grid{ stroke:rgba(91,168,255,0.10); stroke-width:1; }
+  .habit-chart .target-line{ stroke:var(--rank-s); stroke-width:1; stroke-dasharray:3 3; opacity:.55; }
+  .habit-chart .target-label{ fill:var(--rank-s); font-size:7px; font-family:var(--font-mono); opacity:.8; }
+  .habit-chart .lapse-band{ fill:var(--excess); opacity:.09; }
+  .habit-chart .curve-line{ fill:none; stroke:var(--brass); stroke-width:2; stroke-linejoin:round; stroke-linecap:round; }
+  .habit-chart .curve-dot{ fill:var(--brass); stroke:var(--card); stroke-width:2; }
+  .habit-chart .axis-label{ fill:var(--text-faint); font-size:7px; font-family:var(--font-mono); }
+  .habit-chart .crosshair{ stroke:var(--text-dim); stroke-width:1; stroke-dasharray:2 2; opacity:0; }
+  .habit-chart .hover-dot{ fill:var(--brass); stroke:var(--card); stroke-width:2; opacity:0; }
+
+  .habit-tip{
+    position:absolute; pointer-events:none; opacity:0; transform:translate(-50%,-115%);
+    background:var(--elevated); border:1px solid var(--border); border-radius:7px;
+    padding:6px 9px; font-size:10.5px; line-height:1.4; color:var(--text);
+    white-space:nowrap; z-index:6; transition:opacity .1s;
+    box-shadow:0 4px 14px rgba(0,0,0,.45);
+  }
+  .habit-tip b{ color:var(--brass); font-variant-numeric:tabular-nums; }
+  .habit-plot{ position:relative; }
+
+  /* Stat tiles: the same figures as text, so the chart is never the only way
+     to read the data. */
+  .habit-stats{
+    display:grid; grid-template-columns:repeat(auto-fit,minmax(78px,1fr)); gap:7px; margin-top:11px;
+  }
+  .habit-stat{
+    background:var(--card-2); border:1px solid rgba(91,168,255,0.10);
+    border-radius:8px; padding:7px 9px;
+  }
+  .habit-stat-v{
+    font-family:var(--font-mono); font-size:14px; font-weight:700; color:var(--text);
+    font-variant-numeric:tabular-nums; line-height:1.1;
+  }
+  .habit-stat-k{ font-family:var(--font-mono); font-size:7.5px; letter-spacing:.11em; color:var(--text-faint); margin-top:3px; }
+  .habit-note{ font-size:10px; color:var(--text-faint); margin:9px 0 0; line-height:1.45; }
+
   /* ── RE-ENTRY — a way back in, not a verdict ── */
   .reentry-panel{ max-width:400px; text-align:center; }
   .reentry-eyebrow{
@@ -3413,6 +3480,10 @@
       <!-- Objectives float at top — data not a card -->
       <div id="directives-strip" style="padding:var(--fluid-pad) var(--fluid-pad) 0;"></div>
       <div id="objectives-strip" style="padding:var(--fluid-pad) var(--fluid-pad) 0;"></div>
+
+      <!-- Habit curve sits below the Hunt: the mission comes first, the
+           evidence that you keep showing up comes after it. -->
+      <div id="habit-card-wrap" style="padding:0 var(--fluid-pad);"></div>
 
       <!-- Quest feed fills the space — the card IS the screen -->
       <div id="program-card-wrap" style="padding:0 var(--fluid-pad);"></div>
@@ -3847,6 +3918,8 @@ import { computeStreakFrom, STREAK_RULES_START, shiftDay } from "./streak.js";
 import { detectReEntry, reEntryPlan, directiveProgress, formatMeasure, DIRECTIVE_METRICS,
          countdown, formatCountdown, timeElapsedFraction, buildDirectivesICS,
          buildWidgetConfig } from "./goals.js";
+import { analyseHabit, sampleCurve, describeReturns,
+         HABIT_TARGET_DAYS, MISS_GRACE } from "./habit.js";
 import {
   getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword,
   onAuthStateChanged, signOut, updateProfile
@@ -6864,6 +6937,14 @@ if (__auraDevEnabled()) {
     return activeDirectives().length;
   };
   window.__qaDirectivesICS = () => buildDirectivesICS(activeDirectives());
+  /* Renders the habit curve against fixture sessions so the chart can be seen
+     without an authenticated account. Dev flag only; writes nothing. */
+  window.__qaHabit = (dates, schedule) => {
+    myWorkouts = (dates || []).map(d => ({ date: d, uid: 'qa' }));
+    if (schedule) myProgram = Object.assign({}, myProgram, { schedule });
+    renderHabitCard();
+    return analyseHabit(habitContext());
+  };
   window.__qaBootGL = async () => {
     if (!(await AuraGL.init()) && !AuraGL.enabled) return false;
     AuraGL.register('ambient', buildAmbientScene);
@@ -7230,6 +7311,7 @@ function switchView(name) {
   if (name === 'quest') {
     renderObjectivesStrip();
   try { renderDirectivesStrip(); } catch (_) {}
+  try { renderHabitCard(); } catch (_) {}
     if (myProgram && myProgram.days && myProgram.days.length) {
       if (myProgram.scheduleMode === 'fixed') {
         const today = todayWeekday();
@@ -7308,6 +7390,7 @@ async function loadAllData() {
   renderQuestFeed();
   renderObjectivesStrip();
   try { renderDirectivesStrip(); } catch (_) {}
+  try { renderHabitCard(); } catch (_) {}
   maybeSpawnWeaknessTrial().catch(console.warn);
   setTimeout(() => { try { renderBoard(); } catch(e) { console.error(e); } }, 0);
   setTimeout(() => { try { renderTrends(); } catch(e) {} }, 50);
@@ -10000,6 +10083,167 @@ function renderDirectivesStrip() {
 
   tickDirectiveCountdowns();
   startDirectiveClock();
+}
+
+/* ── HABIT CURVE ───────────────────────────────────────────────────────────
+   One series over time, so: an area chart, no legend (the title names it), a
+   recessive grid, a dashed reference line at automaticity, and a direct label
+   on the current point only. The rule badge carries a word as well as a
+   colour, and every figure in the chart also appears as text in the tiles
+   below it, so nothing here is readable by hue alone. */
+
+const HABIT_VB = { w: 320, h: 104, padL: 4, padR: 4, padT: 10, padB: 14 };
+
+function habitContext() {
+  return {
+    today: todayStr(),
+    workoutDates: new Set(myWorkouts.map(w => w.date)),
+    schedule: (myProgram?.schedule?.length ? myProgram.schedule : (profile?.schedule || [])),
+  };
+}
+
+function habitChartSVG(analysis) {
+  const pts = sampleCurve(analysis.curve, 90);
+  const { w, h, padL, padR, padT, padB } = HABIT_VB;
+  const plotW = w - padL - padR, plotH = h - padT - padB;
+  if (pts.length < 2) return '';
+
+  const x = i => padL + (i / (pts.length - 1)) * plotW;
+  const y = s => padT + plotH - (Math.max(0, Math.min(100, s)) / 100) * plotH;
+
+  const line = pts.map((p, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)},${y(p.strength).toFixed(1)}`).join('');
+  const area = line + `L${x(pts.length - 1).toFixed(1)},${(padT + plotH).toFixed(1)}` +
+                      `L${padL.toFixed(1)},${(padT + plotH).toFixed(1)}Z`;
+
+  /* Shade the stretches where the rule actually broke. Showing WHERE the dips
+     came from is the difference between a curve and an explanation. */
+  let bands = '', runStart = -1;
+  pts.forEach((p, i) => {
+    const broken = p.missRun > MISS_GRACE;
+    if (broken && runStart < 0) runStart = i;
+    if ((!broken || i === pts.length - 1) && runStart >= 0) {
+      const x0 = x(runStart), x1 = x(broken ? i : i - 1);
+      bands += `<rect class="lapse-band" x="${x0.toFixed(1)}" y="${padT}" ` +
+               `width="${Math.max(1.2, x1 - x0).toFixed(1)}" height="${plotH}" />`;
+      runStart = -1;
+    }
+  });
+
+  const targetY = y(95);
+  const last = pts[pts.length - 1];
+  const lastX = x(pts.length - 1), lastY = y(last.strength);
+
+  return '<div class="habit-plot">' +
+    `<svg class="habit-chart" viewBox="0 0 ${w} ${h}" role="img" ` +
+      `aria-label="Habit strength over ${analysis.opportunities} training opportunities, ` +
+      `now ${Math.round(analysis.strength)} percent of automaticity">` +
+      '<defs><linearGradient id="habitFill" x1="0" y1="0" x2="0" y2="1">' +
+        '<stop offset="0%" stop-color="#5BA8FF" stop-opacity="0.34"/>' +
+        '<stop offset="100%" stop-color="#5BA8FF" stop-opacity="0.02"/>' +
+      '</linearGradient></defs>' +
+      `<line class="grid" x1="${padL}" y1="${padT + plotH}" x2="${w - padR}" y2="${padT + plotH}"/>` +
+      `<line class="grid" x1="${padL}" y1="${padT + plotH / 2}" x2="${w - padR}" y2="${padT + plotH / 2}"/>` +
+      // A gridline with no label is an arbitrary line; say what it is.
+      `<text class="axis-label" x="${padL}" y="${(padT + plotH / 2 - 2).toFixed(1)}">50%</text>` +
+      bands +
+      `<line class="target-line" x1="${padL}" y1="${targetY.toFixed(1)}" x2="${w - padR}" y2="${targetY.toFixed(1)}"/>` +
+      `<text class="target-label" x="${w - padR}" y="${(targetY - 3).toFixed(1)}" text-anchor="end">AUTOMATIC · ${HABIT_TARGET_DAYS}</text>` +
+      `<path d="${area}" fill="url(#habitFill)"/>` +
+      `<path class="curve-line" d="${line}" vector-effect="non-scaling-stroke"/>` +
+      `<circle class="curve-dot" cx="${lastX.toFixed(1)}" cy="${lastY.toFixed(1)}" r="3.4"/>` +
+      `<text class="axis-label" x="${padL}" y="${h - 3}">${escapeHtml(pts[0].date.slice(5))}</text>` +
+      `<text class="axis-label" x="${w - padR}" y="${h - 3}" text-anchor="end">TODAY</text>` +
+      `<line class="crosshair" y1="${padT}" y2="${padT + plotH}"/>` +
+      '<circle class="hover-dot" r="4"/>' +
+      `<rect x="${padL}" y="${padT}" width="${plotW}" height="${plotH}" fill="transparent" class="hit"/>` +
+    '</svg><div class="habit-tip"></div></div>';
+}
+
+/** Crosshair + tooltip. An SVG chart in a browser is interactive by default. */
+function wireHabitHover(root, analysis) {
+  const svg = root.querySelector('.habit-chart');
+  const tip = root.querySelector('.habit-tip');
+  const plot = root.querySelector('.habit-plot');
+  if (!svg || !tip || !plot) return;
+  const pts = sampleCurve(analysis.curve, 90);
+  if (pts.length < 2) return;
+
+  const cross = svg.querySelector('.crosshair');
+  const dot = svg.querySelector('.hover-dot');
+  const { w, padL, padR, padT, padB, h } = HABIT_VB;
+  const plotW = w - padL - padR, plotH = h - padT - padB;
+
+  const move = (ev) => {
+    const r = svg.getBoundingClientRect();
+    const cx = (ev.touches ? ev.touches[0].clientX : ev.clientX) - r.left;
+    const vx = (cx / r.width) * w;                       // client px -> viewBox
+    const i = Math.max(0, Math.min(pts.length - 1,
+      Math.round(((vx - padL) / plotW) * (pts.length - 1))));
+    const p = pts[i];
+    const px = padL + (i / (pts.length - 1)) * plotW;
+    const py = padT + plotH - (Math.max(0, Math.min(100, p.strength)) / 100) * plotH;
+
+    cross.setAttribute('x1', px); cross.setAttribute('x2', px);
+    cross.style.opacity = '1';
+    dot.setAttribute('cx', px); dot.setAttribute('cy', py);
+    dot.style.opacity = '1';
+
+    const state = p.trained ? 'Trained' : p.pending ? 'Today — still open' : 'Missed';
+    tip.innerHTML = `<b>${Math.round(p.strength)}%</b> · ${escapeHtml(p.date.slice(5))}<br>${state}`;
+    tip.style.left = ((px / w) * r.width) + 'px';
+    tip.style.top = ((py / h) * r.height) + 'px';
+    tip.style.opacity = '1';
+  };
+  const leave = () => {
+    cross.style.opacity = '0'; dot.style.opacity = '0'; tip.style.opacity = '0';
+  };
+  svg.addEventListener('mousemove', move);
+  svg.addEventListener('mouseleave', leave);
+  // touch-action:pan-y on the chart keeps vertical scrolling working while the
+  // finger is on it, so this must not preventDefault.
+  svg.addEventListener('touchmove', move, { passive: true });
+  svg.addEventListener('touchend', leave);
+}
+
+function renderHabitCard() {
+  const el = document.getElementById('habit-card-wrap');
+  if (!el) return;
+  const a = analyseHabit(habitContext());
+
+  if (!a.taken) {
+    el.innerHTML = '';                 // nothing trained yet: no curve to show
+    return;
+  }
+
+  const ruleWord = { held: 'HELD', 'at-risk': 'ONE MISSED', broken: 'BROKEN', unstarted: '—' }[a.ruleStatus];
+  const ruleGlyph = { held: '✓', 'at-risk': '!', broken: '×', unstarted: '·' }[a.ruleStatus];
+
+  el.innerHTML =
+    '<div class="habit-card">' +
+      '<div class="habit-head">' +
+        '<span class="habit-eyebrow">◈ HABIT STRENGTH</span>' +
+        `<span class="habit-rule ${a.ruleStatus}">${ruleGlyph} NEVER MISS TWICE · ${ruleWord}</span>` +
+      '</div>' +
+      '<div class="habit-hero">' +
+        `<span class="habit-pct">${Math.round(a.strength)}%</span>` +
+        '<span class="habit-hero-label">of the way to automatic<br>' +
+          `<span style="color:var(--text-faint);">${a.repsToTarget} more sessions</span></span>` +
+      '</div>' +
+      habitChartSVG(a) +
+      `<p class="habit-sentence">${escapeHtml(describeReturns(a))}</p>` +
+      '<div class="habit-stats">' +
+        `<div class="habit-stat"><div class="habit-stat-v">${a.taken}</div><div class="habit-stat-k">SESSIONS</div></div>` +
+        `<div class="habit-stat"><div class="habit-stat-v">${a.returns.length ? Math.round(a.returnRate * 100) + '%' : '—'}</div><div class="habit-stat-k">RETURN RATE</div></div>` +
+        `<div class="habit-stat"><div class="habit-stat-v">${a.longestCleanRun}</div><div class="habit-stat-k">BEST RUN</div></div>` +
+        `<div class="habit-stat"><div class="habit-stat-v">${a.currentMissRun}</div><div class="habit-stat-k">MISSED NOW</div></div>` +
+      '</div>' +
+      '<p class="habit-note">The curve rises with every session and dips only when you miss ' +
+        'twice in a row — one miss costs nothing. ' +
+        `${HABIT_TARGET_DAYS} sessions is the median time to automaticity (Lally et al., 2010); ` +
+        'the real range was 18–254, so treat it as a landmark, not a promise.</p>' +
+    '</div>';
+
+  wireHabitHover(el, a);
 }
 
 /* ── THE LIVE DEADLINE ─────────────────────────────────────────────────────
