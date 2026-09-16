@@ -3744,6 +3744,7 @@ import { BASE_EXERCISES } from "./exercises.js";
 import { PROGRESSION_CHAINS } from "./progression-chains.js";
 import { getArchetypeChains } from "./archetype-chains.js";
 import { getAutoAchievements } from "./auto-achievements.js";
+import { computeStreakFrom, STREAK_RULES_START } from "./streak.js";
 import {
   getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword,
   onAuthStateChanged, signOut, updateProfile
@@ -9462,9 +9463,38 @@ function huntingStateToday(uid) {
    XP: this feeds STREAK_XP_MULT via hunterRank() in the save path only.
    Reconciliation never calls computeStreak, so stored XP is NOT rewritten —
    the new multiplier applies to future sessions only, and no
-   RECONCILE_VERSIONS bump is required. */
+/* Streak = consecutive qualifying days ending today. A day qualifies when the
+   Hunter trained, when the programme schedules it as a rest day, when a freeze
+   covers it, or — before STREAK_RULES_START only — when a recorded historical
+   backfill window covers it.
+
+   Today is treated as IN PROGRESS: not having trained yet does not break the
+   run until the day is over.
+
+   The rules themselves live in streak.js so they can be tested without a
+   browser (test/streak.test.mjs). This function only gathers the inputs: which
+   dates were trained, which weekdays the programme trains on, and the freeze
+   and backfill records. Everything downstream — the XP multiplier, the board,
+   the superlatives — reads this one function, so there is a single place where
+   a streak is decided. */
 function computeStreak(uid) {
-  return new Set(allWorkouts.filter(w => w.uid === uid).map(w => w.date)).size;
+  const isMe = uid === currentUser?.uid;
+  // Prefer the live profile for the signed-in Hunter: it reflects writes that
+  // have not yet been reloaded into allUsers.
+  const record = (isMe && profile) ? profile : (allUsers.find(u => u.uid === uid) || {});
+  // The current user's schedule lives on myProgram; other Hunters' schedules are
+  // copied onto their allUsers entry when the party's programmes load.
+  const schedule = (isMe && myProgram?.schedule?.length)
+    ? myProgram.schedule
+    : (record.schedule || []);
+
+  return computeStreakFrom({
+    today: todayStr(),
+    workoutDates: new Set(allWorkouts.filter(w => w.uid === uid).map(w => w.date)),
+    schedule,
+    freeze: record.streakFreeze || null,
+    backfill: record.streakBackfill || [],
+  });
 }
 function countSince(uid, sinceDate) {
   const sinceDateStr = todayStr(sinceDate);
