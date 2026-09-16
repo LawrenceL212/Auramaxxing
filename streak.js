@@ -72,6 +72,13 @@ export function dayState(dateStr, ctx) {
   // the caller passes a Set of dates, not a list of documents.
   if (ctx.workoutDates && ctx.workoutDates.has(dateStr)) return 'workout';
 
+  /* A session the Hunter entered but which could not be written — the save
+     failed, or they were offline. It is held locally and retried, and until it
+     lands it protects the streak so an app fault cannot cost someone their run.
+     It is deliberately NOT in workoutDates, so it never counts toward session
+     totals, XP, PRs or volume: it buys time, it does not award progress. */
+  if (ctx.pendingDates && ctx.pendingDates.has(dateStr)) return 'pending';
+
   /* A schedule of seven days (or none) means every day is a training day, so
      there are no rest days to grant. Legacy programmes default to all seven,
      which is why this must be length-checked rather than assumed. */

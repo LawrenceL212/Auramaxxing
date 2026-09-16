@@ -22,6 +22,7 @@ const ctx = (today, days, extra = {}) => ({
   schedule: extra.schedule ?? [],          // [] = every day is a training day
   freeze: extra.freeze ?? null,
   backfill: extra.backfill ?? [],
+  pendingDates: new Set(extra.pending ?? []),
   rulesStart: extra.rulesStart ?? STREAK_RULES_START,
 });
 
@@ -120,6 +121,18 @@ check('seven-day schedule grants no rest days',
 check('an active freeze runs forward from its start',
   computeStreakFrom(ctx('2026-09-16', ['2026-09-10'],
     { freeze: { from: '2026-09-11', active: true } })), 7);
+
+// ── 15. a pending (unsaved) workout protects the streak ───────────────────
+check('15a. an unsaved workout bridges the run',
+  computeStreakFrom(ctx('2026-09-16', ['2026-09-14', '2026-09-16'],
+    { pending: ['2026-09-15'] })), 3);
+check('15b. a pending day reports as pending, never as a workout',
+  dayState('2026-09-15', ctx('2026-09-16', [], { pending: ['2026-09-15'] })), 'pending');
+check('15c. a real workout on the same date wins over the pending copy',
+  dayState('2026-09-15', ctx('2026-09-16', ['2026-09-15'], { pending: ['2026-09-15'] })), 'workout');
+check('15d. pending cannot rescue a different missing day',
+  computeStreakFrom(ctx('2026-09-16', ['2026-09-12', '2026-09-16'],
+    { pending: ['2026-09-15'] })), 2);
 
 console.log(results.join('\n'));
 console.log(`\n${pass} passed, ${fail} failed`);

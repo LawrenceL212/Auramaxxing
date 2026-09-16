@@ -3744,7 +3744,7 @@ import { BASE_EXERCISES } from "./exercises.js";
 import { PROGRESSION_CHAINS } from "./progression-chains.js";
 import { getArchetypeChains } from "./archetype-chains.js";
 import { getAutoAchievements } from "./auto-achievements.js";
-import { computeStreakFrom, STREAK_RULES_START } from "./streak.js";
+import { computeStreakFrom, STREAK_RULES_START, shiftDay } from "./streak.js";
 import {
   getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword,
   onAuthStateChanged, signOut, updateProfile
@@ -4569,6 +4569,23 @@ function openSettingsModal() {
   overlay.querySelector('#sys-settings-body').innerHTML =
     '<div class="field"><label>Hunter name</label><input id="settings-name" value="' + escapeHtml(profile.displayName || '') + '" placeholder="Your designation" maxlength="24" inputmode="text" /></div>' +
     '<div class="field"><label>Weekly goal</label><input id="settings-goal" type="number" min="1" max="14" value="' + (profile.weeklyGoal || 3) + '" style="max-width:80px;" /></div>' +
+    /* Streak protection. Two separate things, deliberately shown together:
+       the freeze a Hunter can set themselves when the app is blocking them,
+       and the count of sessions this device is holding because a save failed. */
+    '<div class="field"><label>Streak protection</label>' +
+      (profile.streakFreeze && profile.streakFreeze.active
+        ? '<div style="font-size:11px;color:var(--brass);margin-bottom:6px;">❄ Frozen since ' +
+            escapeHtml(profile.streakFreeze.from || '?') +
+            ' — days are not counted against you.</div>' +
+          '<button type="button" class="btn btn-sm" id="streak-unfreeze" style="width:100%;">Lift freeze</button>'
+        : '<div style="font-size:11px;color:var(--text-dim);margin-bottom:6px;">' +
+            'If a problem in the app stops you logging, freeze your streak so the days do not count against you.</div>' +
+          '<button type="button" class="btn btn-sm" id="streak-freeze" style="width:100%;">❄ Freeze my streak</button>') +
+      (readPendingWorkouts().length
+        ? '<div style="font-size:10px;color:var(--growing);margin-top:8px;font-family:var(--font-mono);">' +
+            readPendingWorkouts().length + ' workout(s) held on this device — they will save themselves and already protect your streak.</div>'
+        : '') +
+    '</div>' +
     '<div class="field"><label>Body type</label><div class="weekday-chips">' +
       '<button type="button" class="weekday-chip body-type-chip ' + ((profile.bodyType||'male')==='male'?'on':'') + '" data-type="male" style="flex:1;">Male</button>' +
       '<button type="button" class="weekday-chip body-type-chip ' + (profile.bodyType==='female'?'on':'') + '" data-type="female" style="flex:1;">Female</button>' +
@@ -4607,6 +4624,17 @@ function openSettingsModal() {
   getOverlayHost().appendChild(overlay);
   lockBodyScroll();
   let selectedBodyType = profile.bodyType || 'male';
+  /* Streak protection. The panel is closed after either action so the Hunter
+     sees the new state on the quest card rather than a stale settings sheet. */
+  overlay.querySelector('#streak-freeze')?.addEventListener('click', async () => {
+    if (await selfFreezeStreak('Self-service freeze from System Command')) {
+      overlay.remove(); unlockBodyScroll(); renderQuestFeed();
+    }
+  });
+  overlay.querySelector('#streak-unfreeze')?.addEventListener('click', async () => {
+    if (await selfUnfreezeStreak()) { overlay.remove(); unlockBodyScroll(); }
+  });
+
   overlay.querySelectorAll('.body-type-chip').forEach(chip => chip.addEventListener('click', () => {
     selectedBodyType = chip.dataset.type;
     overlay.querySelectorAll('.body-type-chip').forEach(c => c.classList.toggle('on', c.dataset.type === selectedBodyType));
@@ -7122,6 +7150,10 @@ async function loadAllData() {
     } catch (e) {}
   }, 600);
   setTimeout(() => { try { checkPendingDuels(); } catch(e) {} }, 1000);
+  /* Retry any workout held from a failed save. Deliberately before the duel
+     check and unguarded by a timer: until these land the Hunter's sessions
+     exist only in this device's localStorage. */
+  flushPendingWorkouts().catch(e => console.error('Held-workout flush failed:', e));
   setTimeout(() => { try { backfillShadowArmySoldiers(); } catch(e) { console.warn('Backfill failed:', e); } }, 1500);
   // Start living ambient system — runs always in background
   startAmbientSystem();
@@ -8036,8 +8068,29 @@ document.getElementById('save-run-btn')?.addEventListener('click', async () => {
         const el = document.getElementById(id); if (el) el.value = '';
       });
     } else {
-      console.error('Run save failed:', err);
-      showToast('Could not save: ' + err.message, 'error');
+      // Write failed — hold it locally so the run is not lost and the streak
+      // is protected until it can be sent.
+      console.error('Run save failed, holding it locally:', err);
+      const held = holdUnsentWorkout({
+        uid: currentUser.uid, displayName: profile.displayName, date,
+        time: nowTimeStr(), isRun: true,
+        runSummary: { distKm: Math.round(distKm*100)/100, durationMins: Math.round(totalMins*10)/10,
+                      pace: paceStr, type: selectedRunType, unit: runUnit },
+        // Rebuilt here rather than reused: `sets` is declared inside the try
+        // and is not in scope in this catch.
+        exercises: [{ name: selectedRunType, sets: [{
+          reps: Math.round(totalMins) || 1, weight: 0,
+          distKm: Math.round(distKm*100)/100, pace: paceStr, notes,
+        }] }],
+        programDayIndex: null,
+      }, err);
+      showToast(held
+        ? 'Could not reach the System — your run is held and will save itself. Your streak is safe.'
+        : 'Could not save: ' + err.message, held ? 'success' : 'error');
+      if (held) {
+        document.getElementById('run-modal-overlay')?.classList.add('hidden');
+        unlockBodyScroll();
+      }
     }
   }
   btn.disabled = false; btn.textContent = 'Save Run';
@@ -9279,13 +9332,15 @@ document.getElementById('save-workout-btn')?.addEventListener('click', async () 
   const btn = document.getElementById('save-workout-btn');
   btn.disabled = true; btn.textContent = 'Saving…';
   let savedWorkoutRef = null;
+  // Hoisted so the catch can include it when holding an unsent workout.
+  let runSummaryFromLogger = null;
   try {
     // Build runSummary for any run exercises logged in the workout logger
     const runExercise = exercises.find(ex => {
       const def = EXERCISES_ALL[ex.name] || {};
       return isRunExercise(ex.name);
     });
-    const runSummaryFromLogger = runExercise ? (() => {
+    runSummaryFromLogger = runExercise ? (() => {
       const s = runExercise.sets[0];
       const distKm = s.distKm || 0;
       const durationMins = s.durationMins || s.reps || 0;
@@ -9399,8 +9454,20 @@ document.getElementById('save-workout-btn')?.addEventListener('click', async () 
       showToast('Workout saved. Some updates could not be applied — reload to refresh.', 'success');
       try { closeWorkoutModal(false); } catch (_) {}
     } else {
-      console.error('Workout save failed:', err);
-      showToast('The System encountered an error. Try again.', 'error');
+      /* The write itself failed, so nothing exists yet. Hold the session
+         locally rather than losing it: it is retried on every load, and until
+         it lands it protects the streak so an app fault cannot cost the Hunter
+         their run. */
+      console.error('Workout save failed, holding it locally:', err);
+      const held = holdUnsentWorkout({
+        uid: currentUser.uid, displayName: profile.displayName, date, time, exercises,
+        programDayIndex: activeDayIndex ?? null,
+        ...(runSummaryFromLogger ? { isRun: true, runSummary: runSummaryFromLogger } : {}),
+      }, err);
+      showToast(held
+        ? 'Could not reach the System — your workout is held and will save itself. Your streak is safe.'
+        : 'The System encountered an error. Try again.', held ? 'success' : 'error');
+      if (held) { try { closeWorkoutModal(false); } catch (_) {} }
     }
   } finally {
     btn.disabled = false; btn.textContent = '⚔ Complete Quest';
@@ -9463,6 +9530,147 @@ function huntingStateToday(uid) {
    XP: this feeds STREAK_XP_MULT via hunterRank() in the save path only.
    Reconciliation never calls computeStreak, so stored XP is NOT rewritten —
    the new multiplier applies to future sessions only, and no
+/* ── UNSENT WORKOUTS & SELF-SERVICE FREEZE ────────────────────────────────
+   Two protections against the app itself costing a Hunter their streak.
+
+   1. UNSENT WORKOUTS
+      When a workout cannot be written — rules denying the request, offline,
+      Firestore down — the entry is held in localStorage instead of being lost.
+      It is retried on every load, and until it lands it counts as a qualifying
+      day for the streak only. It is never added to `workouts`, so it awards no
+      XP, no PRs, no volume and no session count: it buys time, not progress.
+      When the retry succeeds it becomes an ordinary workout and the held copy
+      is discarded.
+
+      localStorage rather than Firestore because the whole point is that
+      Firestore was unreachable. It is per-device, which is the honest limit of
+      what a client-only fallback can promise.
+
+   2. SELF-SERVICE FREEZE
+      A Hunter blocked by a bug can freeze their own streak rather than waiting
+      for an admin. It writes the same streakFreeze shape the admin panel uses,
+      tagged with who set it, so the two cannot be confused.
+   ───────────────────────────────────────────────────────────────────────── */
+
+function pendingKey() {
+  return 'aura_pending_workouts_' + (currentUser?.uid || 'anon');
+}
+
+function readPendingWorkouts() {
+  try {
+    const raw = localStorage.getItem(pendingKey());
+    const list = raw ? JSON.parse(raw) : [];
+    return Array.isArray(list) ? list : [];
+  } catch (_) { return []; }
+}
+
+function writePendingWorkouts(list) {
+  try { localStorage.setItem(pendingKey(), JSON.stringify(list)); } catch (_) {}
+}
+
+/** Dates with a held, unsent workout — read by computeStreak(). */
+function pendingWorkoutDates() {
+  return new Set(readPendingWorkouts().map(p => p && p.payload && p.payload.date).filter(Boolean));
+}
+
+/** Hold a workout whose write failed. Returns true if it was held. */
+function holdUnsentWorkout(payload, err) {
+  if (!payload || !payload.date) return false;
+  const list = readPendingWorkouts();
+  // One held entry per date+signature, so repeated retries of the same failed
+  // save cannot pile up copies the way the duplicate-write bug did.
+  const sig = JSON.stringify(payload.exercises || []);
+  if (list.some(p => p.payload?.date === payload.date && JSON.stringify(p.payload?.exercises || []) === sig)) {
+    return true;
+  }
+  list.push({
+    id: `${payload.date}_${Date.now()}`,
+    payload,
+    heldAt: new Date().toISOString(),
+    attempts: 0,
+    lastError: String(err?.message || err || 'unknown'),
+  });
+  writePendingWorkouts(list);
+  return true;
+}
+
+/** Retry every held workout. Called on load, after auth and data are ready. */
+async function flushPendingWorkouts() {
+  if (!currentUser) return { sent: 0, held: 0 };
+  const list = readPendingWorkouts();
+  if (!list.length) return { sent: 0, held: 0 };
+
+  const { collection, addDoc, serverTimestamp } =
+    await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js');
+
+  const remaining = [];
+  let sent = 0;
+  for (const entry of list) {
+    try {
+      await addDoc(collection(db, 'workouts'),
+        { ...entry.payload, createdAt: serverTimestamp(), wasHeldOffline: true });
+      sent++;
+    } catch (e) {
+      entry.attempts = (entry.attempts || 0) + 1;
+      entry.lastError = String(e?.message || e);
+      remaining.push(entry);
+    }
+  }
+  writePendingWorkouts(remaining);
+  if (sent) {
+    await loadAllData();
+    showToast(`${sent} held workout${sent === 1 ? '' : 's'} saved — your streak is intact.`, 'success');
+  }
+  return { sent, held: remaining.length };
+}
+
+/** Freeze the signed-in Hunter's own streak from today. */
+async function selfFreezeStreak(reason) {
+  if (!currentUser || !profile) return false;
+  try {
+    const freeze = {
+      from: todayStr(),
+      to: null,
+      active: true,
+      setBy: currentUser.uid,
+      selfService: true,
+      reason: String(reason || 'Blocked by a problem in the app').slice(0, 200),
+    };
+    await writeUserFields({ streakFreeze: freeze });
+    profile.streakFreeze = freeze;
+    showToast('Streak frozen from today. Unfreeze when you are training again.', 'success');
+    return true;
+  } catch (e) {
+    console.error('Self-freeze failed:', e);
+    showToast('Could not freeze: ' + (e?.message || e), 'error');
+    return false;
+  }
+}
+
+/** Close an active self-service freeze, keeping the window as history. */
+async function selfUnfreezeStreak() {
+  if (!currentUser || !profile) return false;
+  const f = profile.streakFreeze;
+  if (!f || !f.active) return false;
+  try {
+    // Close at yesterday: today is still in progress and should be earned.
+    const closed = { ...f, active: false, to: shiftDay(todayStr(), -1) };
+    await writeUserFields({ streakFreeze: closed });
+    profile.streakFreeze = closed;
+    showToast('Freeze lifted. Today counts again.', 'success');
+    renderQuestFeed();
+    return true;
+  } catch (e) {
+    console.error('Unfreeze failed:', e);
+    showToast('Could not unfreeze: ' + (e?.message || e), 'error');
+    return false;
+  }
+}
+
+window.selfFreezeStreak = selfFreezeStreak;
+window.selfUnfreezeStreak = selfUnfreezeStreak;
+window.flushPendingWorkouts = flushPendingWorkouts;
+
 /* Streak = consecutive qualifying days ending today. A day qualifies when the
    Hunter trained, when the programme schedules it as a rest day, when a freeze
    covers it, or — before STREAK_RULES_START only — when a recorded historical
@@ -9494,6 +9702,9 @@ function computeStreak(uid) {
     schedule,
     freeze: record.streakFreeze || null,
     backfill: record.streakBackfill || [],
+    // Only the signed-in Hunter has held workouts: they live in this device's
+    // localStorage, so there is nothing to read for anyone else.
+    pendingDates: isMe ? pendingWorkoutDates() : null,
   });
 }
 function countSince(uid, sinceDate) {

@@ -39,18 +39,28 @@
 const admin = require('firebase-admin');
 const path = require('path');
 
-/* ── the declared windows ────────────────────────────────────────────────
-   Add an entry only when you can say why. `uids: null` means every Hunter. */
-const BACKFILL_PLAN = [
-  {
-    from: '2026-09-04',
-    to: '2026-09-07',
-    uids: null,
-    reason: 'Holiday from Fri 2026-09-04, followed by the Firestore rules '
-          + 'outage on 09-07 when loadAllData() was denied and logging a '
-          + 'workout was impossible.',
-  },
-];
+/* ── GRANDFATHER MODE ────────────────────────────────────────────────────
+   Deliberate owner decision (2026-09-16): every Hunter is brought to the same
+   baseline rather than picking apart which historical gaps were forgotten
+   freezes and which were genuine misses. The data cannot tell those apart, all
+   four accounts started on the same day, and the owner is telling the players
+   directly what changed — so a uniform amnesty is fairer than a judgement
+   call made from incomplete evidence.
+
+   This overrides the "preserve genuine historical breaks" rule, knowingly and
+   only for dates before STREAK_RULES_START. From the boundary onward nothing
+   is forgiven.
+
+   Each Hunter gets ONE window: first session -> the day before the boundary. */
+const GRANDFATHER_ALL = true;
+const GRANDFATHER_REASON =
+  'One-time amnesty at the streak-rules changeover. Historical freezes were '
+  + 'not reliably recorded (holidays, and the Firestore outage when logging '
+  + 'was impossible), so all pre-2026-09-16 gaps are forgiven uniformly.';
+
+/* Windows applied regardless of grandfather mode. Add an entry only when you
+   can say why. `uids: null` means every Hunter. */
+const BACKFILL_PLAN = [];
 
 const STREAK_RULES_START = '2026-09-16';
 const WD = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
@@ -168,16 +178,27 @@ async function main() {
     // apply / dry-run
     const existing = u.streakBackfill || [];
     const haveIds = new Set(existing.map((w) => w.id));
-    const additions = BACKFILL_PLAN
+    const planned = BACKFILL_PLAN
       .filter((p) => !p.uids || p.uids.includes(u.uid))
-      .map((p) => ({
-        id: `${p.from}_${p.to}`,
-        from: p.from,
-        to: p.to,
-        reason: p.reason,
-        source: 'migrate-streak-backfill',
-        appliedAt: today,
-      }))
+      .map((p) => ({ id: `${p.from}_${p.to}`, from: p.from, to: p.to, reason: p.reason }));
+
+    if (GRANDFATHER_ALL) {
+      // One window per Hunter: their first session through the day before the
+      // boundary. Anchoring at the first session rather than an arbitrary date
+      // keeps the walk bounded and means the amnesty cannot reach back further
+      // than the account itself.
+      const first = [...ctx.dates].sort()[0];
+      const last = shift(STREAK_RULES_START, -1);
+      if (first && first <= last) {
+        planned.push({
+          id: `grandfather_${first}_${last}`,
+          from: first, to: last, reason: GRANDFATHER_REASON,
+        });
+      }
+    }
+
+    const additions = planned
+      .map((w) => ({ ...w, source: 'migrate-streak-backfill', appliedAt: today }))
       .filter((w) => !haveIds.has(w.id));
 
     const after = streak({ ...ctx, backfill: existing.concat(additions) }, today);
