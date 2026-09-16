@@ -3265,13 +3265,43 @@
   }
   .directive-days{ font-family:var(--font-mono); font-size:9.5px; color:var(--text-faint); }
   .directive-days.overdue{ color:var(--excess); }
+  /* The countdown is the point of the card, so it is sized like a headline
+     rather than a caption. tabular-nums stops the digits jittering as it ticks. */
+  .directive-countdown{
+    font-family:var(--font-mono); font-size:clamp(11px,2.6vw,13px); font-weight:700;
+    color:var(--brass); font-variant-numeric:tabular-nums; white-space:nowrap;
+  }
+  .directive-countdown.close{ color:var(--growing); }
+  .directive-countdown.overdue{ color:var(--excess); }
+  /* The reason, in the Hunter's own words. Quiet, but never hidden — this is
+     the thing they said they keep losing. */
+  .directive-why{
+    font-size:clamp(11px,2.6vw,13px); line-height:1.45; color:var(--text-dim);
+    font-style:italic; margin:-2px 0 9px; border-left:2px solid rgba(255,214,107,0.3);
+    padding-left:9px; text-wrap:pretty;
+  }
+  /* A second, dimmer mark on the same bar showing how much of the TIME is gone.
+     Progress alone cannot tell you whether you are on pace; the gap between the
+     two can. */
+  .directive-pace-mark{
+    position:absolute; top:-2px; bottom:-2px; width:2px;
+    background:rgba(255,255,255,0.55); border-radius:1px; pointer-events:none;
+  }
+  .directive-foot{
+    display:flex; align-items:center; justify-content:space-between; gap:8px; margin-top:6px;
+  }
+  .directive-pace{ font-family:var(--font-mono); font-size:9.5px; letter-spacing:.04em; }
+  .directive-pace.ahead{ color:var(--growing); }
+  .directive-pace.behind{ color:var(--excess); }
+  .directive-pace.even{ color:var(--text-faint); }
   .directive-title{
     font-family:var(--font-display); font-size:clamp(16px,3.8vw,22px); font-weight:900;
     letter-spacing:.02em; color:var(--text); line-height:1.15; margin-bottom:8px;
     text-wrap:balance;
   }
   .directive-bar-wrap{
-    height:4px; background:rgba(91,168,255,0.10); border-radius:2px; overflow:hidden; margin-bottom:5px;
+    height:4px; background:rgba(91,168,255,0.10); border-radius:2px; margin-bottom:5px;
+    position:relative;   /* anchors the pace mark */
   }
   .directive-bar{
     height:100%; background:linear-gradient(90deg, var(--brass), #FFE9A8);
@@ -3814,7 +3844,8 @@ import { PROGRESSION_CHAINS } from "./progression-chains.js";
 import { getArchetypeChains } from "./archetype-chains.js";
 import { getAutoAchievements } from "./auto-achievements.js";
 import { computeStreakFrom, STREAK_RULES_START, shiftDay } from "./streak.js";
-import { detectReEntry, reEntryPlan, directiveProgress, formatMeasure, DIRECTIVE_METRICS } from "./goals.js";
+import { detectReEntry, reEntryPlan, directiveProgress, formatMeasure, DIRECTIVE_METRICS,
+         countdown, formatCountdown, timeElapsedFraction, buildDirectivesICS } from "./goals.js";
 import {
   getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword,
   onAuthStateChanged, signOut, updateProfile
@@ -6822,6 +6853,16 @@ if (__auraDevEnabled()) {
   // Boots the cinematic layer exactly as the login path does, so the 3D
   // presentation can be QA'd without an authenticated session. Dev flag only;
   // registers the same scenes, writes nothing.
+  /* Renders the directives strip against fixture data so the countdown, the
+     pace mark and the reason can be QA'd without an authenticated session.
+     Dev flag only; touches the in-memory profile and writes nothing. */
+  window.__qaDirectives = (list) => {
+    if (typeof profile !== 'object' || !profile) profile = {};
+    profile.directives = list || [];
+    renderDirectivesStrip();
+    return activeDirectives().length;
+  };
+  window.__qaDirectivesICS = () => buildDirectivesICS(activeDirectives());
   window.__qaBootGL = async () => {
     if (!(await AuraGL.init()) && !AuraGL.enabled) return false;
     AuraGL.register('ambient', buildAmbientScene);
@@ -9912,27 +9953,88 @@ function renderDirectivesStrip() {
   el.innerHTML = list.map(d => {
     const p = directiveProgress(d, ctx);
     const hasBar = p.target > 0;
-    const days = p.daysLeft;
-    const dayLine = days === null ? ''
-      : p.overdue ? '<span class="directive-days overdue">' + Math.abs(days) + 'd past</span>'
-      : '<span class="directive-days">' + days + ' days left</span>';
+    const elapsed = timeElapsedFraction(d) * 100;
+
+    /* On pace or not. Only meaningful when there is both a measure and a date:
+       without one of them there is nothing to compare, and a made-up verdict is
+       worse than none. */
+    let paceHTML = '';
+    if (hasBar && d.targetDate && !p.overdue) {
+      const diff = p.pct - elapsed;
+      const cls = diff >= 5 ? 'ahead' : diff <= -5 ? 'behind' : 'even';
+      const word = cls === 'ahead' ? 'AHEAD OF PACE'
+                 : cls === 'behind' ? 'BEHIND PACE' : 'ON PACE';
+      paceHTML = '<span class="directive-pace ' + cls + '">' + word + '</span>';
+    }
+
     return '<div class="directive-card" data-id="' + escapeHtml(d.id || '') + '">' +
       '<div class="directive-head">' +
-        '<span class="directive-eyebrow">◈ DIRECTIVE</span>' + dayLine +
+        '<span class="directive-eyebrow">◈ DIRECTIVE</span>' +
+        (d.targetDate
+          ? '<span class="directive-countdown" data-deadline="' + escapeHtml(d.targetDate) + '"></span>'
+          : '') +
       '</div>' +
       '<div class="directive-title">' + escapeHtml(d.title) + '</div>' +
+      (d.why ? '<div class="directive-why">' + escapeHtml(d.why) + '</div>' : '') +
       (hasBar
-        ? '<div class="directive-bar-wrap"><div class="directive-bar" style="width:' + p.pct.toFixed(1) + '%"></div></div>' +
-          '<div class="directive-measure">' +
-            formatMeasure(p.current, p.metric) + ' / ' + formatMeasure(p.target, p.metric) +
-            ' ' + escapeHtml(p.unit) + '</div>'
-        : '<div class="directive-measure">' + escapeHtml(d.note || 'No measure — the date is the target.') + '</div>') +
+        ? '<div class="directive-bar-wrap">' +
+            '<div class="directive-bar" style="width:' + p.pct.toFixed(1) + '%"></div>' +
+            (d.targetDate
+              ? '<div class="directive-pace-mark" style="left:' + elapsed.toFixed(1) + '%" ' +
+                'title="' + Math.round(elapsed) + '% of the time is gone"></div>'
+              : '') +
+          '</div>' +
+          '<div class="directive-foot">' +
+            '<span class="directive-measure">' +
+              formatMeasure(p.current, p.metric) + ' / ' + formatMeasure(p.target, p.metric) +
+              ' ' + escapeHtml(p.unit) + '</span>' + paceHTML +
+          '</div>'
+        : '<div class="directive-measure">' +
+            escapeHtml(d.note || 'No measure — the date is the target.') + '</div>') +
     '</div>';
   }).join('');
 
   el.querySelectorAll('.directive-card').forEach(card =>
     card.addEventListener('click', () => openDirectiveEditor(card.dataset.id)));
+
+  tickDirectiveCountdowns();
+  startDirectiveClock();
 }
+
+/* ── THE LIVE DEADLINE ─────────────────────────────────────────────────────
+   A number that only changes on reload is a fact about the past. This one
+   moves while the Hunter is looking at it, which is the whole point of asking
+   for a deadline rather than a date. */
+
+let _directiveClock = null;
+
+function tickDirectiveCountdowns() {
+  const nodes = document.querySelectorAll('.directive-countdown[data-deadline]');
+  if (!nodes.length) return false;
+  nodes.forEach(n => {
+    const c = countdown(n.dataset.deadline);
+    if (!c) return;
+    n.textContent = formatCountdown(c);
+    n.classList.toggle('overdue', c.past);
+    n.classList.toggle('close', !c.past && c.days <= 7);
+  });
+  return true;
+}
+
+function startDirectiveClock() {
+  clearInterval(_directiveClock);
+  /* 30s, not 1s: the format only resolves to minutes inside the final day, so a
+     faster tick would repaint identical text and cost battery for nothing. */
+  _directiveClock = setInterval(() => {
+    if (!tickDirectiveCountdowns()) { clearInterval(_directiveClock); _directiveClock = null; }
+  }, 30000);
+}
+
+/* A backgrounded tab throttles timers, so the countdown can be stale by minutes
+   when the Hunter comes back to it. Re-tick the moment it is visible again. */
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden) tickDirectiveCountdowns();
+});
 
 function openDirectiveEditor(id) {
   const existing = activeDirectives().find(d => d.id === id) || null;
@@ -9948,6 +10050,13 @@ function openDirectiveEditor(id) {
       '<p style="font-size:12px;color:var(--text-dim);margin:0 0 14px;">Name the thing. The System will track it against your record.</p>' +
       '<div class="field"><label>Directive</label>' +
         '<input id="dir-title" maxlength="60" placeholder="Run a half marathon" value="' + escapeHtml(existing?.title || '') + '" /></div>' +
+      /* The reason, asked for explicitly. A Hunter who can see the date but not
+         why they set it has the deadline without the motive, which is the state
+         this whole screen exists to prevent. */
+      '<div class="field"><label>Why you started <span style="color:var(--text-faint);">(you will be shown this)</span></label>' +
+        '<textarea id="dir-why" maxlength="240" rows="2" placeholder="Because I want to look her in the eye knowing I did the work." ' +
+        'style="width:100%;background:var(--card-2);color:var(--text);border:1px solid rgba(91,168,255,0.18);border-radius:6px;padding:8px;font:inherit;font-size:13px;resize:vertical;">' +
+        escapeHtml(existing?.why || '') + '</textarea></div>' +
       '<div class="field"><label>Target date <span style="color:var(--text-faint);">(optional)</span></label>' +
         '<input id="dir-date" type="date" value="' + escapeHtml(existing?.targetDate || '') + '" /></div>' +
       '<div class="field"><label>Measure</label>' +
@@ -9960,11 +10069,17 @@ function openDirectiveEditor(id) {
         (existing ? '<button class="btn btn-sm" id="dir-delete" style="flex:1;color:var(--excess);">Remove</button>'
                   : '<button class="btn btn-sm" id="dir-cancel" style="flex:1;">Cancel</button>') +
       '</div>' +
+      '<button class="btn btn-sm" id="dir-ics" style="width:100%;margin-top:8px;">' +
+        '📅 Remind me on my phone</button>' +
+      '<p style="font-size:10.5px;color:var(--text-faint);margin:7px 0 0;line-height:1.45;">' +
+        'Adds your dated directives to your phone\'s calendar, with alerts 30 days, ' +
+        '7 days and 1 day out. The app cannot notify you on its own — your calendar can.</p>' +
     '</div>';
   getOverlayHost().appendChild(el);
   const close = () => { el.remove(); unlockBodyScroll(); };
   el.addEventListener('click', e => { if (e.target === el) close(); });
   el.querySelector('#dir-cancel')?.addEventListener('click', close);
+  el.querySelector('#dir-ics')?.addEventListener('click', exportDirectivesToCalendar);
 
   el.querySelector('#dir-save').addEventListener('click', async () => {
     const title = el.querySelector('#dir-title').value.trim();
@@ -9974,6 +10089,7 @@ function openDirectiveEditor(id) {
     const entry = {
       id: existing?.id || ('dir_' + Date.now()),
       title,
+      why: el.querySelector('#dir-why').value.trim().slice(0, 240),
       targetDate: el.querySelector('#dir-date').value || null,
       metric,
       target,
@@ -10005,6 +10121,43 @@ function openDirectiveEditor(id) {
 }
 
 window.openDirectiveEditor = openDirectiveEditor;
+
+/* ── REMINDERS THE APP CANNOT SEND ─────────────────────────────────────────
+   Auramaxxing has no service worker, so it cannot push a notification: it can
+   only remind a Hunter who has already opened it, which is precisely the
+   Hunter who does not need reminding.
+
+   The phone's own calendar has no such limit. Exporting the directive there
+   hands the reminding to something that already runs in the background, works
+   on the lock screen, and survives the app being closed for a fortnight. The
+   reason travels with it, so what surfaces is not a bare date. */
+function exportDirectivesToCalendar() {
+  const list = activeDirectives();
+  const ics = buildDirectivesICS(list);
+  if (!ics) {
+    showToast('Give a directive a target date first — that is what gets scheduled.', 'error');
+    return;
+  }
+  try {
+    const blob = new Blob([ics], { type: 'text/calendar;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'auramaxxing-directives.ics';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    // Revoke late: iOS Safari hands the file to the Calendar app asynchronously
+    // and a URL revoked too early arrives empty.
+    setTimeout(() => URL.revokeObjectURL(url), 60000);
+    const n = (ics.match(/BEGIN:VEVENT/g) || []).length;
+    showToast(`${n} directive${n === 1 ? '' : 's'} sent to your calendar. Open the file to add it.`, 'success');
+  } catch (e) {
+    console.error('Calendar export failed:', e);
+    showToast('Could not build the calendar file: ' + (e?.message || e), 'error');
+  }
+}
+window.exportDirectivesToCalendar = exportDirectivesToCalendar;
 
 /* Streak = consecutive qualifying days ending today. A day qualifies when the
    Hunter trained, when the programme schedules it as a rest day, when a freeze

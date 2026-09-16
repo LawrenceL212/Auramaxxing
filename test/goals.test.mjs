@@ -2,6 +2,7 @@
 
 import {
   detectReEntry, reEntryPlan, directiveProgress, formatMeasure, REENTRY_GAP_DAYS,
+  countdown, formatCountdown, deadlineMs, timeElapsedFraction, buildDirectivesICS,
 } from '../goals.js';
 
 let pass = 0, fail = 0;
@@ -86,6 +87,74 @@ check('a cut that overshoots still caps at 100',
 
 check('formatMeasure respects each metric\'s precision',
   [formatMeasure(12.456, 'longest_run_km'), formatMeasure(3.4, 'training_days')], ['12.46', '3']);
+
+// ── the live deadline ─────────────────────────────────────────────────────
+// The deadline is the END of the target day: on race morning it is not missed.
+const NOON = (d) => new Date(d + 'T12:00:00').getTime();
+
+check('a date with no time still resolves to a deadline',
+  deadlineMs('2026-10-01') > NOON('2026-10-01'), true);
+check('no target date -> no countdown', countdown(null), null);
+check('mid-morning on the target day is not past',
+  countdown('2026-10-01', new Date('2026-10-01T09:00:00')).past, false);
+check('and reads in hours, not a flat zero',
+  countdown('2026-10-01', new Date('2026-10-01T09:00:00')).days, 0);
+check('the following morning IS past',
+  countdown('2026-10-01', new Date('2026-10-02T09:00:00')).past, true);
+check('days remaining counts whole days',
+  countdown('2026-10-01', NOON('2026-09-16')).days, 15);
+check('hours fill the rest of the day',
+  countdown('2026-10-01', NOON('2026-09-16')).hours, 11);
+
+// precision rises as the date closes in
+check('far out, days alone',
+  formatCountdown(countdown('2026-12-25', NOON('2026-09-16'))), '100 days');
+check('inside a month, days and hours',
+  formatCountdown(countdown('2026-10-01', NOON('2026-09-16'))), '15 days 11h');
+check('the last full day',
+  formatCountdown(countdown('2026-10-01', new Date('2026-09-30T13:00:00'))), '1 day 10h');
+check('the final afternoon counts in hours',
+  formatCountdown(countdown('2026-10-01', new Date('2026-10-01T18:30:00'))), '5h 29m left');
+check('a missed date says how long ago',
+  formatCountdown(countdown('2026-09-01', NOON('2026-09-16'))), '14 days past');
+
+check('elapsed fraction runs from `since` to the deadline',
+  Math.round(timeElapsedFraction(
+    { since: '2026-09-01', targetDate: '2026-10-01' }, NOON('2026-09-16')) * 100), 50);
+check('elapsed fraction is clamped, never negative',
+  timeElapsedFraction({ since: '2026-09-01', targetDate: '2026-10-01' }, NOON('2026-08-01')), 0);
+check('no target date -> nothing elapsed',
+  timeElapsedFraction({ since: '2026-09-01' }, NOON('2026-09-16')), 0);
+
+// ── calendar export ───────────────────────────────────────────────────────
+const ICS = buildDirectivesICS([
+  { id: 'd1', title: 'Run a half marathon', targetDate: '2026-11-01',
+    metric: 'longest_run_km', target: 21.1, why: 'Because I said I would; keep, the promise' },
+  { id: 'd2', title: 'No date, skipped', metric: 'none' },
+], new Date('2026-09-16T12:00:00Z'));
+
+check('only dated directives are exported',
+  (ICS.match(/BEGIN:VEVENT/g) || []).length, 1);
+check('an undated directive is left out', ICS.includes('No date'), false);
+check('the event is all-day and DTEND is exclusive',
+  [ICS.includes('DTSTART;VALUE=DATE:20261101'), ICS.includes('DTEND;VALUE=DATE:20261102')], [true, true]);
+check('semicolons and commas in the reason are escaped, not left to break the field',
+  ICS.includes('would\\; keep\\, the promise'), true);
+check('the reason travels into the calendar',
+  ICS.includes('Why you started:'), true);
+check('one alarm per configured lead time',
+  (ICS.match(/BEGIN:VALARM/g) || []).length, 3);
+check('alarms use relative day triggers',
+  [ICS.includes('TRIGGER:-P30D'), ICS.includes('TRIGGER:-P7D'), ICS.includes('TRIGGER:-P1D')],
+  [true, true, true]);
+check('CRLF line endings, as RFC 5545 requires',
+  ICS.includes('\r\n') && !/[^\r]\n/.test(ICS), true);
+check('no line exceeds the 75-character fold width',
+  ICS.split('\r\n').every((l) => l.length <= 75), true);
+check('the calendar is closed properly',
+  ICS.trim().endsWith('END:VCALENDAR'), true);
+check('nothing dated -> no file at all',
+  buildDirectivesICS([{ title: 'x' }]), '');
 
 console.log(out.join('\n'));
 console.log(`\n${pass} passed, ${fail} failed`);

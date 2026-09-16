@@ -159,3 +159,150 @@ export function formatMeasure(value, metric) {
   const n = Number(value) || 0;
   return m.decimals ? n.toFixed(m.decimals) : String(Math.round(n));
 }
+
+/* ── THE LIVE DEADLINE ────────────────────────────────────────────────────
+   "45 days left" is a fact. It is not a deadline, because it reads the same
+   all day and so never moves while you are looking at it.
+
+   The deadline is the END of the target day, not its start: a race is run on
+   that date, so at 08:00 on race day you have not missed it. That also means
+   the last day reads in hours rather than collapsing to a flat zero. */
+
+export function deadlineMs(targetDate) {
+  if (!targetDate) return null;
+  const t = new Date(targetDate + 'T23:59:59.999');
+  return Number.isNaN(t.getTime()) ? null : t.getTime();
+}
+
+/**
+ * Time remaining, broken down for display.
+ * @returns { days, hours, minutes, totalMs, past } or null with no target date
+ */
+export function countdown(targetDate, now = Date.now()) {
+  const end = deadlineMs(targetDate);
+  if (end === null) return null;
+  const totalMs = end - (now instanceof Date ? now.getTime() : now);
+  const abs = Math.abs(totalMs);
+  return {
+    totalMs,
+    past: totalMs < 0,
+    days: Math.floor(abs / 86400000),
+    hours: Math.floor((abs % 86400000) / 3600000),
+    minutes: Math.floor((abs % 3600000) / 60000),
+  };
+}
+
+/**
+ * How a countdown should read. Precision rises as the date closes in, because
+ * "3 weeks" is the honest unit at three weeks and a uselessly vague one on the
+ * final afternoon.
+ */
+export function formatCountdown(c) {
+  if (!c) return '';
+  if (c.past) return c.days === 0 ? 'today' : c.days + (c.days === 1 ? ' day past' : ' days past');
+  if (c.days === 0) return c.hours > 0 ? c.hours + 'h ' + c.minutes + 'm left' : c.minutes + 'm left';
+  if (c.days === 1) return '1 day ' + c.hours + 'h';
+  if (c.days <= 30) return c.days + ' days ' + c.hours + 'h';
+  return c.days + ' days';
+}
+
+/** Fraction of the run from `since` to the target date already elapsed (0–1). */
+export function timeElapsedFraction(d, now = Date.now()) {
+  const end = deadlineMs(d?.targetDate);
+  if (end === null) return 0;
+  const start = new Date((d.since || d.createdAt || '') + 'T00:00:00').getTime();
+  if (Number.isNaN(start) || end <= start) return 0;
+  const n = now instanceof Date ? now.getTime() : now;
+  return Math.max(0, Math.min(1, (n - start) / (end - start)));
+}
+
+/* ── CALENDAR EXPORT ──────────────────────────────────────────────────────
+   The app can only remind a Hunter who opens the app, which is exactly the
+   Hunter who does not need reminding. The phone's own calendar reminds the one
+   who has not opened it in a week, so the directive is exported there rather
+   than the app pretending it can reach out on its own. */
+
+/** RFC 5545 escaping for TEXT values. */
+function icsText(s) {
+  return String(s ?? '')
+    .replace(/\\/g, '\\\\').replace(/;/g, '\\;')
+    .replace(/,/g, '\\,').replace(/\r?\n/g, '\\n');
+}
+
+/** Fold to 75 octets per RFC 5545, continuing with a leading space. */
+function icsFold(line) {
+  if (line.length <= 75) return line;
+  const parts = [line.slice(0, 75)];
+  let rest = line.slice(75);
+  while (rest.length > 74) { parts.push(' ' + rest.slice(0, 74)); rest = rest.slice(74); }
+  if (rest) parts.push(' ' + rest);
+  return parts.join('\r\n');
+}
+
+const icsDate = (d) => String(d).replace(/-/g, '');
+
+function icsStamp(now) {
+  const d = now instanceof Date ? now : new Date(now);
+  return d.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
+}
+
+/** Day after `dateStr` — an all-day VEVENT's DTEND is exclusive. */
+function nextDay(dateStr) {
+  const d = new Date(dateStr + 'T12:00:00');
+  d.setDate(d.getDate() + 1);
+  return [d.getFullYear(), String(d.getMonth() + 1).padStart(2, '0'),
+          String(d.getDate()).padStart(2, '0')].join('');
+}
+
+/** Lead times for the alarms on each directive, in days before the date. */
+export const ICS_ALARMS = [30, 7, 1];
+
+/**
+ * An .ics calendar for every directive that has a target date.
+ *
+ * The reason the Hunter wrote down travels into the event description, because
+ * the point of the reminder is not the date — they know the date — it is being
+ * shown again why they set it.
+ *
+ * @returns iCalendar text, or '' if nothing has a date to export.
+ */
+export function buildDirectivesICS(directives, now = Date.now()) {
+  const dated = (directives || []).filter((d) => d && d.title && d.targetDate);
+  if (!dated.length) return '';
+
+  const lines = [
+    'BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Auramaxxing//Directives//EN',
+    'CALSCALE:GREGORIAN', 'METHOD:PUBLISH',
+  ];
+
+  for (const d of dated) {
+    /* Escaped individually, then joined on the literal two-character \n that
+       RFC 5545 uses for a line break inside a TEXT value — a reason with a
+       comma or semicolon in it would otherwise terminate the field early and
+       corrupt the event. */
+    const why = d.why ? 'Why you started: ' + icsText(d.why) : '';
+    const targetLine = Number(d.target) > 0
+      ? icsText('Target: ' + d.target + ' ' +
+          (DIRECTIVE_METRICS[d.metric] || DIRECTIVE_METRICS.none).unit)
+      : '';
+    const desc = [why, targetLine, 'Set in Auramaxxing.'].filter(Boolean).join('\\n');
+
+    lines.push('BEGIN:VEVENT');
+    lines.push('UID:' + icsText(d.id || ('dir-' + icsDate(d.targetDate))) + '@auramaxxing');
+    lines.push('DTSTAMP:' + icsStamp(now));
+    lines.push('DTSTART;VALUE=DATE:' + icsDate(d.targetDate));
+    lines.push('DTEND;VALUE=DATE:' + nextDay(d.targetDate));
+    lines.push('SUMMARY:' + icsText('◈ ' + d.title));
+    lines.push('DESCRIPTION:' + desc);
+    lines.push('TRANSP:TRANSPARENT');
+    for (const days of ICS_ALARMS) {
+      lines.push('BEGIN:VALARM', 'ACTION:DISPLAY',
+        'DESCRIPTION:' + icsText(days + ' days: ' + d.title + (d.why ? ' — ' + d.why : '')),
+        'TRIGGER:-P' + days + 'D', 'END:VALARM');
+    }
+    lines.push('END:VEVENT');
+  }
+
+  lines.push('END:VCALENDAR');
+  return lines.map(icsFold).join('\r\n') + '\r\n';
+}
