@@ -9795,6 +9795,8 @@ function huntingStateToday(uid) {
    XP: this feeds STREAK_XP_MULT via hunterRank() in the save path only.
    Reconciliation never calls computeStreak, so stored XP is NOT rewritten —
    the new multiplier applies to future sessions only, and no
+   RECONCILE_VERSIONS bump is required. */
+
 /* ── UNSENT WORKOUTS & SELF-SERVICE FREEZE ────────────────────────────────
    Two protections against the app itself costing a Hunter their streak.
 
