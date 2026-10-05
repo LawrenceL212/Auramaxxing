@@ -153,10 +153,14 @@ export const FACE_SHAPES = ['oval', 'round', 'rectangular', 'square', 'triangula
 export const FACE_SLIDERS = ['face.full', 'face.wide', 'face.long', 'nose.wide', 'nose.long', 'nose.hump', 'nose.size',
   'nose.nostrils', 'nose.tip', 'mouth.wide', 'lips.full', 'eyes.size', 'eyes.slant', 'eyes.fold', 'ears.size', 'brows.up', 'neck.wide'];
 export const ANCESTRY = ['african', 'asian', 'caucasian'];
+// The manhwa art style, applied to every face before the player's own sliders (which still move each
+// feature either way from here)
+export const STYLE_FACE = { 'eyes.size': 0.3, 'nose.size': -0.3, 'nose.wide': -0.25, 'mouth.wide': -0.15, 'lips.full': -0.15, 'neck.wide': -0.2 };
 
 /** ctx: { dev, bodyType, heightCm?, bmi?, bodyFat?, checkin?, appearance? }
  *  dev: muscleDevelopment(); bmi/bodyFat: from bodyBuild(); checkin: the latest check-in (tape, cm)
  *  appearance: { ancestry?: { african, asian, caucasian } (any scale), face?: one of FACE_SHAPES,
+ *                femininity?: 0 (a boy's face) .. 1 (a girl's face), either body; default follows the body,
  *                sliders?: { name: -1..1 } }
  *  Returns morph weights; every morph the file knows is present (0 when unused). */
 export function hunterMorphs({ dev = {}, bodyType = 'male', heightCm = null, bmi = null, bodyFat = null, checkin = null, appearance = {} } = {}) {
@@ -194,9 +198,15 @@ export function hunterMorphs({ dev = {}, bodyType = 'male', heightCm = null, bmi
   const tot = ANCESTRY.reduce((a, k) => a + Math.max(0, Number(anc[k]) || 0), 0);
   for (const k of ANCESTRY) w[k] = tot > 0 ? round3(Math.max(0, Number(anc[k]) || 0) / tot) : round3(1 / 3);
   for (const s of FACE_SHAPES) w['face.' + s] = appearance.face === s ? 0.7 : 0;
+  if (!appearance.face) w['face.invertedtriangular'] = 0.35;   // the style's default: a sharp jaw
+  // the face can be a boy's or a girl's on either body: face.swap morphs toward the other body type's face
+  const female = bodyType === 'female';
+  const fem = appearance.femininity == null ? (female ? 1 : 0) : clamp(Number(appearance.femininity) || 0, 0, 1);
+  w['face.swap'] = round3(female ? 1 - fem : fem);
   const sl = appearance.sliders || {};
   for (const k of FACE_SLIDERS) {
-    const v = clamp(Number(sl[k]) || 0, -1, 1);
+    // the art style's face sits on top of the player's sliders: bigger eyes, a finer nose, a tapered jaw
+    const v = clamp((Number(sl[k]) || 0) + (STYLE_FACE[k] || 0), -1, 1);
     w[k + '+'] = round3(Math.max(0, v));
     w[k + '-'] = round3(Math.max(0, -v));
   }

@@ -95,7 +95,9 @@ wire further screens the same way, through the existing AuraGL runtime. Presenta
 The character card shows the player's own 3D body (`art/hunter.js` loads `art/models/hunter-<bodyType>.glb`;
 `art/hunter-view.js` draws it in its own small canvas and holds the look creator). Its shape is
 `hunterMorphs()` in physique.js, from the same training, height, weight and check-in data as the 2D
-map. The look (skin, hair, eyes, heritage, face) is kept in localStorage (`auramaxx.hunterLook.v1:<uid>`),
+map. It is drawn in the app's manhwa style (one small camera-lit shader plus ink outlines in hunter.js,
+no scene lights) and wears a street outfit, swapped for training kit in the Muscles view. The look
+(skin, hair, eyes, heritage, face, boy or girl face on either body) is kept in localStorage (`auramaxx.hunterLook.v1:<uid>`),
 not Firestore: a profile field for it needs the owner's OK. Any failure falls back to the 2D map.
 
 ### Firestore collections

@@ -275,5 +275,45 @@ for j in range(13):
 tail = np.maximum(tube(pts, radii), -(D - 0.02))
 styles['ponytail'] = mesh('ponytail', smin(cap(0.06 + 0.05 * TW, clumps=0.08), tail, 0.06))
 
+# messy: the manhwa hunter's hair. Pointed clumps grow from the scalp and fall forward over the brow,
+# down past the ears and over the nape, on a close cap, all blended into one surface
+def clump_field(n_clumps, length, seed, fringe=1.0):
+    rng = np.random.default_rng(seed)
+    near = np.linalg.norm(G - np.array([0, eye_y + 0.6, head_c[2]]), axis=-1) < 2.3   # only near the head
+    Q = G[near]
+    f = np.full(len(Q), 9.0, np.float32)
+    roots = [v for v in head_vs if P[v][1] > hairline(P[v]) + 0.05]
+    pick = rng.choice(len(roots), size=min(len(roots), n_clumps * 4), replace=False)
+    chosen = []
+    for k in pick:   # spread the roots out over the scalp
+        q = P[roots[k]]
+        if all(np.linalg.norm(q - c) > 0.28 for c in chosen): chosen.append(q)
+        if len(chosen) >= n_clumps: break
+    for q in chosen:
+        nrm = bodyN[bkd.find(Vector(q))[1]]
+        fz = q[2] - head_c[2]
+        front = smoothstep(0.1, 0.8, fz)
+        # flow: forward and down over the brow, down the sides and back, swept a little to one side
+        flow = np.array([0.25 * np.sign(q[0] + 0.15) * (1 - front) + 0.18, -1.0, 1.1 * front - 0.6 * (1 - front)])
+        d = nrm * 0.3 + flow / np.linalg.norm(flow)
+        d /= np.linalg.norm(d)
+        L = length * rng.uniform(0.75, 1.25) * (0.75 + 0.35 * front * fringe)
+        r0 = rng.uniform(0.2, 0.27)
+        a = q + nrm * 0.02
+        b = a + d * L * 0.55
+        c = b + (d + np.array([0, -0.55, 0])) / np.linalg.norm(d + np.array([0, -0.55, 0])) * L * 0.45
+        for (p0, p1, ra, rb) in ((a, b, r0, r0 * 0.6), (b, c, r0 * 0.6, 0.015)):
+            ab = p1 - p0
+            h = np.clip(((Q - p0) @ ab) / (ab @ ab), 0, 1)
+            dd = np.linalg.norm(Q - p0 - h[:, None] * ab, axis=1) - (ra + (rb - ra) * h)
+            f = smin(f, dd.astype(np.float32), 0.05)
+    out = np.full(G.shape[:3], 9.0, np.float32)
+    out[near] = f
+    return out
+messy = smin(cap(0.12 + 0.14 * TW, clumps=0.25, ears=False), clump_field(70, 0.75, 3), 0.09)
+styles['messy'] = mesh('messy', np.maximum(messy, -(D - 0.012)))
+spiky = smin(cap(0.06 + 0.08 * TW, clumps=0.2), clump_field(55, 0.55, 11, fringe=0.4), 0.05)
+styles['spiky'] = mesh('spiky', np.maximum(spiky, -(D - 0.012)))
+
 for name, (co, src, fl, uv) in styles.items():
     make('hair_' + name, src, fl, co=co, local=True, uv=uv)

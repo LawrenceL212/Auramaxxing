@@ -16,7 +16,7 @@ import { FACE_SHAPES, FACE_SLIDERS, ANCESTRY } from '../physique.js';
 export const SKIN_TONES = ['#f6dccb', '#efcfb5', '#e2b897', '#d4a27c', '#c8956e', '#b57f58', '#a06b47', '#8a583a', '#71452c', '#5b3622', '#45291a', '#331d12'];
 export const HAIR_COLOURS = ['#141010', '#2a1d16', '#4a3020', '#7a5434', '#7c3a1e', '#b5622e', '#c9a46a', '#e2d6bd', '#8d8a86', '#e8e6e2'];
 export const EYE_COLOURS = ['#2a1a10', '#5a3b22', '#7a6236', '#4f7a4a', '#4a74a8', '#7d8a96'];
-const HAIR_NAMES = { none: 'Bald', buzz: 'Buzz', short: 'Short', quiff: 'Quiff', curly: 'Curly', afro: 'Afro', medium: 'Medium', long: 'Long', ponytail: 'Ponytail' };
+const HAIR_NAMES = { none: 'Bald', messy: 'Messy', spiky: 'Spiky', buzz: 'Buzz', short: 'Short', quiff: 'Quiff', curly: 'Curly', afro: 'Afro', medium: 'Medium', long: 'Long', ponytail: 'Ponytail' };
 const FACE_NAMES = { oval: 'Oval', round: 'Round', rectangular: 'Long', square: 'Square', triangular: 'Triangle', invertedtriangular: 'Heart', diamond: 'Diamond' };
 const SLIDER_NAMES = {
   'face.full': 'Cheeks', 'face.wide': 'Face width', 'face.long': 'Face length', 'nose.wide': 'Nose width', 'nose.long': 'Nose length',
@@ -27,8 +27,8 @@ const SLIDER_NAMES = {
 const ANCESTRY_NAMES = { african: 'African', asian: 'East Asian', caucasian: 'European' };
 
 export function defaultLook(bodyType) {
-  return { skin: '#c8956e', hair: '#2a1d16', hairStyle: bodyType === 'female' ? 'long' : 'short', eyes: '#5a3b22',
-    ancestry: { african: 1, asian: 1, caucasian: 1 }, face: null, sliders: {} };
+  return { skin: '#e6c4ab', hair: '#16141a', hairStyle: bodyType === 'female' ? 'long' : 'messy', eyes: '#5a3b22',
+    ancestry: { african: 1, asian: 1, caucasian: 1 }, face: null, femininity: bodyType === 'female' ? 1 : 0, sliders: {} };
 }
 
 let cssDone = false;
@@ -212,6 +212,8 @@ export async function openLookCreator({ bodyType, look, morphs, onSave }) {
     <div class="lc-sec"><h4>Eyes</h4>${swatches('eyes', EYE_COLOURS, true)}</div>
     <div class="lc-sec"><h4>Heritage</h4>${ANCESTRY.map((k) => range('ancestry', k, ANCESTRY_NAMES[k], 0, 1, 0.05, L.ancestry?.[k] ?? 1)).join('')}
       <p class="lc-note">Blends the bone structure of the face and body. Mix them for any background.</p></div>
+    <div class="lc-sec"><h4>Face</h4>${range('root', 'femininity', 'Boy ↔ Girl', 0, 1, 0.05, L.femininity ?? (bodyType === 'female' ? 1 : 0))}
+      <p class="lc-note">Either face on either body.</p></div>
     <div class="lc-sec"><h4>Face shape</h4>${chips('face', [null, ...FACE_SHAPES], { null: 'Average', ...FACE_NAMES })}</div>
     <div class="lc-sec"><h4>Features</h4>${FACE_SLIDERS.map((k) => range('sliders', k, SLIDER_NAMES[k] || k, -1, 1, 0.05, L.sliders?.[k] ?? 0)).join('')}</div>
     <div class="lc-sec"><button class="lc-btn" data-act="reset">Reset to average</button>
@@ -233,7 +235,7 @@ export async function openLookCreator({ bodyType, look, morphs, onSave }) {
     if (e.target.closest('[data-act=reset]')) {
       const keep = { skin: L.skin, hair: L.hair, hairStyle: L.hairStyle, eyes: L.eyes };
       L = { ...defaultLook(bodyType), ...keep };
-      panel.querySelectorAll('input[type=range]').forEach((r) => { r.value = r.dataset.g === 'ancestry' ? 1 : 0; });
+      panel.querySelectorAll('input[type=range]').forEach((r) => { r.value = r.dataset.g === 'ancestry' ? 1 : r.dataset.g === 'root' ? L[r.dataset.k] : 0; });
       panel.querySelectorAll('button[data-k=face]').forEach((x) => x.classList.toggle('on', x.dataset.v === 'null'));
       refresh(true);
     }
@@ -241,6 +243,10 @@ export async function openLookCreator({ bodyType, look, morphs, onSave }) {
   panel.addEventListener('input', (e) => {
     const t = e.target;
     if (t.type === 'color') { L[t.dataset.k] = t.value; t.parentElement.querySelectorAll('button').forEach((x) => x.classList.remove('on')); refresh(false); }
-    if (t.type === 'range') { L[t.dataset.g] = { ...(L[t.dataset.g] || {}), [t.dataset.k]: Number(t.value) }; refresh(true); }
+    if (t.type === 'range') {
+      if (t.dataset.g === 'root') L[t.dataset.k] = Number(t.value);
+      else L[t.dataset.g] = { ...(L[t.dataset.g] || {}), [t.dataset.k]: Number(t.value) };
+      refresh(true);
+    }
   });
 }

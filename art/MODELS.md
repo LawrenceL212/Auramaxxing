@@ -78,7 +78,7 @@ A model an artist sculpts by hand will beat it; when one arrives, register it wi
 Blender from `models/src/hunter/build.py` on the MakeHuman base mesh and targets, which are CC0
 (MakeHuman 1.x assets licence, section C; no credit required, credited here anyway). The body carries
 73 morphs: training (`dev.*`), build, height, tape measurements, heritage and face. Eyes, brows,
-clothes and eight hair styles ride on it by `_src` and carry no morphs of their own. Hair is a signed
+a street outfit (`outfit.py`), training kit and ten hair styles ride on it by `_src` and carry no morphs of their own. Hair is a signed
 distance field meshed with marching cubes (`hair.py`). To rebuild (about 30 seconds per body):
 
 ```bash

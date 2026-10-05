@@ -198,6 +198,20 @@ def build(sex):
     # the body type's base: the neutral mesh plus an even ancestry mix of that sex
     P = BASE + sum(T(f'macrodetails/{e}-{sex}-young') for e in ('african', 'asian', 'caucasian')) / 3
     deltas = collections.OrderedDict((k, sum(T(t) * w for t, w in v)) for k, v in table.items())
+    # face.swap: the other body type's face on this head (a boyish face on the female body, a girlish one
+    # on the male), at this head's own size and place; it fades out down the neck
+    other = 'female' if sex == 'male' else 'male'
+    Po = BASE + sum(T(f'macrodetails/{e}-{other}-young') for e in ('african', 'asian', 'caucasian')) / 3
+    hj = joint('head'); nk = joint('neck'); mo = joint('mouth')
+    def head_frame(Q):
+        c = Q[hj].mean(0); y0, y1 = Q[nk].mean(0)[1], Q[mo].mean(0)[1]
+        sel = Q[:13380][:, 1] > y1 - 0.2
+        r = np.sqrt(((Q[:13380][sel] - c) ** 2).sum(1).mean())
+        return c, r, y0, y1
+    c, r, y0, y1 = head_frame(P); co_, ro, _, _ = head_frame(Po)
+    t_ = np.clip((P[:, 1] - (y0 + 0.25 * (y1 - y0))) / (0.75 * (y1 - y0)), 0, 1)
+    wgt = t_ * t_ * (3 - 2 * t_)
+    deltas['face.swap'] = ((Po - co_) * (r / ro) - (P - c)) * wgt[:, None]
     for d in deltas.values():
         d[np.abs(d).max(1) < 2e-3] = 0      # under 0.2 mm: drop, so the file stores only what moves (sparse)
 
@@ -337,6 +351,10 @@ def build(sex):
         cut('top', lambda q: np.maximum.reduce([q[:, 1] - (chest_y + 0.5), (chest_y - 0.62) - q[:, 1], np.abs(q[:, 0]) - armx]))
 
     exec(open(os.path.join(HERE, 'hair.py')).read(), {**globals(), **locals()})
+    ns = {**globals(), **locals()}
+    exec('def smoothstep(a, b, x):\n    t = np.clip((x - a) / (b - a), 0, 1)\n    return t * t * (3 - 2 * t)\n', ns)
+    ns['bf'] = [[i for i, _ in f] for f in body_faces]
+    exec(open(os.path.join(HERE, 'outfit.py')).read(), ns)
 
     for o in bpy.data.objects:
         o.select_set(True)
