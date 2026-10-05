@@ -81,9 +81,11 @@ A procedural, toon-shaded three.js art pack ported from Grimoire: zero image ass
 `art/kit.js` (toon materials, ink outlines, cached geometry), `art/theme.js` (palette mirrored from the
 CSS tokens), `art/registry.js` (asset factories with triangle budgets, footprints and checks; pure, so
 `node test/art-registry.test.mjs` tests it), `art/packs/*.js` (the assets). Review assets in
-`/art/catalogue.html` under the local server. So far only the reward reveal (`buildRewardScene`) uses it,
-lazily, falling back to `createItemMesh()` if the pack fails to load; wire further screens in the same
-way, through the existing AuraGL runtime. Presentation only, like the rest of the 3D layer.
+`/art/catalogue.html` under the local server. Authored `.glb` models (`art/models.js`, `art/look.js`,
+registered in `art/models/index.js`; see [art/MODELS.md](art/MODELS.md)) replace a code-drawn asset by
+id through `take()`/`resolve()`. The reward reveal (`buildRewardScene`) and the raid boss
+(`buildSystemCoreScene`) use the pack lazily and fall back to the old primitives if it fails to load;
+wire further screens the same way, through the existing AuraGL runtime. Presentation only.
 
 ### Firestore collections
 

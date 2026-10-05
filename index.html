@@ -5884,11 +5884,16 @@ function buildSystemCoreScene({ THREE, quality, tier }) {
      pack fails, the primitive boss plays as before. */
   const ART_BOSS_SCALE = 2.15;       // modelled at ~3.2 units; the old mass stood ~6.8
   let artPack = null, artBoss = null, bossKey = null, bossRim = null, bossFill = null;
-  import('./art/index.js').then(m => { artPack = m; }).catch(e => console.warn('art pack unavailable, using primitive boss', e));
+  import('./art/index.js').then(m => { artPack = m; m.prepare('raid-boss'); })
+    .catch(e => console.warn('art pack unavailable, using primitive boss', e));
   function swapBoss() {
-    if (artBoss || !artPack || bossAmt > 0.002) return;
+    if (!artPack || bossAmt > 0.002) return;
+    // an authored model registered for the boss wins once its file has loaded; until then the drawn one
+    const m = artPack.modelFor('raid-boss');
+    const want = m && artPack.isLoaded(m.id) ? 'model' : 'drawn';
+    if (artBoss && artBoss.userData.kind === want) return;
     try {
-      const o = artPack.make('raid-boss');
+      const { object: o, model } = artPack.take('raid-boss');
       const mats = [], eyes = [], outlines = [], copies = new Map();
       o.traverse(n => {
         if (n.userData.contactShadow) { n.visible = false; return; }  // no floor out here in the void
@@ -5907,11 +5912,18 @@ function buildSystemCoreScene({ THREE, quality, tier }) {
         n.material = copies.get(n.material);
         if (n.userData.eye && !eyes.includes(n.material)) eyes.push(n.material);
       });
-      o.scale.setScalar(ART_BOSS_SCALE);
-      o.userData.art = { mats, eyes, outlines, anim: artPack.get('raid-boss').anims.breathe };
+      if (model) { try { artPack.lightModel(o, AuraGL.renderer, 1.0); } catch (e) {} }
+      else o.scale.setScalar(ART_BOSS_SCALE);   // a model arrives at its registered height already
+      o.userData.kind = model ? 'model' : 'drawn';
+      o.userData.art = { mats, eyes, outlines, model, anim: model ? null : artPack.get('raid-boss').anims.breathe };
+      if (artBoss) {   // a model replacing the drawn boss: drop the old one and its material copies
+        boss.remove(artBoss);
+        artBoss.userData.art.mats.forEach(c => c.dispose());
+      }
       for (const c of boss.children) c.visible = false;
       boss.add(o);
       artBoss = o;
+      if (bossKey) { bossKey.target = o; bossRim.target = o; return; }   // the lights are already there
       // Its own lighting, faded with the boss: a cool key from in front and
       // above (the camera's side), a hard rim behind in the eye colour that
       // cuts the silhouette out of the dark, and a low fill so the underside
@@ -5950,7 +5962,7 @@ function buildSystemCoreScene({ THREE, quality, tier }) {
       const a = artBoss.userData.art;
       for (const m of a.mats) m.opacity = (m.userData.baseOpacity ?? 1) * bossAmt;
       for (const o of a.outlines) o.visible = bossAmt > 0.6;
-      try { a.anim(artBoss, t); } catch (e) {}
+      try { a.model ? a.model.update(dt) : a.anim(artBoss, t); } catch (e) {}
       if (bossKey) { bossKey.intensity = 60 * bossAmt; bossRim.intensity = 260 * bossAmt; bossFill.intensity = 3 * bossAmt; }
       const aura = artBoss.getObjectByName('aura');
       if (aura) aura.material.opacity *= bossAmt;   // the anim sets it; the fade still governs it
@@ -6320,7 +6332,11 @@ function buildRewardScene({ THREE, quality }) {
   const RELIC = { weapon: 'relic-sword', armour: 'relic-chestplate', boots: 'relic-boots', accessory: 'relic-ring' };
   const RELIC_SCALE = 1.7;  // the relics are modelled at real size (~0.9 units); this frame wants ~1.5
   let art = null;
-  import('./art/index.js').then(m => { art = m; }).catch(e => console.warn('art pack unavailable, using primitive items', e));
+  import('./art/index.js').then(m => {
+    art = m;
+    // authored models registered for a slot (art/models/index.js) start loading now, so a reveal can use them
+    for (const id of Object.values(RELIC)) m.prepare(id);
+  }).catch(e => console.warn('art pack unavailable, using primitive items', e));
   // Toon materials are lit in bands; at this scene's dim key they fall into the
   // darkest band. This fill is on only while a relic is shown.
   const artFill = new THREE.HemisphereLight(0xc4ccec, 0x0a0812, 0);
@@ -6328,12 +6344,21 @@ function buildRewardScene({ THREE, quality }) {
 
   function createRelic(slot, rarity) {
     const id = RELIC[slot] || RELIC.weapon;
-    const src = art.make(id, { rarity: REWARD_RARITY[rarity] ? rarity : 'Rare' });
-    const float = src.getObjectByName('float');   // the item itself, without its floor sigil and shadow
+    const { object: src, model } = art.take(id, { rarity: REWARD_RARITY[rarity] ? rarity : 'Rare' });
     const g = new THREE.Group();
     const inner = new THREE.Group();
-    inner.scale.setScalar(RELIC_SCALE);
-    float.position.set(0, 0, 0);
+    let float;
+    if (model) {
+      // an authored model: stands on y = 0 at its registered height; centre it on the frame instead
+      float = src;
+      const box = new THREE.Box3().setFromObject(src);
+      float.position.y = -(box.min.y + box.max.y) / 2;
+      try { art.lightModel(src, AuraGL.renderer, 1.1); } catch (e) {}
+    } else {
+      float = src.getObjectByName('float');   // the item itself, without its floor sigil and shadow
+      float.position.set(0, 0, 0);
+      inner.scale.setScalar(RELIC_SCALE);
+    }
     inner.add(float);
     g.add(inner);
     // Per-reveal copies of the materials so the fade-in never touches the
@@ -6352,7 +6377,7 @@ function buildRewardScene({ THREE, quality }) {
       }
       o.material = copies.get(o.material);
     });
-    g.userData = { anchor: REWARD_ANCHOR[slot] || 'orbit', rarity, slot, materials, outlines, sharedGeometry: true, relic: true };
+    g.userData = { anchor: REWARD_ANCHOR[slot] || 'orbit', rarity, slot, materials, outlines, sharedGeometry: true, relic: true, model };
     return g;
   }
 
