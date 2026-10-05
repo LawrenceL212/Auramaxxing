@@ -10,6 +10,8 @@ import { get as tget } from '../theme.js';
 import { define, adder, C, L, RARITIES } from '../parts.js';
 
 const HOVER_Y = 0.95;
+const sigilGeo = new THREE.PlaneGeometry(0.9, 0.9);
+const sigilMats = new Map(); // one per colour, shared by every build
 
 const sigils = new Map();
 function sigilTex() {
@@ -31,9 +33,10 @@ function sigilTex() {
 // The pieces every relic shares: the floor sigil, the halo, and the float group the item is built in.
 function relic(g, rarity, anchor) {
   const col = tget(`rarity.${rarity}`);
-  const sig = new THREE.Mesh(new THREE.PlaneGeometry(0.9, 0.9), new THREE.MeshBasicMaterial({
+  if (!sigilMats.has(col)) sigilMats.set(col, new THREE.MeshBasicMaterial({
     map: sigilTex(), color: col, transparent: true, opacity: 0.55, blending: THREE.AdditiveBlending, depthWrite: false,
   }));
+  const sig = new THREE.Mesh(sigilGeo, sigilMats.get(col));
   sig.rotation.x = -Math.PI / 2; sig.position.y = 0.004; sig.name = 'sigil';
   g.add(sig);
   const f = new THREE.Group();
@@ -72,14 +75,19 @@ define('relic-chestplate', {
   ...common,
   build(g, { rarity }) {
     const { add, metal, gem } = relic(g, rarity, 'chest');
-    add(sphere(0.24, 20, 14), C('palette.steel'), { y: 0.02, s: [1, 1.15, 0.62], outline: 0.012 });
-    add(rbox(0.36, 0.03, 0.2, 0.012), metal, { y: -0.2, outline: 0.008 }); // waist band
-    add(rbox(0.03, 0.34, 0.03, 0.01), metal, { y: 0.03, z: 0.145, outline: 0 }); // the keel down the front
+    // a tapered, eight-sided cuirass: the facets give the toon bands edges to break on
+    add(cyl(0.2, 0.15, 0.4, 8), C('palette.steel'), { y: 0, ry: Math.PI / 8, s: [1, 1, 0.62], outline: 0.012 });
+    add(cyl(0.155, 0.17, 0.06, 8), metal, { y: -0.22, ry: Math.PI / 8, s: [1, 1, 0.66], outline: 0.01 });  // the faulds
+    add(cyl(0.135, 0.15, 0.05, 8), C('palette.iron'), { y: -0.27, ry: Math.PI / 8, s: [1, 1, 0.66], outline: 0.008 });
+    add(torus(0.085, 0.022, 6, 16), metal, { y: 0.2, rx: Math.PI / 2, s: [1, 0.7, 1], outline: 0.008 }); // the gorget
+    add(oct(0.05), C('palette.steel'), { y: 0.04, z: 0.115, s: [0.6, 3.2, 0.5], outline: 0.008 });          // the keel down the front
     for (const s of [-1, 1]) {
-      add(sphere(0.12, 14, 10), C('palette.steel'), { x: s * 0.25, y: 0.17, s: [1, 0.7, 1], outline: 0.01 }); // pauldrons
-      add(torus(0.1, 0.014, 6, 16), metal, { x: s * 0.25, y: 0.15, rx: Math.PI / 2, outline: 0 });
+      // pauldrons: two lames, the lower one smaller, both tipped off the shoulder
+      add(sphere(0.11, 14, 8), C('palette.steel'), { x: s * 0.24, y: 0.16, rz: -s * 0.35, s: [1.25, 0.55, 1.05], outline: 0.01 });
+      add(sphere(0.095, 14, 8), C('palette.steel'), { x: s * 0.28, y: 0.09, rz: -s * 0.5, s: [1.15, 0.45, 0.95], outline: 0.01 });
+      add(torus(0.11, 0.01, 6, 18), metal, { x: s * 0.24, y: 0.165, rx: Math.PI / 2, rz: -s * 0.35, s: [1.25, 1.05, 1], outline: 0 });
     }
-    add(ico(0.045, 0), gem, { y: 0.1, z: 0.16, outline: 0.008 });
+    add(ico(0.04, 0), gem, { y: 0.1, z: 0.125, outline: 0.008 });
   },
 });
 

@@ -6243,10 +6243,54 @@ function buildRewardScene({ THREE, quality }) {
   let mat = 0;              // materialisation 0..1
   let spin = 0, active = false, count = 0;
 
+  /* The art pack's relics (art/packs/equipment.js) replace the primitive
+     createItemMesh() models once the pack has loaded. Loaded here, not at
+     startup, so the app's first paint never waits on it; if it fails or has
+     not arrived yet, the reveal falls back to createItemMesh(). */
+  const RELIC = { weapon: 'relic-sword', armour: 'relic-chestplate', boots: 'relic-boots', accessory: 'relic-ring' };
+  const RELIC_SCALE = 1.7;  // the relics are modelled at real size (~0.9 units); this frame wants ~1.5
+  let art = null;
+  import('./art/index.js').then(m => { art = m; }).catch(e => console.warn('art pack unavailable, using primitive items', e));
+  // Toon materials are lit in bands; at this scene's dim key they fall into the
+  // darkest band. This fill is on only while a relic is shown.
+  const artFill = new THREE.HemisphereLight(0xc4ccec, 0x0a0812, 0);
+  scene.add(artFill);
+
+  function createRelic(slot, rarity) {
+    const id = RELIC[slot] || RELIC.weapon;
+    const src = art.make(id, { rarity: REWARD_RARITY[rarity] ? rarity : 'Rare' });
+    const float = src.getObjectByName('float');   // the item itself, without its floor sigil and shadow
+    const g = new THREE.Group();
+    const inner = new THREE.Group();
+    inner.scale.setScalar(RELIC_SCALE);
+    float.position.set(0, 0, 0);
+    inner.add(float);
+    g.add(inner);
+    // Per-reveal copies of the materials so the fade-in never touches the
+    // pack's shared ones. Outline hulls cannot fade; they appear late instead.
+    const materials = [], outlines = [];
+    const copies = new Map();
+    float.traverse(o => {
+      if (o.userData.outlineChild) { outlines.push(o); return; }
+      if (!o.material) return;
+      if (!copies.has(o.material)) {
+        const c = o.material.clone();
+        c.transparent = true;
+        c.userData.baseOpacity = o.material.opacity;
+        copies.set(o.material, c);
+        materials.push(c);
+      }
+      o.material = copies.get(o.material);
+    });
+    g.userData = { anchor: REWARD_ANCHOR[slot] || 'orbit', rarity, slot, materials, outlines, sharedGeometry: true, relic: true };
+    return g;
+  }
+
   function clearItem() {
     if (!item) return;
     root.remove(item);
-    item.traverse(o => { o.geometry?.dispose?.(); });
+    // the art pack caches geometry across builds: never dispose it
+    if (!item.userData.sharedGeometry) item.traverse(o => { o.geometry?.dispose?.(); });
     (item.userData.materials || []).forEach(m => m.dispose?.());
     item = null;
   }
@@ -6258,7 +6302,11 @@ function buildRewardScene({ THREE, quality }) {
       clearItem();
       const rarity = (def && def.rarity) || 'Rare';
       const cfg = REWARD_RARITY[rarity] || REWARD_RARITY.Rare;
-      item = createItemMesh(THREE, (def && def.slot) || 'weapon', rarity);
+      const slot = (def && def.slot) || 'weapon';
+      item = null;
+      if (art) { try { item = createRelic(slot, rarity); } catch (e) { console.warn('relic failed, using primitive item', e); } }
+      if (!item) item = createItemMesh(THREE, slot, rarity);
+      artFill.intensity = item.userData.relic ? 1.4 : 0;
       // Presentation pose: turned off-axis and tilted, so the object has depth
       // instead of reading as a flat glyph.
       root.rotation.set(0.11, 0, 0.13);
@@ -6297,7 +6345,8 @@ function buildRewardScene({ THREE, quality }) {
       item.scale.setScalar(0.35 + 0.65 * e);
       item.position.y = (1 - e) * -0.35;
       const cfg = REWARD_RARITY[item.userData.rarity] || REWARD_RARITY.Rare;
-      (item.userData.materials || []).forEach(m => { m.opacity = e; });
+      (item.userData.materials || []).forEach(m => { m.opacity = e * (m.userData.baseOpacity ?? 1); });
+      (item.userData.outlines || []).forEach(o => { o.visible = e > 0.6; });
       glow.intensity = cfg.light * e;
       if (pts) {
         const pos = pGeo.attributes.position.array;

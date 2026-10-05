@@ -157,10 +157,17 @@ export function glow(color, size, opacity = 0.8) {
 
 // A soft dark blob on the floor (y = 0.002) under an object, multiply-blended, never outlined.
 const blobGeo = new THREE.PlaneGeometry(1, 1);
+const blobMats = new Map(); // one per opacity, so building an asset never adds a theme listener
+function blobMat(opacity) {
+  if (!blobMats.has(opacity)) {
+    const mat = new THREE.MeshBasicMaterial({ map: blobTex(), transparent: true, depthWrite: false, opacity: opacity * themeGet('light.contact') });
+    onThemeChange(() => { mat.opacity = opacity * themeGet('light.contact'); });
+    blobMats.set(opacity, mat);
+  }
+  return blobMats.get(opacity);
+}
 export function contactShadow(group, { w = 1, d = 1, opacity = 1 } = {}) {
-  const mat = new THREE.MeshBasicMaterial({ map: blobTex(), transparent: true, depthWrite: false, opacity: opacity * themeGet('light.contact') });
-  onThemeChange(() => { mat.opacity = opacity * themeGet('light.contact'); });
-  const m = new THREE.Mesh(blobGeo, mat);
+  const m = new THREE.Mesh(blobGeo, blobMat(opacity));
   m.rotation.x = -Math.PI / 2;
   m.position.y = 0.002;
   m.scale.set(w, d, 1);
