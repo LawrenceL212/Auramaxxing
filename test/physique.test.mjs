@@ -2,7 +2,7 @@
    No dependencies and no runner, like the other tests here: a plain script
    that exits non-zero on failure. */
 
-import { muscleDevelopment, bodyBuild, bodyFrame, muscleShape, MUSCLE_REGION, REFERENCE, hunterMorphs, DEV_MORPH, FACE_SLIDERS } from '../physique.js';
+import { muscleDevelopment, bodyBuild, bodyFrame, muscleShape, MUSCLE_REGION, REFERENCE } from '../physique.js';
 
 let pass = 0, fail = 0;
 const results = [];
@@ -72,27 +72,6 @@ check('abs grow less than biceps', muscleShape('Upper Abs', 1).sx < s1.sx);
 check('frame follows the build', bodyFrame(heavy) > 1 && bodyFrame(light) < 1 && bodyFrame({}) === 1, JSON.stringify([bodyFrame(heavy), bodyFrame(light)]));
 check('muscles never draw narrower than the frame', muscleShape('Quads', 0, light, bodyFrame(light)).sx === 1);
 check('a region broader than the frame widens on top of it', muscleShape('Upper Abs', 0, heavy, bodyFrame(heavy)).sx > 1);
-
-// ── 3D body morphs ──────────────────────────────────────────────────────
-const m0 = hunterMorphs({});
-check('no data: an average body (no training, build or look morphs)', ['dev.chest', 'muscle', 'heavy', 'thin', 'tall', 'short', 'waistUp', 'nose.long+'].every((k) => m0[k] === 0), JSON.stringify(m0));
-check('no data: even ancestry', ['african', 'asian', 'caucasian'].every((k) => Math.abs(m0[k] - 1 / 3) < 0.01));
-const chestDev = Object.fromEntries(DEV_MORPH['dev.chest'].map((m) => [m, 1]));
-const mc = hunterMorphs({ dev: chestDev });
-check('a trained chest grows the chest morph only', mc['dev.chest'] > 0.8 && mc['dev.legs'] === 0 && mc.muscle > 0, JSON.stringify(mc));
-check('heavy BMI draws heavy, light draws thin', hunterMorphs({ bmi: 32 }).heavy > 0.5 && hunterMorphs({ bmi: 18 }).thin > 0.5 && hunterMorphs({ bmi: 32 }).thin === 0);
-check('training carries weight as muscle', hunterMorphs({ bmi: 30, dev: Object.fromEntries(Object.values(DEV_MORPH).flat().map((m) => [m, 1])) }).heavy < hunterMorphs({ bmi: 30 }).heavy);
-check('height: tall and short', hunterMorphs({ heightCm: 196 }).tall > 0.7 && hunterMorphs({ bodyType: 'female', heightCm: 150 }).short > 0.4 && hunterMorphs({ heightCm: 5 }).tall === 0);
-const mt = hunterMorphs({ checkin: { waist: REFERENCE.male.waist * 1.2, chest: REFERENCE.male.chest * 0.9, armLeft: 33 } });
-check('tape measurements push each circumference', mt.waistUp > 0.7 && mt.waistDown === 0 && mt.bustDown > 0.4 && mt.armUp === 0 && mt.armDown === 0, JSON.stringify(mt));
-const ml = hunterMorphs({ appearance: { ancestry: { african: 2, asian: 0, caucasian: 0 }, face: 'square', sliders: { 'nose.wide': 0.5, 'lips.full': -1, bogus: 1 } } });
-check('the look: ancestry normalised, face shape, sliders split by sign', ml.african === 1 && ml.asian === 0 && ml['face.square'] > 0 && ml['face.oval'] === 0 && ml['nose.wide+'] === 0.25 && ml['nose.wide-'] === 0 && ml['lips.full-'] === 1 && !('bogus+' in ml), JSON.stringify(ml));
-check('face follows the body by default', m0['face.swap'] === 0 && hunterMorphs({ bodyType: 'female' })['face.swap'] === 0);
-check("a girl's face on the male body, a boy's on the female", hunterMorphs({ appearance: { femininity: 1 } })['face.swap'] === 1
-  && hunterMorphs({ bodyType: 'female', appearance: { femininity: 0 } })['face.swap'] === 1
-  && hunterMorphs({ bodyType: 'female', appearance: { femininity: 0.25 } })['face.swap'] === 0.75);
-check('the art style shapes every face', m0['eyes.size+'] > 0 && m0['nose.size-'] > 0 && m0['face.invertedtriangular'] > 0);
-check('every slider has both directions', FACE_SLIDERS.every((k) => k + '+' in m0 && k + '-' in m0));
 
 console.log(results.join('\n'));
 console.log(`\n${pass} passed, ${fail} failed`);

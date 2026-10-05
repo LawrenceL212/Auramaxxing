@@ -18,9 +18,6 @@
      bodyFrame(build)        -> the whole figure's width factor
      muscleShape(muscle, dev, build, frame) -> { sx, sy }
        The scale to draw one muscle at, on top of the frame.
-     hunterMorphs(ctx)       -> { morphName: weight }
-       The same inputs for the 3D body (art/hunter.js): training, build, height
-       and tape measurements, plus the look the player picked (ancestry, face).
    ========================================================================= */
 
 export const DEV_WINDOW_DAYS = 84;      // 12 weeks of training shapes the body
@@ -72,8 +69,8 @@ export function muscleDevelopment({ workouts = [], exercises = {}, prs = {}, mus
 
 // Average adult circumferences (cm) a tape-measured body is compared against.
 export const REFERENCE = {
-  male:   { chest: 100, shoulders: 116, waist: 86, hip: 98, arm: 33, neck: 38, bmi: 24, bodyFat: 18, heightCm: 176 },
-  female: { chest: 90,  shoulders: 102, waist: 75, hip: 100, arm: 29, neck: 33, bmi: 23, bodyFat: 27, heightCm: 163 },
+  male:   { chest: 100, shoulders: 116, waist: 86, hip: 98, arm: 33, bmi: 24, bodyFat: 18 },
+  female: { chest: 90,  shoulders: 102, waist: 75, hip: 100, arm: 29, bmi: 23, bodyFat: 27 },
 };
 const IDENTITY = { chest: 1, shoulders: 1, arms: 1, waist: 1, back: 1, hips: 1, legs: 1 };
 
@@ -134,81 +131,4 @@ export function muscleShape(muscle, dev = 0, build = IDENTITY, frame = 1) {
   // abs don't swell much with training; the waist is mostly build
   const grow = MUSCLE_REGION[muscle] === 'waist' ? 0.4 : 1;
   return { sx: round3((1 + GROW_X * d * grow) * region), sy: round3(1 + GROW_Y * d * grow) };
-}
-
-// ── the 3D body ─────────────────────────────────────────────────────────
-// Which trained muscles grow which part of the 3D body (morphs in art/models/hunter-*.glb).
-export const DEV_MORPH = {
-  'dev.chest': ['Upper Chest', 'Middle Chest', 'Lower Chest'],
-  'dev.lats': ['Lats', 'Upper Back'],
-  'dev.shoulders': ['Front Shoulders', 'Lateral Shoulders', 'Rear Shoulders', 'Traps'],
-  'dev.arms': ['Biceps', 'Triceps'],
-  'dev.forearms': ['Forearms'],
-  'dev.glutes': ['Glutes'],
-  'dev.legs': ['Quads', 'Hamstrings'],
-  'dev.calves': ['Calves'],
-};
-export const FACE_SHAPES = ['oval', 'round', 'rectangular', 'square', 'triangular', 'invertedtriangular', 'diamond'];
-// The look sliders, each -1..1 (0 is the body type's average)
-export const FACE_SLIDERS = ['face.full', 'face.wide', 'face.long', 'nose.wide', 'nose.long', 'nose.hump', 'nose.size',
-  'nose.nostrils', 'nose.tip', 'mouth.wide', 'lips.full', 'eyes.size', 'eyes.slant', 'eyes.fold', 'ears.size', 'brows.up', 'neck.wide'];
-export const ANCESTRY = ['african', 'asian', 'caucasian'];
-// The manhwa art style, applied to every face before the player's own sliders (which still move each
-// feature either way from here)
-export const STYLE_FACE = { 'eyes.size': 0.3, 'nose.size': -0.3, 'nose.wide': -0.25, 'mouth.wide': -0.15, 'lips.full': -0.15, 'neck.wide': -0.2 };
-
-/** ctx: { dev, bodyType, heightCm?, bmi?, bodyFat?, checkin?, appearance? }
- *  dev: muscleDevelopment(); bmi/bodyFat: from bodyBuild(); checkin: the latest check-in (tape, cm)
- *  appearance: { ancestry?: { african, asian, caucasian } (any scale), face?: one of FACE_SHAPES,
- *                femininity?: 0 (a boy's face) .. 1 (a girl's face), either body; default follows the body,
- *                sliders?: { name: -1..1 } }
- *  Returns morph weights; every morph the file knows is present (0 when unused). */
-export function hunterMorphs({ dev = {}, bodyType = 'male', heightCm = null, bmi = null, bodyFat = null, checkin = null, appearance = {} } = {}) {
-  const ref = REFERENCE[bodyType === 'female' ? 'female' : 'male'];
-  const w = {};
-  const avg = (ms) => ms.reduce((a, m) => a + (Number(dev[m]) || 0), 0) / ms.length;
-  // training: each trained group grows, and the whole body firms up with the overall average
-  const all = Object.values(DEV_MORPH).flat();
-  const overall = avg(all);
-  for (const [k, ms] of Object.entries(DEV_MORPH)) w[k] = round3(clamp(avg(ms), 0, 1) * 0.85);
-  w.muscle = round3(clamp(overall, 0, 1) * 0.6);
-  w.muscleLess = round3(clamp(0.25 - overall, 0, 0.25));
-  // build: heavier or lighter than average for the body type; trained bodies carry weight as muscle
-  const b = Number(bmi);
-  w.heavy = b > 0 ? round3(clamp((b - ref.bmi) / 10, 0, 1) * (1 - 0.5 * overall)) : 0;
-  w.thin = b > 0 ? round3(clamp((ref.bmi - b) / 6, 0, 1)) : 0;
-  const bf = Number(bodyFat ?? (checkin && checkin.bodyFatPct));
-  w.belly = round3(bf > 0 ? clamp((bf - ref.bodyFat) / 15, 0, 1) * 0.8 : w.heavy * 0.4);
-  // height changes the proportions; the viewer frames the whole body either way
-  const h = Number(heightCm);
-  w.tall = h > 100 && h < 250 ? round3(clamp((h - ref.heightCm) / 25, 0, 1)) : 0;
-  w.short = h > 100 && h < 250 ? round3(clamp((ref.heightCm - h) / 25, 0, 1)) : 0;
-  // tape measurements: each one pushes its circumference toward the measured size
-  const tape = { bust: checkin?.chest, waist: checkin?.waist, hips: checkin?.hip, shoulders: checkin?.shoulders, neck: checkin?.neck,
-    arm: Math.max(Number(checkin?.armLeft) || 0, Number(checkin?.armRight) || 0) };
-  const refOf = { bust: ref.chest, waist: ref.waist, hips: ref.hip, shoulders: ref.shoulders, neck: ref.neck, arm: ref.arm };
-  for (const k of ['bust', 'waist', 'hips', 'shoulders', 'neck', 'arm', 'thigh']) {
-    const v = Number(tape[k]);
-    const r = v > 0 && refOf[k] ? v / refOf[k] - 1 : 0;
-    w[k + 'Up'] = round3(clamp(r / 0.25, 0, 1));
-    w[k + 'Down'] = round3(clamp(-r / 0.2, 0, 1));
-  }
-  // the look: ancestry blend (weights normalised to sum 1; even is the average), face shape, sliders
-  const anc = appearance.ancestry || {};
-  const tot = ANCESTRY.reduce((a, k) => a + Math.max(0, Number(anc[k]) || 0), 0);
-  for (const k of ANCESTRY) w[k] = tot > 0 ? round3(Math.max(0, Number(anc[k]) || 0) / tot) : round3(1 / 3);
-  for (const s of FACE_SHAPES) w['face.' + s] = appearance.face === s ? 0.7 : 0;
-  if (!appearance.face) w['face.invertedtriangular'] = 0.35;   // the style's default: a sharp jaw
-  // the face can be a boy's or a girl's on either body: face.swap morphs toward the other body type's face
-  const female = bodyType === 'female';
-  const fem = appearance.femininity == null ? (female ? 1 : 0) : clamp(Number(appearance.femininity) || 0, 0, 1);
-  w['face.swap'] = round3(female ? 1 - fem : fem);
-  const sl = appearance.sliders || {};
-  for (const k of FACE_SLIDERS) {
-    // the art style's face sits on top of the player's sliders: bigger eyes, a finer nose, a tapered jaw
-    const v = clamp((Number(sl[k]) || 0) + (STYLE_FACE[k] || 0), -1, 1);
-    w[k + '+'] = round3(Math.max(0, v));
-    w[k + '-'] = round3(Math.max(0, -v));
-  }
-  return w;
 }

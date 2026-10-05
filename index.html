@@ -2066,16 +2066,6 @@
     width:100%;
     max-width:280px;
   }
-  /* 3D hunter (art/hunter-view.js): drawn over the stage, the 2D map hidden under it */
-  .hunter3d-layer{position:absolute;inset:0;z-index:2;display:none}
-  .char-body-stage.is-3d{min-height:420px}
-  .char-body-stage.is-3d .hunter3d-layer{display:block}
-  .char-body-stage.is-3d .char-body-content{visibility:hidden}
-  .hunter3d-bar{position:absolute;bottom:10px;left:0;right:0;z-index:5;display:flex;justify-content:center;gap:6px}
-  .hunter3d-bar button{background:rgba(16,20,28,.78);color:var(--text-dim);border:1px solid var(--rim);border-radius:999px;
-    padding:5px 10px;font:600 12px var(--font-body);letter-spacing:.04em;cursor:pointer;backdrop-filter:blur(4px)}
-  .hunter3d-bar button.on{color:var(--text);border-color:var(--brass)}
-  .hunter3d-bar button[hidden]{display:none}
   /* Ground reflection / vignette */
   .char-body-ground{
     position:absolute;bottom:0;left:0;right:0;height:40px;
@@ -3931,7 +3921,7 @@ import { detectReEntry, reEntryPlan, directiveProgress, formatMeasure, DIRECTIVE
          buildWidgetConfig } from "./goals.js";
 import { analyseHabit, sampleCurve, describeReturns,
          HABIT_TARGET_DAYS, MISS_GRACE } from "./habit.js";
-import { muscleDevelopment, bodyBuild, bodyFrame, muscleShape, hunterMorphs } from "./physique.js";
+import { muscleDevelopment, bodyBuild, bodyFrame, muscleShape } from "./physique.js";
 import {
   getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword,
   onAuthStateChanged, signOut, updateProfile
@@ -13006,7 +12996,6 @@ function renderCharCard() {
     if (atm) atm.style.background = atmosphereBg;
     // Wrap body pair in breathing container
     bodyContent.innerHTML = auraRing + `<div class="body-pair hunter-breathe">${bodySvg('front', muscleStats)}${bodySvg('back', muscleStats)}</div>`;
-    syncHunter3d(muscleStats);   // the 3D body over the map when the device can draw it
   }
 
   // ── ATTRIBUTE MATRIX — orbital stat system ──
@@ -17757,98 +17746,6 @@ function myPhysique() {
   const dev = muscleDevelopment({ workouts: myWorkouts, exercises: EXERCISES_ALL, prs: myPRs, muscles: MUSCLES, uid: currentUser?.uid });
   const build = bodyBuild({ bodyType, heightCm: profile?.heightCm, weightKg: latestBodyweightKg(), checkin: myCheckins[myCheckins.length - 1] || null });
   return { dev, build, frame: bodyFrame(build) };
-}
-/* ── 3D HUNTER — the card's body in 3D, built like the player ──
-   art/hunter-view.js draws it (lazy-loaded); the shape comes from the same
-   physique data as the 2D map, plus the look the player set in the creator.
-   The look is kept on this device (localStorage) for now: no Firestore field.
-   Any failure leaves the 2D map in place. Presentation only. */
-const HUNTER_PREF = 'auramaxx.hunter3d';            // 'off' = the player chose the 2D map
-const HUNTER_HEAT_PREF = 'auramaxx.hunter3d.heat';  // 'on' = muscles coloured by status
-let hunter3d = null;          // { view, bodyType } once mounted
-let hunter3dLoading = false;
-function prefGet(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
-function prefSet(k, v) { try { localStorage.setItem(k, v); } catch (e) { /* private mode: not remembered */ } }
-function hunterLookKey() { return 'auramaxx.hunterLook.v1:' + (currentUser?.uid || 'guest'); }
-function myHunterLook() { try { return JSON.parse(localStorage.getItem(hunterLookKey()) || 'null'); } catch (e) { return null; } }
-function myHunterMorphs(look) {
-  const bodyType = profile?.bodyType === 'female' ? 'female' : 'male';
-  const { dev, build } = myPhysique();
-  return hunterMorphs({ dev, bodyType, heightCm: profile?.heightCm, bmi: build.bmi, bodyFat: build.bodyFat,
-    checkin: myCheckins[myCheckins.length - 1] || null, appearance: look || {} });
-}
-function hunter3dOptions(stats) {
-  const bodyType = profile?.bodyType === 'female' ? 'female' : 'male';
-  const look = myHunterLook();
-  const heat = {};
-  for (const [m, s] of Object.entries(stats || muscleStatusPast())) if (STATUS_COLOR[s.status]) heat[m] = STATUS_COLOR[s.status];
-  return { bodyType, weights: myHunterMorphs(look), look: look || undefined, heat, showHeat: prefGet(HUNTER_HEAT_PREF) === 'on' };
-}
-function hunter3dControls(stage) {
-  let bar = stage.querySelector('.hunter3d-bar');
-  if (!bar) {
-    bar = document.createElement('div');
-    bar.className = 'hunter3d-bar';
-    bar.innerHTML = `<button type="button" data-act="mode"></button><button type="button" data-act="heat">Muscles</button><button type="button" data-act="look">Edit look</button>`;
-    bar.addEventListener('click', (e) => {
-      const act = e.target.closest('button')?.dataset.act;
-      if (act === 'mode') { prefSet(HUNTER_PREF, prefGet(HUNTER_PREF) === 'off' ? 'on' : 'off'); syncHunter3d(); }
-      if (act === 'heat') { prefSet(HUNTER_HEAT_PREF, prefGet(HUNTER_HEAT_PREF) === 'on' ? 'off' : 'on'); syncHunter3d(); }
-      if (act === 'look') openHunterLook();
-    });
-    stage.appendChild(bar);
-  }
-  const on = stage.classList.contains('is-3d');
-  bar.querySelector('[data-act=mode]').textContent = on ? '2D map' : '3D';
-  bar.querySelector('[data-act=heat]').hidden = !on;
-  bar.querySelector('[data-act=heat]').classList.toggle('on', prefGet(HUNTER_HEAT_PREF) === 'on');
-  bar.querySelector('[data-act=look]').hidden = !on;
-}
-async function syncHunter3d(stats) {
-  const stage = document.getElementById('char-body-stage');
-  if (!stage || !profile) return;
-  const want = prefGet(HUNTER_PREF) !== 'off' && document.documentElement.dataset.gl !== 'off';
-  if (!want) {
-    hunter3d?.view.dispose(); hunter3d = null;
-    stage.classList.remove('is-3d'); hunter3dControls(stage); return;
-  }
-  const opts = hunter3dOptions(stats);
-  if (hunter3d && hunter3d.bodyType === opts.bodyType) {
-    stage.classList.add('is-3d'); hunter3d.view.update(opts); hunter3dControls(stage); return;
-  }
-  if (hunter3dLoading) return;
-  hunter3dLoading = true;
-  try {
-    hunter3d?.view.dispose(); hunter3d = null;
-    const { mountHunterView } = await import('./art/hunter-view.js');
-    let layer = stage.querySelector('.hunter3d-layer');
-    if (!layer) { layer = document.createElement('div'); layer.className = 'hunter3d-layer'; stage.appendChild(layer); }
-    stage.classList.add('is-3d');
-    const view = await mountHunterView(layer, { ...opts, onLost: () => { prefSet(HUNTER_PREF, 'off'); syncHunter3d(); } });
-    hunter3d = { view, bodyType: opts.bodyType };
-  } catch (e) {
-    console.info('[hunter3d] unavailable, keeping the 2D map:', e);
-    stage.classList.remove('is-3d');
-    stage.querySelector('.hunter3d-layer')?.remove();
-    hunter3d = null;
-  } finally {
-    hunter3dLoading = false;
-    hunter3dControls(stage);
-  }
-}
-async function openHunterLook() {
-  try {
-    const { openLookCreator } = await import('./art/hunter-view.js');
-    await openLookCreator({
-      bodyType: profile?.bodyType === 'female' ? 'female' : 'male',
-      look: myHunterLook(),
-      morphs: (look) => myHunterMorphs(look),
-      onSave: (look) => {
-        try { localStorage.setItem(hunterLookKey(), JSON.stringify(look)); } catch (e) {}
-        syncHunter3d();
-      },
-    });
-  } catch (e) { console.info('[hunter3d] look creator unavailable:', e); }
 }
 function physiqueNote() {
   const { build } = myPhysique();
