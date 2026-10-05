@@ -92,6 +92,12 @@ id through `take()`/`resolve()`. The reward reveal (`buildRewardScene`) and the 
 (`buildSystemCoreScene`) use the pack lazily and fall back to the old primitives if it fails to load;
 wire further screens the same way, through the existing AuraGL runtime. Presentation only.
 
+The character card shows the player's own 3D body (`art/hunter.js` loads `art/models/hunter-<bodyType>.glb`;
+`art/hunter-view.js` draws it in its own small canvas and holds the look creator). Its shape is
+`hunterMorphs()` in physique.js, from the same training, height, weight and check-in data as the 2D
+map. The look (skin, hair, eyes, heritage, face) is kept in localStorage (`auramaxx.hunterLook.v1:<uid>`),
+not Firestore: a profile field for it needs the owner's OK. Any failure falls back to the 2D map.
+
 ### Firestore collections
 
 Eight in use: `users/{uid}`, `workouts/{autoId}`, `programs/{uid}`, `customExercises/{autoId}`, `bodyweight/{autoId}`, `prs/{...}`, `apEvents/{...}`, `checkins/{...}`.
