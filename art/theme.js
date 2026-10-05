@@ -30,6 +30,8 @@ export const DEFAULTS = {
     stone: '#3a4258',     // gate frames, plinths
     shadow: '#2a2448',    // shadow soldiers: dark violet, light enough that the toon bands still read
     skin: '#e8b996',
+    bone: '#cfc4b0',      // horns, claws, crowns
+    hide: '#3a2f4f',      // the raid boss's armoured hide, a step lighter than shadow
   },
   // --rank-e .. --rank-s
   rank: { E: '#6b7894', D: '#5ba8ff', C: '#2fb8c6', B: '#a17fff', A: '#ff6b35', S: '#ffd66b' },

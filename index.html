@@ -5878,11 +5878,50 @@ function buildSystemCoreScene({ THREE, quality, tier }) {
   boss.position.set(0, -1.0, -5.2);
   scene.add(boss);
   let bossAmt = 0, bossTarget = 0;
+  /* The art pack's raid boss (art/packs/system.js) replaces the primitive
+     mass above once the pack has loaded. It is swapped in only while the boss
+     is fully hidden, so it never pops in mid-cinematic; until then, or if the
+     pack fails, the primitive boss plays as before. */
+  const ART_BOSS_SCALE = 2.15;       // modelled at ~3.2 units; the old mass stood ~6.8
+  let artPack = null, artBoss = null;
+  import('./art/index.js').then(m => { artPack = m; }).catch(e => console.warn('art pack unavailable, using primitive boss', e));
+  function swapBoss() {
+    if (artBoss || !artPack || bossAmt > 0.002) return;
+    try {
+      const o = artPack.make('raid-boss');
+      const mats = [], eyes = [], outlines = [], copies = new Map();
+      o.traverse(n => {
+        if (n.userData.contactShadow) { n.visible = false; return; }  // no floor out here in the void
+        if (n.userData.outlineChild) { outlines.push(n); return; }
+        if (!n.material) return;
+        if (!copies.has(n.material)) {
+          const c = n.material.clone();
+          c.transparent = true;
+          c.userData.baseOpacity = n.material.opacity;
+          copies.set(n.material, c);
+          mats.push(c);
+        }
+        n.material = copies.get(n.material);
+        if (n.userData.eye && !eyes.includes(n.material)) eyes.push(n.material);
+      });
+      o.scale.setScalar(ART_BOSS_SCALE);
+      o.userData.art = { mats, eyes, outlines, anim: artPack.get('raid-boss').anims.breathe };
+      for (const c of boss.children) c.visible = false;
+      boss.add(o);
+      artBoss = o;
+    } catch (e) { console.warn('raid boss failed, using primitive boss', e); }
+  }
+  function setBossEyes(hex) {
+    if (!artBoss) return;
+    for (const m of artBoss.userData.art.eyes) { m.color.set(hex); m.emissive?.set(hex); }
+  }
   function setBoss(on, hex) {
     bossTarget = on ? 1 : 0;
     if (on) {
+      swapBoss();
       boss.visible = true;
-      if (hex) { try { bossEye.color.set(hex); } catch (e) {} }
+      if (hex) { try { bossEye.color.set(hex); setBossEyes(hex); } catch (e) {} }
+      else { try { setBossEyes(0xff5c6b); } catch (e) {} }
     }
   }
   function updateBoss(dt, t) {
@@ -5890,6 +5929,14 @@ function buildSystemCoreScene({ THREE, quality, tier }) {
     bossAmt += Math.abs(d) < 0.002 ? d : d * Math.min(1, dt * 2.2);
     bossMat.opacity = 0.97 * bossAmt;
     bossEye.opacity = bossAmt * (0.75 + Math.sin(t * 2.6) * 0.25);
+    if (artBoss && boss.visible) {
+      const a = artBoss.userData.art;
+      for (const m of a.mats) m.opacity = (m.userData.baseOpacity ?? 1) * bossAmt;
+      for (const o of a.outlines) o.visible = bossAmt > 0.6;
+      try { a.anim(artBoss, t); } catch (e) {}
+      const aura = artBoss.getObjectByName('aura');
+      if (aura) aura.material.opacity *= bossAmt;   // the anim sets it; the fade still governs it
+    }
     boss.position.y = -1.0 + (1 - bossAmt) * -1.4;   // rises into place
     if (bossAmt <= 0.002 && bossTarget === 0) boss.visible = false;
   }
