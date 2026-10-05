@@ -6242,6 +6242,11 @@ function buildRewardScene({ THREE, quality }) {
   let item = null;          // current item Group
   let mat = 0;              // materialisation 0..1
   let spin = 0, active = false, count = 0;
+  /* Touch response, after Grimoire's stage: drag turns the item, a flick
+     keeps it turning and decays back to the idle spin, a tap bounces it.
+     Presentation only; the reveal's caller feeds these from pointer events. */
+  const IDLE_SPIN = 0.55;
+  let spinV = IDLE_SPIN, held = false, bounce = 0, bounceV = 0, clock = 0;
 
   /* The art pack's relics (art/packs/equipment.js) replace the primitive
      createItemMesh() models once the pack has loaded. Loaded here, not at
@@ -6312,6 +6317,7 @@ function buildRewardScene({ THREE, quality }) {
       root.rotation.set(0.11, 0, 0.13);
       root.add(item);
       mat = 0; spin = 0; active = true;
+      spinV = IDLE_SPIN; held = false; bounce = 0; bounceV = 0;
       count = Math.min(MAX_P, cfg.particles);
       glow.color.setHex(cfg.col);
       rim.color.setHex(cfg.col);
@@ -6322,6 +6328,16 @@ function buildRewardScene({ THREE, quality }) {
       return item;
     },
     setMaterialise(v) { mat = Math.max(0, Math.min(1, v)); },
+    // drag(dxPixels, dtSeconds): turn with the finger; the last speed is kept as the flick
+    drag(dx, dt) {
+      held = true;
+      const turn = dx * 0.012;
+      spin += turn;
+      if (dt > 0) spinV = Math.max(-14, Math.min(14, turn / dt));
+    },
+    release() { held = false; },
+    // poke(): a squash-and-bounce, the same spring Grimoire's drone hops on
+    poke() { bounceV += 9; },
     // The shared camera sits at z=6 by default, which leaves a 1-unit object
     // tiny. Framing is applied on enter and cleared on exit.
     frame(camera) {
@@ -6338,14 +6354,25 @@ function buildRewardScene({ THREE, quality }) {
     get itemGroup() { return item; },
     update(dt) {
       if (!active || !item) return;
-      spin += dt * 0.55;
+      clock += dt;
+      if (!held) {
+        spinV += (IDLE_SPIN - spinV) * (1 - Math.exp(-1.6 * dt));   // a flick decays back to the idle turn
+        spin += dt * spinV;
+      }
       item.rotation.y = spin;
+      // bounce: a damped spring; squashes as it rises, stretches as it lands
+      bounceV += (-90 * bounce - 9 * bounceV) * dt;
+      bounce += bounceV * dt;
       // ease the arrival: fast in, settling
       const e = 1 - Math.pow(1 - mat, 3);
-      item.scale.setScalar(0.35 + 0.65 * e);
-      item.position.y = (1 - e) * -0.35;
+      const sq = Math.max(-0.25, Math.min(0.25, bounce * 0.5));
+      const base = 0.35 + 0.65 * e;
+      item.scale.set(base * (1 + sq * 0.5), base * (1 - sq), base * (1 + sq * 0.5));
+      item.position.y = (1 - e) * -0.35 + Math.max(0, bounce) * 0.25 + Math.sin(clock * 1.6) * 0.03 * e;
+      const halo = item.userData.relic && item.getObjectByName('halo');
+      if (halo) halo.material.opacity = (halo.material.userData.baseOpacity ?? 0.5) * e * (0.85 + 0.15 * Math.sin(clock * 2.4) + Math.min(0.6, Math.abs(bounce)));
       const cfg = REWARD_RARITY[item.userData.rarity] || REWARD_RARITY.Rare;
-      (item.userData.materials || []).forEach(m => { m.opacity = e * (m.userData.baseOpacity ?? 1); });
+      (item.userData.materials || []).forEach(m => { if (!m.isSpriteMaterial) m.opacity = e * (m.userData.baseOpacity ?? 1); });
       (item.userData.outlines || []).forEach(o => { o.visible = e > 0.6; });
       glow.intensity = cfg.light * e;
       if (pts) {
@@ -7160,7 +7187,41 @@ const WorldCinema = (() => {
         };
         step();
       });
-      await wait(1500);                     // hold - let the object be looked at
+      // hold - let the object be looked at. Touching it keeps it up: drag to
+      // turn, flick to spin, tap to bounce. The hold ends 1.5s after the last
+      // touch, and never runs past 8s so a resting finger cannot stall the flow.
+      let lastTouch = performance.now(), down = null;
+      const onDown = (e) => { down = { x: e.clientX, y: e.clientY, t: e.timeStamp, moved: false }; lastTouch = performance.now(); };
+      const onMove = (e) => {
+        if (!down) return;
+        const dx = e.clientX - down.x;
+        if (Math.abs(e.clientX - down.x) + Math.abs(e.clientY - down.y) > 6) down.moved = true;
+        if (down.moved) sc.drag?.(dx, Math.max(0.008, (e.timeStamp - down.t) / 1000));
+        down.x = e.clientX; down.y = e.clientY; down.t = e.timeStamp;
+        lastTouch = performance.now();
+      };
+      const onUp = () => { if (down && !down.moved) sc.poke?.(); sc.release?.(); down = null; lastTouch = performance.now(); };
+      addEventListener('pointerdown', onDown, { passive: true });
+      addEventListener('pointermove', onMove, { passive: true });
+      addEventListener('pointerup', onUp, { passive: true });
+      addEventListener('pointercancel', onUp, { passive: true });
+      const holdStart = performance.now();
+      try {
+        await new Promise(res => {
+          const tick = () => {
+            const now = performance.now();
+            if (now - holdStart > 8000 || (!down && now - lastTouch > 1500 && now - holdStart > 1500)) return res();
+            requestAnimationFrame(tick);
+          };
+          tick();
+        });
+      } finally {
+        removeEventListener('pointerdown', onDown);
+        removeEventListener('pointermove', onMove);
+        removeEventListener('pointerup', onUp);
+        removeEventListener('pointercancel', onUp);
+        sc.release?.();
+      }
     } catch (e) { /* presentation only */ }
     // restore the shared camera for whatever renders next
     try { const c = AuraGL.camera; if (c) { c.position.set(0, 0, 6); c.lookAt(0, 0, 0); } }
