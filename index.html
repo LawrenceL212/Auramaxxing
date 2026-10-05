@@ -3915,6 +3915,7 @@ import { PROGRESSION_CHAINS } from "./progression-chains.js";
 import { getArchetypeChains } from "./archetype-chains.js";
 import { getAutoAchievements } from "./auto-achievements.js";
 import { computeStreakFrom, STREAK_RULES_START, shiftDay } from "./streak.js";
+import { newestApEvents, isMissingIndexError, LEDGER_LIMIT } from "./ap-ledger.js";
 import { detectReEntry, reEntryPlan, directiveProgress, formatMeasure, DIRECTIVE_METRICS,
          countdown, formatCountdown, timeElapsedFraction, buildDirectivesICS,
          buildWidgetConfig } from "./goals.js";
@@ -15107,13 +15108,23 @@ async function openApLedger() {
     const content = overlay.querySelector('#ledger-content');
     content.innerHTML = 'Loading…';
     try {
-      const snap = await getDocs(query(
-        collection(db, 'apEvents'),
-        where('uid', '==', uid),
-        orderBy('timestamp', 'desc'),
-        limit(50)
-      ));
-      const events = snap.docs.map(d => d.data());
+      // The ordered query needs the apEvents (uid, timestamp desc) composite
+      // index. Until it is deployed, read by uid alone and order on device.
+      let events, sortedOnDevice = false;
+      try {
+        const snap = await getDocs(query(
+          collection(db, 'apEvents'),
+          where('uid', '==', uid),
+          orderBy('timestamp', 'desc'),
+          limit(LEDGER_LIMIT)
+        ));
+        events = snap.docs.map(d => d.data());
+      } catch (err) {
+        if (!isMissingIndexError(err)) throw err;
+        const snap = await getDocs(query(collection(db, 'apEvents'), where('uid', '==', uid)));
+        events = newestApEvents(snap.docs.map(d => d.data()), LEDGER_LIMIT);
+        sortedOnDevice = true;
+      }
       if (!events.length) {
         content.innerHTML = '<p style="color:var(--text-faint);">No AP events recorded yet — events are logged going forward from when this feature was deployed.</p>';
         return;
@@ -15121,7 +15132,7 @@ async function openApLedger() {
       const currentAp = allUsers.find(u => u.uid === uid)?.auraPoints || 0;
       content.innerHTML = `
         <div style="font-family:var(--font-mono);font-size:10px;color:var(--text-faint);margin-bottom:12px;letter-spacing:0.06em;">
-          CURRENT BALANCE: <span style="color:var(--brass);">${currentAp} AP</span> · SHOWING LAST ${events.length} EVENTS
+          CURRENT BALANCE: <span style="color:var(--brass);">${currentAp} AP</span> · SHOWING LAST ${events.length} EVENTS${sortedOnDevice ? ' · SORTED ON DEVICE (INDEX NOT DEPLOYED)' : ''}
         </div>
         ${events.map(e => {
           const isPositive = e.amount > 0;
@@ -15140,7 +15151,7 @@ async function openApLedger() {
           </div>`;
         }).join('')}`;
     } catch(e) {
-      content.innerHTML = `<p style="color:var(--excess);">Error: ${e.message}</p>`;
+      content.innerHTML = `<p style="color:var(--excess);">Error: ${escapeHtml(e.message || String(e))}</p>`;
     }
   });
 }
