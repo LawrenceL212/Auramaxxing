@@ -1505,6 +1505,10 @@
   }
   #save-workout-btn:not(.hidden) {
     animation: questBtnPulse 2s ease-in-out infinite;
+  }
+  @keyframes setNeedsRating {
+    0%,100% { box-shadow:none; }
+    50%     { box-shadow:0 0 0 2px rgba(255,77,103,0.55); }
   }bottom:0;margin-top:20px;padding-bottom:env(safe-area-inset-bottom, 0);background:var(--bg);padding-top:12px;z-index:10;}
 
   /* Toast notifications — replaces alert() on mobile */
@@ -8178,22 +8182,26 @@ function closeWorkoutModal(discard = false) {
   }
 }
 
-// Show/hide Complete Quest button based on whether all target sets are done
+/* Set rows that hold a value but have no RIR/RPE chosen yet. A programme day
+   prefills reps on every target set, so a set the Hunter skipped or forgot to
+   rate lands here too. */
+function unratedSetRows() {
+  return [...document.querySelectorAll('#exercise-rows .exercise-row .set-row')].filter(sr =>
+    (Number(sr.querySelector('.set-reps')?.value) || 0) > 0 &&
+    sr.querySelector('.rir-chip.selected') === null);
+}
+// Show the Complete Quest button once at least one set has a value.
+// It used to stay hidden until EVERY such set was rated, with nothing on screen
+// saying why — on a phone, a single unrated set far down the list (often a
+// prefilled programme set that was never done) made the workout impossible to
+// submit. The rating requirement is now enforced on tap instead, which points
+// at the set that needs attention.
 function refreshCompleteButton() {
   const btn = document.getElementById('save-workout-btn');
   if (!btn) return;
-  const rows = document.querySelectorAll('#exercise-rows .exercise-row');
-  if (!rows.length) { btn.classList.add('hidden'); return; }
-  const completedSets = [];
-  rows.forEach(row => {
-    row.querySelectorAll('.set-row').forEach(sr => {
-      const reps = Number(sr.querySelector('.set-reps')?.value) || 0;
-      if (reps > 0) completedSets.push(sr);
-    });
-  });
-  if (!completedSets.length) { btn.classList.add('hidden'); return; }
-  const allRIRSelected = completedSets.every(sr => sr.querySelector('.rir-chip.selected') !== null);
-  btn.classList.toggle('hidden', !allRIRSelected);
+  const hasAnySet = [...document.querySelectorAll('#exercise-rows .set-row .set-reps')]
+    .some(inp => (Number(inp.value) || 0) > 0);
+  btn.classList.toggle('hidden', !hasAnySet);
 }
 document.getElementById('end-workout-modal')?.addEventListener('click', () => {
   if (!window.confirm('End this workout?\n\nAll your logged sets will be lost.')) return;
@@ -9476,7 +9484,7 @@ function addExerciseRow(presetName, targetSets, targetReps, prefillSets) {
       checkComplete(setRow);
     }));
     wireChips(setRow);
-    setRow.querySelector('.set-remove').addEventListener('click', () => { SFX.pop(); setRow.remove(); [...setsList.children].forEach((r,i) => r.querySelector('.set-idx').textContent = i+1); });
+    setRow.querySelector('.set-remove').addEventListener('click', () => { SFX.pop(); setRow.remove(); [...setsList.children].forEach((r,i) => r.querySelector('.set-idx').textContent = i+1); refreshCompleteButton(); });
     setsList.appendChild(setRow);
     tableHead.classList.remove('hidden');
     // immediately check if prefilled values make this set complete
@@ -9529,7 +9537,7 @@ function addExerciseRow(presetName, targetSets, targetReps, prefillSets) {
   }
   pickerBtn.addEventListener('click', () => openExercisePicker(selectExercise));
   row.querySelector('.add-set-btn').addEventListener('click', () => { SFX.pop(); addSetRow(); });
-  row.querySelector('.remove-x').addEventListener('click', () => row.remove());
+  row.querySelector('.remove-x').addEventListener('click', () => { row.remove(); refreshCompleteButton(); });
   if (prefillSets && prefillSets.length) {
     // Pass the semantically correct intensity value — rpe for timed, rir for resistance
     // presetName is the addExerciseRow parameter — in scope here unlike exName/exDef
@@ -9553,6 +9561,19 @@ addExerciseRow();
 
 document.getElementById('save-workout-btn')?.addEventListener('click', async () => {
   if (!currentUser) return;
+  const unrated = unratedSetRows();
+  if (unrated.length) {
+    const first = unrated[0];
+    const exName = first.closest('.exercise-row')?.dataset.exName || 'this exercise';
+    const setNo = first.querySelector('.set-idx')?.textContent || '';
+    showToast(`Rate your effort on ${exName}${setNo ? ` set ${setNo}` : ''} — or remove sets you didn't do.`, 'error');
+    first.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    unrated.forEach(sr => {
+      sr.style.animation = 'none';
+      requestAnimationFrame(() => { sr.style.animation = 'setNeedsRating 0.6s ease 2'; });
+    });
+    return;
+  }
   const date = document.getElementById('workout-date').value || todayStr();
   const time = document.getElementById('workout-time').value || nowTimeStr();
   const exercises = [];
