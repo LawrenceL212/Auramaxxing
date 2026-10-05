@@ -1,20 +1,20 @@
 // models/index.js: the authored models (.glb) in the pack. Put the file in art/models/, add an
 // entry here, and check it in /art/catalogue.html. See art/MODELS.md for sourcing, sizes and licences.
 //
-// Example (commented out until a real file exists):
-//
-// defineModel('antares', {
-//   url: './models/antares.glb',     // relative to art/
-//   height: 6.8,                     // units; the old raid boss stood about 6.8
-//   category: 'hero',
-//   sector: 'dungeon',
-//   tiles: [3, 3],
-//   replaces: 'raid-boss',           // the raid cinematics show this instead of the code-drawn boss
-//   clips: { idle: 'Idle', roar: 'Roar' },
-//   turn: 0,                         // degrees; 180 if it was exported facing away
-//   credit: 'Name of the artist, link',
-//   licence: 'CC-BY 4.0',
-// });
+// The Monarch: the raid boss, sculpted, textured and rigged in Blender from the scripts in
+// models/src/monarch/ (python3.11 -m pip install bpy; python3.11 build.py --bake --out monarch.glb).
+// 59k triangles, one 2K texture set (colour, normal, occlusion/roughness/metal) plus a 1K glow map,
+// clips Idle and Roar. Its eyes and chest rift carry extras.eye, so the raid recolours them.
 import { defineModel } from '../models.js';
 
-void defineModel;
+defineModel('monarch', {
+  url: './models/monarch.glb',
+  height: 6.8,                     // the old raid boss stood about 6.8 units
+  category: 'hero',
+  sector: 'dungeon',
+  tiles: [3, 2],
+  replaces: 'raid-boss',
+  clips: { idle: 'Idle', roar: 'Roar' },
+  credit: 'Original work for Auramaxxing (art/models/src/monarch)',
+  licence: 'Same terms as this repository',
+});

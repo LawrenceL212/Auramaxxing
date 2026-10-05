@@ -5912,7 +5912,7 @@ function buildSystemCoreScene({ THREE, quality, tier }) {
         n.material = copies.get(n.material);
         if (n.userData.eye && !eyes.includes(n.material)) eyes.push(n.material);
       });
-      if (model) { try { artPack.lightModel(o, AuraGL.renderer, 1.0); } catch (e) {} }
+      if (model) { try { artPack.lightModel(o, AuraGL.renderer, 0.4); } catch (e) {} }
       else o.scale.setScalar(ART_BOSS_SCALE);   // a model arrives at its registered height already
       o.userData.kind = model ? 'model' : 'drawn';
       o.userData.art = { mats, eyes, outlines, model, anim: model ? null : artPack.get('raid-boss').anims.breathe };

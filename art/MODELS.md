@@ -58,3 +58,18 @@ The app runs in a phone browser, so detail is spent where it shows:
 
 New places (the Hunter, a 3D shadow army) get a code-drawn stand-in and an id first, then take a
 model the same way.
+
+## Models built here
+
+`monarch.glb` (the raid boss) is built in Blender from `models/src/monarch/build.py`: a skin-modifier
+body unioned with muscle masses and voxel-remeshed, armour plates extracted from that surface,
+procedural materials baked to one 2K set (colour, normal, ORM) plus a 1K glow map, a 17-bone rig and
+the Idle and Roar clips. To change it, edit the script and rebuild (about two minutes on a laptop CPU):
+
+```bash
+python3.11 -m pip install "bpy==4.5.*"
+cd art/models/src/monarch && python3.11 build.py --bake --out ../../monarch.glb
+```
+
+A model an artist sculpts by hand will beat it; when one arrives, register it with
+`replaces: 'raid-boss'` and remove the Monarch's entry.
