@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Art Catalogue</title>
+<!-- Same three.js build and import map as index.html, so what passes here renders the same in the app. -->
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.180.0/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.180.0/examples/jsm/"
+  }
+}
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;900&family=Rajdhani:wght@500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet" />
+<style>
+  /* tokens copied from index.html :root */
+  :root {
+    --void: #05060A; --deep: #0A0D13; --surface: #10141C; --elevated: #161B25; --rim: #1E2535;
+    --text: #F2F5FA; --text-dim: #A4B0C2; --text-faint: #7E8CA3;
+    --brass: #5BA8FF; --violet: #A17FFF; --growing: #6FFFB0; --excess: #FF4D67;
+    --border: rgba(91,168,255,0.15);
+    --font-display: 'Orbitron', sans-serif; --font-body: 'Rajdhani', sans-serif; --font-mono: 'Share Tech Mono', monospace;
+    --radius-sm: 4px; --radius-md: 8px;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--void); color: var(--text); font-family: var(--font-body); font-size: 15px; }
+  body { min-height: 100vh; padding: 0 16px calc(24px + env(safe-area-inset-bottom)); max-width: 1100px; margin: 0 auto; }
+  header { padding: 18px 0 12px; display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+  h1 { font-family: var(--font-display); font-size: 15px; letter-spacing: .22em; margin: 0; text-transform: uppercase; }
+  h1 span { color: var(--brass); }
+  .sub { font-family: var(--font-mono); font-size: 11px; color: var(--text-faint); letter-spacing: .08em; }
+  .layout { display: grid; gap: 14px; }
+  @media (min-width: 900px) { .layout { grid-template-columns: minmax(0, 1fr) 320px; align-items: start; } }
+  .stage {
+    position: relative; aspect-ratio: 1 / 1; border: 1px solid var(--border); border-radius: var(--radius-md); overflow: hidden;
+    background: radial-gradient(90% 70% at 50% 40%, #1a1636 0%, #0b0e1a 55%, var(--void) 100%);
+  }
+  @media (min-width: 900px) { .stage { aspect-ratio: 4 / 3; } }
+  .stage canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+  .stage .tag { position: absolute; left: 12px; top: 10px; font-family: var(--font-mono); font-size: 11px; color: var(--text-dim); letter-spacing: .1em; pointer-events: none; }
+  .stage .err { position: absolute; inset: 0; display: none; place-items: center; text-align: center; padding: 24px; color: var(--excess); font-family: var(--font-mono); font-size: 12px; }
+  .panel { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 12px; }
+  .panel + .panel { margin-top: 12px; }
+  .label { font-family: var(--font-mono); font-size: 10px; letter-spacing: .18em; color: var(--text-faint); text-transform: uppercase; margin: 0 0 8px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip {
+    font: 600 13px var(--font-body); letter-spacing: .04em; color: var(--text-dim); background: var(--elevated);
+    border: 1px solid var(--rim); border-radius: var(--radius-sm); padding: 7px 10px; cursor: pointer; min-height: 34px;
+  }
+  .chip:hover { color: var(--text); border-color: rgba(91,168,255,.35); }
+  .chip[aria-pressed="true"] { color: var(--text); border-color: var(--brass); box-shadow: 0 0 12px rgba(91,168,255,.25) inset; }
+  .chip.warn { border-color: rgba(255,77,103,.6); }
+  .group + .group { margin-top: 10px; }
+  .group .gname { font-family: var(--font-mono); font-size: 10px; color: var(--violet); letter-spacing: .14em; margin-bottom: 6px; text-transform: uppercase; }
+  .facts { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; font-family: var(--font-mono); font-size: 12px; }
+  .facts dt { color: var(--text-faint); } .facts dd { margin: 0; color: var(--text); overflow-wrap: anywhere; }
+  .ok { color: var(--growing); } .bad { color: var(--excess); }
+  .problems { margin: 8px 0 0; padding: 0; list-style: none; font-family: var(--font-mono); font-size: 12px; color: var(--excess); }
+  .row { display: flex; gap: 6px; flex-wrap: wrap; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Auramaxxing <span>·</span> Art Catalogue</h1>
+  <div class="sub" id="summary">loading…</div>
+</header>
+<div class="layout">
+  <div>
+    <div class="stage" id="stage">
+      <canvas id="view"></canvas>
+      <div class="tag" id="tag"></div>
+      <div class="err" id="err"></div>
+    </div>
+  </div>
+  <aside>
+    <div class="panel"><p class="label">Assets</p><div id="assets"></div></div>
+    <div class="panel" id="options-panel"><p class="label">Options</p><div id="options"></div></div>
+    <div class="panel">
+      <p class="label">View</p>
+      <div class="row" id="toggles"></div>
+    </div>
+    <div class="panel"><p class="label">Checks</p><dl class="facts" id="facts"></dl><ul class="problems" id="problems"></ul></div>
+  </aside>
+</div>
+<script type="module" src="./catalogue.js"></script>
+</body>
+</html>

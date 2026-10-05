@@ -75,6 +75,15 @@ Hand-rolled, no framework. `switchView(name)` (`index.html:4295`) toggles `.acti
 
 Global mutable state: `currentUser`, `profile`, `myProgram`, `authMode` — module-scoped `let` bindings read directly by render functions.
 
+### Art stack (`art/`)
+
+A procedural, toon-shaded three.js art pack ported from Grimoire: zero image assets, everything is code.
+`art/kit.js` (toon materials, ink outlines, cached geometry), `art/theme.js` (palette mirrored from the
+CSS tokens), `art/registry.js` (asset factories with triangle budgets, footprints and checks; pure, so
+`node test/art-registry.test.mjs` tests it), `art/packs/*.js` (the assets). Review assets in
+`/art/catalogue.html` under the local server. Nothing in `index.html` imports `art/` yet; wire it in
+one screen at a time, through the existing AuraGL runtime. Presentation only, like the rest of the 3D layer.
+
 ### Firestore collections
 
 Eight in use: `users/{uid}`, `workouts/{autoId}`, `programs/{uid}`, `customExercises/{autoId}`, `bodyweight/{autoId}`, `prs/{...}`, `apEvents/{...}`, `checkins/{...}`.
