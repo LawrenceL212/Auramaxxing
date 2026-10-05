@@ -63,6 +63,11 @@ Statically imported at `index.html:3188-3191`:
 - [exercises.js](exercises.js) — `BASE_EXERCISES`; each entry carries `intent`, `statWeights` (XP distribution across the 6 stats), `muscles` (0–1 emphasis), `equipment`, optional `skillTier`. Merged with per-user custom exercises by `rebuildExercisesAll()`.
 - [progression-chains.js](progression-chains.js), [archetype-chains.js](archetype-chains.js), [auto-achievements.js](auto-achievements.js)
 
+[physique.js](physique.js) draws the Hunter's own muscle map to their body: muscles grow with
+12 weeks of training plus PR tiers, and the build comes from check-in tape measurements, else
+`profile.heightCm` (set in Settings) and the latest weigh-in. `bodySvg()` applies it; pure, so
+`node test/physique.test.mjs` tests it. Presentation only.
+
 Lazy-loaded: [classes.js](classes.js) via `await import('./classes.js')` at line 10375 (6 root archetypes, 63 paths, 250+ class names) — kept out of the initial load deliberately.
 
 [countries_embedded.js](countries_embedded.js) (1.4 MB `COUNTRIES_GEO`) is imported **only** by [shadow-world.html](shadow-world.html), never by `index.html`.
