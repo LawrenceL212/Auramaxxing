@@ -5098,6 +5098,8 @@ if (configOk) {
       setTimeout(() => ensureStatBaselines(), 1200);
       // startup integrity check — lightweight; triggers full reconcile only if version changed
       setTimeout(() => startupIntegrityCheck(), 2000);
+      // A workout JARVIS filled in, handed over by link (#log=…)
+      setTimeout(() => openLinkedWorkout(), 2600);
       // Phase 4: bring up the cinematic layer after the app is interactive, so
       // it can never delay login or data. Failure here is non-fatal by design.
       setTimeout(async () => {
@@ -8115,6 +8117,48 @@ function progressiveOverloadSuggestion(exerciseName, targetReps) {
 
     return { reps: newReps, weight: newWeight, rir: null, suggestion, prevReps: prefillReps, prevWeight: prefillWeight, prevRir: isTimed ? null : rir, prevRpe: isTimed ? rir : null };
   });
+}
+
+// ── A workout handed over by link (JARVIS: "just did bench 3x8 at 60kg") ──
+// #log=<base64url JSON {t, d, x:[{n, s:[[reps, kg], …]}]}> opens the logger
+// filled in. Nothing is saved here: the Hunter checks it and taps Complete,
+// so XP, PRs, dungeon and army all come from the normal save path.
+function readLinkedWorkout() {
+  const m = /[#&]log=([A-Za-z0-9_-]+)/.exec(location.hash || '');
+  if (!m) return null;
+  try {
+    const b64 = m[1].replace(/-/g, '+').replace(/_/g, '/');
+    const json = decodeURIComponent(escape(atob(b64 + '==='.slice((b64.length + 3) % 4))));
+    const d = JSON.parse(json);
+    return d && Array.isArray(d.x) && d.x.length ? d : null;
+  } catch (e) { console.warn('Linked workout unreadable:', e); return null; }
+}
+function openLinkedWorkout() {
+  const d = readLinkedWorkout();
+  if (!d) return;
+  try { history.replaceState(null, '', location.pathname + location.search); } catch (e) { /* keep going */ }
+  const rows = document.getElementById('exercise-rows');
+  const busy = [...rows.querySelectorAll('.exercise-row')].some(r => r.dataset.exName);
+  if (busy) { showToast('Finish or discard the hunt in progress, then open the JARVIS link again.', 'error'); return; }
+  const byLower = {};
+  Object.keys(EXERCISES_ALL).forEach(n => { byLower[n.toLowerCase()] = n; });
+  const unknown = [];
+  activeDayIndex = null;
+  rows.innerHTML = '';
+  for (const ex of d.x.slice(0, 20)) {
+    const name = EXERCISES_ALL[ex.n] ? ex.n : byLower[String(ex.n || '').toLowerCase()];
+    if (!name) unknown.push(ex.n);
+    const sets = (Array.isArray(ex.s) ? ex.s : []).slice(0, 20)
+      .map(([reps, kg]) => ({ reps: Math.max(0, Math.round(Number(reps) || 0)), weight: Math.max(0, Number(kg) || 0), rir: null }));
+    addExerciseRow(name || undefined, sets.length, sets[0]?.reps || 10, sets);
+  }
+  if (/^\d{4}-\d{2}-\d{2}$/.test(d.d || '')) { const el = document.getElementById('workout-date'); if (el) el.value = d.d; }
+  document.getElementById('logger-title').textContent = String(d.t || 'Logged by JARVIS').slice(0, 40).toUpperCase();
+  refreshCompleteButton();
+  openWorkoutModal();
+  showToast(unknown.length
+    ? `Pick the exercise for: ${unknown.join(', ')}`
+    : 'Filled in from JARVIS. Check it, then Complete.', unknown.length ? 'error' : 'info');
 }
 
 function startProgramDay(idx) {
