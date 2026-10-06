@@ -497,8 +497,12 @@ def facet(ob, angle=0.1):
     apply_mods(ob)
     return ob
 
-def plate(src, name, keep, push=0.03, thick=0.03, smooth=3, facets=0.14, bevel=0.004):
-    # armour: lifted from the body, relaxed, then cut into hard facets with crisp bevelled edges
+def plate(src, name, keep, push=0.03, thick=0.03, smooth=3, facets=0.14, bevel=0.004, rim=0.0, rivets=0.0, cuts=()):
+    """Armour: lifted from the body, relaxed, then cut into hard facets with crisp bevelled edges.
+    rim > 0 raises a rolled border that wide round the edge (the middle is sunk a little), the way
+    plate is turned at its edges; rivets > 0 sets domed rivets along the border that far apart.
+    cuts: (point, normal) planes the plate is trimmed to, everything on the normal's side removed,
+    so its edges run clean and straight instead of following the body mesh's vertices."""
     bm = bmesh.new(); bm.from_mesh(src.data)
     bm.normal_update()
     dead = [v for v in bm.verts if not keep(v.co)]
@@ -508,15 +512,68 @@ def plate(src, name, keep, push=0.03, thick=0.03, smooth=3, facets=0.14, bevel=0
     ob = mesh_from_bm(name, bm)
     m = ob.modifiers.new('sm', 'SMOOTH'); m.iterations = smooth * 4; m.factor = 1.0
     apply_mods(ob)
+    if cuts:
+        bm = bmesh.new(); bm.from_mesh(ob.data)
+        for pt, nrm in cuts:
+            pt, nrm = V(pt), V(nrm).normalized()
+            geom = bm.verts[:] + bm.edges[:] + bm.faces[:]
+            bmesh.ops.bisect_plane(bm, geom=geom, plane_co=pt, plane_no=nrm, clear_outer=True, dist=1e-5)
+        bm.to_mesh(ob.data); bm.free()
+        if not ob.data.vertices:
+            return ob
     if facets:
         facet(ob, facets)
+    studs = []
+    if rim or rivets:
+        bm = bmesh.new(); bm.from_mesh(ob.data); bm.normal_update()
+        if rivets:
+            border = [e for e in bm.edges if len(e.link_faces) == 1]
+            centre = sum((v.co for v in bm.verts), V()) / max(1, len(bm.verts))
+            acc = 0.0
+            for e in border:
+                acc += e.calc_length()
+                if acc >= rivets:
+                    acc = 0.0
+                    p = (e.verts[0].co + e.verts[1].co) / 2
+                    nrm = (e.verts[0].normal + e.verts[1].normal).normalized()
+                    inward = (centre - p); inward -= nrm * inward.dot(nrm)
+                    if inward.length > 1e-6:
+                        p = p + inward.normalized() * max(rim * 0.5, 0.012)
+                    studs.append((p + nrm * thick, nrm))
+        if rim:
+            faces = bm.faces[:]
+            bmesh.ops.inset_region(bm, faces=faces, thickness=rim, depth=-rim * 0.3, use_even_offset=True)
+        bm.to_mesh(ob.data); bm.free()
     so = ob.modifiers.new('solid', 'SOLIDIFY'); so.thickness = thick; so.offset = 1; so.use_rim = True
     if bevel:
-        bv = ob.modifiers.new('bevel', 'BEVEL'); bv.width = bevel; bv.segments = 1; bv.limit_method = 'ANGLE'; bv.angle_limit = math.radians(30)
+        bv = ob.modifiers.new('bevel', 'BEVEL'); bv.width = bevel; bv.segments = 2; bv.limit_method = 'ANGLE'
+        bv.angle_limit = math.radians(30); bv.harden_normals = False
     apply_mods(ob)
+    if studs:
+        rv = []
+        for i, (p, nrm) in enumerate(studs):
+            s = orb(f'{name}_rv{i}', p, (0.009, 0.009, 0.006), seg=(8, 5))
+            s.rotation_mode = 'QUATERNION'; s.rotation_quaternion = nrm.to_track_quat('Z', 'Y')
+            apply_xform(s); rv.append(s)
+        # the rivets only exist in the high mesh: they bake into the normal and occlusion maps
+        ob['detail'] = join(rv, name + '_rivets').name
     return sharp(ob)
 
-def lames(src, name, keep, a, b, n, t0=0.0, t1=1.0, push=0.022, step=0.007, thick=0.014, overlap=0.3, facets=0.45, smooth=2):
+def strap(src, name, a, b, face, width=0.03, push=0.016, r=0.22, t0=0.0, t1=1.0, thick=0.008):
+    """A leather strap along a limb, on the side `face` points to: lifted off the body under the plate,
+    the hidden harness the lames hang from, visible in the gaps between them."""
+    a, b = V(a), V(b); face = V(face).normalized()
+    ab = b - a
+    def keep(p):
+        t = (p - a).dot(ab) / ab.length_squared
+        if not (t0 <= t <= t1): return False
+        o = p - a.lerp(b, t)
+        if o.length > r or o.dot(face) <= 0: return False
+        lat = o - face * o.dot(face); lat -= ab.normalized() * lat.dot(ab.normalized())
+        return lat.length < width
+    return plate(src, name, keep, push=push, thick=thick, smooth=1, facets=0.3, bevel=0.002)
+
+def lames(src, name, keep, a, b, n, t0=0.0, t1=1.0, push=0.022, step=0.007, thick=0.014, overlap=0.3, facets=0.1, smooth=4, rim=0.008, rivets=0.07, cuts=()):
     """Articulated armour: the region of src that keep() selects, cut into n thin bands along a->b,
     each overlapping the next by `overlap` of a band and lifted `step` further out, so they shingle
     like real lames and can slide over each other when the joint bends. Returns {name+i: plate}."""
@@ -527,8 +584,10 @@ def lames(src, name, keep, a, b, n, t0=0.0, t1=1.0, push=0.022, step=0.007, thic
     w = (t1 - t0) / n
     for i in range(n):
         lo, hi = t0 + w * i, t0 + w * (i + 1 + overlap)
-        ob = plate(src, f'{name}{i}', lambda p, lo=lo, hi=hi: keep(p) and lo <= tt(p) <= hi,
-                   push=push + step * i, thick=thick, smooth=smooth, facets=facets, bevel=0.003)
+        m = w * 0.4   # select a little wide, then trim to straight edges across the limb
+        planes = [(a + ab * lo, -ab), (a + ab * hi, ab)] + list(cuts)
+        ob = plate(src, f'{name}{i}', lambda p, lo=lo - m, hi=hi + m: keep(p) and lo <= tt(p) <= hi,
+                   push=push + step * i, thick=thick, smooth=smooth, facets=facets, bevel=0.003, rim=rim, rivets=rivets, cuts=planes)
         if ob is not None and len(ob.data.vertices):
             out[f'{name}{i}'] = ob
     return out
@@ -774,6 +833,221 @@ def mat_cloth(name, zmin, zmax, stops, rough=0.85, sheen=0.4, weave=160.0):
     L(nt, b.outputs['Normal'], P.inputs['Normal'])
     return m
 
+# ── premium materials: layered surfaces with wear, grime, scratches and roughness breakup ──
+# Everything is procedural and baked; Object coordinates are world coordinates here (every part has
+# its transform applied), so a texture's scale is in metres. Masks are 0..1 float sockets.
+class G:
+    """A tiny node-graph builder: math on sockets or numbers, noise, masks and colour layering."""
+    def __init__(self, name):
+        self.m, self.nt, self.P = new_mat(name)
+        self.n = nodes(self.nt)
+        self.tc = self.n('ShaderNodeTexCoord')
+        self.geo = self.n('ShaderNodeNewGeometry')
+        self.co = self.tc.outputs['Object']
+        self.bumps = []
+    def _in(self, sock, v):
+        if isinstance(v, (int, float)): sock.default_value = v
+        elif isinstance(v, tuple): sock.default_value = (*v, 1) if len(v) == 3 else v
+        else: L(self.nt, v, sock)
+    def math(self, op, a, b=0.0, clamp=True):
+        x = self.n('ShaderNodeMath', operation=op); x.use_clamp = clamp
+        self._in(x.inputs[0], a); self._in(x.inputs[1], b)
+        return x.outputs[0]
+    def mul(self, a, b): return self.math('MULTIPLY', a, b)
+    def add(self, a, b): return self.math('ADD', a, b, clamp=False)
+    def inv(self, a): return self.math('SUBTRACT', 1.0, a)
+    def mx(self, a, b): return self.math('MAXIMUM', a, b)
+    def band(self, v, lo, hi):
+        # smooth 0->1 step from lo to hi (hi < lo gives the falling edge)
+        r = self.n('ShaderNodeMapRange', interpolation_type='SMOOTHSTEP', i_From_Min=lo, i_From_Max=hi)
+        self._in(r.inputs['Value'], v); return r.outputs['Result']
+    def vec(self, scale=(1, 1, 1), rot=(0, 0, 0)):
+        mp = self.n('ShaderNodeMapping'); L(self.nt, self.co, mp.inputs['Vector'])
+        mp.inputs['Scale'].default_value = scale; mp.inputs['Rotation'].default_value = rot
+        return mp.outputs['Vector']
+    def noise(self, scale, detail=6.0, rough=0.55, vec=None, dist=0.0):
+        x = self.n('ShaderNodeTexNoise', i_Scale=scale, i_Detail=detail, i_Roughness=rough, i_Distortion=dist)
+        L(self.nt, vec or self.co, x.inputs['Vector']); return x.outputs['Fac']
+    def edges(self, scale, vec=None, rnd=1.0):
+        x = self.n('ShaderNodeTexVoronoi', feature='DISTANCE_TO_EDGE', i_Scale=scale, i_Randomness=rnd)
+        L(self.nt, vec or self.co, x.inputs['Vector']); return x.outputs['Distance']
+    def cells(self, scale, vec=None):
+        x = self.n('ShaderNodeTexVoronoi', feature='F1', i_Scale=scale)
+        L(self.nt, vec or self.co, x.inputs['Vector']); return x.outputs['Distance']
+    def pointy(self): return self.geo.outputs['Pointiness']
+    def lerp(self, fac, a, b):
+        x = self.n('ShaderNodeMix', data_type='RGBA')
+        self._in(x.inputs['Factor'], fac); self._in(x.inputs[6], a); self._in(x.inputs[7], b)
+        return x.outputs[2]
+    def lerpf(self, fac, a, b):
+        x = self.n('ShaderNodeMix', data_type='FLOAT')
+        self._in(x.inputs['Factor'], fac); self._in(x.inputs[2], a); self._in(x.inputs[3], b)
+        return x.outputs[0]
+    def tint(self, col, v, lo, hi):
+        # col scaled by a value remapped to lo..hi: cheap colour variation
+        k = self.lerpf(v, lo, hi)
+        x = self.n('ShaderNodeMix', data_type='RGBA', blend_type='MULTIPLY', i_Factor=1.0)
+        self._in(x.inputs[6], col); self._in(x.inputs[7], self._grey(k))
+        return x.outputs[2]
+    def _grey(self, k):
+        c = self.n('ShaderNodeCombineColor')
+        for i in range(3): L(self.nt, k, c.inputs[i])
+        return c.outputs[0]
+    def bump(self, h, strength, dist, invert=False):
+        self.bumps.append((h, strength, dist, invert))
+    def wear(self, lo=0.53, hi=0.6, breakup=0.5, scale=14.0):
+        # bare-metal edge wear: the sharpest convex edges, broken up by noise so it is not a clean line
+        e = self.band(self.pointy(), lo, hi)
+        nz = self.band(self.noise(scale, 8.0, 0.6), 0.5 - breakup * 0.3, 0.5 + breakup * 0.1)
+        return self.mul(e, nz)
+    def cavity(self, lo=0.5, hi=0.44):
+        return self.band(self.pointy(), lo, hi)
+    def scratches(self, scale=9.0, density=0.5):
+        # long thin scratches in two crossing directions, clustered in patches
+        out = None
+        for rot in ((0, 0, 0.4), (0.3, 1.2, -0.7), (1.1, 0.2, 2.0)):
+            d = self.edges(scale, self.vec((1, 1, 0.06), rot))
+            s = self.band(d, 0.012, 0.0)
+            out = s if out is None else self.mx(out, s)
+        gate = self.band(self.noise(2.2, 4.0), 0.62 - density * 0.2, 0.72 - density * 0.2)
+        return self.mul(out, gate)
+    def finish(self, base, rough, metal=0.0, emit=None, emit_strength=1.0):
+        P = self.P
+        self._in(P.inputs['Base Color'], base); self._in(P.inputs['Roughness'], rough); self._in(P.inputs['Metallic'], metal)
+        if emit is not None:
+            self._in(P.inputs['Emission Color'], emit); P.inputs['Emission Strength'].default_value = emit_strength
+        nrm = None
+        for h, s, d, inv in self.bumps:
+            b = self.n('ShaderNodeBump', i_Strength=s, i_Distance=d, invert=inv)
+            L(self.nt, h, b.inputs['Height'])
+            if nrm is not None: L(self.nt, nrm, b.inputs['Normal'])
+            nrm = b.outputs['Normal']
+        if nrm is not None: L(self.nt, nrm, P.inputs['Normal'])
+        return self.m
+
+def mat_steel(name, base=(0.035, 0.034, 0.036), bare=(0.3, 0.29, 0.3), rough=0.34, engrave=None, paint=None, dents=1.0, wear=(0.58, 0.66)):
+    """Forged plate: dark blued steel with polished, worn-through edges, grime in the recesses,
+    scratches, hammer marks and dents, uneven roughness. engrave: inlay colour for etched filigree.
+    paint: (colour, roughness) of a chipped painted layer over the steel."""
+    g = G(name)
+    patches = g.noise(2.6, 4.0)                                     # large polish/oxidation patches
+    smudge = g.noise(16.0, 6.0)
+    col = g.tint(base, patches, 0.75, 1.3)
+    r = g.add(rough - 0.12, g.mul(patches, 0.24))
+    r = g.add(r, g.mul(g.add(smudge, -0.5), 0.12))
+    cav = g.cavity()
+    col = g.lerp(g.mul(cav, 0.8), col, (0.008, 0.006, 0.005))            # grime packed into the recesses
+    r = g.lerpf(g.mul(cav, 0.8), r, 0.85)
+    metal = 1.0
+    if engrave:
+        wav = g.n('ShaderNodeTexWave', wave_type='RINGS', i_Scale=7.0, i_Distortion=8.0, i_Detail=4.0, i_Detail_Scale=1.5)
+        L(g.nt, g.co, wav.inputs['Vector'])
+        lines = g.band(wav.outputs['Fac'], 0.07, 0.0)
+        gate = g.band(g.noise(3.0, 2.0), 0.46, 0.52)
+        en = g.mul(lines, gate)
+        col = g.lerp(en, col, engrave); r = g.lerpf(en, r, 0.6)
+        g.bump(en, 0.6, 0.0025, invert=True)
+    if paint:
+        chips = g.band(g.noise(22.0, 10.0, 0.7), 0.62, 0.66)
+        worn = g.mx(g.band(g.pointy(), 0.515, 0.55), chips)
+        pm = g.inv(worn)
+        col = g.lerp(pm, col, paint[0]); r = g.lerpf(pm, r, paint[1])
+        metal = g.inv(pm)
+        g.bump(pm, 0.25, 0.0015)
+    # wear only where an edge really is sharp and exposed: thin plate is all edge to Pointiness, so a
+    # low threshold paints the whole surface bare
+    w = g.wear(wear[0], wear[1], 0.4)
+    col = g.lerp(w, col, bare); r = g.lerpf(w, r, 0.22)
+    if paint: metal = g.mx(metal, w)
+    sc = g.scratches(density=0.3)
+    col = g.lerp(g.mul(sc, 0.35), col, bare); r = g.lerpf(g.mul(sc, 0.6), r, 0.28)
+    g.bump(sc, 0.25, 0.0008, invert=True)
+    g.bump(g.cells(38.0), 0.06 * dents, 0.004)                        # hammer marks
+    g.bump(g.noise(5.0, 3.0), 0.18 * dents, 0.01)                     # dents and warping
+    return g.finish(col, r, metal)
+
+def mat_leather(name, col=(0.03, 0.018, 0.012), rough=0.62):
+    # oiled leather: grain, creases, lighter scuffed edges, darker grime
+    g = G(name)
+    c = g.tint(col, g.noise(5.0, 6.0), 0.7, 1.35)
+    grain = g.cells(160.0)
+    crease = g.band(g.edges(24.0, g.vec((1, 1, 4))), 0.03, 0.0)
+    c = g.lerp(g.mul(crease, 0.5), c, (0.006, 0.004, 0.003))
+    w = g.wear(0.52, 0.58, 0.6, 20.0)
+    c = g.lerp(w, c, (0.12, 0.08, 0.055))
+    r = g.add(rough - 0.1, g.mul(g.noise(9.0, 4.0), 0.25))
+    r = g.lerpf(w, r, 0.85)
+    g.bump(grain, 0.2, 0.001); g.bump(crease, 0.35, 0.002, invert=True)
+    return g.finish(c, r)
+
+def mat_bone(name, col=(0.32, 0.27, 0.2), rough=0.55):
+    # old bone: yellowed, stained brown in the cracks and hollows, fine cracks and pores
+    g = G(name)
+    c = g.tint(col, g.noise(6.0, 6.0), 0.55, 1.15)
+    cav = g.cavity(0.52, 0.42)
+    c = g.lerp(cav, c, (0.05, 0.03, 0.015))
+    cracks = g.band(g.edges(14.0, None, 0.9), 0.012, 0.0)
+    c = g.lerp(g.mul(cracks, 0.8), c, (0.03, 0.02, 0.01))
+    r = g.add(rough - 0.1, g.mul(g.noise(20.0, 4.0), 0.2))
+    g.bump(cracks, 0.4, 0.0015, invert=True); g.bump(g.cells(90.0), 0.12, 0.001)
+    return g.finish(c, r)
+
+def mat_horn2(name, root=(0.012, 0.009, 0.009), tip=(0.2, 0.05, 0.03), zmin=0.0, zmax=1.0, rough=0.4, bands=60.0):
+    # keratin horn: striated along its length, growth rings across it, glossier at the polished tip,
+    # chipped and lighter on its worn edges
+    g = G(name)
+    sep = g.n('ShaderNodeSeparateXYZ'); L(g.nt, g.co, sep.inputs['Vector'])
+    t = g.band(sep.outputs['Z'], zmin, zmax)
+    c = g.lerp(g.mul(t, t), root, tip)
+    stri = g.noise(30.0, 8.0, 0.6, g.vec((1, 1, 0.08)))
+    c = g.tint(c, stri, 0.6, 1.4)
+    rings = g.n('ShaderNodeTexWave', i_Scale=bands, i_Distortion=3.0, wave_profile='SAW'); rings.bands_direction = 'Z'
+    L(g.nt, g.co, rings.inputs['Vector'])
+    w = g.wear(0.54, 0.62, 0.5, 12.0)
+    c = g.lerp(w, c, (0.22, 0.16, 0.13))
+    r = g.lerpf(t, rough + 0.15, rough - 0.12)
+    r = g.add(r, g.mul(g.add(stri, -0.5), 0.2))
+    g.bump(rings.outputs['Fac'], 0.35, 0.004); g.bump(stri, 0.3, 0.002)
+    return g.finish(c, r)
+
+def mat_fabric(name, zmin, zmax, stops, rough=0.86, sheen=0.4, weave=220.0, lining=None):
+    # heavy woven wool: weave, slubs, scorched and filthy toward the frayed hem, faded on the folds
+    g = G(name)
+    sep = g.n('ShaderNodeSeparateXYZ'); L(g.nt, g.co, sep.inputs['Vector'])
+    mr = g.n('ShaderNodeMapRange', i_From_Min=zmin, i_From_Max=zmax); L(g.nt, sep.outputs['Z'], mr.inputs['Value'])
+    c = ramp(g.n, g.nt, mr.outputs['Result'], stops).outputs['Color']
+    slub = g.noise(40.0, 4.0, 0.5, g.vec((1, 1, 0.15)))
+    c = g.tint(c, slub, 0.75, 1.25)
+    c = g.tint(c, g.noise(3.0, 5.0), 0.6, 1.3)
+    hem = g.band(mr.outputs['Result'], 0.25, 0.0)
+    filth = g.mul(hem, g.band(g.noise(6.0, 8.0), 0.35, 0.6))
+    c = g.lerp(filth, c, (0.01, 0.008, 0.006))
+    fold = g.band(g.pointy(), 0.52, 0.58)
+    c = g.lerp(g.mul(fold, 0.35), c, (0.14, 0.11, 0.1))
+    w1 = g.n('ShaderNodeTexWave', i_Scale=weave, wave_profile='SIN'); L(g.nt, g.co, w1.inputs['Vector'])
+    w2 = g.n('ShaderNodeTexWave', i_Scale=weave, wave_profile='SIN', bands_direction='Z'); L(g.nt, g.co, w2.inputs['Vector'])
+    r = g.add(rough - 0.06, g.mul(slub, 0.1))
+    g.P.inputs['Sheen Weight'].default_value = sheen
+    g.bump(w1.outputs['Fac'], 0.12, 0.0008); g.bump(w2.outputs['Fac'], 0.12, 0.0008); g.bump(slub, 0.2, 0.002)
+    return g.finish(c, r)
+
+def mat_membrane(name, dark=(0.02, 0.006, 0.008), light=(0.14, 0.02, 0.018), vein=(0.9, 0.08, 0.02), rough=0.55):
+    # a wing membrane: leathery, wrinkled across its stretch, a web of raised veins, thin glowing
+    # veins only in the big branches
+    g = G(name)
+    mott = g.noise(4.0, 6.0)
+    c = g.lerp(mott, dark, light)
+    wr = g.noise(26.0, 6.0, 0.6, g.vec((1, 0.15, 1), (0, 0, 0.6)))
+    c = g.tint(c, wr, 0.6, 1.3)
+    small = g.band(g.edges(16.0), 0.02, 0.0)
+    big = g.band(g.edges(4.0, None, 0.8), 0.012, 0.0)
+    c = g.lerp(g.mul(small, 0.6), c, (0.008, 0.003, 0.003))
+    glow = g.mul(big, g.band(g.noise(3.0, 2.0), 0.45, 0.6))
+    r = g.add(rough - 0.1, g.mul(wr, 0.25))
+    g.bump(wr, 0.35, 0.003); g.bump(small, 0.4, 0.0015); g.bump(big, 0.6, 0.003)
+    return g.finish(c, r, 0.0, emit=g.lerp(glow, (0, 0, 0), vein))
+
+
 # ── weights: distance to bone segments, restricted to the bones a part may follow ──
 def smooth_weights(co, allowed, segs, mid=0.08):
     side = 'L' if co.x > 0 else 'R'
@@ -866,9 +1140,14 @@ def finish(name, out, J, bones, parts, glow, part_info, mats, flat, tri_target, 
         for p in lo.data.polygons: p.material_index = gi
         assign_weights(lo, rule, segs, mid)
         highs.setdefault(key, []).append(hi)
+        if hi.get('detail'):   # bake-only detail (rivets and the like): high mesh only, same material
+            d = bpy.data.objects[hi['detail']]
+            d.data.materials.clear(); d.data.materials.append(mats[key])
+            highs[key].append(d)
         lows.append(lo)
 
     boss = join(lows, 'boss')
+    boss.data.validate(clean_customdata=False)   # drop any degenerate faces the plate cuts left behind
     print('triangles (body mesh):', tri_count(boss), flush=True)
     activate(boss)
     bpy.ops.object.mode_set(mode='EDIT')

@@ -5920,7 +5920,7 @@ function buildSystemCoreScene({ THREE, quality, tier }) {
      is fully hidden, so it never pops in mid-cinematic; until then, or if the
      pack fails, the primitive boss plays as before. */
   const ART_BOSS_SCALE = 2.15;       // modelled at ~3.2 units; the old mass stood ~6.8
-  let artPack = null, artBoss = null, bossKey = null, bossRim = null, bossFill = null;
+  let artPack = null, artBoss = null, bossKey = null, bossRim = null, bossRim2 = null, bossFill = null;
   let bossTier = null;   // the raid tier (E..S) whose boss to show; each has its own model, 'raid-boss:<tier>'
   const artReady = import('./art/index.js').then(m => { artPack = m; m.prepare('raid-boss'); return m; })
     .catch(e => { console.warn('art pack unavailable, using primitive boss', e); return null; });
@@ -5974,7 +5974,7 @@ function buildSystemCoreScene({ THREE, quality, tier }) {
       for (const c of boss.children) c.visible = false;
       boss.add(o);
       artBoss = o;
-      if (bossKey) { bossKey.target = o; bossRim.target = o; return; }   // the lights are already there
+      if (bossKey) { bossKey.target = o; bossRim.target = o; bossRim2.target = o; return; }   // the lights are already there
       // Its own lighting, faded with the boss: a cool key from in front and
       // above (the camera's side), a hard rim behind in the eye colour that
       // cuts the silhouette out of the dark, and a low fill so the underside
@@ -5985,9 +5985,14 @@ function buildSystemCoreScene({ THREE, quality, tier }) {
       bossRim = new THREE.SpotLight(0xff5c6b, 0, 30, 0.6, 0.5, 1.0);
       bossRim.position.set(-1.5, 8.0, -12.0);
       bossRim.target = o;
+      // A second, cool rim from the other side picks out the edges of the plate, the
+      // lames and the horns, where the detail of a modelled boss lives.
+      bossRim2 = new THREE.SpotLight(0xcfd8ff, 0, 30, 0.55, 0.5, 1.0);
+      bossRim2.position.set(6.0, 7.0, -9.0);
+      bossRim2.target = o;
       bossFill = new THREE.PointLight(0x8b7dff, 0, 14, 1.4);
       bossFill.position.set(0, 2.2, 0.5);
-      boss.add(bossKey, bossRim, bossFill);
+      boss.add(bossKey, bossRim, bossRim2, bossFill);
     } catch (e) { console.warn('raid boss failed, using primitive boss', e); }
   }
   function setBossEyes(hex) {
@@ -6015,7 +6020,7 @@ function buildSystemCoreScene({ THREE, quality, tier }) {
       for (const m of a.mats) m.opacity = (m.userData.baseOpacity ?? 1) * bossAmt;
       for (const o of a.outlines) o.visible = bossAmt > 0.6;
       try { a.model ? a.model.update(dt) : a.anim(artBoss, t); } catch (e) {}
-      if (bossKey) { bossKey.intensity = 60 * bossAmt; bossRim.intensity = 260 * bossAmt; bossFill.intensity = 3 * bossAmt; }
+      if (bossKey) { bossKey.intensity = 60 * bossAmt; bossRim.intensity = 260 * bossAmt; bossRim2.intensity = 140 * bossAmt; bossFill.intensity = 3 * bossAmt; }
       const aura = artBoss.getObjectByName('aura');
       if (aura) aura.material.opacity *= bossAmt;   // the anim sets it; the fade still governs it
     }
