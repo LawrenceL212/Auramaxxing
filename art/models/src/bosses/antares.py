@@ -144,7 +144,7 @@ def build_gear():
     for i, (z0, z1) in enumerate(((1.71, 1.82), (1.6, 1.71), (1.5, 1.61))):
         P[f'fauld{i}'] = plate(body, f'fauld{i}', lambda p, z0=z0, z1=z1: z0 < p.z < z1 and abs(p.x) < 0.34, push=0.04 + 0.008 * i, thick=0.03, smooth=2, facets=0.5)
     # the belt: a heavy band, a skull for a buckle, chains slung across the hips
-    P['belt'] = plate(body, 'belt', lambda p: 1.36 < p.z < 1.5, push=0.06, thick=0.035, smooth=2, facets=0.4)
+    P['belt'] = plate(body, 'belt', lambda p: 1.36 < p.z < 1.5 and abs(p.x) < 0.4, push=0.06, thick=0.035, smooth=2, facets=0.4)
     sk = lambda pts: [V((0, -0.25, 1.42)) + V(p) for p in pts] + [V((0, -0.25, 1.42)) + V((-p[0], p[1], p[2])) for p in pts if p[0]]
     P['skull'] = join([hull('skullcap', sk([(0.06, 0.02, 0.08), (0.075, -0.02, 0.0), (0.03, -0.06, 0.06), (0.0, -0.065, 0.02), (0.05, 0.03, -0.02)])),
                        hull('skulljaw', sk([(0.045, -0.02, -0.02), (0.035, -0.05, -0.07), (0.0, -0.06, -0.08), (0.04, 0.02, -0.06)])),
@@ -263,14 +263,13 @@ def tri_target(name, tris):
     if name in ('banner', 'tabard'): return 900
     return min(tris, 300)
 
-TRIM = (0.85, 0.05, 0.02)
 MATS = {
     # black scale under the plate, split by molten veins
     'scales': mat_hide('scales', [(0.3, (0.012, 0.008, 0.01)), (0.6, (0.04, 0.02, 0.02)), (0.85, (0.08, 0.03, 0.03))],
                        fissure=(0.9, 0.08, 0.02), scale=46.0, big=5.0, rough=(0.5, 0.28), bump=(0.5, 0.9)),
     'membrane': mat_hide('membrane', [(0.3, (0.02, 0.006, 0.008)), (0.8, (0.12, 0.015, 0.015))], fissure=(0.7, 0.05, 0.02), scale=14.0, big=3.5, rough=(0.6, 0.45), bump=(0.2, 0.4)),
-    # black war-plate, engraved, its sharpest edges burning red like gilt trim
-    'plate': mat_metal('plate', (0.02, 0.018, 0.02), (0.22, 0.2, 0.21), rough=0.36, engrave=(0.3, 0.03, 0.025), glow_edge=TRIM),
+    # black war-plate with red-engraved filigree where the reference has gilt
+    'plate': mat_metal('plate', (0.02, 0.018, 0.02), (0.22, 0.2, 0.21), rough=0.36, engrave=(0.3, 0.03, 0.025)),
     'horn': mat_horn('horn', 0.0, 3.4, [(0.0, (0.012, 0.01, 0.01)), (0.7, (0.03, 0.02, 0.02)), (1.0, (0.18, 0.04, 0.03))], rough=0.38, bands=26.0),
     'cloth': mat_cloth('cloth', 0.0, 1.5, [(0.0, (0.16, 0.01, 0.01)), (0.3, (0.035, 0.008, 0.01)), (1.0, (0.012, 0.01, 0.012))], rough=0.9, sheen=0.3),
     'banner': mat_cloth('banner', 0.0, 3.4, [(0.0, (0.08, 0.005, 0.006)), (0.5, (0.3, 0.02, 0.02)), (1.0, (0.22, 0.015, 0.015))], rough=0.85, sheen=0.35),
