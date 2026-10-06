@@ -516,6 +516,23 @@ def plate(src, name, keep, push=0.03, thick=0.03, smooth=3, facets=0.14, bevel=0
     apply_mods(ob)
     return sharp(ob)
 
+def lames(src, name, keep, a, b, n, t0=0.0, t1=1.0, push=0.022, step=0.007, thick=0.014, overlap=0.3, facets=0.45, smooth=2):
+    """Articulated armour: the region of src that keep() selects, cut into n thin bands along a->b,
+    each overlapping the next by `overlap` of a band and lifted `step` further out, so they shingle
+    like real lames and can slide over each other when the joint bends. Returns {name+i: plate}."""
+    a, b = V(a), V(b)
+    ab = b - a
+    tt = lambda p: (p - a).dot(ab) / ab.length_squared
+    out = {}
+    w = (t1 - t0) / n
+    for i in range(n):
+        lo, hi = t0 + w * i, t0 + w * (i + 1 + overlap)
+        ob = plate(src, f'{name}{i}', lambda p, lo=lo, hi=hi: keep(p) and lo <= tt(p) <= hi,
+                   push=push + step * i, thick=thick, smooth=smooth, facets=facets, bevel=0.003)
+        if ob is not None and len(ob.data.vertices):
+            out[f'{name}{i}'] = ob
+    return out
+
 def blade(name, base, tip, width, curve=V((0, 0, 0)), thick=0.18, n=7, power=0.9, sub=1):
     # a flat, curved blade or thorn: wide at the root, a hard edge, a needle tip
     return sharp(spike(name, base, tip, width, curve=curve, flat=thick, n=n, power=power, sub=sub), 30)

@@ -12,16 +12,18 @@ from kit import *
 reset(53)
 OUT = out_path(os.path.join(os.path.dirname(__file__), 'antares.glb'))
 
-J = {'pelvis': V((0, 0.02, 1.36)), 'waist': V((0, 0.03, 1.62)), 'chest': V((0, 0.0, 1.98)), 'upchest': V((0, 0.02, 2.2)),
-     'neck': V((0, -0.03, 2.38)), 'head': V((0, -0.06, 2.56)), 'crown': V((0, -0.05, 2.76))}
-mirrored(J, {'shoulder': (0.52, 0.03, 2.2), 'elbow': (0.76, 0.1, 1.72), 'wrist': (0.86, -0.06, 1.28), 'knuckle': (0.89, -0.12, 1.12),
-             'hip': (0.19, 0.02, 1.32), 'knee': (0.26, -0.07, 0.74), 'ankle': (0.28, 0.08, 0.14), 'toe': (0.31, -0.24, 0.04),
-             'wroot': (0.2, 0.3, 2.24), 'welbow': (0.72, 0.56, 2.95), 'wwrist': (1.1, 0.7, 3.5)})
+# heroic proportions: the legs are over half the height, the head small on a long, tapered body
+J = {'pelvis': V((0, 0.02, 1.81)), 'waist': V((0, 0.03, 2.06)), 'chest': V((0, 0.0, 2.41)), 'upchest': V((0, 0.02, 2.63)),
+     'neck': V((0, -0.03, 2.81)), 'head': V((0, -0.06, 2.98)), 'crown': V((0, -0.05, 3.17))}
+mirrored(J, {'shoulder': (0.5, 0.03, 2.63), 'elbow': (0.74, 0.1, 2.12), 'wrist': (0.86, -0.06, 1.62), 'knuckle': (0.89, -0.12, 1.45),
+             'hip': (0.18, 0.02, 1.77), 'knee': (0.24, -0.07, 0.98), 'ankle': (0.27, 0.08, 0.14), 'toe': (0.31, -0.27, 0.04),
+             'wroot': (0.2, 0.3, 2.67), 'welbow': (0.72, 0.56, 3.38), 'wwrist': (1.1, 0.7, 3.93)})
 H = J['head']
-K = 1.3   # the helm is big on purpose: it has to read from across the arena
+K = 1.0
+Z0 = 0.45   # how much higher the hips sit than in the first build: everything hung off them moves up by it
 
-TP = [V((0, 0.2, 1.32)), V((0, 0.5, 1.08)), V((0.08, 0.86, 0.7)), V((0.26, 1.2, 0.34)), V((0.56, 1.42, 0.14)), V((0.92, 1.46, 0.08)), V((1.24, 1.28, 0.1)), V((1.4, 1.0, 0.14))]
-TR = [0.13, 0.11, 0.09, 0.07, 0.055, 0.04, 0.025, 0.006]
+TP = [V((0, 0.2, 1.77)), V((0, 0.55, 1.42)), V((0.08, 0.92, 0.92)), V((0.26, 1.25, 0.42)), V((0.56, 1.45, 0.15)), V((0.92, 1.46, 0.08)), V((1.24, 1.28, 0.1)), V((1.4, 1.0, 0.14))]
+TR = [0.12, 0.1, 0.085, 0.066, 0.052, 0.038, 0.024, 0.006]
 for i, k in enumerate((0, 2, 4, 6, 7)):
     J[f't{i}'] = TP[k]
 BONES = human_bones()
@@ -31,9 +33,9 @@ for n in ('L', 'R'):
 
 # ── the body under the plate: athletic, carved into hard planes ──
 def build_body():
-    obs, hands = athlete(J, mass=1.1, hands='claw', cut=1)
+    obs, hands = athlete(J, mass=1.0, hands='claw', cut=1, waist=0.88)
     for s, n in SIDES:   # the wing roots: a ridge of muscle on each shoulder blade the wing arm grows out of
-        obs.append(muscle(V((s * 0.08, 0.2, 1.96)), J['wroot.' + n] + V((s * 0.04, 0.02, 0.06)), 0.1, seg=(8, 5)))
+        obs.append(muscle(V((s * 0.08, 0.2, 1.96 + Z0)), J['wroot.' + n] + V((s * 0.04, 0.02, 0.06)), 0.1, seg=(8, 5)))
     body = remesh(obs, 'body_high', voxel=0.009, smooth=2, factor=0.6)
     define(body, 1.8, 3)
     sm = body.modifiers.new('sm', 'SMOOTH'); sm.iterations = 2; sm.factor = 0.5; apply_mods(body)
@@ -64,7 +66,7 @@ def wing(s, n):
     # membrane between them sagging, torn and holed
     rnd = random.Random(7 + s)
     root, elbow, wrist = J['wroot.' + n], J['welbow.' + n], J['wwrist.' + n]
-    tips = [V((s * 1.45, 0.8, 4.25)), V((s * 2.0, 0.88, 3.45)), V((s * 2.0, 0.92, 2.45)), V((s * 1.55, 0.9, 1.45))]
+    tips = [V((s * 1.45, 0.8, 4.68)), V((s * 2.0, 0.88, 3.88)), V((s * 2.0, 0.92, 2.88)), V((s * 1.55, 0.9, 1.9))]
     parts = [tube('warm', [root, root.lerp(elbow, 0.5) + V((0, 0, 0.06)), elbow, wrist], [0.07, 0.058, 0.046, 0.036])]
     fingers = []
     for i, tp in enumerate(tips):
@@ -73,7 +75,7 @@ def wing(s, n):
         d = (tp - mid).normalized()
         parts.append(blade(f'wtip{i}', tp - d * 0.04, tp + d * (0.3 if i == 0 else 0.2), 0.035, thick=0.4))   # a spike at each fingertip
         fingers.append([wrist.lerp(mid, k / 3) for k in range(3)] + [mid.lerp(tp, k / 3) for k in range(4)])
-    body_edge = [root.lerp(V((s * 0.32, 0.42, 1.45)), k / 6) for k in range(7)]
+    body_edge = [root.lerp(V((s * 0.32, 0.42, 1.9)), k / 6) for k in range(7)]
     bm = bmesh.new(); nseg = 9
     for fa, fb in list(zip(fingers, fingers[1:])) + [(fingers[-1], body_edge)]:
         rows = []
@@ -111,24 +113,29 @@ def build_gear():
                                      [r * K for r in (0.052, 0.05, 0.044, 0.036, 0.027, 0.018, 0.01, 0.003)], flat=1.25, sub=0), 25)
         sh, el, wr, kn = J['shoulder.' + n], J['elbow.' + n], J['wrist.' + n], J['knuckle.' + n]
         hp, ke, an, to = J['hip.' + n], J['knee.' + n], J['ankle.' + n], J['toe.' + n]
-        # pauldrons: two lames grown over the deltoid, great spikes raking up and out off the top
+        # all the plate is thin and cut into overlapping lames, so it can slide as the body twists
+        # pauldron: four lames stepping down off the shoulder, great spikes raking up off the top one
         c0 = sh + V((s * 0.05, 0, 0.03))
-        P['pauldron0.' + n] = plate(body, 'pauldron0.' + n, lambda p, c0=c0, s=s: s * p.x > 0.3 and (p - c0).length < 0.26 and p.z > c0.z - 0.22, push=0.05, thick=0.04, smooth=2, facets=0.4)
-        P['pauldron1.' + n] = plate(body, 'pauldron1.' + n, lambda p, c0=c0, s=s: s * p.x > 0.36 and (p - c0).length < 0.18 and p.z > c0.z - 0.04, push=0.11, thick=0.04, smooth=2, facets=0.45)
-        P['pthorns.' + n] = thorns(P['pauldron1.' + n], 'pthorns.' + n, lambda c: c.z > sh.z + 0.02, 4, 0.66, 0.08, up=1.6, back=0.2, curve=0.25, seed=3 + s, flat=0.5)
-        P['pthorns2.' + n] = thorns(P['pauldron0.' + n], 'pthorns2.' + n, lambda c, s=s: s * c.x > abs(sh.x) + 0.12, 4, 0.34, 0.045, up=0.5, back=0.2, seed=9 + s)
-        # couter: a spike thrown back off the elbow; vambrace with a row of thorns down the outer edge
-        P['couter.' + n] = blade('couter.' + n, el + V((s * 0.02, 0.0, 0.02)), el + V((s * 0.08, 0.32, 0.06)), 0.05, curve=V((0, 0, 0.05)), thick=0.45)
-        P['vambrace.' + n] = plate(body, 'vambrace.' + n, lambda p, el=el, wr=wr, s=s: s * p.x > 0.4 and near_seg(p, el, wr, 0.15, 1.0, 0.16), push=0.035, thick=0.03, smooth=2, facets=0.4)
-        P['vthorns.' + n] = thorns(P['vambrace.' + n], 'vthorns.' + n, lambda c, s=s: s * c.x > abs(el.x) + 0.02 and c.y > -0.02, 4, 0.24, 0.035, up=0.5, back=0.7, seed=5 + s)
-        P['rerebrace.' + n] = plate(body, 'rerebrace.' + n, lambda p, sh=sh, el=el, s=s: s * p.x > 0.4 and near_seg(p, sh, el, 0.4, 0.92, 0.16), push=0.03, thick=0.03, smooth=2, facets=0.45)
-        # legs: cuisse, knee cop with its spike, greave, sabaton
-        P['cuisse.' + n] = plate(body, 'cuisse.' + n, lambda p, hp=hp, ke=ke, s=s: s * p.x > 0.04 and near_seg(p, hp, ke, 0.2, 0.9, 0.2) and p.y < ke.y + 0.06, push=0.035, thick=0.03, smooth=2, facets=0.4)
-        P['kneecop.' + n] = plate(body, 'kneecop.' + n, lambda p, ke=ke: (p - ke).length < 0.13 and p.y < ke.y, push=0.07, thick=0.035, smooth=2, facets=0.5)
-        P['kspike.' + n] = blade('kspike.' + n, ke + V((0, -0.12, 0.02)), ke + V((s * 0.04, -0.34, 0.22)), 0.05, curve=V((0, 0, 0.04)), thick=0.5)
-        P['greave.' + n] = plate(body, 'greave.' + n, lambda p, ke=ke, an=an, s=s: near_seg(p, ke, an, 0.1, 0.95, 0.15), push=0.035, thick=0.03, smooth=2, facets=0.4)
-        P['gthorns.' + n] = thorns(P['greave.' + n], 'gthorns.' + n, lambda c, s=s, ke=ke: s * c.x > abs(ke.x) + 0.04 and c.z < ke.z - 0.15, 3, 0.2, 0.03, up=0.4, back=0.5, seed=13 + s)
-        P['sabaton.' + n] = plate(body, 'sabaton.' + n, lambda p, an=an: p.z < an.z + 0.05 and abs(p.x - an.x) < 0.14, push=0.03, thick=0.03, smooth=2, facets=0.5)
+        P.update(lames(body, 'pauldron.' + n + '.', lambda p, c0=c0, s=s: s * p.x > 0.28 and (p - c0).length < 0.3 and p.z > c0.z - 0.28,
+                       c0 + V((0, 0, 0.18)), c0 + V((s * 0.12, 0, -0.28)), 5, push=0.035, step=0.018, thick=0.016))
+        top_lame = P['pauldron.' + n + '.0']
+        P['pthorns.' + n] = thorns(top_lame, 'pthorns.' + n, lambda c: c.z > sh.z + 0.04, 3, 0.6, 0.07, up=1.3, back=0.15, curve=0.3, seed=3 + s, flat=0.55)
+        P['pthorns2.' + n] = thorns(P['pauldron.' + n + '.2'], 'pthorns2.' + n, lambda c, s=s: s * c.x > abs(sh.x) + 0.1, 3, 0.26, 0.035, up=0.4, back=0.2, seed=9 + s)
+        # arm: three lames on the upper arm, a couter and its spike, three down the forearm
+        P.update(lames(body, 'rerebrace.' + n + '.', lambda p, sh=sh, el=el, s=s: s * p.x > 0.38 and near_seg(p, sh, el, 0.3, 0.95, 0.14), sh, el, 3, 0.3, 0.92))
+        P['couter.' + n] = plate(body, 'couter.' + n, lambda p, el=el: (p - el).length < 0.11 and p.y > el.y - 0.02, push=0.04, thick=0.016, smooth=2, facets=0.5)
+        P['cspike.' + n] = blade('cspike.' + n, el + V((s * 0.02, 0.0, 0.02)), el + V((s * 0.08, 0.3, 0.06)), 0.045, curve=V((0, 0, 0.05)), thick=0.45)
+        P.update(lames(body, 'vambrace.' + n + '.', lambda p, el=el, wr=wr: near_seg(p, el, wr, 0.1, 1.0, 0.14), el, wr, 3, 0.12, 0.98))
+        P['vthorns.' + n] = thorns(P['vambrace.' + n + '.1'], 'vthorns.' + n, lambda c, s=s: s * c.x > abs(el.x) + 0.04 and c.y > -0.02, 3, 0.2, 0.03, up=0.5, back=0.7, seed=5 + s)
+        # leg: tassets hung off the belt, four lames down the thigh, a knee cop and its spike, greave lames, sabaton lames
+        P.update(lames(body, 'tasset.' + n + '.', lambda p, hp=hp, ke=ke, s=s: s * p.x > 0.06 and p.y < hp.y + 0.08 and near_seg(p, hp, ke, -0.08, 0.36, 0.22),
+                       hp + V((0, 0, 0.1)), hp.lerp(ke, 0.36), 3, push=0.06, step=0.014, thick=0.014, overlap=0.4))
+        P.update(lames(body, 'cuisse.' + n + '.', lambda p, hp=hp, ke=ke: p.y < ke.y + 0.05 and near_seg(p, hp, ke, 0.36, 0.9, 0.2), hp, ke, 4, 0.36, 0.9))
+        P['kneecop.' + n] = plate(body, 'kneecop.' + n, lambda p, ke=ke: (p - ke).length < 0.12 and p.y < ke.y, push=0.05, thick=0.018, smooth=2, facets=0.5)
+        P['kspike.' + n] = blade('kspike.' + n, ke + V((0, -0.1, 0.02)), ke + V((s * 0.04, -0.3, 0.2)), 0.045, curve=V((0, 0, 0.04)), thick=0.5)
+        P.update(lames(body, 'greave.' + n + '.', lambda p, ke=ke, an=an: near_seg(p, ke, an, 0.1, 0.95, 0.14), ke, an, 3, 0.1, 0.95))
+        P['gthorns.' + n] = thorns(P['greave.' + n + '.1'], 'gthorns.' + n, lambda c, s=s, ke=ke: s * c.x > abs(ke.x) + 0.03, 3, 0.18, 0.026, up=0.4, back=0.5, seed=13 + s)
+        P.update(lames(body, 'sabaton.' + n + '.', lambda p, an=an: p.z < an.z + 0.07 and abs(p.x - an.x) < 0.14, an + V((0, 0.06, 0)), to, 3, -0.1, 1.0, push=0.02, step=0.008))
         for i in range(3):   # talons out of the sabaton's toe
             b = to + V((s * (0.04 - i * 0.04), -0.04, 0.0))
             P[f'toeclaw{i}.' + n] = blade(f'toeclaw{i}.' + n, b, b + V((0, -0.14, -0.04)), 0.024, curve=V((0, 0, 0.02)), thick=0.6)
@@ -137,36 +144,40 @@ def build_gear():
             off = V((0, -0.065 + i * 0.13 / 3, 0))
             b = kn + off + d * 0.12 + V((0, -0.05, -0.01))
             P[f'talon{i}.' + n] = blade(f'talon{i}.' + n, b, b + d * 0.1 + V((0, -0.08, -0.03)), 0.016, curve=V((0, -0.02, 0)), thick=0.6)
-    # the cuirass: breastplate and backplate lifted off the chest, a keel down the sternum
-    P['cuirass'] = plate(body, 'cuirass', lambda p: 1.82 < p.z < 2.34 and abs(p.x) < 0.4 and (p.z < 2.28 or abs(p.x) > 0.13), push=0.05, thick=0.04, smooth=2, facets=0.45)
-    P['sternum'] = hull('sternum', [V((x, -0.33, z)) for x in (-0.03, 0.03) for z in (1.86, 2.18)] + [V((0, -0.37, 2.0)), V((0, -0.3, 2.26)), V((0, -0.3, 1.8))])
-    # the fauld: three overlapping lames down the belly
-    for i, (z0, z1) in enumerate(((1.71, 1.82), (1.6, 1.71), (1.5, 1.61))):
-        P[f'fauld{i}'] = plate(body, f'fauld{i}', lambda p, z0=z0, z1=z1: z0 < p.z < z1 and abs(p.x) < 0.34, push=0.04 + 0.008 * i, thick=0.03, smooth=2, facets=0.5)
+    # the torso: a plate over each pectoral split by a keel, rib lames down each flank, a fauld of five
+    # lames down the belly, the backplate in four lames down the spine, a gorget of three around the neck
+    ch, up_, wa, pe, nk = J['chest'], J['upchest'], J['waist'], J['pelvis'], J['neck']
+    for s, n in SIDES:
+        P['breast.' + n] = plate(body, 'breast.' + n, lambda p, s=s: ch.z - 0.1 < p.z < up_.z + 0.08 and 0.035 < s * p.x < 0.33 and p.y < -0.02, push=0.03, thick=0.016, smooth=2, facets=0.45)
+        P.update(lames(body, 'ribs.' + n + '.', lambda p, s=s: 0.2 < s * p.x < 0.42 and -0.16 < p.y < 0.16, V((s * 0.3, 0, ch.z + 0.05)), V((s * 0.26, 0, wa.z)), 3, push=0.024, step=0.006))
+    P['sternum'] = hull('sternum', [V((x, -0.31, z)) for x in (-0.025, 0.025) for z in (ch.z - 0.1, up_.z - 0.02)] + [V((0, -0.35, ch.z + 0.04)), V((0, -0.28, up_.z + 0.06)), V((0, -0.28, ch.z - 0.16))])
+    P.update(lames(body, 'fauld.', lambda p: abs(p.x) < 0.27 and p.y < 0.02, V((0, -0.2, ch.z - 0.12)), V((0, -0.2, pe.z + 0.12)), 5, push=0.026, step=0.007))
+    P.update(lames(body, 'back.', lambda p: abs(p.x) < 0.3 and p.y > 0.06, V((0, 0.2, up_.z + 0.06)), V((0, 0.2, wa.z - 0.04)), 4, push=0.026, step=0.007))
+    P.update(lames(body, 'gorget.', lambda p: abs(p.x) < 0.24, V((0, 0, nk.z + 0.02)), V((0, 0, up_.z - 0.02)), 3, push=0.03, step=0.012, overlap=0.5))
     # the belt: a heavy band, a skull for a buckle, chains slung across the hips
-    P['belt'] = plate(body, 'belt', lambda p: 1.36 < p.z < 1.5 and abs(p.x) < 0.4, push=0.06, thick=0.035, smooth=2, facets=0.4)
-    sk = lambda pts: [V((0, -0.25, 1.42)) + V(p) for p in pts] + [V((0, -0.25, 1.42)) + V((-p[0], p[1], p[2])) for p in pts if p[0]]
+    P['belt'] = plate(body, 'belt', lambda p: 1.36 + Z0 < p.z < 1.47 + Z0 and abs(p.x) < 0.4, push=0.05, thick=0.025, smooth=2, facets=0.4)
+    sk = lambda pts: [V((0, -0.24, 1.42 + Z0)) + V(p) for p in pts] + [V((0, -0.24, 1.42 + Z0)) + V((-p[0], p[1], p[2])) for p in pts if p[0]]
     P['skull'] = join([hull('skullcap', sk([(0.06, 0.02, 0.08), (0.075, -0.02, 0.0), (0.03, -0.06, 0.06), (0.0, -0.065, 0.02), (0.05, 0.03, -0.02)])),
                        hull('skulljaw', sk([(0.045, -0.02, -0.02), (0.035, -0.05, -0.07), (0.0, -0.06, -0.08), (0.04, 0.02, -0.06)])),
-                       blade('skullhorn.L', V((0.05, -0.27, 1.48)), V((0.14, -0.3, 1.58)), 0.02, thick=0.6),
-                       blade('skullhorn.R', V((-0.05, -0.27, 1.48)), V((-0.14, -0.3, 1.58)), 0.02, thick=0.6)], 'skull')
+                       blade('skullhorn.L', V((0.05, -0.26, 1.48 + Z0)), V((0.14, -0.29, 1.58 + Z0)), 0.02, thick=0.6),
+                       blade('skullhorn.R', V((-0.05, -0.26, 1.48 + Z0)), V((-0.14, -0.29, 1.58 + Z0)), 0.02, thick=0.6)], 'skull')
     links = []
     for i in range(14):
         u = i / 13
-        p = V((-0.26 + u * 0.52, -0.23 - 0.03 * math.sin(u * math.pi), 1.34 - 0.16 * math.sin(u * math.pi)))
+        p = V((-0.26 + u * 0.52, -0.22 - 0.03 * math.sin(u * math.pi), 1.34 + Z0 - 0.16 * math.sin(u * math.pi)))
         links.append(ring(f'cl{i}', p, 0.026, 0.008, rot=(math.pi / 2, (i % 2) * math.pi / 2, 0.3), seg=(12, 6)))
     for i in range(9):   # and one hanging down the right hip
-        p = V((-0.26 - 0.01 * i, -0.2 + 0.004 * i, 1.38 - 0.05 * i))
+        p = V((-0.26 - 0.01 * i, -0.19 + 0.004 * i, 1.38 + Z0 - 0.05 * i))
         links.append(ring(f'ch{i}', p, 0.024, 0.007, rot=((i % 2) * math.pi / 2, 0, 0), seg=(12, 6)))
     P['chain'] = join(links, 'chain')
     # the cloak: from the belt to the floor all round, black going to blood at the hem, torn into strips
     def cloak(u, t):
         a = u * math.pi * 0.92
         r = 0.28 + t * 0.42 + math.sin(u * 17 + t * 4) * 0.035 * t
-        return (math.sin(a) * r, 0.04 - math.cos(a) * r * 0.82 + t * 0.12, 1.46 - t * 1.42)
+        return (math.sin(a) * r, 0.04 - math.cos(a) * r * 0.82 + t * 0.12, 1.44 + Z0 - t * (1.4 + Z0))
     P['cloak'] = cloth('cloak', 44, 28, cloak, thick=0.014, strips=(0.4, 0.22, 11))
     # the tabard: a long crimson panel down the front, torn at the end
-    P['tabard'] = cloth('tabard', 8, 22, lambda u, t: (u * (0.17 - t * 0.04), -0.29 - t * 0.06 + u * u * 0.04, 1.44 - t * 1.2), thick=0.016, strips=(0.78, 0.0, 4))
+    P['tabard'] = cloth('tabard', 8, 22, lambda u, t: (u * (0.15 - t * 0.04), -0.28 - t * 0.06 + u * u * 0.04, 1.42 + Z0 - t * 1.6), thick=0.016, strips=(0.78, 0.0, 4))
     # the tail, spined along its ridge
     P['tail'] = tube('tail', TP, TR, flat=0.85)
     for i in range(1, 7):
@@ -175,7 +186,7 @@ def build_gear():
         P[f'tspike{i}'] = blade(f'tspike{i}', b, b + V((0, 0, 0.16 - i * 0.018)) + dd * 0.08, 0.04 - i * 0.004, thick=0.4)
     # the halberd, in the left hand: a black haft, a long spear blade, a crescent axe each side, a banner
     g = J['wrist.L'].lerp(J['knuckle.L'], 0.6) + V((0, -0.02, 0))
-    top, bot = g + V((0.02, -0.06, 1.6)), g + V((-0.02, 0.04, -1.1))
+    top, bot = g + V((0.02, -0.06, 1.75)), g + V((-0.02, 0.04, -1.5))
     P['haft'] = sharp(tube('haft', [bot, bot.lerp(top, 0.33) + V((0.01, 0, 0)), bot.lerp(top, 0.66) - V((0.01, 0, 0)), top], [0.024, 0.026, 0.024, 0.03], sub=1), 50)
     P['socket'] = hull('socket', [top + V((x, y, z)) for x in (-0.06, 0.06) for y in (-0.035, 0.035) for z in (-0.06, 0.14)] + [top + V((0, 0, -0.16))])
     P['spear'] = hull('spear', [top + V(p) for p in ((0, 0, 0.72), (0.075, 0, 0.3), (-0.075, 0, 0.3), (0, 0.018, 0.3), (0, -0.018, 0.3),
@@ -201,15 +212,15 @@ def build_glow():
     ob = orb('slitv', H + V((0, -0.17, -0.05)) * K, (0.008, 0.01, 0.065)); sit_on(ob, helm, gap=-0.004); slit.append(ob)
     g['eyes'] = (join(slit, 'eyes'), 'head')
     hc = H + V((0, 0.26, 0.24)) * K
-    halo = [ring('halo', hc, 0.5, 0.014, rot=(math.pi / 2, 0, 0), seg=(64, 6))]
+    halo = [ring('halo', hc, 0.42, 0.012, rot=(math.pi / 2, 0, 0), seg=(64, 6))]
     for a, L in ((0, 0.34), (math.pi, 0.16), (math.pi / 2, 0.16), (-math.pi / 2, 0.16), (math.pi / 4, 0.09), (-math.pi / 4, 0.09)):
         d = V((math.sin(a), 0, math.cos(a)))
-        halo.append(blade('ray', hc + d * 0.48, hc + d * (0.5 + L), 0.022, thick=0.3, sub=0))
+        halo.append(blade('ray', hc + d * 0.4, hc + d * (0.42 + L), 0.022, thick=0.3, sub=0))
     g['halo'] = (join(halo, 'halo'), 'head')
     def cross(name, c, h, w, ty):
         return join([hull(name + 'v', [c + V((x, ty, z)) for x in (-0.011, 0.011) for z in (-h * 0.6, h * 0.4)] + [c + V((0, ty, -h)), c + V((0, ty, h * 0.55))], bevel=0),
                      hull(name + 'h', [c + V((x, ty, z)) for x in (-w * 0.8, w * 0.8) for z in (0.16 * h, 0.26 * h)] + [c + V((-w, ty, 0.21 * h)), c + V((w, ty, 0.21 * h))], bevel=0)], name)
-    tab = cross('tabcross', V((0, -0.318, 1.02)), 0.2, 0.08, 0.0)
+    tab = cross('tabcross', V((0, -0.308, 1.42 + Z0 - 0.42)), 0.2, 0.08, 0.0)
     so = tab.modifiers.new('so', 'SOLIDIFY'); so.thickness = 0.008; apply_mods(tab)
     g['tabcross'] = (tab, 'hips')
     ban = cross('bancross', TOP + V((0.21, 0.0, -0.45)), 0.18, 0.07, -0.02)
@@ -220,7 +231,7 @@ def build_glow():
 glow = build_glow()
 
 def part_info(name):
-    side = name.split('.')[-1] if '.' in name else None
+    side = next((x for x in name.split('.') if x in ('L', 'R')), None)
     if name == 'body_high': return 'scales', ('smooth', None)
     if name == 'hands': return 'plate', ('smooth', {'forearm.L', 'hand.L', 'forearm.R', 'hand.R'})
     if name in ('helm',) or name.startswith('horn'): return ('horn' if name.startswith('horn') else 'plate'), ('rigid', 'head')
@@ -228,13 +239,15 @@ def part_info(name):
     if name.startswith('membrane'): return 'membrane', ('smooth', {'wing.' + side, 'wingtip.' + side, 'chest'})
     if name.startswith(('pauldron', 'pthorns')): return 'plate', ('smooth', {'chest', 'upperarm.' + side})
     if name.startswith('rerebrace'): return 'plate', ('rigid', 'upperarm.' + side)
-    if name.startswith(('vambrace', 'vthorns', 'couter')): return 'plate', ('rigid', 'forearm.' + side)
-    if name.startswith(('greave', 'kspike', 'kneecop', 'gthorns')): return 'plate', ('rigid', 'shin.' + side)
+    if name.startswith(('vambrace', 'vthorns', 'couter', 'cspike')): return 'plate', ('rigid', 'forearm.' + side)
+    if name.startswith('tasset'): return 'plate', ('smooth', {'hips', 'thigh.' + side})
     if name.startswith('cuisse'): return 'plate', ('rigid', 'thigh.' + side)
+    if name.startswith(('greave', 'kspike', 'kneecop', 'gthorns')): return 'plate', ('rigid', 'shin.' + side)
     if name.startswith('sabaton'): return 'plate', ('rigid', 'foot.' + side)
     if name.startswith('toeclaw'): return 'horn', ('rigid', 'foot.' + side)
     if name.startswith('talon'): return 'horn', ('rigid', 'hand.' + side)
-    if name in ('cuirass', 'sternum'): return 'plate', ('smooth', {'spine', 'chest', 'neck'})
+    if name == 'sternum' or name.startswith(('breast', 'ribs', 'back')): return 'plate', ('smooth', {'spine', 'chest'})
+    if name.startswith('gorget'): return 'plate', ('smooth', {'chest', 'neck'})
     if name.startswith('fauld'): return 'plate', ('smooth', {'hips', 'spine'})
     if name in ('belt', 'skull', 'chain'): return ('horn' if name == 'skull' else 'plate'), ('rigid', 'hips')
     if name == 'cloak': return 'cloth', ('smooth', {'hips', 'thigh.L', 'thigh.R', 'shin.L', 'shin.R'})
@@ -255,8 +268,7 @@ def tri_target(name, tris):
     if name == 'cloak': return 3600
     if name.startswith('wingbone'): return 1400
     if name == 'tail': return 1400
-    if name in ('cuirass',): return 2400
-    if name.startswith(('pauldron', 'vambrace', 'greave', 'cuisse', 'belt', 'fauld', 'rerebrace', 'sabaton', 'kneecop')): return 700
+    if name.startswith(('pauldron', 'vambrace', 'greave', 'cuisse', 'belt', 'fauld', 'rerebrace', 'sabaton', 'kneecop', 'tasset', 'ribs', 'back', 'gorget', 'breast', 'couter')): return 500
     if name.startswith(('pthorns', 'vthorns', 'gthorns')): return 900
     if name.startswith('horn.'): return 900
     if name == 'chain': return 1600
