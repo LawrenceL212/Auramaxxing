@@ -6023,7 +6023,7 @@ function buildSystemCoreScene({ THREE, quality, tier }) {
       for (const o of a.outlines) o.visible = bossAmt > 0.6;
       try { a.model ? a.model.update(dt) : a.anim(artBoss, t); } catch (e) {}
       if (bossKey) { bossKey.intensity = 60 * bossAmt; bossRim.intensity = 260 * bossAmt; bossRim2.intensity = 140 * bossAmt; bossFill.intensity = 3 * bossAmt; }
-      if (artBoss.userData.glowLight) artBoss.userData.glowLight.intensity = 6 * bossAmt * (0.85 + Math.sin(t * 2.6) * 0.15);   // the glow's spill, breathing with it
+      if (artBoss.userData.glowLight) artBoss.userData.glowLight.intensity = 3 * bossAmt * (0.85 + Math.sin(t * 2.6) * 0.15);   // the glow's spill, breathing with it
       const aura = artBoss.getObjectByName('aura');
       if (aura) aura.material.opacity *= bossAmt;   // the anim sets it; the fade still governs it
     }

@@ -97,7 +97,7 @@ export async function loadModel(idOrUrl, opts = {}) {
 // Light through a thin membrane: the light reaching the back of the surface comes through it,
 // tinted, most strongly when you look toward the light through it. Added to three's own direct lighting, so it works with every light type and shadow.
 const SIG = 'void RE_Direct_Physical( const in IncidentLight directLight, const in vec3 geometryPosition, const in vec3 geometryNormal, const in vec3 geometryViewDir, const in vec3 geometryClearcoatNormal, const in PhysicalMaterial material, inout ReflectedLight reflectedLight ) {';
-const MEMBRANE = new THREE.Color(0.16, 0.02, 0.01);
+const MEMBRANE = new THREE.Color(0.07, 0.009, 0.005);
 function translucent(m) {
   if (m.userData.translucent) return;
   m.userData.translucent = true;
