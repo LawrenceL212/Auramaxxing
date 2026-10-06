@@ -664,8 +664,9 @@ def mat_stone(name, stops, glow=None, moss=None, scale=3.0, glow_width=0.03):
     L(nt, b2.outputs['Normal'], P.inputs['Normal'])
     return m
 
-def mat_metal(name, base, edge, rough=0.32, engrave=None, rust=None):
-    # worn metal: bright edges where the surface turns sharply, grime, optional inlaid filigree or rust
+def mat_metal(name, base, edge, rough=0.32, engrave=None, rust=None, glow_edge=None):
+    # worn metal: bright edges where the surface turns sharply, grime, optional inlaid filigree or rust;
+    # glow_edge lights the sharpest edges as a burning trim
     m, nt, P = new_mat(name); n = nodes(nt)
     tc = n('ShaderNodeTexCoord')
     geo = n('ShaderNodeNewGeometry')
@@ -705,6 +706,9 @@ def mat_metal(name, base, edge, rough=0.32, engrave=None, rust=None):
     else:
         b2 = n('ShaderNodeBump', i_Strength=0.12, i_Distance=0.002); L(nt, height, b2.inputs['Height'])
         L(nt, b2.outputs['Normal'], P.inputs['Normal'])
+    if glow_edge:
+        trim = ramp(n, nt, geo.outputs['Pointiness'], [(0.54, (0, 0, 0)), (0.6, glow_edge)])
+        L(nt, trim.outputs['Color'], P.inputs['Emission Color']); P.inputs['Emission Strength'].default_value = 1.0
     L(nt, col, P.inputs['Base Color']); L(nt, metal_out, P.inputs['Metallic']); L(nt, rough_out, P.inputs['Roughness'])
     return m
 
