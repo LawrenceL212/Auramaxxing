@@ -5952,6 +5952,7 @@ function buildSystemCoreScene({ THREE, quality, tier }) {
         if (!n.material) return;
         if (!copies.has(n.material)) {
           const c = n.material.clone();
+          if (n.material.userData.translucent) { c.onBeforeCompile = n.material.onBeforeCompile; c.customProgramCacheKey = n.material.customProgramCacheKey; }
           c.transparent = true;
           // The raid fog (FogExp2 0.085) swallowed ~90% of a boss 17 units off;
           // the boss carries its own lights instead, so it reads as a figure.
@@ -5963,7 +5964,7 @@ function buildSystemCoreScene({ THREE, quality, tier }) {
         n.material = copies.get(n.material);
         if (n.userData.eye && !eyes.includes(n.material)) eyes.push(n.material);
       });
-      if (model) { try { artPack.lightModel(o, AuraGL.renderer, 0.4); } catch (e) {} }
+      if (model) { try { artPack.lightModel(o, AuraGL.renderer, 0.4); artPack.glowLight(o, 0); } catch (e) {} }
       else o.scale.setScalar(ART_BOSS_SCALE);   // a model arrives at its registered height already
       o.userData.kind = model ? 'model:' + model.id : 'drawn';
       o.userData.art = { mats, eyes, outlines, model, anim: model ? null : artPack.get('raid-boss').anims.breathe };
@@ -5998,6 +5999,7 @@ function buildSystemCoreScene({ THREE, quality, tier }) {
   function setBossEyes(hex) {
     if (!artBoss) return;
     for (const m of artBoss.userData.art.eyes) { m.color.set(hex); m.emissive?.set(hex); }
+    artBoss.userData.glowLight?.color.set(hex);
     if (bossRim) bossRim.color.set(hex);
   }
   function setBoss(on, hex, tier) {
@@ -6021,6 +6023,7 @@ function buildSystemCoreScene({ THREE, quality, tier }) {
       for (const o of a.outlines) o.visible = bossAmt > 0.6;
       try { a.model ? a.model.update(dt) : a.anim(artBoss, t); } catch (e) {}
       if (bossKey) { bossKey.intensity = 60 * bossAmt; bossRim.intensity = 260 * bossAmt; bossRim2.intensity = 140 * bossAmt; bossFill.intensity = 3 * bossAmt; }
+      if (artBoss.userData.glowLight) artBoss.userData.glowLight.intensity = 6 * bossAmt * (0.85 + Math.sin(t * 2.6) * 0.15);   // the glow's spill, breathing with it
       const aura = artBoss.getObjectByName('aura');
       if (aura) aura.material.opacity *= bossAmt;   // the anim sets it; the fade still governs it
     }

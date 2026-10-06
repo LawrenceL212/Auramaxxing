@@ -18,6 +18,11 @@
 //   modelFor(assetId) -> the model registered to replace that asset, or null.
 //   setRenderer(renderer)  enables KTX2 (Basis) textures, which need the renderer to pick a format.
 //   inspect(object) -> { triangles, meshes, materials, textures, texturePixels, skinned, clips }
+//   glowLight(object, intensity) -> PointLight|null  lights the scene from the model's biggest glowing
+//     part (a halo, a core), so its glow spills onto what is round it. Recolour it with the glow.
+//
+// A material whose name ends in "_membrane" (a wing's skin, exported that way by the boss kit) lets
+// light through: lit from behind, it glows the colour of the blood in it, as a bat's wing does.
 //
 // Compression: Draco and Meshopt meshes and KTX2 textures all load. A phone can hold a few
 // detailed models, not dozens: see BUDGETS in models below and art/MODELS.md.
@@ -89,6 +94,41 @@ export async function loadModel(idOrUrl, opts = {}) {
 
 // instantiate(idOrUrl, opts) -> the same handle as loadModel, built synchronously from a file that
 // has already loaded (isLoaded). Throws if it has not.
+// Light through a thin membrane: the light reaching the back of the surface comes through it,
+// tinted, most strongly when you look toward the light through it. Added to three's own direct lighting, so it works with every light type and shadow.
+const SIG = 'void RE_Direct_Physical( const in IncidentLight directLight, const in vec3 geometryPosition, const in vec3 geometryNormal, const in vec3 geometryViewDir, const in vec3 geometryClearcoatNormal, const in PhysicalMaterial material, inout ReflectedLight reflectedLight ) {';
+const MEMBRANE = new THREE.Color(0.16, 0.02, 0.01);
+function translucent(m) {
+  if (m.userData.translucent) return;
+  m.userData.translucent = true;
+  const chunk = THREE.ShaderChunk.lights_physical_pars_fragment;
+  if (!chunk.includes(SIG)) return;   // a three build whose lighting differs: leave it opaque
+  const lit = chunk.replace(SIG, `${SIG}\n\treflectedLight.directDiffuse += uThrough * directLight.color * saturate( dot( -geometryNormal, directLight.direction ) ) * ( 0.3 + 0.7 * pow( saturate( dot( geometryViewDir, -directLight.direction ) ), 2.0 ) );`);
+  m.onBeforeCompile = (sh) => {
+    sh.uniforms.uThrough = { value: MEMBRANE };
+    sh.fragmentShader = 'uniform vec3 uThrough;\n' + sh.fragmentShader.replace('#include <lights_physical_pars_fragment>', lit);
+  };
+  m.customProgramCacheKey = () => 'membrane';
+  m.side = THREE.FrontSide;
+  m.needsUpdate = true;
+}
+
+export function glowLight(object, intensity = 6) {
+  let best = null, r = 0;
+  object.traverse((o) => {
+    if (!o.isMesh || !o.userData.eye) return;
+    if (!o.geometry.boundingSphere) o.geometry.computeBoundingSphere();
+    if (o.geometry.boundingSphere.radius > r) { r = o.geometry.boundingSphere.radius; best = o; }
+  });
+  if (!best) return null;
+  const c = best.material.emissive && best.material.emissive.getHex() ? best.material.emissive : best.material.color;
+  const light = new THREE.PointLight(c, intensity, 0, 2);
+  light.position.copy(best.geometry.boundingSphere.center);
+  best.add(light);
+  object.userData.glowLight = light;
+  return light;
+}
+
 export function instantiate(idOrUrl, opts = {}) {
   const def = models.get(idOrUrl);
   const url = urlOf(idOrUrl);
@@ -100,6 +140,7 @@ export function instantiate(idOrUrl, opts = {}) {
   inner.traverse((o) => {
     if (o.isMesh) {
       o.castShadow = true; o.receiveShadow = true;
+      for (const m of Array.isArray(o.material) ? o.material : [o.material]) if (/_membrane$/i.test(m.name)) translucent(m);
       if (o.isSkinnedMesh) o.frustumCulled = false; // a skinned mesh's bounds are its bind pose
     }
   });

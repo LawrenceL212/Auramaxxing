@@ -16,7 +16,7 @@ import { make } from './registry.js';
 import { modelFor, loadModel, preloadModel, isLoaded, instantiate } from './models.js';
 
 export * from './registry.js';
-export { defineModel, listModels, modelFor, loadModel, preloadModel, isLoaded, instantiate, inspect, checkModel, setRenderer, MODEL_BUDGETS } from './models.js';
+export { defineModel, listModels, modelFor, loadModel, preloadModel, isLoaded, instantiate, inspect, checkModel, setRenderer, glowLight, MODEL_BUDGETS } from './models.js';
 export { applyEnvironment, lightModel, heroLights, createLook } from './look.js';
 
 export async function resolve(id, opts = {}) {

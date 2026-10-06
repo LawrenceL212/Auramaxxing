@@ -497,7 +497,7 @@ def facet(ob, angle=0.1):
     apply_mods(ob)
     return ob
 
-def plate(src, name, keep, push=0.03, thick=0.03, smooth=3, facets=0.14, bevel=0.004, rim=0.0, rivets=0.0, cuts=()):
+def plate(src, name, keep, push=0.03, thick=0.03, smooth=3, facets=0.14, bevel=0.004, rim=0.0, rivets=0.0, cuts=(), bead=False):
     """Armour: lifted from the body, relaxed, then cut into hard facets with crisp bevelled edges.
     rim > 0 raises a rolled border that wide round the edge (the middle is sunk a little), the way
     plate is turned at its edges; rivets > 0 sets domed rivets along the border that far apart.
@@ -521,6 +521,10 @@ def plate(src, name, keep, push=0.03, thick=0.03, smooth=3, facets=0.14, bevel=0
         bm.to_mesh(ob.data); bm.free()
         if not ob.data.vertices:
             return ob
+    if smooth:   # fair the surface, edges pinned: forged plate curves evenly, it does not ripple
+        lp = ob.modifiers.new('fair', 'LAPLACIANSMOOTH'); lp.iterations = smooth * 3; lp.lambda_factor = 1.0; lp.lambda_border = 0.0
+        lp.use_normalized = True
+        apply_mods(ob)
     if facets:
         facet(ob, facets)
     studs = []
@@ -540,13 +544,17 @@ def plate(src, name, keep, push=0.03, thick=0.03, smooth=3, facets=0.14, bevel=0
                     if inward.length > 1e-6:
                         p = p + inward.normalized() * max(rim * 0.5, 0.012)
                     studs.append((p + nrm * thick, nrm))
-        if rim:
+        if rim and bead:   # a turned edge: a flat border, then a raised bead, then the field sunk below it
             faces = bm.faces[:]
-            bmesh.ops.inset_region(bm, faces=faces, thickness=rim, depth=-rim * 0.3, use_even_offset=True)
+            bmesh.ops.inset_region(bm, faces=faces, thickness=rim * 0.45, depth=rim * 0.3, use_even_offset=False)
+            bmesh.ops.inset_region(bm, faces=faces, thickness=rim * 0.55, depth=-rim * 0.6, use_even_offset=False)
+        elif rim:
+            faces = bm.faces[:]
+            bmesh.ops.inset_region(bm, faces=faces, thickness=rim, depth=-rim * 0.3, use_even_offset=False)
         bm.to_mesh(ob.data); bm.free()
     so = ob.modifiers.new('solid', 'SOLIDIFY'); so.thickness = thick; so.offset = 1; so.use_rim = True
     if bevel:
-        bv = ob.modifiers.new('bevel', 'BEVEL'); bv.width = bevel; bv.segments = 2; bv.limit_method = 'ANGLE'
+        bv = ob.modifiers.new('bevel', 'BEVEL'); bv.width = bevel; bv.segments = 3; bv.profile = 0.62; bv.limit_method = 'ANGLE'
         bv.angle_limit = math.radians(30); bv.harden_normals = False
     apply_mods(ob)
     if studs:
@@ -573,7 +581,7 @@ def strap(src, name, a, b, face, width=0.03, push=0.016, r=0.22, t0=0.0, t1=1.0,
         return lat.length < width
     return plate(src, name, keep, push=push, thick=thick, smooth=1, facets=0.3, bevel=0.002)
 
-def lames(src, name, keep, a, b, n, t0=0.0, t1=1.0, push=0.022, step=0.007, thick=0.014, overlap=0.3, facets=0.1, smooth=4, rim=0.008, rivets=0.07, cuts=()):
+def lames(src, name, keep, a, b, n, t0=0.0, t1=1.0, push=0.022, step=0.007, thick=0.014, overlap=0.3, facets=0.0, smooth=5, rim=0.008, rivets=0.07, cuts=(), bead=False):
     """Articulated armour: the region of src that keep() selects, cut into n thin bands along a->b,
     each overlapping the next by `overlap` of a band and lifted `step` further out, so they shingle
     like real lames and can slide over each other when the joint bends. Returns {name+i: plate}."""
@@ -587,10 +595,37 @@ def lames(src, name, keep, a, b, n, t0=0.0, t1=1.0, push=0.022, step=0.007, thic
         m = w * 0.4   # select a little wide, then trim to straight edges across the limb
         planes = [(a + ab * lo, -ab), (a + ab * hi, ab)] + list(cuts)
         ob = plate(src, f'{name}{i}', lambda p, lo=lo - m, hi=hi + m: keep(p) and lo <= tt(p) <= hi,
-                   push=push + step * i, thick=thick, smooth=smooth, facets=facets, bevel=0.003, rim=rim, rivets=rivets, cuts=planes)
+                   push=push + step * i, thick=thick, smooth=smooth, facets=facets, bevel=0.003, rim=rim, rivets=rivets, cuts=planes, bead=bead)
         if ob is not None and len(ob.data.vertices):
             out[f'{name}{i}'] = ob
     return out
+
+def along(ob, path, attr='hv'):
+    """Write each vertex's place on a tube: a vector attribute (t, cos a, sin a), t 0..1 along `path`
+    (a dense list of points down its centre) and a its angle round it, measured from a frame carried
+    along the path without twisting. Materials use it to ring a horn and crack it along its grain."""
+    from mathutils.kdtree import KDTree
+    path = [V(p) for p in path]
+    T = [(path[min(i + 1, len(path) - 1)] - path[max(i - 1, 0)]).normalized() for i in range(len(path))]
+    ref = V((0, 0, 1)) if abs(T[0].z) < 0.9 else V((1, 0, 0))
+    N = [(ref - T[0] * ref.dot(T[0])).normalized()]
+    for t in T[1:]:
+        n = N[-1] - t * N[-1].dot(t)
+        N.append(n.normalized() if n.length > 1e-6 else N[-1])
+    kd = KDTree(len(path))
+    for i, p in enumerate(path): kd.insert(p, i)
+    kd.balance()
+    me = ob.data
+    out = np.zeros((len(me.vertices), 3), np.float32)
+    for v in me.vertices:
+        _, i, _ = kd.find(v.co)
+        o = v.co - path[i]; o -= T[i] * o.dot(T[i])
+        b = T[i].cross(N[i])
+        a = math.atan2(o.dot(b), o.dot(N[i]))
+        out[v.index] = (i / (len(path) - 1), math.cos(a), math.sin(a))
+    at = me.attributes.new(attr, 'FLOAT_VECTOR', 'POINT')
+    at.data.foreach_set('vector', out.ravel())
+    return ob
 
 def blade(name, base, tip, width, curve=V((0, 0, 0)), thick=0.18, n=7, power=0.9, sub=1):
     # a flat, curved blade or thorn: wide at the root, a hard edge, a needle tip
@@ -875,6 +910,25 @@ class G:
         x = self.n('ShaderNodeTexVoronoi', feature='F1', i_Scale=scale)
         L(self.nt, vec or self.co, x.inputs['Vector']); return x.outputs['Distance']
     def pointy(self): return self.geo.outputs['Pointiness']
+    def ao(self, dist=0.05, samples=8):
+        # ambient occlusion: 1 in open air, falling toward 0 under an overlapping plate or in a crevice
+        x = self.n('ShaderNodeAmbientOcclusion', samples=samples); x.inputs['Distance'].default_value = dist
+        return x.outputs['AO']
+    def bevel_edge(self, radius=0.005):
+        # 0 on an open surface, rising toward any edge within radius, however dense the mesh is
+        b = self.n('ShaderNodeBevel', samples=6); b.inputs['Radius'].default_value = radius
+        d = self.n('ShaderNodeVectorMath', operation='DOT_PRODUCT')
+        L(self.nt, b.outputs['Normal'], d.inputs[0]); L(self.nt, self.geo.outputs['Normal'], d.inputs[1])
+        return self.math('MULTIPLY', self.inv(d.outputs['Value']), 6.0)
+    def normal_axis(self, axis):
+        s = self.n('ShaderNodeSeparateXYZ'); L(self.nt, self.geo.outputs['Normal'], s.inputs['Vector'])
+        return s.outputs[axis]
+    def crater(self, scale, size=0.3, share=0.15):
+        # sparse round dents: one in every few voronoi cells
+        v = self.n('ShaderNodeTexVoronoi', feature='F1', i_Scale=scale); L(self.nt, self.co, v.inputs['Vector'])
+        pick = self.band(v.outputs['Color'], 1 - share, 1 - share + 0.01)
+        bowl = self.band(v.outputs['Distance'], size, 0.0)
+        return self.mul(self.mul(bowl, bowl), pick)
     def lerp(self, fac, a, b):
         x = self.n('ShaderNodeMix', data_type='RGBA')
         self._in(x.inputs['Factor'], fac); self._in(x.inputs[6], a); self._in(x.inputs[7], b)
@@ -902,12 +956,12 @@ class G:
         return self.mul(e, nz)
     def cavity(self, lo=0.5, hi=0.44):
         return self.band(self.pointy(), lo, hi)
-    def scratches(self, scale=9.0, density=0.5):
+    def scratches(self, scale=9.0, density=0.5, width=0.012):
         # long thin scratches in two crossing directions, clustered in patches
         out = None
         for rot in ((0, 0, 0.4), (0.3, 1.2, -0.7), (1.1, 0.2, 2.0)):
-            d = self.edges(scale, self.vec((1, 1, 0.06), rot))
-            s = self.band(d, 0.012, 0.0)
+            d = self.edges(scale, self.vec((1, 1, 0.12), rot))
+            s = self.band(d, width, 0.0)
             out = s if out is None else self.mx(out, s)
         gate = self.band(self.noise(2.2, 4.0), 0.62 - density * 0.2, 0.72 - density * 0.2)
         return self.mul(out, gate)
@@ -925,93 +979,178 @@ class G:
         if nrm is not None: L(self.nt, nrm, P.inputs['Normal'])
         return self.m
 
-def mat_steel(name, base=(0.035, 0.034, 0.036), bare=(0.3, 0.29, 0.3), rough=0.34, engrave=None, paint=None, dents=1.0, wear=(0.58, 0.66)):
-    """Forged plate: dark blued steel with polished, worn-through edges, grime in the recesses,
-    scratches, hammer marks and dents, uneven roughness. engrave: inlay colour for etched filigree.
-    paint: (colour, roughness) of a chipped painted layer over the steel."""
+# Where wear lands is read off the geometry at bake time, not scattered by noise:
+#   edge     the bevel shader finds every edge within a few mm (convex or concave)
+#   open     ambient occlusion: low under an overlapping lame, in a crevice, round a rivet's root
+#   facing   the surface normal: upward faces gather dust, undersides run with rust, faces turned
+#            toward the enemy (-Y) take the blows
+# so struck edges are polished bright, the band past an overlapping lame's edge is rubbed smooth
+# where the lame above slides on it, and filth packs into what is never cleaned.
+def _masks(g):
+    edge = g.bevel_edge(0.006)
+    near = g.ao(0.014)
+    occ = g.ao(0.06)
+    m = {'edge': edge, 'near': near, 'occ': occ}
+    m['convex'] = g.mul(g.band(edge, 0.025, 0.12), g.band(near, 0.8, 0.95))
+    m['crevice'] = g.band(near, 0.78, 0.4)
+    m['under'] = g.band(occ, 0.72, 0.35)
+    m['rub'] = g.mul(g.band(occ, 0.5, 0.72), g.band(occ, 0.97, 0.86))
+    m['up'] = g.band(g.normal_axis('Z'), 0.35, 0.85)
+    m['down'] = g.band(g.normal_axis('Z'), -0.25, -0.75)
+    m['front'] = g.band(g.normal_axis('Y'), -0.15, -0.75)
+    return m
+
+def mat_steel(name, base=(0.035, 0.034, 0.036), bare=(0.3, 0.29, 0.3), rough=0.34, engrave=None, paint=None, dents=1.0,
+              wear=None, glow=None):
+    """Forged plate, aged the way armour really ages: dark blued steel with faint tempering colours;
+    edges polished bright and chipped where they are struck; the band past each overlapping lame
+    rubbed smooth with fine scratches running the way it slides; scratches and dents concentrated
+    on the faces that meet blows; grime and rust packed into crevices, under the lames and round the
+    rivets, rust running down from them; dust on the upward faces.
+    engrave: inlay colour of etched filigree (glow: that filigree smoulders this colour).
+    paint: (colour, roughness) of a lacquer coat, chipped back to steel on the edges and the blows."""
     g = G(name)
-    patches = g.noise(2.6, 4.0)                                     # large polish/oxidation patches
+    k = _masks(g)
+    patches = g.noise(2.6, 4.0)
     smudge = g.noise(16.0, 6.0)
     col = g.tint(base, patches, 0.75, 1.3)
+    temper = g.noise(1.3, 3.0, 0.5, None, 1.5)                      # heat and age: brown-gold and blue tempering
+    col = g.lerp(g.mul(g.band(temper, 0.56, 0.78), 0.55), col, (0.055, 0.036, 0.018))
+    col = g.lerp(g.mul(g.band(temper, 0.42, 0.24), 0.55), col, (0.016, 0.022, 0.045))
     r = g.add(rough - 0.12, g.mul(patches, 0.24))
-    r = g.add(r, g.mul(g.add(smudge, -0.5), 0.12))
-    cav = g.cavity()
-    col = g.lerp(g.mul(cav, 0.8), col, (0.008, 0.006, 0.005))            # grime packed into the recesses
-    r = g.lerpf(g.mul(cav, 0.8), r, 0.85)
+    r = g.add(r, g.mul(g.add(smudge, -0.5), 0.14))
     metal = 1.0
+    emit = None
     if engrave:
-        wav = g.n('ShaderNodeTexWave', wave_type='RINGS', i_Scale=7.0, i_Distortion=8.0, i_Detail=4.0, i_Detail_Scale=1.5)
+        wav = g.n('ShaderNodeTexWave', wave_type='RINGS', i_Scale=16.0, i_Distortion=6.0, i_Detail=3.0, i_Detail_Scale=1.2)
         L(g.nt, g.co, wav.inputs['Vector'])
-        lines = g.band(wav.outputs['Fac'], 0.07, 0.0)
-        gate = g.band(g.noise(3.0, 2.0), 0.46, 0.52)
-        en = g.mul(lines, gate)
-        col = g.lerp(en, col, engrave); r = g.lerpf(en, r, 0.6)
+        lines = g.band(wav.outputs['Fac'], 0.04, 0.0)
+        en = g.mul(lines, g.mul(g.band(g.noise(3.0, 2.0), 0.52, 0.56), g.inv(k['edge'])))   # etched panels, clear of the edges
+        col = g.lerp(g.mul(en, 0.75), col, engrave); r = g.lerpf(en, r, 0.6)
         g.bump(en, 0.6, 0.0025, invert=True)
+        if glow:
+            emit = g.lerp(g.mul(en, g.band(g.noise(2.0, 2.0), 0.4, 0.6)), (0, 0, 0), glow)
+    front = g.add(0.3, k['front'])
     if paint:
-        chips = g.band(g.noise(22.0, 10.0, 0.7), 0.62, 0.66)
-        worn = g.mx(g.band(g.pointy(), 0.515, 0.55), chips)
+        chips = g.mul(g.band(g.noise(26.0, 10.0, 0.7), 0.6, 0.64), front)       # flakes knocked off by blows
+        edgechip = g.mul(g.band(k['edge'], 0.02, 0.07), g.band(g.noise(18.0, 6.0), 0.4, 0.5))
+        worn = g.mx(g.mx(chips, edgechip), k['rub'])
         pm = g.inv(worn)
         col = g.lerp(pm, col, paint[0]); r = g.lerpf(pm, r, paint[1])
         metal = g.inv(pm)
-        g.bump(pm, 0.25, 0.0015)
-    # wear only where an edge really is sharp and exposed: thin plate is all edge to Pointiness, so a
-    # low threshold paints the whole surface bare
-    w = g.wear(wear[0], wear[1], 0.4)
-    col = g.lerp(w, col, bare); r = g.lerpf(w, r, 0.22)
-    if paint: metal = g.mx(metal, w)
-    sc = g.scratches(density=0.3)
-    col = g.lerp(g.mul(sc, 0.35), col, bare); r = g.lerpf(g.mul(sc, 0.6), r, 0.28)
-    g.bump(sc, 0.25, 0.0008, invert=True)
-    g.bump(g.cells(38.0), 0.06 * dents, 0.004)                        # hammer marks
-    g.bump(g.noise(5.0, 3.0), 0.18 * dents, 0.01)                     # dents and warping
-    return g.finish(col, r, metal)
+        g.bump(pm, 0.3, 0.0015)
+    w = g.mul(k['convex'], g.band(g.noise(14.0, 8.0, 0.6), 0.25, 0.55))       # struck and handled edges: polished bright
+    col = g.lerp(w, col, bare); r = g.lerpf(w, r, 0.2)
+    chip = g.mul(g.band(k['edge'], 0.02, 0.08), g.band(g.noise(32.0, 4.0, 0.5), 0.63, 0.67))   # bites out of the edge
+    col = g.lerp(chip, col, tuple(c * 0.75 for c in bare)); r = g.lerpf(chip, r, 0.32)
+    g.bump(chip, 0.6, 0.0016, invert=True)
+    slide = g.band(g.edges(70.0, g.vec((1, 1, 0.03))), 0.03, 0.0)             # the rub band: fine scratches along the slide
+    rub = g.mul(k['rub'], g.band(g.noise(8.0, 4.0), 0.3, 0.5))
+    col = g.lerp(g.mul(rub, 0.6), col, bare); r = g.lerpf(rub, r, 0.18)
+    col = g.lerp(g.mul(g.mul(rub, slide), 0.7), col, bare)
+    g.bump(g.mul(rub, slide), 0.2, 0.0006, invert=True)
+    if paint: metal = g.mx(metal, g.mx(w, rub))
+    sc = g.mul(g.scratches(scale=18.0, density=0.2, width=0.005), front)       # scratches where blows land: they
+    col = g.lerp(g.mul(sc, 0.16), col, bare); r = g.lerpf(g.mul(sc, 0.6), r, 0.22)   # catch the light more than they show
+    g.bump(sc, 0.3, 0.0008, invert=True)
+    g.bump(g.mul(g.crater(7.0, 0.32, 0.14), front), 0.55 * dents, 0.006, invert=True)   # dents
+    g.bump(g.cells(38.0), 0.05 * dents, 0.004)                                 # hammer marks
+    g.bump(g.noise(5.0, 3.0), 0.12 * dents, 0.01)                              # warping
+    dust = g.mul(g.mul(k['up'], g.band(g.noise(22.0, 6.0), 0.45, 0.75)), 0.25)
+    col = g.lerp(dust, col, (0.06, 0.052, 0.045)); r = g.lerpf(dust, r, 0.8)
+    gr = g.mx(k['crevice'], g.mul(k['under'], 0.85))                           # grime: crevices, under lames
+    col = g.lerp(g.mul(gr, 0.85), col, (0.01, 0.008, 0.006)); r = g.lerpf(gr, r, 0.85)
+    run = g.band(g.noise(30.0, 4.0, 0.5, g.vec((1, 1, 0.07))), 0.58, 0.68)    # rust in them, running downward
+    rust = g.mul(g.mx(gr, g.mul(g.band(g.ao(0.1), 0.92, 0.7), run)), g.band(g.noise(11.0, 6.0, 0.6), 0.42, 0.58))
+    col = g.lerp(rust, col, (0.05, 0.017, 0.006)); r = g.lerpf(rust, r, 0.92)
+    g.bump(rust, 0.25, 0.001)
+    metal = g.lerpf(g.mx(rust, g.mul(gr, 0.5)), metal, 0.0)
+    return g.finish(col, r, metal, emit=emit, emit_strength=1.0 if glow else 0.0)
 
 def mat_leather(name, col=(0.03, 0.018, 0.012), rough=0.62):
-    # oiled leather: grain, creases, lighter scuffed edges, darker grime
+    # oiled leather: grain and pores, creases, cut edges burnished dark and glossy, paler and crazed
+    # where it is stretched over plate and rivets, grime in the creases
     g = G(name)
+    k = _masks(g)
     c = g.tint(col, g.noise(5.0, 6.0), 0.7, 1.35)
     grain = g.cells(160.0)
+    pores = g.band(g.cells(340.0), 0.12, 0.0)
     crease = g.band(g.edges(24.0, g.vec((1, 1, 4))), 0.03, 0.0)
     c = g.lerp(g.mul(crease, 0.5), c, (0.006, 0.004, 0.003))
-    w = g.wear(0.52, 0.58, 0.6, 20.0)
-    c = g.lerp(w, c, (0.12, 0.08, 0.055))
+    burnish = g.band(k['edge'], 0.04, 0.18)
+    c = g.lerp(g.mul(burnish, 0.7), c, (0.011, 0.006, 0.004))
+    stretch = g.mul(g.band(g.pointy(), 0.5, 0.56), g.band(g.noise(9.0, 4.0), 0.35, 0.6))
+    c = g.lerp(g.mul(stretch, 0.6), c, (0.1, 0.066, 0.045))
+    craze = g.mul(g.band(g.edges(80.0), 0.025, 0.0), stretch)
+    c = g.lerp(g.mul(k['crevice'], 0.8), c, (0.004, 0.003, 0.002))
     r = g.add(rough - 0.1, g.mul(g.noise(9.0, 4.0), 0.25))
-    r = g.lerpf(w, r, 0.85)
-    g.bump(grain, 0.2, 0.001); g.bump(crease, 0.35, 0.002, invert=True)
+    r = g.lerpf(burnish, r, 0.36); r = g.lerpf(stretch, r, 0.48); r = g.lerpf(k['crevice'], r, 0.9)
+    g.bump(grain, 0.25, 0.001); g.bump(pores, 0.15, 0.0006, invert=True)
+    g.bump(crease, 0.35, 0.002, invert=True); g.bump(craze, 0.3, 0.0008, invert=True)
     return g.finish(c, r)
 
 def mat_bone(name, col=(0.32, 0.27, 0.2), rough=0.55):
     # old bone: yellowed, stained brown in the cracks and hollows, fine cracks and pores
     g = G(name)
     c = g.tint(col, g.noise(6.0, 6.0), 0.55, 1.15)
-    cav = g.cavity(0.52, 0.42)
-    c = g.lerp(cav, c, (0.05, 0.03, 0.015))
+    cav = g.band(g.ao(0.02), 0.85, 0.4)
+    c = g.lerp(cav, c, (0.04, 0.025, 0.012))
     cracks = g.band(g.edges(14.0, None, 0.9), 0.012, 0.0)
     c = g.lerp(g.mul(cracks, 0.8), c, (0.03, 0.02, 0.01))
+    tip = g.band(g.bevel_edge(0.006), 0.03, 0.12)                    # edges and points worn smooth and pale
+    c = g.lerp(g.mul(tip, 0.5), c, tuple(x * 1.5 for x in col))
     r = g.add(rough - 0.1, g.mul(g.noise(20.0, 4.0), 0.2))
+    r = g.lerpf(tip, r, rough - 0.2)
     g.bump(cracks, 0.4, 0.0015, invert=True); g.bump(g.cells(90.0), 0.12, 0.001)
     return g.finish(c, r)
 
-def mat_horn2(name, root=(0.012, 0.009, 0.009), tip=(0.2, 0.05, 0.03), zmin=0.0, zmax=1.0, rough=0.4, bands=60.0):
-    # keratin horn: striated along its length, growth rings across it, glossier at the polished tip,
-    # chipped and lighter on its worn edges
+def mat_horn2(name, root=(0.012, 0.009, 0.009), tip=(0.2, 0.05, 0.03), zmin=0.0, zmax=1.0, rough=0.4, bands=60.0, along=None):
+    """Keratin horn. along: the name of a vector attribute (t, cos a, sin a) giving each point's place
+    along the horn (t 0 root .. 1 tip) and round it, so growth rings run round it and cracks along it.
+    Without it, height zmin..zmax stands in for t. Dark at the root, paling to the tip; ringed;
+    striated; split by fine cracks along its grain; the tip worn smooth, glossy and chipped; grime
+    packed between the rings."""
     g = G(name)
-    sep = g.n('ShaderNodeSeparateXYZ'); L(g.nt, g.co, sep.inputs['Vector'])
-    t = g.band(sep.outputs['Z'], zmin, zmax)
-    c = g.lerp(g.mul(t, t), root, tip)
-    stri = g.noise(30.0, 8.0, 0.6, g.vec((1, 1, 0.08)))
-    c = g.tint(c, stri, 0.6, 1.4)
-    rings = g.n('ShaderNodeTexWave', i_Scale=bands, i_Distortion=3.0, wave_profile='SAW'); rings.bands_direction = 'Z'
-    L(g.nt, g.co, rings.inputs['Vector'])
-    w = g.wear(0.54, 0.62, 0.5, 12.0)
-    c = g.lerp(w, c, (0.22, 0.16, 0.13))
+    if along:
+        a = g.n('ShaderNodeAttribute', attribute_name=along)
+        sep = g.n('ShaderNodeSeparateXYZ'); L(g.nt, a.outputs['Vector'], sep.inputs['Vector'])
+        t, ca, sa = sep.outputs['X'], sep.outputs['Y'], sep.outputs['Z']
+        def grain(kt, ka):   # coordinates on the horn's own surface: t along, the angle round it
+            cmb = g.n('ShaderNodeCombineXYZ')
+            L(g.nt, g.math('MULTIPLY', t, kt, clamp=False), cmb.inputs['X'])
+            L(g.nt, g.math('MULTIPLY', ca, ka, clamp=False), cmb.inputs['Y'])
+            L(g.nt, g.math('MULTIPLY', sa, ka, clamp=False), cmb.inputs['Z'])
+            return cmb.outputs['Vector']
+    else:
+        sep = g.n('ShaderNodeSeparateXYZ'); L(g.nt, g.co, sep.inputs['Vector'])
+        t = g.band(sep.outputs['Z'], zmin, zmax)
+        grain = lambda kt, ka: g.vec((ka, ka, kt))
+    c = g.lerp(g.math('POWER', t, 1.6), root, tip)
+    c = g.tint(c, g.noise(2.5, 4.0, 0.5, grain(3.0, 1.5)), 0.7, 1.35)          # broad colour variation
+    stri = g.noise(18.0, 8.0, 0.6, grain(1.0, 9.0))                             # striations along the grain
+    c = g.tint(c, stri, 0.65, 1.35)
+    ph = g.math('MULTIPLY', t, bands * math.tau, clamp=False)
+    ring = g.band(g.math('SINE', ph, clamp=False), 0.2, 0.95)                   # growth rings, and finer ones between
+    fine = g.band(g.math('SINE', g.math('MULTIPLY', ph, 3.7, clamp=False), clamp=False), 0.5, 1.0)
+    c = g.lerp(g.mul(g.inv(ring), 0.45), c, tuple(x * 0.5 for x in root))
+    cr = g.band(g.edges(5.0, grain(14.0, 2.0)), 0.035, 0.0)                     # cracks split along the grain
+    cr = g.mul(cr, g.band(g.noise(3.0, 3.0, 0.5, grain(4.0, 1.0)), 0.48, 0.6))
+    c = g.lerp(g.mul(cr, 0.9), c, (0.004, 0.003, 0.003))
+    cav = g.band(g.ao(0.02), 0.85, 0.45)
+    c = g.lerp(g.mul(cav, 0.7), c, (0.006, 0.004, 0.004))
+    worn = g.band(t, 0.8, 0.97)                                                # the tip: worn smooth, pale, glossy
+    w = g.mx(g.mul(worn, 0.8), g.wear(0.54, 0.62, 0.5, 12.0))
+    c = g.lerp(w, c, (0.21, 0.15, 0.11))
     r = g.lerpf(t, rough + 0.15, rough - 0.12)
     r = g.add(r, g.mul(g.add(stri, -0.5), 0.2))
-    g.bump(rings.outputs['Fac'], 0.35, 0.004); g.bump(stri, 0.3, 0.002)
+    r = g.lerpf(worn, r, rough - 0.2); r = g.lerpf(g.mx(cr, cav), r, 0.85)
+    g.bump(ring, 0.35, 0.004); g.bump(fine, 0.12, 0.001); g.bump(stri, 0.3, 0.002)
+    g.bump(cr, 0.5, 0.0015, invert=True)
     return g.finish(c, r)
 
-def mat_fabric(name, zmin, zmax, stops, rough=0.86, sheen=0.4, weave=220.0, lining=None):
-    # heavy woven wool: weave, slubs, scorched and filthy toward the frayed hem, faded on the folds
+def mat_fabric(name, zmin, zmax, stops, rough=0.86, sheen=0.4, weave=150.0, lining=None):
+    # heavy wool twill: a diagonal weave, slubs and fuzz, faded on the folds, filthy and scorched toward
+    # the frayed hem, dust in the creases
     g = G(name)
     sep = g.n('ShaderNodeSeparateXYZ'); L(g.nt, g.co, sep.inputs['Vector'])
     mr = g.n('ShaderNodeMapRange', i_From_Min=zmin, i_From_Max=zmax); L(g.nt, sep.outputs['Z'], mr.inputs['Value'])
@@ -1024,28 +1163,78 @@ def mat_fabric(name, zmin, zmax, stops, rough=0.86, sheen=0.4, weave=220.0, lini
     c = g.lerp(filth, c, (0.01, 0.008, 0.006))
     fold = g.band(g.pointy(), 0.52, 0.58)
     c = g.lerp(g.mul(fold, 0.35), c, (0.14, 0.11, 0.1))
-    w1 = g.n('ShaderNodeTexWave', i_Scale=weave, wave_profile='SIN'); L(g.nt, g.co, w1.inputs['Vector'])
-    w2 = g.n('ShaderNodeTexWave', i_Scale=weave, wave_profile='SIN', bands_direction='Z'); L(g.nt, g.co, w2.inputs['Vector'])
+    c = g.lerp(g.mul(g.band(g.ao(0.04), 0.8, 0.4), 0.7), c, (0.006, 0.005, 0.005))
+    tw = g.n('ShaderNodeTexWave', i_Scale=weave, wave_profile='SAW', bands_direction='DIAGONAL'); L(g.nt, g.co, tw.inputs['Vector'])
+    w2 = g.n('ShaderNodeTexWave', i_Scale=weave * 1.6, wave_profile='SIN', bands_direction='Z'); L(g.nt, g.co, w2.inputs['Vector'])
+    c = g.tint(c, tw.outputs['Fac'], 0.82, 1.12)
+    fuzz = g.noise(260.0, 2.0)
     r = g.add(rough - 0.06, g.mul(slub, 0.1))
     g.P.inputs['Sheen Weight'].default_value = sheen
-    g.bump(w1.outputs['Fac'], 0.12, 0.0008); g.bump(w2.outputs['Fac'], 0.12, 0.0008); g.bump(slub, 0.2, 0.002)
+    g.bump(tw.outputs['Fac'], 0.22, 0.0008); g.bump(w2.outputs['Fac'], 0.1, 0.0006); g.bump(slub, 0.2, 0.002); g.bump(fuzz, 0.08, 0.0004)
     return g.finish(c, r)
 
-def mat_membrane(name, dark=(0.02, 0.006, 0.008), light=(0.14, 0.02, 0.018), vein=(0.9, 0.08, 0.02), rough=0.55):
-    # a wing membrane: leathery, wrinkled across its stretch, a web of raised veins, thin glowing
-    # veins only in the big branches
+def mat_membrane(name, dark=(0.02, 0.006, 0.008), light=(0.14, 0.02, 0.018), vein=(0.06, 0.008, 0.008), rough=0.55, along=None):
+    """A wing membrane: thin, leathery and wrinkled, a web of raised veins, darker and thicker where it
+    wraps the bones, paler, rough and cracked where it has dried out toward the torn trailing edge,
+    old scars healed glossy and puckered. along: a vector attribute (hem, bone, 0): 1 at the trailing
+    edge and 1 against a bone, falling to 0 away from them."""
     g = G(name)
+    if along:
+        a = g.n('ShaderNodeAttribute', attribute_name=along)
+        sep = g.n('ShaderNodeSeparateXYZ'); L(g.nt, a.outputs['Vector'], sep.inputs['Vector'])
+        hem, bone = sep.outputs['X'], sep.outputs['Y']
+    else:
+        hem, bone = 0.0, 0.0
     mott = g.noise(4.0, 6.0)
     c = g.lerp(mott, dark, light)
     wr = g.noise(26.0, 6.0, 0.6, g.vec((1, 0.15, 1), (0, 0, 0.6)))
     c = g.tint(c, wr, 0.6, 1.3)
     small = g.band(g.edges(16.0), 0.02, 0.0)
     big = g.band(g.edges(4.0, None, 0.8), 0.012, 0.0)
-    c = g.lerp(g.mul(small, 0.6), c, (0.008, 0.003, 0.003))
-    glow = g.mul(big, g.band(g.noise(3.0, 2.0), 0.45, 0.6))
+    c = g.lerp(g.mul(small, 0.5), c, (0.008, 0.003, 0.003))
+    c = g.lerp(g.mul(big, 0.8), c, vein)
+    c = g.lerp(g.mul(bone, 0.6), c, tuple(x * 0.4 for x in dark))
+    dry = g.mul(hem, g.band(g.noise(6.0, 6.0), 0.3, 0.55))
+    c = g.lerp(g.mul(dry, 0.8), c, (0.085, 0.055, 0.045))
+    dcrack = g.mul(dry, g.band(g.edges(90.0), 0.03, 0.0))
+    scar = g.band(g.noise(3.2, 3.0, 0.5, None, 2.0), 0.7, 0.74)
+    c = g.lerp(g.mul(scar, 0.7), c, (0.13, 0.06, 0.05))
     r = g.add(rough - 0.1, g.mul(wr, 0.25))
-    g.bump(wr, 0.35, 0.003); g.bump(small, 0.4, 0.0015); g.bump(big, 0.6, 0.003)
-    return g.finish(c, r, 0.0, emit=g.lerp(glow, (0, 0, 0), vein))
+    r = g.lerpf(dry, r, 0.88); r = g.lerpf(scar, r, 0.32)
+    g.bump(wr, 0.35, 0.003); g.bump(small, 0.4, 0.0015); g.bump(big, 0.7, 0.003)
+    g.bump(dcrack, 0.4, 0.0008, invert=True); g.bump(g.mul(scar, g.noise(70.0, 3.0)), 0.5, 0.0015)
+    return g.finish(c, r)
+
+def mat_mail(name, base=(0.05, 0.048, 0.05), ring=0.02, rough=0.38):
+    """Riveted mail: interlocked rings in rows, each grid staggered half a ring, projected from the
+    side the surface faces. Bright on the crowns of the rings, black in the gaps, rust in them."""
+    g = G(name)
+    f = 1.0 / ring
+    def lattice(ax, ay):
+        sep = g.n('ShaderNodeSeparateXYZ'); L(g.nt, g.co, sep.inputs['Vector'])
+        out = None
+        for off in (0.0, 0.5):
+            cmb = g.n('ShaderNodeCombineXYZ')
+            L(g.nt, g.math('ADD', g.math('MULTIPLY', sep.outputs[ax], f, clamp=False), off, clamp=False), cmb.inputs['X'])
+            L(g.nt, g.math('ADD', g.math('MULTIPLY', sep.outputs[ay], f * 1.15, clamp=False), off, clamp=False), cmb.inputs['Y'])
+            fr = g.n('ShaderNodeVectorMath', operation='FRACTION'); L(g.nt, cmb.outputs['Vector'], fr.inputs[0])
+            sub = g.n('ShaderNodeVectorMath', operation='SUBTRACT'); L(g.nt, fr.outputs['Vector'], sub.inputs[0]); sub.inputs[1].default_value = (0.5, 0.5, 0.0)
+            ln = g.n('ShaderNodeVectorMath', operation='LENGTH'); L(g.nt, sub.outputs['Vector'], ln.inputs[0])
+            d = g.math('ABSOLUTE', g.math('SUBTRACT', ln.outputs['Value'], 0.36, clamp=False), clamp=False)
+            rg = g.band(d, 0.13, 0.03)
+            out = rg if out is None else g.mx(out, rg)
+        return out
+    side = g.band(g.math('ABSOLUTE', g.normal_axis('X'), clamp=False), 0.45, 0.7)
+    rings = g.lerpf(side, lattice('X', 'Z'), lattice('Y', 'Z'))
+    c = g.lerp(rings, (0.004, 0.004, 0.004), base)
+    c = g.tint(c, g.noise(4.0, 4.0), 0.6, 1.5)
+    rust = g.mul(g.inv(rings), g.band(g.noise(9.0, 6.0), 0.45, 0.62))
+    c = g.lerp(rust, c, (0.04, 0.014, 0.005))
+    c = g.lerp(g.mul(g.band(g.ao(0.04), 0.85, 0.4), 0.8), c, (0.004, 0.003, 0.003))
+    r = g.lerpf(rings, 0.9, rough)
+    metal = g.lerpf(rust, rings, 0.0)
+    g.bump(rings, 0.8, 0.003)
+    return g.finish(c, r, metal)
 
 
 # ── weights: distance to bone segments, restricted to the bones a part may follow ──
@@ -1116,8 +1305,92 @@ def roar_pose(t, idle=idle_pose):
     return out
 
 # ── finish: materials baked to one atlas, low-poly copies, the rig, the clips, the export ──
+def layout_uvs(ob, margin=0.0012, hidden=0.0004, gap=0.025):
+    """Share the atlas out by how much each part will be seen. Parts arrive unwrapped one by one
+    (each face tagged 'pid'); they are first brought to one texel density. Each face carries a
+    'uvw' weight (the part's importance), and a face that faces straight into another surface
+    within `gap` (body under armour, the inside of a plate against the body) is never seen, so it
+    gets `hidden` of that and shrinks to a speck. Islands are scaled by the square root of their
+    weight, so their pixel area goes with it, then packed tight round their real outlines."""
+    me = ob.data
+    w = np.ones(len(me.polygons), np.float32)
+    if 'uvw' in me.attributes:
+        me.attributes['uvw'].data.foreach_get('value', w)
+    tree = BVHTree.FromObject(ob, bpy.context.evaluated_depsgraph_get())
+    for p in me.polygons:
+        c, nrm = p.center, p.normal
+        hit = tree.ray_cast(c + nrm * 0.002, nrm, gap)
+        if hit[0] is not None:
+            w[p.index] *= hidden
+    pid = np.zeros(len(me.polygons), np.int32)
+    if 'pid' in me.attributes:
+        me.attributes['pid'].data.foreach_get('value', pid)
+    bm = bmesh.new(); bm.from_mesh(me); bm.faces.ensure_lookup_table()
+    uv = bm.loops.layers.uv.active
+    # each part was unwrapped on its own: bring them all to the same texel density first
+    a3, a2 = {}, {}
+    for f in bm.faces:
+        q = [l[uv].uv for l in f.loops]
+        ua = abs(sum(q[i].x * q[(i + 1) % len(q)].y - q[(i + 1) % len(q)].x * q[i].y for i in range(len(q)))) / 2
+        a3[pid[f.index]] = a3.get(pid[f.index], 0.0) + f.calc_area(); a2[pid[f.index]] = a2.get(pid[f.index], 0.0) + ua
+    dens = {k: math.sqrt(a3[k] / a2[k]) if a2[k] > 1e-12 else 1.0 for k in a3}
+    parent = list(range(len(bm.faces)))
+    def find(i):
+        while parent[i] != i:
+            parent[i] = parent[parent[i]]; i = parent[i]
+        return i
+    for e in bm.edges:
+        ll = e.link_loops
+        if len(ll) != 2: continue
+        l1, l2 = ll
+        if pid[l1.face.index] == pid[l2.face.index] and (l1[uv].uv - l2.link_loop_next[uv].uv).length < 1e-6 and (l1.link_loop_next[uv].uv - l2[uv].uv).length < 1e-6:
+            a, b = find(l1.face.index), find(l2.face.index)
+            if a != b: parent[a] = b
+    isl = {}
+    for f in bm.faces:
+        isl.setdefault(find(f.index), []).append(f)
+    if os.environ.get('UV_PNG'):
+        sz = np.array([len(v) for v in isl.values()])
+        print('island sizes: 1 face', (sz == 1).sum(), '2', (sz == 2).sum(), '3-9', ((sz >= 3) & (sz < 10)).sum(), '10+', (sz >= 10).sum(), flush=True)
+        wv = {}
+        for fs in isl.values():
+            if len(fs) <= 2: wv[round(float(w[fs[0].index]), 2)] = wv.get(round(float(w[fs[0].index]), 2), 0) + 1
+        print('tiny islands by weight', wv, flush=True)
+    for fs in isl.values():
+        area = sum(f.calc_area() for f in fs) or 1e-9
+        # smart project already sizes islands by their 3D area: scale that by the weight
+        k = math.sqrt(max(sum(f.calc_area() * w[f.index] for f in fs) / area, 0.0004)) * dens[pid[fs[0].index]]
+        loops = [l for f in fs for l in f.loops]
+        c = sum((l[uv].uv for l in loops), Vector((0, 0))) / len(loops)
+        for l in loops:
+            l[uv].uv = c + (l[uv].uv - c) * k
+    bm.to_mesh(me); bm.free()
+    activate(ob)
+    bpy.ops.object.mode_set(mode='EDIT')
+    bpy.ops.mesh.select_all(action='SELECT')
+    scene().tool_settings.use_uv_select_sync = True   # pack every island (UV selection follows the mesh's)
+    r = bpy.ops.uv.pack_islands(rotate=True, margin_method='FRACTION', margin=margin, shape_method=os.environ.get('UV_SHAPE', 'CONCAVE'))
+    bpy.ops.object.mode_set(mode='OBJECT')
+    uvs = np.zeros(len(me.loops) * 2, np.float32); me.uv_layers.active.data.foreach_get('uv', uvs); uvs = uvs.reshape(-1, 2)
+    st = np.zeros(len(me.polygons), np.int32); me.polygons.foreach_get('loop_start', st)
+    used = 0.0
+    for p in me.polygons:
+        q = uvs[p.loop_start:p.loop_start + p.loop_total]
+        used += abs(np.dot(q[:, 0], np.roll(q[:, 1], -1)) - np.dot(q[:, 1], np.roll(q[:, 0], -1))) / 2
+    if os.environ.get('UV_PNG'):
+        st = np.zeros(len(me.polygons), np.int32); me.polygons.foreach_get('loop_start', st)
+        tot = np.zeros(len(me.polygons), np.int32); me.polygons.foreach_get('loop_total', tot)
+        cen = np.zeros(len(me.polygons) * 3, np.float32); me.polygons.foreach_get('center', cen)
+        ar = np.zeros(len(me.polygons), np.float32); me.polygons.foreach_get('area', ar)
+        np.savez(os.environ['UV_PNG'], uv=uvs, start=st, total=tot, w=w, cen=cen.reshape(-1, 3), area=ar)
+    print(f'uv: {len(isl)} islands ({r}), {used:.0%} of the atlas used, {int((w < 0.5).sum())} faces hidden', flush=True)
+
 def finish(name, out, J, bones, parts, glow, part_info, mats, flat, tri_target, glow_rgb,
-           idle=idle_pose, roar=roar_pose, mid=0.08, emit_strength=3.0, glow_strength=6.0, clips=()):
+           idle=idle_pose, roar=roar_pose, mid=0.08, emit_strength=3.0, glow_strength=6.0, clips=(),
+           uv_weight=lambda name: 1.0, split=()):
+    """uv_weight(part) -> how much texture a part deserves (1 = its fair share by area).
+    split: material keys that get their own copy of the baked material in the export, named
+    <name>_<key>, so the runtime can treat them differently (the wing membranes' translucency)."""
     sc = scene()
     groups = list(mats)
     segs = {b: (J[h], J[t]) for b, h, t, _ in bones}
@@ -1128,16 +1401,25 @@ def finish(name, out, J, bones, parts, glow, part_info, mats, flat, tri_target, 
         key, rule = part_info(pname)
         hi.data.materials.clear(); hi.data.materials.append(mats[key])
         lo = hi.copy(); lo.data = hi.data.copy(); lo.name = pname + '_low'; link(lo)
+        # unwrap before decimating: the full mesh splits into clean islands, the decimated one into slivers
+        activate(lo); bpy.ops.object.mode_set(mode='EDIT'); bpy.ops.mesh.select_all(action='SELECT')
+        bpy.ops.uv.smart_project(angle_limit=math.radians(66), island_margin=0.0, area_weight=0.0, scale_to_bounds=False)
+        bpy.ops.object.mode_set(mode='OBJECT')
         tris = tri_count(hi)
         tgt = tri_target(pname, tris)
         if tris > tgt:
             d = lo.modifiers.new('dec', 'DECIMATE'); d.ratio = tgt / tris
             apply_mods(lo)
+            sharp(lo, 40)   # decimation smears the hard edges' normals: break them again
         lo.data.materials.clear()
         for g in groups:
             lo.data.materials.append(bpy.data.materials.get('slot_' + g) or bpy.data.materials.new('slot_' + g))
         gi = groups.index(key)
         for p in lo.data.polygons: p.material_index = gi
+        uw = lo.data.attributes.get('uvw') or lo.data.attributes.new('uvw', 'FLOAT', 'FACE')
+        uw.data.foreach_set('value', np.full(len(lo.data.polygons), uv_weight(pname), np.float32))
+        pid = lo.data.attributes.get('pid') or lo.data.attributes.new('pid', 'INT', 'FACE')
+        pid.data.foreach_set('value', np.full(len(lo.data.polygons), len(lows), np.int32))
         assign_weights(lo, rule, segs, mid)
         highs.setdefault(key, []).append(hi)
         if hi.get('detail'):   # bake-only detail (rivets and the like): high mesh only, same material
@@ -1148,13 +1430,16 @@ def finish(name, out, J, bones, parts, glow, part_info, mats, flat, tri_target, 
 
     boss = join(lows, 'boss')
     boss.data.validate(clean_customdata=False)   # drop any degenerate faces the plate cuts left behind
+    bm = bmesh.new(); bm.from_mesh(boss.data)   # and zero-area slivers: invisible, but each one wrecks the UV layout
+    dead = [f for f in bm.faces if f.calc_area() < 2e-8]
+    bmesh.ops.delete(bm, geom=dead, context='FACES')
+    bmesh.ops.delete(bm, geom=[v for v in bm.verts if not v.link_faces], context='VERTS')
+    bm.to_mesh(boss.data); bm.free()
+    print('slivers removed:', len(dead), flush=True)
     print('triangles (body mesh):', tri_count(boss), flush=True)
-    activate(boss)
-    bpy.ops.object.mode_set(mode='EDIT')
-    bpy.ops.mesh.select_all(action='SELECT')
-    bpy.ops.uv.smart_project(angle_limit=math.radians(60), island_margin=0.002, area_weight=0.0, scale_to_bounds=False)
-    bpy.ops.uv.pack_islands(rotate=True, margin=0.002)
-    bpy.ops.object.mode_set(mode='OBJECT')
+    layout_uvs(boss)
+    if os.environ.get('UV_ONLY'):
+        return
 
     def make_img(iname, size, data=True):
         im = bpy.data.images.new(iname, size, size, alpha=False)
@@ -1206,16 +1491,21 @@ def finish(name, out, J, bones, parts, glow, part_info, mats, flat, tri_target, 
                 for h in src: h.select_set(True)
                 if sock:
                     route(mats[key], sock)
-                    bpy.ops.object.bake(type='EMIT', use_selected_to_active=True, cage_extrusion=0.03, max_ray_distance=0.08, use_clear=False, margin=6)
+                    bpy.ops.object.bake(type='EMIT', use_selected_to_active=True, cage_extrusion=0.03, max_ray_distance=0.08, use_clear=False, margin=2)
                     unroute(mats[key])
                 else:
-                    bpy.ops.object.bake(type='NORMAL', normal_space='TANGENT', use_selected_to_active=True, cage_extrusion=0.03, max_ray_distance=0.08, use_clear=False, margin=6)
+                    bpy.ops.object.bake(type='NORMAL', normal_space='TANGENT', use_selected_to_active=True, cage_extrusion=0.03, max_ray_distance=0.08, use_clear=False, margin=2)
             print('baked', key, flush=True)
+            if key in split:   # its own slot, so it exports as its own material
+                sm_ = bake_mat.copy(); sm_.name = 'split_' + key
+                piece.data.materials.clear(); piece.data.materials.append(sm_)
         boss = join(pieces, 'boss')
         for hs in highs.values():
             for h in hs: h.hide_render = True
         sc.cycles.samples = 48
         img_node.image = IM['ao']
+        for m_ in boss.data.materials:
+            if m_.name.startswith('split_'): m_.node_tree.nodes.active.image = IM['ao']
         activate(boss)
         bpy.ops.object.bake(type='AO', use_clear=True, margin=6)
         print('baked ao', flush=True)
@@ -1245,7 +1535,16 @@ def finish(name, out, J, bones, parts, glow, part_info, mats, flat, tri_target, 
         gn = nt.nodes.new('ShaderNodeGroup'); gn.node_tree = grp
         L(nt, sp.outputs['Red'], gn.inputs['Occlusion'])
         fm.use_backface_culling = True
-        boss.data.materials.clear(); boss.data.materials.append(fm)
+        slots = [m.name for m in boss.data.materials]
+        mi = np.zeros(len(boss.data.polygons), np.int32); boss.data.polygons.foreach_get('material_index', mi)
+        out_mats = [fm]
+        for sn in slots:
+            if sn.startswith('split_'):
+                cp = fm.copy(); cp.name = name + '_' + sn[len('split_'):]; out_mats.append(cp)
+        remap = np.array([0 if not sn.startswith('split_') else 1 + [x for x in slots if x.startswith('split_')].index(sn) for sn in slots], np.int32)
+        boss.data.materials.clear()
+        for m_ in out_mats: boss.data.materials.append(m_)
+        boss.data.polygons.foreach_set('material_index', remap[mi])
     else:
         for i, g in enumerate(groups):
             m = boss.data.materials[i]; m.use_nodes = True
