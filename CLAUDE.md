@@ -88,7 +88,9 @@ CSS tokens), `art/registry.js` (asset factories with triangle budgets, footprint
 `node test/art-registry.test.mjs` tests it), `art/packs/*.js` (the assets). Review assets in
 `/art/catalogue.html` under the local server. Authored `.glb` models (`art/models.js`, `art/look.js`,
 registered in `art/models/index.js`; see [art/MODELS.md](art/MODELS.md)) replace a code-drawn asset by
-id through `take()`/`resolve()`. The reward reveal (`buildRewardScene`) and the raid boss
+id through `take()`/`resolve()`. Each raid tier (E–S) has its own boss model (`raid-boss:<tier>`), built in Blender from
+`art/models/src/bosses/` (a shared kit plus one script per boss); the Monarch is tier A and the default.
+The reward reveal (`buildRewardScene`) and the raid boss
 (`buildSystemCoreScene`) use the pack lazily and fall back to the old primitives if it fails to load;
 wire further screens the same way, through the existing AuraGL runtime. Presentation only.
 

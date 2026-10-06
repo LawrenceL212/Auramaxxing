@@ -53,7 +53,8 @@ The app runs in a phone browser, so detail is spent where it shows:
 
 | `replaces` | where it shows | height to use |
 |---|---|---|
-| `raid-boss` | raid cinematics | ~6.8 |
+| `raid-boss` | raid cinematics (the default boss) | ~6.8 |
+| `raid-boss:E` … `raid-boss:S` | raid cinematics, that tier's boss (falls back to `raid-boss`) | 3.4–7.4 |
 | `relic-sword`, `relic-chestplate`, `relic-boots`, `relic-ring` | loot reveal | ~0.9 |
 
 New places (the Hunter, a 3D shadow army) get a code-drawn stand-in and an id first, then take a
@@ -73,3 +74,26 @@ cd art/models/src/monarch && python3.11 build.py --bake --out ../../monarch.glb
 
 A model an artist sculpts by hand will beat it; when one arrives, register it with
 `replaces: 'raid-boss'` and remove the Monarch's entry.
+
+### The raid bosses, one per tier
+
+Each tier of the weekly raid (`BOSS_DATA` in `renderRaidBoss`) has its own boss, built from
+`models/src/bosses/`: `kit.py` is the Monarch's pipeline made shared (body, armour, materials, bake,
+rig, Idle and Roar), and each boss is one script on top of it.
+
+| tier | boss | script | model |
+|---|---|---|---|
+| E | Goblin Scout | `goblin.py` | `goblin.glb` |
+| D | Stone Golem | `golem.py` | `golem.glb` |
+| C | Iron Shadow | `iron_shadow.py` | `iron-shadow.glb` |
+| B | Void Warden | `void_warden.py` | `void-warden.glb` |
+| A | Monarch's Shadow | `../monarch/build.py` | `monarch.glb` |
+| S | Antares the Sovereign Beast | `antares.py` | `antares.glb` |
+
+```bash
+cd art/models/src/bosses && python3.11 golem.py --bake --out ../../golem.glb   # without --bake: a quick flat-colour preview
+```
+
+The raid picks the boss with `raidMoment({ boss: { name, eye, tier } })`; without `tier` it looks the
+name up in `RAID_BOSS_TIER`. The tier's model is fetched when its raid moment starts (up to 2.5 s);
+if it isn't there by then, the Monarch stands in.
