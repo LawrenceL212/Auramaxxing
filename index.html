@@ -17790,6 +17790,88 @@ function barChart(values, labels, opts) {
     </div>`).join('')}</div>`;
 }
 
+// ── Aura over time (Trends) ─────────────────────────────────────────────────
+// Presentation only: replays the same computeWorkoutXP + milestone XP that
+// reconcileXP sums, day by day, to draw how Hunter XP grew. Reads workouts,
+// profile.milestonesAchieved and myPRs; writes nothing.
+function auraOverTimeCard() {
+  if (!myWorkouts.length) return '';
+  const byDay = {};
+  for (const w of myWorkouts) {
+    if (!w.date) continue;
+    byDay[w.date] = (byDay[w.date] || 0) + (computeWorkoutXP(w.exercises || []).generalXP || 0);
+  }
+  const achieved = profile.milestonesAchieved || {};
+  MILESTONES.forEach(m => {
+    const a = achieved[m.id];
+    if (!a || !m.hunterXP) return;
+    const d = a.achievedAt ? todayStr(new Date(a.achievedAt)) : todayStr();
+    byDay[d] = (byDay[d] || 0) + m.hunterXP;
+  });
+  const days = Object.keys(byDay).sort();
+  if (!days.length) return '';
+  const today = todayStr();
+  if (days[days.length - 1] < today) days.push(today);
+  let cum = 0, lvl = levelFromTotalXP(0);
+  const pts = [], ups = [];
+  for (const d of days) {
+    cum += byDay[d] || 0;
+    const L = levelFromTotalXP(cum);
+    if (L > lvl) ups.push({ d, L, xp: cum });
+    lvl = L;
+    pts.push({ d, xp: cum });
+  }
+  const span = Math.max(1, daysBetween(days[0], today));
+  const W = 320, H = 132, T = 16, B = 18, Lp = 2, Rp = 2;
+  const max = Math.max(1, cum) * 1.06;
+  const x = d => Lp + (daysBetween(days[0], d) / span) * (W - Lp - Rp);
+  const y = v => T + (1 - v / max) * (H - T - B);
+  // step look: XP only moves on training days
+  const step = pts.map((p, i) => i ? 'H' + x(p.d).toFixed(1) + ' V' + y(p.xp).toFixed(1) : 'M' + x(p.d).toFixed(1) + ' ' + y(p.xp).toFixed(1)).join(' ');
+  const area = step + ' V' + (H - B) + ' H' + x(days[0]).toFixed(1) + ' Z';
+  const xpAt = d => { let v = 0; for (const p of pts) { if (p.d <= d) v = p.xp; else break; } return v; };
+  const prDays = [...new Set(Object.values(myPRs || {}).map(p => p && p.date).filter(d => d && d >= days[0] && d <= today))];
+  const since = n => { const s = todayStr(daysAgo(n)); return cum - xpAt(s); };
+  const gained30 = Math.round(since(30));
+  const ups90 = ups.filter(u => daysBetween(u.d, today) <= 90).length;
+  // month ticks
+  let ticks = '', lastM = '', lastX = -99;
+  for (let i = 0; i <= span; i += Math.max(1, Math.round(span / 60))) {
+    const d = new Date(days[0] + 'T12:00:00'); d.setDate(d.getDate() + i);
+    const m = d.toLocaleDateString(undefined, { month: 'short' }).toUpperCase();
+    if (m !== lastM && (W - x(todayStr(d))) > 22) { lastM = m; if (x(todayStr(d)) - lastX < 30) continue; lastX = x(todayStr(d)); ticks += `<text x="${x(todayStr(d)).toFixed(1)}" y="${H - 4}" fill="#7E8CA3" font-size="8" font-family="Share Tech Mono,monospace">${m}</text>`; }
+  }
+  const upMarks = ups.slice(-12).map(u =>
+    `<line x1="${x(u.d).toFixed(1)}" x2="${x(u.d).toFixed(1)}" y1="${T - 4}" y2="${H - B}" stroke="#A17FFF" stroke-opacity=".28" stroke-dasharray="2 3"/>` +
+    `<circle cx="${x(u.d).toFixed(1)}" cy="${y(u.xp).toFixed(1)}" r="3.2" fill="#A17FFF" style="filter:drop-shadow(0 0 4px #A17FFF)"><title>Level ${u.L} · ${u.d}</title></circle>`).join('');
+  const lastUp = ups[ups.length - 1];
+  const upLabel = lastUp ? `<text x="${Math.min(W - 2, Math.max(2, x(lastUp.d))).toFixed(1)}" y="${T - 6}" fill="#A17FFF" font-size="8.5" font-family="Orbitron,sans-serif" font-weight="700" text-anchor="${x(lastUp.d) > W - 30 ? 'end' : 'middle'}">LV ${lastUp.L}</text>` : '';
+  const prMarks = prDays.map(d =>
+    `<rect x="${(x(d) - 3).toFixed(1)}" y="${(y(xpAt(d)) - 3).toFixed(1)}" width="6" height="6" transform="rotate(45 ${x(d).toFixed(1)} ${y(xpAt(d)).toFixed(1)})" fill="#FFD66B"><title>PR · ${d}</title></rect>`).join('');
+  return `
+    <div class="card" id="widget-aura-time">
+      <div class="card-title"><h3>◈ Aura Over Time</h3></div>
+      <div class="stat-grid-3">
+        <div><div class="lbl">Level</div><div class="val" style="color:var(--violet)">${levelFromTotalXP(cum)}</div></div>
+        <div><div class="lbl">30 days</div><div class="val" style="color:var(--growing)">+${gained30.toLocaleString()}</div></div>
+        <div><div class="lbl">Level-ups 90d</div><div class="val">${ups90}</div></div>
+      </div>
+      <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="Hunter XP over time" style="width:100%;height:${H}px;display:block;margin-top:10px">
+        <defs><linearGradient id="auraTimeFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5BA8FF" stop-opacity=".32"/><stop offset="1" stop-color="#5BA8FF" stop-opacity="0"/></linearGradient></defs>
+        ${[0.25, 0.5, 0.75].map(f => `<line x1="0" x2="${W}" y1="${(T + f * (H - T - B)).toFixed(1)}" y2="${(T + f * (H - T - B)).toFixed(1)}" stroke="rgba(255,255,255,.05)"/>`).join('')}
+        ${upMarks}
+        <path d="${area}" fill="url(#auraTimeFill)"/>
+        <path d="${step}" fill="none" stroke="#5BA8FF" stroke-width="2" stroke-linejoin="round" style="filter:drop-shadow(0 0 4px rgba(91,168,255,.7))"/>
+        ${prMarks}${upLabel}${ticks}
+      </svg>
+      <div style="display:flex;gap:14px;font-family:var(--font-mono);font-size:9px;color:var(--text-faint);letter-spacing:.08em;margin-top:6px;flex-wrap:wrap">
+        <span><i style="display:inline-block;width:12px;border-top:2px solid #5BA8FF;vertical-align:middle;margin-right:5px"></i>XP</span>
+        <span><i style="display:inline-block;width:7px;height:7px;border-radius:7px;background:#A17FFF;vertical-align:middle;margin-right:5px"></i>LEVEL UP</span>
+        <span><i style="display:inline-block;width:6px;height:6px;background:#FFD66B;transform:rotate(45deg);vertical-align:middle;margin-right:6px"></i>PR</span>
+      </div>
+    </div>`;
+}
+
 function renderTrends() {
   document.getElementById('trends-dashboard').classList.toggle('hidden', trendsView !== 'dashboard');
   document.getElementById('trends-muscle-detail').classList.toggle('hidden', trendsView !== 'muscle-detail');
@@ -17877,6 +17959,8 @@ function renderTrends() {
       <div class="status-pill" style="border-color:${STATUS_COLOR[topStatus[0]]};color:${STATUS_TEXT_COLOR[topStatus[0]]||STATUS_COLOR[topStatus[0]]};display:inline-flex;margin-bottom:8px;">${topStatus[0]} ${topStatus[1]}</div>
       <div class="body-pair">${bodySvg('front', stats)}${bodySvg('back', stats)}</div>
     </div>
+
+    ${auraOverTimeCard()}
 
     <div class="card">
       <div class="card-title"><h3>⚡ Streaks</h3></div>
