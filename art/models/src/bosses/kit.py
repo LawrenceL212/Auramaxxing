@@ -104,7 +104,11 @@ class Tree:
         ob.modifiers.new('skin', 'SKIN')
         for i, r in enumerate(self.radii):
             ob.data.skin_vertices[0].data[i].radius = r
-        ob.data.skin_vertices[0].data[0].use_root = True
+        # every separate piece needs a root, or the skin modifier turns it inside out
+        children = {b for _, b in self.edges}
+        for i in range(len(self.pts)):
+            if i not in children:
+                ob.data.skin_vertices[0].data[i].use_root = True
         if sub:
             s = ob.modifiers.new('sub', 'SUBSURF'); s.levels = sub
         apply_mods(ob); smooth_shade(ob)
@@ -229,8 +233,10 @@ def rock(name, c, s, rot=(0, 0, 0), seed=0.0, rough=0.16, n=30, bevel=0.025):
         apply_mods(ob)
     return ob
 
-def cloth(name, nx, nz, point, thick=0.02, sub=1, torn=None):
-    # a cloth panel from point(u in [-1,1], t in [0,1]) -> (x, y, z); torn(u, t) lifts the hem
+def cloth(name, nx, nz, point, thick=0.02, sub=1, torn=None, strips=None):
+    # a cloth panel from point(u in [-1,1], t in [0,1]) -> (x, y, z); torn(u, t) lifts the hem;
+    # strips=(start, gap, seed) tears everything below `start` (0..1 down the panel) into hanging
+    # strips of random length, a `gap` share of them torn away entirely
     bm = bmesh.new(); rows = []
     for j in range(nz + 1):
         t = j / nz
@@ -242,9 +248,28 @@ def cloth(name, nx, nz, point, thick=0.02, sub=1, torn=None):
                 p.z += torn(u, t)
             row.append(bm.verts.new(p))
         rows.append(row)
+    ends = [nz] * nx
+    if strips:
+        rnd = random.Random(strips[2])
+        j0 = int(nz * strips[0])
+        w = 0
+        for i in range(nx):
+            if w <= 0:   # strips one to three columns wide
+                w = rnd.choice((1, 1, 2, 2, 3))
+                e = j0 if rnd.random() < strips[1] else j0 + int((nz - j0) * rnd.random() ** 0.6)
+            ends[i] = max(e, j0); w -= 1
     for j in range(nz):
         for i in range(nx):
-            bm.faces.new((rows[j][i], rows[j][i + 1], rows[j + 1][i + 1], rows[j + 1][i]))
+            if j < ends[i]:
+                bm.faces.new((rows[j][i], rows[j][i + 1], rows[j + 1][i + 1], rows[j + 1][i]))
+    loose = [v for v in bm.verts if not v.link_faces]
+    bmesh.ops.delete(bm, geom=loose, context='VERTS')
+    if strips:   # point the strip ends
+        for i in range(nx):
+            if ends[i] < nz:
+                for v in (rows[ends[i]][i], rows[ends[i]][i + 1]):
+                    if v.is_valid and len(v.link_faces) == 1:
+                        v.co.z += 0.0
     ob = mesh_from_bm(name, bm)
     so = ob.modifiers.new('solid', 'SOLIDIFY'); so.thickness = thick; so.offset = 1
     if sub:
@@ -293,6 +318,186 @@ def sit_on(ob, onto, axis=V((0, 1, 0)), gap=0.006):
         dy = hit[0].y - c.y - gap
         for v in ob.data.vertices:
             v.co.y += dy
+
+# ── athletic anatomy: a slim frame with every major muscle laid on as a tapered spindle ──
+def muscle(a, b, r, t0=0.0, t1=1.0, off=V((0, 0, 0)), name='muscle', flat=1.0, taper=0.56):
+    # a muscle belly between a and b: an ellipsoid along the segment, its ends inside the tendons
+    a, b = V(a), V(b)
+    p, q = a.lerp(b, t0) + V(off), a.lerp(b, t1) + V(off)
+    d = q - p
+    ob = blob(p.lerp(q, 0.5), (r, r * flat, max(r, d.length * taper)), seg=(20, 14))
+    ob.rotation_mode = 'QUATERNION'
+    ob.rotation_quaternion = d.to_track_quat('Z', 'Y')
+    return ob
+
+def athlete(J, mass=1.0, hands='claw', fingers=4, neck=True, waist=1.0, torso_only=False):
+    """The body every humanoid boss starts from: V-tapered, lean, every muscle group defined.
+    J is the joint table (see human_bones). mass scales the muscle; waist the core's girth."""
+    u = (J['upchest'].z - J['pelvis'].z) / 0.86       # sized against the Monarch's torso
+    m = mass * u
+    X = lambda s: V((s, 0, 0))
+    F = V((0, -1, 0)); B = V((0, 1, 0)); Z = V((0, 0, 1))
+    t = Tree()
+    pel = t.add(J['pelvis'], (0.26 * u * waist, 0.19 * u))
+    wai = t.add(J['waist'], (0.23 * u * waist, 0.165 * u), pel)
+    che = t.add(J['chest'], (0.37 * u, 0.24 * u), wai)
+    up = t.add(J['upchest'], (0.41 * u, 0.24 * u), che)
+    if neck:
+        nk = t.add(J['neck'], 0.105 * u, up)
+        t.add(J['neck'].lerp(J['head'], 0.6), 0.09 * u, nk)
+    obs = []
+    ht = Tree()
+    for s, n in SIDES:
+        sh, el, wr, kn = J['shoulder.' + n], J['elbow.' + n], J['wrist.' + n], J['knuckle.' + n]
+        if not torso_only:
+            a = t.add(sh, 0.13 * u, up)
+            e = t.add(el.lerp(sh, 0.5), 0.1 * u, a)
+            e = t.add(el, 0.08 * u, e)
+            e = t.add(el.lerp(wr, 0.35), 0.08 * u, e)
+            t.add(wr, 0.055 * u, e)
+            # the hand: its own fine mesh, from mid-forearm (hidden in the arm) to the fingertips
+            w = ht.add(el.lerp(wr, 0.75), 0.045 * u)
+            w = ht.add(wr, 0.05 * u, w)
+            palm = ht.add(wr.lerp(kn, 0.55), (0.07 * u, 0.04 * u), w)
+            d = (kn - wr).normalized()
+            for i in range(fingers):
+                off = V((0, (-0.065 + i * 0.13 / max(1, fingers - 1)) * u, 0))
+                k1 = ht.add(kn + off, 0.024 * u, palm)
+                k2 = ht.add(kn + off + d * 0.08 * u + V((0, -0.025 * u, 0)), 0.019 * u, k1)
+                tip = 0.005 if hands == 'claw' else 0.014
+                ht.add(kn + off + d * (0.14 if hands == 'claw' else 0.12) * u + V((0, -0.06 * u, -0.01 * u)), tip * u, k2)
+            t1 = ht.add(wr.lerp(kn, 0.3) + V((-s * 0.045 * u, -0.06 * u, 0)), 0.026 * u, palm)
+            ht.add(wr.lerp(kn, 0.7) + V((-s * 0.06 * u, -0.1 * u, 0)), 0.016 * u, t1)
+            hp, ke, an, to = J['hip.' + n], J['knee.' + n], J['ankle.' + n], J['toe.' + n]
+            h = t.add(hp, 0.15 * u, pel)
+            h = t.add(hp.lerp(ke, 0.45), 0.13 * u, h)
+            k = t.add(ke, 0.09 * u, h)
+            k = t.add(ke.lerp(an, 0.3), 0.09 * u, k)
+            ak = t.add(an, 0.06 * u, k)
+            t.add(an.lerp(to, 0.55), (0.075 * u, 0.045 * u), ak)
+            t.add(to, (0.055 * u, 0.03 * u), ak)
+        # ── shoulders, chest, back ──
+        ins = sh.lerp(el, 0.38)                                          # deltoid insertion
+        obs += [muscle(sh + X(-s * 0.12 * u) + F * 0.1 * u + Z * 0.03 * u, ins + F * 0.03 * u, 0.085 * m),        # front delt
+                muscle(sh + X(s * 0.04 * u) + Z * 0.07 * u, ins + X(s * 0.03 * u), 0.095 * m),                   # side delt
+                muscle(sh + X(-s * 0.1 * u) + B * 0.12 * u + Z * 0.04 * u, ins + B * 0.04 * u, 0.08 * m)]        # rear delt
+        # pectorals: an upper (clavicular) and a lower (sternal) mass, rising to the shoulder
+        obs += [blob(V((s * 0.16 * u, J['chest'].y - 0.17 * u, J['upchest'].z - 0.1 * u)), (0.19 * m, 0.08 * m, 0.15 * m), (0.3, 0, s * 0.12))]
+        obs += [muscle(V((s * 0.05 * u, J['neck'].y + 0.06 * u, J['neck'].z - 0.02 * u)), sh + X(-s * 0.04 * u) + B * 0.04 * u + Z * 0.07 * u, 0.07 * m),   # upper trap
+                muscle(V((s * 0.04 * u, J['upchest'].y + 0.16 * u, J['upchest'].z)), V((s * 0.02 * u, J['chest'].y + 0.17 * u, J['chest'].z - 0.08 * u)), 0.075 * m),  # mid trap
+                blob(V((s * 0.19 * u, J['chest'].y + 0.1 * u, J['chest'].z - 0.06 * u)), (0.13 * m, 0.075 * m, 0.25 * m), (0, s * 0.2, s * -0.2)),  # lat
+                muscle(V((s * 0.06 * u, J['pelvis'].y + 0.14 * u, J['pelvis'].z + 0.06 * u)), V((s * 0.06 * u, J['chest'].y + 0.15 * u, J['chest'].z + 0.04 * u)), 0.05 * m),  # erector
+                muscle(V((s * 0.2 * u, J['chest'].y - 0.06 * u, J['chest'].z - 0.18 * u)), V((s * 0.19 * u, J['pelvis'].y - 0.03 * u, J['pelvis'].z + 0.1 * u)), 0.065 * m)]  # oblique
+        for i in range(3):                                                                                     # serratus
+            z = J['chest'].z + (0.02 - i * 0.065) * u
+            obs.append(muscle(V((s * 0.3 * u, J['chest'].y + 0.0 * u, z + 0.03 * u)), V((s * 0.25 * u, J['chest'].y - 0.1 * u, z - 0.03 * u)), 0.03 * m))
+        for i in range(4):                                                                                     # abdominals
+            z = J['waist'].z + (-0.14 + i * 0.1) * u
+            obs.append(blob(V((s * 0.058 * u, J['waist'].y - (0.14 - 0.012 * i) * u, z)), (0.055 * m, 0.032 * m, 0.044 * m)))
+        if neck:                                                                                               # sternocleidomastoid
+            obs.append(muscle(V((s * 0.05 * u, J['neck'].y + 0.0 * u, J['neck'].z + 0.06 * u)), V((s * 0.025 * u, J['upchest'].y - 0.12 * u, J['upchest'].z + 0.04 * u)), 0.035 * m))
+        obs.append(muscle(V((s * 0.03 * u, J['upchest'].y - 0.15 * u, J['upchest'].z + 0.05 * u)), sh + Z * 0.05 * u, 0.022 * m))  # clavicle
+        if torso_only:
+            continue
+        # ── arms ──
+        obs += [muscle(sh, el, 0.08 * m, 0.22, 0.9, off=F * 0.04 * u + X(-s * 0.01 * u)),       # biceps
+                muscle(sh, el, 0.075 * m, 0.15, 0.95, off=B * 0.05 * u),                       # triceps long head
+                muscle(sh, el, 0.06 * m, 0.25, 0.85, off=B * 0.035 * u + X(s * 0.04 * u)),     # triceps lateral head
+                muscle(el, wr, 0.07 * m, -0.05, 0.6, off=F * 0.025 * u + X(s * 0.03 * u)),     # brachioradialis
+                muscle(el, wr, 0.06 * m, 0.0, 0.75, off=X(-s * 0.03 * u) + F * 0.01 * u),     # flexors
+                muscle(el, wr, 0.055 * m, 0.0, 0.7, off=B * 0.025 * u)]                        # extensors
+        # ── legs ──
+        hp, ke, an = J['hip.' + n], J['knee.' + n], J['ankle.' + n]
+        obs += [muscle(hp, ke, 0.1 * m, 0.1, 0.9, off=X(s * 0.05 * u) + F * 0.01 * u),        # vastus lateralis
+                muscle(hp, ke, 0.085 * m, 0.08, 0.88, off=F * 0.06 * u),                       # rectus femoris
+                muscle(hp, ke, 0.08 * m, 0.55, 1.0, off=X(-s * 0.04 * u) + F * 0.03 * u),     # vastus medialis (teardrop)
+                muscle(hp, ke, 0.085 * m, 0.1, 0.9, off=B * 0.06 * u),                        # hamstrings
+                muscle(hp, ke, 0.075 * m, 0.0, 0.6, off=X(-s * 0.06 * u)),                     # adductors
+                muscle(ke, an, 0.07 * m, 0.03, 0.55, off=B * 0.045 * u + X(s * 0.025 * u)),   # gastrocnemius, outer
+                muscle(ke, an, 0.072 * m, 0.03, 0.6, off=B * 0.045 * u + X(-s * 0.025 * u)),  # gastrocnemius, inner
+                muscle(ke, an, 0.04 * m, 0.1, 0.8, off=F * 0.03 * u + X(s * 0.02 * u)),       # tibialis
+                blob(V((s * 0.1 * u, J['pelvis'].y + 0.1 * u, J['pelvis'].z - 0.03 * u)), (0.12 * m, 0.1 * m, 0.12 * m))]  # glute
+    obs.insert(0, t.build('frame'))
+    hands_ob = ht.build('hands', 2) if ht.pts else None
+    return obs, hands_ob
+
+def define(ob, amount=1.2, iters=2):
+    # deepen the creases between muscles (concave vertices sink further along their normal): definition
+    for _ in range(iters):
+        bm = bmesh.new(); bm.from_mesh(ob.data); bm.normal_update()
+        moves = []
+        for v in bm.verts:
+            if not v.link_edges: continue
+            avg = sum((e.other_vert(v).co for e in v.link_edges), V()) / len(v.link_edges)
+            d = (v.co - avg).dot(v.normal)
+            if d < 0:
+                moves.append((v, v.normal * d * amount))
+        for v, mv in moves:
+            v.co += mv
+        bm.to_mesh(ob.data); bm.free()
+    return ob
+
+def sharp(ob, angle=38):
+    # flat-shade the creases: edges sharper than angle keep a hard break in the normals
+    activate(ob)
+    bpy.ops.object.shade_smooth_by_angle(angle=math.radians(angle))
+    return ob
+
+def facet(ob, angle=0.1):
+    # cut a smooth surface into flat facets (planar dissolve), as forged or chipped plate
+    d = ob.modifiers.new('facet', 'DECIMATE'); d.decimate_type = 'DISSOLVE'; d.angle_limit = angle
+    apply_mods(ob)
+    t = ob.modifiers.new('tri', 'TRIANGULATE')
+    apply_mods(ob)
+    return ob
+
+def plate(src, name, keep, push=0.03, thick=0.03, smooth=3, facets=0.14, bevel=0.004):
+    # armour: lifted from the body, relaxed, then cut into hard facets with crisp bevelled edges
+    bm = bmesh.new(); bm.from_mesh(src.data)
+    bm.normal_update()
+    dead = [v for v in bm.verts if not keep(v.co)]
+    bmesh.ops.delete(bm, geom=dead, context='VERTS')
+    for v in bm.verts:
+        v.co += v.normal * push
+    ob = mesh_from_bm(name, bm)
+    m = ob.modifiers.new('sm', 'SMOOTH'); m.iterations = smooth * 4; m.factor = 1.0
+    apply_mods(ob)
+    if facets:
+        facet(ob, facets)
+    so = ob.modifiers.new('solid', 'SOLIDIFY'); so.thickness = thick; so.offset = 1; so.use_rim = True
+    if bevel:
+        bv = ob.modifiers.new('bevel', 'BEVEL'); bv.width = bevel; bv.segments = 1; bv.limit_method = 'ANGLE'; bv.angle_limit = math.radians(30)
+    apply_mods(ob)
+    return sharp(ob)
+
+def blade(name, base, tip, width, curve=V((0, 0, 0)), thick=0.18, n=7, power=0.9, sub=1):
+    # a flat, curved blade or thorn: wide at the root, a hard edge, a needle tip
+    return sharp(spike(name, base, tip, width, curve=curve, flat=thick, n=n, power=power, sub=sub), 30)
+
+def thorns(src, name, region, count, length, r, up=0.5, back=0.0, curve=0.35, seed=1, flat=0.35):
+    # a crop of curved thorns growing out of a surface: along the normal, swept up (and back)
+    rnd = random.Random(seed)
+    apply_xform(src)   # work in world space
+    me = src.data
+    vs = [v for v in me.vertices if region(v.co)]
+    if not vs:
+        return None
+    rnd.shuffle(vs)
+    picked = []
+    mind = length * 0.35
+    for v in vs:
+        if all((v.co - p.co).length > mind for p in picked):
+            picked.append(v)
+        if len(picked) >= count:
+            break
+    obs = []
+    for i, v in enumerate(picked):
+        nrm = (v.normal + V((0, back, up))).normalized()
+        L = length * rnd.uniform(0.6, 1.15)
+        tip = v.co + nrm * L
+        bend = (V((0, back, 1)) - nrm * nrm.dot(V((0, back, 1)))).normalized() * L * curve if L else V((0, 0, 0))
+        obs.append(spike(f'{name}{i}', v.co - v.normal * r * 0.6, tip + bend * 0.4, r * rnd.uniform(0.8, 1.2), curve=bend * 0.25, flat=flat, n=5, power=1.0, sub=1))
+    return sharp(join(obs, name), 30)
 
 # ── procedural materials (Cycles nodes): what gets baked ──
 def new_mat(name):
@@ -571,12 +776,14 @@ def roar_pose(t, idle=idle_pose):
 
 # ── finish: materials baked to one atlas, low-poly copies, the rig, the clips, the export ──
 def finish(name, out, J, bones, parts, glow, part_info, mats, flat, tri_target, glow_rgb,
-           idle=idle_pose, roar=roar_pose, mid=0.08, emit_strength=3.0, glow_strength=6.0):
+           idle=idle_pose, roar=roar_pose, mid=0.08, emit_strength=3.0, glow_strength=6.0, clips=()):
     sc = scene()
     groups = list(mats)
     segs = {b: (J[h], J[t]) for b, h, t, _ in bones}
     highs, lows = {}, []
-    for pname, hi in parts.items():
+    for pname in [k for k, v in parts.items() if v is None]:
+        print('part came out empty, skipped:', pname, flush=True)
+    for pname, hi in [(k, v) for k, v in parts.items() if v is not None]:
         key, rule = part_info(pname)
         hi.data.materials.clear(); hi.data.materials.append(mats[key])
         lo = hi.copy(); lo.data = hi.data.copy(); lo.name = pname + '_low'; link(lo)
@@ -756,6 +963,8 @@ def finish(name, out, J, bones, parts, glow, part_info, mats, flat, tri_target, 
         rig.animation_data.action = None
     key_action('Idle', 120, idle)
     key_action('Roar', 90, roar)
+    for cname, frames, fn in clips:   # each boss's own attack, showing off its strength
+        key_action(cname, frames, fn)
 
     keep = (rig, boss, *(ob for ob, _ in glow.values()))
     for o in list(bpy.data.objects):
