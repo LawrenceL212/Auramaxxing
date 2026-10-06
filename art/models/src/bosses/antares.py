@@ -26,26 +26,39 @@ BONES += [(f'tail{i}', f't{i}', f't{i + 1}', 'hips' if i == 0 else f'tail{i - 1}
 for n in ('L', 'R'):
     BONES += [('wing.' + n, 'wroot.' + n, 'welbow.' + n, 'chest'), ('wingtip.' + n, 'welbow.' + n, 'wwrist.' + n, 'wing.' + n)]
 
-# ── the body: athletic, every muscle cut; a dragon's head on it ──
+# ── the body: athletic, carved into hard planes; a dragon's head of angular bone on it ──
 def build_body():
-    obs, hands = athlete(J, mass=1.1, hands='claw')
+    obs, hands = athlete(J, mass=1.1, hands='claw', cut=1)
     t = Tree()
     nk = t.add(J['neck'], 0.11)
-    hd = t.add(H, (0.13, 0.16), nk)
-    sn = t.add(H + V((0, -0.2, -0.02)), (0.085, 0.07), hd)           # a long, narrow, hard snout
-    t.add(H + V((0, -0.4, -0.06)), (0.045, 0.04), sn)
-    jw = t.add(H + V((0, -0.1, -0.11)), (0.09, 0.06), hd)             # the jaw
-    t.add(H + V((0, -0.36, -0.16)), (0.035, 0.028), jw)
-    obs.append(t.build('head'))
-    for s, n in SIDES:
-        obs += [muscle(H + V((s * 0.05, -0.3, 0.02)), H + V((s * 0.11, -0.02, 0.1)), 0.03),     # brow ridge, a hard line back from the snout
-                blob(H + V((s * 0.1, -0.02, -0.07)), (0.06, 0.1, 0.07)),                      # jaw muscle
-                blob(H + V((s * 0.11, -0.12, -0.04)), (0.035, 0.06, 0.03), (0.2, 0, s * 0.2))]  # cheekbone
-    body = remesh(obs, 'body_high', voxel=0.009, smooth=3, factor=0.6)
-    define(body, 1.5, 3)
+    t.add(H + V((0, 0.02, -0.04)), (0.09, 0.1), nk)                  # the neck runs up into the skull
+    obs.append(t.build('neck'))
+    body = remesh(obs, 'body_high', voxel=0.009, smooth=2, factor=0.6)
+    define(body, 1.8, 3)
+    sm = body.modifiers.new('sm', 'SMOOTH'); sm.iterations = 2; sm.factor = 0.5; apply_mods(body)
+    chisel(body, 3, 32, 0.3)
     return body, hands
 
+def build_skull():
+    # a wedge of a head, all planes and edges: a flat-topped cranium, a long narrow snout, a jaw,
+    # a blade of a brow over each eye and swept-back cheek plates
+    M = lambda pts: [H + V(p) for p in pts]
+    both = lambda pts: [(x, y, z) for (x, y, z) in pts] + [(-x, y, z) for (x, y, z) in pts if x]
+    parts = [hull('cranium', M(both([(0.085, 0.1, 0.12), (0.065, -0.1, 0.11), (0.11, -0.14, 0.04), (0.125, -0.04, -0.05),
+                                      (0.08, 0.12, -0.07), (0.0, 0.17, 0.05), (0.06, 0.04, 0.15)]))),
+             hull('snout', M(both([(0.06, -0.14, 0.07), (0.0, -0.3, 0.06), (0.03, -0.44, 0.0), (0.0, -0.47, -0.03),
+                                    (0.03, -0.45, -0.07), (0.075, -0.16, -0.08), (0.085, -0.12, 0.02)]))),
+             hull('jaw', M(both([(0.095, -0.04, -0.07), (0.1, 0.05, -0.12), (0.075, -0.06, -0.18), (0.025, -0.4, -0.12),
+                                  (0.02, -0.4, -0.155), (0.0, -0.2, -0.19)])))]
+    for s, n in SIDES:
+        parts += [hull('brow.' + n, M([(s * 0.025, -0.33, 0.045), (s * 0.13, -0.15, 0.085), (s * 0.17, -0.02, 0.15),
+                                        (s * 0.11, -0.08, 0.06), (s * 0.06, -0.26, 0.025), (s * 0.12, -0.13, 0.105)])),
+                  hull('cheekplate.' + n, M([(s * 0.12, -0.16, -0.04), (s * 0.135, -0.05, -0.01), (s * 0.2, 0.14, 0.03),
+                                             (s * 0.13, -0.02, -0.1), (s * 0.115, -0.12, -0.08)]))]
+    return join(parts, 'headskull')
+
 body, hands = build_body()
+head = build_skull()
 
 def wing(s, n):
     # a dragon's wing: an arm of bone, four fingers, the membrane between them sagging, torn and holed
@@ -94,7 +107,7 @@ def build_gear():
         # the crown of horns: two great horns up and back, a ring of lesser ones
         P['horn.' + n] = sharp(tube('horn.' + n, [H + V((s * 0.09, -0.05, 0.12)), H + V((s * 0.17, 0.0, 0.3)), H + V((s * 0.24, 0.1, 0.48)),
                                                   H + V((s * 0.24, 0.24, 0.62)), H + V((s * 0.18, 0.34, 0.7)), H + V((s * 0.1, 0.36, 0.68))],
-                                     [0.06, 0.05, 0.04, 0.028, 0.014, 0.003], flat=1.3, sub=2), 40)
+                                     [0.06, 0.05, 0.04, 0.028, 0.014, 0.003], flat=1.3, sub=0), 25)
         for i in range(6):
             a = 0.2 + i * 0.26
             b = H + V((s * math.sin(a) * 0.12, -math.cos(a) * 0.11 + 0.05, 0.09 + i * 0.012))
@@ -112,15 +125,15 @@ def build_gear():
         for i in range(3):
             P[f'pauldron{i}.' + n] = sharp(shell(f'pauldron{i}.' + n, sh + V((s * (0.06 + 0.05 * i), 0, 0.08 - 0.1 * i)),
                                                  (0.24 - 0.03 * i, 0.22 - 0.02 * i, 0.13), rot=(0, s * (0.45 + 0.18 * i), 0),
-                                                 cut=lambda c: c.z > -0.25, seg=(10, 7), thick=0.025, sub=0), 30)
+                                                 cut=lambda c: c.z > -0.25, seg=(7, 5), thick=0.025, sub=0), 20)
         P['pthorns.' + n] = thorns(P['pauldron0.' + n], 'pthorns.' + n, lambda c: c.z > sh.z + 0.06, 6, 0.48, 0.05, up=1.4, back=0.3, seed=3 + s)
         P['pthorns2.' + n] = thorns(P['pauldron1.' + n], 'pthorns2.' + n, lambda c, s=s: s * c.x > abs(sh.x) + 0.12, 4, 0.3, 0.04, up=0.6, back=0.3, seed=9 + s)
         # vambraces: faceted plate on the forearm, a row of thorns down its outer edge
-        P['vambrace.' + n] = plate(body, 'vambrace.' + n, lambda p, el=el, wr=wr, s=s: s * p.x > 0.4 and near_seg(p, el, wr, 0.3, 1.0, 0.16), push=0.03, thick=0.025)
+        P['vambrace.' + n] = plate(body, 'vambrace.' + n, lambda p, el=el, wr=wr, s=s: s * p.x > 0.4 and near_seg(p, el, wr, 0.3, 1.0, 0.16), push=0.03, thick=0.025, smooth=2, facets=0.36)
         P['vthorns.' + n] = thorns(P['vambrace.' + n], 'vthorns.' + n, lambda c, s=s: s * c.x > abs(el.x) + 0.02 and c.y > -0.02, 5, 0.26, 0.035, up=0.5, back=0.7, seed=5 + s)
         # thigh and shin plate, knee spike
-        P['greave.' + n] = plate(body, 'greave.' + n, lambda p, ke=ke, an=an, s=s: s * p.x > 0.1 and near_seg(p, ke, an, 0.0, 0.9, 0.15) and p.y < an.y + 0.02, push=0.03, thick=0.028)
-        P['cuisse.' + n] = plate(body, 'cuisse.' + n, lambda p, hp=hp, ke=ke, s=s: s * p.x > 0.06 and near_seg(p, hp, ke, 0.25, 0.92, 0.2) and p.y < ke.y + 0.04, push=0.03, thick=0.025)
+        P['greave.' + n] = plate(body, 'greave.' + n, lambda p, ke=ke, an=an, s=s: s * p.x > 0.1 and near_seg(p, ke, an, 0.0, 0.9, 0.15) and p.y < an.y + 0.02, push=0.03, thick=0.028, smooth=2, facets=0.36)
+        P['cuisse.' + n] = plate(body, 'cuisse.' + n, lambda p, hp=hp, ke=ke, s=s: s * p.x > 0.06 and near_seg(p, hp, ke, 0.25, 0.92, 0.2) and p.y < ke.y + 0.04, push=0.03, thick=0.025, smooth=2, facets=0.36)
         P['kspike.' + n] = blade('kspike.' + n, ke + V((0, -0.12, 0.02)), ke + V((s * 0.04, -0.3, 0.2)), 0.045, curve=V((0, 0, 0.04)), thick=0.6)
         # talons on the toes
         for i in range(3):
@@ -132,12 +145,22 @@ def build_gear():
             off = V((0, -0.065 + i * 0.13 / 3, 0))
             b = kn + off + d * 0.12 + V((0, -0.05, -0.01))
             P[f'talon{i}.' + n] = blade(f'talon{i}.' + n, b, b + d * 0.1 + V((0, -0.08, -0.03)), 0.016, curve=V((0, -0.02, 0)), thick=0.6)
-    # the gorget: a high collar of plate around the neck, thorns along its rim
-    P['gorget'] = plate(body, 'gorget', lambda p: 2.24 < p.z < 2.46 and abs(p.x) < 0.3, push=0.05, thick=0.03)
+    # the gorget: a high collar of angled plates around the neck, rising to points
+    lames = []
+    for k in range(7):
+        ang = -1.6 + k * 3.2 / 6
+        d = V((math.sin(ang), -math.cos(ang), 0)); side = V((math.cos(ang), math.sin(ang), 0))
+        c = V((0, 0.0, 2.3)) + d * 0.17
+        lames.append(hull(f'gl{k}', [c + side * w + d * o + V((0, 0, z)) for w, o, z in
+                                      ((-0.07, 0, -0.07), (0.07, 0, -0.07), (-0.06, 0.03, 0.08), (0.06, 0.03, 0.08), (0, 0.06, 0.17),
+                                       (-0.07, -0.03, -0.07), (0.07, -0.03, -0.07), (0, -0.01, 0.12))]))
+    P['gorget'] = join(lames, 'gorget')
     P['gthorns'] = thorns(P['gorget'], 'gthorns', lambda c: c.z > 2.3 and c.y > -0.05, 6, 0.22, 0.03, up=1.0, back=0.4, seed=17)
     # the belt: a heavy band, a skull for a buckle, chains slung across the hips
-    P['belt'] = plate(body, 'belt', lambda p: 1.36 < p.z < 1.5, push=0.05, thick=0.035, facets=0.2)
-    P['skull'] = sharp(join([blob(V((0, -0.24, 1.44)), (0.075, 0.06, 0.07)), blob(V((0, -0.27, 1.39)), (0.05, 0.04, 0.035))], 'skull'), 50)
+    P['belt'] = plate(body, 'belt', lambda p: 1.36 < p.z < 1.5, push=0.05, thick=0.035, smooth=2, facets=0.4)
+    sk = lambda pts: [V((0, -0.24, 1.42)) + V(p) for p in pts] + [V((0, -0.24, 1.42)) + V((-p[0], p[1], p[2])) for p in pts if p[0]]
+    P['skull'] = join([hull('skullcap', sk([(0.06, 0.02, 0.08), (0.075, -0.02, 0.0), (0.03, -0.06, 0.06), (0.0, -0.065, 0.02), (0.05, 0.03, -0.02)])),
+                       hull('skulljaw', sk([(0.045, -0.02, -0.02), (0.035, -0.05, -0.07), (0.0, -0.06, -0.08), (0.04, 0.02, -0.06)]))], 'skull')
     links = []
     for i in range(14):
         u = i / 13
@@ -180,7 +203,7 @@ def build_glow():
     g = {}
     for s, n in SIDES:
         ob = orb('eye.' + n, H + V((s * 0.075, -0.17, 0.04)), (0.045, 0.016, 0.016), rot=(0, s * -0.4, s * -0.35))
-        sit_on(ob, body, gap=0.003)
+        sit_on(ob, head, gap=0.003)
         g['eye.' + n] = (ob, 'head')
     g['staforb'] = (orb('staforb', ORB, (0.09, 0.09, 0.09)), 'hand.L')
     g['maw'] = (orb('maw', H + V((0, -0.24, -0.13)), (0.04, 0.09, 0.02)), 'head')
@@ -190,6 +213,7 @@ glow = build_glow()
 def part_info(name):
     side = name.split('.')[-1] if '.' in name else None
     if name == 'body_high': return 'scales', ('smooth', None)
+    if name == 'headskull': return 'scales', ('rigid', 'head')
     if name == 'hands': return 'scales', ('smooth', {'forearm.L', 'hand.L', 'forearm.R', 'hand.R'})
     if name.startswith('wingbone'): return 'horn', ('smooth', {'wing.' + side, 'wingtip.' + side})
     if name.startswith('membrane'): return 'membrane', ('smooth', {'wing.' + side, 'wingtip.' + side, 'chest'})
@@ -215,6 +239,7 @@ def part_info(name):
 def tri_target(name, tris):
     if name == 'body_high': return 15000
     if name == 'hands': return 3000
+    if name == 'headskull': return 1200
     if name.startswith('membrane'): return 2400
     if name == 'cloak': return 3600
     if name.startswith('wingbone'): return 1200
@@ -230,8 +255,8 @@ MATS = {
     'scales': mat_hide('scales', [(0.3, (0.015, 0.01, 0.012)), (0.6, (0.05, 0.025, 0.025)), (0.85, (0.1, 0.04, 0.035))],
                        fissure=(1.0, 0.12, 0.03), scale=46.0, big=5.0, rough=(0.5, 0.28), bump=(0.5, 0.9)),
     'membrane': mat_hide('membrane', [(0.3, (0.03, 0.008, 0.01)), (0.8, (0.18, 0.025, 0.02))], fissure=(0.8, 0.08, 0.02), scale=14.0, big=3.5, rough=(0.6, 0.45), bump=(0.2, 0.4)),
-    'plate': mat_metal('plate', (0.035, 0.035, 0.04), (0.48, 0.47, 0.5), rough=0.28, engrave=(0.32, 0.3, 0.33)),
-    'horn': mat_horn('horn', 0.0, 3.4, [(0.0, (0.02, 0.015, 0.015)), (0.6, (0.06, 0.04, 0.035)), (1.0, (0.4, 0.36, 0.32))], rough=0.35),
+    'plate': mat_metal('plate', (0.02, 0.02, 0.024), (0.2, 0.19, 0.21), rough=0.42, engrave=(0.16, 0.15, 0.17)),
+    'horn': mat_horn('horn', 0.0, 3.4, [(0.0, (0.015, 0.012, 0.012)), (0.75, (0.04, 0.03, 0.028)), (1.0, (0.16, 0.14, 0.13))], rough=0.38),
     'cloth': mat_cloth('cloth', 0.0, 1.5, [(0.0, (0.2, 0.01, 0.01)), (0.35, (0.06, 0.005, 0.008)), (1.0, (0.012, 0.01, 0.012))], rough=0.9, sheen=0.3),
 }
 FLAT = {'scales': (0.06, 0.03, 0.03, 0.4, 0), 'membrane': (0.12, 0.02, 0.02, 0.5, 0), 'plate': (0.06, 0.06, 0.07, 0.3, 1),
@@ -280,6 +305,6 @@ def attack(t):
     p['_hips_loc'] = (0, 0, -0.12 * down)
     return p
 
-parts = {'body_high': body, **gear}
+parts = {'body_high': body, 'headskull': head, **gear}
 finish('Antares', OUT, J, BONES, parts, glow, part_info, MATS, FLAT, tri_target, (1.0, 0.18, 0.06),
        idle=idle, roar=roar, clips=[('Attack', 90, attack)], mid=0.06, emit_strength=4.0)

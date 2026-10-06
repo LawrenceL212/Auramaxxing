@@ -320,23 +320,28 @@ def sit_on(ob, onto, axis=V((0, 1, 0)), gap=0.006):
             v.co.y += dy
 
 # ── athletic anatomy: a slim frame with every major muscle laid on as a tapered spindle ──
-def muscle(a, b, r, t0=0.0, t1=1.0, off=V((0, 0, 0)), name='muscle', flat=1.0, taper=0.56):
+def muscle(a, b, r, t0=0.0, t1=1.0, off=V((0, 0, 0)), name='muscle', flat=1.0, taper=0.56, seg=(20, 14)):
     # a muscle belly between a and b: an ellipsoid along the segment, its ends inside the tendons
     a, b = V(a), V(b)
     p, q = a.lerp(b, t0) + V(off), a.lerp(b, t1) + V(off)
     d = q - p
-    ob = blob(p.lerp(q, 0.5), (r, r * flat, max(r, d.length * taper)), seg=(20, 14))
+    ob = blob(p.lerp(q, 0.5), (r, r * flat, max(r, d.length * taper)), seg=seg)
     ob.rotation_mode = 'QUATERNION'
     ob.rotation_quaternion = d.to_track_quat('Z', 'Y')
     return ob
 
-def athlete(J, mass=1.0, hands='claw', fingers=4, neck=True, waist=1.0, torso_only=False):
+def athlete(J, mass=1.0, hands='claw', fingers=4, neck=True, waist=1.0, torso_only=False, cut=0):
     """The body every humanoid boss starts from: V-tapered, lean, every muscle group defined.
-    J is the joint table (see human_bones). mass scales the muscle; waist the core's girth."""
+    J is the joint table (see human_bones). mass scales the muscle; waist the core's girth.
+    cut > 0 builds every muscle from a coarse, faceted ellipsoid, so the planes stay flat and the
+    edges between them hard: carved rather than rounded (cut=1 is coarse, 2 coarser)."""
     u = (J['upchest'].z - J['pelvis'].z) / 0.86       # sized against the Monarch's torso
     m = mass * u
     X = lambda s: V((s, 0, 0))
     F = V((0, -1, 0)); B = V((0, 1, 0)); Z = V((0, 0, 1))
+    sm, sb = ((20, 14), (24, 16)) if not cut else (((8, 5), (9, 6)) if cut < 2 else ((6, 4), (7, 4)))
+    mus = lambda *a, **k: muscle(*a, seg=sm, **k)
+    bl = lambda c, s, rot=(0, 0, 0): blob(c, s, rot, seg=sb)
     t = Tree()
     pel = t.add(J['pelvis'], (0.26 * u * waist, 0.19 * u))
     wai = t.add(J['waist'], (0.23 * u * waist, 0.165 * u), pel)
@@ -378,46 +383,56 @@ def athlete(J, mass=1.0, hands='claw', fingers=4, neck=True, waist=1.0, torso_on
             t.add(to, (0.055 * u, 0.03 * u), ak)
         # ── shoulders, chest, back ──
         ins = sh.lerp(el, 0.38)                                          # deltoid insertion
-        obs += [muscle(sh + X(-s * 0.12 * u) + F * 0.1 * u + Z * 0.03 * u, ins + F * 0.03 * u, 0.085 * m),        # front delt
-                muscle(sh + X(s * 0.04 * u) + Z * 0.07 * u, ins + X(s * 0.03 * u), 0.095 * m),                   # side delt
-                muscle(sh + X(-s * 0.1 * u) + B * 0.12 * u + Z * 0.04 * u, ins + B * 0.04 * u, 0.08 * m)]        # rear delt
+        obs += [mus(sh + X(-s * 0.12 * u) + F * 0.1 * u + Z * 0.03 * u, ins + F * 0.03 * u, 0.085 * m),        # front delt
+                mus(sh + X(s * 0.04 * u) + Z * 0.07 * u, ins + X(s * 0.03 * u), 0.095 * m),                   # side delt
+                mus(sh + X(-s * 0.1 * u) + B * 0.12 * u + Z * 0.04 * u, ins + B * 0.04 * u, 0.08 * m)]        # rear delt
         # pectorals: an upper (clavicular) and a lower (sternal) mass, rising to the shoulder
-        obs += [blob(V((s * 0.16 * u, J['chest'].y - 0.17 * u, J['upchest'].z - 0.1 * u)), (0.19 * m, 0.08 * m, 0.15 * m), (0.3, 0, s * 0.12))]
-        obs += [muscle(V((s * 0.05 * u, J['neck'].y + 0.06 * u, J['neck'].z - 0.02 * u)), sh + X(-s * 0.04 * u) + B * 0.04 * u + Z * 0.07 * u, 0.07 * m),   # upper trap
-                muscle(V((s * 0.04 * u, J['upchest'].y + 0.16 * u, J['upchest'].z)), V((s * 0.02 * u, J['chest'].y + 0.17 * u, J['chest'].z - 0.08 * u)), 0.075 * m),  # mid trap
-                blob(V((s * 0.19 * u, J['chest'].y + 0.1 * u, J['chest'].z - 0.06 * u)), (0.13 * m, 0.075 * m, 0.25 * m), (0, s * 0.2, s * -0.2)),  # lat
-                muscle(V((s * 0.06 * u, J['pelvis'].y + 0.14 * u, J['pelvis'].z + 0.06 * u)), V((s * 0.06 * u, J['chest'].y + 0.15 * u, J['chest'].z + 0.04 * u)), 0.05 * m),  # erector
-                muscle(V((s * 0.2 * u, J['chest'].y - 0.06 * u, J['chest'].z - 0.18 * u)), V((s * 0.19 * u, J['pelvis'].y - 0.03 * u, J['pelvis'].z + 0.1 * u)), 0.065 * m)]  # oblique
+        obs += [bl(V((s * 0.16 * u, J['chest'].y - 0.17 * u, J['upchest'].z - 0.1 * u)), (0.19 * m, 0.08 * m, 0.15 * m), (0.3, 0, s * 0.12))]
+        obs += [mus(V((s * 0.05 * u, J['neck'].y + 0.06 * u, J['neck'].z - 0.02 * u)), sh + X(-s * 0.04 * u) + B * 0.04 * u + Z * 0.07 * u, 0.07 * m),   # upper trap
+                mus(V((s * 0.04 * u, J['upchest'].y + 0.16 * u, J['upchest'].z)), V((s * 0.02 * u, J['chest'].y + 0.17 * u, J['chest'].z - 0.08 * u)), 0.075 * m),  # mid trap
+                bl(V((s * 0.19 * u, J['chest'].y + 0.1 * u, J['chest'].z - 0.06 * u)), (0.13 * m, 0.075 * m, 0.25 * m), (0, s * 0.2, s * -0.2)),  # lat
+                mus(V((s * 0.06 * u, J['pelvis'].y + 0.14 * u, J['pelvis'].z + 0.06 * u)), V((s * 0.06 * u, J['chest'].y + 0.15 * u, J['chest'].z + 0.04 * u)), 0.05 * m),  # erector
+                mus(V((s * 0.2 * u, J['chest'].y - 0.06 * u, J['chest'].z - 0.18 * u)), V((s * 0.19 * u, J['pelvis'].y - 0.03 * u, J['pelvis'].z + 0.1 * u)), 0.065 * m)]  # oblique
         for i in range(3):                                                                                     # serratus
             z = J['chest'].z + (0.02 - i * 0.065) * u
-            obs.append(muscle(V((s * 0.3 * u, J['chest'].y + 0.0 * u, z + 0.03 * u)), V((s * 0.25 * u, J['chest'].y - 0.1 * u, z - 0.03 * u)), 0.03 * m))
-        for i in range(4):                                                                                     # abdominals
-            z = J['waist'].z + (-0.14 + i * 0.1) * u
-            obs.append(blob(V((s * 0.058 * u, J['waist'].y - (0.14 - 0.012 * i) * u, z)), (0.055 * m, 0.032 * m, 0.044 * m)))
+            obs.append(mus(V((s * 0.3 * u, J['chest'].y + 0.0 * u, z + 0.03 * u)), V((s * 0.25 * u, J['chest'].y - 0.1 * u, z - 0.03 * u)), 0.03 * m))
+        for i in range(4):                                                                                     # abdominals: four
+            k = i / 3                                                                                          # rows of blocks from the
+            z = (J['waist'].z - 0.13 * u) * (1 - k) + (J['chest'].z - 0.1 * u) * k                              # belt to under the pecs
+            y = (J['waist'].y - 0.135 * u) * (1 - k) + (J['chest'].y - 0.2 * u) * k
+            sz = (0.058 * m, 0.024 * m, 0.05 * m * (1.15 if i == 3 else 1))
+            if cut:   # a flat-faced block, its front edges bevelled back: a carved plate, not a ball
+                c = V((s * 0.062 * u, y, z)); hx, hy, hz = sz
+                pts = [c + V((x * hx, -hy, zz * hz)) for x in (-0.8, 0.8) for zz in (-0.75, 0.75)]
+                pts += [c + V((x * hx * 1.1, hy, zz * hz * 1.1)) for x in (-1, 1) for zz in (-1, 1)]
+                pts += [c + V((x * hx, -hy * 0.6, zz * hz)) for x in (-1, 1) for zz in (-1, 1)]
+                obs.append(hull('ab', pts, bevel=0))
+            else:
+                obs.append(bl(V((s * 0.062 * u, y, z)), sz, (0.0, 0, s * 0.08)))
         if neck:                                                                                               # sternocleidomastoid
-            obs.append(muscle(V((s * 0.05 * u, J['neck'].y + 0.0 * u, J['neck'].z + 0.06 * u)), V((s * 0.025 * u, J['upchest'].y - 0.12 * u, J['upchest'].z + 0.04 * u)), 0.035 * m))
-        obs.append(muscle(V((s * 0.03 * u, J['upchest'].y - 0.15 * u, J['upchest'].z + 0.05 * u)), sh + Z * 0.05 * u, 0.022 * m))  # clavicle
+            obs.append(mus(V((s * 0.05 * u, J['neck'].y + 0.0 * u, J['neck'].z + 0.06 * u)), V((s * 0.025 * u, J['upchest'].y - 0.12 * u, J['upchest'].z + 0.04 * u)), 0.035 * m))
+        obs.append(mus(V((s * 0.03 * u, J['upchest'].y - 0.15 * u, J['upchest'].z + 0.05 * u)), sh + Z * 0.05 * u, 0.022 * m))  # clavicle
         if torso_only:
             continue
         # ── arms ──
-        obs += [muscle(sh, el, 0.08 * m, 0.22, 0.9, off=F * 0.04 * u + X(-s * 0.01 * u)),       # biceps
-                muscle(sh, el, 0.075 * m, 0.15, 0.95, off=B * 0.05 * u),                       # triceps long head
-                muscle(sh, el, 0.06 * m, 0.25, 0.85, off=B * 0.035 * u + X(s * 0.04 * u)),     # triceps lateral head
-                muscle(el, wr, 0.07 * m, -0.05, 0.6, off=F * 0.025 * u + X(s * 0.03 * u)),     # brachioradialis
-                muscle(el, wr, 0.06 * m, 0.0, 0.75, off=X(-s * 0.03 * u) + F * 0.01 * u),     # flexors
-                muscle(el, wr, 0.055 * m, 0.0, 0.7, off=B * 0.025 * u)]                        # extensors
+        obs += [mus(sh, el, 0.08 * m, 0.22, 0.9, off=F * 0.04 * u + X(-s * 0.01 * u)),       # biceps
+                mus(sh, el, 0.075 * m, 0.15, 0.95, off=B * 0.05 * u),                       # triceps long head
+                mus(sh, el, 0.06 * m, 0.25, 0.85, off=B * 0.035 * u + X(s * 0.04 * u)),     # triceps lateral head
+                mus(el, wr, 0.07 * m, -0.05, 0.6, off=F * 0.025 * u + X(s * 0.03 * u)),     # brachioradialis
+                mus(el, wr, 0.06 * m, 0.0, 0.75, off=X(-s * 0.03 * u) + F * 0.01 * u),     # flexors
+                mus(el, wr, 0.055 * m, 0.0, 0.7, off=B * 0.025 * u)]                        # extensors
         # ── legs ──
         hp, ke, an = J['hip.' + n], J['knee.' + n], J['ankle.' + n]
-        obs += [muscle(hp, ke, 0.1 * m, 0.1, 0.9, off=X(s * 0.05 * u) + F * 0.01 * u),        # vastus lateralis
-                muscle(hp, ke, 0.085 * m, 0.08, 0.88, off=F * 0.06 * u),                       # rectus femoris
-                muscle(hp, ke, 0.08 * m, 0.55, 1.0, off=X(-s * 0.04 * u) + F * 0.03 * u),     # vastus medialis (teardrop)
-                muscle(hp, ke, 0.085 * m, 0.1, 0.9, off=B * 0.06 * u),                        # hamstrings
-                muscle(hp, ke, 0.075 * m, 0.0, 0.6, off=X(-s * 0.06 * u)),                     # adductors
-                muscle(ke, an, 0.07 * m, 0.03, 0.55, off=B * 0.045 * u + X(s * 0.025 * u)),   # gastrocnemius, outer
-                muscle(ke, an, 0.072 * m, 0.03, 0.6, off=B * 0.045 * u + X(-s * 0.025 * u)),  # gastrocnemius, inner
-                muscle(ke, an, 0.04 * m, 0.1, 0.8, off=F * 0.03 * u + X(s * 0.02 * u)),       # tibialis
-                blob(V((s * 0.1 * u, J['pelvis'].y + 0.1 * u, J['pelvis'].z - 0.03 * u)), (0.12 * m, 0.1 * m, 0.12 * m))]  # glute
-    obs.insert(0, t.build('frame'))
+        obs += [mus(hp, ke, 0.1 * m, 0.1, 0.9, off=X(s * 0.05 * u) + F * 0.01 * u),        # vastus lateralis
+                mus(hp, ke, 0.085 * m, 0.08, 0.88, off=F * 0.06 * u),                       # rectus femoris
+                mus(hp, ke, 0.08 * m, 0.55, 1.0, off=X(-s * 0.04 * u) + F * 0.03 * u),     # vastus medialis (teardrop)
+                mus(hp, ke, 0.085 * m, 0.1, 0.9, off=B * 0.06 * u),                        # hamstrings
+                mus(hp, ke, 0.075 * m, 0.0, 0.6, off=X(-s * 0.06 * u)),                     # adductors
+                mus(ke, an, 0.07 * m, 0.03, 0.55, off=B * 0.045 * u + X(s * 0.025 * u)),   # gastrocnemius, outer
+                mus(ke, an, 0.072 * m, 0.03, 0.6, off=B * 0.045 * u + X(-s * 0.025 * u)),  # gastrocnemius, inner
+                mus(ke, an, 0.04 * m, 0.1, 0.8, off=F * 0.03 * u + X(s * 0.02 * u)),       # tibialis
+                bl(V((s * 0.1 * u, J['pelvis'].y + 0.1 * u, J['pelvis'].z - 0.03 * u)), (0.12 * m, 0.1 * m, 0.12 * m))]  # glute
+    obs.insert(0, t.build('frame', 1 if cut else 2))
     hands_ob = ht.build('hands', 2) if ht.pts else None
     return obs, hands_ob
 
@@ -436,6 +451,37 @@ def define(ob, amount=1.2, iters=2):
             v.co += mv
         bm.to_mesh(ob.data); bm.free()
     return ob
+
+def chisel(ob, angle=5.0, shade=30, ridge=0.0):
+    # carve a sculpted surface into flat planes meeting at hard edges: near-flat regions merge
+    # into single facets (planar dissolve), the creases between them stay, shaded hard. ridge > 0
+    # first sharpens convex edges a little (the opposite of define), so the planes meet in a line
+    if ridge:
+        bm = bmesh.new(); bm.from_mesh(ob.data); bm.normal_update()
+        moves = []
+        for v in bm.verts:
+            if not v.link_edges: continue
+            avg = sum((e.other_vert(v).co for e in v.link_edges), V()) / len(v.link_edges)
+            d = (v.co - avg).dot(v.normal)
+            if d > 0:
+                moves.append((v, v.normal * d * ridge))
+        for v, mv in moves:
+            v.co += mv
+        bm.to_mesh(ob.data); bm.free()
+    facet(ob, math.radians(angle))
+    return sharp(ob, shade)
+
+def hull(name, pts, bevel=0.004, rot=None):
+    # a hard, angular solid: the convex hull of the given points (skull plates, wedges, armour lames)
+    bm = bmesh.new()
+    for p in pts:
+        bm.verts.new(V(p))
+    bmesh.ops.convex_hull(bm, input=bm.verts[:])
+    ob = mesh_from_bm(name, bm)
+    if bevel:
+        bv = ob.modifiers.new('bv', 'BEVEL'); bv.width = bevel; bv.segments = 1; bv.limit_method = 'ANGLE'; bv.angle_limit = math.radians(25)
+        apply_mods(ob)
+    return sharp(ob, 25)
 
 def sharp(ob, angle=38):
     # flat-shade the creases: edges sharper than angle keep a hard break in the normals
