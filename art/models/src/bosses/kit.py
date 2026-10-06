@@ -353,6 +353,9 @@ def athlete(J, mass=1.0, hands='claw', fingers=4, neck=True, waist=1.0, torso_on
     obs = []
     ht = Tree()
     for s, n in SIDES:
+        def T(lbl, ob, n=n):   # name the muscle, so armour can be cut to its shape (see muscle_fields)
+            ob['muscle'] = lbl + '.' + n
+            return ob
         sh, el, wr, kn = J['shoulder.' + n], J['elbow.' + n], J['wrist.' + n], J['knuckle.' + n]
         if not torso_only:
             a = t.add(sh, 0.13 * u, up)
@@ -383,19 +386,19 @@ def athlete(J, mass=1.0, hands='claw', fingers=4, neck=True, waist=1.0, torso_on
             t.add(to, (0.055 * u, 0.03 * u), ak)
         # ── shoulders, chest, back ──
         ins = sh.lerp(el, 0.38)                                          # deltoid insertion
-        obs += [mus(sh + X(-s * 0.12 * u) + F * 0.1 * u + Z * 0.03 * u, ins + F * 0.03 * u, 0.085 * m),        # front delt
-                mus(sh + X(s * 0.04 * u) + Z * 0.07 * u, ins + X(s * 0.03 * u), 0.095 * m),                   # side delt
-                mus(sh + X(-s * 0.1 * u) + B * 0.12 * u + Z * 0.04 * u, ins + B * 0.04 * u, 0.08 * m)]        # rear delt
+        obs += [T('frontdelt', mus(sh + X(-s * 0.12 * u) + F * 0.1 * u + Z * 0.03 * u, ins + F * 0.03 * u, 0.085 * m)),        # front delt
+                T('sidedelt', mus(sh + X(s * 0.04 * u) + Z * 0.07 * u, ins + X(s * 0.03 * u), 0.095 * m)),                   # side delt
+                T('reardelt', mus(sh + X(-s * 0.1 * u) + B * 0.12 * u + Z * 0.04 * u, ins + B * 0.04 * u, 0.08 * m))]        # rear delt
         # pectorals: an upper (clavicular) and a lower (sternal) mass, rising to the shoulder
-        obs += [bl(V((s * 0.16 * u, J['chest'].y - 0.17 * u, J['upchest'].z - 0.1 * u)), (0.19 * m, 0.08 * m, 0.15 * m), (0.3, 0, s * 0.12))]
-        obs += [mus(V((s * 0.05 * u, J['neck'].y + 0.06 * u, J['neck'].z - 0.02 * u)), sh + X(-s * 0.04 * u) + B * 0.04 * u + Z * 0.07 * u, 0.07 * m),   # upper trap
-                mus(V((s * 0.04 * u, J['upchest'].y + 0.16 * u, J['upchest'].z)), V((s * 0.02 * u, J['chest'].y + 0.17 * u, J['chest'].z - 0.08 * u)), 0.075 * m),  # mid trap
-                bl(V((s * 0.19 * u, J['chest'].y + 0.1 * u, J['chest'].z - 0.06 * u)), (0.13 * m, 0.075 * m, 0.25 * m), (0, s * 0.2, s * -0.2)),  # lat
-                mus(V((s * 0.06 * u, J['pelvis'].y + 0.14 * u, J['pelvis'].z + 0.06 * u)), V((s * 0.06 * u, J['chest'].y + 0.15 * u, J['chest'].z + 0.04 * u)), 0.05 * m),  # erector
-                mus(V((s * 0.2 * u, J['chest'].y - 0.06 * u, J['chest'].z - 0.18 * u)), V((s * 0.19 * u, J['pelvis'].y - 0.03 * u, J['pelvis'].z + 0.1 * u)), 0.065 * m)]  # oblique
+        obs += [T('pec', bl(V((s * 0.16 * u, J['chest'].y - 0.17 * u, J['upchest'].z - 0.1 * u)), (0.19 * m, 0.08 * m, 0.15 * m), (0.3, 0, s * 0.12)))]
+        obs += [T('uppertrap', mus(V((s * 0.05 * u, J['neck'].y + 0.06 * u, J['neck'].z - 0.02 * u)), sh + X(-s * 0.04 * u) + B * 0.04 * u + Z * 0.07 * u, 0.07 * m)),   # upper trap
+                T('midtrap', mus(V((s * 0.04 * u, J['upchest'].y + 0.16 * u, J['upchest'].z)), V((s * 0.02 * u, J['chest'].y + 0.17 * u, J['chest'].z - 0.08 * u)), 0.075 * m)),  # mid trap
+                T('lat', bl(V((s * 0.19 * u, J['chest'].y + 0.1 * u, J['chest'].z - 0.06 * u)), (0.13 * m, 0.075 * m, 0.25 * m), (0, s * 0.2, s * -0.2))),  # lat
+                T('erector', mus(V((s * 0.06 * u, J['pelvis'].y + 0.14 * u, J['pelvis'].z + 0.06 * u)), V((s * 0.06 * u, J['chest'].y + 0.15 * u, J['chest'].z + 0.04 * u)), 0.05 * m)),  # erector
+                T('oblique', mus(V((s * 0.2 * u, J['chest'].y - 0.06 * u, J['chest'].z - 0.18 * u)), V((s * 0.19 * u, J['pelvis'].y - 0.03 * u, J['pelvis'].z + 0.1 * u)), 0.065 * m))]  # oblique
         for i in range(3):                                                                                     # serratus
             z = J['chest'].z + (0.02 - i * 0.065) * u
-            obs.append(mus(V((s * 0.3 * u, J['chest'].y + 0.0 * u, z + 0.03 * u)), V((s * 0.25 * u, J['chest'].y - 0.1 * u, z - 0.03 * u)), 0.03 * m))
+            obs.append(T(f'serratus{i}', mus(V((s * 0.3 * u, J['chest'].y + 0.0 * u, z + 0.03 * u)), V((s * 0.25 * u, J['chest'].y - 0.1 * u, z - 0.03 * u)), 0.03 * m)))
         for i in range(4):                                                                                     # abdominals: four
             k = i / 3                                                                                          # rows of blocks from the
             z = (J['waist'].z - 0.13 * u) * (1 - k) + (J['chest'].z - 0.1 * u) * k                              # belt to under the pecs
@@ -406,35 +409,89 @@ def athlete(J, mass=1.0, hands='claw', fingers=4, neck=True, waist=1.0, torso_on
                 pts = [c + V((x * hx, -hy, zz * hz)) for x in (-0.8, 0.8) for zz in (-0.75, 0.75)]
                 pts += [c + V((x * hx * 1.1, hy, zz * hz * 1.1)) for x in (-1, 1) for zz in (-1, 1)]
                 pts += [c + V((x * hx, -hy * 0.6, zz * hz)) for x in (-1, 1) for zz in (-1, 1)]
-                obs.append(hull('ab', pts, bevel=0))
+                obs.append(T(f'ab{i}', hull('ab', pts, bevel=0)))
             else:
-                obs.append(bl(V((s * 0.062 * u, y, z)), sz, (0.0, 0, s * 0.08)))
+                obs.append(T(f'ab{i}', bl(V((s * 0.062 * u, y, z)), sz, (0.0, 0, s * 0.08))))
         if neck:                                                                                               # sternocleidomastoid
-            obs.append(mus(V((s * 0.05 * u, J['neck'].y + 0.0 * u, J['neck'].z + 0.06 * u)), V((s * 0.025 * u, J['upchest'].y - 0.12 * u, J['upchest'].z + 0.04 * u)), 0.035 * m))
+            obs.append(T('scm', mus(V((s * 0.05 * u, J['neck'].y + 0.0 * u, J['neck'].z + 0.06 * u)), V((s * 0.025 * u, J['upchest'].y - 0.12 * u, J['upchest'].z + 0.04 * u)), 0.035 * m)))
         obs.append(mus(V((s * 0.03 * u, J['upchest'].y - 0.15 * u, J['upchest'].z + 0.05 * u)), sh + Z * 0.05 * u, 0.022 * m))  # clavicle
         if torso_only:
             continue
         # ── arms ──
-        obs += [mus(sh, el, 0.08 * m, 0.22, 0.9, off=F * 0.04 * u + X(-s * 0.01 * u)),       # biceps
-                mus(sh, el, 0.075 * m, 0.15, 0.95, off=B * 0.05 * u),                       # triceps long head
-                mus(sh, el, 0.06 * m, 0.25, 0.85, off=B * 0.035 * u + X(s * 0.04 * u)),     # triceps lateral head
-                mus(el, wr, 0.07 * m, -0.05, 0.6, off=F * 0.025 * u + X(s * 0.03 * u)),     # brachioradialis
-                mus(el, wr, 0.06 * m, 0.0, 0.75, off=X(-s * 0.03 * u) + F * 0.01 * u),     # flexors
-                mus(el, wr, 0.055 * m, 0.0, 0.7, off=B * 0.025 * u)]                        # extensors
+        obs += [T('biceps', mus(sh, el, 0.08 * m, 0.22, 0.9, off=F * 0.04 * u + X(-s * 0.01 * u))),       # biceps
+                T('tricepslong', mus(sh, el, 0.075 * m, 0.15, 0.95, off=B * 0.05 * u)),                       # triceps long head
+                T('tricepslat', mus(sh, el, 0.06 * m, 0.25, 0.85, off=B * 0.035 * u + X(s * 0.04 * u))),     # triceps lateral head
+                T('brachiorad', mus(el, wr, 0.07 * m, -0.05, 0.6, off=F * 0.025 * u + X(s * 0.03 * u))),     # brachioradialis
+                T('flexors', mus(el, wr, 0.06 * m, 0.0, 0.75, off=X(-s * 0.03 * u) + F * 0.01 * u)),     # flexors
+                T('extensors', mus(el, wr, 0.055 * m, 0.0, 0.7, off=B * 0.025 * u))]                        # extensors
         # ── legs ──
         hp, ke, an = J['hip.' + n], J['knee.' + n], J['ankle.' + n]
-        obs += [mus(hp, ke, 0.1 * m, 0.1, 0.9, off=X(s * 0.05 * u) + F * 0.01 * u),        # vastus lateralis
-                mus(hp, ke, 0.085 * m, 0.08, 0.88, off=F * 0.06 * u),                       # rectus femoris
-                mus(hp, ke, 0.08 * m, 0.55, 1.0, off=X(-s * 0.04 * u) + F * 0.03 * u),     # vastus medialis (teardrop)
-                mus(hp, ke, 0.085 * m, 0.1, 0.9, off=B * 0.06 * u),                        # hamstrings
-                mus(hp, ke, 0.075 * m, 0.0, 0.6, off=X(-s * 0.06 * u)),                     # adductors
-                mus(ke, an, 0.07 * m, 0.03, 0.55, off=B * 0.045 * u + X(s * 0.025 * u)),   # gastrocnemius, outer
-                mus(ke, an, 0.072 * m, 0.03, 0.6, off=B * 0.045 * u + X(-s * 0.025 * u)),  # gastrocnemius, inner
-                mus(ke, an, 0.04 * m, 0.1, 0.8, off=F * 0.03 * u + X(s * 0.02 * u)),       # tibialis
-                bl(V((s * 0.1 * u, J['pelvis'].y + 0.1 * u, J['pelvis'].z - 0.03 * u)), (0.12 * m, 0.1 * m, 0.12 * m))]  # glute
+        obs += [T('vastuslat', mus(hp, ke, 0.1 * m, 0.1, 0.9, off=X(s * 0.05 * u) + F * 0.01 * u)),        # vastus lateralis
+                T('rectusfem', mus(hp, ke, 0.085 * m, 0.08, 0.88, off=F * 0.06 * u)),                       # rectus femoris
+                T('vastusmed', mus(hp, ke, 0.08 * m, 0.55, 1.0, off=X(-s * 0.04 * u) + F * 0.03 * u)),     # vastus medialis (teardrop)
+                T('hamstrings', mus(hp, ke, 0.085 * m, 0.1, 0.9, off=B * 0.06 * u)),                        # hamstrings
+                T('adductors', mus(hp, ke, 0.075 * m, 0.0, 0.6, off=X(-s * 0.06 * u))),                     # adductors
+                T('gastroout', mus(ke, an, 0.07 * m, 0.03, 0.55, off=B * 0.045 * u + X(s * 0.025 * u))),   # gastrocnemius, outer
+                T('gastroin', mus(ke, an, 0.072 * m, 0.03, 0.6, off=B * 0.045 * u + X(-s * 0.025 * u))),  # gastrocnemius, inner
+                T('tibialis', mus(ke, an, 0.04 * m, 0.1, 0.8, off=F * 0.03 * u + X(s * 0.02 * u))),       # tibialis
+                T('glute', bl(V((s * 0.1 * u, J['pelvis'].y + 0.1 * u, J['pelvis'].z - 0.03 * u)), (0.12 * m, 0.1 * m, 0.12 * m)))]  # glute
     obs.insert(0, t.build('frame', 1 if cut else 2))
     hands_ob = ht.build('hands', 2) if ht.pts else None
     return obs, hands_ob
+
+def muscle_copies(obs):
+    """Copies, in world space, of the named muscles in athlete()'s parts (before they are remeshed
+    into one body), so armour can later be cut to each muscle's shape: {name: object}."""
+    out = {}
+    for o in obs:
+        if o and o.get('muscle'):
+            c = o.copy(); c.data = o.data.copy(); c.name = 'm:' + o['muscle']; link(c)
+            apply_xform(c)
+            out[o['muscle']] = c
+    return out
+
+def muscle_fields(src, muscles, reach=0.05):
+    """For every vertex of src (the body), how firmly each muscle owns it: the distance to the
+    nearest other muscle minus the distance to this one. Positive where the surface is that
+    muscle's, zero along the crease where two muscles meet, negative beyond it.
+    Returns ({name: array over src's vertices}, distance to the nearest muscle)."""
+    names = list(muscles)
+    trees = [BVHTree.FromObject(muscles[k], bpy.context.evaluated_depsgraph_get()) for k in names]
+    co = [v.co.copy() for v in src.data.vertices]
+    D = np.full((len(co), len(names)), 9.0, np.float32)
+    for j, t in enumerate(trees):
+        for i, p in enumerate(co):
+            hit = t.find_nearest(p, reach * 3)
+            if hit[0] is not None:
+                D[i, j] = hit[3]
+    best = D.min(1)
+    out = {}
+    for j, k in enumerate(names):
+        others = np.delete(D, j, 1).min(1) if len(names) > 1 else np.full(len(co), 9.0, np.float32)
+        f = others - D[:, j]
+        f[D[:, j] > reach] = -1.0   # too far from any of this muscle to be armoured as it
+        out[k] = f
+    return out, best
+
+def iso_cut(bm, vals, thr):
+    """Cut a mesh along the line where a per-vertex field crosses thr, keeping the side above it:
+    edges crossing the line are split where the field meets it, so the cut runs smooth and clean
+    instead of stepping vertex to vertex."""
+    fl = bm.verts.layers.float.new('iso')
+    for v in bm.verts:
+        v[fl] = vals[v.index]
+    bmesh.ops.delete(bm, geom=[v for v in bm.verts if v[fl] < thr - 0.05], context='VERTS')
+    made = set()
+    for e in [e for e in bm.edges if (e.verts[0][fl] - thr) * (e.verts[1][fl] - thr) < 0]:
+        a, b = e.verts
+        t = (thr - a[fl]) / (b[fl] - a[fl])
+        _, nv = bmesh.utils.edge_split(e, a, t)
+        nv[fl] = thr; made.add(nv)
+    for f in list(bm.faces):
+        vs = [v for v in f.verts if v in made]
+        if len(vs) == 2 and not any(e for e in vs[0].link_edges if e.other_vert(vs[0]) is vs[1]):
+            bmesh.ops.connect_verts(bm, verts=vs)
+    bmesh.ops.delete(bm, geom=[v for v in bm.verts if v[fl] < thr - 1e-6], context='VERTS')
 
 def define(ob, amount=1.2, iters=2):
     # deepen the creases between muscles (concave vertices sink further along their normal): definition
@@ -497,14 +554,19 @@ def facet(ob, angle=0.1):
     apply_mods(ob)
     return ob
 
-def plate(src, name, keep, push=0.03, thick=0.03, smooth=3, facets=0.14, bevel=0.004, rim=0.0, rivets=0.0, cuts=(), bead=False):
+def plate(src, name, keep, push=0.03, thick=0.03, smooth=3, facets=0.14, bevel=0.004, rim=0.0, rivets=0.0, cuts=(), bead=False, field=None, gap=0.0):
     """Armour: lifted from the body, relaxed, then cut into hard facets with crisp bevelled edges.
+    field, gap: cut it instead along the line where a per-vertex field of src crosses gap (a muscle's
+    ownership from muscle_fields, so the plate takes that muscle's outline).
     rim > 0 raises a rolled border that wide round the edge (the middle is sunk a little), the way
     plate is turned at its edges; rivets > 0 sets domed rivets along the border that far apart.
     cuts: (point, normal) planes the plate is trimmed to, everything on the normal's side removed,
     so its edges run clean and straight instead of following the body mesh's vertices."""
     bm = bmesh.new(); bm.from_mesh(src.data)
     bm.normal_update()
+    if field is not None:   # cut to a muscle's shape: along the crease, `gap` inside it
+        iso_cut(bm, field, gap)
+        bm.normal_update()
     dead = [v for v in bm.verts if not keep(v.co)]
     bmesh.ops.delete(bm, geom=dead, context='VERTS')
     for v in bm.verts:

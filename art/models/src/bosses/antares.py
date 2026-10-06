@@ -36,11 +36,14 @@ def build_body():
     obs, hands = athlete(J, mass=1.0, hands='claw', cut=1, waist=0.88)
     for s, n in SIDES:   # the wing roots: a ridge of muscle on each shoulder blade the wing arm grows out of
         obs.append(muscle(V((s * 0.08, 0.2, 1.96 + Z0)), J['wroot.' + n] + V((s * 0.04, 0.02, 0.06)), 0.1, seg=(8, 5)))
+    musc = muscle_copies(obs)
     body = remesh(obs, 'body_high', voxel=0.009, smooth=2, factor=0.6)
     define(body, 1.8, 3)
     sm = body.modifiers.new('sm', 'SMOOTH'); sm.iterations = 2; sm.factor = 0.5; apply_mods(body)
+    # the armour is cut from the body as it is here, every muscle still rounded: one plate per muscle
+    src = body.copy(); src.data = body.data.copy(); src.name = 'muscle_src'; link(src)
     chisel(body, 3, 32, 0.3)
-    return body, hands
+    return body, hands, src, musc
 
 M = lambda pts: [H + V(p) * K for p in pts]
 both = lambda pts: [(x, y, z) for (x, y, z) in pts] + [(-x, y, z) for (x, y, z) in pts if x]
@@ -99,7 +102,38 @@ def build_helm_parts():
     P['aventail'] = cloth('aventail', 24, 6, avent, thick=0.008, sub=1)
     return P
 
-body, hands = build_body()
+body, hands, musc_src, MUSCLES = build_body()
+FIELDS, _ = muscle_fields(musc_src, MUSCLES)
+for o in MUSCLES.values(): bpy.data.objects.remove(o)
+
+# every plate is the shape of the muscle under it, cut along the creases where muscles meet, so the
+# mail shows between them: (push off the body, thickness, rolled rim, bead, rivet spacing, fairing)
+MPLATE = {'pec': (0.016, 0.015, 0.014, True, 0.07, 2), 'frontdelt': (0.036, 0.014, 0.01, True, 0.0, 2),
+          'sidedelt': (0.034, 0.016, 0.012, True, 0.06, 2), 'reardelt': (0.032, 0.014, 0.01, True, 0.0, 2),
+          'uppertrap': (0.024, 0.013, 0.009, True, 0.0, 2), 'midtrap': (0.022, 0.012, 0.008, False, 0.0, 2),
+          'lat': (0.024, 0.014, 0.012, True, 0.08, 2), 'erector': (0.02, 0.012, 0.008, False, 0.0, 2),
+          'oblique': (0.022, 0.012, 0.008, False, 0.0, 2), 'scm': (0.016, 0.01, 0.0, False, 0.0, 1),
+          'biceps': (0.022, 0.013, 0.008, True, 0.0, 2), 'tricepslong': (0.022, 0.013, 0.008, True, 0.0, 2),
+          'tricepslat': (0.024, 0.013, 0.008, False, 0.0, 2), 'brachiorad': (0.022, 0.012, 0.008, True, 0.0, 2),
+          'flexors': (0.02, 0.012, 0.0, False, 0.0, 2), 'extensors': (0.02, 0.012, 0.008, False, 0.0, 2),
+          'vastuslat': (0.026, 0.014, 0.012, True, 0.08, 2), 'rectusfem': (0.028, 0.014, 0.01, True, 0.0, 2),
+          'vastusmed': (0.026, 0.014, 0.01, True, 0.0, 2), 'hamstrings': (0.024, 0.013, 0.01, False, 0.0, 2),
+          'adductors': (0.02, 0.012, 0.0, False, 0.0, 2), 'gastroout': (0.024, 0.013, 0.01, True, 0.0, 2),
+          'gastroin': (0.024, 0.013, 0.01, True, 0.0, 2), 'tibialis': (0.022, 0.012, 0.008, False, 0.0, 2),
+          'glute': (0.026, 0.014, 0.012, True, 0.0, 2)}
+for i in range(3): MPLATE[f'serratus{i}'] = (0.018, 0.01, 0.0, False, 0.0, 1)
+for i in range(4): MPLATE[f'ab{i}'] = (0.022, 0.013, 0.008, False, 0.0, 1)
+
+def muscle_plates(P):
+    for key, f in FIELDS.items():
+        lbl, n = key.split('.')
+        if lbl not in MPLATE or (f > 0.012).sum() < 12: continue
+        push, thick, rim, bead, rv, sm = MPLATE[lbl]
+        # big plates are forged in flat planes meeting at hard ridges, not blown round like the muscle
+        ob = plate(musc_src, 'm.' + key, lambda p: True, push=push, thick=thick, smooth=sm, facets=0.06 if rim >= 0.01 else 0.0,
+                   bevel=0.003, rim=rim, rivets=rv, bead=bead, field=f, gap=0.018)
+        if ob is not None and len(ob.data.vertices) > 8:
+            P['m.' + key] = ob
 helm = build_helm()
 helm_parts = build_helm_parts()
 # the armour is lifted off a smoothed shell of the body, not the carved body itself: plate is forged
@@ -270,29 +304,15 @@ def build_gear():
         P['petals.' + n] = join(pet, 'petals.' + n)
         sh, el, wr, kn = J['shoulder.' + n], J['elbow.' + n], J['wrist.' + n], J['knuckle.' + n]
         hp, ke, an, to = J['hip.' + n], J['knee.' + n], J['ankle.' + n], J['toe.' + n]
-        # all the plate is thin and cut into overlapping lames, so it can slide as the body twists
-        # pauldron: four lames stepping down off the shoulder, great spikes raking up off the top one
-        c0 = sh + V((s * 0.05, 0, 0.03))
-        P.update(lames(shell_src, 'pauldron.' + n + '.', lambda p, c0=c0, s=s: s * p.x > 0.28 and (p - c0).length < 0.3 and p.z > c0.z - 0.28,
-                       c0 + V((0, 0, 0.18)), c0 + V((s * 0.12, 0, -0.28)), 5, push=0.035, step=0.018, thick=0.016, rim=0.012, bead=True))
-        top_lame = P['pauldron.' + n + '.0']
-        P['pthorns.' + n] = thorns(top_lame, 'pthorns.' + n, lambda c, s=s: c.z > sh.z + 0.04 and s * c.x > abs(sh.x) - 0.02, 2, 0.6, 0.07, up=3.0, back=0.1, curve=0.3, seed=3 + s, flat=0.55)
-        # arm: three lames on the upper arm, a couter and its spike, three down the forearm
-        P.update(lames(shell_src, 'rerebrace.' + n + '.', lambda p, sh=sh, el=el, s=s: near_seg(p, sh, el, 0.3, 0.95, 0.14) and facing(p, sh, el, (s, -0.3, 0.1)) > -0.25, sh, el, 3, 0.3, 0.92, rim=0.006))
+        # the joints the muscle plates leave bare get their own plate: a couter and a knee cop, each spiked
         P['couter.' + n] = plate(shell_src, 'couter.' + n, lambda p, el=el: (p - el).length < 0.11 and p.y > el.y - 0.02, push=0.04, thick=0.016, smooth=4, facets=0.0, rim=0.012, rivets=0.05, bead=True)
         P['cspike.' + n] = blade('cspike.' + n, el + V((s * 0.02, 0.0, 0.02)), el + V((s * 0.08, 0.3, 0.06)), 0.045, curve=V((0, 0, 0.05)), thick=0.45)
-        P.update(lames(shell_src, 'vambrace.' + n + '.', lambda p, el=el, wr=wr, s=s: near_seg(p, el, wr, 0.1, 1.0, 0.14) and facing(p, el, wr, (s, 0.3, 0)) > -0.3, el, wr, 3, 0.12, 0.98, rim=0.006))
-        # leg: tassets hung off the belt, four lames down the thigh, a knee cop and its spike, greave lames, sabaton lames
-        P.update(lames(shell_src, 'tasset.' + n + '.', lambda p, hp=hp, ke=ke, s=s: s * p.x > 0.06 and p.y < hp.y + 0.08 and near_seg(p, hp, ke, -0.08, 0.36, 0.22),
-                       hp + V((0, 0, 0.1)), hp.lerp(ke, 0.36), 3, push=0.06, step=0.014, thick=0.014, overlap=0.4))
-        P.update(lames(shell_src, 'cuisse.' + n + '.', lambda p, hp=hp, ke=ke: p.y < ke.y + 0.05 and near_seg(p, hp, ke, 0.36, 0.9, 0.2), hp, ke, 4, 0.36, 0.9))
         P['kneecop.' + n] = plate(shell_src, 'kneecop.' + n, lambda p, ke=ke: (p - ke).length < 0.12 and p.y < ke.y, push=0.05, thick=0.018, smooth=4, facets=0.0, rim=0.012, rivets=0.05, bead=True)
         # the wing mount: a riveted collar of plate on the shoulder blade the wing's arm rises out of
         wr0 = J['wroot.' + n]
         P['wingmount.' + n] = plate(shell_src, 'wingmount.' + n, lambda p, wr0=wr0, s=s: (p - wr0).length < 0.17 and p.y > 0.1 and s * p.x > 0.04,
                                     push=0.045, thick=0.018, smooth=4, facets=0.0, rim=0.014, rivets=0.045, bead=True)
         P['kspike.' + n] = blade('kspike.' + n, ke + V((0, -0.1, 0.02)), ke + V((s * 0.04, -0.3, 0.2)), 0.045, curve=V((0, 0, 0.04)), thick=0.5)
-        P.update(lames(shell_src, 'greave.' + n + '.', lambda p, ke=ke, an=an, s=s: near_seg(p, ke, an, 0.1, 0.95, 0.14) and facing(p, ke, an, (s * 0.3, -1, 0)) > -0.35, ke, an, 3, 0.1, 0.95, rim=0.006))
         P.update(lames(shell_src, 'sabaton.' + n + '.', lambda p, an=an: p.z < an.z + 0.07 and abs(p.x - an.x) < 0.14, an + V((0, 0.06, 0)), to, 3, -0.1, 1.0, push=0.02, step=0.008))
         for i in range(3):   # talons out of the sabaton's toe
             b = to + V((s * (0.04 - i * 0.04), -0.04, 0.0))
@@ -302,16 +322,15 @@ def build_gear():
             off = V((0, -0.065 + i * 0.13 / 3, 0))
             b = kn + off + d * 0.12 + V((0, -0.05, -0.01))
             P[f'talon{i}.' + n] = blade(f'talon{i}.' + n, b, b + d * 0.1 + V((0, -0.08, -0.03)), 0.016, curve=V((0, -0.02, 0)), thick=0.6)
-    # the torso: a plate over each pectoral split by a keel, rib lames down each flank, a fauld of five
-    # lames down the belly, the backplate in four lames down the spine, a gorget of three around the neck
+    # the torso, arms and legs: a plate per muscle (see MPLATE); the great spikes rake up off the
+    # shoulder's side-deltoid plate
+    muscle_plates(P)
     ch, up_, wa, pe, nk = J['chest'], J['upchest'], J['waist'], J['pelvis'], J['neck']
     for s, n in SIDES:
-        P['breast.' + n] = plate(shell_src, 'breast.' + n, lambda p, s=s: ch.z - 0.1 < p.z < up_.z + 0.08 and 0.035 < s * p.x < 0.33 and p.y < -0.02, push=0.03, thick=0.016, smooth=6, facets=0.0, rim=0.02, rivets=0.06, bead=True)
-        P.update(lames(shell_src, 'ribs.' + n + '.', lambda p, s=s: 0.2 < s * p.x < 0.42 and -0.16 < p.y < 0.16, V((s * 0.3, 0, ch.z + 0.05)), V((s * 0.26, 0, wa.z)), 3, push=0.024, step=0.006))
-    P['sternum'] = hull('sternum', [V((x, -0.31, z)) for x in (-0.025, 0.025) for z in (ch.z - 0.1, up_.z - 0.02)] + [V((0, -0.35, ch.z + 0.04)), V((0, -0.28, up_.z + 0.06)), V((0, -0.28, ch.z - 0.16))])
-    P.update(lames(shell_src, 'fauld.', lambda p: abs(p.x) < 0.27 and p.y < 0.02, V((0, -0.2, ch.z - 0.12)), V((0, -0.2, pe.z + 0.12)), 5, push=0.026, step=0.007, cuts=[((0.25, 0, 0), (1, 0, 0)), ((-0.25, 0, 0), (-1, 0, 0))]))
-    P.update(lames(shell_src, 'back.', lambda p: abs(p.x) < 0.3 and p.y > 0.06, V((0, 0.2, up_.z + 0.06)), V((0, 0.2, wa.z - 0.04)), 4, push=0.026, step=0.007, cuts=[((0.27, 0, 0), (1, 0, 0)), ((-0.27, 0, 0), (-1, 0, 0))]))
-    P.update(lames(shell_src, 'gorget.', lambda p: abs(p.x) < 0.24, V((0, 0, nk.z + 0.02)), V((0, 0, up_.z - 0.02)), 3, push=0.03, step=0.012, overlap=0.5, rim=0.01, bead=True))
+        sh = J['shoulder.' + n]
+        if 'm.sidedelt.' + n in P:
+            P['pthorns.' + n] = thorns(P['m.sidedelt.' + n], 'pthorns.' + n, lambda c, s=s, sh=sh: c.z > sh.z + 0.02 and s * c.x > abs(sh.x) - 0.04,
+                                       2, 0.6, 0.07, up=3.0, back=0.1, curve=0.3, seed=3 + s, flat=0.55)
     # the belt: a heavy band, a skull for a buckle, chains slung across the hips
     P['belt'] = plate(shell_src, 'belt', lambda p: 1.36 + Z0 < p.z < 1.47 + Z0 and abs(p.x) < 0.4, push=0.05, thick=0.02, smooth=3, facets=0.1, rim=0.01, rivets=0.05)
     # the harness: a baldric over the breastplate from the right shoulder to the left hip, and the
@@ -386,6 +405,7 @@ def build_gear():
 
 gear, TOP = build_gear()
 bpy.data.objects.remove(shell_src)
+bpy.data.objects.remove(musc_src)
 
 def build_glow():
     # the face is a burning T cut through the helm; a halo burns behind it; red crosses on the tabard,
@@ -421,11 +441,31 @@ def build_glow():
     return g
 glow = build_glow()
 
-PAINTED = ('breast', 'couter', 'kneecop')   # plates carrying the chipped crimson paint of his colours
+PAINTED = ('m.sidedelt', 'couter', 'kneecop')   # plates carrying the chipped crimson paint of his colours
+
+# which bones carry each muscle plate: torso plates bend with the spine, limb plates ride their bone
+MBONES = {
+    'pec': ('smooth', ('spine', 'chest')), 'serratus': ('smooth', ('spine', 'chest')), 'oblique': ('smooth', ('hips', 'spine')),
+    'lat': ('smooth', ('spine', 'chest')), 'midtrap': ('smooth', ('spine', 'chest')), 'erector': ('smooth', ('hips', 'spine')),
+    'ab': ('smooth', ('hips', 'spine')), 'uppertrap': ('smooth', ('chest', 'neck')), 'scm': ('smooth', ('chest', 'neck')),
+    'frontdelt': ('smooth', ('chest', 'upperarm')), 'sidedelt': ('smooth', ('chest', 'upperarm')), 'reardelt': ('smooth', ('chest', 'upperarm')),
+    'biceps': ('rigid', 'upperarm'), 'tricepslong': ('rigid', 'upperarm'), 'tricepslat': ('rigid', 'upperarm'),
+    'brachiorad': ('rigid', 'forearm'), 'flexors': ('rigid', 'forearm'), 'extensors': ('rigid', 'forearm'),
+    'vastuslat': ('rigid', 'thigh'), 'rectusfem': ('rigid', 'thigh'), 'vastusmed': ('rigid', 'thigh'), 'hamstrings': ('rigid', 'thigh'),
+    'adductors': ('rigid', 'thigh'), 'glute': ('smooth', ('hips', 'thigh')),
+    'gastroout': ('rigid', 'shin'), 'gastroin': ('rigid', 'shin'), 'tibialis': ('rigid', 'shin'),
+}
+
+def muscle_bones(label, side):
+    key = next(k for k in sorted(MBONES, key=len, reverse=True) if label.startswith(k))
+    kind, b = MBONES[key]
+    sided = lambda x: x + '.' + side if x in ('upperarm', 'forearm', 'thigh', 'shin') else x
+    return (kind, sided(b)) if kind == 'rigid' else (kind, {sided(x) for x in b})
 
 def part_info(name):
     side = next((x for x in name.split('.') if x in ('L', 'R')), None)
-    steel = 'paint' if name.startswith(PAINTED) or name.endswith('pauldron.L.0') or name.endswith('pauldron.R.0') else 'steel'
+    steel = 'paint' if name.startswith(PAINTED) else 'steel'
+    if name.startswith('m.'): return steel, muscle_bones(name.split('.')[1], side)
     if name == 'body_high': return 'mail', ('smooth', None)
     if name in ('crest', 'visorbolts') or name.startswith('petals'): return 'helm', ('rigid', 'head')
     if name.startswith('burr'): return 'horn', ('rigid', 'head')
@@ -440,19 +480,13 @@ def part_info(name):
     if name.startswith('strap.fa'): return 'leather', ('rigid', 'forearm.' + side)
     if name.startswith('strap.th'): return 'leather', ('rigid', 'thigh.' + side)
     if name.startswith('strap.sh'): return 'leather', ('rigid', 'shin.' + side)
-    if name.startswith(('pauldron', 'pthorns')): return steel, ('smooth', {'chest', 'upperarm.' + side})
-    if name.startswith('rerebrace'): return steel, ('rigid', 'upperarm.' + side)
-    if name.startswith(('vambrace', 'vthorns', 'couter', 'cspike')): return steel, ('rigid', 'forearm.' + side)
-    if name.startswith('tasset'): return steel, ('smooth', {'hips', 'thigh.' + side})
-    if name.startswith('cuisse'): return steel, ('rigid', 'thigh.' + side)
-    if name.startswith(('greave', 'kspike', 'kneecop', 'gthorns')): return steel, ('rigid', 'shin.' + side)
+    if name.startswith('pthorns'): return steel, ('smooth', {'chest', 'upperarm.' + side})
+    if name.startswith(('vthorns', 'couter', 'cspike')): return steel, ('rigid', 'forearm.' + side)
+    if name.startswith(('kspike', 'kneecop', 'gthorns')): return steel, ('rigid', 'shin.' + side)
     if name.startswith('sabaton'): return steel, ('rigid', 'foot.' + side)
     if name.startswith('toeclaw'): return 'bone', ('rigid', 'foot.' + side)
     if name.startswith('talon'): return 'bone', ('rigid', 'hand.' + side)
-    if name == 'sternum' or name.startswith(('breast', 'ribs', 'back')): return steel, ('smooth', {'spine', 'chest'})
     if name == 'baldric': return 'leather', ('smooth', {'spine', 'chest', 'hips'})
-    if name.startswith('gorget'): return steel, ('smooth', {'chest', 'neck'})
-    if name.startswith('fauld'): return steel, ('smooth', {'hips', 'spine'})
     if name == 'belt': return 'leather', ('rigid', 'hips')
     if name == 'skull': return 'bone', ('rigid', 'hips')
     if name == 'chain': return 'steel', ('rigid', 'hips')
@@ -479,8 +513,9 @@ def tri_target(name, tris):
     if name == 'cloak': return 5200
     if name.startswith('wingbone'): return 2000
     if name == 'tail': return 1400
-    if name.startswith(('pauldron', 'breast')): return 1400
-    if name.startswith(('vambrace', 'greave', 'cuisse', 'fauld', 'rerebrace', 'sabaton', 'kneecop', 'tasset', 'ribs', 'back', 'gorget', 'couter')): return 800
+    if name.startswith(('m.pec', 'm.sidedelt', 'm.frontdelt', 'm.reardelt', 'm.uppertrap', 'm.lat')): return 1000
+    if name.startswith('m.'): return 600
+    if name.startswith(('sabaton', 'kneecop', 'couter')): return 800
     if name.startswith(('strap', 'baldric', 'belt')): return 400
     if name.startswith(('pthorns', 'vthorns', 'gthorns')): return 900
     if name.startswith('horn.'): return 2400
@@ -561,8 +596,8 @@ parts = {'body_high': body, **gear}
 def uv_weight(name):
     # texture goes where the eye goes: the head first, then the chest and shoulders, then the rest
     if name in ('helm', 'crest', 'visorbolts') or name.startswith(('horn', 'burr', 'petals')): return 3.0
-    if name.startswith(('pauldron', 'breast', 'gorget', 'pthorns')) or name == 'sternum': return 2.2
-    if name.startswith(('couter', 'rerebrace', 'vambrace', 'fauld', 'ribs', 'belt', 'skull', 'wingmount', 'baldric')): return 1.4
+    if name.startswith(('m.pec', 'm.sidedelt', 'm.frontdelt', 'm.reardelt', 'm.uppertrap', 'm.scm', 'pthorns')): return 2.2
+    if name.startswith(('m.', 'couter', 'belt', 'skull', 'wingmount', 'baldric')): return 1.4
     if name.startswith('membrane'): return 0.55
     if name in ('cloak', 'banner', 'tail') or name.startswith('tspike'): return 0.5
     if name == 'body_high': return 0.6
