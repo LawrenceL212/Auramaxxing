@@ -11,7 +11,7 @@
 // The Monarch stands for tier A ("Monarch's Shadow") and for any raid without a tier.
 import { defineModel } from '../models.js';
 
-const BOSS = { category: 'hero', sector: 'dungeon', clips: { idle: 'Idle', roar: 'Roar' },
+const BOSS = { category: 'hero', sector: 'dungeon', clips: { idle: 'Idle', roar: 'Roar', attack: 'Attack' },
   credit: 'Original work for Auramaxxing (art/models/src/bosses)', licence: 'Same terms as this repository' };
 
 defineModel('monarch', {
@@ -31,3 +31,9 @@ defineModel('stone-golem', { ...BOSS, url: './models/golem.glb', height: 6.6, ti
 defineModel('iron-shadow', { ...BOSS, url: './models/iron-shadow.glb', height: 7.0, tiles: [3, 2], replaces: 'raid-boss:C' });
 defineModel('void-warden', { ...BOSS, url: './models/void-warden.glb', height: 7.4, tiles: [3, 3], replaces: 'raid-boss:B' });
 defineModel('antares', { ...BOSS, url: './models/antares.glb', height: 7.0, tiles: [4, 3], replaces: 'raid-boss:S' });
+
+// The weekly named bosses an E or D raid fights (NAMED_BOSSES in index.html), one model each, built in
+// Antares's style from models/src/bosses/<script>.py. They replace 'raid-boss:named:<slug of the name>'
+// and are shown on the raid card (art/boss-stage.js), each with an Attack clip it plays when tapped.
+const WEEKLY = (slug, file, height) => defineModel('weekly-' + slug, { ...BOSS, url: `./models/${file}.glb`, height, tiles: [3, 3], replaces: 'raid-boss:named:' + slug });
+WEEKLY('phantom-executioner', 'executioner', 6.6);
