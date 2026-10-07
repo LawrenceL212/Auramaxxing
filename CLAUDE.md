@@ -63,6 +63,11 @@ Statically imported at `index.html:3188-3191`:
 - [exercises.js](exercises.js) — `BASE_EXERCISES`; each entry carries `intent`, `statWeights` (XP distribution across the 6 stats), `muscles` (0–1 emphasis), `equipment`, optional `skillTier`. Merged with per-user custom exercises by `rebuildExercisesAll()`.
 - [progression-chains.js](progression-chains.js), [archetype-chains.js](archetype-chains.js), [auto-achievements.js](auto-achievements.js)
 
+[physique.js](physique.js) draws the Hunter's own muscle map to their body: muscles grow with
+12 weeks of training plus PR tiers, and the build comes from check-in tape measurements, else
+`profile.heightCm` (set in Settings) and the latest weigh-in. `bodySvg()` applies it; pure, so
+`node test/physique.test.mjs` tests it. Presentation only.
+
 Lazy-loaded: [classes.js](classes.js) via `await import('./classes.js')` at line 10375 (6 root archetypes, 63 paths, 250+ class names) — kept out of the initial load deliberately.
 
 [countries_embedded.js](countries_embedded.js) (1.4 MB `COUNTRIES_GEO`) is imported **only** by [shadow-world.html](shadow-world.html), never by `index.html`.
@@ -74,6 +79,23 @@ Hand-rolled, no framework. `switchView(name)` (`index.html:4295`) toggles `.acti
 `#view-world` is the exception: fixed-position fullscreen, and it hosts [shadow-world.html](shadow-world.html) in an `<iframe>` (line 16804). Shadow World is an independent 851-line page drawing the country map to a **2D canvas** with CSS-transform pan/zoom.
 
 Global mutable state: `currentUser`, `profile`, `myProgram`, `authMode` — module-scoped `let` bindings read directly by render functions.
+
+### Art stack (`art/`)
+
+A procedural, toon-shaded three.js art pack ported from Grimoire: zero image assets, everything is code.
+`art/kit.js` (toon materials, ink outlines, cached geometry), `art/theme.js` (palette mirrored from the
+CSS tokens), `art/registry.js` (asset factories with triangle budgets, footprints and checks; pure, so
+`node test/art-registry.test.mjs` tests it), `art/packs/*.js` (the assets). Review assets in
+`/art/catalogue.html` under the local server. Authored `.glb` models (`art/models.js`, `art/look.js`,
+registered in `art/models/index.js`; see [art/MODELS.md](art/MODELS.md)) replace a code-drawn asset by
+id through `take()`/`resolve()`. Each raid tier (E–S) has its own boss model (`raid-boss:<tier>`), built in Blender from
+`art/models/src/bosses/` (a shared kit plus one script per boss); the Monarch is tier A and the default.
+The 14 weekly named bosses each have a model too (`raid-boss:named:<slug of the name>`), built on
+`art/models/src/bosses/armour.py` (a plate cut to each muscle); the raid card shows the week's boss in 3D
+through `art/boss-stage.js`, attacking when tapped.
+The reward reveal (`buildRewardScene`) and the raid boss
+(`buildSystemCoreScene`) use the pack lazily and fall back to the old primitives if it fails to load;
+wire further screens the same way, through the existing AuraGL runtime. Presentation only.
 
 ### Firestore collections
 

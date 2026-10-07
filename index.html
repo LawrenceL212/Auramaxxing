@@ -2338,6 +2338,16 @@
   .raid-boss-card.cleared::before{background:linear-gradient(90deg,transparent,rgba(111,255,176,0.3),transparent);animation:none;}
   .raid-boss-card.cleared::after{display:none;}
   .raid-boss-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px;}
+  /* The week's boss in 3D (art/boss-stage.js); empty, and collapsed, until WebGL and the model are there */
+  .raid-boss-stage{position:relative;height:clamp(240px,62vw,340px);margin:-16px -16px 14px;}
+  .raid-boss-stage:empty{display:none;}
+  .boss-stage-root{position:absolute;inset:0;}
+  .boss-stage-root canvas{display:block;width:100%;height:100%;cursor:pointer;}
+  .boss-stage-root::after{content:"";position:absolute;left:0;right:0;bottom:0;height:40%;pointer-events:none;
+    background:linear-gradient(180deg,transparent,rgba(5,6,10,0.92));}
+  .boss-stage-hint{position:absolute;left:0;right:0;bottom:8px;z-index:1;text-align:center;pointer-events:none;
+    font-family:var(--font-mono);font-size:9px;letter-spacing:0.3em;color:var(--text-faint);}
+  .raid-boss-card.cleared .boss-stage-root canvas{filter:grayscale(0.7) brightness(0.6);}
   .raid-eyebrow{font-family:var(--font-mono);font-size:9px;letter-spacing:0.3em;color:var(--excess);margin-bottom:6px;opacity:0.7;}
   .raid-boss-name{font-family:var(--font-display);font-size:18px;letter-spacing:0.06em;color:var(--text);margin-bottom:4px;}
   .raid-phase{font-family:var(--font-mono);font-size:11px;}
@@ -2753,6 +2763,7 @@
   .widget{cursor:pointer;}
   .status-count-row{display:flex;flex-wrap:wrap;gap:8px 10px;margin:10px 0 4px;}
   .status-pill{font-size:11px;padding:4px 10px;border-radius:20px;display:flex;align-items:center;gap:6px;border:1px solid;}
+  .physique-note{font-size:11px;line-height:1.45;color:var(--text-dim);text-align:center;margin-top:8px;}
   /* ── ANATOMY STAGE — character as hero, not diagram ── */
   .body-pair{
     display:flex;justify-content:center;gap:6px;
@@ -3920,6 +3931,7 @@ import { detectReEntry, reEntryPlan, directiveProgress, formatMeasure, DIRECTIVE
          buildWidgetConfig } from "./goals.js";
 import { analyseHabit, sampleCurve, describeReturns,
          HABIT_TARGET_DAYS, MISS_GRACE } from "./habit.js";
+import { muscleDevelopment, bodyBuild, bodyFrame, muscleShape } from "./physique.js";
 import {
   getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword,
   onAuthStateChanged, signOut, updateProfile
@@ -4015,6 +4027,33 @@ function structuredCloneLite(o){ return JSON.parse(JSON.stringify(o)); }
    matches the user's preference and recolors muscles per the current stats.
    ========================================================================= */
 const ANATOMY_TEMPLATES = { male: null, female: null };
+/* The centre of every traced muscle shape, in its parent's coordinates, so
+   bodySvg() can grow a muscle about its own middle (physique.js). Measured
+   once per template by laying it out off screen; listed in the same order as
+   the muscle-id elements bodySvg() walks. */
+const ANATOMY_CENTRES = { male: null, female: null };
+function measureMuscleCentres(bodyType, template) {
+  try {
+    const host = document.createElement('div');
+    host.style.cssText = 'position:absolute;left:-9999px;top:0;width:10px;height:10px;overflow:hidden;visibility:hidden;';
+    const svg = template.cloneNode(true);
+    host.appendChild(svg);
+    document.body.appendChild(host);
+    const centres = [];
+    svg.querySelectorAll('[id]').forEach(el => {
+      if (!muscleFromId(el.id)) return;
+      const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+      el.parentNode.insertBefore(g, el);
+      g.appendChild(el);
+      const b = g.getBBox();
+      centres.push([b.x + b.width / 2, b.y + b.height / 2]);
+      g.parentNode.insertBefore(el, g);
+      g.remove();
+    });
+    host.remove();
+    ANATOMY_CENTRES[bodyType] = centres;
+  } catch (e) { ANATOMY_CENTRES[bodyType] = null; }
+}
 // Each file's front/back split point and canvas size differ — measured directly
 // against each exported file, never assumed to match between body types.
 const ANATOMY_CROP = {
@@ -4041,6 +4080,7 @@ async function loadAnatomyTemplate(bodyType) {
       });
     }
     ANATOMY_TEMPLATES[bodyType] = template;
+    measureMuscleCentres(bodyType, template);
     return template;
   } catch (e) {
     console.warn(`Could not load ${file} — muscle map will show a loading placeholder.`, e);
@@ -4744,6 +4784,8 @@ function openSettingsModal() {
   overlay.querySelector('#sys-settings-body').innerHTML =
     '<div class="field"><label>Hunter name</label><input id="settings-name" value="' + escapeHtml(profile.displayName || '') + '" placeholder="Your designation" maxlength="24" inputmode="text" /></div>' +
     '<div class="field"><label>Weekly goal</label><input id="settings-goal" type="number" min="1" max="14" value="' + (profile.weeklyGoal || 3) + '" style="max-width:80px;" /></div>' +
+    '<div class="field"><label>Height (cm)</label><input id="settings-height" type="number" inputmode="decimal" min="120" max="230" step="0.5" placeholder="e.g. 178" value="' + (profile.heightCm || '') + '" style="max-width:100px;" />' +
+      '<div style="font-size:11px;color:var(--text-dim);margin-top:4px;">Shapes your body on the muscle map, with your logged weight. Check-in tape measurements shape it closer still.</div></div>' +
     /* Streak protection. Two separate things, deliberately shown together:
        the freeze a Hunter can set themselves when the app is blocking them,
        and the count of sessions this device is holding because a save failed. */
@@ -4849,10 +4891,15 @@ function openSettingsModal() {
     const newGoal = Math.max(1, Number(document.getElementById('settings-goal').value) || 3);
     const errEl = document.getElementById('settings-error');
     if (!newName) { errEl.textContent = "Hunter name can't be empty."; return; }
+    const heightRaw = document.getElementById('settings-height').value.trim();
+    const newHeight = heightRaw === '' ? null : Math.round(Number(heightRaw) * 10) / 10;
+    if (newHeight !== null && !(newHeight >= 120 && newHeight <= 230)) { errEl.textContent = 'Height should be between 120 and 230 cm.'; return; }
     const saveBtn = overlay.querySelector('#save-settings');
     saveBtn.disabled = true; saveBtn.textContent = 'Saving\u2026';
     try {
       await writeUserFields({ displayName: newName, weeklyGoal: newGoal, bodyType: selectedBodyType, email: currentUser.email || '' });
+      // heightCm: the field the check-in body-fat estimate already reads (it fell back to 166 until now)
+      if (newHeight !== null && newHeight !== profile.heightCm) await writeUserFields({ heightCm: newHeight });
       await updateProfile(currentUser, { displayName: newName });
       profile.displayName = newName;
       profile.weeklyGoal = newGoal;
@@ -5880,11 +5927,101 @@ function buildSystemCoreScene({ THREE, quality, tier }) {
   boss.position.set(0, -1.0, -5.2);
   scene.add(boss);
   let bossAmt = 0, bossTarget = 0;
-  function setBoss(on, hex) {
+  /* The art pack's raid boss (art/packs/system.js) replaces the primitive
+     mass above once the pack has loaded. It is swapped in only while the boss
+     is fully hidden, so it never pops in mid-cinematic; until then, or if the
+     pack fails, the primitive boss plays as before. */
+  const ART_BOSS_SCALE = 2.15;       // modelled at ~3.2 units; the old mass stood ~6.8
+  let artPack = null, artBoss = null, bossKey = null, bossRim = null, bossRim2 = null, bossFill = null;
+  let bossTier = null;   // the raid tier (E..S) whose boss to show; each has its own model, 'raid-boss:<tier>'
+  const artReady = import('./art/index.js').then(m => { artPack = m; m.prepare('raid-boss'); return m; })
+    .catch(e => { console.warn('art pack unavailable, using primitive boss', e); return null; });
+  // The tier's own model once it has loaded, else the default raid boss (the Monarch), else the drawn one.
+  function bossAssetId() {
+    const tid = bossTier && 'raid-boss:' + bossTier;
+    const tm = tid && artPack.modelFor(tid);
+    return tm && artPack.isLoaded(tm.id) ? tid : 'raid-boss';
+  }
+  function prepareBoss(tier) {
+    return artReady.then(m => {
+      const tm = m && tier && m.modelFor('raid-boss:' + tier);
+      return tm ? m.prepare('raid-boss:' + tier) : undefined;
+    });
+  }
+  function swapBoss() {
+    if (!artPack || bossAmt > 0.002) return;
+    // an authored model registered for the boss wins once its file has loaded; until then the drawn one
+    const id = bossAssetId();
+    const m = artPack.modelFor(id);
+    const want = m && artPack.isLoaded(m.id) ? 'model:' + m.id : 'drawn';
+    if (artBoss && artBoss.userData.kind === want) return;
+    try {
+      const { object: o, model } = artPack.take(id);
+      const mats = [], eyes = [], outlines = [], copies = new Map();
+      o.traverse(n => {
+        if (n.userData.contactShadow) { n.visible = false; return; }  // no floor out here in the void
+        if (n.userData.outlineChild) { outlines.push(n); return; }
+        if (!n.material) return;
+        if (!copies.has(n.material)) {
+          const c = n.material.clone();
+          if (n.material.userData.translucent) { c.onBeforeCompile = n.material.onBeforeCompile; c.customProgramCacheKey = n.material.customProgramCacheKey; }
+          c.transparent = true;
+          // The raid fog (FogExp2 0.085) swallowed ~90% of a boss 17 units off;
+          // the boss carries its own lights instead, so it reads as a figure.
+          c.fog = false;
+          c.userData.baseOpacity = n.material.opacity;
+          copies.set(n.material, c);
+          mats.push(c);
+        }
+        n.material = copies.get(n.material);
+        if (n.userData.eye && !eyes.includes(n.material)) eyes.push(n.material);
+      });
+      if (model) { try { artPack.lightModel(o, AuraGL.renderer, 0.4); artPack.glowLight(o, 0); } catch (e) {} }
+      else o.scale.setScalar(ART_BOSS_SCALE);   // a model arrives at its registered height already
+      o.userData.kind = model ? 'model:' + model.id : 'drawn';
+      o.userData.art = { mats, eyes, outlines, model, anim: model ? null : artPack.get('raid-boss').anims.breathe };
+      if (artBoss) {   // a model replacing the drawn boss or another tier's: drop the old one and its material copies
+        boss.remove(artBoss);
+        artBoss.userData.art.mats.forEach(c => c.dispose());
+      }
+      for (const c of boss.children) c.visible = false;
+      boss.add(o);
+      artBoss = o;
+      if (bossKey) { bossKey.target = o; bossRim.target = o; bossRim2.target = o; return; }   // the lights are already there
+      // Its own lighting, faded with the boss: a cool key from in front and
+      // above (the camera's side), a hard rim behind in the eye colour that
+      // cuts the silhouette out of the dark, and a low fill so the underside
+      // of the arms and the jaw never go black.
+      bossKey = new THREE.SpotLight(0xdfe6ff, 0, 30, 0.42, 0.6, 1.2);
+      bossKey.position.set(2.5, 9.5, 6.0);
+      bossKey.target = o;
+      bossRim = new THREE.SpotLight(0xff5c6b, 0, 30, 0.6, 0.5, 1.0);
+      bossRim.position.set(-1.5, 8.0, -12.0);
+      bossRim.target = o;
+      // A second, cool rim from the other side picks out the edges of the plate, the
+      // lames and the horns, where the detail of a modelled boss lives.
+      bossRim2 = new THREE.SpotLight(0xcfd8ff, 0, 30, 0.55, 0.5, 1.0);
+      bossRim2.position.set(6.0, 7.0, -9.0);
+      bossRim2.target = o;
+      bossFill = new THREE.PointLight(0x8b7dff, 0, 14, 1.4);
+      bossFill.position.set(0, 2.2, 0.5);
+      boss.add(bossKey, bossRim, bossRim2, bossFill);
+    } catch (e) { console.warn('raid boss failed, using primitive boss', e); }
+  }
+  function setBossEyes(hex) {
+    if (!artBoss) return;
+    for (const m of artBoss.userData.art.eyes) { m.color.set(hex); m.emissive?.set(hex); }
+    artBoss.userData.glowLight?.color.set(hex);
+    if (bossRim) bossRim.color.set(hex);
+  }
+  function setBoss(on, hex, tier) {
     bossTarget = on ? 1 : 0;
     if (on) {
+      if (tier !== undefined) bossTier = tier || null;
+      swapBoss();
       boss.visible = true;
-      if (hex) { try { bossEye.color.set(hex); } catch (e) {} }
+      if (hex) { try { bossEye.color.set(hex); setBossEyes(hex); } catch (e) {} }
+      else { try { setBossEyes(0xff5c6b); } catch (e) {} }
     }
   }
   function updateBoss(dt, t) {
@@ -5892,6 +6029,16 @@ function buildSystemCoreScene({ THREE, quality, tier }) {
     bossAmt += Math.abs(d) < 0.002 ? d : d * Math.min(1, dt * 2.2);
     bossMat.opacity = 0.97 * bossAmt;
     bossEye.opacity = bossAmt * (0.75 + Math.sin(t * 2.6) * 0.25);
+    if (artBoss && boss.visible) {
+      const a = artBoss.userData.art;
+      for (const m of a.mats) m.opacity = (m.userData.baseOpacity ?? 1) * bossAmt;
+      for (const o of a.outlines) o.visible = bossAmt > 0.6;
+      try { a.model ? a.model.update(dt) : a.anim(artBoss, t); } catch (e) {}
+      if (bossKey) { bossKey.intensity = 60 * bossAmt; bossRim.intensity = 260 * bossAmt; bossRim2.intensity = 140 * bossAmt; bossFill.intensity = 3 * bossAmt; }
+      if (artBoss.userData.glowLight) artBoss.userData.glowLight.intensity = 3 * bossAmt * (0.85 + Math.sin(t * 2.6) * 0.15);   // the glow's spill, breathing with it
+      const aura = artBoss.getObjectByName('aura');
+      if (aura) aura.material.opacity *= bossAmt;   // the anim sets it; the fade still governs it
+    }
     boss.position.y = -1.0 + (1 - bossAmt) * -1.4;   // rises into place
     if (bossAmt <= 0.002 && bossTarget === 0) boss.visible = false;
   }
@@ -6044,6 +6191,7 @@ function buildSystemCoreScene({ THREE, quality, tier }) {
     setEnvironment,
     // Raid boss presence. Presentation only - carries no raid state.
     setBoss,
+    prepareBoss,
     update(dt, t) {
       updateEnvironment(dt);
       updateBoss(dt, t);
@@ -6244,11 +6392,73 @@ function buildRewardScene({ THREE, quality }) {
   let item = null;          // current item Group
   let mat = 0;              // materialisation 0..1
   let spin = 0, active = false, count = 0;
+  /* Touch response, after Grimoire's stage: drag turns the item, a flick
+     keeps it turning and decays back to the idle spin, a tap bounces it.
+     Presentation only; the reveal's caller feeds these from pointer events. */
+  const IDLE_SPIN = 0.55;
+  let spinV = IDLE_SPIN, held = false, bounce = 0, bounceV = 0, clock = 0;
+
+  /* The art pack's relics (art/packs/equipment.js) replace the primitive
+     createItemMesh() models once the pack has loaded. Loaded here, not at
+     startup, so the app's first paint never waits on it; if it fails or has
+     not arrived yet, the reveal falls back to createItemMesh(). */
+  const RELIC = { weapon: 'relic-sword', armour: 'relic-chestplate', boots: 'relic-boots', accessory: 'relic-ring' };
+  const RELIC_SCALE = 1.7;  // the relics are modelled at real size (~0.9 units); this frame wants ~1.5
+  let art = null;
+  import('./art/index.js').then(m => {
+    art = m;
+    // authored models registered for a slot (art/models/index.js) start loading now, so a reveal can use them
+    for (const id of Object.values(RELIC)) m.prepare(id);
+  }).catch(e => console.warn('art pack unavailable, using primitive items', e));
+  // Toon materials are lit in bands; at this scene's dim key they fall into the
+  // darkest band. This fill is on only while a relic is shown.
+  const artFill = new THREE.HemisphereLight(0xc4ccec, 0x0a0812, 0);
+  scene.add(artFill);
+
+  function createRelic(slot, rarity) {
+    const id = RELIC[slot] || RELIC.weapon;
+    const { object: src, model } = art.take(id, { rarity: REWARD_RARITY[rarity] ? rarity : 'Rare' });
+    const g = new THREE.Group();
+    const inner = new THREE.Group();
+    let float;
+    if (model) {
+      // an authored model: stands on y = 0 at its registered height; centre it on the frame instead
+      float = src;
+      const box = new THREE.Box3().setFromObject(src);
+      float.position.y = -(box.min.y + box.max.y) / 2;
+      try { art.lightModel(src, AuraGL.renderer, 1.1); } catch (e) {}
+    } else {
+      float = src.getObjectByName('float');   // the item itself, without its floor sigil and shadow
+      float.position.set(0, 0, 0);
+      inner.scale.setScalar(RELIC_SCALE);
+    }
+    inner.add(float);
+    g.add(inner);
+    // Per-reveal copies of the materials so the fade-in never touches the
+    // pack's shared ones. Outline hulls cannot fade; they appear late instead.
+    const materials = [], outlines = [];
+    const copies = new Map();
+    float.traverse(o => {
+      if (o.userData.outlineChild) { outlines.push(o); return; }
+      if (!o.material) return;
+      if (!copies.has(o.material)) {
+        const c = o.material.clone();
+        c.transparent = true;
+        c.userData.baseOpacity = o.material.opacity;
+        copies.set(o.material, c);
+        materials.push(c);
+      }
+      o.material = copies.get(o.material);
+    });
+    g.userData = { anchor: REWARD_ANCHOR[slot] || 'orbit', rarity, slot, materials, outlines, sharedGeometry: true, relic: true, model };
+    return g;
+  }
 
   function clearItem() {
     if (!item) return;
     root.remove(item);
-    item.traverse(o => { o.geometry?.dispose?.(); });
+    // the art pack caches geometry across builds: never dispose it
+    if (!item.userData.sharedGeometry) item.traverse(o => { o.geometry?.dispose?.(); });
     (item.userData.materials || []).forEach(m => m.dispose?.());
     item = null;
   }
@@ -6260,12 +6470,17 @@ function buildRewardScene({ THREE, quality }) {
       clearItem();
       const rarity = (def && def.rarity) || 'Rare';
       const cfg = REWARD_RARITY[rarity] || REWARD_RARITY.Rare;
-      item = createItemMesh(THREE, (def && def.slot) || 'weapon', rarity);
+      const slot = (def && def.slot) || 'weapon';
+      item = null;
+      if (art) { try { item = createRelic(slot, rarity); } catch (e) { console.warn('relic failed, using primitive item', e); } }
+      if (!item) item = createItemMesh(THREE, slot, rarity);
+      artFill.intensity = item.userData.relic ? 1.4 : 0;
       // Presentation pose: turned off-axis and tilted, so the object has depth
       // instead of reading as a flat glyph.
       root.rotation.set(0.11, 0, 0.13);
       root.add(item);
       mat = 0; spin = 0; active = true;
+      spinV = IDLE_SPIN; held = false; bounce = 0; bounceV = 0;
       count = Math.min(MAX_P, cfg.particles);
       glow.color.setHex(cfg.col);
       rim.color.setHex(cfg.col);
@@ -6276,6 +6491,16 @@ function buildRewardScene({ THREE, quality }) {
       return item;
     },
     setMaterialise(v) { mat = Math.max(0, Math.min(1, v)); },
+    // drag(dxPixels, dtSeconds): turn with the finger; the last speed is kept as the flick
+    drag(dx, dt) {
+      held = true;
+      const turn = dx * 0.012;
+      spin += turn;
+      if (dt > 0) spinV = Math.max(-14, Math.min(14, turn / dt));
+    },
+    release() { held = false; },
+    // poke(): a squash-and-bounce, the same spring Grimoire's drone hops on
+    poke() { bounceV += 9; },
     // The shared camera sits at z=6 by default, which leaves a 1-unit object
     // tiny. Framing is applied on enter and cleared on exit.
     frame(camera) {
@@ -6292,14 +6517,26 @@ function buildRewardScene({ THREE, quality }) {
     get itemGroup() { return item; },
     update(dt) {
       if (!active || !item) return;
-      spin += dt * 0.55;
+      clock += dt;
+      if (!held) {
+        spinV += (IDLE_SPIN - spinV) * (1 - Math.exp(-1.6 * dt));   // a flick decays back to the idle turn
+        spin += dt * spinV;
+      }
       item.rotation.y = spin;
+      // bounce: a damped spring; squashes as it rises, stretches as it lands
+      bounceV += (-90 * bounce - 9 * bounceV) * dt;
+      bounce += bounceV * dt;
       // ease the arrival: fast in, settling
       const e = 1 - Math.pow(1 - mat, 3);
-      item.scale.setScalar(0.35 + 0.65 * e);
-      item.position.y = (1 - e) * -0.35;
+      const sq = Math.max(-0.25, Math.min(0.25, bounce * 0.5));
+      const base = 0.35 + 0.65 * e;
+      item.scale.set(base * (1 + sq * 0.5), base * (1 - sq), base * (1 + sq * 0.5));
+      item.position.y = (1 - e) * -0.35 + Math.max(0, bounce) * 0.25 + Math.sin(clock * 1.6) * 0.03 * e;
+      const halo = item.userData.relic && item.getObjectByName('halo');
+      if (halo) halo.material.opacity = (halo.material.userData.baseOpacity ?? 0.5) * e * (0.85 + 0.15 * Math.sin(clock * 2.4) + Math.min(0.6, Math.abs(bounce)));
       const cfg = REWARD_RARITY[item.userData.rarity] || REWARD_RARITY.Rare;
-      (item.userData.materials || []).forEach(m => { m.opacity = e; });
+      (item.userData.materials || []).forEach(m => { if (!m.isSpriteMaterial) m.opacity = e * (m.userData.baseOpacity ?? 1); });
+      (item.userData.outlines || []).forEach(o => { o.visible = e > 0.6; });
       glow.intensity = cfg.light * e;
       if (pts) {
         const pos = pGeo.attributes.position.array;
@@ -6915,6 +7152,13 @@ if (__auraDevEnabled()) {
         detail:'The party stands. The gate closes.',
         item:{ name:'EXCALIBUR', slot:'weapon', rarity:'Legendary',
                desc:'Earned through dominance.' } }),
+    // one raid phase per tier, to see each tier's boss
+    'raid-boss-E': () => WorldCinema.raidMoment({ kind:'phase', boss:{ name:'GOBLIN SCOUT', eye:0xc6ff5a, tier:'E' }, title:'E-RANK GATE', detail:'Goblin Scout' }),
+    'raid-boss-D': () => WorldCinema.raidMoment({ kind:'phase', boss:{ name:'STONE GOLEM', eye:0xffb347, tier:'D' }, title:'D-RANK GATE', detail:'Stone Golem' }),
+    'raid-boss-C': () => WorldCinema.raidMoment({ kind:'phase', boss:{ name:'IRON SHADOW', eye:0x64b5f6, tier:'C' }, title:'C-RANK GATE', detail:'Iron Shadow' }),
+    'raid-boss-B': () => WorldCinema.raidMoment({ kind:'phase', boss:{ name:'VOID WARDEN', eye:0xa070ff, tier:'B' }, title:'B-RANK GATE', detail:'Void Warden' }),
+    'raid-boss-A': () => WorldCinema.raidMoment({ kind:'phase', boss:{ name:"MONARCH'S SHADOW", eye:0xff5c6b, tier:'A' }, title:'A-RANK GATE', detail:"Monarch's Shadow" }),
+    'raid-boss-S': () => WorldCinema.raidMoment({ kind:'phase', boss:{ name:'ANTARES THE SOVEREIGN BEAST', eye:0xffd66b, tier:'S' }, title:'S-RANK GATE', detail:'Antares the Sovereign Beast' }),
     'world-event':    () => WorldCinema.worldEvent({ tier:'major', kicker:'TERRITORY CLAIMED',
         title:'SOUTH KOREA', body:'Your shadow army holds the region.', glyph:'🌐' }),
     'world-event-major': () => WorldCinema.worldEvent({ tier:'legendary', kicker:'WORLD EVENT',
@@ -7113,7 +7357,41 @@ const WorldCinema = (() => {
         };
         step();
       });
-      await wait(1500);                     // hold - let the object be looked at
+      // hold - let the object be looked at. Touching it keeps it up: drag to
+      // turn, flick to spin, tap to bounce. The hold ends 1.5s after the last
+      // touch, and never runs past 8s so a resting finger cannot stall the flow.
+      let lastTouch = performance.now(), down = null;
+      const onDown = (e) => { down = { x: e.clientX, y: e.clientY, t: e.timeStamp, moved: false }; lastTouch = performance.now(); };
+      const onMove = (e) => {
+        if (!down) return;
+        const dx = e.clientX - down.x;
+        if (Math.abs(e.clientX - down.x) + Math.abs(e.clientY - down.y) > 6) down.moved = true;
+        if (down.moved) sc.drag?.(dx, Math.max(0.008, (e.timeStamp - down.t) / 1000));
+        down.x = e.clientX; down.y = e.clientY; down.t = e.timeStamp;
+        lastTouch = performance.now();
+      };
+      const onUp = () => { if (down && !down.moved) sc.poke?.(); sc.release?.(); down = null; lastTouch = performance.now(); };
+      addEventListener('pointerdown', onDown, { passive: true });
+      addEventListener('pointermove', onMove, { passive: true });
+      addEventListener('pointerup', onUp, { passive: true });
+      addEventListener('pointercancel', onUp, { passive: true });
+      const holdStart = performance.now();
+      try {
+        await new Promise(res => {
+          const tick = () => {
+            const now = performance.now();
+            if (now - holdStart > 8000 || (!down && now - lastTouch > 1500 && now - holdStart > 1500)) return res();
+            requestAnimationFrame(tick);
+          };
+          tick();
+        });
+      } finally {
+        removeEventListener('pointerdown', onDown);
+        removeEventListener('pointermove', onMove);
+        removeEventListener('pointerup', onUp);
+        removeEventListener('pointercancel', onUp);
+        sc.release?.();
+      }
     } catch (e) { /* presentation only */ }
     // restore the shared camera for whatever renders next
     try { const c = AuraGL.camera; if (c) { c.position.set(0, 0, 6); c.lookAt(0, 0, 0); } }
@@ -7148,9 +7426,9 @@ const WorldCinema = (() => {
     cam.position.set(0, 0, 6); cam.lookAt(0, 0, 0);
   }
 
-  async function raidStage(colour) {
+  async function raidStage(colour, tier) {
     if (!stage('core', 'raid')) return false;
-    try { AuraCore.setBoss(true, colour); } catch (e) {}
+    try { AuraCore.setBoss(true, colour, tier); } catch (e) {}
     frameRaid();
     return true;
   }
@@ -7160,16 +7438,23 @@ const WorldCinema = (() => {
     unstage();
   }
 
+  // The raid's boss per tier (BOSS_DATA in renderRaidBoss), for callers that pass only a name.
+  const RAID_BOSS_TIER = { 'GOBLIN SCOUT': 'E', 'STONE GOLEM': 'D', 'IRON SHADOW': 'C', 'VOID WARDEN': 'B',
+    "MONARCH'S SHADOW": 'A', 'ANTARES THE SOVEREIGN BEAST': 'S' };
+
   /* raidMoment({kind, boss, detail})
        'damage'  a major damage moment      - weighted, not every update
        'phase'   a phase transition
        'victory' the raid falls
-     `boss` and `detail` come from the raid view's already-resolved state. */
+     `boss` and `detail` come from the raid view's already-resolved state.
+     boss: { name, eye, tier? } - tier (E..S) picks that tier's boss model; without it the
+     name is looked up in RAID_BOSS_TIER. */
   async function raidMoment(ev) {
     if (!ev) return;
     const kind = ev.kind || 'damage';
     const name = (ev.boss && ev.boss.name) || 'RAID BOSS';
     const colour = (ev.boss && ev.boss.eye) || 0xff5c6b;
+    const tier = (ev.boss && ev.boss.tier) || RAID_BOSS_TIER[String(name).toUpperCase()] || null;
 
     if (kind === 'damage') {
       // Deliberately the lightest of the three - a raid reports damage often.
@@ -7178,7 +7463,11 @@ const WorldCinema = (() => {
     }
 
     const heavy = kind === 'victory';
-    if (reduced() || !(await raidStage(colour))) {
+    // give the tier's own boss a moment to arrive; past that the default boss stands in
+    if (tier && !reduced()) {
+      try { await Promise.race([AuraCore.prepareBoss(tier), wait(2500)]); } catch (e) {}
+    }
+    if (reduced() || !(await raidStage(colour, tier))) {
       return SystemMoment.show({
         tier: heavy ? 'legendary' : 'progression',
         kicker: heavy ? 'RAID CLEARED' : 'PHASE TRANSITION',
@@ -17301,6 +17590,7 @@ async function renderRaidBoss() {
 
   el.innerHTML = `
     <div class="raid-boss-card ${cleared?'cleared':''}" style="border-color:${cleared?'rgba(139,92,255,0.3)':`${boss.color}44`};">
+      <div class="raid-boss-stage" id="raid-boss-stage"></div>
       <div class="raid-boss-header">
         <div style="flex:1;min-width:0;">
           <div class="raid-eyebrow" style="color:${boss.color};">⚔ ${boss.rank}${isFirstWeek?' · INITIATION WEEK':''}</div>
@@ -17341,6 +17631,28 @@ async function renderRaidBoss() {
       </div>
       ${sundayPreview}
     </div>`;
+  mountRaidBossStage(boss, bossTier, cleared);
+}
+
+/* The week's boss standing in 3D at the top of the raid card (art/boss-stage.js). Presentation
+   only: it is told the boss's name, tier and colour, and reads nothing else. E and D raids fight a
+   weekly named boss, each with its own model ('raid-boss:named:<slug>'); higher tiers their tier's. */
+let raidStage = null, raidStageWant = null;
+const bossSlug = (name) => String(name).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+function mountRaidBossStage(boss, tier, cleared) {
+  const host = document.getElementById('raid-boss-stage');
+  if (!host) return;
+  const named = tier === 'E' || tier === 'D';
+  const asset = named ? 'raid-boss:named:' + bossSlug(boss.name) : 'raid-boss:' + tier;
+  const accent = /^#[0-9a-f]{6}$/i.test(boss.color) ? boss.color : '#ff5c6b';
+  const want = asset + (cleared ? ':defeated' : '');
+  if (raidStage && raidStageWant === want) { raidStage.attach(host); return; }   // the card re-rendered: keep the live stage
+  raidStageWant = want;
+  import('./art/boss-stage.js').then(({ mountBossStage }) => {
+    if (raidStageWant !== want || !host.isConnected) return;
+    raidStage?.dispose();
+    raidStage = mountBossStage(host, { asset, fallback: 'raid-boss:' + tier, accent, defeated: !!cleared });
+  }).catch(e => console.warn('boss stage unavailable', e));
 }
 
 
@@ -17544,16 +17856,39 @@ function muscleFromId(id) {
   const stripped = id.replace(/_\d+$/, ''); // Figma dedupes repeated names as "Name_2", "Name_3"...
   return MUSCLES.includes(stripped) ? stripped : null;
 }
+/* ── PHYSIQUE — the Hunter's own map draws their body, not a generic one ──
+   Muscles they train (and get strong in) draw bigger; the overall build comes
+   from their check-in tape measurements, else their height and latest weight.
+   Rules in physique.js. Presentation only: reads data, writes nothing. */
+function myPhysique() {
+  const bodyType = profile?.bodyType === 'female' ? 'female' : 'male';
+  const dev = muscleDevelopment({ workouts: myWorkouts, exercises: EXERCISES_ALL, prs: myPRs, muscles: MUSCLES, uid: currentUser?.uid });
+  const build = bodyBuild({ bodyType, heightCm: profile?.heightCm, weightKg: latestBodyweightKg(), checkin: myCheckins[myCheckins.length - 1] || null });
+  return { dev, build, frame: bodyFrame(build) };
+}
+function physiqueNote() {
+  const { build } = myPhysique();
+  const how = build.source === 'measured' ? 'Body shaped from your latest check-in measurements'
+    : build.source === 'estimated' ? `Body shaped from your height and weight (BMI ${build.bmi})`
+    : (profile?.heightCm ? 'Log your weight' : 'Add your height in Settings and log your weight') + ' to shape the body to you';
+  return `<div class="physique-note">Bigger muscles are the ones you've built. ${how}.</div>`;
+}
 function bodySvg(view, stats, overrideBodyType, items, silhouette) {
   const bodyType = overrideBodyType || ((profile && profile.bodyType === 'female') ? 'female' : 'male');
+  // the Hunter's own map draws their physique; other hunters and the inventory silhouette stay generic
+  let phys = null;
+  if (!overrideBodyType && !silhouette) { try { phys = myPhysique(); } catch (e) { phys = null; } }
   // Phase 5: mirror the already-resolved muscle status into the 3D Hunter.
   // Read-only - no recalculation, no writes, no gameplay effect.
   const template = ANATOMY_TEMPLATES[bodyType];
   if (!template) return '<div class="empty-state" style="padding:20px;">Loading anatomy…</div>';
   const clone = template.cloneNode(true);
+  const centres = phys ? ANATOMY_CENTRES[bodyType] : null;
+  let muscleIndex = -1;
   clone.querySelectorAll('[id]').forEach(el => {
     const m = muscleFromId(el.id);
     if (!m) return;
+    muscleIndex++;
     // Silhouette mode — all muscles render flat dim, items will light up their zones
     const color = silhouette ? 'rgba(30,45,65,0.9)' : STATUS_COLOR[stats[m]?.status || 'Stalled'];
     const status = stats[m]?.status || 'Stalled';
@@ -17575,6 +17910,19 @@ function bodySvg(view, stats, overrideBodyType, items, silhouette) {
       shape.setAttribute('fill', color);
       shape.style.fill = color;
     });
+    // Scale the muscle about its own centre: developed muscles swell, a broader build widens
+    // the region. A wrapper carries the scale so any transform the traced shape has is kept.
+    const c = centres && centres[muscleIndex];
+    if (c && !el.parentNode?.closest?.('[data-grown]')) {
+      const { sx, sy } = muscleShape(m, phys.dev[m], phys.build, phys.frame);
+      if (sx !== 1 || sy !== 1) {
+        const g = el.ownerDocument.createElementNS('http://www.w3.org/2000/svg', 'g');
+        g.setAttribute('data-grown', m);
+        g.setAttribute('transform', `translate(${c[0]} ${c[1]}) scale(${sx} ${sy}) translate(${-c[0]} ${-c[1]})`);
+        el.parentNode.insertBefore(g, el);
+        g.appendChild(el);
+      }
+    }
   });
   // Head and hands/feet ("misc") aren't tracked muscles, but they ARE recognizable
   // Remove the large full-canvas background rectangle (fill="#1F1F1F" or similar)
@@ -17609,6 +17957,15 @@ function bodySvg(view, stats, overrideBodyType, items, silhouette) {
   // Each body type's source file has its own measured front/back split point —
   // never assumed to match between male and female files.
   const crop = ANATOMY_CROP[bodyType][view];
+  // the whole figure narrows or broadens with the build, about its centre line
+  if (phys && phys.frame !== 1) {
+    const [vx, , vw] = crop.viewBox.split(' ').map(Number);
+    const cx = vx + vw / 2;
+    const g = clone.ownerDocument.createElementNS('http://www.w3.org/2000/svg', 'g');
+    g.setAttribute('transform', `translate(${cx} 0) scale(${phys.frame} 1) translate(${-cx} 0)`);
+    [...clone.childNodes].forEach(n => { if (n.nodeName !== 'defs') g.appendChild(n); });
+    clone.appendChild(g);
+  }
   clone.setAttribute('viewBox', crop.viewBox);
   clone.setAttribute('width', String(crop.w));
   clone.setAttribute('height', String(crop.h));
@@ -18002,6 +18359,7 @@ function renderTrends() {
       <div class="card-title"><h3>◈ Muscle Activation <span class="chev">›</span></h3></div>
       <div class="status-pill" style="border-color:${STATUS_COLOR[topStatus[0]]};color:${STATUS_TEXT_COLOR[topStatus[0]]||STATUS_COLOR[topStatus[0]]};display:inline-flex;margin-bottom:8px;">${topStatus[0]} ${topStatus[1]}</div>
       <div class="body-pair">${bodySvg('front', stats)}${bodySvg('back', stats)}</div>
+      ${physiqueNote()}
     </div>
 
     ${auraOverTimeCard()}
@@ -18262,6 +18620,7 @@ function renderMuscleDetail() {
     </div>
     <div class="card">
       <div class="body-pair big">${bodySvg('front', stats)}${bodySvg('back', stats)}</div>
+      ${physiqueNote()}
       ${muscleDetailMode === 'Strength' ? `
         <div style="margin:14px 0 8px;">
           <div style="font-family:var(--font-mono);font-size:9px;letter-spacing:0.2em;color:var(--text-faint);text-transform:uppercase;margin-bottom:10px;text-align:center;">◈ Strength Classification ◈</div>
