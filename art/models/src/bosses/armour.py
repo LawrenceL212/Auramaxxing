@@ -132,7 +132,7 @@ def knight_mats(accent=(0.6, 0.04, 0.01), steel=(0.026, 0.025, 0.028), paint=(0.
         'paint': mat_steel('paint', base=steel, rough=0.44, paint=(paint, 0.42)),
         'helm': mat_steel('helm', base=steel, rough=0.4, engrave=eng, glow=accent),
         'mail': mat_mail('mail'),
-        'leather': mat_leather('leather', col=leather),
+        'leather': mat_leather('leather', col=leather, pale=tuple(c * 1.6 for c in leather)),   # aprons and skirts are thin panels: keep them dark
         'bone': mat_bone('bone', col=bone),
         'horn': mat_horn2('horn', root=horn[0], tip=horn[1], rough=0.42, bands=16.0, along='hv'),
         'cloth': mat_fabric('cloth', 0.0, 2.0, cl),

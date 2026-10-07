@@ -36,4 +36,18 @@ defineModel('antares', { ...BOSS, url: './models/antares.glb', height: 7.0, tile
 // Antares's style from models/src/bosses/<script>.py. They replace 'raid-boss:named:<slug of the name>'
 // and are shown on the raid card (art/boss-stage.js), each with an Attack clip it plays when tapped.
 const WEEKLY = (slug, file, height) => defineModel('weekly-' + slug, { ...BOSS, url: `./models/${file}.glb`, height, tiles: [3, 3], replaces: 'raid-boss:named:' + slug });
+// height: the boss's own height in metres, doubled (the raid's units)
+WEEKLY('cursed-archer', 'archer', 7.1);
+WEEKLY('stone-sentinel', 'sentinel', 7.5);
+WEEKLY('tide-leviathan', 'leviathan', 8.6);
+WEEKLY('mirror-phantom', 'phantom', 7.3);
+WEEKLY('coiled-serpent', 'serpent', 7.6);
+WEEKLY('abyssal-titan', 'titan', 8.4);
+WEEKLY('storm-specter', 'specter', 8.2);
+WEEKLY('void-crawler', 'crawler', 6.6);
+WEEKLY('ancient-warden', 'warden', 9.0);
+WEEKLY('iron-serpent', 'iron-serpent', 6.0);
 WEEKLY('phantom-executioner', 'executioner', 6.6);
+WEEKLY('dungeon-colossus', 'colossus', 8.7);
+WEEKLY('abyss-stalker', 'stalker', 7.8);
+WEEKLY('crystal-wraith', 'wraith', 8.6);

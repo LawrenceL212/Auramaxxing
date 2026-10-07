@@ -170,7 +170,7 @@ def attack(t):
         p = posed(p, **{f'upperarm_{n}': (-2.4 * up - 0.5 * down, 0, 0), f'forearm_{n}': (-0.5 * up - 0.2 * down, 0, 0), f'hand_{n}': (0.4 * up - 0.3 * down, 0, 0)})
     p = posed(p, spine=(-0.18 * up + 0.42 * down + shake, 0, 0), chest=(-0.14 * up + 0.3 * down, 0, 0), head=(-0.2 * up + 0.1 * down, 0, 0),
               thigh_L=(-0.15 * up - 0.5 * down, 0, 0), shin_L=(0.15 * up + 0.7 * down, 0, 0), thigh_R=(0.2 * down, 0, 0), shin_R=(0.25 * down, 0, 0))
-    p['_hips_loc'] = (0, 0, -0.16 * down)
+    p['_hips_loc'] = (0, -0.16 * down, 0)   # in the hips bone's frame, y runs up the bone
     return p
 
 parts = {'body_high': body, **gear}

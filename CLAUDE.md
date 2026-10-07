@@ -90,6 +90,9 @@ CSS tokens), `art/registry.js` (asset factories with triangle budgets, footprint
 registered in `art/models/index.js`; see [art/MODELS.md](art/MODELS.md)) replace a code-drawn asset by
 id through `take()`/`resolve()`. Each raid tier (E–S) has its own boss model (`raid-boss:<tier>`), built in Blender from
 `art/models/src/bosses/` (a shared kit plus one script per boss); the Monarch is tier A and the default.
+The 14 weekly named bosses each have a model too (`raid-boss:named:<slug of the name>`), built on
+`art/models/src/bosses/armour.py` (a plate cut to each muscle); the raid card shows the week's boss in 3D
+through `art/boss-stage.js`, attacking when tapped.
 The reward reveal (`buildRewardScene`) and the raid boss
 (`buildSystemCoreScene`) use the pack lazily and fall back to the old primitives if it fails to load;
 wire further screens the same way, through the existing AuraGL runtime. Presentation only.

@@ -1129,7 +1129,7 @@ def mat_steel(name, base=(0.035, 0.034, 0.036), bare=(0.3, 0.29, 0.3), rough=0.3
     metal = g.lerpf(g.mx(rust, g.mul(gr, 0.5)), metal, 0.0)
     return g.finish(col, r, metal, emit=emit, emit_strength=1.0 if glow else 0.0)
 
-def mat_leather(name, col=(0.03, 0.018, 0.012), rough=0.62):
+def mat_leather(name, col=(0.03, 0.018, 0.012), rough=0.62, pale=(0.1, 0.066, 0.045)):
     # oiled leather: grain and pores, creases, cut edges burnished dark and glossy, paler and crazed
     # where it is stretched over plate and rivets, grime in the creases
     g = G(name)
@@ -1142,7 +1142,7 @@ def mat_leather(name, col=(0.03, 0.018, 0.012), rough=0.62):
     burnish = g.band(k['edge'], 0.04, 0.18)
     c = g.lerp(g.mul(burnish, 0.7), c, (0.011, 0.006, 0.004))
     stretch = g.mul(g.band(g.pointy(), 0.5, 0.56), g.band(g.noise(9.0, 4.0), 0.35, 0.6))
-    c = g.lerp(g.mul(stretch, 0.6), c, (0.1, 0.066, 0.045))
+    c = g.lerp(g.mul(stretch, 0.6), c, pale)   # pale where stretched (on a thin hanging panel, read as all of it: pass a darker pale)
     craze = g.mul(g.band(g.edges(80.0), 0.025, 0.0), stretch)
     c = g.lerp(g.mul(k['crevice'], 0.8), c, (0.004, 0.003, 0.002))
     r = g.add(rough - 0.1, g.mul(g.noise(9.0, 4.0), 0.25))
