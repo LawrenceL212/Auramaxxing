@@ -110,7 +110,7 @@ git diff 9bcec20..HEAD -- index.html shadow-world.html \
 
 | Issue | Status |
 |---|---|
-| **`apEvents` composite index missing** | **CONFIRMED STILL MISSING.** `uid ==` + `orderBy timestamp desc` returns `failed-precondition`. The Admin AP Ledger remains broken. Index needed: `apEvents` · `uid` ASC · `timestamp` DESC · `__name__` DESC. |
+| **`apEvents` composite index missing** | **CONFIRMED STILL MISSING.** `uid ==` + `orderBy timestamp desc` returns `failed-precondition`. Index needed: `apEvents` · `uid` ASC · `timestamp` DESC · `__name__` DESC. **Mitigated 2026-10-05:** the ledger now falls back to a uid-only read ordered on device (`ap-ledger.js`, tested in `test/ap-ledger.test.mjs`) and labels itself SORTED ON DEVICE until the index exists. Live behaviour **UNVERIFIED** (needs an admin session). |
 | **Female `Lower Abs` empty SVG group** | **CONFIRMED.** `anatomy-female.svg` contains an empty `<g id="Lower Abs">`; `anatomy.svg` (male) has no empty groups. Both files carry 22/22 canonical region ids. |
 | **Client-side duel resolution is not a trusted architecture** | **UNCHANGED.** Still needs a Cloud Function. See the security section. |
 | **Shadow World frame rate** | **NEW.** The iframe renders a 2048×1024 (2.1 Mpx) canvas and runs at **32.9 fps internally**, holding the host page to ~40 fps while the World view is open. This is the iframe's own render loop, *not* AuraGL — the host recovers to 99 fps on leaving the view. Separate work from the cinematic layer. |
