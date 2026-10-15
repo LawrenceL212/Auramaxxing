@@ -68,6 +68,10 @@ Statically imported at `index.html:3188-3191`:
 `profile.heightCm` (set in Settings) and the latest weigh-in. `bodySvg()` applies it; pure, so
 `node test/physique.test.mjs` tests it. Presentation only.
 
+[backfill.js](backfill.js) holds the rules for logging a past session (up to 30 days back, never
+the future, no identical session twice on one date). Past sessions use the normal save path, so every
+reward treats them as if logged on that date. Pure, so `node test/backfill.test.mjs` tests it.
+
 Lazy-loaded: [classes.js](classes.js) via `await import('./classes.js')` at line 10375 (6 root archetypes, 63 paths, 250+ class names) — kept out of the initial load deliberately.
 
 [countries_embedded.js](countries_embedded.js) (1.4 MB `COUNTRIES_GEO`) is imported **only** by [shadow-world.html](shadow-world.html), never by `index.html`.

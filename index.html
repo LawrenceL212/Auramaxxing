@@ -3505,6 +3505,9 @@
         <button class="btn btn-sm" id="manual-log-btn" style="flex:1;font-family:var(--font-mono);font-size:11px;letter-spacing:.06em;background:transparent;border-color:rgba(91,168,255,0.12);color:var(--text-faint);">+ Log Session</button>
         <button class="btn btn-sm" id="log-run-btn" style="flex:1;font-family:var(--font-mono);font-size:11px;letter-spacing:.06em;background:transparent;border-color:rgba(47,184,198,0.2);color:var(--maintaining);">🏃 Log Run</button>
       </div>
+      <div style="padding:0 var(--fluid-pad) var(--fluid-pad);margin-top:calc(8px - var(--fluid-pad));">
+        <button class="btn btn-sm" id="past-log-btn" style="width:100%;font-family:var(--font-mono);font-size:11px;letter-spacing:.06em;background:transparent;border-color:rgba(91,168,255,0.12);color:var(--text-faint);">⟲ Log a Past Session</button>
+      </div>
     </section>
 
 
@@ -3869,6 +3872,7 @@
       <input type="time" id="workout-time" />
     </div>
   </div>
+  <p id="workout-date-hint" class="hidden" style="margin:-8px 0 14px;font-family:var(--font-mono);font-size:10px;letter-spacing:.04em;color:var(--brass);"></p>
   <div id="exercise-rows"></div>
   <button class="btn add-exercise-btn" id="add-exercise-btn" style="font-family:var(--font-mono);letter-spacing:.06em;">+ Add Exercise</button>
   <div class="save-bar">
@@ -3926,6 +3930,7 @@ import { PROGRESSION_CHAINS } from "./progression-chains.js";
 import { getArchetypeChains } from "./archetype-chains.js";
 import { getAutoAchievements } from "./auto-achievements.js";
 import { computeStreakFrom, STREAK_RULES_START, shiftDay } from "./streak.js";
+import { backfillDateProblem, earliestBackfillDate, isDuplicateSession, laterDate } from "./backfill.js";
 import { detectReEntry, reEntryPlan, directiveProgress, formatMeasure, DIRECTIVE_METRICS,
          countdown, formatCountdown, timeElapsedFraction, buildDirectivesICS,
          buildWidgetConfig } from "./goals.js";
@@ -8472,7 +8477,46 @@ function startProgramDay(idx) {
   openWorkoutModal();
 }
 
+/* Past sessions: the date pickers only offer today and the last
+   BACKFILL_MAX_DAYS days, and the logger says so when the date is not today.
+   The save paths re-check with backfillDateProblem(), since a typed or linked
+   date can get past the picker's limits. */
+function syncWorkoutDateLimits() {
+  const today = todayStr();
+  ['workout-date', 'run-date'].forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.max = today;
+    el.min = earliestBackfillDate(today);
+  });
+  const date = document.getElementById('workout-date')?.value;
+  const hint = document.getElementById('workout-date-hint');
+  if (!hint) return;
+  const problem = date ? backfillDateProblem(date, today) : null;
+  const isPast = date && date < today && !problem;
+  hint.textContent = problem
+    ? problem
+    : isPast
+      ? `◈ PAST SESSION · counts for ${new Date(date + 'T12:00:00').toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' })}, with full XP and rewards`
+      : '';
+  hint.style.color = problem ? 'var(--excess)' : 'var(--brass)';
+  hint.classList.toggle('hidden', !problem && !isPast);
+}
+document.getElementById('workout-date')?.addEventListener('change', syncWorkoutDateLimits);
+document.getElementById('workout-date')?.addEventListener('input', syncWorkoutDateLimits);
+
+/* Back to today once a session is saved or discarded, so a past date never
+   carries into the next hunt. */
+function resetLoggerDate() {
+  document.getElementById('workout-date').value = todayStr();
+  document.getElementById('workout-time').value = nowTimeStr();
+  const title = document.getElementById('logger-title');
+  if (title?.textContent === 'PAST SESSION') title.textContent = 'HUNT ACTIVE';
+  syncWorkoutDateLimits();
+}
+
 function openWorkoutModal() {
+  syncWorkoutDateLimits();
   document.getElementById('workout-modal-overlay').classList.remove('hidden');
   document.getElementById('workout-pill').classList.add('hidden');
   lockBodyScroll();
@@ -8506,6 +8550,7 @@ function closeWorkoutModal(discard = false) {
   document.getElementById('logger-exercise-hero')?.removeAttribute('data-exercise');
     document.getElementById('exercise-rows').innerHTML = '';
     addExerciseRow();
+    resetLoggerDate();
     document.getElementById('save-workout-btn').classList.add('hidden');
     document.getElementById('save-msg').classList.add('hidden');
   }
@@ -8546,10 +8591,26 @@ document.getElementById('manual-log-btn')?.addEventListener('click', () => {
   document.getElementById('logger-exercise-hero')?.removeAttribute('data-exercise');
   openWorkoutModal();
 });
+/* Log a session from an earlier day. Same logger, opened on yesterday with the
+   date picker in focus; everything after Complete Quest is the normal path. */
+document.getElementById('past-log-btn')?.addEventListener('click', () => {
+  const rows = document.getElementById('exercise-rows');
+  const busy = [...rows.querySelectorAll('.exercise-row')].some(r => r.dataset.exName);
+  if (busy) { showToast('Finish or discard the hunt in progress first.', 'error'); openWorkoutModal(); return; }
+  document.getElementById('workout-date').value = shiftDay(todayStr(), -1);
+  document.getElementById('workout-time').value = nowTimeStr();
+  activeDayIndex = null;
+  document.getElementById('logger-title').textContent = 'PAST SESSION';
+  document.getElementById('logger-exercise-hero')?.removeAttribute('data-exercise');
+  openWorkoutModal();
+  const dateEl = document.getElementById('workout-date');
+  try { dateEl.focus(); dateEl.showPicker?.(); } catch (_) { /* picker needs a gesture on some browsers */ }
+});
 
 /* ── Run Logger ── */
 document.getElementById('log-run-btn')?.addEventListener('click', () => {
   document.getElementById('run-date').value = todayStr();
+  syncWorkoutDateLimits();
   document.getElementById('run-modal-overlay').classList.remove('hidden');
   lockBodyScroll();
 });
@@ -8609,6 +8670,8 @@ document.getElementById('save-run-btn')?.addEventListener('click', async () => {
   const notes = document.getElementById('run-notes').value.trim();
   const date = document.getElementById('run-date').value || todayStr();
   if (!dist && !(mins || secs)) { showToast('Enter distance or duration.', 'error'); return; }
+  const runDateProblem = backfillDateProblem(date, todayStr());
+  if (runDateProblem) { showToast(runDateProblem, 'error'); return; }
 
   const distKm = runUnit === 'mi' ? dist * 1.60934 : dist;
   const totalMins = mins + secs / 60;
@@ -8616,6 +8679,12 @@ document.getElementById('save-run-btn')?.addEventListener('click', async () => {
     const p = totalMins / distKm;
     return `${Math.floor(p)}:${String(Math.round((p%1)*60)).padStart(2,'0')} /km`;
   })() : '';
+
+  if (isDuplicateSession(allWorkouts, currentUser.uid, date, [{ name: selectedRunType,
+      sets: [{ reps: Math.round(totalMins) || 1, weight: 0, distKm: Math.round(distKm*100)/100 }] }])) {
+    showToast('This run is already logged for that day.', 'error');
+    return;
+  }
 
   const btn = document.getElementById('save-run-btn');
   btn.disabled = true; btn.textContent = 'Saving…';
@@ -9926,6 +9995,15 @@ document.getElementById('save-workout-btn')?.addEventListener('click', async () 
     }).filter(s => s.reps > 0 || s.durationMins > 0);    if (sets.length) exercises.push({ name, sets });
   });
   if (!exercises.length) { showToast('The System requires effort. Log at least one set before completing your quest.', 'error'); return; }
+  /* Past sessions go through this same path, so everything below awards them
+     as if logged live on `date`. Guard the date and refuse a second copy of a
+     session already recorded for it. */
+  const dateProblem = backfillDateProblem(date, todayStr());
+  if (dateProblem) { showToast(dateProblem, 'error'); syncWorkoutDateLimits(); return; }
+  if (isDuplicateSession(allWorkouts, currentUser.uid, date, exercises)) {
+    showToast('This session is already logged for that day.', 'error');
+    return;
+  }
 
   const btn = document.getElementById('save-workout-btn');
   btn.disabled = true; btn.textContent = 'Saving…';
@@ -9956,10 +10034,12 @@ document.getElementById('save-workout-btn')?.addEventListener('click', async () 
       programDayIndex: activeDayIndex ?? null, createdAt: serverTimestamp(),
       ...(runSummaryFromLogger ? { isRun: true, runSummary: runSummaryFromLogger } : {}),
     });
-    await writeUserFields({ lastWorkoutDate: date });
-    profile.lastWorkoutDate = date;
+    // A past session must not move lastWorkoutDate (or a day's lastDate) backwards.
+    const lastWorkoutDate = laterDate(profile.lastWorkoutDate, date);
+    await writeUserFields({ lastWorkoutDate });
+    profile.lastWorkoutDate = lastWorkoutDate;
     if (activeDayIndex !== null && myProgram) {
-      myProgram.days[activeDayIndex].lastDate = date;
+      myProgram.days[activeDayIndex].lastDate = laterDate(myProgram.days[activeDayIndex].lastDate, date);
       // only advance rotation in rotation mode — fixed mode doesn't use currentDayIndex
       if (myProgram.scheduleMode !== 'fixed') {
         myProgram.currentDayIndex = (activeDayIndex + 1) % myProgram.days.length;
@@ -9974,6 +10054,7 @@ document.getElementById('save-workout-btn')?.addEventListener('click', async () 
     setTimeout(() => document.getElementById('save-msg').classList.add('hidden'), 2500);
     exerciseRows.innerHTML = '';
     addExerciseRow();
+    resetLoggerDate();
     await loadAllData();
     const xpResult = await awardWorkoutXP(exercises.map(ex => {
       const def = EXERCISES_ALL[ex.name] || {};
