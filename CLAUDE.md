@@ -72,6 +72,10 @@ Statically imported at `index.html:3188-3191`:
 the future, no identical session twice on one date). Past sessions use the normal save path, so every
 reward treats them as if logged on that date. Pure, so `node test/backfill.test.mjs` tests it.
 
+[set-inputs.js](set-inputs.js) decides which inputs the logger shows for a set (kg + reps, reps,
+load + reps, seconds, h:mm, or h:mm:ss + km) from fields each exercise already has, and turns them into
+the same stored fields as before. Pure, so `node test/set-inputs.test.mjs` tests it.
+
 Lazy-loaded: [classes.js](classes.js) via `await import('./classes.js')` at line 10375 (6 root archetypes, 63 paths, 250+ class names) — kept out of the initial load deliberately.
 
 [countries_embedded.js](countries_embedded.js) (1.4 MB `COUNTRIES_GEO`) is imported **only** by [shadow-world.html](shadow-world.html), never by `index.html`.
