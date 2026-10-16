@@ -6,6 +6,7 @@ import {
   setInputKind, storedSet, storedSetSecs, partsToSecs, secsToParts, formatSetTime,
   setInputHeaders, SET_INPUT_KINDS,
   LOAD_TYPES, offersLoadChoice, defaultLoad, setLoad, loggedLoad, withLoad, loadLabel,
+  BAND_LEVELS, bandLabel, setBand, loggedBand, loadText, loadOptions, isBandLoad,
 } from '../set-inputs.js';
 
 let pass = 0, fail = 0;
@@ -134,6 +135,34 @@ check('tagged set', setLoad({ reps: 5, weight: 0, load: 'none' }), 'none');
 check('last load from tag', loggedLoad([{ reps: 5, weight: 0, load: 'bands' }]), 'bands');
 check('last load kg from weight', loggedLoad([{ reps: 5, weight: 40 }]), 'kg');
 check('no load from an untagged zero-weight session', loggedLoad([{ reps: 5, weight: 0 }]), null);
+// ── band strength ─────────────────────────────────────────────────────────
+check('band set with strength', withLoad({ reps: 12, weight: 0 }, 'bands', 'heavy'), { reps: 12, weight: 0, load: 'bands', band: 'heavy' });
+check('strength only goes with bands', withLoad({ reps: 12, weight: 0 }, 'bodyweight', 'heavy'), { reps: 12, weight: 0, load: 'bodyweight' });
+check('unknown strength dropped', withLoad({ reps: 12, weight: 0 }, 'bands', 'purple'), { reps: 12, weight: 0, load: 'bands' });
+check('kg ignores strength', withLoad({ reps: 8, weight: 60 }, 'kg', 'heavy'), { reps: 8, weight: 60 });
+check('set band', setBand({ reps: 5, load: 'bands', band: 'light' }), 'light');
+check('stale band on a kg set ignored', setBand({ reps: 5, weight: 40, band: 'light' }), null);
+check('last band', loggedBand([{ reps: 5, load: 'bands', band: 'xheavy' }]), 'xheavy');
+check('no last band', loggedBand([{ reps: 5, weight: 40 }]), null);
+check('text: strength band', loadText({ reps: 5, load: 'bands', band: 'xheavy' }), 'Extra heavy band');
+check('text: band with no strength', loadText({ reps: 5, load: 'bands' }), 'Bands');
+check('text: bodyweight', loadText({ reps: 5, load: 'bodyweight' }), 'Bodyweight');
+check('text: kg', loadText({ reps: 5, weight: 60 }), '60kg');
+check('text: no kg', loadText({ reps: 5, weight: 0 }), '—');
+// assisted vs resisted bands
+const opts = d => loadOptions(d).map(o => o.join(':'));
+check('pull-ups offer assisted and resisted bands', opts(BASE_EXERCISES['Pull Up']),
+  ['kg:Weight (kg)', 'bands:Band resisted', 'band_assist:Band assisted', 'bodyweight:Bodyweight', 'none:No weight']);
+check('bench offers resistance bands only', opts(BASE_EXERCISES['Bench Press']),
+  ['kg:Weight (kg)', 'bands:Bands', 'bodyweight:Bodyweight', 'none:No weight']);
+check('no options on a run', loadOptions(BASE_EXERCISES['Running']), []);
+check('assisted is a band load', isBandLoad('band_assist'), true);
+check('assisted logs reps only', setInputKind(BASE_EXERCISES['Pull Up'], 'band_assist'), 'reps');
+check('assisted set with strength', withLoad({ reps: 6, weight: 0 }, 'band_assist', 'heavy'), { reps: 6, weight: 0, load: 'band_assist', band: 'heavy' });
+check('text: assisted', loadText({ reps: 6, load: 'band_assist', band: 'heavy' }), 'Heavy band assist');
+check('text: assisted, no strength', loadText({ reps: 6, load: 'band_assist' }), 'Band assisted');
+check('last band from an assisted session', loggedBand([{ reps: 6, load: 'band_assist', band: 'light' }]), 'light');
+for (const b of BAND_LEVELS) check(`band label ${b}`, typeof bandLabel(b), 'string');
 
 console.log(results.join('\n'));
 console.log(`\n${pass} passed, ${fail} failed`);
