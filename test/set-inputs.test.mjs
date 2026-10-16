@@ -5,6 +5,7 @@ import { BASE_EXERCISES } from '../exercises.js';
 import {
   setInputKind, storedSet, storedSetSecs, partsToSecs, secsToParts, formatSetTime,
   setInputHeaders, SET_INPUT_KINDS,
+  LOAD_TYPES, offersLoadChoice, defaultLoad, setLoad, loggedLoad, withLoad, loadLabel,
 } from '../set-inputs.js';
 
 let pass = 0, fail = 0;
@@ -102,6 +103,37 @@ check('duration format', formatSetTime('duration', 5400), '1h 30m');
 check('short duration format', formatSetTime('duration', 2700), '45m');
 check('hold format', formatSetTime('hold', 45), '45s');
 check('long hold format', formatSetTime('hold', 125), '2m 05s');
+
+// ── load type picker ──────────────────────────────────────────────────────
+const benchDef = BASE_EXERCISES['Bench Press'], pullDef = BASE_EXERCISES['Pull Up'];
+check('load picker on kg + reps', offersLoadChoice(benchDef), true);
+check('load picker on bodyweight load', offersLoadChoice(pullDef), true);
+check('no load picker on reps only', offersLoadChoice(BASE_EXERCISES['Crunch']), false);
+check('no load picker on runs', offersLoadChoice(BASE_EXERCISES['Running']), false);
+check('no load picker on holds', offersLoadChoice(BASE_EXERCISES['Front Splits']), false);
+check('default load is kg', defaultLoad(benchDef), 'kg');
+check('no default without a picker', defaultLoad(BASE_EXERCISES['Running']), null);
+check('mobility defaults to no weight', defaultLoad({ intent: 'mobility', equipment: 'Cable' }), 'none');
+check('kg keeps kg + reps', setInputKind(benchDef, 'kg'), 'weight_reps');
+check('bands log reps only', setInputKind(benchDef, 'bands'), 'reps');
+check('bodyweight logs reps only', setInputKind(pullDef, 'bodyweight'), 'reps');
+check('no weight logs reps only', setInputKind(benchDef, 'none'), 'reps');
+check('load ignored on a run', setInputKind(BASE_EXERCISES['Running'], 'bands'), 'distance');
+for (const l of LOAD_TYPES) check(`label for ${l}`, typeof loadLabel(l), 'string');
+// stored shape: kg sets unchanged; other loads carry weight 0 + a tag, and the
+// numbers XP, PRs, dungeon and army read match a reps-only set
+check('kg set has no tag', withLoad(storedSet('weight_reps', { reps: 8, weight: 60 }), 'kg'), { reps: 8, weight: 60 });
+check('band set', withLoad(storedSet(setInputKind(benchDef, 'bands'), { reps: 12 }), 'bands'), { reps: 12, weight: 0, load: 'bands' });
+check('band set reads like a reps-only set',
+  (({ reps, weight }) => ({ reps, weight }))(withLoad(storedSet('reps', { reps: 12 }), 'bands')),
+  storedSet('reps', { reps: 12 }));
+check('empty set stays empty', withLoad(storedSet('reps', {}), 'bands'), null);
+check('unknown load ignored', withLoad({ reps: 5, weight: 20 }, 'chains'), { reps: 5, weight: 20 });
+check('untagged set is kg', setLoad({ reps: 5, weight: 20 }), 'kg');
+check('tagged set', setLoad({ reps: 5, weight: 0, load: 'none' }), 'none');
+check('last load from tag', loggedLoad([{ reps: 5, weight: 0, load: 'bands' }]), 'bands');
+check('last load kg from weight', loggedLoad([{ reps: 5, weight: 40 }]), 'kg');
+check('no load from an untagged zero-weight session', loggedLoad([{ reps: 5, weight: 0 }]), null);
 
 console.log(results.join('\n'));
 console.log(`\n${pass} passed, ${fail} failed`);
