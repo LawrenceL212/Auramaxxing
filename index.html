@@ -1441,6 +1441,16 @@
   .stepper input{width:100%;min-width:0;text-align:center;background:transparent;border:none;color:var(--text);-webkit-text-fill-color:var(--text);font-size:16px;padding:0 2px;font-family:var(--font-mono);height:44px;cursor:pointer;caret-color:transparent;-webkit-appearance:none;appearance:none;}
   .stepper input::-webkit-outer-spin-button, .stepper input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0;}
   .stepper input:read-only{cursor:pointer;}
+  /* Time entry (h / m / s) for runs, sports and other timed sets */
+  .time-field{display:flex;align-items:center;gap:2px;background:rgba(255,255,255,0.02);border:1px solid rgba(91,168,255,0.1);border-radius:8px;height:44px;padding:0 6px;min-width:0;}
+  .time-field:focus-within{border-color:var(--brass);}
+  .time-field input{flex:1 1 0;min-width:0;width:100%;background:transparent;border:none;border-radius:0;color:var(--text);-webkit-text-fill-color:var(--text);font-size:16px;font-weight:700;font-family:var(--font-mono);height:32px;text-align:center;padding:0;-webkit-appearance:none;appearance:none;-moz-appearance:textfield;}
+  .time-field input::-webkit-outer-spin-button, .time-field input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0;}
+  .time-field input:focus{outline:none;}
+  .time-field input::placeholder{color:var(--text-faint);font-weight:400;}
+  .time-field .tu{font-size:10px;color:var(--text-faint);font-family:var(--font-mono);padding:0 2px 0 1px;flex-shrink:0;}
+  .set-row .span-2{grid-column:2 / 4;}
+  .set-table-head .span-2{grid-column:2 / 4;}
 
   /* ── Custom in-app numpad ── */
   .numpad-overlay{
@@ -3931,6 +3941,8 @@ import { getArchetypeChains } from "./archetype-chains.js";
 import { getAutoAchievements } from "./auto-achievements.js";
 import { computeStreakFrom, STREAK_RULES_START, shiftDay } from "./streak.js";
 import { backfillDateProblem, earliestBackfillDate, isDuplicateSession, laterDate } from "./backfill.js";
+import { setInputKind, setInputHeaders, storedSet, storedSetSecs, partsToSecs, secsToParts,
+         formatSetTime, isTimeKind } from "./set-inputs.js";
 import { detectReEntry, reEntryPlan, directiveProgress, formatMeasure, DIRECTIVE_METRICS,
          countdown, formatCountdown, timeElapsedFraction, buildDirectivesICS,
          buildWidgetConfig } from "./goals.js";
@@ -4453,8 +4465,7 @@ function closeNumpad(confirm = true) {
       numpadTarget.dispatchEvent(new Event('input'));
       const setRow = numpadTarget.closest('.set-row');
       if (setRow) {
-        const reps = Number(setRow.querySelector('.set-reps')?.value) || 0;
-        setRow.classList.toggle('complete', reps > 0);
+        setRow.classList.toggle('complete', setRowStored(setRow) !== null);
         refreshCompleteButton();
       }
     }
@@ -4594,6 +4605,22 @@ function escapeHtml(str) { return String(str || '').replace(/[&<>"']/g, c => ({'
 function isRunExercise(name) {
   const def = EXERCISES_ALL[name] || {};
   return !!def.timed && (def.intent === 'endurance' || (def.intent === 'explosive' && def.timedUnit === 'mins'));
+}
+/* ── Set inputs per exercise type (rules in set-inputs.js) ──
+   Each logger set row carries data-kind; these read it the same way for every
+   kind, so completion, the Complete button and the save agree on what was entered. */
+function readSetRow(sr) {
+  const kind = sr.dataset.kind || 'weight_reps';
+  const val = c => Number(sr.querySelector(c)?.value) || 0;
+  const secs = kind === 'hold'
+    ? val('.set-reps')
+    : partsToSecs({ h: val('.set-h'), m: val('.set-m'), s: val('.set-s') });
+  return { kind, secs, reps: val('.set-reps'), weight: val('.set-weight'), km: val('.set-dist') };
+}
+/** The stored fields this row would save (no intensity), or null when empty. */
+function setRowStored(sr) {
+  const entered = readSetRow(sr);
+  return storedSet(entered.kind, entered);
 }
 function computeWorkoutVolume(exercises) {
   const out = {};
@@ -8565,8 +8592,7 @@ function refreshCompleteButton() {
   const completedSets = [];
   rows.forEach(row => {
     row.querySelectorAll('.set-row').forEach(sr => {
-      const reps = Number(sr.querySelector('.set-reps')?.value) || 0;
-      if (reps > 0) completedSets.push(sr);
+      if (setRowStored(sr)) completedSets.push(sr);
     });
   });
   if (!completedSets.length) { btn.classList.add('hidden'); return; }
@@ -9539,13 +9565,48 @@ function addExerciseRow(presetName, targetSets, targetReps, prefillSets) {
   const tagsEl = row.querySelector('.muscle-tags');
   const setsList = row.querySelector('.sets-list');
 
-  function stepper(cls, value, min, step, label) {
-    return `<div class="stepper">
+  function stepper(cls, value, min, step, label, extraClass = '') {
+    return `<div class="stepper ${extraClass}">
       <button type="button" class="step-down">−</button>
       <input type="text" inputmode="none" readonly class="${cls}" value="${value ?? ''}" data-min="${min}" data-step="${step}" data-is-weight="${cls==='set-weight'?'1':'0'}" data-label="${label||''}" />
       <button type="button" class="step-up">+</button>
     </div>`;
   }
+  /* h / m / s boxes; `units` picks which appear, e.g. 'hms', 'hm', 'ms'. */
+  function timeField(units, totalSecs, extraClass = '') {
+    const p = totalSecs > 0 ? secsToParts(totalSecs) : null;
+    if (p && !units.includes('h')) { p.m += p.h * 60; p.h = 0; }
+    const box = (u, cls, max, ph) => `<input type="number" class="${cls}" min="0" max="${max}" inputmode="numeric" placeholder="${ph}" value="${p && p[u] ? p[u] : ''}" aria-label="${{h:'Hours',m:'Minutes',s:'Seconds'}[u]}" /><span class="tu">${u}</span>`;
+    return `<div class="time-field ${extraClass}">`
+      + (units.includes('h') ? box('h', 'set-h', 23, '0') : '')
+      + (units.includes('m') ? box('m', 'set-m', units.includes('h') ? 59 : 999, '00') : '')
+      + (units.includes('s') ? box('s', 'set-s', 59, '00') : '')
+      + `</div>`;
+  }
+  /* The inputs for one set, by the exercise's kind (set-inputs.js). Timed sets
+     start empty, as they always have; the LAST tag's Copy button fills them. */
+  function setInputsHtml(kind, prefillReps, prefillWeight) {
+    switch (kind) {
+      case 'distance':
+        return timeField('hms', 0)
+             + `<div class="time-field"><input type="number" class="set-dist" min="0" step="0.01" inputmode="decimal" placeholder="0.00" aria-label="Distance in km" /><span class="tu">km</span></div>`;
+      case 'cardio':
+        return timeField('ms', 0, 'span-2');
+      case 'duration':
+        return timeField('hm', 0, 'span-2');
+      case 'hold':
+        return stepper('set-reps', '', 0, 5, 'Seconds', 'span-2');
+      case 'reps':
+        return stepper('set-reps', prefillReps || '', 0, 1, 'Reps', 'span-2');
+      case 'load_reps':
+        return stepper('set-reps', prefillReps || '', 0, 1, 'Reps')
+             + stepper('set-weight', prefillWeight || '', 0, 2.5, 'Load kg (bodyweight share + added)');
+      default:
+        return stepper('set-reps', prefillReps || '', 0, 1, 'Reps')
+             + stepper('set-weight', prefillWeight || '', 0, 2.5, 'kg');
+    }
+  }
+  function currentKind() { return setInputKind(EXERCISES_ALL[row.dataset.exName]); }
   function rirChips(prefillRir) {
     return `<div class="rir-chips" title="Reps In Reserve">${[0,1,2,3,4,5,6,7,8,9,10].map(n =>
       `<button type="button" class="rir-chip" data-rir="${n}" style="${n<=2?'border-color:rgba(255,77,103,0.4);':n<=5?'border-color:rgba(255,214,107,0.4);':''}">${n}</button>`
@@ -9630,11 +9691,13 @@ function addExerciseRow(presetName, targetSets, targetReps, prefillSets) {
     }));
   }
   function checkComplete(setRow) {
-    const repsInput = setRow.querySelector('.set-reps');
-    const reps = Number(repsInput?.value) || 0;
+    /* reps in stored units (seconds for holds, minutes for timed work), the same
+       number the previous session's set carries, so the comparison below holds */
+    const stored = setRowStored(setRow);
+    const reps = stored ? stored.reps : 0;
     const hasRir = setRow.querySelector('.rir-chip.selected') !== null;
     const wasComplete = setRow.classList.contains('complete');
-    const isNowComplete = reps > 0 && hasRir;
+    const isNowComplete = !!stored && hasRir;
 
     if (isNowComplete) {
       // Determine performance vs previous session
@@ -9778,48 +9841,16 @@ function addExerciseRow(presetName, targetSets, targetReps, prefillSets) {
     const prevTag = (prevReps > 0)
       ? `<div class="prev-session-ref">
            <span style="color:rgba(91,168,255,0.78);font-size:9px;font-family:var(--font-mono);">LAST</span>
-           <span style="color:rgba(91,168,255,0.78);font-size:9px;font-family:var(--font-mono);">${prevReps}${prevWeight > 0 ? ` × ${prevWeight}kg` : ''} ${_prevIntensityTag}</span>
+           <span style="color:rgba(91,168,255,0.78);font-size:9px;font-family:var(--font-mono);">${isTimeKind(currentKind()) ? formatSetTime(currentKind(), storedSetSecs(currentKind(), { reps: prevReps })) : prevReps}${prevWeight > 0 ? ` × ${prevWeight}kg` : ''} ${_prevIntensityTag}</span>
            <button type="button" class="copy-prev-btn" style="background:rgba(91,168,255,.08);border:1px solid rgba(91,168,255,.2);border-radius:4px;color:rgba(91,168,255,0.78);font-size:9px;padding:1px 6px;cursor:pointer;touch-action:manipulation;font-family:var(--font-mono);">↑ Copy</button>
          </div>`
       : '';
-    const timed = isTimed();
-    const unit = timedUnit();
-    const exName = row.dataset.exName || '';
-    const exDef = EXERCISES_ALL[exName] || {};
-    // Run exercises: timed + endurance/agility stat weight dominant
-    const isRunEx = isRunExercise(exName);
-    const repsStep = timed ? (unit === 'mins' ? 1 : 5) : 1;
-    const repsLabel = timed ? (unit === 'mins' ? 'Mins' : 'Secs') : 'Reps';
+    const kind = currentKind();
+    setRow.dataset.kind = kind;
     const suggTag = suggestion ? `<span class="suggest-badge">${suggestion}</span>` : '';
     setRow.innerHTML = `
       <span class="set-idx">${idx}</span>
-      ${isRunEx
-        ? `<div style="display:flex;align-items:center;gap:3px;">
-             <input type="number" class="set-reps" placeholder="00" min="0" max="999" inputmode="numeric"
-               style="width:48px;background:transparent;border:none;border-bottom:1.5px solid rgba(91,168,255,0.25);border-radius:0;color:var(--text);-webkit-text-fill-color:var(--text);padding:0 4px;font-size:16px;font-family:var(--font-mono);height:44px;text-align:center;-webkit-appearance:none;font-weight:700;" />
-             <span style="font-size:12px;color:var(--text-faint);padding:0 1px;">:</span>
-             <input type="number" class="set-secs" placeholder="00" min="0" max="59" inputmode="numeric"
-               style="width:44px;background:transparent;border:none;border-bottom:1.5px solid rgba(91,168,255,0.18);border-radius:0;color:var(--text);-webkit-text-fill-color:var(--text);padding:0 4px;font-size:16px;font-family:var(--font-mono);height:44px;text-align:center;-webkit-appearance:none;font-weight:700;" />
-           </div>
-           <div style="display:flex;align-items:center;gap:4px;">
-             <input type="number" class="set-dist" step="0.01" min="0" placeholder="0.00" inputmode="decimal"
-               style="width:72px;background:rgba(255,255,255,0.02);border:1px solid rgba(91,168,255,0.1);border-radius:8px;color:var(--text);-webkit-text-fill-color:var(--text);padding:0 8px;font-size:16px;font-family:var(--font-mono);height:44px;text-align:center;-webkit-appearance:none;" />
-             <span style="font-size:10px;color:var(--text-faint);">km</span>
-           </div>`
-        : `${timed
-             ? `<div style="display:flex;align-items:center;gap:3px;">
-                 <input type="number" class="set-reps" placeholder="00" min="0" max="${unit==='mins'?60:300}" inputmode="numeric"
-                   style="width:48px;background:transparent;border:none;border-bottom:1.5px solid rgba(91,168,255,0.25);border-radius:0;color:var(--text);-webkit-text-fill-color:var(--text);padding:0 4px;font-size:16px;font-family:var(--font-mono);height:44px;text-align:center;-webkit-appearance:none;font-weight:700;" />
-                 <span style="font-size:12px;color:var(--text-faint);padding:0 1px;">${unit==='mins'?'m':'s'}</span>
-                 ${unit==='secs' ? `<span style="font-size:9px;color:rgba(91,168,255,0.78);font-family:var(--font-mono);letter-spacing:.05em;">SECS</span>` : ''}
-               </div>`
-             : stepper('set-reps', prefillReps || '', 0, repsStep, repsLabel)
-           }
-           ${timed
-             ? '<div class="stepper" style="opacity:0.25;pointer-events:none;"><button>−</button><input type="text" value="BW" readonly style="color:var(--text-faint);font-size:16px;"/><button>+</button></div>'
-             : stepper('set-weight', prefillWeight || '', 0, 2.5, 'kg')
-           }`
-      }
+      ${setInputsHtml(kind, prefillReps, prefillWeight)}
       <button type="button" class="remove-x set-remove">×</button>
       ${suggTag}
       ${prevTag}
@@ -9833,6 +9864,15 @@ function addExerciseRow(presetName, targetSets, targetReps, prefillSets) {
         SFX.pop();
         const repsInput = setRow.querySelector('.set-reps');
         const weightInput = setRow.querySelector('.set-weight');
+        const timeBox = setRow.querySelector('.time-field');
+        if (timeBox && prevReps > 0) {
+          const p = secsToParts(storedSetSecs(setRow.dataset.kind, { reps: prevReps }));
+          if (!timeBox.querySelector('.set-h')) { p.m += p.h * 60; p.h = 0; }
+          [['.set-h', p.h], ['.set-m', p.m], ['.set-s', p.s]].forEach(([c, v]) => {
+            const inp = timeBox.querySelector(c);
+            if (inp) { inp.value = v || ''; inp.dispatchEvent(new Event('input')); }
+          });
+        }
         if (repsInput && prevReps > 0) {
           repsInput.value = prevReps;
           repsInput.dataset.confirmed = '1';
@@ -9884,38 +9924,45 @@ function addExerciseRow(presetName, targetSets, targetReps, prefillSets) {
     // immediately check if prefilled values make this set complete
     if (prefillReps) checkComplete(setRow);
   }
-  function isTimed() {
-    const def = EXERCISES_ALL[row.dataset.exName] || {};
-    return !!def.timed;
-  }
   /* Which intensity scale this exercise logs on. Mirrors the save path's own
      usesRPE predicate exactly, so the control the Hunter sees can never
-     disagree with the field the set is written to. isTimed() alone is not the
+     disagree with the field the set is written to. def.timed alone is not the
      same test: a timed exercise measured in minutes still logs RIR unless it
      is an endurance/run movement. */
   function usesRPE() {
     const def = EXERCISES_ALL[row.dataset.exName] || {};
     return !!(def.timed && (def.timedUnit !== 'mins' || def.intent === 'endurance'));
   }
-  function timedUnit() {
-    const def = EXERCISES_ALL[row.dataset.exName] || {};
-    return def.timedUnit || 'secs';
-  }
   function refreshTags() {
     const def = EXERCISES_ALL[row.dataset.exName] || {};
     const map = def.muscles || {};
-    const isRunEx = isRunExercise(row.dataset.exName);
     tagsEl.innerHTML = Object.keys(map).map(m => `<span class="tag">${m}</span>`).join('');
     const head = row.querySelector('.set-table-head');
-    if (head && !head.classList.contains('hidden')) {
-      head.querySelector('span:nth-child(2)').textContent = isRunEx ? 'MM:SS' : isTimed() ? (timedUnit() === 'mins' ? 'Mins' : 'Secs') : 'Reps';
-      head.querySelector('.weight-header').textContent = isRunEx ? 'km' : isTimed() ? 'BW' : 'Weight (kg)';
+    if (head) {
+      const [first, second] = setInputHeaders(currentKind());
+      const repsHead = head.querySelector('.reps-header');
+      const weightHead = head.querySelector('.weight-header');
+      repsHead.textContent = first;
+      repsHead.classList.toggle('span-2', !second);
+      weightHead.textContent = second || '';
+      weightHead.style.display = second ? '' : 'none';
     }
+  }
+  /* Set rows may have been built before this exercise was chosen, or for a
+     different one. Rows whose inputs are for another kind (kg + reps on a run,
+     say) are rebuilt empty with the right inputs; same-kind rows keep their values. */
+  function rebuildSetInputs() {
+    const kind = currentKind();
+    const rows = [...setsList.querySelectorAll('.set-row')];
+    if (!rows.length || rows.every(sr => sr.dataset.kind === kind)) return;
+    setsList.innerHTML = '';
+    rows.forEach(() => addSetRow());
   }
   function selectExercise(name) {
     row.dataset.exName = name;
     pickerLabel.textContent = name;
     pickerBtn.classList.remove('placeholder');
+    rebuildSetInputs();
     refreshTags();
     /* Phase 11: the set rows may have been built before this exercise was
        chosen. If the scale changed, the intensity control is rebuilt so RIR/RPE
@@ -9953,47 +10000,45 @@ function addExerciseRow(presetName, targetSets, targetReps, prefillSets) {
 document.getElementById('add-exercise-btn')?.addEventListener('click', () => { SFX.pop(); addExerciseRow(); refreshCompleteButton(); });
 addExerciseRow();
 
-document.getElementById('save-workout-btn')?.addEventListener('click', async () => {
-  if (!currentUser) return;
-  const date = document.getElementById('workout-date').value || todayStr();
-  const time = document.getElementById('workout-time').value || nowTimeStr();
+/* The logged exercises as they will be saved. Each set row's inputs match its
+   exercise's kind (set-inputs.js), and storedSet() turns them into the fields
+   the logger has always written, so XP, PRs and reconciliation read the same
+   numbers. Also feeds the live XP bar in the logger. */
+function gatherExercises() {
   const exercises = [];
   exerciseRows.querySelectorAll('.exercise-row').forEach(row => {
     const name = row.dataset.exName;
     if (!name) return;
+    const exDef = EXERCISES_ALL[name] || {};
+    // Whether this exercise uses RIR or RPE semantics
+    const isTimedEx = !!(exDef.timed && exDef.timedUnit !== 'mins');
+    const isRunEx2  = !!(exDef.timed && exDef.intent === 'endurance');
+    const usesRPE   = isTimedEx || isRunEx2;
     const sets = [...row.querySelectorAll('.set-row')].map(sr => {
+      const base = setRowStored(sr);
+      if (!base) return null;
       const selectedRir = sr.querySelector('.rir-chip.selected');
-      const distInput = sr.querySelector('.set-dist');
-      const secsInput = sr.querySelector('.set-secs');
-      const rawVal = Number(sr.querySelector('.set-reps')?.value) || 0;
-      const exDef = EXERCISES_ALL[name] || {};
-      const isSecs = exDef.timed && exDef.timedUnit !== 'mins';
-      // For run exercises: set-reps = minutes, set-secs = seconds (MM:SS)
-      // For timed skill exercises in secs mode: set-reps = raw seconds, no set-secs
-      // For timed exercises in mins mode: set-reps = minutes
-      const mins = secsInput ? rawVal : (isSecs ? 0 : rawVal);
-      const secs = secsInput ? (Number(secsInput.value) || 0) : (isSecs ? rawVal : 0);
-      const totalMins = (mins * 60 + secs) / 60;
-      // Determine whether this exercise uses RIR or RPE semantics
-      const isTimedEx  = !!(exDef.timed && exDef.timedUnit !== 'mins');
-      const isRunEx2   = !!(exDef.timed && exDef.intent === 'endurance');
-      const usesRPE    = isTimedEx || isRunEx2;
-      const chipValue  = selectedRir ? Number(selectedRir.dataset.rir) : null;
+      const chipValue = selectedRir ? Number(selectedRir.dataset.rir) : null;
       return {
-        reps: secsInput
-          ? Math.max(1, Math.round(totalMins))          // run: store rounded minutes
-          : isSecs
-            ? Math.max(1, Math.round(secs))              // timed secs: store raw seconds
-            : (Number(sr.querySelector('.set-reps')?.value) || 0), // strength: store reps
-        weight: Number(sr.querySelector('.set-weight')?.value) || 0,
+        reps: base.reps,
+        weight: base.weight,
         // Semantic split: resistance→rir field, timed/run→rpe field
         rir: (!usesRPE && chipValue !== null) ? chipValue : null,
         rpe: (usesRPE  && chipValue !== null) ? chipValue : null,
-        ...(distInput ? { distKm: parseFloat(distInput.value) || 0 } : {}),
-        ...(secsInput || isSecs ? { durationMins: Math.round(totalMins * 10) / 10 } : {}),
+        ...('distKm' in base ? { distKm: base.distKm } : {}),
+        ...('durationMins' in base ? { durationMins: base.durationMins } : {}),
       };
-    }).filter(s => s.reps > 0 || s.durationMins > 0);    if (sets.length) exercises.push({ name, sets });
+    }).filter(Boolean);
+    if (sets.length) exercises.push({ name, sets });
   });
+  return exercises;
+}
+
+document.getElementById('save-workout-btn')?.addEventListener('click', async () => {
+  if (!currentUser) return;
+  const date = document.getElementById('workout-date').value || todayStr();
+  const time = document.getElementById('workout-time').value || nowTimeStr();
+  const exercises = gatherExercises();
   if (!exercises.length) { showToast('The System requires effort. Log at least one set before completing your quest.', 'error'); return; }
   /* Past sessions go through this same path, so everything below awards them
      as if logged live on `date`. Guard the date and refuse a second copy of a
@@ -22888,22 +22933,16 @@ function openWorkoutDetail(workoutId) {
 
     return (w.exercises||[]).map(ex => {
       const exDef = EXERCISES_ALL[ex.name] || {};
-      const timed = !!exDef.timed;
-      const isRunEx = isRunExercise(ex.name);
-      const repsLabel = timed ? (exDef.timedUnit==='mins'?'Mins':'Secs') : 'Reps';
+      const kind = setInputKind(exDef);
+      const [firstHead, secondHead] = setInputHeaders(kind);
       const sets = (ex.sets||[]).map((s,i) => {
-        // Format duration as MM:SS for run exercises
-        let durationStr = '';
-        if (isRunEx) {
-          const dur = s.durationMins || s.reps || 0;
-          const m = Math.floor(dur);
-          const sec = Math.round((dur - m) * 60);
-          durationStr = `${m}:${String(sec).padStart(2,'0')}`;
-        }
+        const first = isTimeKind(kind) ? formatSetTime(kind, storedSetSecs(kind, s)) : `${s.reps} reps`;
+        const second = kind === 'distance' ? (s.distKm ? Number(s.distKm).toFixed(2)+' km' : '—')
+          : secondHead ? (s.weight ? s.weight+'kg' : '—') : '';
         return `<div class="detail-set-row">
           <span class="set-idx">${i+1}</span>
-          <span>${isRunEx ? durationStr : s.reps + ' ' + repsLabel.toLowerCase()}</span>
-          <span>${isRunEx ? (s.distKm ? s.distKm.toFixed(2)+' km' : '—') : (s.weight ? s.weight+'kg' : '—')}</span>
+          <span>${first}</span>
+          <span>${second}</span>
           ${(() => {
             const _siDisp = getSetIntensity(s, EXERCISES_ALL[ex.name] || {});
             if (_siDisp.type === 'rpe') return `<span style="color:var(--text-faint);font-size:11px;">RPE ${_siDisp.value}</span>`;
@@ -22914,7 +22953,7 @@ function openWorkoutDetail(workoutId) {
       }).join('');
       return `<div class="detail-exercise">
         <p class="detail-ex-name">${escapeHtml(ex.name)}</p>
-        <div class="detail-sets-head"><span>#</span><span>${isRunEx ? 'MM:SS' : repsLabel}</span><span>${isRunEx ? 'km' : 'Weight'}</span><span></span></div>
+        <div class="detail-sets-head"><span>#</span><span>${firstHead}</span><span>${secondHead || ''}</span><span></span></div>
         ${sets}
       </div>`;
     }).join('') || '<p class="sub">No exercises logged.</p>';
@@ -22924,7 +22963,11 @@ function openWorkoutDetail(workoutId) {
     const exHtml = (w.exercises||[]).map((ex, ei) => {
       const exDef = EXERCISES_ALL[ex.name] || {};
       const timed = !!exDef.timed;
-      const repsLabel = timed ? (exDef.timedUnit==='mins'?'Mins':'Secs') : 'Reps';
+      const isRunEx = isRunExercise(ex.name);
+      // Edited in stored units: minutes for runs and timed work, seconds for holds
+      const kind = setInputKind(exDef);
+      const repsLabel = kind === 'hold' ? 'Secs' : isTimeKind(kind) ? 'Mins' : 'Reps';
+      const hasWeight = kind === 'weight_reps' || kind === 'load_reps';
       const isFirst = ei === 0;
       const isLast = ei === (w.exercises.length - 1);
       return `<div class="detail-exercise" data-ei="${ei}">
@@ -22937,7 +22980,7 @@ function openWorkoutDetail(workoutId) {
         <div style="display:flex;justify-content:flex-end;margin-bottom:4px;">
           <button class="btn btn-sm add-set-edit-btn" data-ei="${ei}" style="font-size:11px;padding:4px 8px;">+ Set</button>
         </div>
-        <div class="detail-sets-head"><span>#</span><span>${repsLabel}</span><span>kg</span><span>RIR/RPE</span><span></span></div>
+        <div class="detail-sets-head"><span>#</span><span>${repsLabel}</span><span>${hasWeight ? 'kg' : ''}</span><span>RIR/RPE</span><span></span></div>
         ${(ex.sets||[]).map((s,si) => {
           // Use correct field per schema: resistance reads rir, timed reads rpe (with legacy fallback)
           const isSkillTimed = timed && !isRunEx; // timed skill hold (planche, handstand etc)
@@ -22953,7 +22996,7 @@ function openWorkoutDetail(workoutId) {
           <div class="detail-set-row" data-si="${si}">
             <span class="set-idx">${si+1}</span>
             <input type="number" class="edit-reps" data-ei="${ei}" data-si="${si}" value="${s.reps||0}" min="0" inputmode="decimal" style="width:52px;background:rgba(255,255,255,0.02);border:1px solid rgba(91,168,255,0.1);border-radius:4px;color:var(--text);padding:4px 6px;font-size:16px;" />
-            <input type="number" class="edit-weight" data-ei="${ei}" data-si="${si}" value="${s.weight||0}" min="0" step="0.5" inputmode="decimal" style="width:52px;background:rgba(255,255,255,0.02);border:1px solid rgba(91,168,255,0.1);border-radius:4px;color:var(--text);padding:4px 6px;font-size:16px;" />
+            <input type="number" class="edit-weight" data-ei="${ei}" data-si="${si}" value="${s.weight||0}" min="0" step="0.5" inputmode="decimal" style="${hasWeight ? '' : 'visibility:hidden;'}width:52px;background:rgba(255,255,255,0.02);border:1px solid rgba(91,168,255,0.1);border-radius:4px;color:var(--text);padding:4px 6px;font-size:16px;" />
             <select class="edit-rir" data-ei="${ei}" data-si="${si}" data-field="${isSkillTimed ? 'rpe' : 'rir'}" style="background:rgba(255,255,255,0.02);border:1px solid rgba(91,168,255,0.1);border-radius:4px;color:var(--text);padding:4px 3px;font-size:16px;width:58px;">
               <option value="">—</option>${rirOptions}
             </select>
