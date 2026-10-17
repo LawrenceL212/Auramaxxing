@@ -74,7 +74,10 @@ reward treats them as if logged on that date. Pure, so `node test/backfill.test.
 
 [set-inputs.js](set-inputs.js) decides which inputs the logger shows for a set (kg + reps, reps,
 load + reps, seconds, h:mm, or h:mm:ss + km) from fields each exercise already has, and turns them into
-the same stored fields as before. Pure, so `node test/set-inputs.test.mjs` tests it.
+the same stored fields as before. Exercises with a kg input also get a Load picker (kg, Bands,
+Band assisted on bodyweight moves, Bodyweight, No weight, plus band strength); non-kg sets store
+weight 0 with optional `load`/`band` fields, so formulas read them like a set with no kg. Pure, so
+`node test/set-inputs.test.mjs` tests it.
 
 Lazy-loaded: [classes.js](classes.js) via `await import('./classes.js')` at line 10375 (6 root archetypes, 63 paths, 250+ class names) — kept out of the initial load deliberately.
 
