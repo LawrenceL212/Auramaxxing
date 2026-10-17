@@ -5,6 +5,8 @@ import { BASE_EXERCISES } from '../exercises.js';
 import {
   setInputKind, storedSet, storedSetSecs, partsToSecs, secsToParts, formatSetTime,
   setInputHeaders, SET_INPUT_KINDS,
+  LOAD_TYPES, offersLoadChoice, defaultLoad, setLoad, loggedLoad, withLoad, loadLabel,
+  BAND_LEVELS, bandLabel, setBand, loggedBand, loadText, loadOptions, isBandLoad,
 } from '../set-inputs.js';
 
 let pass = 0, fail = 0;
@@ -102,6 +104,65 @@ check('duration format', formatSetTime('duration', 5400), '1h 30m');
 check('short duration format', formatSetTime('duration', 2700), '45m');
 check('hold format', formatSetTime('hold', 45), '45s');
 check('long hold format', formatSetTime('hold', 125), '2m 05s');
+
+// ── load type picker ──────────────────────────────────────────────────────
+const benchDef = BASE_EXERCISES['Bench Press'], pullDef = BASE_EXERCISES['Pull Up'];
+check('load picker on kg + reps', offersLoadChoice(benchDef), true);
+check('load picker on bodyweight load', offersLoadChoice(pullDef), true);
+check('no load picker on reps only', offersLoadChoice(BASE_EXERCISES['Crunch']), false);
+check('no load picker on runs', offersLoadChoice(BASE_EXERCISES['Running']), false);
+check('no load picker on holds', offersLoadChoice(BASE_EXERCISES['Front Splits']), false);
+check('default load is kg', defaultLoad(benchDef), 'kg');
+check('no default without a picker', defaultLoad(BASE_EXERCISES['Running']), null);
+check('mobility defaults to no weight', defaultLoad({ intent: 'mobility', equipment: 'Cable' }), 'none');
+check('kg keeps kg + reps', setInputKind(benchDef, 'kg'), 'weight_reps');
+check('bands log reps only', setInputKind(benchDef, 'bands'), 'reps');
+check('bodyweight logs reps only', setInputKind(pullDef, 'bodyweight'), 'reps');
+check('no weight logs reps only', setInputKind(benchDef, 'none'), 'reps');
+check('load ignored on a run', setInputKind(BASE_EXERCISES['Running'], 'bands'), 'distance');
+for (const l of LOAD_TYPES) check(`label for ${l}`, typeof loadLabel(l), 'string');
+// stored shape: kg sets unchanged; other loads carry weight 0 + a tag, and the
+// numbers XP, PRs, dungeon and army read match a reps-only set
+check('kg set has no tag', withLoad(storedSet('weight_reps', { reps: 8, weight: 60 }), 'kg'), { reps: 8, weight: 60 });
+check('band set', withLoad(storedSet(setInputKind(benchDef, 'bands'), { reps: 12 }), 'bands'), { reps: 12, weight: 0, load: 'bands' });
+check('band set reads like a reps-only set',
+  (({ reps, weight }) => ({ reps, weight }))(withLoad(storedSet('reps', { reps: 12 }), 'bands')),
+  storedSet('reps', { reps: 12 }));
+check('empty set stays empty', withLoad(storedSet('reps', {}), 'bands'), null);
+check('unknown load ignored', withLoad({ reps: 5, weight: 20 }, 'chains'), { reps: 5, weight: 20 });
+check('untagged set is kg', setLoad({ reps: 5, weight: 20 }), 'kg');
+check('tagged set', setLoad({ reps: 5, weight: 0, load: 'none' }), 'none');
+check('last load from tag', loggedLoad([{ reps: 5, weight: 0, load: 'bands' }]), 'bands');
+check('last load kg from weight', loggedLoad([{ reps: 5, weight: 40 }]), 'kg');
+check('no load from an untagged zero-weight session', loggedLoad([{ reps: 5, weight: 0 }]), null);
+// ── band strength ─────────────────────────────────────────────────────────
+check('band set with strength', withLoad({ reps: 12, weight: 0 }, 'bands', 'heavy'), { reps: 12, weight: 0, load: 'bands', band: 'heavy' });
+check('strength only goes with bands', withLoad({ reps: 12, weight: 0 }, 'bodyweight', 'heavy'), { reps: 12, weight: 0, load: 'bodyweight' });
+check('unknown strength dropped', withLoad({ reps: 12, weight: 0 }, 'bands', 'purple'), { reps: 12, weight: 0, load: 'bands' });
+check('kg ignores strength', withLoad({ reps: 8, weight: 60 }, 'kg', 'heavy'), { reps: 8, weight: 60 });
+check('set band', setBand({ reps: 5, load: 'bands', band: 'light' }), 'light');
+check('stale band on a kg set ignored', setBand({ reps: 5, weight: 40, band: 'light' }), null);
+check('last band', loggedBand([{ reps: 5, load: 'bands', band: 'xheavy' }]), 'xheavy');
+check('no last band', loggedBand([{ reps: 5, weight: 40 }]), null);
+check('text: strength band', loadText({ reps: 5, load: 'bands', band: 'xheavy' }), 'Extra heavy band');
+check('text: band with no strength', loadText({ reps: 5, load: 'bands' }), 'Bands');
+check('text: bodyweight', loadText({ reps: 5, load: 'bodyweight' }), 'Bodyweight');
+check('text: kg', loadText({ reps: 5, weight: 60 }), '60kg');
+check('text: no kg', loadText({ reps: 5, weight: 0 }), '—');
+// assisted vs resisted bands
+const opts = d => loadOptions(d).map(o => o.join(':'));
+check('pull-ups offer assisted and resisted bands', opts(BASE_EXERCISES['Pull Up']),
+  ['kg:Weight (kg)', 'bands:Band resisted', 'band_assist:Band assisted', 'bodyweight:Bodyweight', 'none:No weight']);
+check('bench offers resistance bands only', opts(BASE_EXERCISES['Bench Press']),
+  ['kg:Weight (kg)', 'bands:Bands', 'bodyweight:Bodyweight', 'none:No weight']);
+check('no options on a run', loadOptions(BASE_EXERCISES['Running']), []);
+check('assisted is a band load', isBandLoad('band_assist'), true);
+check('assisted logs reps only', setInputKind(BASE_EXERCISES['Pull Up'], 'band_assist'), 'reps');
+check('assisted set with strength', withLoad({ reps: 6, weight: 0 }, 'band_assist', 'heavy'), { reps: 6, weight: 0, load: 'band_assist', band: 'heavy' });
+check('text: assisted', loadText({ reps: 6, load: 'band_assist', band: 'heavy' }), 'Heavy band assist');
+check('text: assisted, no strength', loadText({ reps: 6, load: 'band_assist' }), 'Band assisted');
+check('last band from an assisted session', loggedBand([{ reps: 6, load: 'band_assist', band: 'light' }]), 'light');
+for (const b of BAND_LEVELS) check(`band label ${b}`, typeof bandLabel(b), 'string');
 
 console.log(results.join('\n'));
 console.log(`\n${pass} passed, ${fail} failed`);
