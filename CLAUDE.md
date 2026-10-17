@@ -71,7 +71,7 @@ trust the name. Read 100–200 lines around a hit, not the file.
 | 17867 | Trends; 19028 exercise library; 19503 feats; 19588 inventory; 19948 trial keys |
 | 20938 | Dungeon damage; 22888 calendar and history (`openWorkoutDetail` with Edit); 23910 shadow army |
 
-Small, testable logic lives in separate files with tests in `test/` (`set-inputs.js`, `backfill.js`, `streak.js`, `goals.js`, `habit.js`, `physique.js`): prefer putting new logic there, not in `index.html`.
+Small, testable logic lives in separate files with tests in `test/` (`set-inputs.js`, `backfill.js`, `streak.js`, `goals.js`, `habit.js`, `physique.js`, `optimiser.js`): prefer putting new logic there, not in `index.html`.
 
 ## Architecture
 
@@ -103,6 +103,14 @@ the same stored fields as before. Exercises with a kg input also get a Load pick
 Band assisted on bodyweight moves, Bodyweight, No weight, plus band strength); non-kg sets store
 weight 0 with optional `load`/`band` fields, so formulas read them like a set with no kg. Pure, so
 `node test/set-inputs.test.mjs` tests it.
+
+[optimiser.js](optimiser.js) suggests plan changes from the plan and the logged sessions: a set
+off a lift that has stalled at RIR 0-1, rep targets moved into the range for the plan's goal
+(Strength, Muscle, Endurance, General), raised targets on bodyweight, band and no-weight moves and
+holds, weekly sets per muscle group against volume landmarks, and e1RM goal lifts missing from the
+plan. The card under the quest carousel (`renderPlanOptimiser`) applies a suggestion only when
+tapped, through the same `programs/{uid}` write as the plan editor; the plan stores the picked
+`goal` and stamps a changed exercise `optimisedAt`. Pure, so `node test/optimiser.test.mjs` tests it.
 
 Lazy-loaded: [classes.js](classes.js) via `await import('./classes.js')` in the class system section (6 root archetypes, 63 paths, 250+ class names) — kept out of the initial load deliberately.
 
