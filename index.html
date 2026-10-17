@@ -1556,6 +1556,28 @@
     text-shadow:0 0 12px rgba(91,168,255,0.5);
   }
 
+  /* ── PLAN OPTIMISER — suggested plan changes under the quest carousel ── */
+  .plan-opt{margin:18px 0 6px;border:1px solid var(--border);border-radius:10px;background:var(--card);padding:12px 14px;}
+  .plan-opt-head{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;background:none;border:0;padding:0;color:inherit;cursor:pointer;text-align:left;}
+  .plan-opt-eyebrow{font-family:var(--font-mono);font-size:10px;letter-spacing:.2em;color:var(--brass);}
+  .plan-opt-count{font-family:var(--font-mono);font-size:10px;color:var(--text-faint);letter-spacing:.08em;}
+  .plan-opt-goals{display:flex;flex-wrap:wrap;gap:6px;margin:12px 0 4px;}
+  .plan-opt-goal{font-size:12px;padding:6px 10px;border-radius:14px;border:1px solid var(--border);background:none;color:var(--text-dim);cursor:pointer;min-height:32px;}
+  .plan-opt-goal.on{border-color:var(--brass);color:var(--brass);}
+  .plan-opt-hint{font-size:11px;color:var(--text-faint);margin:2px 0 8px;}
+  .plan-opt-item{border-top:1px solid var(--border);padding:10px 0 2px;}
+  .plan-opt-title{font-size:14px;font-weight:600;}
+  .plan-opt-reason{font-size:12.5px;color:var(--text-dim);line-height:1.5;margin:4px 0 8px;}
+  .plan-opt-actions{display:flex;gap:8px;}
+  .plan-opt-actions .btn{flex:1;min-height:36px;padding:7px 10px;font-size:12px;width:auto;}
+  .plan-opt-sub{font-family:var(--font-mono);font-size:9.5px;letter-spacing:.18em;color:var(--text-faint);margin:12px 0 4px;}
+  .plan-opt-goalrow{padding:6px 0;}
+  .plan-opt-goalname{display:flex;justify-content:space-between;gap:10px;font-size:13px;font-weight:600;}
+  .plan-opt-goalname span{font-family:var(--font-mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;flex-shrink:0;}
+  .plan-opt-goaldetail{font-size:12px;color:var(--text-dim);margin-top:2px;}
+  .plan-opt-for{font-family:var(--font-mono);font-size:9.5px;letter-spacing:.12em;color:var(--brass);margin-bottom:3px;}
+  .plan-opt-empty{font-size:12.5px;color:var(--text-faint);padding:6px 0 2px;}
+
   /* ── QUEST CARD — mission screen, not a card ── */
   .quest-card{
     position:relative;
@@ -3954,6 +3976,7 @@ import { detectReEntry, reEntryPlan, directiveProgress, formatMeasure, DIRECTIVE
 import { analyseHabit, sampleCurve, describeReturns,
          HABIT_TARGET_DAYS, MISS_GRACE } from "./habit.js";
 import { muscleDevelopment, bodyBuild, bodyFrame, muscleShape } from "./physique.js";
+import { optimisePlan, applySuggestion, activeDismissals, GOALS, GOAL_LABELS } from "./optimiser.js";
 import {
   getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword,
   onAuthStateChanged, signOut, updateProfile
@@ -7901,7 +7924,9 @@ function renderQuestFeed() {
       <button class="carousel-arrow" id="carousel-next" aria-label="Next day">›</button>
     </div>
     <div class="day-dots">${dots}</div>
+    <div id="plan-optimiser"></div>
   `;
+  renderPlanOptimiser();
 
   document.getElementById('edit-program-btn')?.addEventListener('click', () => { editingProgram = true; renderQuestFeed(); });
   document.getElementById('rest-day-log-btn')?.addEventListener('click', () => {
@@ -8334,6 +8359,138 @@ function attachSwipeHandlers(el, onSwipeLeft, onSwipeRight) {
     if (Math.abs(dx) < 50 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
     if (dx < 0) onSwipeLeft(); else onSwipeRight();
   }, { passive: true });
+}
+
+/* =========================================================================
+   PLAN OPTIMISER
+   Suggested plan changes from optimiser.js, under the quest carousel. Only
+   the plan changes, and only when the Hunter taps Apply: the programme is
+   saved through the same programs/{uid} write as the plan editor. The goal
+   picked here is stored on the programme as `goal`; dismissals stay on this
+   device.
+   ========================================================================= */
+const PLAN_OPT_OPEN_KEY = 'aura_plan_opt_open';
+function planOptDismissKey() { return 'aura_plan_opt_dismissed_' + (currentUser?.uid || ''); }
+function readPlanOptDismissed() {
+  try { return JSON.parse(localStorage.getItem(planOptDismissKey()) || '{}') || {}; } catch (_) { return {}; }
+}
+function writePlanOptDismissed(record) {
+  try { localStorage.setItem(planOptDismissKey(), JSON.stringify(record)); } catch (_) { /* private mode */ }
+}
+function planOptIsOpen() {
+  try { return localStorage.getItem(PLAN_OPT_OPEN_KEY) !== 'closed'; } catch (_) { return true; }
+}
+
+function renderPlanOptimiser() {
+  const host = document.getElementById('plan-optimiser');
+  if (!host || !myProgram || !myProgram.days?.length) return;
+  const today = todayStr();
+  let result;
+  try {
+    result = optimisePlan({
+      program: myProgram,
+      exercises: EXERCISES_ALL,
+      workouts: myWorkouts.filter(w => w.uid === currentUser?.uid),
+      today,
+      goal: myProgram.goal,
+      personalGoals: profile?.personalGoals || [],
+      directives: profile?.directives || [],
+      prs: myPRs || {},
+      bodyweightKg: latestBodyweightKg(),
+      weeklyGoal: profile?.weeklyGoal || 3,
+      dismissed: activeDismissals(readPlanOptDismissed(), today),
+    });
+  } catch (e) {
+    console.warn('Plan optimiser failed:', e);
+    host.innerHTML = '';
+    return;
+  }
+  const open = planOptIsOpen();
+  const n = result.suggestions.length;
+  const goalChips = GOALS.map(g => `<button type="button" class="plan-opt-goal ${g === result.goal ? 'on' : ''}" data-goal="${g}">${GOAL_LABELS[g]}</button>`).join('');
+  const GOAL_STATUS = {
+    hit: ['Reached', 'var(--growing)'], on_track: ['On track', 'var(--growing)'],
+    tracking: ['Tracking', 'var(--text-dim)'], not_started: ['Starting', 'var(--text-dim)'],
+    stalled: ['Stalled', 'var(--excess)'], behind: ['Behind', 'var(--excess)'], not_in_plan: ['Not in plan', 'var(--excess)'],
+  };
+  const goalRows = result.goals.map(a => {
+    const [label, color] = GOAL_STATUS[a.status] || GOAL_STATUS.tracking;
+    return `<div class="plan-opt-goalrow">
+      <div class="plan-opt-goalname">${escapeHtml(a.name)}<span style="color:${color};">${label}</span></div>
+      <div class="plan-opt-goaldetail">${escapeHtml(a.detail)}</div>
+    </div>`;
+  }).join('');
+  const items = result.suggestions.map((s, i) => `
+    <div class="plan-opt-item" data-i="${i}">
+      ${s.goal ? `<div class="plan-opt-for">FOR · ${escapeHtml(s.goal)}</div>` : ''}
+      <div class="plan-opt-title">${escapeHtml(s.title)}</div>
+      <div class="plan-opt-reason">${escapeHtml(s.reason)}</div>
+      <div class="plan-opt-actions">
+        ${s.change ? `<button type="button" class="btn btn-primary plan-opt-apply" data-i="${i}">Apply</button>` : ''}
+        <button type="button" class="btn plan-opt-dismiss" data-i="${i}">${s.change ? 'Dismiss' : 'Got it'}</button>
+      </div>
+    </div>`).join('');
+
+  host.innerHTML = `
+    <div class="plan-opt">
+      <button type="button" class="plan-opt-head" id="plan-opt-toggle" aria-expanded="${open}">
+        <span class="plan-opt-eyebrow">◈ PLAN OPTIMISER</span>
+        <span class="plan-opt-count">${n ? `${n} suggestion${n === 1 ? '' : 's'}` : 'plan looks good'} ${open ? '▴' : '▾'}</span>
+      </button>
+      ${open ? `
+        <div class="plan-opt-goals" role="group" aria-label="Training goal">${goalChips}</div>
+        <div class="plan-opt-hint">${!result.inferred ? 'Suggestions follow this goal.' : result.goal === 'general' ? 'No goal picked yet. Tap one to tailor the suggestions.' : `Set to ${GOAL_LABELS[result.goal]} from your goals. Tap one to change it.`}</div>
+        ${goalRows ? `<div class="plan-opt-sub">YOUR GOALS</div>${goalRows}` : `<div class="plan-opt-hint">Set a personal goal in Feats and the plan will be tuned toward it.</div>`}
+        ${items ? `<div class="plan-opt-sub">SUGGESTED CHANGES</div>` : ''}
+        ${items || '<div class="plan-opt-empty">Nothing to change right now. Suggestions appear as your logged sessions build up.</div>'}
+      ` : ''}
+    </div>`;
+
+  host.querySelector('#plan-opt-toggle')?.addEventListener('click', () => {
+    try { localStorage.setItem(PLAN_OPT_OPEN_KEY, open ? 'closed' : 'open'); } catch (_) { /* keep going */ }
+    renderPlanOptimiser();
+  });
+  host.querySelectorAll('.plan-opt-goal').forEach(btn => btn.addEventListener('click', async () => {
+    SFX.chipSelect();
+    const goal = btn.dataset.goal;
+    if (goal === myProgram.goal) return;
+    const prev = myProgram.goal;
+    myProgram.goal = goal;
+    renderPlanOptimiser();
+    try {
+      await setDoc(doc(db, 'programs', currentUser.uid), myProgram);
+    } catch (e) {
+      console.error('Saving plan goal failed:', e);
+      if (prev === undefined) delete myProgram.goal; else myProgram.goal = prev;
+      showToast('Could not save the goal. Try again.', 'error');
+      renderPlanOptimiser();
+    }
+  }));
+  host.querySelectorAll('.plan-opt-dismiss').forEach(btn => btn.addEventListener('click', () => {
+    const s = result.suggestions[Number(btn.dataset.i)];
+    if (!s) return;
+    const record = readPlanOptDismissed();
+    record[s.id] = today;
+    writePlanOptDismissed(record);
+    renderPlanOptimiser();
+  }));
+  host.querySelectorAll('.plan-opt-apply').forEach(btn => btn.addEventListener('click', async () => {
+    const s = result.suggestions[Number(btn.dataset.i)];
+    const next = s && applySuggestion(myProgram, s, today);
+    if (!next) { showToast('Your plan changed since this was suggested. Refreshed.', 'info'); renderPlanOptimiser(); return; }
+    btn.disabled = true;
+    const prev = myProgram;
+    myProgram = next;
+    try {
+      await setDoc(doc(db, 'programs', currentUser.uid), myProgram);
+      showToast(`Plan updated: ${s.title}`, 'success');
+    } catch (e) {
+      console.error('Applying plan suggestion failed:', e);
+      myProgram = prev;
+      showToast('Could not update the plan. Try again.', 'error');
+    }
+    renderQuestFeed();
+  }));
 }
 
 /* =========================================================================
