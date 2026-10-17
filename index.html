@@ -1570,6 +1570,12 @@
   .plan-opt-reason{font-size:12.5px;color:var(--text-dim);line-height:1.5;margin:4px 0 8px;}
   .plan-opt-actions{display:flex;gap:8px;}
   .plan-opt-actions .btn{flex:1;min-height:36px;padding:7px 10px;font-size:12px;width:auto;}
+  .plan-opt-sub{font-family:var(--font-mono);font-size:9.5px;letter-spacing:.18em;color:var(--text-faint);margin:12px 0 4px;}
+  .plan-opt-goalrow{padding:6px 0;}
+  .plan-opt-goalname{display:flex;justify-content:space-between;gap:10px;font-size:13px;font-weight:600;}
+  .plan-opt-goalname span{font-family:var(--font-mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;flex-shrink:0;}
+  .plan-opt-goaldetail{font-size:12px;color:var(--text-dim);margin-top:2px;}
+  .plan-opt-for{font-family:var(--font-mono);font-size:9.5px;letter-spacing:.12em;color:var(--brass);margin-bottom:3px;}
   .plan-opt-empty{font-size:12.5px;color:var(--text-faint);padding:6px 0 2px;}
 
   /* ── QUEST CARD — mission screen, not a card ── */
@@ -8388,6 +8394,9 @@ function renderPlanOptimiser() {
       today,
       goal: myProgram.goal,
       personalGoals: profile?.personalGoals || [],
+      directives: profile?.directives || [],
+      prs: myPRs || {},
+      bodyweightKg: latestBodyweightKg(),
       weeklyGoal: profile?.weeklyGoal || 3,
       dismissed: activeDismissals(readPlanOptDismissed(), today),
     });
@@ -8399,8 +8408,21 @@ function renderPlanOptimiser() {
   const open = planOptIsOpen();
   const n = result.suggestions.length;
   const goalChips = GOALS.map(g => `<button type="button" class="plan-opt-goal ${g === result.goal ? 'on' : ''}" data-goal="${g}">${GOAL_LABELS[g]}</button>`).join('');
+  const GOAL_STATUS = {
+    hit: ['Reached', 'var(--growing)'], on_track: ['On track', 'var(--growing)'],
+    tracking: ['Tracking', 'var(--text-dim)'], not_started: ['Starting', 'var(--text-dim)'],
+    stalled: ['Stalled', 'var(--excess)'], behind: ['Behind', 'var(--excess)'], not_in_plan: ['Not in plan', 'var(--excess)'],
+  };
+  const goalRows = result.goals.map(a => {
+    const [label, color] = GOAL_STATUS[a.status] || GOAL_STATUS.tracking;
+    return `<div class="plan-opt-goalrow">
+      <div class="plan-opt-goalname">${escapeHtml(a.name)}<span style="color:${color};">${label}</span></div>
+      <div class="plan-opt-goaldetail">${escapeHtml(a.detail)}</div>
+    </div>`;
+  }).join('');
   const items = result.suggestions.map((s, i) => `
     <div class="plan-opt-item" data-i="${i}">
+      ${s.goal ? `<div class="plan-opt-for">FOR · ${escapeHtml(s.goal)}</div>` : ''}
       <div class="plan-opt-title">${escapeHtml(s.title)}</div>
       <div class="plan-opt-reason">${escapeHtml(s.reason)}</div>
       <div class="plan-opt-actions">
@@ -8417,7 +8439,9 @@ function renderPlanOptimiser() {
       </button>
       ${open ? `
         <div class="plan-opt-goals" role="group" aria-label="Training goal">${goalChips}</div>
-        <div class="plan-opt-hint">${!result.inferred ? 'Suggestions follow this goal.' : result.goal === 'strength' ? 'Set to Strength from your lift goal. Tap one to change it.' : 'No goal picked yet. Tap one to tailor the suggestions.'}</div>
+        <div class="plan-opt-hint">${!result.inferred ? 'Suggestions follow this goal.' : result.goal === 'general' ? 'No goal picked yet. Tap one to tailor the suggestions.' : `Set to ${GOAL_LABELS[result.goal]} from your goals. Tap one to change it.`}</div>
+        ${goalRows ? `<div class="plan-opt-sub">YOUR GOALS</div>${goalRows}` : `<div class="plan-opt-hint">Set a personal goal in Feats and the plan will be tuned toward it.</div>`}
+        ${items ? `<div class="plan-opt-sub">SUGGESTED CHANGES</div>` : ''}
         ${items || '<div class="plan-opt-empty">Nothing to change right now. Suggestions appear as your logged sessions build up.</div>'}
       ` : ''}
     </div>`;

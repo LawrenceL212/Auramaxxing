@@ -3,7 +3,7 @@
 import { BASE_EXERCISES } from '../exercises.js';
 import {
   optimisePlan, applySuggestion, plannedVolume, plannedSessionsPerWeek, resolveGoal,
-  exerciseHistory, targetReps, activeDismissals, groupCredit,
+  exerciseHistory, targetReps, activeDismissals, groupCredit, assessGoals, liftTrend, e1rm,
 } from '../optimiser.js';
 
 let pass = 0, fail = 0;
@@ -180,8 +180,75 @@ check('no plan: nothing', run({ program: null }).suggestions, []);
 {
   const p = plan([day('Legs', [{ name: 'Squat', sets: 3, reps: 5 }])]);
   const r = run({ program: p, personalGoals: [{ type: 'e1rm', exercise: 'Deadlift', target: 180, name: '180 pull' }] });
-  check('an e1RM goal lift missing from the plan is suggested first', r.suggestions[0] && r.suggestions[0].id, 'goal-lift:Deadlift');
+  check('an e1RM goal lift missing from the plan is suggested first', r.suggestions[0] && r.suggestions[0].id, 'goal-add:Deadlift');
   check('an e1RM goal sets the goal to strength', r.goal, 'strength');
+}
+
+// ── how you're doing on your goals ──────────────────────────────────────
+{
+  const benchGoal = [{ type: 'e1rm', exercise: 'Bench Press', target: 100, name: '100kg Bench' }];
+  const p = plan([
+    day('Push', [{ name: 'Overhead Press', sets: 3, reps: 5 }, { name: 'Bench Press', sets: 3, reps: 5 }]),
+    day('Pull', [{ name: 'Barbell Row', sets: 3, reps: 5 }]),
+  ], ['Mon', 'Thu']);
+  const flat = ['2026-08-25', '2026-09-08', '2026-09-22', '2026-10-06'].map(d => session(d, 'Bench Press', kgSets(3, 80, 5, 2)));
+  const climbing = ['2026-08-25', '2026-09-08', '2026-09-22', '2026-10-06'].map((d, k) => session(d, 'Bench Press', kgSets(3, 75 + k * 2.5, 5, 2)));
+
+  check('e1rm matches epley1RM', [e1rm(80, 5), e1rm(100, 1), e1rm(0, 5)], [93.3, 100, 0]);
+  check('lift trend reads kg per week', liftTrend('Bench Press', climbing, TODAY).rate > 0.9, true);
+  check('flat lift: rate ~0', liftTrend('Bench Press', flat, TODAY).rate, 0);
+
+  const ctx = { program: p, exercises: EX, today: TODAY, personalGoals: benchGoal, goal: 'strength' };
+  const flatGoal = assessGoals({ ...ctx, workouts: flat })[0];
+  check('flat for 8 weeks -> stalled', flatGoal.status, 'stalled');
+  const upGoal = assessGoals({ ...ctx, workouts: climbing })[0];
+  check('climbing -> on track with an estimate', [upGoal.status, /weeks to go/.test(upGoal.detail)], ['on_track', true]);
+  check('target reached -> hit', assessGoals({ ...ctx, workouts: [session('2026-10-10', 'Bench Press', kgSets(1, 100, 1, 0))] })[0].status, 'hit');
+  check('PR record counts toward the goal', assessGoals({ ...ctx, workouts: [], prs: { 'Bench Press': { e1rm: 101 } } })[0].status, 'hit');
+
+  const r = run({ ...ctx, workouts: flat });
+  check('stalled goal lift: first move it to the start of its day', r.suggestions[0].change, { op: 'move', dayIndex: 0, exIndex: 1, name: 'Bench Press', to: 0 });
+  check('goal suggestions say which goal they serve', r.suggestions[0].goal, '100kg Bench');
+  const moved = applySuggestion(p, r.suggestions[0], TODAY);
+  check('apply: move puts it first', moved.days[0].exercises.map(e => e.name), ['Bench Press', 'Overhead Press']);
+  const r2 = run({ ...ctx, program: moved, workouts: flat });
+  check('then: train it a second day', r2.suggestions[0].change && r2.suggestions[0].change.op + ':' + r2.suggestions[0].change.dayIndex, 'add:1');
+  const twice = applySuggestion(moved, r2.suggestions[0], TODAY);
+  const r3 = run({ ...ctx, program: twice, workouts: flat });
+  check('then: one more set', r3.suggestions[0].id, 'goal-set:Bench Press:4');
+
+  check('on track: the goal lift is left alone', run({ ...ctx, workouts: climbing }).suggestions.filter(s => s.goal), []);
+
+  const high = plan([day('Push', [{ name: 'Bench Press', sets: 3, reps: 10 }])]);
+  const rh = run({ ...ctx, program: high, goal: 'muscle', workouts: climbing });
+  check('goal lift trains heavy even on a muscle plan', rh.suggestions.find(s => s.id.startsWith('goal-reps:')).change.to, 6);
+  check('no muscle-range rep suggestion fights it', rh.suggestions.some(s => s.id.startsWith('reps:Bench Press')), false);
+}
+{
+  const p = plan([day('A', [{ name: 'Squat', sets: 3, reps: 8 }])]);
+  const g = [{ type: 'sessions', exercise: 'Pull Up', target: 50, name: '50 pull-up days', createdAt: '2026-10-01' }];
+  const r = run({ program: p, personalGoals: g });
+  check('a sessions goal exercise missing from the plan gets added', r.suggestions[0].id, 'goal-add:Pull Up');
+  check('goal status listed', r.goals[0].status, 'not_in_plan');
+}
+{
+  const p = plan([day('A', [{ name: 'Squat', sets: 3, reps: 8 }])]);
+  const d = [{ id: 'hm', title: 'Half marathon', metric: 'longest_run_km', target: 21, since: '2026-09-01', targetDate: '2026-11-01' }];
+  const runs = [{ date: '2026-09-10', runSummary: { distKm: 5 }, exercises: [] }];
+  const r = run({ program: p, directives: d, workouts: runs });
+  check('a run directive implies endurance', r.goal, 'endurance');
+  check('behind pace with no runs in the plan: add a run', r.suggestions[0].change && r.suggestions[0].change.exercise.name, 'Running');
+}
+{
+  const d = [{ id: 'bw', title: 'Bulk to 80', metric: 'body_weight_kg', target: 80, startValue: 72 }];
+  check('a weight-gain directive implies muscle', run({ program: balanced, directives: d, bodyweightKg: 73 }).goal, 'muscle');
+}
+{
+  const dates = ['2026-09-01', '2026-10-03', '2026-10-10'];
+  const sparse = dates.map(d => session(d, 'Squat', kgSets(3, 100, 8, 2)));
+  const r = run({ program: balanced, goal: 'general', workouts: sparse, personalGoals: [{ type: 'streak', target: 30, name: '30-day streak' }] });
+  check('a slipping consistency goal gets its own note', !!r.suggestions.find(x => x.id.startsWith('goal-consistency')), true);
+  check('...instead of the generic one', !!r.suggestions.find(x => x.id.startsWith('schedule-adherence')), false);
 }
 
 // ── schedule notes ───────────────────────────────────────────────────────

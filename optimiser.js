@@ -20,7 +20,13 @@
      volume        weekly planned sets per muscle group against the
                    goal's landmarks: add a set, add an exercise for a
                    group nothing trains, or cut a set past the maximum
-     goal lift     a personal e1RM goal whose exercise is not in the plan
+     your goals    each personal goal and directive is checked against
+                   how the Hunter is doing on it, and drives the plan:
+                   a lift goal that is stalling gets trained heavier,
+                   first in the session, and twice a week; a goal
+                   exercise missing from the plan is added; a run
+                   directive behind its pace adds running; consistency
+                   goals that are slipping get a plan that fits the week
      schedule      plan sessions per week against the weekly goal, and
                    against how often the Hunter actually trains (notes
                    only, never applied)
@@ -33,6 +39,7 @@
    ========================================================================= */
 
 import { setInputKind, setLoad, setBand, BAND_LEVELS, isRunDef } from './set-inputs.js';
+import { directiveProgress, timeElapsedFraction } from './goals.js';
 
 export const GOALS = ['strength', 'muscle', 'endurance', 'general'];
 
@@ -233,10 +240,18 @@ function volumeTarget(goal, group) {
 
 /** The goal the optimiser works to: the one picked, else strength when the
     Hunter has set an e1RM goal, else general. */
-export function resolveGoal(goal, personalGoals) {
+export function resolveGoal(goal, personalGoals, directives, bodyweightKg) {
   if (GOALS.includes(goal)) return { goal, inferred: false };
   const hasLiftGoal = (personalGoals || []).some(g => g && g.type === 'e1rm' && g.exercise);
-  return { goal: hasLiftGoal ? 'strength' : 'general', inferred: true };
+  if (hasLiftGoal) return { goal: 'strength', inferred: true };
+  const ds = directives || [];
+  if (ds.some(d => d && (d.metric === 'longest_run_km' || d.metric === 'total_distance_km'))) {
+    return { goal: 'endurance', inferred: true };
+  }
+  const bw = ds.find(d => d && d.metric === 'body_weight_kg' && Number(d.target) > 0);
+  const from = bw && (Number(bodyweightKg) || Number(bw.startValue));
+  if (bw && from && Number(bw.target) > from) return { goal: 'muscle', inferred: true };
+  return { goal: 'general', inferred: true };
 }
 
 /* ── the rules ─────────────────────────────────────────────────────────── */
@@ -289,7 +304,8 @@ function exerciseRules(ctx) {
 
       // 2. Rep target outside the goal's range (kg-loaded lifts only: a
       //    bodyweight move cannot drop to 5 reps without adding weight).
-      if (!timed && kind === 'weight_reps' && (target < range.min || target > range.max)) {
+      if (!timed && kind === 'weight_reps' && !(ctx.goalLifts && ctx.goalLifts.has(ex.name)) &&
+          (target < range.min || target > range.max)) {
         const to = clamp(target, range.min, range.max);
         out.push({
           id: `reps:${ex.name}:${to}`,
@@ -466,30 +482,289 @@ function volumeRules(ctx, touched) {
   return out;
 }
 
-function goalLiftRules(ctx) {
-  const { program, exercises, personalGoals } = ctx;
-  const inPlan = new Set();
-  (program.days || []).forEach(d => (d.exercises || []).forEach(e => inPlan.add(e.name)));
+/* ── YOUR GOALS ─────────────────────────────────────────────────────────
+   Each personal goal (profile.personalGoals) and directive (profile.directives)
+   is checked against the training record, and how the Hunter is doing on it
+   decides what the plan should change. */
+
+/** Same estimate as epley1RM() in index.html. */
+export function e1rm(weight, reps) {
+  const w = Number(weight) || 0, r = Number(reps) || 0;
+  if (r <= 0 || w <= 0) return 0;
+  if (r === 1) return w;
+  return Math.round(w * (1 + r / 30) * 10) / 10;
+}
+
+/** Below this gain per week a lift is counted as stalled toward its goal. */
+export const STALL_KG_PER_WEEK = 0.25;
+/** The window the lift trend is read over. */
+export const TREND_DAYS = 56;
+
+/**
+ * Where a lift stands: best estimated 1RM ever, and the trend of each
+ * session's best over the last 8 weeks (kg per week, least squares).
+ */
+export function liftTrend(name, workouts, today, prBest = 0) {
+  const since = shiftDate(today, -TREND_DAYS);
+  let best = Number(prBest) || 0;
+  const points = [];
+  for (const w of workouts || []) {
+    if (!w || !w.date || w.date > today) continue;
+    for (const e of w.exercises || []) {
+      if (!e || e.name !== name) continue;
+      const top = Math.max(0, ...workingSets(e)
+        .filter(st => setLoad(st) === 'kg')
+        .map(st => e1rm(st.weight, st.reps)));
+      if (!top) continue;
+      best = Math.max(best, top);
+      if (w.date >= since) points.push({ x: dayDiff(since, w.date) / 7, y: top });
+    }
+  }
+  let rate = null;
+  if (points.length >= 3) {
+    const mx = avg(points.map(p => p.x)), my = avg(points.map(p => p.y));
+    const sxx = points.reduce((t, p) => t + (p.x - mx) ** 2, 0);
+    rate = sxx ? points.reduce((t, p) => t + (p.x - mx) * (p.y - my), 0) / sxx : 0;
+    rate = Math.round(rate * 100) / 100;
+  }
+  return { best, sessions: points.length, rate };
+}
+
+function planDaysWith(program, name) {
   const out = [];
-  for (const g of personalGoals || []) {
-    if (!g || g.type !== 'e1rm' || !g.exercise || inPlan.has(g.exercise) || !exercises[g.exercise]) continue;
-    const credit = groupCredit(exercises[g.exercise]);
-    const group = Object.entries(credit).sort((a, b) => b[1] - a[1])[0];
-    const di = group ? pickDay(group[0], ctx) : 0;
-    if (di < 0) continue;
-    inPlan.add(g.exercise);
-    const dayName = program.days[di].name || `Day ${di + 1}`;
+  (program.days || []).forEach((d, di) => (d.exercises || []).forEach((e, ei) => {
+    if (e.name === name) out.push({ dayIndex: di, exIndex: ei, ex: e });
+  }));
+  return out;
+}
+
+function weeklyFrequency(program, name) {
+  const freq = dayFrequencies(program);
+  return planDaysWith(program, name).reduce((t, h) => t + (freq[h.dayIndex] || 0), 0);
+}
+
+/** Workout dates per week over the last 4 weeks, or null with under 4 weeks of history. */
+function recentPerWeek(workouts, today) {
+  const dates = [...new Set((workouts || []).map(w => w && w.date).filter(Boolean))].sort();
+  if (!dates.length || dayDiff(dates[0], today) < 28) return null;
+  const since = shiftDate(today, -28);
+  const recent = dates.filter(d => d > since && d <= today).length;
+  return { recent, perWeek: Math.round((recent / 4) * 10) / 10 };
+}
+
+/**
+ * How the Hunter is doing on each goal.
+ * @returns [{ key, name, kind, status: 'hit'|'on_track'|'behind'|'stalled'|'not_started'|'not_in_plan'|'tracking',
+ *            detail, exercise? }]
+ */
+export function assessGoals(ctx) {
+  const { program, workouts, today, prs } = ctx;
+  const out = [];
+  for (const g of ctx.personalGoals || []) {
+    if (!g || !g.type) continue;
+    const name = g.name || g.exercise || 'Goal';
+    if (g.type === 'e1rm' && g.exercise) {
+      const t = liftTrend(g.exercise, workouts, today, prs && prs[g.exercise] && prs[g.exercise].e1rm);
+      const target = Number(g.target) || 0;
+      const inPlan = planDaysWith(program, g.exercise).length > 0;
+      let status, detail;
+      if (target && t.best >= target) {
+        status = 'hit'; detail = `${t.best}kg e1RM, target ${target}kg reached`;
+      } else if (!inPlan) {
+        status = 'not_in_plan'; detail = `${t.best ? t.best + 'kg' : 'No'} e1RM so far, not in your plan`;
+      } else if (t.rate == null) {
+        status = 'not_started'; detail = t.best ? `${t.best}kg e1RM; log 3 sessions to read a trend` : 'No kg sessions logged yet';
+      } else if (t.rate < STALL_KG_PER_WEEK) {
+        status = 'stalled'; detail = `${t.best}kg of ${target}kg, no gain over your last ${t.sessions} sessions`;
+      } else {
+        const weeks = Math.ceil((target - t.best) / t.rate);
+        status = 'on_track'; detail = `${t.best}kg of ${target}kg, +${t.rate}kg a week, about ${weeks} week${weeks === 1 ? '' : 's'} to go`;
+      }
+      out.push({ key: `e1rm:${g.exercise}`, name, kind: 'lift', status, detail, exercise: g.exercise, target, trend: t });
+    } else if (g.type === 'sessions' && g.exercise) {
+      const count = (workouts || []).filter(w => w && w.date >= (g.createdAt || '0000') &&
+        (w.exercises || []).some(e => e && e.name === g.exercise && workingSets(e).length)).length;
+      const target = Number(g.target) || 0;
+      const inPlan = planDaysWith(program, g.exercise).length > 0;
+      out.push({
+        key: `sessions:${g.exercise}`, name, kind: 'sessions', exercise: g.exercise,
+        status: target && count >= target ? 'hit' : inPlan ? 'tracking' : 'not_in_plan',
+        detail: `${count} of ${target} sessions${inPlan ? '' : ', not in your plan'}`,
+      });
+    } else if (g.type === 'streak' || g.type === 'workouts') {
+      const pace = recentPerWeek(workouts, today);
+      const planned = plannedSessionsPerWeek(program);
+      const behind = pace && planned >= 2 && pace.perWeek <= planned * 0.6;
+      out.push({
+        key: `${g.type}:${g.target}`, name, kind: 'consistency',
+        status: behind ? 'behind' : 'tracking',
+        detail: pace ? `${pace.perWeek} sessions a week lately, plan asks ${planned}` : 'Consistency goal',
+      });
+    }
+  }
+  for (const d of ctx.directives || []) {
+    if (!d || !d.title || !d.metric || d.metric === 'none') continue;
+    const p = directiveProgress(d, {
+      workouts, workoutDates: new Set((workouts || []).map(w => w && w.date).filter(Boolean)),
+      today, bodyweightKg: ctx.bodyweightKg,
+    });
+    const elapsed = d.targetDate ? timeElapsedFraction(d, new Date(today + 'T12:00:00')) : 0;
+    const kind = d.metric === 'body_weight_kg' ? 'bodyweight'
+      : d.metric === 'training_days' ? 'consistency' : 'run';
+    let status = 'tracking';
+    if (p.target && p.pct >= 100) status = 'hit';
+    else if (d.targetDate && elapsed - p.pct / 100 > 0.15) status = 'behind';
+    else if (d.targetDate) status = 'on_track';
+    const unit = p.unit ? ` ${p.unit}` : '';
+    const fmt = v => Math.round(v * 10) / 10;
     out.push({
-      id: `goal-lift:${g.exercise}`,
-      type: 'add',
-      title: `Add ${g.exercise} to ${dayName}`,
-      reason: `Your goal "${g.name || g.exercise}" is a ${g.target}kg ${g.exercise}, but it isn't in your plan. 3 sets of 5 trains it toward that.`,
-      change: { op: 'add', dayIndex: di, exercise: { name: g.exercise, sets: 3, reps: GOAL_REPS.strength.start } },
-      priority: 1,
+      key: `directive:${d.id || d.title}`, name: d.title, kind, metric: d.metric, status,
+      detail: `${fmt(p.current)}${unit} of ${fmt(p.target)}${unit}` +
+        (d.targetDate ? `, ${Math.round(p.pct)}% done with ${Math.round(elapsed * 100)}% of the time gone` : ''),
     });
   }
   return out;
 }
+
+/** Plan suggestions that follow from how the Hunter is doing on each goal. */
+function goalRules(ctx, assessed, busy) {
+  const { program, exercises } = ctx;
+  const out = [];
+  const freq = dayFrequencies(program);
+  const planNames = new Set();
+  (program.days || []).forEach(d => (d.exercises || []).forEach(e => planNames.add(e.name)));
+
+  const addTo = (name, preferNot) => {
+    const credit = groupCredit(exercises[name]);
+    const group = Object.entries(credit).sort((a, b) => b[1] - a[1])[0];
+    let di = group ? pickDay(group[0], ctx) : 0;
+    if (preferNot && preferNot.has(di)) {
+      // fewest exercises among days that do not already have it
+      const free = (program.days || []).map((d, i) => ({ i, n: (d.exercises || []).length }))
+        .filter(x => !preferNot.has(x.i)).sort((a, b) => a.n - b.n || a.i - b.i);
+      di = free.length ? free[0].i : -1;
+    }
+    return di;
+  };
+
+  for (const a of assessed) {
+    const tag = a.name;
+    if ((a.kind === 'lift' || a.kind === 'sessions') && a.status === 'not_in_plan' && exercises[a.exercise] && !planNames.has(a.exercise)) {
+      const di = addTo(a.exercise);
+      if (di < 0) continue;
+      planNames.add(a.exercise);
+      const reps = a.kind === 'lift' ? GOAL_REPS.strength.start : GOAL_REPS[ctx.goal].start;
+      const dayName = program.days[di].name || `Day ${di + 1}`;
+      out.push({
+        id: `goal-add:${a.exercise}`, type: 'add', goal: tag,
+        title: `Add ${a.exercise} to ${dayName}`,
+        reason: a.kind === 'lift'
+          ? `Your goal "${tag}" is a ${a.target}kg ${a.exercise}, but it isn't in your plan. 3 sets of 5 trains it toward that.`
+          : `Your goal "${tag}" counts ${a.exercise} sessions, but it isn't in your plan, so it only grows when you add it by hand.`,
+        change: { op: 'add', dayIndex: di, exercise: { name: a.exercise, sets: 3, reps } },
+        priority: 0,
+      });
+      continue;
+    }
+
+    if (a.kind === 'lift' && a.status !== 'hit' && a.status !== 'not_in_plan' && !busy.has(a.exercise)) {
+      const hits = planDaysWith(program, a.exercise);
+      const def = exercises[a.exercise];
+      const h = hits[0];
+      const target = targetReps(h.ex);
+      // Train a goal lift heavy, whatever the plan's overall goal.
+      if (setInputKind(def) === 'weight_reps' && (target < GOAL_REPS.strength.min || target > GOAL_REPS.strength.max)) {
+        const to = clamp(target, GOAL_REPS.strength.min, GOAL_REPS.strength.max);
+        busy.add(a.exercise);
+        out.push({
+          id: `goal-reps:${a.exercise}:${to}`, type: 'reps', goal: tag,
+          title: `${a.exercise}: ${target} → ${to} reps`,
+          reason: `Your goal "${tag}" is a max-strength target. Sets of ${GOAL_REPS.strength.min}–${GOAL_REPS.strength.max} move a 1RM fastest; add weight so ${to} is hard.`,
+          change: { op: 'reps', dayIndex: h.dayIndex, exIndex: h.exIndex, name: a.exercise, from: target, to },
+          priority: 1,
+        });
+        continue;
+      }
+      if (a.status !== 'stalled') continue;
+      // Stalled: first in the session, then twice a week, then one more set.
+      if (h.exIndex > 0) {
+        busy.add(a.exercise);
+        const dayName = program.days[h.dayIndex].name || `Day ${h.dayIndex + 1}`;
+        out.push({
+          id: `goal-first:${a.exercise}:${h.dayIndex}`, type: 'move', goal: tag,
+          title: `Move ${a.exercise} to the start of ${dayName}`,
+          reason: `"${tag}" has stopped climbing (${a.detail.split(',')[0]}). Lift it first, while you're fresh, so those sets get your best effort.`,
+          change: { op: 'move', dayIndex: h.dayIndex, exIndex: h.exIndex, name: a.exercise, to: 0 },
+          priority: 1,
+        });
+        continue;
+      }
+      if (weeklyFrequency(program, a.exercise) < 2 && (program.days || []).length > 1) {
+        const di = addTo(a.exercise, new Set(hits.map(x => x.dayIndex)));
+        if (di >= 0 && freq[di] > 0) {
+          busy.add(a.exercise);
+          const dayName = program.days[di].name || `Day ${di + 1}`;
+          out.push({
+            id: `goal-twice:${a.exercise}:${di}`, type: 'add', goal: tag,
+            title: `Add ${a.exercise} to ${dayName} too`,
+            reason: `"${tag}" has stopped climbing on one session a week. A second, lighter-volume day (3×${Math.min(5, target)}) gives the lift more practice.`,
+            change: { op: 'add', dayIndex: di, exercise: { name: a.exercise, sets: 3, reps: Math.min(5, target) } },
+            priority: 1,
+          });
+          continue;
+        }
+      }
+      const sets = Number(h.ex.sets) || 3;
+      if (sets < MAX_SETS) {
+        busy.add(a.exercise);
+        out.push({
+          id: `goal-set:${a.exercise}:${sets + 1}`, type: 'volume', goal: tag,
+          title: `${a.exercise}: ${sets} → ${sets + 1} sets`,
+          reason: `"${tag}" has stopped climbing without grinding sets. One more set gives the lift more work to adapt to.`,
+          change: { op: 'sets', dayIndex: h.dayIndex, exIndex: h.exIndex, name: a.exercise, from: sets, to: sets + 1 },
+          priority: 1,
+        });
+      }
+      continue;
+    }
+
+    if (a.kind === 'run' && a.status === 'behind') {
+      const runInPlan = [...planNames].some(n => exercises[n] && isRunDef(exercises[n]));
+      if (!runInPlan && exercises.Running) {
+        const di = (program.days || []).map((d, i) => ({ i, n: (d.exercises || []).length }))
+          .sort((x, y) => x.n - y.n || x.i - y.i)[0].i;
+        const dayName = program.days[di].name || `Day ${di + 1}`;
+        planNames.add('Running');
+        out.push({
+          id: `goal-run:${a.key}`, type: 'add', goal: tag,
+          title: `Add a 30 min run to ${dayName}`,
+          reason: `"${tag}" is behind pace (${a.detail}), and there's no running in your plan.`,
+          change: { op: 'add', dayIndex: di, exercise: { name: 'Running', sets: 1, reps: 30 } },
+          priority: 1,
+        });
+      } else {
+        out.push({
+          id: `goal-run-note:${a.key}:${today10(ctx)}`, type: 'note', goal: tag,
+          title: `"${tag}" is behind pace`,
+          reason: `${a.detail}. Your plan already has runs, so lengthen them a little each week to close the gap.`,
+          change: null, priority: 2,
+        });
+      }
+      continue;
+    }
+
+    if (a.kind === 'consistency' && a.status === 'behind') {
+      out.push({
+        id: `goal-consistency:${a.key}`, type: 'note', goal: tag,
+        title: `"${tag}" needs a plan you can keep`,
+        reason: `${a.detail}. Pick the days you can actually make in Edit plan; fewer, fuller sessions keep the goal moving.`,
+        change: null, priority: 2,
+      });
+    }
+  }
+  return out;
+}
+function today10(ctx) { return String(ctx.today).slice(0, 7); }
 
 function scheduleRules(ctx) {
   const { program, workouts, today, weeklyGoal } = ctx;
@@ -510,7 +785,7 @@ function scheduleRules(ctx) {
     const since = shiftDate(today, -28);
     const recent = dates.filter(d => d > since && d <= today).length;
     const perWeek = Math.round((recent / 4) * 10) / 10;
-    if (perWeek > 0 && perWeek <= planned * 0.6) {
+    if (perWeek > 0 && perWeek <= planned * 0.6 && !ctx.consistencyNoted) {
       out.push({
         id: `schedule-adherence:${planned}:${Math.round(perWeek)}`,
         type: 'note',
@@ -541,18 +816,23 @@ function scheduleRules(ctx) {
  * @returns { goal, inferred, suggestions:[{id, type, title, reason, change, priority}] }
  */
 export function optimisePlan(ctx) {
-  const empty = { goal: 'general', inferred: true, suggestions: [] };
+  const empty = { goal: 'general', inferred: true, goals: [], suggestions: [] };
   if (!ctx || !ctx.program || !(ctx.program.days || []).length || !ctx.today) return empty;
-  const { goal, inferred } = resolveGoal(ctx.goal, ctx.personalGoals);
+  const { goal, inferred } = resolveGoal(ctx.goal, ctx.personalGoals, ctx.directives, ctx.bodyweightKg);
   const full = {
     ...ctx, goal,
     exercises: ctx.exercises || {},
     workouts: ctx.workouts || [],
   };
+  const goals = assessGoals(full);
+  full.goalLifts = new Set(goals.filter(a => a.kind === 'lift').map(a => a.exercise));
   const perExercise = exerciseRules(full);
   const touched = new Set(perExercise.filter(s => s.change).map(s => s.change.name));
+  const fromGoals = goalRules(full, goals, touched);
+  fromGoals.forEach(s => { if (s.change && s.change.name) touched.add(s.change.name); if (s.change && s.change.exercise) touched.add(s.change.exercise.name); });
+  full.consistencyNoted = fromGoals.some(s => s.id.startsWith('goal-consistency:'));
   const all = [
-    ...goalLiftRules(full),
+    ...fromGoals,
     ...perExercise,
     ...volumeRules(full, touched),
     ...scheduleRules(full),
@@ -564,7 +844,7 @@ export function optimisePlan(ctx) {
     .sort((a, b) => a.s.priority - b.s.priority || a.i - b.i)
     .map(({ s }) => s)
     .slice(0, MAX_SUGGESTIONS);
-  return { goal, inferred, suggestions };
+  return { goal, inferred, goals, suggestions };
 }
 
 /**
@@ -592,6 +872,11 @@ export function applySuggestion(program, suggestion, today) {
     if ((Number(ex.sets) || 3) !== c.from) return null;
     ex.sets = c.to;
     if (today) ex.optimisedAt = today;
+    return next;
+  }
+  if (c.op === 'move') {
+    const [moved] = day.exercises.splice(c.exIndex, 1);
+    day.exercises.splice(c.to, 0, moved);
     return next;
   }
   if (c.op === 'reps') {

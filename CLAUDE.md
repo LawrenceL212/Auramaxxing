@@ -107,8 +107,9 @@ weight 0 with optional `load`/`band` fields, so formulas read them like a set wi
 [optimiser.js](optimiser.js) suggests plan changes from the plan and the logged sessions: a set
 off a lift that has stalled at RIR 0-1, rep targets moved into the range for the plan's goal
 (Strength, Muscle, Endurance, General), raised targets on bodyweight, band and no-weight moves and
-holds, weekly sets per muscle group against volume landmarks, and e1RM goal lifts missing from the
-plan. The card under the quest carousel (`renderPlanOptimiser`) applies a suggestion only when
+holds, and weekly sets per muscle group against volume landmarks. It also reads each personal goal
+and directive against the training record (`assessGoals`: e1RM trend, sessions count, run pace,
+consistency) and tunes the plan toward the ones that are stalled, behind or missing from the plan. The card under the quest carousel (`renderPlanOptimiser`) applies a suggestion only when
 tapped, through the same `programs/{uid}` write as the plan editor; the plan stores the picked
 `goal` and stamps a changed exercise `optimisedAt`. Pure, so `node test/optimiser.test.mjs` tests it.
 
