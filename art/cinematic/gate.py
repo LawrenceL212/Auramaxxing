@@ -91,28 +91,77 @@ pylon(-1); pylon(1)
 bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1.0)
 for v in bm.verts: v.co.x *= 14.5; v.co.y *= 3.6; v.co.z = (v.co.z + 0.5) * 2.6
 displaced(to_obj('lintel', bm, stone_m), 0.3, 0.9, 5).location = (0, -34, 27.6)
-# stepped plinth up to the rift
-for i in range(5):
+# a wide flight of human-sized steps up to the rift: the eye counts them and reads the scale
+for i in range(14):
     bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1.0)
-    for v in bm.verts: v.co.x *= 9.6 + i * 1.4; v.co.y *= 2.2; v.co.z = (v.co.z + 0.5) * 0.28
-    displaced(to_obj('step', bm, stone_m), 0.06, 0.4, 4).location = (0, -30.6 + (4 - i) * 2.0 + 2.2 * 0, 0.28 * (4 - i)) if False else (0, -33 + (4 - i) * 2.0, 0.28 * (4 - i) - 0.0)
+    for v in bm.verts: v.co.x *= 15.0 + (13 - i) * 0.5; v.co.y *= 0.9; v.co.z = (v.co.z + 0.5) * 0.19 * (14 - i)
+    displaced(to_obj('step', bm, stone_m), 0.025, 0.3, 3).location = (0, -33.0 + i * 0.9, 0)
 
-# the rift: a tall emissive tear, the main light of the scene
-rm = mat('rift'); o = N(rm, 'ShaderNodeOutputMaterial'); em = N(rm, 'ShaderNodeEmission')
-tc = N(rm, 'ShaderNodeTexCoord'); gr = N(rm, 'ShaderNodeValToRGB')
-sep = N(rm, 'ShaderNodeSeparateXYZ'); ab = N(rm, 'ShaderNodeMath', operation='ABSOLUTE'); inv = N(rm, 'ShaderNodeMath', operation='SUBTRACT')
-L(rm, tc, 'Generated', sep, 0); val(inv, 0, 1.0)
-cx = N(rm, 'ShaderNodeMath', operation='SUBTRACT'); L(rm, sep, 'X', cx, 0); val(cx, 1, 0.5)
-L(rm, cx, 0, ab, 0); mul = N(rm, 'ShaderNodeMath', operation='MULTIPLY'); L(rm, ab, 0, mul, 0); val(mul, 1, 2.0)
-L(rm, mul, 0, inv, 1)
-pw = N(rm, 'ShaderNodeMath', operation='POWER'); L(rm, inv, 0, pw, 0); val(pw, 1, 4.5)
-col = N(rm, 'ShaderNodeMix', data_type='RGBA'); val(col, 'A', RANK + (1,)); val(col, 'B', (0.85, 0.93, 1.0, 1)); L(rm, pw, 0, col, 'Factor')
-L(rm, col, 'Result', em, 'Color'); st = N(rm, 'ShaderNodeMath', operation='MULTIPLY'); L(rm, pw, 0, st, 0); val(st, 1, 9.0 + 2 * math.sin(T * 3) + 6 * max(0, (T - 4.4) / 2.0) ** 2); L(rm, st, 0, em, 'Strength')
-L(rm, em, 'Emission', o, 'Surface')
+# the world beyond the gate: sky, a ringed moon, a causeway over a void to a citadel, towers and floating islands
+def emit(name, col, strength):
+    m = mat(name); o = N(m, 'ShaderNodeOutputMaterial'); e = N(m, 'ShaderNodeEmission'); val(e, 'Color', col); val(e, 'Strength', strength); L(m, e, 'Emission', o, 'Surface'); return m
+dark = mat('silhouette'); do = N(dark, 'ShaderNodeOutputMaterial'); db = N(dark, 'ShaderNodeBsdfPrincipled'); val(db, 'Base Color', (0.012, 0.015, 0.025, 1)); val(db, 'Roughness', 0.9); L(dark, db, 'BSDF', do, 'Surface')
+# sky dome behind the gate: cold bright at the horizon, deep violet overhead
+sky = mat('sky'); so = N(sky, 'ShaderNodeOutputMaterial'); se = N(sky, 'ShaderNodeEmission'); stc = N(sky, 'ShaderNodeTexCoord'); ssp = N(sky, 'ShaderNodeSeparateXYZ'); sr = N(sky, 'ShaderNodeValToRGB')
+L(sky, stc, 'Generated', ssp, 0); sr.color_ramp.elements[0].position = 0.0; sr.color_ramp.elements[0].color = (0.55, 0.75, 1.0, 1); sr.color_ramp.elements[1].position = 0.55; sr.color_ramp.elements[1].color = (0.015, 0.012, 0.07, 1)
+e2 = sr.color_ramp.elements.new(0.22); e2.color = (0.25, 0.32, 0.7, 1)
+L(sky, ssp, 'Z', sr, 'Fac'); L(sky, sr, 'Color', se, 'Color'); val(se, 'Strength', 2.4); L(sky, se, 'Emission', so, 'Surface')
+bm = bmesh.new(); bmesh.ops.create_uvsphere(bm, u_segments=32, v_segments=16, radius=170)
+bmesh.ops.delete(bm, geom=[v for v in bm.verts if v.co.y > -6 or v.co.z < -2], context='VERTS')
+for v in bm.verts: v.co.y -= 0
+to_obj('sky', bm, sky).location = (0, -50, 0)
+# a huge ringed moon low on the horizon
+bm = bmesh.new(); bmesh.ops.create_uvsphere(bm, u_segments=48, v_segments=24, radius=14)
+moon = to_obj('moon', bm, emit('moon', (0.8, 0.88, 1.0, 1), 6.0)); moon.location = (24, -150, 30)
+bm = bmesh.new(); bmesh.ops.create_circle(bm, cap_ends=False, segments=96, radius=26)
+ring = to_obj('moonring', bm, emit('ring', (0.7, 0.8, 1.0, 1), 1.6)); ring.location = (24, -150, 30); ring.rotation_euler = (math.radians(72), 0, math.radians(20))
+ring.scale = (1, 1, 1)
+# the causeway: a long stone road across a void, with low parapets, running to a citadel
+bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1.0)
+for v in bm.verts: v.co.x *= 8.0; v.co.y *= 110.0; v.co.z = (v.co.z + 0.5) * 0.8 - 0.8
+cw = to_obj('causeway', bm, stone_m); cw.location = (0, -92, 0.0); displaced(cw, 0.05, 0.5, 4)
+for sx in (-1, 1):
+    bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1.0)
+    for v in bm.verts: v.co.x *= 0.5; v.co.y *= 110.0; v.co.z = (v.co.z + 0.5) * 1.0
+    to_obj('parapet', bm, stone_m).location = (sx * 4.0, -92, 0.0)
+for i in range(10):   # lamp posts along the causeway, receding: a ruler for distance
+    for sx in (-1, 1):
+        bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=8, radius1=0.12, radius2=0.1, depth=3.0)
+        for v in bm.verts: v.co.z += 1.5
+        to_obj('post', bm, stone_m).location = (sx * 4.0, -40 - i * 11, 0.9)
+        bm = bmesh.new(); bmesh.ops.create_uvsphere(bm, u_segments=8, v_segments=6, radius=0.22)
+        to_obj('lamp', bm, emit('lamp', (0.5, 0.75, 1.0, 1), 60.0)).location = (sx * 4.0, -40 - i * 11, 4.3)
+# the citadel at the end of the road
+for i, (w, d, h, x, y) in enumerate([(26, 12, 30, 0, -150), (12, 8, 56, -10, -152), (10, 8, 66, 12, -154), (8, 6, 80, 2, -156), (7, 7, 48, -20, -150), (9, 7, 44, 22, -151)]):
+    bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1.0)
+    for v in bm.verts: v.co.x *= w * (1 - 0.35 * (v.co.z > 0)); v.co.y *= d; v.co.z = (v.co.z + 0.5) * h
+    displaced(to_obj('tower', bm, dark), 0.08, 3.0, 4).location = (x, y, -2)
+    for k in range(int(h / 4)):   # lit windows
+        bm = bmesh.new(); bmesh.ops.create_cube(bm, size=0.7)
+        to_obj('win', bm, emit('win', (1.0, 0.78, 0.45, 1), 25.0)).location = (x + random.uniform(-w * .3, w * .3), y + d / 2 + 0.2, 4 + k * 4)
+# distant towers and floating islands either side of the road: layers of depth
+for i in range(22):
+    sx = random.choice([-1, 1]); x = sx * random.uniform(14, 70); y = random.uniform(-150, -70); h = random.uniform(15, 70)
+    bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=random.choice([4, 6, 8]), radius1=random.uniform(2, 5), radius2=random.uniform(0.2, 2), depth=h)
+    for v in bm.verts: v.co.z += h / 2
+    displaced(to_obj('spire', bm, dark), 0.12, 2.0, 3).location = (x, y, -3)
+for i in range(9):
+    bm = bmesh.new(); bmesh.ops.create_icosphere(bm, subdivisions=3, radius=1.0)
+    isl = to_obj('island', bm, dark); isl.scale = (random.uniform(5, 12), random.uniform(5, 12), random.uniform(1.5, 3)); isl.location = (random.uniform(-60, 60), random.uniform(-140, -80), random.uniform(18, 46)); displaced(isl, 0.5, 1.5, 1)
+# the portal veil: a faint shimmering membrane across the opening, not a wall of light
+vl = mat('veil'); vo2 = N(vl, 'ShaderNodeOutputMaterial'); mx = N(vl, 'ShaderNodeMixShader'); tr = N(vl, 'ShaderNodeBsdfTransparent'); ve = N(vl, 'ShaderNodeEmission')
+vtc = N(vl, 'ShaderNodeTexCoord'); vn = N(vl, 'ShaderNodeTexNoise'); vr = N(vl, 'ShaderNodeMapRange')
+L(vl, vtc, 'Object', vn, 'Vector'); val(vn, 'Scale', 0.35); val(vn, 'Detail', 1.0)
+L(vl, vn, 'Fac', vr, 'Value'); val(vr, 'From Min', 0.3); val(vr, 'From Max', 0.6); val(vr, 'To Min', 0.0); val(vr, 'To Max', 0.012 + 0.8 * max(0, (T - 5.2) / 1.0) ** 2)
+L(vl, vr, 'Result', mx, 0); L(vl, tr, 'BSDF', mx, 1); L(vl, ve, 'Emission', mx, 2); val(ve, 'Color', RANK + (1,)); val(ve, 'Strength', 2.0 + 25 * max(0, (T - 5.2) / 1.0) ** 2); L(vl, mx, 'Shader', vo2, 'Surface')
 bm = bmesh.new(); bmesh.ops.create_grid(bm, x_segments=1, y_segments=1, size=0.5)
-for v in bm.verts: v.co = Vector((v.co.x * 2 * (6.4 + 1.2 * max(0, T - 4) / 2), 0, (v.co.y + 0.5) * 2 * 25.5))
-rift = to_obj('rift', bm, rm); rift.location = (0, -33.0, 1.5)
-rift.rotation_euler = (math.pi / 2 * 0, 0, 0)
+for v in bm.verts: v.co = Vector((v.co.x * 2 * 6.4, 0, (v.co.y + 0.5) * 2 * 25.5))
+rift = to_obj('rift', bm, vl); rift.location = (0, -33.0, 1.5)
+# vaulted ceiling beams across the hall, so it reads as an interior with a far end
+for i in range(4):
+    bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1.0)
+    for v in bm.verts: v.co.x *= 15.0; v.co.y *= 1.1; v.co.z = (v.co.z + 0.5) * 1.0
+    displaced(to_obj('beam', bm, stone_m), 0.08, 1.0, 3).location = (0, 6 - i * 9.0, 19.5)
 
 # floating rocks and floor debris
 rock_m = stone('rock', (0.06, 0.06, 0.07, 1), 0.6, 0.0, scale=0.5, bump=1.0)
@@ -123,12 +172,56 @@ for i in range(70):
     ob = to_obj('rock', bm, rock_m); ob.scale = (s, s * random.uniform(.6, 1.2), s * random.uniform(.4, 1)); ob.location = (x, random.uniform(-30, 8), z + s * 0.3)
     ob.rotation_euler = (random.random() * 6, random.random() * 6, random.random() * 6); displaced(ob, 0.5, 0.7, 1)
 
+
+# ---- scale cues ----
+col_m = stone('column', (0.04, 0.05, 0.075, 1), 0.5, 0.0, scale=0.3, bump=0.8)
+def column(x, y, h, r):
+    bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=24, radius1=r, radius2=r * 0.86, depth=h)
+    for v in bm.verts: v.co.z += h / 2
+    ob = to_obj('column', bm, col_m); ob.location = (x, y, 0); displaced(ob, 0.12, 0.6, 3)
+    for z0, hh in ((0, 0.9), (h - 0.6, 0.6), (h * 0.5, 0.25)):   # base, capital and a band: repeated rhythm
+        bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=24, radius1=r * 1.25, radius2=r * 1.25, depth=hh)
+        for v in bm.verts: v.co.z += hh / 2 + z0
+        to_obj('ring', bm, col_m).location = (x, y, 0)
+for i in range(9):
+    for sx in (-1, 1):
+        column(sx * (5.6 + (i % 2) * 0.3), 8 - i * 4.4, 13 + (i % 3), 0.95)
+# tall fallen column drums and a toppled column: human-height boulders of worked stone
+for (x, y, ang) in ((-2.4, -6.5, 0.4), (3.0, -12.0, -0.9), (-1.2, 1.5, 0.2)):
+    bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=20, radius1=1.0, radius2=1.0, depth=1.6)
+    ob = to_obj('drum', bm, col_m); ob.location = (x, y, 0.9); ob.rotation_euler = (math.pi / 2, 0, ang); displaced(ob, 0.08, 0.5, 2)
+# braziers: bowl on a stand, 1.2 m tall, a warm flame against the cold blue
+fire = mat('flame'); fo = N(fire, 'ShaderNodeOutputMaterial'); fe = N(fire, 'ShaderNodeEmission'); val(fe, 'Color', (1.0, 0.45, 0.12, 1)); val(fe, 'Strength', 28.0); L(fire, fe, 'Emission', fo, 'Surface')
+iron = mat('iron'); io = N(iron, 'ShaderNodeOutputMaterial'); ib = N(iron, 'ShaderNodeBsdfPrincipled'); val(ib, 'Base Color', (0.02, 0.02, 0.025, 1)); val(ib, 'Metallic', 1.0); val(ib, 'Roughness', 0.4); L(iron, ib, 'BSDF', io, 'Surface')
+for i in range(7):
+    for sx in (-1, 1):
+        x, y = sx * 3.2, 6.5 - i * 4.4
+        bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=10, radius1=0.08, radius2=0.08, depth=1.0)
+        for v in bm.verts: v.co.z += 0.5
+        to_obj('stand', bm, iron).location = (x, y, 0)
+        bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=14, radius1=0.38, radius2=0.22, depth=0.3)
+        for v in bm.verts: v.co.z += 1.1
+        to_obj('bowl', bm, iron).location = (x, y, 0)
+        bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=False, segments=8, radius1=0.26, radius2=0.0, depth=0.95)
+        for v in bm.verts: v.co.z += 1.55
+        to_obj('flame', bm, fire).location = (x, y, 0)
+# chains and tattered banners hanging from the lintel: links the size of a forearm
+for cx in (-4.5, -1.6, 1.6, 4.5):
+    for k in range(34):
+        bm = bmesh.new(); bmesh.ops.create_torus(bm, major_segments=10, minor_segments=5, major_radius=0.18, minor_radius=0.045) if hasattr(bmesh.ops, 'create_torus') else bmesh.ops.create_cube(bm, size=0.2)
+        ob = to_obj('link', bm, iron); ob.location = (cx + 0.02 * math.sin(k), -33.2, 26.4 - k * 0.27); ob.rotation_euler = (math.pi / 2 * (k % 2), 0, 0)
+for bx in (-8.2, 8.2):
+    bm = bmesh.new(); bmesh.ops.create_grid(bm, x_segments=6, y_segments=14, size=1.0)
+    for v in bm.verts: v.co = Vector((v.co.x * 3.0, 0.0, (v.co.y - 1.0) * 5.5 + 21.0 - 5.5))
+    ob = to_obj('banner', bm, col_m); ob.location = (bx, -32.0, 0); ob.rotation_euler = (0, 0, 0)
+    tx = bpy.data.textures.new('bw', 'CLOUDS'); tx.noise_scale = 1.4; d = ob.modifiers.new('d', 'DISPLACE'); d.texture = tx; d.strength = 0.8; d.direction = 'Y'
+
 # volumetric haze: god rays from the rift
 bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1.0)
-for v in bm.verts: v.co = Vector((v.co.x * 60, v.co.y * 70, (v.co.z + 0.5) * 34))
-vm = mat('haze'); vo = N(vm, 'ShaderNodeOutputMaterial'); vs = N(vm, 'ShaderNodeVolumeScatter'); val(vs, 'Density', 0.007); val(vs, 'Anisotropy', 0.45); val(vs, 'Color', (0.55, 0.7, 1.0, 1))
+for v in bm.verts: v.co = Vector((v.co.x * 160, v.co.y * 330, (v.co.z + 0.5) * 70))
+vm = mat('haze'); vo = N(vm, 'ShaderNodeOutputMaterial'); vs = N(vm, 'ShaderNodeVolumeScatter'); val(vs, 'Density', 0.0006); val(vs, 'Anisotropy', 0.45); val(vs, 'Color', (0.55, 0.7, 1.0, 1))
 vm.node_tree.links.new(vs.outputs[0], vo.inputs['Volume'])
-haze = to_obj('haze', bm, vm); haze.location = (0, -14, 12)
+haze = to_obj('haze', bm, vm); haze.location = (0, -100, 0)
 
 # camera: low and wide, rising to eye height, closing in
 k = lambda a, b, x: a + (b - a) * max(0, min(1, x))
@@ -141,5 +234,8 @@ co.rotation_euler = d.to_track_quat('-Z', 'Y').to_euler()
 cam.lens = k(20, 34, b) + c * 24; cam.sensor_width = 36
 cam.dof.use_dof = True; cam.dof.focus_distance = d.length * 0.9; cam.dof.aperture_fstop = 4.0
 
+sc.use_nodes = True; ct = sc.node_tree; ct.nodes.clear()
+rl = ct.nodes.new('CompositorNodeRLayers'); gl = ct.nodes.new('CompositorNodeGlare'); gl.glare_type = 'FOG_GLOW'; gl.quality = 'HIGH'; gl.threshold = 1.0; gl.size = 7; gl.mix = -0.5
+cp = ct.nodes.new('CompositorNodeComposite'); ct.links.new(rl.outputs[0], gl.inputs[0]); ct.links.new(gl.outputs[0], cp.inputs[0])
 bpy.ops.render.render(write_still=True)
 print('rendered', OUT)
