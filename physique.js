@@ -132,36 +132,3 @@ export function muscleShape(muscle, dev = 0, build = IDENTITY, frame = 1) {
   const grow = MUSCLE_REGION[muscle] === 'waist' ? 0.4 : 1;
   return { sx: round3((1 + GROW_X * d * grow) * region), sy: round3(1 + GROW_Y * d * grow) };
 }
-
-/** Limb muscles end where a joint, hand or foot begins, and those shapes (the grey 'misc' group)
- *  are never scaled. Growing one of these along its length would pull its ends off them, so they
- *  only ever grow across their own long axis, which keeps both ends fixed. */
-export const LIMB_MUSCLES = new Set(['Biceps', 'Triceps', 'Forearms', 'Quads', 'Hamstrings', 'Calves']);
-
-/** The direction (radians, in the shape's own coordinates) a shape is longest in, from points sampled
- *  along its outline. Returns 0 for fewer than two distinct points. */
-export function principalAngle(points = []) {
-  const n = points.length;
-  if (n < 2) return 0;
-  let mx = 0, my = 0;
-  for (const [x, y] of points) { mx += x; my += y; }
-  mx /= n; my /= n;
-  let sxx = 0, syy = 0, sxy = 0;
-  for (const [x, y] of points) { const dx = x - mx, dy = y - my; sxx += dx * dx; syy += dy * dy; sxy += dx * dy; }
-  if (sxx + syy === 0) return 0;
-  return 0.5 * Math.atan2(2 * sxy, sxx - syy);
-}
-
-/** The SVG transform that draws one muscle at its shape, about its centre c = [x, y]. `angle` is the
- *  muscle's long axis (principalAngle). Limb muscles scale across that axis only; the others scale
- *  in x and y as before. Returns null when there is nothing to draw. */
-export function muscleTransform(muscle, c, shape, angle = 0) {
-  const { sx, sy } = shape;
-  if (sx === 1 && sy === 1) return null;
-  const t = `translate(${round3(c[0])} ${round3(c[1])})`;
-  const back = `translate(${round3(-c[0])} ${round3(-c[1])})`;
-  if (!LIMB_MUSCLES.has(muscle)) return `${t} scale(${sx} ${sy}) ${back}`;
-  const deg = round3((angle * 180) / Math.PI);
-  // along the limb: unchanged; across it: the muscle's full width growth
-  return `${t} rotate(${deg}) scale(1 ${sx}) rotate(${-deg}) ${back}`;
-}

@@ -2,7 +2,7 @@
    No dependencies and no runner, like the other tests here: a plain script
    that exits non-zero on failure. */
 
-import { muscleDevelopment, bodyBuild, bodyFrame, muscleShape, muscleTransform, principalAngle, LIMB_MUSCLES, MUSCLE_REGION, REFERENCE } from '../physique.js';
+import { muscleDevelopment, bodyBuild, bodyFrame, muscleShape, MUSCLE_REGION, REFERENCE } from '../physique.js';
 
 let pass = 0, fail = 0;
 const results = [];
@@ -72,33 +72,6 @@ check('abs grow less than biceps', muscleShape('Upper Abs', 1).sx < s1.sx);
 check('frame follows the build', bodyFrame(heavy) > 1 && bodyFrame(light) < 1 && bodyFrame({}) === 1, JSON.stringify([bodyFrame(heavy), bodyFrame(light)]));
 check('muscles never draw narrower than the frame', muscleShape('Quads', 0, light, bodyFrame(light)).sx === 1);
 check('a region broader than the frame widens on top of it', muscleShape('Upper Abs', 0, heavy, bodyFrame(heavy)).sx > 1);
-
-// ── limbs stay attached ─────────────────────────────────────────────────
-const near = (a, b) => Math.abs(a - b) < 1e-3;
-const diag = Array.from({ length: 20 }, (_, i) => [i, i]);
-check('principal axis of a diagonal line is 45deg', near(principalAngle(diag), Math.PI / 4), String(principalAngle(diag)));
-check('principal axis of a vertical line is 90deg', near(Math.abs(principalAngle([[0, 0], [0, 5], [0, 9]])), Math.PI / 2));
-check('principal axis with no points is 0', principalAngle([]) === 0 && principalAngle([[1, 1]]) === 0);
-// apply an SVG transform string (translate/rotate/scale chain) to a point
-function apply(tf, [x, y]) {
-  const ops = [...tf.matchAll(/(translate|rotate|scale)\(([^)]*)\)/g)].map((m) => [m[1], m[2].trim().split(/\s+/).map(Number)]);
-  for (const [op, a] of ops.reverse()) {
-    if (op === 'translate') { x += a[0]; y += a[1]; }
-    else if (op === 'scale') { x *= a[0]; y *= a[a.length > 1 ? 1 : 0]; }
-    else { const r = (a[0] * Math.PI) / 180; [x, y] = [x * Math.cos(r) - y * Math.sin(r), x * Math.sin(r) + y * Math.cos(r)]; }
-  }
-  return [x, y];
-}
-const big = { sx: 1.4, sy: 1.08 };
-check('undeveloped muscle needs no transform', muscleTransform('Calves', [5, 5], { sx: 1, sy: 1 }) === null);
-check('Calves is a limb muscle, Middle Chest is not', LIMB_MUSCLES.has('Calves') && !LIMB_MUSCLES.has('Middle Chest'));
-check('non-limb muscles keep the plain x/y scale', muscleTransform('Middle Chest', [10, 20], big).includes('scale(1.4 1.08)'));
-const ang = Math.atan2(3, 1); // a tilted limb
-const tfLimb = muscleTransform('Forearms', [100, 200], big, ang);
-const along = [100 + 50 * Math.cos(ang), 200 + 50 * Math.sin(ang)];
-const end = apply(tfLimb, along), across = apply(tfLimb, [100 - 5 * Math.sin(ang), 200 + 5 * Math.cos(ang)]);
-check('a limb muscle keeps its ends in place', near(end[0], along[0]) && near(end[1], along[1]), JSON.stringify(end) + ' vs ' + JSON.stringify(along));
-check('a limb muscle still widens across its axis', Math.hypot(across[0] - 100, across[1] - 200) > 5.5, JSON.stringify(across));
 
 console.log(results.join('\n'));
 console.log(`\n${pass} passed, ${fail} failed`);
