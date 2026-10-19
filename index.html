@@ -963,6 +963,8 @@
   #sys-open .vid{ position:absolute; inset:0; width:100%; height:100%; object-fit:cover; background:#000;
     opacity:0; transition:opacity 500ms var(--ease-cinema); }
   #sys-open .vid.on{ opacity:1; }
+  /* wide screens: the clips are portrait, so show them whole instead of a cropped slice */
+  @media (min-aspect-ratio: 9/10){ #sys-open .vid{ object-fit:contain; } }
   #sys-open .bossbar{ position:absolute; left:0; right:0; bottom:calc(15dvh + env(safe-area-inset-bottom,0px));
     text-align:center; opacity:0; pointer-events:none; padding:0 18px; }
   #sys-open .bossbar.on{ animation:bbIn 1100ms var(--ease-cinema) forwards; }
