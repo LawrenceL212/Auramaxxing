@@ -958,6 +958,23 @@
   html[data-opening="1"] #sys-skip{ opacity:1; pointer-events:auto; }
   #sys-skip:hover, #sys-skip:active{ color:var(--text); }
 
+  /* Pre-rendered opening: a full-bleed video under the System text, with the week's boss named
+     over it. Only used when ./cinematics/ has a clip; otherwise the live scene plays. */
+  #sys-open .vid{ position:absolute; inset:0; width:100%; height:100%; object-fit:cover; background:#000;
+    opacity:0; transition:opacity 500ms var(--ease-cinema); }
+  #sys-open .vid.on{ opacity:1; }
+  #sys-open .bossbar{ position:absolute; left:0; right:0; bottom:calc(15dvh + env(safe-area-inset-bottom,0px));
+    text-align:center; opacity:0; pointer-events:none; padding:0 18px; }
+  #sys-open .bossbar.on{ animation:bbIn 1100ms var(--ease-cinema) forwards; }
+  #sys-open .bossbar .t{ font-family:var(--font-mono); font-size:clamp(15px,4.6vw,22px); letter-spacing:.28em; text-transform:uppercase;
+    color:#f3e7c9; text-shadow:0 0 18px rgba(0,0,0,.9),0 2px 6px rgba(0,0,0,.9); }
+  #sys-open .bossbar .r{ margin-top:8px; font-family:var(--font-mono); font-size:10px; letter-spacing:.3em; color:rgba(243,231,201,.62); text-transform:uppercase; }
+  #sys-open .bossbar::before, #sys-open .bossbar::after{ content:''; display:block; height:1px; width:min(70vw,320px); margin:0 auto;
+    background:linear-gradient(90deg,transparent,rgba(243,231,201,.55),transparent); }
+  #sys-open .bossbar::before{ margin-bottom:12px; } #sys-open .bossbar::after{ margin-top:12px; }
+  @keyframes bbIn{ 0%{opacity:0;letter-spacing:.5em;filter:blur(6px);} 100%{opacity:1;filter:blur(0);} }
+  @media (prefers-reduced-motion: reduce){ #sys-open .bossbar.on{ animation:none; opacity:1; } }
+
   /* Portrait: the Hunter sits high, text sits low, so they never fight for the
      same band of the screen. Keyed on html[data-orient] rather than an
      aspect-ratio query so the opening composes from the same source of truth as
@@ -4983,6 +5000,7 @@ function openSettingsModal() {
       '<button type="button" class="weekday-chip haptic-chip ' + (SFX.hapticOn()?'on':'') + '" data-val="on" style="flex:1;">On</button>' +
       '<button type="button" class="weekday-chip haptic-chip ' + (!SFX.hapticOn()?'on':'') + '" data-val="off" style="flex:1;">Off</button>' +
     '</div></div>' +
+    '<button type="button" id="settings-replay-intro" style="width:100%;margin-top:10px;padding:11px;background:rgba(91,168,255,0.07);border:1px solid rgba(91,168,255,0.28);border-radius:var(--radius-sm);color:var(--text);font-family:var(--font-mono);font-size:11px;letter-spacing:.14em;cursor:pointer;touch-action:manipulation;">\u25b6 REPLAY SYSTEM OPENING</button>' +
     '<div style="display:flex;gap:8px;margin-top:8px;">' +
       '<button class="btn" id="cancel-settings" style="flex:1;font-size:13px;">Close</button>' +
       '<button class="btn btn-primary" id="save-settings" style="flex:2;font-size:13px;">Save</button>' +
@@ -5037,6 +5055,7 @@ function openSettingsModal() {
   overlay.addEventListener('click', (e) => { if (e.target === overlay) { overlay.remove(); unlockBodyScroll(); } });
   overlay.querySelector('#system-cmd-close')?.addEventListener('click', () => { overlay.remove(); unlockBodyScroll(); });
   overlay.querySelector('#cancel-settings').addEventListener('click', () => { overlay.remove(); unlockBodyScroll(); });
+  overlay.querySelector('#settings-replay-intro')?.addEventListener('click', () => { overlay.remove(); unlockBodyScroll(); try { window.SystemOpening?.start({ force: 'first' }); } catch (e) {} });
   overlay.querySelector('#settings-exit-btn')?.addEventListener('click', () => { overlay.remove(); unlockBodyScroll(); signOut(auth); });
   const onEsc = (e) => { if (e.key === 'Escape') { overlay.remove(); unlockBodyScroll(); document.removeEventListener('keydown', onEsc); } };
   document.addEventListener('keydown', onEsc);
@@ -7129,6 +7148,61 @@ const SystemOpening = (() => {
     return true;
   }
 
+
+  /* ── Pre-rendered opening (optional) ─────────────────────────────────────
+     ./cinematics/opening-<boss-slug>.mp4 (or .webm) plays for that week's raid boss, with
+     ./cinematics/opening.mp4 as the shared fallback. No file means the live scene
+     plays exactly as before. Plays on the first login, on a replay, and once when a
+     new week's boss arrives. Presentation only: the week's boss is read from
+     localStorage, written by the raid card. */
+  const WEEK_BOSS_KEY = 'aura.weekBoss', VIDEO_SEEN_KEY = 'aura.opening.video';
+  const videoOk = {};
+  async function hasVideo(url) {
+    if (url in videoOk) return videoOk[url];
+    try { const r = await fetch(url, { method: 'HEAD' }); videoOk[url] = r.ok && /video/i.test(r.headers.get('content-type') || ''); }
+    catch (e) { videoOk[url] = false; }
+    return videoOk[url];
+  }
+  function weekBoss() { try { return JSON.parse(localStorage.getItem(WEEK_BOSS_KEY) || 'null'); } catch (e) { return null; } }
+  async function pickVideo() {
+    try { if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return null; } catch (e) {}
+    const b = weekBoss(), tries = [];
+    for (const ext of ['mp4', 'webm']) if (b && b.slug) tries.push({ src: `./cinematics/opening-${b.slug}.${ext}`, boss: b });
+    for (const ext of ['mp4', 'webm']) tries.push({ src: `./cinematics/opening.${ext}`, boss: b });
+    for (const t of tries) if (await hasVideo(t.src)) return t;
+    return null;
+  }
+  async function playVideo(pick) {
+    document.documentElement.dataset.opening = '1';
+    build(); clearBeats(); voidLevel(1, 1);
+    const v = document.createElement('video');
+    v.className = 'vid'; v.src = pick.src; v.preload = 'auto'; v.playsInline = true; v.setAttribute('playsinline', '');
+    v.muted = !SFX?.soundOn?.();
+    host.insertBefore(v, host.children[1] || null);
+    let ended = false;
+    v.addEventListener('ended', () => { ended = true; });
+    v.addEventListener('error', () => { ended = true; });
+    await new Promise(res => { v.addEventListener('canplay', res, { once: true }); v.addEventListener('error', res, { once: true }); setTimeout(res, 4000); });
+    if (v.error || v.readyState < 2) { v.remove(); return false; }
+    try { await v.play(); } catch (e) { v.muted = true; try { await v.play(); } catch (e2) { v.remove(); return false; } }
+    v.classList.add('on'); voidLevel(0, 0.4);
+    let bar = null;
+    if (pick.boss && pick.boss.name) {
+      bar = document.createElement('div'); bar.className = 'bossbar';
+      bar.innerHTML = '<div class="t"></div><div class="r"></div>';
+      bar.querySelector('.t').textContent = pick.boss.name;
+      bar.querySelector('.r').textContent = pick.boss.rank || '';
+      host.appendChild(bar);
+    }
+    const t0 = performance.now(), cap = ((v.duration && isFinite(v.duration)) ? v.duration : 12) * 1000 + 2500;
+    while (!ended && !skipped && performance.now() - t0 < cap) {
+      if (bar && !bar.classList.contains('on') && v.duration && v.currentTime > v.duration * 0.6) bar.classList.add('on');
+      await new Promise(r => setTimeout(r, 120));
+    }
+    try { v.pause(); } catch (e) {}
+    return true;
+  }
+
   return {
     get running() { return running; },
     skip() { skipped = true; },
@@ -7139,7 +7213,11 @@ const SystemOpening = (() => {
       let seen = false;
       try { seen = !!localStorage.getItem(SEEN_KEY); } catch (e) {}
       const mode = (opts.force === 'first' || !seen) ? 'first' : 'return';
-      if (!coreReady() && !opts.force) {
+      let pick = null, seenSlug = null;
+      try { seenSlug = localStorage.getItem(VIDEO_SEEN_KEY); } catch (e) {}
+      const wk = weekBoss();
+      if (opts.force || !seen || (wk && wk.slug && wk.slug !== seenSlug)) pick = await pickVideo();
+      if (!pick && !coreReady() && !opts.force) {
         // No WebGL: mark seen and let the app present normally.
         try { localStorage.setItem(SEEN_KEY, '1'); } catch (e) {}
         return false;
@@ -7157,8 +7235,13 @@ const SystemOpening = (() => {
           skipped = true;
           try { finish(); } catch (e) { document.documentElement.dataset.opening = 'done'; }
         }
-      }, 16000);
-      try { await run(mode); } catch (e) { console.info('[Opening] aborted', e); finish(); }
+      }, pick ? 40000 : 16000);
+      try {
+        if (pick && await playVideo(pick)) {
+          try { localStorage.setItem(VIDEO_SEEN_KEY, (pick.boss && pick.boss.slug) || ''); } catch (e) {}
+          finish();
+        } else await run(mode);
+      } catch (e) { console.info('[Opening] aborted', e); finish(); }
       finally { clearTimeout(deadline); }
       return true;
     },
@@ -18198,6 +18281,7 @@ async function renderRaidBoss() {
       </div>
       ${sundayPreview}
     </div>`;
+  try { localStorage.setItem('aura.weekBoss', JSON.stringify({ slug: bossSlug(boss.name), name: boss.name, tier: bossTier, rank: boss.rank || '' })); } catch (e) {}
   mountRaidBossStage(boss, bossTier, cleared);
 }
 
