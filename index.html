@@ -1912,6 +1912,73 @@
 
 
   /* program editor */
+  /* plan editor: week strip, weekly volume, folding workout cards */
+  .pe-top{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:10px;}
+  .pe-title{display:flex;flex-direction:column;min-width:0;}
+  .pe-eyebrow{font-family:var(--font-mono);font-size:10px;letter-spacing:.2em;color:var(--brass);}
+  .pe-name{font-family:var(--font-display);font-size:15px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .pe-settings.closed{display:none;}
+  .pe-week{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:10px;}
+  .pe-wd{background:rgba(255,255,255,0.02);border:1px solid rgba(91,168,255,0.1);border-radius:8px;padding:6px 0 5px;text-align:center;cursor:pointer;color:var(--text-faint);font-size:11px;font-weight:600;min-width:0;}
+  .pe-wd b{display:block;font-size:9.5px;margin-top:3px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:0 2px;}
+  .pe-wd.has{color:var(--text);border-color:rgba(91,168,255,0.3);}
+  .pe-wd.has b{color:var(--brass);}
+  .pe-wd.sel{background:var(--brass-dim);border-color:var(--brass);}
+  .pe-vol{display:block;width:100%;text-align:left;background:rgba(255,255,255,0.02);border:1px solid rgba(91,168,255,0.12);border-radius:10px;padding:9px 11px;margin-bottom:10px;color:var(--text);font-family:inherit;cursor:pointer;}
+  .pe-vol-h{display:flex;justify-content:space-between;gap:8px;font-size:12px;color:var(--text-dim);}
+  .pe-vol-h b{color:var(--text);}
+  .pe-vol-more{display:none;margin-top:10px;flex-direction:column;gap:7px;}
+  .pe-vol.open .pe-vol-more{display:flex;}
+  .pe-vrow{display:grid;grid-template-columns:84px 1fr 62px;gap:8px;align-items:center;font-size:12px;color:var(--text-dim);}
+  .pe-vbar{position:relative;height:8px;border-radius:4px;background:rgba(255,255,255,0.05);overflow:hidden;}
+  .pe-vbar .band{position:absolute;top:0;bottom:0;background:rgba(91,168,255,0.18);}
+  .pe-vbar .fill{position:absolute;left:0;top:1px;bottom:1px;border-radius:3px;}
+  .pe-vnum{display:flex;flex-direction:column;text-align:right;line-height:1.15;}
+  .pe-vnum b{color:var(--text);}
+  .pe-vnum small{font-size:9.5px;color:var(--text-faint);}
+  .pe-vol-key{font-size:10.5px;color:var(--text-faint);line-height:1.4;}
+  .pe-days-list{display:flex;flex-direction:column;gap:8px;margin-bottom:10px;}
+  .pe-acc{background:rgba(255,255,255,0.02);border:1px solid rgba(91,168,255,0.12);border-radius:12px;overflow:hidden;}
+  .pe-acc.open{border-color:rgba(91,168,255,0.35);}
+  .pe-acc-h{display:flex;align-items:center;gap:10px;width:100%;padding:10px 12px;background:none;border:0;color:var(--text);text-align:left;font-family:inherit;cursor:pointer;}
+  .pe-acc-t{flex:1;min-width:0;display:flex;flex-direction:column;}
+  .pe-acc-t strong{font-size:15px;}
+  .pe-acc-t span{font-size:11.5px;color:var(--text-dim);}
+  .pe-days{display:flex;gap:2px;flex:none;}
+  .pe-days i{font-style:normal;font-size:10px;font-weight:700;color:var(--text-faint);width:13px;text-align:center;}
+  .pe-days i.on{color:var(--brass);}
+  .pe-acc-b{padding:10px;border-top:1px solid rgba(91,168,255,0.12);display:flex;flex-direction:column;gap:8px;}
+  .pe-acc-b input{min-width:0;padding:9px 11px;background:var(--card);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:15px;}
+  .pe-acc-b .day-editor-head{margin-bottom:0;}
+  .pe-exlist{display:flex;flex-direction:column;gap:6px;}
+  .pe-ex{display:flex;align-items:center;gap:8px;background:rgba(0,0,0,0.22);border:1px solid rgba(91,168,255,0.1);border-radius:10px;padding:9px 10px;cursor:pointer;}
+  .pe-grip{color:var(--text-faint);font-size:16px;cursor:grab;}
+  .pe-exn{flex:1;min-width:0;display:flex;flex-direction:column;}
+  .pe-exname{font-weight:600;font-size:13.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .pe-exsub{font-size:10.5px;color:var(--text-faint);line-height:1.3;}
+  .pe-spark-wrap{flex:none;display:flex;}
+  .pe-chip{flex:none;background:rgba(0,0,0,0.3);border:1px solid rgba(91,168,255,0.15);border-radius:8px;padding:4px 9px;font-weight:700;font-size:13px;white-space:nowrap;}
+  .pe-empty{font-size:12.5px;color:var(--text-faint);margin:2px 0;}
+  .pe-sug{border:1px solid rgba(231,178,74,0.3);background:rgba(231,178,74,0.06);border-radius:10px;padding:9px 10px;margin-bottom:10px;}
+  .pe-acc-b .pe-sug{margin-bottom:0;}
+  .pe-sug-title{font-size:13px;font-weight:700;color:var(--brass);}
+  .pe-sug-reason{font-size:12px;color:var(--text-dim);margin-top:2px;line-height:1.4;}
+  .pe-sug-act{display:flex;gap:8px;margin-top:8px;}
+  .pe-sug-act .btn{width:auto;padding:6px 14px;font-size:12.5px;}
+  .pe-actions{display:flex;gap:10px;position:sticky;bottom:calc(64px + env(safe-area-inset-bottom, 0px));padding:10px 0 2px;background:linear-gradient(to top,var(--card,#0b1220) 70%,transparent);}
+  .pe-pick{display:flex;justify-content:space-between;gap:8px;width:100%;padding:12px;border-radius:10px;background:rgba(255,255,255,0.03);border:1px solid rgba(91,168,255,0.15);color:var(--text);font:600 14px inherit;font-family:inherit;cursor:pointer;}
+  .pe-pick span:last-child{color:var(--text-faint);font-weight:500;font-size:12px;}
+  .pe-facts{display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;}
+  .pe-fact{flex:1 1 90px;background:rgba(0,0,0,0.25);border:1px solid rgba(91,168,255,0.12);border-radius:10px;padding:7px 9px;display:flex;flex-direction:column;}
+  .pe-fact span{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--text-faint);}
+  .pe-fact b{font-size:13px;}
+  .pe-bigspark{margin-bottom:10px;display:flex;flex-direction:column;gap:2px;}
+  .pe-bigspark svg{width:100%;height:44px;}
+  .pe-bigspark small{font-size:10.5px;color:var(--text-faint);}
+  .pe-step{display:flex;align-items:center;gap:10px;margin-top:8px;}
+  .pe-step span{flex:1;color:var(--text-dim);}
+  .pe-step b{min-width:30px;text-align:center;font-size:18px;}
+  .pe-step .btn{width:44px;padding:8px 0;}
   .day-editor{border:1px dashed var(--border);border-radius:6px;padding:12px;margin-bottom:10px;}
   .day-editor .field{margin-bottom:8px;}
   .day-editor-head{display:flex;gap:8px;margin-bottom:8px;}
@@ -4088,7 +4155,8 @@ import { detectReEntry, reEntryPlan, directiveProgress, formatMeasure, DIRECTIVE
 import { analyseHabit, sampleCurve, describeReturns,
          HABIT_TARGET_DAYS, MISS_GRACE } from "./habit.js";
 import { muscleDevelopment, bodyBuild, bodyFrame } from "./physique.js";
-import { optimisePlan, applySuggestion, activeDismissals, GOALS, GOAL_LABELS } from "./optimiser.js";
+import { optimisePlan, applySuggestion, activeDismissals, GOALS, GOAL_LABELS, MUSCLE_GROUPS } from "./optimiser.js";
+import { volumeRows, exerciseInsight, dayStats, suggestionsByDay } from "./plan-insights.js";
 import {
   getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword,
   onAuthStateChanged, signOut, updateProfile
@@ -8177,7 +8245,7 @@ function renderQuestFeed() {
   });
   document.getElementById('new-program-btn')?.addEventListener('click', () => {
     if (!window.confirm('Start a new plan?\n\nYour current plan will be replaced.')) return;
-    myProgram = null; editingProgram = true; renderQuestFeed();
+    peSnap = myProgram ? JSON.stringify(myProgram) : undefined; myProgram = null; editingProgram = true; renderQuestFeed();
   });
   wireQuestCard(wrap.querySelector('.quest-card'), questCarouselIndex);
   document.getElementById('carousel-prev')?.addEventListener('click', () => { SFX.swipe(); navigateCarousel('prev'); });
@@ -8630,19 +8698,7 @@ function renderPlanOptimiser() {
   const today = todayStr();
   let result;
   try {
-    result = optimisePlan({
-      program: myProgram,
-      exercises: EXERCISES_ALL,
-      workouts: myWorkouts.filter(w => w.uid === currentUser?.uid),
-      today,
-      goal: myProgram.goal,
-      personalGoals: profile?.personalGoals || [],
-      directives: profile?.directives || [],
-      prs: myPRs || {},
-      bodyweightKg: latestBodyweightKg(),
-      weeklyGoal: profile?.weeklyGoal || 3,
-      dismissed: activeDismissals(readPlanOptDismissed(), today),
-    });
+    result = optimisePlan(planOptCtx(myProgram, today));
   } catch (e) {
     console.warn('Plan optimiser failed:', e);
     host.innerHTML = '';
@@ -9279,158 +9335,328 @@ function stopRestTimer() {
 document.querySelectorAll('.rest-preset-btn').forEach(btn => btn.addEventListener('click', () => { SFX.restTap(); startRestTimer(Number(btn.dataset.secs)); }));
 document.getElementById('rest-timer-stop')?.addEventListener('click', stopRestTimer);
 
+/* =========================================================================
+   PLAN EDITOR
+   The week on top (tap a day to open its workout, tap a rest day to give it
+   one), weekly sets per muscle group planned against what was actually
+   trained, one folding card per workout, and tap-to-tune exercises with the
+   last session and trend from the Hunter's logged history. Suggestions from
+   optimiser.js sit on the workout they change and edit this working copy;
+   nothing is saved until Save plan, through the same programs/{uid} write
+   as before. Read-only on workouts, XP and stats (insights: plan-insights.js).
+   ========================================================================= */
+let peSnap;   // JSON of the plan when the editor opened, so Cancel can put it back
+let peSel = 0, peOpenIdx = 0, peVolOpen = false, peSettingsOpen = false;
+const PE_STATUS = {
+  progressing: ['▲ Progressing', 'var(--growing)'], stalled: ['■ Stalled', 'var(--excess)'],
+  building: ['Building history', 'var(--text-dim)'], tracking: ['Tracking', 'var(--text-dim)'],
+  new: ['Not logged yet', 'var(--text-faint)'],
+};
+const PE_VOL_COLOR = { none: 'var(--text-faint)', low: 'var(--excess)', ok: 'var(--text-dim)', good: 'var(--growing)', high: 'var(--excess)' };
+
+function planOptCtx(program, today) {
+  return {
+    program,
+    exercises: EXERCISES_ALL,
+    workouts: myWorkouts.filter(w => w.uid === currentUser?.uid),
+    today,
+    goal: program.goal,
+    personalGoals: profile?.personalGoals || [],
+    directives: profile?.directives || [],
+    prs: myPRs || {},
+    bodyweightKg: latestBodyweightKg(),
+    weeklyGoal: profile?.weeklyGoal || 3,
+    dismissed: activeDismissals(readPlanOptDismissed(), today),
+  };
+}
+function peAgo(date, today) {
+  const d = Math.round((new Date(today + 'T12:00:00') - new Date(date + 'T12:00:00')) / 86400000);
+  return d <= 0 ? 'today' : d === 1 ? 'yesterday' : d < 14 ? `${d}d ago` : `${Math.round(d / 7)}w ago`;
+}
+function peLastText(last, today) {
+  if (!last) return 'Not logged yet';
+  const what = last.load === 'kg' && last.weight ? `${last.weight} kg × ${last.reps}` : `${last.reps} reps`;
+  return `Last ${what} · ${peAgo(last.date, today)}`;
+}
+function peSpark(series, w = 44, h = 14) {
+  if (!series || series.length < 2) return '';
+  const ys = series.map(p => p.value), lo = Math.min(...ys), hi = Math.max(...ys), span = hi - lo || 1;
+  const pts = series.map((p, i) => `${(i / (series.length - 1) * (w - 2) + 1).toFixed(1)},${(h - 2 - (p.value - lo) / span * (h - 4)).toFixed(1)}`).join(' ');
+  return `<svg class="pe-spark" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" aria-hidden="true"><polyline points="${pts}" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/></svg>`;
+}
+function peSyncSchedule() {
+  if (myProgram.scheduleMode === 'fixed') myProgram.schedule = [...new Set(myProgram.days.flatMap(d => d.assignedDays || []))];
+}
+
 function renderProgramEditor(wrap) {
   if (!myProgram) myProgram = { name: '', schedule: [], days: [], currentDayIndex: 0, scheduleMode: 'rotation' };
   if (!myProgram.schedule) myProgram.schedule = [];
   if (!myProgram.scheduleMode) myProgram.scheduleMode = 'rotation';
+  if (peSnap === undefined) { peSnap = JSON.stringify(myProgram); peSel = 0; peOpenIdx = myProgram.days.length ? 0 : -1; peVolOpen = false; peSettingsOpen = false; }
+  const isFixed = myProgram.scheduleMode === 'fixed';
+  const today = todayStr();
+  const workouts = myWorkouts.filter(w => w.uid === currentUser?.uid);
+  let result = { suggestions: [] };
+  try { result = optimisePlan(planOptCtx(myProgram, today)); } catch (e) { console.warn('Plan editor suggestions failed:', e); }
+  const { byDay, plan: planNotes } = suggestionsByDay(result.suggestions);
+  const rows = volumeRows(myProgram, EXERCISES_ALL, workouts, today);
+  const plannedTotal = Math.round(rows.reduce((a, r) => a + r.planned, 0));
+  const lowCount = rows.filter(r => r.status.key === 'low' || r.status.key === 'none').filter(r => MUSCLE_GROUPS[r.group].major).length;
+  const maxRow = Math.max(1, ...rows.map(r => Math.max(r.planned, r.mav)));
+
+  const dayOf = d => isFixed ? myProgram.days.findIndex(x => (x.assignedDays || []).includes(d)) : (myProgram.schedule.includes(d) ? 0 : -1);
+  const week = WEEKDAYS.map(d => {
+    const i = dayOf(d);
+    const label = i < 0 ? 'Rest' : isFixed ? escapeHtml(myProgram.days[i].name) : 'Train';
+    return `<button type="button" class="pe-wd ${i >= 0 ? 'has' : ''} ${isFixed && i >= 0 && i === peSel ? 'sel' : ''}" data-d="${d}" aria-label="${d}: ${i < 0 ? 'rest' : label}">${d.slice(0, 2)}<b>${label}</b></button>`;
+  }).join('');
+
+  const volRows = rows.map(r => `
+    <div class="pe-vrow">
+      <span class="pe-vname">${r.group}</span>
+      <span class="pe-vbar" title="Weekly sets: planned ${r.planned}, target ${r.mev}–${r.mav}"><i class="band" style="left:${r.mev / maxRow * 100}%;width:${(r.mav - r.mev) / maxRow * 100}%"></i><i class="fill" style="width:${Math.min(100, r.planned / maxRow * 100)}%;background:${PE_VOL_COLOR[r.status.key]}"></i></span>
+      <span class="pe-vnum"><b>${r.planned}</b><small>${r.actual ? `${r.actual}/wk done` : 'none done'}</small></span>
+    </div>`).join('');
+
+  const dayCards = myProgram.days.map((day, di) => {
+    const open = di === peOpenIdx;
+    const st = dayStats(day, EXERCISES_ALL);
+    const sug = (byDay[di] || []).map(({ s, i }) => `
+      <div class="pe-sug">
+        <div class="pe-sug-title">${escapeHtml(s.title)}</div>
+        <div class="pe-sug-reason">${escapeHtml(s.reason)}</div>
+        <div class="pe-sug-act">${s.change ? `<button type="button" class="btn btn-primary pe-sug-apply" data-i="${i}">Apply</button>` : ''}<button type="button" class="btn pe-sug-dismiss" data-i="${i}">${s.change ? 'Dismiss' : 'Got it'}</button></div>
+      </div>`).join('');
+    const exRows = (day.exercises || []).map((ex, ei) => {
+      const info = exerciseInsight(ex.name, workouts, today);
+      const [stLabel, stColor] = PE_STATUS[info.status] || PE_STATUS.tracking;
+      const reps = ex.reps ?? (ex.repRange ? String(ex.repRange).match(/(\d+)/)?.[1] : 10) ?? 10;
+      return `<div class="pe-ex" draggable="true" data-di="${di}" data-ei="${ei}" tabindex="0" role="button" aria-label="Edit ${escapeHtml(ex.name)}">
+        <span class="pe-grip" aria-hidden="true">⠿</span>
+        <span class="pe-exn"><span class="pe-exname">${escapeHtml(ex.name)}</span><span class="pe-exsub"><span style="color:${stColor}">${stLabel}</span> · ${escapeHtml(peLastText(info.last, today))}</span></span>
+        <span class="pe-spark-wrap" style="color:${stColor}">${peSpark(info.series)}</span>
+        <span class="pe-chip">${ex.sets} × ${reps}</span>
+      </div>`;
+    }).join('');
+    return `<div class="pe-acc ${open ? 'open' : ''}" data-di="${di}">
+      <button type="button" class="pe-acc-h" data-di="${di}" aria-expanded="${open}">
+        <span class="pe-acc-t"><strong>${escapeHtml(day.name || 'Workout')}</strong><span>${(day.exercises || []).length} exercises${st.sets ? ` · ${st.sets} sets · ~${st.minutes} min` : ''}${st.groups.length ? ` · ${st.groups.join(', ')}` : ''}</span></span>
+        <span class="pe-days">${WEEKDAYS.map(d => `<i class="${isFixed && (day.assignedDays || []).includes(d) ? 'on' : ''}">${d[0]}</i>`).join('')}</span>
+      </button>
+      ${open ? `<div class="pe-acc-b">
+        <div class="day-editor-head">
+          <input class="day-name-input" data-di="${di}" value="${escapeHtml(day.name)}" placeholder="Workout name" />
+          <input class="day-tag-input" data-di="${di}" value="${escapeHtml(day.tag || '')}" placeholder="Tag" style="max-width:90px;" />
+          <button type="button" class="remove-x remove-day-btn" data-di="${di}" aria-label="Remove workout">×</button>
+        </div>
+        ${isFixed ? `<div class="weekday-chips day-weekday-chips" data-di="${di}">${WEEKDAYS.map(d => `<button type="button" class="weekday-chip ${(day.assignedDays || []).includes(d) ? 'on' : ''}" data-day="${d}">${d}</button>`).join('')}</div>` : ''}
+        ${sug}
+        <div class="pe-exlist" id="pe-ex-${di}">${exRows || '<p class="pe-empty">No exercises yet.</p>'}</div>
+        <button type="button" class="btn btn-sm day-add-ex-btn" data-di="${di}" style="font-family:var(--font-mono);letter-spacing:.06em;">+ Add Exercise</button>
+      </div>` : ''}
+    </div>`;
+  }).join('') || '<p class="pe-empty">No workouts yet. Add one below.</p>';
+
+  const notes = planNotes.map(({ s, i }) => `<div class="pe-sug"><div class="pe-sug-title">${escapeHtml(s.title)}</div><div class="pe-sug-reason">${escapeHtml(s.reason)}</div><div class="pe-sug-act"><button type="button" class="btn pe-sug-dismiss" data-i="${i}">Got it</button></div></div>`).join('');
 
   wrap.innerHTML = `
-    <div class="card">
-      <div class="card-title"><h3>Build your plan</h3></div>
-      <div class="field"><label>Plan name</label><input id="prog-name-input" value="${escapeHtml(myProgram.name||'')}" placeholder="e.g. Lock In Gang" /></div>
-
-      <div class="field">
-        <label>Schedule mode</label>
-        <div class="sched-mode-wrap">
-          <button type="button" class="sched-mode-btn ${myProgram.scheduleMode==='rotation'?'selected':''}" data-mode="rotation">
-            🔄 Rotation<span class="sched-mode-desc">Days cycle in order regardless of weekday</span>
-          </button>
-          <button type="button" class="sched-mode-btn ${myProgram.scheduleMode==='fixed'?'selected':''}" data-mode="fixed">
-            📅 Fixed days<span class="sched-mode-desc">Pin each workout to specific days of the week</span>
-          </button>
+    <div class="card pe">
+      <div class="pe-top">
+        <div class="pe-title"><span class="pe-eyebrow">◈ EDIT PLAN</span><span class="pe-name">${escapeHtml(myProgram.name || 'New plan')}</span></div>
+        <button type="button" class="icon-btn" id="pe-settings-btn" aria-expanded="${peSettingsOpen}">⚙ Settings</button>
+      </div>
+      <div class="pe-settings ${peSettingsOpen ? '' : 'closed'}" id="pe-settings">
+        <div class="field"><label>Plan name</label><input id="prog-name-input" value="${escapeHtml(myProgram.name || '')}" placeholder="e.g. Lock In Gang" /></div>
+        <div class="field">
+          <label>Schedule mode</label>
+          <div class="sched-mode-wrap">
+            <button type="button" class="sched-mode-btn ${!isFixed ? 'selected' : ''}" data-mode="rotation">🔄 Rotation<span class="sched-mode-desc">Workouts cycle in order on your training days. Tap days in the week strip to turn training on or off.</span></button>
+            <button type="button" class="sched-mode-btn ${isFixed ? 'selected' : ''}" data-mode="fixed">📅 Fixed days<span class="sched-mode-desc">Pin each workout to specific days of the week</span></button>
+          </div>
         </div>
       </div>
-
-      <div class="field" id="rotation-schedule-field" style="${myProgram.scheduleMode==='fixed'?'display:none':''}">
-        <label>Training days (rotation runs on these days)</label>
-        <div class="weekday-chips" id="weekday-chips">
-          ${WEEKDAYS.map(d => `<button type="button" class="weekday-chip ${myProgram.schedule.includes(d)?'on':''}" data-day="${d}">${d}</button>`).join('')}
-        </div>
-      </div>
-
-      <div id="prog-days-wrap"></div>
-      <button class="btn add-exercise-btn" id="add-day-btn">+ Add workout day</button>
-      <div style="display:flex;gap:10px;margin-top:16px;">
+      <div class="pe-week" id="pe-week">${week}</div>
+      <button type="button" class="pe-vol ${peVolOpen ? 'open' : ''}" id="pe-vol" aria-expanded="${peVolOpen}">
+        <span class="pe-vol-h"><span>Weekly sets per muscle</span><span><b>${plannedTotal}</b> planned${lowCount ? ` · <span style="color:var(--excess)">${lowCount} major group${lowCount === 1 ? '' : 's'} low</span>` : ''} ${peVolOpen ? '▴' : '▾'}</span></span>
+        <span class="pe-vol-more">${volRows}<small class="pe-vol-key">Bar fills with planned sets. The shaded band is the target range. "done" is your 4-week average from logged sessions.</small></span>
+      </button>
+      ${notes}
+      <div class="pe-days-list">${dayCards}</div>
+      <button class="btn add-exercise-btn" id="add-day-btn" type="button">+ Add workout</button>
+      <div class="pe-actions">
         <button class="btn" id="cancel-program-btn" style="flex:1;">Cancel</button>
         <button class="btn btn-primary" id="save-program-btn" style="flex:2;">Save plan</button>
       </div>
     </div>`;
 
-  renderDayEditors();
-
-  // mode toggle
+  const repaint = () => renderProgramEditor(wrap);
+  const nameEl = wrap.querySelector('#prog-name-input');
+  nameEl?.addEventListener('input', () => { myProgram.name = nameEl.value; const t = wrap.querySelector('.pe-name'); if (t) t.textContent = nameEl.value || 'New plan'; });
+  wrap.querySelector('#pe-settings-btn')?.addEventListener('click', () => { peSettingsOpen = !peSettingsOpen; repaint(); });
   wrap.querySelectorAll('.sched-mode-btn').forEach(btn => btn.addEventListener('click', () => {
-    wrap.querySelectorAll('.sched-mode-btn').forEach(b => b.classList.remove('selected'));
-    btn.classList.add('selected');
     myProgram.scheduleMode = btn.dataset.mode;
-    document.getElementById('rotation-schedule-field').style.display = myProgram.scheduleMode === 'fixed' ? 'none' : '';
-    renderDayEditors();
+    peSyncSchedule();
+    repaint();
   }));
 
-  wrap.querySelectorAll('.weekday-chip').forEach(chip => chip.addEventListener('click', () => {
-    SFX.chipSelect();
-    const d = chip.dataset.day;
-    const i = myProgram.schedule.indexOf(d);
-    if (i === -1) myProgram.schedule.push(d); else myProgram.schedule.splice(i, 1);
-    chip.classList.toggle('on');
+  // week strip: fixed mode jumps to a workout or gives a rest day one; rotation toggles training days
+  wrap.querySelectorAll('.pe-wd').forEach(b => b.addEventListener('click', () => {
+    const d = b.dataset.d, i = dayOf(d);
+    if (!isFixed) {
+      SFX.chipSelect();
+      const k = myProgram.schedule.indexOf(d);
+      if (k === -1) myProgram.schedule.push(d); else myProgram.schedule.splice(k, 1);
+      repaint();
+    } else if (i >= 0) { peSel = i; peOpenIdx = i; repaint(); wrap.querySelector(`.pe-acc[data-di="${i}"]`)?.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); }
+    else if (myProgram.days.length) peOpenDayPicker(d, repaint);
+    else showToast('Add a workout first.', 'info');
   }));
-  document.getElementById('add-day-btn')?.addEventListener('click', () => {
-    myProgram.days.push({ name: `Day ${myProgram.days.length+1}`, tag:'', exercises: [], lastDate: null, assignedDays: [] });
-    renderDayEditors();
+  wrap.querySelector('#pe-vol')?.addEventListener('click', () => { peVolOpen = !peVolOpen; repaint(); });
+  wrap.querySelectorAll('.pe-acc-h').forEach(b => b.addEventListener('click', () => {
+    const i = Number(b.dataset.di);
+    peOpenIdx = peOpenIdx === i ? -1 : i;
+    if (peOpenIdx > -1) peSel = i;
+    repaint();
+  }));
+  wrap.querySelector('#add-day-btn')?.addEventListener('click', () => {
+    myProgram.days.push({ name: `Day ${myProgram.days.length + 1}`, tag: '', exercises: [], lastDate: null, assignedDays: [] });
+    peSel = peOpenIdx = myProgram.days.length - 1;
+    repaint();
   });
-  document.getElementById('cancel-program-btn')?.addEventListener('click', () => { editingProgram = false; renderQuestFeed(); });
-  document.getElementById('save-program-btn')?.addEventListener('click', saveProgram);
+  wrap.querySelector('#cancel-program-btn')?.addEventListener('click', () => {
+    if (peSnap) { try { myProgram = JSON.parse(peSnap); } catch (_) { /* keep working copy */ } }
+    peSnap = undefined; editingProgram = false; renderQuestFeed();
+  });
+  wrap.querySelector('#save-program-btn')?.addEventListener('click', saveProgram);
 
-  function renderDayEditors() {
-    const daysWrap = document.getElementById('prog-days-wrap');
-    const isFixed = myProgram.scheduleMode === 'fixed';
-    daysWrap.innerHTML = myProgram.days.map((day, di) => `
-      <div class="day-editor" data-di="${di}">
-        <div class="day-editor-head">
-          <input class="day-name-input" value="${escapeHtml(day.name)}" placeholder="Day name" />
-          <input class="day-tag-input" value="${escapeHtml(day.tag||'')}" placeholder="Tag" style="max-width:100px;" />
-          <button class="remove-x remove-day-btn">×</button>
-        </div>
-        ${isFixed ? `<div class="field" style="margin:6px 0 4px;">
-          <label style="font-size:11px;">Runs on</label>
-          <div class="weekday-chips day-weekday-chips" data-di="${di}">
-            ${WEEKDAYS.map(d => `<button type="button" class="weekday-chip ${(day.assignedDays||[]).includes(d)?'on':''}" data-day="${d}">${d}</button>`).join('')}
-          </div>
-        </div>` : ''}
-        <div class="ex-chip-row" id="ex-sort-${di}">
-          ${day.exercises.map((ex,ei) => `<div class="ex-chip" draggable="true" data-di="${di}" data-ei="${ei}" style="cursor:grab;width:100%;display:flex;align-items:center;gap:6px;margin-bottom:4px;">
-            <span style="color:var(--text-faint);font-size:16px;cursor:grab;padding:0 4px;">⠿</span>
-            <span style="flex:1;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(ex.name)}</span>
-            <input type="number" class="ex-chip-sets" data-ei="${ei}" value="${ex.sets}" min="1" style="width:32px;text-align:center;" /><span class="ex-chip-x">×</span><input type="number" class="ex-chip-reps" data-ei="${ei}" value="${ex.reps ?? (ex.repRange ? String(ex.repRange).match(/(\d+)/)?.[1] : 10) ?? 10}" min="1" style="width:32px;text-align:center;" />
-            <button class="remove-ex-btn" data-ei="${ei}" style="flex-shrink:0;">×</button>
-          </div>`).join('')}
-        </div>
-        <button type="button" class="btn btn-sm day-add-ex-btn" style="font-family:var(--font-mono);letter-spacing:.06em;">+ Add Exercise</button>
-      </div>`).join('') || '<p style="color:var(--text-faint);font-size:13px;">No workout days yet — add one.</p>';
+  // suggestions edit the working copy only
+  wrap.querySelectorAll('.pe-sug-apply').forEach(btn => btn.addEventListener('click', () => {
+    const s = result.suggestions[Number(btn.dataset.i)];
+    const next = s && applySuggestion(myProgram, s, today);
+    if (!next) { showToast('Your plan changed since this was suggested. Refreshed.', 'info'); repaint(); return; }
+    myProgram = next;
+    showToast('Applied. Save the plan to keep it.', 'success');
+    repaint();
+  }));
+  wrap.querySelectorAll('.pe-sug-dismiss').forEach(btn => btn.addEventListener('click', () => {
+    const s = result.suggestions[Number(btn.dataset.i)];
+    if (!s) return;
+    const record = readPlanOptDismissed();
+    record[s.id] = today;
+    writePlanOptDismissed(record);
+    repaint();
+  }));
 
-    // day weekday assignment (fixed mode)
-    daysWrap.querySelectorAll('.day-weekday-chips').forEach(chips => {
-      const di = Number(chips.dataset.di);
-      chips.querySelectorAll('.weekday-chip').forEach(chip => {
-        chip.addEventListener('click', () => {
-          const d = chip.dataset.day;
-          if (!myProgram.days[di].assignedDays) myProgram.days[di].assignedDays = [];
-          const idx = myProgram.days[di].assignedDays.indexOf(d);
-          if (idx === -1) myProgram.days[di].assignedDays.push(d);
-          else myProgram.days[di].assignedDays.splice(idx, 1);
-          chip.classList.toggle('on');
-          // rebuild schedule from all assigned days
-          myProgram.schedule = [...new Set(myProgram.days.flatMap(day => day.assignedDays||[]))];
-        });
-      });
+  wrap.querySelectorAll('.day-name-input').forEach(el => el.addEventListener('input', () => { myProgram.days[Number(el.dataset.di)].name = el.value; }));
+  wrap.querySelectorAll('.day-tag-input').forEach(el => el.addEventListener('input', () => { myProgram.days[Number(el.dataset.di)].tag = el.value; }));
+  wrap.querySelectorAll('.remove-day-btn').forEach(btn => btn.addEventListener('click', () => {
+    myProgram.days.splice(Number(btn.dataset.di), 1);
+    peSyncSchedule();
+    peSel = 0; peOpenIdx = myProgram.days.length ? 0 : -1;
+    repaint();
+  }));
+  wrap.querySelectorAll('.day-weekday-chips').forEach(chips => {
+    const di = Number(chips.dataset.di);
+    chips.querySelectorAll('.weekday-chip').forEach(chip => chip.addEventListener('click', () => {
+      SFX.chipSelect();
+      const day = myProgram.days[di];
+      if (!day.assignedDays) day.assignedDays = [];
+      const k = day.assignedDays.indexOf(chip.dataset.day);
+      if (k === -1) day.assignedDays.push(chip.dataset.day); else day.assignedDays.splice(k, 1);
+      peSyncSchedule();
+      repaint();
+    }));
+  });
+  wrap.querySelectorAll('.day-add-ex-btn').forEach(btn => btn.addEventListener('click', () => {
+    const di = Number(btn.dataset.di);
+    openExercisePicker(name => {
+      myProgram.days[di].exercises.push({ name, sets: 3, reps: 10 });
+      repaint();
     });
+  }));
 
-    daysWrap.querySelectorAll('.day-name-input').forEach((el,di) => el.addEventListener('input', () => myProgram.days[di].name = el.value));
-    daysWrap.querySelectorAll('.day-tag-input').forEach((el,di) => el.addEventListener('input', () => myProgram.days[di].tag = el.value));
-    daysWrap.querySelectorAll('.remove-day-btn').forEach((btn,di) => btn.addEventListener('click', () => { myProgram.days.splice(di,1); renderDayEditors(); }));
-    daysWrap.querySelectorAll('.day-editor').forEach(el => {
-      const di = Number(el.dataset.di);
-      el.querySelectorAll('.remove-ex-btn').forEach(btn => btn.addEventListener('click', () => {
-        myProgram.days[di].exercises.splice(Number(btn.dataset.ei), 1); renderDayEditors();
-      }));
-      el.querySelectorAll('.ex-chip-sets').forEach(inp => inp.addEventListener('change', () => {
-        myProgram.days[di].exercises[Number(inp.dataset.ei)].sets = Math.max(1, Number(inp.value) || 1);
-      }));
-      el.querySelectorAll('.ex-chip-reps').forEach(inp => inp.addEventListener('change', () => {
-        myProgram.days[di].exercises[Number(inp.dataset.ei)].reps = Math.max(1, Number(inp.value) || 1);
-      }));
-      el.querySelector('.day-add-ex-btn').addEventListener('click', () => {
-        openExercisePicker(name => {
-          myProgram.days[di].exercises.push({ name, sets: 3, reps: 10 });
-          renderDayEditors();
-        });
-      });
-      // drag to reorder exercises
-      const sortList = el.querySelector(`#ex-sort-${di}`);
-      if (sortList) {
-        let dragSrc = null;
-        sortList.querySelectorAll('.ex-chip[draggable]').forEach(chip => {
-          chip.addEventListener('dragstart', e => {
-            dragSrc = chip;
-            chip.style.opacity = '0.4';
-            e.dataTransfer.effectAllowed = 'move';
-          });
-          chip.addEventListener('dragend', () => { chip.style.opacity = '1'; dragSrc = null; });
-          chip.addEventListener('dragover', e => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; });
-          chip.addEventListener('drop', e => {
-            e.preventDefault();
-            if (!dragSrc || dragSrc === chip) return;
-            const fromEi = Number(dragSrc.dataset.ei);
-            const toEi = Number(chip.dataset.ei);
-            const exercises = myProgram.days[di].exercises;
-            const [moved] = exercises.splice(fromEi, 1);
-            exercises.splice(toEi, 0, moved);
-            renderDayEditors();
-          });
-        });
-      }
+  // tap an exercise to tune it; drag the handle to reorder on desktop
+  wrap.querySelectorAll('.pe-ex').forEach(row => {
+    const di = Number(row.dataset.di), ei = Number(row.dataset.ei);
+    row.addEventListener('click', () => peOpenExercise(di, ei, workouts, today, repaint));
+    row.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); peOpenExercise(di, ei, workouts, today, repaint); } });
+    row.addEventListener('dragstart', e => { row.dataset.drag = '1'; row.style.opacity = '0.4'; e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', `${di}:${ei}`); });
+    row.addEventListener('dragend', () => { row.style.opacity = '1'; delete row.dataset.drag; });
+    row.addEventListener('dragover', e => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; });
+    row.addEventListener('drop', e => {
+      e.preventDefault();
+      const [fd, fe] = (e.dataTransfer.getData('text/plain') || '').split(':').map(Number);
+      if (fd !== di || fe === ei || Number.isNaN(fe)) return;
+      const list = myProgram.days[di].exercises;
+      const [moved] = list.splice(fe, 1);
+      list.splice(ei, 0, moved);
+      repaint();
     });
-  }
+  });
+}
+
+function peOpenDayPicker(weekday, repaint) {
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.innerHTML = `<div class="modal" role="dialog" aria-label="${weekday} workout">
+    <h3 style="margin:0 0 4px;">${weekday} is a rest day</h3>
+    <p style="font-size:12px;color:var(--text-faint);margin:0 0 12px;">Run a workout on it?</p>
+    <div style="display:flex;flex-direction:column;gap:8px;">
+      ${myProgram.days.map((d, i) => `<button type="button" class="pe-pick" data-i="${i}"><span>${escapeHtml(d.name)}</span><span>${(d.exercises || []).length} exercises</span></button>`).join('')}
+      <button type="button" class="btn" id="pe-pick-cancel">Keep as rest</button>
+    </div></div>`;
+  getOverlayHost().appendChild(overlay);
+  const close = () => overlay.remove();
+  overlay.addEventListener('click', e => { if (e.target === overlay) close(); });
+  overlay.querySelector('#pe-pick-cancel').addEventListener('click', close);
+  overlay.querySelectorAll('.pe-pick').forEach(b => b.addEventListener('click', () => {
+    const i = Number(b.dataset.i), day = myProgram.days[i];
+    if (!day.assignedDays) day.assignedDays = [];
+    if (!day.assignedDays.includes(weekday)) day.assignedDays.push(weekday);
+    peSyncSchedule();
+    peSel = peOpenIdx = i;
+    close();
+    repaint();
+  }));
+}
+
+function peOpenExercise(di, ei, workouts, today, repaint) {
+  const list = myProgram.days[di].exercises;
+  const ex = list[ei];
+  if (!ex) return;
+  const info = exerciseInsight(ex.name, workouts, today);
+  const [stLabel, stColor] = PE_STATUS[info.status] || PE_STATUS.tracking;
+  const repsOf = () => ex.reps ?? (ex.repRange ? Number(String(ex.repRange).match(/(\d+)/)?.[1]) : 10) ?? 10;
+  const trend = info.rate == null ? '' : `<div class="pe-fact"><span>Trend</span><b>${info.rate >= 0 ? '+' : ''}${info.rate} kg/wk</b></div>`;
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.innerHTML = `<div class="modal" role="dialog" aria-label="${escapeHtml(ex.name)}">
+    <h3 style="margin:0 0 2px;">${escapeHtml(ex.name)}</h3>
+    <div style="font-size:12px;color:${stColor};margin-bottom:10px;">${stLabel}</div>
+    <div class="pe-facts">
+      <div class="pe-fact"><span>Last</span><b>${escapeHtml(peLastText(info.last, today).replace(/^Last /, ''))}</b></div>
+      ${info.best ? `<div class="pe-fact"><span>Best e1RM</span><b>${Math.round(info.best)} kg</b></div>` : ''}
+      ${trend}
+    </div>
+    ${info.series.length > 1 ? `<div class="pe-bigspark" style="color:${stColor}">${peSpark(info.series, 280, 44)}<small>Estimated 1RM per session, last 8 weeks</small></div>` : ''}
+    <div class="pe-step"><span>Sets</span><button type="button" class="btn" data-k="sets" data-d="-1" aria-label="Fewer sets">−</button><b id="pe-s">${ex.sets}</b><button type="button" class="btn" data-k="sets" data-d="1" aria-label="More sets">+</button></div>
+    <div class="pe-step"><span>Reps</span><button type="button" class="btn" data-k="reps" data-d="-1" aria-label="Fewer reps">−</button><b id="pe-r">${repsOf()}</b><button type="button" class="btn" data-k="reps" data-d="1" aria-label="More reps">+</button></div>
+    <div class="pe-step"><span>Position</span><button type="button" class="btn" id="pe-up" ${ei === 0 ? 'disabled' : ''} aria-label="Move up">↑</button><b></b><button type="button" class="btn" id="pe-down" ${ei === list.length - 1 ? 'disabled' : ''} aria-label="Move down">↓</button></div>
+    <div style="display:flex;gap:8px;margin-top:12px;"><button type="button" class="btn" id="pe-remove" style="flex:1;">Remove</button><button type="button" class="btn btn-primary" id="pe-done" style="flex:2;">Done</button></div>
+  </div>`;
+  getOverlayHost().appendChild(overlay);
+  const close = () => { overlay.remove(); repaint(); };
+  overlay.addEventListener('click', e => { if (e.target === overlay) close(); });
+  overlay.querySelectorAll('.pe-step [data-k]').forEach(b => b.addEventListener('click', () => {
+    const d = Number(b.dataset.d);
+    if (b.dataset.k === 'sets') { ex.sets = Math.max(1, (Number(ex.sets) || 1) + d); overlay.querySelector('#pe-s').textContent = ex.sets; }
+    else { ex.reps = Math.max(1, repsOf() + d); overlay.querySelector('#pe-r').textContent = ex.reps; }
+  }));
+  const move = to => { const [m] = list.splice(ei, 1); list.splice(to, 0, m); close(); };
+  overlay.querySelector('#pe-up').addEventListener('click', () => move(ei - 1));
+  overlay.querySelector('#pe-down').addEventListener('click', () => move(ei + 1));
+  overlay.querySelector('#pe-remove').addEventListener('click', () => { list.splice(ei, 1); close(); });
+  overlay.querySelector('#pe-done').addEventListener('click', close);
 }
 /* =========================================================================
    STATE RECONCILIATION SYSTEM
@@ -9852,6 +10078,7 @@ async function saveProgram() {
   myProgram.currentDayIndex = myProgram.currentDayIndex || 0;
   if (!myProgram.schedule.length) myProgram.schedule = [...WEEKDAYS];
   await setDoc(doc(db, 'programs', currentUser.uid), myProgram);
+  peSnap = undefined;
   editingProgram = false;
   renderQuestFeed();
 }
