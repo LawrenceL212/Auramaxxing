@@ -1268,6 +1268,9 @@
   .tag{font-size:10.5px;padding:3px 8px;border-radius:3px;background:var(--brass-dim);color:var(--brass);text-transform:uppercase;letter-spacing:0.03em;border:1px solid var(--border);}
   .tag.tag-alt{background:var(--violet-dim);color:var(--violet);}
   .muscle-tags{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0;}
+  .load-choice{display:flex;align-items:center;gap:8px;margin:0 0 10px;font-family:var(--font-mono);font-size:10.5px;letter-spacing:0.06em;color:var(--text-faint);text-transform:uppercase;}
+  .load-choice select{flex:1;min-width:0;max-width:200px;background:rgba(255,255,255,0.02);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:7px 8px;font-size:16px;font-family:inherit;text-transform:none;letter-spacing:0;}
+  .load-choice .band-select,.load-choice .edit-band{flex:0 0 auto;width:118px;padding-right:2px;}
   .day-title-row{display:flex;align-items:center;justify-content:space-between;margin:8px 0 10px;}
   .day-title{font-family:var(--font-display);font-size:19px;letter-spacing:0.02em;margin:0;}
   .day-complete-badge{font-size:10.5px;padding:4px 9px;border-radius:20px;background:rgba(139,92,255,0.15);color:var(--violet);border:1px solid var(--violet);white-space:nowrap;}
@@ -1441,6 +1444,16 @@
   .stepper input{width:100%;min-width:0;text-align:center;background:transparent;border:none;color:var(--text);-webkit-text-fill-color:var(--text);font-size:16px;padding:0 2px;font-family:var(--font-mono);height:44px;cursor:pointer;caret-color:transparent;-webkit-appearance:none;appearance:none;}
   .stepper input::-webkit-outer-spin-button, .stepper input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0;}
   .stepper input:read-only{cursor:pointer;}
+  /* Time entry (h / m / s) for runs, sports and other timed sets */
+  .time-field{display:flex;align-items:center;gap:2px;background:rgba(255,255,255,0.02);border:1px solid rgba(91,168,255,0.1);border-radius:8px;height:44px;padding:0 6px;min-width:0;}
+  .time-field:focus-within{border-color:var(--brass);}
+  .time-field input{flex:1 1 0;min-width:0;width:100%;background:transparent;border:none;border-radius:0;color:var(--text);-webkit-text-fill-color:var(--text);font-size:16px;font-weight:700;font-family:var(--font-mono);height:32px;text-align:center;padding:0;-webkit-appearance:none;appearance:none;-moz-appearance:textfield;}
+  .time-field input::-webkit-outer-spin-button, .time-field input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0;}
+  .time-field input:focus{outline:none;}
+  .time-field input::placeholder{color:var(--text-faint);font-weight:400;}
+  .time-field .tu{font-size:10px;color:var(--text-faint);font-family:var(--font-mono);padding:0 2px 0 1px;flex-shrink:0;}
+  .set-row .span-2{grid-column:2 / 4;}
+  .set-table-head .span-2{grid-column:2 / 4;}
 
   /* ── Custom in-app numpad ── */
   .numpad-overlay{
@@ -2342,6 +2355,16 @@
   .raid-boss-card.cleared::before{background:linear-gradient(90deg,transparent,rgba(111,255,176,0.3),transparent);animation:none;}
   .raid-boss-card.cleared::after{display:none;}
   .raid-boss-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px;}
+  /* The week's boss in 3D (art/boss-stage.js); empty, and collapsed, until WebGL and the model are there */
+  .raid-boss-stage{position:relative;height:clamp(240px,62vw,340px);margin:-16px -16px 14px;}
+  .raid-boss-stage:empty{display:none;}
+  .boss-stage-root{position:absolute;inset:0;}
+  .boss-stage-root canvas{display:block;width:100%;height:100%;cursor:pointer;}
+  .boss-stage-root::after{content:"";position:absolute;left:0;right:0;bottom:0;height:40%;pointer-events:none;
+    background:linear-gradient(180deg,transparent,rgba(5,6,10,0.92));}
+  .boss-stage-hint{position:absolute;left:0;right:0;bottom:8px;z-index:1;text-align:center;pointer-events:none;
+    font-family:var(--font-mono);font-size:9px;letter-spacing:0.3em;color:var(--text-faint);}
+  .raid-boss-card.cleared .boss-stage-root canvas{filter:grayscale(0.7) brightness(0.6);}
   .raid-eyebrow{font-family:var(--font-mono);font-size:9px;letter-spacing:0.3em;color:var(--excess);margin-bottom:6px;opacity:0.7;}
   .raid-boss-name{font-family:var(--font-display);font-size:18px;letter-spacing:0.06em;color:var(--text);margin-bottom:4px;}
   .raid-phase{font-family:var(--font-mono);font-size:11px;}
@@ -2757,6 +2780,7 @@
   .widget{cursor:pointer;}
   .status-count-row{display:flex;flex-wrap:wrap;gap:8px 10px;margin:10px 0 4px;}
   .status-pill{font-size:11px;padding:4px 10px;border-radius:20px;display:flex;align-items:center;gap:6px;border:1px solid;}
+  .physique-note{font-size:11px;line-height:1.45;color:var(--text-dim);text-align:center;margin-top:8px;}
   /* ── ANATOMY STAGE — character as hero, not diagram ── */
   .body-pair{
     display:flex;justify-content:center;gap:6px;
@@ -3498,6 +3522,9 @@
         <button class="btn btn-sm" id="manual-log-btn" style="flex:1;font-family:var(--font-mono);font-size:11px;letter-spacing:.06em;background:transparent;border-color:rgba(91,168,255,0.12);color:var(--text-faint);">+ Log Session</button>
         <button class="btn btn-sm" id="log-run-btn" style="flex:1;font-family:var(--font-mono);font-size:11px;letter-spacing:.06em;background:transparent;border-color:rgba(47,184,198,0.2);color:var(--maintaining);">🏃 Log Run</button>
       </div>
+      <div style="padding:0 var(--fluid-pad) var(--fluid-pad);margin-top:calc(8px - var(--fluid-pad));">
+        <button class="btn btn-sm" id="past-log-btn" style="width:100%;font-family:var(--font-mono);font-size:11px;letter-spacing:.06em;background:transparent;border-color:rgba(91,168,255,0.12);color:var(--text-faint);">⟲ Log a Past Session</button>
+      </div>
     </section>
 
 
@@ -3862,6 +3889,7 @@
       <input type="time" id="workout-time" />
     </div>
   </div>
+  <p id="workout-date-hint" class="hidden" style="margin:-8px 0 14px;font-family:var(--font-mono);font-size:10px;letter-spacing:.04em;color:var(--brass);"></p>
   <div id="exercise-rows"></div>
   <button class="btn add-exercise-btn" id="add-exercise-btn" style="font-family:var(--font-mono);letter-spacing:.06em;">+ Add Exercise</button>
   <div class="save-bar">
@@ -3919,11 +3947,17 @@ import { PROGRESSION_CHAINS } from "./progression-chains.js";
 import { getArchetypeChains } from "./archetype-chains.js";
 import { getAutoAchievements } from "./auto-achievements.js";
 import { computeStreakFrom, STREAK_RULES_START, shiftDay } from "./streak.js";
+import { backfillDateProblem, earliestBackfillDate, isDuplicateSession, laterDate } from "./backfill.js";
+import { setInputKind, setInputHeaders, storedSet, storedSetSecs, partsToSecs, secsToParts,
+         formatSetTime, isTimeKind, LOAD_TYPES, loadLabel, offersLoadChoice, defaultLoad,
+         setLoad, loggedLoad, withLoad, BAND_LEVELS, DEFAULT_BAND, bandLabel, loggedBand,
+         setBand, loadText, loadOptions, isBandLoad } from "./set-inputs.js";
 import { detectReEntry, reEntryPlan, directiveProgress, formatMeasure, DIRECTIVE_METRICS,
          countdown, formatCountdown, timeElapsedFraction, buildDirectivesICS,
          buildWidgetConfig } from "./goals.js";
 import { analyseHabit, sampleCurve, describeReturns,
          HABIT_TARGET_DAYS, MISS_GRACE } from "./habit.js";
+import { muscleDevelopment, bodyBuild, bodyFrame, muscleShape } from "./physique.js";
 import {
   getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword,
   onAuthStateChanged, signOut, updateProfile
@@ -4019,6 +4053,33 @@ function structuredCloneLite(o){ return JSON.parse(JSON.stringify(o)); }
    matches the user's preference and recolors muscles per the current stats.
    ========================================================================= */
 const ANATOMY_TEMPLATES = { male: null, female: null };
+/* The centre of every traced muscle shape, in its parent's coordinates, so
+   bodySvg() can grow a muscle about its own middle (physique.js). Measured
+   once per template by laying it out off screen; listed in the same order as
+   the muscle-id elements bodySvg() walks. */
+const ANATOMY_CENTRES = { male: null, female: null };
+function measureMuscleCentres(bodyType, template) {
+  try {
+    const host = document.createElement('div');
+    host.style.cssText = 'position:absolute;left:-9999px;top:0;width:10px;height:10px;overflow:hidden;visibility:hidden;';
+    const svg = template.cloneNode(true);
+    host.appendChild(svg);
+    document.body.appendChild(host);
+    const centres = [];
+    svg.querySelectorAll('[id]').forEach(el => {
+      if (!muscleFromId(el.id)) return;
+      const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+      el.parentNode.insertBefore(g, el);
+      g.appendChild(el);
+      const b = g.getBBox();
+      centres.push([b.x + b.width / 2, b.y + b.height / 2]);
+      g.parentNode.insertBefore(el, g);
+      g.remove();
+    });
+    host.remove();
+    ANATOMY_CENTRES[bodyType] = centres;
+  } catch (e) { ANATOMY_CENTRES[bodyType] = null; }
+}
 // Each file's front/back split point and canvas size differ — measured directly
 // against each exported file, never assumed to match between body types.
 const ANATOMY_CROP = {
@@ -4045,6 +4106,7 @@ async function loadAnatomyTemplate(bodyType) {
       });
     }
     ANATOMY_TEMPLATES[bodyType] = template;
+    measureMuscleCentres(bodyType, template);
     return template;
   } catch (e) {
     console.warn(`Could not load ${file} — muscle map will show a loading placeholder.`, e);
@@ -4412,8 +4474,7 @@ function closeNumpad(confirm = true) {
       numpadTarget.dispatchEvent(new Event('input'));
       const setRow = numpadTarget.closest('.set-row');
       if (setRow) {
-        const reps = Number(setRow.querySelector('.set-reps')?.value) || 0;
-        setRow.classList.toggle('complete', reps > 0);
+        setRow.classList.toggle('complete', setRowStored(setRow) !== null);
         refreshCompleteButton();
       }
     }
@@ -4553,6 +4614,36 @@ function escapeHtml(str) { return String(str || '').replace(/[&<>"']/g, c => ({'
 function isRunExercise(name) {
   const def = EXERCISES_ALL[name] || {};
   return !!def.timed && (def.intent === 'endurance' || (def.intent === 'explosive' && def.timedUnit === 'mins'));
+}
+/* ── Set inputs per exercise type (rules in set-inputs.js) ──
+   Each logger set row carries data-kind; these read it the same way for every
+   kind, so completion, the Complete button and the save agree on what was entered. */
+function readSetRow(sr) {
+  const kind = sr.dataset.kind || 'weight_reps';
+  const val = c => Number(sr.querySelector(c)?.value) || 0;
+  const secs = kind === 'hold'
+    ? val('.set-reps')
+    : partsToSecs({ h: val('.set-h'), m: val('.set-m'), s: val('.set-s') });
+  return { kind, secs, reps: val('.set-reps'), weight: val('.set-weight'), km: val('.set-dist') };
+}
+/** The load type this Hunter last logged an exercise with, or null (set-inputs.js). */
+function lastLoggedLoad(name) {
+  const last = (myWorkouts || [])
+    .filter(w => (w.exercises || []).some(e => e.name === name))
+    .sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')))[0];
+  return last ? loggedLoad(last.exercises.find(e => e.name === name).sets) : null;
+}
+/** The band strength this Hunter last logged an exercise with, or null. */
+function lastLoggedBand(name) {
+  const last = (myWorkouts || [])
+    .filter(w => (w.exercises || []).some(e => e.name === name && loggedBand(e.sets)))
+    .sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')))[0];
+  return last ? loggedBand(last.exercises.find(e => e.name === name && loggedBand(e.sets)).sets) : null;
+}
+/** The stored fields this row would save (no intensity), or null when empty. */
+function setRowStored(sr) {
+  const entered = readSetRow(sr);
+  return storedSet(entered.kind, entered);
 }
 function computeWorkoutVolume(exercises) {
   const out = {};
@@ -4748,6 +4839,8 @@ function openSettingsModal() {
   overlay.querySelector('#sys-settings-body').innerHTML =
     '<div class="field"><label>Hunter name</label><input id="settings-name" value="' + escapeHtml(profile.displayName || '') + '" placeholder="Your designation" maxlength="24" inputmode="text" /></div>' +
     '<div class="field"><label>Weekly goal</label><input id="settings-goal" type="number" min="1" max="14" value="' + (profile.weeklyGoal || 3) + '" style="max-width:80px;" /></div>' +
+    '<div class="field"><label>Height (cm)</label><input id="settings-height" type="number" inputmode="decimal" min="120" max="230" step="0.5" placeholder="e.g. 178" value="' + (profile.heightCm || '') + '" style="max-width:100px;" />' +
+      '<div style="font-size:11px;color:var(--text-dim);margin-top:4px;">Shapes your body on the muscle map, with your logged weight. Check-in tape measurements shape it closer still.</div></div>' +
     /* Streak protection. Two separate things, deliberately shown together:
        the freeze a Hunter can set themselves when the app is blocking them,
        and the count of sessions this device is holding because a save failed. */
@@ -4853,10 +4946,15 @@ function openSettingsModal() {
     const newGoal = Math.max(1, Number(document.getElementById('settings-goal').value) || 3);
     const errEl = document.getElementById('settings-error');
     if (!newName) { errEl.textContent = "Hunter name can't be empty."; return; }
+    const heightRaw = document.getElementById('settings-height').value.trim();
+    const newHeight = heightRaw === '' ? null : Math.round(Number(heightRaw) * 10) / 10;
+    if (newHeight !== null && !(newHeight >= 120 && newHeight <= 230)) { errEl.textContent = 'Height should be between 120 and 230 cm.'; return; }
     const saveBtn = overlay.querySelector('#save-settings');
     saveBtn.disabled = true; saveBtn.textContent = 'Saving\u2026';
     try {
       await writeUserFields({ displayName: newName, weeklyGoal: newGoal, bodyType: selectedBodyType, email: currentUser.email || '' });
+      // heightCm: the field the check-in body-fat estimate already reads (it fell back to 166 until now)
+      if (newHeight !== null && newHeight !== profile.heightCm) await writeUserFields({ heightCm: newHeight });
       await updateProfile(currentUser, { displayName: newName });
       profile.displayName = newName;
       profile.weeklyGoal = newGoal;
@@ -5102,6 +5200,8 @@ if (configOk) {
       setTimeout(() => ensureStatBaselines(), 1200);
       // startup integrity check — lightweight; triggers full reconcile only if version changed
       setTimeout(() => startupIntegrityCheck(), 2000);
+      // A workout JARVIS filled in, handed over by link (#log=…)
+      setTimeout(() => openLinkedWorkout(), 2600);
       // Phase 4: bring up the cinematic layer after the app is interactive, so
       // it can never delay login or data. Failure here is non-fatal by design.
       setTimeout(async () => {
@@ -5882,11 +5982,101 @@ function buildSystemCoreScene({ THREE, quality, tier }) {
   boss.position.set(0, -1.0, -5.2);
   scene.add(boss);
   let bossAmt = 0, bossTarget = 0;
-  function setBoss(on, hex) {
+  /* The art pack's raid boss (art/packs/system.js) replaces the primitive
+     mass above once the pack has loaded. It is swapped in only while the boss
+     is fully hidden, so it never pops in mid-cinematic; until then, or if the
+     pack fails, the primitive boss plays as before. */
+  const ART_BOSS_SCALE = 2.15;       // modelled at ~3.2 units; the old mass stood ~6.8
+  let artPack = null, artBoss = null, bossKey = null, bossRim = null, bossRim2 = null, bossFill = null;
+  let bossTier = null;   // the raid tier (E..S) whose boss to show; each has its own model, 'raid-boss:<tier>'
+  const artReady = import('./art/index.js').then(m => { artPack = m; m.prepare('raid-boss'); return m; })
+    .catch(e => { console.warn('art pack unavailable, using primitive boss', e); return null; });
+  // The tier's own model once it has loaded, else the default raid boss (the Monarch), else the drawn one.
+  function bossAssetId() {
+    const tid = bossTier && 'raid-boss:' + bossTier;
+    const tm = tid && artPack.modelFor(tid);
+    return tm && artPack.isLoaded(tm.id) ? tid : 'raid-boss';
+  }
+  function prepareBoss(tier) {
+    return artReady.then(m => {
+      const tm = m && tier && m.modelFor('raid-boss:' + tier);
+      return tm ? m.prepare('raid-boss:' + tier) : undefined;
+    });
+  }
+  function swapBoss() {
+    if (!artPack || bossAmt > 0.002) return;
+    // an authored model registered for the boss wins once its file has loaded; until then the drawn one
+    const id = bossAssetId();
+    const m = artPack.modelFor(id);
+    const want = m && artPack.isLoaded(m.id) ? 'model:' + m.id : 'drawn';
+    if (artBoss && artBoss.userData.kind === want) return;
+    try {
+      const { object: o, model } = artPack.take(id);
+      const mats = [], eyes = [], outlines = [], copies = new Map();
+      o.traverse(n => {
+        if (n.userData.contactShadow) { n.visible = false; return; }  // no floor out here in the void
+        if (n.userData.outlineChild) { outlines.push(n); return; }
+        if (!n.material) return;
+        if (!copies.has(n.material)) {
+          const c = n.material.clone();
+          if (n.material.userData.translucent) { c.onBeforeCompile = n.material.onBeforeCompile; c.customProgramCacheKey = n.material.customProgramCacheKey; }
+          c.transparent = true;
+          // The raid fog (FogExp2 0.085) swallowed ~90% of a boss 17 units off;
+          // the boss carries its own lights instead, so it reads as a figure.
+          c.fog = false;
+          c.userData.baseOpacity = n.material.opacity;
+          copies.set(n.material, c);
+          mats.push(c);
+        }
+        n.material = copies.get(n.material);
+        if (n.userData.eye && !eyes.includes(n.material)) eyes.push(n.material);
+      });
+      if (model) { try { artPack.lightModel(o, AuraGL.renderer, 0.4); artPack.glowLight(o, 0); } catch (e) {} }
+      else o.scale.setScalar(ART_BOSS_SCALE);   // a model arrives at its registered height already
+      o.userData.kind = model ? 'model:' + model.id : 'drawn';
+      o.userData.art = { mats, eyes, outlines, model, anim: model ? null : artPack.get('raid-boss').anims.breathe };
+      if (artBoss) {   // a model replacing the drawn boss or another tier's: drop the old one and its material copies
+        boss.remove(artBoss);
+        artBoss.userData.art.mats.forEach(c => c.dispose());
+      }
+      for (const c of boss.children) c.visible = false;
+      boss.add(o);
+      artBoss = o;
+      if (bossKey) { bossKey.target = o; bossRim.target = o; bossRim2.target = o; return; }   // the lights are already there
+      // Its own lighting, faded with the boss: a cool key from in front and
+      // above (the camera's side), a hard rim behind in the eye colour that
+      // cuts the silhouette out of the dark, and a low fill so the underside
+      // of the arms and the jaw never go black.
+      bossKey = new THREE.SpotLight(0xdfe6ff, 0, 30, 0.42, 0.6, 1.2);
+      bossKey.position.set(2.5, 9.5, 6.0);
+      bossKey.target = o;
+      bossRim = new THREE.SpotLight(0xff5c6b, 0, 30, 0.6, 0.5, 1.0);
+      bossRim.position.set(-1.5, 8.0, -12.0);
+      bossRim.target = o;
+      // A second, cool rim from the other side picks out the edges of the plate, the
+      // lames and the horns, where the detail of a modelled boss lives.
+      bossRim2 = new THREE.SpotLight(0xcfd8ff, 0, 30, 0.55, 0.5, 1.0);
+      bossRim2.position.set(6.0, 7.0, -9.0);
+      bossRim2.target = o;
+      bossFill = new THREE.PointLight(0x8b7dff, 0, 14, 1.4);
+      bossFill.position.set(0, 2.2, 0.5);
+      boss.add(bossKey, bossRim, bossRim2, bossFill);
+    } catch (e) { console.warn('raid boss failed, using primitive boss', e); }
+  }
+  function setBossEyes(hex) {
+    if (!artBoss) return;
+    for (const m of artBoss.userData.art.eyes) { m.color.set(hex); m.emissive?.set(hex); }
+    artBoss.userData.glowLight?.color.set(hex);
+    if (bossRim) bossRim.color.set(hex);
+  }
+  function setBoss(on, hex, tier) {
     bossTarget = on ? 1 : 0;
     if (on) {
+      if (tier !== undefined) bossTier = tier || null;
+      swapBoss();
       boss.visible = true;
-      if (hex) { try { bossEye.color.set(hex); } catch (e) {} }
+      if (hex) { try { bossEye.color.set(hex); setBossEyes(hex); } catch (e) {} }
+      else { try { setBossEyes(0xff5c6b); } catch (e) {} }
     }
   }
   function updateBoss(dt, t) {
@@ -5894,6 +6084,16 @@ function buildSystemCoreScene({ THREE, quality, tier }) {
     bossAmt += Math.abs(d) < 0.002 ? d : d * Math.min(1, dt * 2.2);
     bossMat.opacity = 0.97 * bossAmt;
     bossEye.opacity = bossAmt * (0.75 + Math.sin(t * 2.6) * 0.25);
+    if (artBoss && boss.visible) {
+      const a = artBoss.userData.art;
+      for (const m of a.mats) m.opacity = (m.userData.baseOpacity ?? 1) * bossAmt;
+      for (const o of a.outlines) o.visible = bossAmt > 0.6;
+      try { a.model ? a.model.update(dt) : a.anim(artBoss, t); } catch (e) {}
+      if (bossKey) { bossKey.intensity = 60 * bossAmt; bossRim.intensity = 260 * bossAmt; bossRim2.intensity = 140 * bossAmt; bossFill.intensity = 3 * bossAmt; }
+      if (artBoss.userData.glowLight) artBoss.userData.glowLight.intensity = 3 * bossAmt * (0.85 + Math.sin(t * 2.6) * 0.15);   // the glow's spill, breathing with it
+      const aura = artBoss.getObjectByName('aura');
+      if (aura) aura.material.opacity *= bossAmt;   // the anim sets it; the fade still governs it
+    }
     boss.position.y = -1.0 + (1 - bossAmt) * -1.4;   // rises into place
     if (bossAmt <= 0.002 && bossTarget === 0) boss.visible = false;
   }
@@ -6046,6 +6246,7 @@ function buildSystemCoreScene({ THREE, quality, tier }) {
     setEnvironment,
     // Raid boss presence. Presentation only - carries no raid state.
     setBoss,
+    prepareBoss,
     update(dt, t) {
       updateEnvironment(dt);
       updateBoss(dt, t);
@@ -6246,11 +6447,73 @@ function buildRewardScene({ THREE, quality }) {
   let item = null;          // current item Group
   let mat = 0;              // materialisation 0..1
   let spin = 0, active = false, count = 0;
+  /* Touch response, after Grimoire's stage: drag turns the item, a flick
+     keeps it turning and decays back to the idle spin, a tap bounces it.
+     Presentation only; the reveal's caller feeds these from pointer events. */
+  const IDLE_SPIN = 0.55;
+  let spinV = IDLE_SPIN, held = false, bounce = 0, bounceV = 0, clock = 0;
+
+  /* The art pack's relics (art/packs/equipment.js) replace the primitive
+     createItemMesh() models once the pack has loaded. Loaded here, not at
+     startup, so the app's first paint never waits on it; if it fails or has
+     not arrived yet, the reveal falls back to createItemMesh(). */
+  const RELIC = { weapon: 'relic-sword', armour: 'relic-chestplate', boots: 'relic-boots', accessory: 'relic-ring' };
+  const RELIC_SCALE = 1.7;  // the relics are modelled at real size (~0.9 units); this frame wants ~1.5
+  let art = null;
+  import('./art/index.js').then(m => {
+    art = m;
+    // authored models registered for a slot (art/models/index.js) start loading now, so a reveal can use them
+    for (const id of Object.values(RELIC)) m.prepare(id);
+  }).catch(e => console.warn('art pack unavailable, using primitive items', e));
+  // Toon materials are lit in bands; at this scene's dim key they fall into the
+  // darkest band. This fill is on only while a relic is shown.
+  const artFill = new THREE.HemisphereLight(0xc4ccec, 0x0a0812, 0);
+  scene.add(artFill);
+
+  function createRelic(slot, rarity) {
+    const id = RELIC[slot] || RELIC.weapon;
+    const { object: src, model } = art.take(id, { rarity: REWARD_RARITY[rarity] ? rarity : 'Rare' });
+    const g = new THREE.Group();
+    const inner = new THREE.Group();
+    let float;
+    if (model) {
+      // an authored model: stands on y = 0 at its registered height; centre it on the frame instead
+      float = src;
+      const box = new THREE.Box3().setFromObject(src);
+      float.position.y = -(box.min.y + box.max.y) / 2;
+      try { art.lightModel(src, AuraGL.renderer, 1.1); } catch (e) {}
+    } else {
+      float = src.getObjectByName('float');   // the item itself, without its floor sigil and shadow
+      float.position.set(0, 0, 0);
+      inner.scale.setScalar(RELIC_SCALE);
+    }
+    inner.add(float);
+    g.add(inner);
+    // Per-reveal copies of the materials so the fade-in never touches the
+    // pack's shared ones. Outline hulls cannot fade; they appear late instead.
+    const materials = [], outlines = [];
+    const copies = new Map();
+    float.traverse(o => {
+      if (o.userData.outlineChild) { outlines.push(o); return; }
+      if (!o.material) return;
+      if (!copies.has(o.material)) {
+        const c = o.material.clone();
+        c.transparent = true;
+        c.userData.baseOpacity = o.material.opacity;
+        copies.set(o.material, c);
+        materials.push(c);
+      }
+      o.material = copies.get(o.material);
+    });
+    g.userData = { anchor: REWARD_ANCHOR[slot] || 'orbit', rarity, slot, materials, outlines, sharedGeometry: true, relic: true, model };
+    return g;
+  }
 
   function clearItem() {
     if (!item) return;
     root.remove(item);
-    item.traverse(o => { o.geometry?.dispose?.(); });
+    // the art pack caches geometry across builds: never dispose it
+    if (!item.userData.sharedGeometry) item.traverse(o => { o.geometry?.dispose?.(); });
     (item.userData.materials || []).forEach(m => m.dispose?.());
     item = null;
   }
@@ -6262,12 +6525,17 @@ function buildRewardScene({ THREE, quality }) {
       clearItem();
       const rarity = (def && def.rarity) || 'Rare';
       const cfg = REWARD_RARITY[rarity] || REWARD_RARITY.Rare;
-      item = createItemMesh(THREE, (def && def.slot) || 'weapon', rarity);
+      const slot = (def && def.slot) || 'weapon';
+      item = null;
+      if (art) { try { item = createRelic(slot, rarity); } catch (e) { console.warn('relic failed, using primitive item', e); } }
+      if (!item) item = createItemMesh(THREE, slot, rarity);
+      artFill.intensity = item.userData.relic ? 1.4 : 0;
       // Presentation pose: turned off-axis and tilted, so the object has depth
       // instead of reading as a flat glyph.
       root.rotation.set(0.11, 0, 0.13);
       root.add(item);
       mat = 0; spin = 0; active = true;
+      spinV = IDLE_SPIN; held = false; bounce = 0; bounceV = 0;
       count = Math.min(MAX_P, cfg.particles);
       glow.color.setHex(cfg.col);
       rim.color.setHex(cfg.col);
@@ -6278,6 +6546,16 @@ function buildRewardScene({ THREE, quality }) {
       return item;
     },
     setMaterialise(v) { mat = Math.max(0, Math.min(1, v)); },
+    // drag(dxPixels, dtSeconds): turn with the finger; the last speed is kept as the flick
+    drag(dx, dt) {
+      held = true;
+      const turn = dx * 0.012;
+      spin += turn;
+      if (dt > 0) spinV = Math.max(-14, Math.min(14, turn / dt));
+    },
+    release() { held = false; },
+    // poke(): a squash-and-bounce, the same spring Grimoire's drone hops on
+    poke() { bounceV += 9; },
     // The shared camera sits at z=6 by default, which leaves a 1-unit object
     // tiny. Framing is applied on enter and cleared on exit.
     frame(camera) {
@@ -6294,14 +6572,26 @@ function buildRewardScene({ THREE, quality }) {
     get itemGroup() { return item; },
     update(dt) {
       if (!active || !item) return;
-      spin += dt * 0.55;
+      clock += dt;
+      if (!held) {
+        spinV += (IDLE_SPIN - spinV) * (1 - Math.exp(-1.6 * dt));   // a flick decays back to the idle turn
+        spin += dt * spinV;
+      }
       item.rotation.y = spin;
+      // bounce: a damped spring; squashes as it rises, stretches as it lands
+      bounceV += (-90 * bounce - 9 * bounceV) * dt;
+      bounce += bounceV * dt;
       // ease the arrival: fast in, settling
       const e = 1 - Math.pow(1 - mat, 3);
-      item.scale.setScalar(0.35 + 0.65 * e);
-      item.position.y = (1 - e) * -0.35;
+      const sq = Math.max(-0.25, Math.min(0.25, bounce * 0.5));
+      const base = 0.35 + 0.65 * e;
+      item.scale.set(base * (1 + sq * 0.5), base * (1 - sq), base * (1 + sq * 0.5));
+      item.position.y = (1 - e) * -0.35 + Math.max(0, bounce) * 0.25 + Math.sin(clock * 1.6) * 0.03 * e;
+      const halo = item.userData.relic && item.getObjectByName('halo');
+      if (halo) halo.material.opacity = (halo.material.userData.baseOpacity ?? 0.5) * e * (0.85 + 0.15 * Math.sin(clock * 2.4) + Math.min(0.6, Math.abs(bounce)));
       const cfg = REWARD_RARITY[item.userData.rarity] || REWARD_RARITY.Rare;
-      (item.userData.materials || []).forEach(m => { m.opacity = e; });
+      (item.userData.materials || []).forEach(m => { if (!m.isSpriteMaterial) m.opacity = e * (m.userData.baseOpacity ?? 1); });
+      (item.userData.outlines || []).forEach(o => { o.visible = e > 0.6; });
       glow.intensity = cfg.light * e;
       if (pts) {
         const pos = pGeo.attributes.position.array;
@@ -6917,6 +7207,13 @@ if (__auraDevEnabled()) {
         detail:'The party stands. The gate closes.',
         item:{ name:'EXCALIBUR', slot:'weapon', rarity:'Legendary',
                desc:'Earned through dominance.' } }),
+    // one raid phase per tier, to see each tier's boss
+    'raid-boss-E': () => WorldCinema.raidMoment({ kind:'phase', boss:{ name:'GOBLIN SCOUT', eye:0xc6ff5a, tier:'E' }, title:'E-RANK GATE', detail:'Goblin Scout' }),
+    'raid-boss-D': () => WorldCinema.raidMoment({ kind:'phase', boss:{ name:'STONE GOLEM', eye:0xffb347, tier:'D' }, title:'D-RANK GATE', detail:'Stone Golem' }),
+    'raid-boss-C': () => WorldCinema.raidMoment({ kind:'phase', boss:{ name:'IRON SHADOW', eye:0x64b5f6, tier:'C' }, title:'C-RANK GATE', detail:'Iron Shadow' }),
+    'raid-boss-B': () => WorldCinema.raidMoment({ kind:'phase', boss:{ name:'VOID WARDEN', eye:0xa070ff, tier:'B' }, title:'B-RANK GATE', detail:'Void Warden' }),
+    'raid-boss-A': () => WorldCinema.raidMoment({ kind:'phase', boss:{ name:"MONARCH'S SHADOW", eye:0xff5c6b, tier:'A' }, title:'A-RANK GATE', detail:"Monarch's Shadow" }),
+    'raid-boss-S': () => WorldCinema.raidMoment({ kind:'phase', boss:{ name:'ANTARES THE SOVEREIGN BEAST', eye:0xffd66b, tier:'S' }, title:'S-RANK GATE', detail:'Antares the Sovereign Beast' }),
     'world-event':    () => WorldCinema.worldEvent({ tier:'major', kicker:'TERRITORY CLAIMED',
         title:'SOUTH KOREA', body:'Your shadow army holds the region.', glyph:'🌐' }),
     'world-event-major': () => WorldCinema.worldEvent({ tier:'legendary', kicker:'WORLD EVENT',
@@ -7115,7 +7412,41 @@ const WorldCinema = (() => {
         };
         step();
       });
-      await wait(1500);                     // hold - let the object be looked at
+      // hold - let the object be looked at. Touching it keeps it up: drag to
+      // turn, flick to spin, tap to bounce. The hold ends 1.5s after the last
+      // touch, and never runs past 8s so a resting finger cannot stall the flow.
+      let lastTouch = performance.now(), down = null;
+      const onDown = (e) => { down = { x: e.clientX, y: e.clientY, t: e.timeStamp, moved: false }; lastTouch = performance.now(); };
+      const onMove = (e) => {
+        if (!down) return;
+        const dx = e.clientX - down.x;
+        if (Math.abs(e.clientX - down.x) + Math.abs(e.clientY - down.y) > 6) down.moved = true;
+        if (down.moved) sc.drag?.(dx, Math.max(0.008, (e.timeStamp - down.t) / 1000));
+        down.x = e.clientX; down.y = e.clientY; down.t = e.timeStamp;
+        lastTouch = performance.now();
+      };
+      const onUp = () => { if (down && !down.moved) sc.poke?.(); sc.release?.(); down = null; lastTouch = performance.now(); };
+      addEventListener('pointerdown', onDown, { passive: true });
+      addEventListener('pointermove', onMove, { passive: true });
+      addEventListener('pointerup', onUp, { passive: true });
+      addEventListener('pointercancel', onUp, { passive: true });
+      const holdStart = performance.now();
+      try {
+        await new Promise(res => {
+          const tick = () => {
+            const now = performance.now();
+            if (now - holdStart > 8000 || (!down && now - lastTouch > 1500 && now - holdStart > 1500)) return res();
+            requestAnimationFrame(tick);
+          };
+          tick();
+        });
+      } finally {
+        removeEventListener('pointerdown', onDown);
+        removeEventListener('pointermove', onMove);
+        removeEventListener('pointerup', onUp);
+        removeEventListener('pointercancel', onUp);
+        sc.release?.();
+      }
     } catch (e) { /* presentation only */ }
     // restore the shared camera for whatever renders next
     try { const c = AuraGL.camera; if (c) { c.position.set(0, 0, 6); c.lookAt(0, 0, 0); } }
@@ -7150,9 +7481,9 @@ const WorldCinema = (() => {
     cam.position.set(0, 0, 6); cam.lookAt(0, 0, 0);
   }
 
-  async function raidStage(colour) {
+  async function raidStage(colour, tier) {
     if (!stage('core', 'raid')) return false;
-    try { AuraCore.setBoss(true, colour); } catch (e) {}
+    try { AuraCore.setBoss(true, colour, tier); } catch (e) {}
     frameRaid();
     return true;
   }
@@ -7162,16 +7493,23 @@ const WorldCinema = (() => {
     unstage();
   }
 
+  // The raid's boss per tier (BOSS_DATA in renderRaidBoss), for callers that pass only a name.
+  const RAID_BOSS_TIER = { 'GOBLIN SCOUT': 'E', 'STONE GOLEM': 'D', 'IRON SHADOW': 'C', 'VOID WARDEN': 'B',
+    "MONARCH'S SHADOW": 'A', 'ANTARES THE SOVEREIGN BEAST': 'S' };
+
   /* raidMoment({kind, boss, detail})
        'damage'  a major damage moment      - weighted, not every update
        'phase'   a phase transition
        'victory' the raid falls
-     `boss` and `detail` come from the raid view's already-resolved state. */
+     `boss` and `detail` come from the raid view's already-resolved state.
+     boss: { name, eye, tier? } - tier (E..S) picks that tier's boss model; without it the
+     name is looked up in RAID_BOSS_TIER. */
   async function raidMoment(ev) {
     if (!ev) return;
     const kind = ev.kind || 'damage';
     const name = (ev.boss && ev.boss.name) || 'RAID BOSS';
     const colour = (ev.boss && ev.boss.eye) || 0xff5c6b;
+    const tier = (ev.boss && ev.boss.tier) || RAID_BOSS_TIER[String(name).toUpperCase()] || null;
 
     if (kind === 'damage') {
       // Deliberately the lightest of the three - a raid reports damage often.
@@ -7180,7 +7518,11 @@ const WorldCinema = (() => {
     }
 
     const heavy = kind === 'victory';
-    if (reduced() || !(await raidStage(colour))) {
+    // give the tier's own boss a moment to arrive; past that the default boss stands in
+    if (tier && !reduced()) {
+      try { await Promise.race([AuraCore.prepareBoss(tier), wait(2500)]); } catch (e) {}
+    }
+    if (reduced() || !(await raidStage(colour, tier))) {
       return SystemMoment.show({
         tier: heavy ? 'legendary' : 'progression',
         kicker: heavy ? 'RAID CLEARED' : 'PHASE TRANSITION',
@@ -8121,6 +8463,48 @@ function progressiveOverloadSuggestion(exerciseName, targetReps) {
   });
 }
 
+// ── A workout handed over by link (JARVIS: "just did bench 3x8 at 60kg") ──
+// #log=<base64url JSON {t, d, x:[{n, s:[[reps, kg], …]}]}> opens the logger
+// filled in. Nothing is saved here: the Hunter checks it and taps Complete,
+// so XP, PRs, dungeon and army all come from the normal save path.
+function readLinkedWorkout() {
+  const m = /[#&]log=([A-Za-z0-9_-]+)/.exec(location.hash || '');
+  if (!m) return null;
+  try {
+    const b64 = m[1].replace(/-/g, '+').replace(/_/g, '/');
+    const json = decodeURIComponent(escape(atob(b64 + '==='.slice((b64.length + 3) % 4))));
+    const d = JSON.parse(json);
+    return d && Array.isArray(d.x) && d.x.length ? d : null;
+  } catch (e) { console.warn('Linked workout unreadable:', e); return null; }
+}
+function openLinkedWorkout() {
+  const d = readLinkedWorkout();
+  if (!d) return;
+  try { history.replaceState(null, '', location.pathname + location.search); } catch (e) { /* keep going */ }
+  const rows = document.getElementById('exercise-rows');
+  const busy = [...rows.querySelectorAll('.exercise-row')].some(r => r.dataset.exName);
+  if (busy) { showToast('Finish or discard the hunt in progress, then open the JARVIS link again.', 'error'); return; }
+  const byLower = {};
+  Object.keys(EXERCISES_ALL).forEach(n => { byLower[n.toLowerCase()] = n; });
+  const unknown = [];
+  activeDayIndex = null;
+  rows.innerHTML = '';
+  for (const ex of d.x.slice(0, 20)) {
+    const name = EXERCISES_ALL[ex.n] ? ex.n : byLower[String(ex.n || '').toLowerCase()];
+    if (!name) unknown.push(ex.n);
+    const sets = (Array.isArray(ex.s) ? ex.s : []).slice(0, 20)
+      .map(([reps, kg]) => ({ reps: Math.max(0, Math.round(Number(reps) || 0)), weight: Math.max(0, Number(kg) || 0), rir: null }));
+    addExerciseRow(name || undefined, sets.length, sets[0]?.reps || 10, sets);
+  }
+  if (/^\d{4}-\d{2}-\d{2}$/.test(d.d || '')) { const el = document.getElementById('workout-date'); if (el) el.value = d.d; }
+  document.getElementById('logger-title').textContent = String(d.t || 'Logged by JARVIS').slice(0, 40).toUpperCase();
+  refreshCompleteButton();
+  openWorkoutModal();
+  showToast(unknown.length
+    ? `Pick the exercise for: ${unknown.join(', ')}`
+    : 'Filled in from JARVIS. Check it, then Complete.', unknown.length ? 'error' : 'info');
+}
+
 function startProgramDay(idx) {
   activeDayIndex = idx;
   const day = myProgram.days[idx];
@@ -8143,7 +8527,46 @@ function startProgramDay(idx) {
   openWorkoutModal();
 }
 
+/* Past sessions: the date pickers only offer today and the last
+   BACKFILL_MAX_DAYS days, and the logger says so when the date is not today.
+   The save paths re-check with backfillDateProblem(), since a typed or linked
+   date can get past the picker's limits. */
+function syncWorkoutDateLimits() {
+  const today = todayStr();
+  ['workout-date', 'run-date'].forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.max = today;
+    el.min = earliestBackfillDate(today);
+  });
+  const date = document.getElementById('workout-date')?.value;
+  const hint = document.getElementById('workout-date-hint');
+  if (!hint) return;
+  const problem = date ? backfillDateProblem(date, today) : null;
+  const isPast = date && date < today && !problem;
+  hint.textContent = problem
+    ? problem
+    : isPast
+      ? `◈ PAST SESSION · counts for ${new Date(date + 'T12:00:00').toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' })}, with full XP and rewards`
+      : '';
+  hint.style.color = problem ? 'var(--excess)' : 'var(--brass)';
+  hint.classList.toggle('hidden', !problem && !isPast);
+}
+document.getElementById('workout-date')?.addEventListener('change', syncWorkoutDateLimits);
+document.getElementById('workout-date')?.addEventListener('input', syncWorkoutDateLimits);
+
+/* Back to today once a session is saved or discarded, so a past date never
+   carries into the next hunt. */
+function resetLoggerDate() {
+  document.getElementById('workout-date').value = todayStr();
+  document.getElementById('workout-time').value = nowTimeStr();
+  const title = document.getElementById('logger-title');
+  if (title?.textContent === 'PAST SESSION') title.textContent = 'HUNT ACTIVE';
+  syncWorkoutDateLimits();
+}
+
 function openWorkoutModal() {
+  syncWorkoutDateLimits();
   document.getElementById('workout-modal-overlay').classList.remove('hidden');
   document.getElementById('workout-pill').classList.add('hidden');
   lockBodyScroll();
@@ -8177,6 +8600,7 @@ function closeWorkoutModal(discard = false) {
   document.getElementById('logger-exercise-hero')?.removeAttribute('data-exercise');
     document.getElementById('exercise-rows').innerHTML = '';
     addExerciseRow();
+    resetLoggerDate();
     document.getElementById('save-workout-btn').classList.add('hidden');
     document.getElementById('save-msg').classList.add('hidden');
   }
@@ -8187,8 +8611,7 @@ function closeWorkoutModal(discard = false) {
    rate lands here too. */
 function unratedSetRows() {
   return [...document.querySelectorAll('#exercise-rows .exercise-row .set-row')].filter(sr =>
-    (Number(sr.querySelector('.set-reps')?.value) || 0) > 0 &&
-    sr.querySelector('.rir-chip.selected') === null);
+    setRowStored(sr) && sr.querySelector('.rir-chip.selected') === null);
 }
 // Show the Complete Quest button once at least one set has a value.
 // It used to stay hidden until EVERY such set was rated, with nothing on screen
@@ -8199,8 +8622,8 @@ function unratedSetRows() {
 function refreshCompleteButton() {
   const btn = document.getElementById('save-workout-btn');
   if (!btn) return;
-  const hasAnySet = [...document.querySelectorAll('#exercise-rows .set-row .set-reps')]
-    .some(inp => (Number(inp.value) || 0) > 0);
+  const hasAnySet = [...document.querySelectorAll('#exercise-rows .exercise-row .set-row')]
+    .some(sr => setRowStored(sr));
   btn.classList.toggle('hidden', !hasAnySet);
 }
 document.getElementById('end-workout-modal')?.addEventListener('click', () => {
@@ -8221,10 +8644,26 @@ document.getElementById('manual-log-btn')?.addEventListener('click', () => {
   document.getElementById('logger-exercise-hero')?.removeAttribute('data-exercise');
   openWorkoutModal();
 });
+/* Log a session from an earlier day. Same logger, opened on yesterday with the
+   date picker in focus; everything after Complete Quest is the normal path. */
+document.getElementById('past-log-btn')?.addEventListener('click', () => {
+  const rows = document.getElementById('exercise-rows');
+  const busy = [...rows.querySelectorAll('.exercise-row')].some(r => r.dataset.exName);
+  if (busy) { showToast('Finish or discard the hunt in progress first.', 'error'); openWorkoutModal(); return; }
+  document.getElementById('workout-date').value = shiftDay(todayStr(), -1);
+  document.getElementById('workout-time').value = nowTimeStr();
+  activeDayIndex = null;
+  document.getElementById('logger-title').textContent = 'PAST SESSION';
+  document.getElementById('logger-exercise-hero')?.removeAttribute('data-exercise');
+  openWorkoutModal();
+  const dateEl = document.getElementById('workout-date');
+  try { dateEl.focus(); dateEl.showPicker?.(); } catch (_) { /* picker needs a gesture on some browsers */ }
+});
 
 /* ── Run Logger ── */
 document.getElementById('log-run-btn')?.addEventListener('click', () => {
   document.getElementById('run-date').value = todayStr();
+  syncWorkoutDateLimits();
   document.getElementById('run-modal-overlay').classList.remove('hidden');
   lockBodyScroll();
 });
@@ -8284,6 +8723,8 @@ document.getElementById('save-run-btn')?.addEventListener('click', async () => {
   const notes = document.getElementById('run-notes').value.trim();
   const date = document.getElementById('run-date').value || todayStr();
   if (!dist && !(mins || secs)) { showToast('Enter distance or duration.', 'error'); return; }
+  const runDateProblem = backfillDateProblem(date, todayStr());
+  if (runDateProblem) { showToast(runDateProblem, 'error'); return; }
 
   const distKm = runUnit === 'mi' ? dist * 1.60934 : dist;
   const totalMins = mins + secs / 60;
@@ -8291,6 +8732,12 @@ document.getElementById('save-run-btn')?.addEventListener('click', async () => {
     const p = totalMins / distKm;
     return `${Math.floor(p)}:${String(Math.round((p%1)*60)).padStart(2,'0')} /km`;
   })() : '';
+
+  if (isDuplicateSession(allWorkouts, currentUser.uid, date, [{ name: selectedRunType,
+      sets: [{ reps: Math.round(totalMins) || 1, weight: 0, distKm: Math.round(distKm*100)/100 }] }])) {
+    showToast('This run is already logged for that day.', 'error');
+    return;
+  }
 
   const btn = document.getElementById('save-run-btn');
   btn.disabled = true; btn.textContent = 'Saving…';
@@ -9135,6 +9582,7 @@ function addExerciseRow(presetName, targetSets, targetReps, prefillSets) {
       <button type="button" class="remove-x">×</button>
     </div>
     <div class="muscle-tags"></div>
+    <div class="load-choice hidden"><span>Load</span><select class="load-select" aria-label="Load type"></select><select class="band-select hidden" aria-label="Band strength">${BAND_LEVELS.map(b => `<option value="${b}">${bandLabel(b)}</option>`).join('')}</select></div>
     <div class="set-table-head hidden" id="set-table-head-${Date.now()}"><span>#</span><span class="reps-header">Reps</span><span class="weight-header">Weight (kg)</span><span></span></div>
     <div class="sets-list"></div>
     <button type="button" class="btn add-set-btn">+ Add set</button>
@@ -9144,14 +9592,105 @@ function addExerciseRow(presetName, targetSets, targetReps, prefillSets) {
   const tableHead = row.querySelector('.set-table-head');
   const tagsEl = row.querySelector('.muscle-tags');
   const setsList = row.querySelector('.sets-list');
+  const loadChoice = row.querySelector('.load-choice');
+  const loadSelect = row.querySelector('.load-select');
+  const bandSelect = row.querySelector('.band-select');
 
-  function stepper(cls, value, min, step, label) {
-    return `<div class="stepper">
+  function stepper(cls, value, min, step, label, extraClass = '') {
+    return `<div class="stepper ${extraClass}">
       <button type="button" class="step-down">−</button>
       <input type="text" inputmode="none" readonly class="${cls}" value="${value ?? ''}" data-min="${min}" data-step="${step}" data-is-weight="${cls==='set-weight'?'1':'0'}" data-label="${label||''}" />
       <button type="button" class="step-up">+</button>
     </div>`;
   }
+  /* h / m / s boxes; `units` picks which appear, e.g. 'hms', 'hm', 'ms'. */
+  function timeField(units, totalSecs, extraClass = '') {
+    const p = totalSecs > 0 ? secsToParts(totalSecs) : null;
+    if (p && !units.includes('h')) { p.m += p.h * 60; p.h = 0; }
+    const box = (u, cls, max, ph) => `<input type="number" class="${cls}" min="0" max="${max}" inputmode="numeric" placeholder="${ph}" value="${p && p[u] ? p[u] : ''}" aria-label="${{h:'Hours',m:'Minutes',s:'Seconds'}[u]}" /><span class="tu">${u}</span>`;
+    return `<div class="time-field ${extraClass}">`
+      + (units.includes('h') ? box('h', 'set-h', 23, '0') : '')
+      + (units.includes('m') ? box('m', 'set-m', units.includes('h') ? 59 : 999, '00') : '')
+      + (units.includes('s') ? box('s', 'set-s', 59, '00') : '')
+      + `</div>`;
+  }
+  /* The inputs for one set, by the exercise's kind (set-inputs.js). Timed sets
+     start empty, as they always have; the LAST tag's Copy button fills them. */
+  function setInputsHtml(kind, prefillReps, prefillWeight) {
+    switch (kind) {
+      case 'distance':
+        return timeField('hms', 0)
+             + `<div class="time-field"><input type="number" class="set-dist" min="0" step="0.01" inputmode="decimal" placeholder="0.00" aria-label="Distance in km" /><span class="tu">km</span></div>`;
+      case 'cardio':
+        return timeField('ms', 0, 'span-2');
+      case 'duration':
+        return timeField('hm', 0, 'span-2');
+      case 'hold':
+        return stepper('set-reps', '', 0, 5, 'Seconds', 'span-2');
+      case 'reps':
+        return stepper('set-reps', prefillReps || '', 0, 1, 'Reps', 'span-2');
+      case 'load_reps':
+        return stepper('set-reps', prefillReps || '', 0, 1, 'Reps')
+             + stepper('set-weight', prefillWeight || '', 0, 2.5, 'Load kg (bodyweight share + added)');
+      default:
+        return stepper('set-reps', prefillReps || '', 0, 1, 'Reps')
+             + stepper('set-weight', prefillWeight || '', 0, 2.5, 'kg');
+    }
+  }
+  function currentKind() { return setInputKind(EXERCISES_ALL[row.dataset.exName], row.dataset.load); }
+  /* Load type (set-inputs.js): shown for exercises that take a load. Starts on
+     what this exercise was last logged with, else its default. */
+  function syncLoadChoice(load, band) {
+    const def = EXERCISES_ALL[row.dataset.exName];
+    const offered = !!row.dataset.exName && offersLoadChoice(def);
+    loadChoice.classList.toggle('hidden', !offered);
+    if (!offered) { delete row.dataset.load; syncBandChoice(); return; }
+    // Options depend on the exercise: bodyweight moves split assisted / resisted bands
+    const opts = loadOptions(def);
+    loadSelect.innerHTML = opts.map(([v, label]) => `<option value="${v}">${label}</option>`).join('');
+    const allowed = l => opts.some(([v]) => v === l);
+    row.dataset.load = allowed(load) ? load
+      : allowed(lastLoggedLoad(row.dataset.exName)) ? lastLoggedLoad(row.dataset.exName) : defaultLoad(def);
+    loadSelect.value = row.dataset.load;
+    syncBandChoice(band);
+  }
+  /* Band strength shows only with Bands; starts on the band last used for this
+     exercise, else Medium. */
+  function syncBandChoice(band) {
+    const on = isBandLoad(row.dataset.load);
+    bandSelect.classList.toggle('hidden', !on);
+    if (!on) { delete row.dataset.band; return; }
+    if (!BAND_LEVELS.includes(band)) band = BAND_LEVELS.includes(row.dataset.band) ? row.dataset.band
+      : (lastLoggedBand(row.dataset.exName) || DEFAULT_BAND);
+    row.dataset.band = band;
+    bandSelect.value = band;
+  }
+  bandSelect.addEventListener('change', () => { row.dataset.band = bandSelect.value; });
+  /* Switching load keeps each set's reps and intensity; only the kg input
+     comes or goes. */
+  loadSelect.addEventListener('change', () => {
+    const kept = [...setsList.querySelectorAll('.set-row')].map(sr => ({
+      reps: sr.querySelector('.set-reps')?.value || '',
+      weight: sr.querySelector('.set-weight')?.value || '',
+      rir: sr.querySelector('.rir-chip.selected')?.dataset.rir,
+      prevReps: sr.dataset.prevReps, prevWeight: sr.dataset.prevWeight,
+      prevRir: sr.dataset.prevRir, prevRpe: sr.dataset.prevRpe,
+    }));
+    row.dataset.load = loadSelect.value;
+    syncBandChoice();
+    setsList.innerHTML = '';
+    const num = v => (v === undefined || v === '' ? null : Number(v));
+    kept.forEach(k => {
+      addSetRow(k.reps, k.weight, num(k.rir), undefined,
+        num(k.prevReps), num(k.prevWeight), num(k.prevRir), num(k.prevRpe));
+      const sr = setsList.lastElementChild;
+      const chip = k.rir != null && sr.querySelector(`.rir-chip[data-rir="${k.rir}"]`);
+      if (chip) chip.classList.add('selected');
+      checkComplete(sr);
+    });
+    refreshTags();
+    refreshCompleteButton();
+  });
   function rirChips(prefillRir) {
     return `<div class="rir-chips" title="Reps In Reserve">${[0,1,2,3,4,5,6,7,8,9,10].map(n =>
       `<button type="button" class="rir-chip" data-rir="${n}" style="${n<=2?'border-color:rgba(255,77,103,0.4);':n<=5?'border-color:rgba(255,214,107,0.4);':''}">${n}</button>`
@@ -9236,11 +9775,13 @@ function addExerciseRow(presetName, targetSets, targetReps, prefillSets) {
     }));
   }
   function checkComplete(setRow) {
-    const repsInput = setRow.querySelector('.set-reps');
-    const reps = Number(repsInput?.value) || 0;
+    /* reps in stored units (seconds for holds, minutes for timed work), the same
+       number the previous session's set carries, so the comparison below holds */
+    const stored = setRowStored(setRow);
+    const reps = stored ? stored.reps : 0;
     const hasRir = setRow.querySelector('.rir-chip.selected') !== null;
     const wasComplete = setRow.classList.contains('complete');
-    const isNowComplete = reps > 0 && hasRir;
+    const isNowComplete = !!stored && hasRir;
 
     if (isNowComplete) {
       // Determine performance vs previous session
@@ -9384,48 +9925,16 @@ function addExerciseRow(presetName, targetSets, targetReps, prefillSets) {
     const prevTag = (prevReps > 0)
       ? `<div class="prev-session-ref">
            <span style="color:rgba(91,168,255,0.78);font-size:9px;font-family:var(--font-mono);">LAST</span>
-           <span style="color:rgba(91,168,255,0.78);font-size:9px;font-family:var(--font-mono);">${prevReps}${prevWeight > 0 ? ` × ${prevWeight}kg` : ''} ${_prevIntensityTag}</span>
+           <span style="color:rgba(91,168,255,0.78);font-size:9px;font-family:var(--font-mono);">${isTimeKind(currentKind()) ? formatSetTime(currentKind(), storedSetSecs(currentKind(), { reps: prevReps })) : prevReps}${prevWeight > 0 ? ` × ${prevWeight}kg` : ''} ${_prevIntensityTag}</span>
            <button type="button" class="copy-prev-btn" style="background:rgba(91,168,255,.08);border:1px solid rgba(91,168,255,.2);border-radius:4px;color:rgba(91,168,255,0.78);font-size:9px;padding:1px 6px;cursor:pointer;touch-action:manipulation;font-family:var(--font-mono);">↑ Copy</button>
          </div>`
       : '';
-    const timed = isTimed();
-    const unit = timedUnit();
-    const exName = row.dataset.exName || '';
-    const exDef = EXERCISES_ALL[exName] || {};
-    // Run exercises: timed + endurance/agility stat weight dominant
-    const isRunEx = isRunExercise(exName);
-    const repsStep = timed ? (unit === 'mins' ? 1 : 5) : 1;
-    const repsLabel = timed ? (unit === 'mins' ? 'Mins' : 'Secs') : 'Reps';
+    const kind = currentKind();
+    setRow.dataset.kind = kind;
     const suggTag = suggestion ? `<span class="suggest-badge">${suggestion}</span>` : '';
     setRow.innerHTML = `
       <span class="set-idx">${idx}</span>
-      ${isRunEx
-        ? `<div style="display:flex;align-items:center;gap:3px;">
-             <input type="number" class="set-reps" placeholder="00" min="0" max="999" inputmode="numeric"
-               style="width:48px;background:transparent;border:none;border-bottom:1.5px solid rgba(91,168,255,0.25);border-radius:0;color:var(--text);-webkit-text-fill-color:var(--text);padding:0 4px;font-size:16px;font-family:var(--font-mono);height:44px;text-align:center;-webkit-appearance:none;font-weight:700;" />
-             <span style="font-size:12px;color:var(--text-faint);padding:0 1px;">:</span>
-             <input type="number" class="set-secs" placeholder="00" min="0" max="59" inputmode="numeric"
-               style="width:44px;background:transparent;border:none;border-bottom:1.5px solid rgba(91,168,255,0.18);border-radius:0;color:var(--text);-webkit-text-fill-color:var(--text);padding:0 4px;font-size:16px;font-family:var(--font-mono);height:44px;text-align:center;-webkit-appearance:none;font-weight:700;" />
-           </div>
-           <div style="display:flex;align-items:center;gap:4px;">
-             <input type="number" class="set-dist" step="0.01" min="0" placeholder="0.00" inputmode="decimal"
-               style="width:72px;background:rgba(255,255,255,0.02);border:1px solid rgba(91,168,255,0.1);border-radius:8px;color:var(--text);-webkit-text-fill-color:var(--text);padding:0 8px;font-size:16px;font-family:var(--font-mono);height:44px;text-align:center;-webkit-appearance:none;" />
-             <span style="font-size:10px;color:var(--text-faint);">km</span>
-           </div>`
-        : `${timed
-             ? `<div style="display:flex;align-items:center;gap:3px;">
-                 <input type="number" class="set-reps" placeholder="00" min="0" max="${unit==='mins'?60:300}" inputmode="numeric"
-                   style="width:48px;background:transparent;border:none;border-bottom:1.5px solid rgba(91,168,255,0.25);border-radius:0;color:var(--text);-webkit-text-fill-color:var(--text);padding:0 4px;font-size:16px;font-family:var(--font-mono);height:44px;text-align:center;-webkit-appearance:none;font-weight:700;" />
-                 <span style="font-size:12px;color:var(--text-faint);padding:0 1px;">${unit==='mins'?'m':'s'}</span>
-                 ${unit==='secs' ? `<span style="font-size:9px;color:rgba(91,168,255,0.78);font-family:var(--font-mono);letter-spacing:.05em;">SECS</span>` : ''}
-               </div>`
-             : stepper('set-reps', prefillReps || '', 0, repsStep, repsLabel)
-           }
-           ${timed
-             ? '<div class="stepper" style="opacity:0.25;pointer-events:none;"><button>−</button><input type="text" value="BW" readonly style="color:var(--text-faint);font-size:16px;"/><button>+</button></div>'
-             : stepper('set-weight', prefillWeight || '', 0, 2.5, 'kg')
-           }`
-      }
+      ${setInputsHtml(kind, prefillReps, prefillWeight)}
       <button type="button" class="remove-x set-remove">×</button>
       ${suggTag}
       ${prevTag}
@@ -9439,6 +9948,15 @@ function addExerciseRow(presetName, targetSets, targetReps, prefillSets) {
         SFX.pop();
         const repsInput = setRow.querySelector('.set-reps');
         const weightInput = setRow.querySelector('.set-weight');
+        const timeBox = setRow.querySelector('.time-field');
+        if (timeBox && prevReps > 0) {
+          const p = secsToParts(storedSetSecs(setRow.dataset.kind, { reps: prevReps }));
+          if (!timeBox.querySelector('.set-h')) { p.m += p.h * 60; p.h = 0; }
+          [['.set-h', p.h], ['.set-m', p.m], ['.set-s', p.s]].forEach(([c, v]) => {
+            const inp = timeBox.querySelector(c);
+            if (inp) { inp.value = v || ''; inp.dispatchEvent(new Event('input')); }
+          });
+        }
         if (repsInput && prevReps > 0) {
           repsInput.value = prevReps;
           repsInput.dataset.confirmed = '1';
@@ -9490,38 +10008,46 @@ function addExerciseRow(presetName, targetSets, targetReps, prefillSets) {
     // immediately check if prefilled values make this set complete
     if (prefillReps) checkComplete(setRow);
   }
-  function isTimed() {
-    const def = EXERCISES_ALL[row.dataset.exName] || {};
-    return !!def.timed;
-  }
   /* Which intensity scale this exercise logs on. Mirrors the save path's own
      usesRPE predicate exactly, so the control the Hunter sees can never
-     disagree with the field the set is written to. isTimed() alone is not the
+     disagree with the field the set is written to. def.timed alone is not the
      same test: a timed exercise measured in minutes still logs RIR unless it
      is an endurance/run movement. */
   function usesRPE() {
     const def = EXERCISES_ALL[row.dataset.exName] || {};
     return !!(def.timed && (def.timedUnit !== 'mins' || def.intent === 'endurance'));
   }
-  function timedUnit() {
-    const def = EXERCISES_ALL[row.dataset.exName] || {};
-    return def.timedUnit || 'secs';
-  }
   function refreshTags() {
     const def = EXERCISES_ALL[row.dataset.exName] || {};
     const map = def.muscles || {};
-    const isRunEx = isRunExercise(row.dataset.exName);
     tagsEl.innerHTML = Object.keys(map).map(m => `<span class="tag">${m}</span>`).join('');
     const head = row.querySelector('.set-table-head');
-    if (head && !head.classList.contains('hidden')) {
-      head.querySelector('span:nth-child(2)').textContent = isRunEx ? 'MM:SS' : isTimed() ? (timedUnit() === 'mins' ? 'Mins' : 'Secs') : 'Reps';
-      head.querySelector('.weight-header').textContent = isRunEx ? 'km' : isTimed() ? 'BW' : 'Weight (kg)';
+    if (head) {
+      const [first, second] = setInputHeaders(currentKind());
+      const repsHead = head.querySelector('.reps-header');
+      const weightHead = head.querySelector('.weight-header');
+      repsHead.textContent = first;
+      repsHead.classList.toggle('span-2', !second);
+      weightHead.textContent = second || '';
+      weightHead.style.display = second ? '' : 'none';
     }
+  }
+  /* Set rows may have been built before this exercise was chosen, or for a
+     different one. Rows whose inputs are for another kind (kg + reps on a run,
+     say) are rebuilt empty with the right inputs; same-kind rows keep their values. */
+  function rebuildSetInputs() {
+    const kind = currentKind();
+    const rows = [...setsList.querySelectorAll('.set-row')];
+    if (!rows.length || rows.every(sr => sr.dataset.kind === kind)) return;
+    setsList.innerHTML = '';
+    rows.forEach(() => addSetRow());
   }
   function selectExercise(name) {
     row.dataset.exName = name;
     pickerLabel.textContent = name;
     pickerBtn.classList.remove('placeholder');
+    syncLoadChoice();
+    rebuildSetInputs();
     refreshTags();
     /* Phase 11: the set rows may have been built before this exercise was
        chosen. If the scale changed, the intensity control is rebuilt so RIR/RPE
@@ -9538,6 +10064,7 @@ function addExerciseRow(presetName, targetSets, targetReps, prefillSets) {
   pickerBtn.addEventListener('click', () => openExercisePicker(selectExercise));
   row.querySelector('.add-set-btn').addEventListener('click', () => { SFX.pop(); addSetRow(); });
   row.querySelector('.remove-x').addEventListener('click', () => { row.remove(); refreshCompleteButton(); });
+  syncLoadChoice(prefillSets?.find(s => s && s.load)?.load, prefillSets?.find(s => s && s.band)?.band);
   if (prefillSets && prefillSets.length) {
     // Pass the semantically correct intensity value — rpe for timed, rir for resistance
     // presetName is the addExerciseRow parameter — in scope here unlike exName/exDef
@@ -9559,6 +10086,43 @@ function addExerciseRow(presetName, targetSets, targetReps, prefillSets) {
 document.getElementById('add-exercise-btn')?.addEventListener('click', () => { SFX.pop(); addExerciseRow(); refreshCompleteButton(); });
 addExerciseRow();
 
+/* The logged exercises as they will be saved. Each set row's inputs match its
+   exercise's kind (set-inputs.js), and storedSet() turns them into the fields
+   the logger has always written, so XP, PRs and reconciliation read the same
+   numbers. Also feeds the live XP bar in the logger. */
+function gatherExercises() {
+  const exercises = [];
+  exerciseRows.querySelectorAll('.exercise-row').forEach(row => {
+    const name = row.dataset.exName;
+    if (!name) return;
+    const exDef = EXERCISES_ALL[name] || {};
+    // Whether this exercise uses RIR or RPE semantics
+    const isTimedEx = !!(exDef.timed && exDef.timedUnit !== 'mins');
+    const isRunEx2  = !!(exDef.timed && exDef.intent === 'endurance');
+    const usesRPE   = isTimedEx || isRunEx2;
+    const load = offersLoadChoice(exDef) ? row.dataset.load : null;
+    const sets = [...row.querySelectorAll('.set-row')].map(sr => {
+      const base = withLoad(setRowStored(sr), load, row.dataset.band);
+      if (!base) return null;
+      const selectedRir = sr.querySelector('.rir-chip.selected');
+      const chipValue = selectedRir ? Number(selectedRir.dataset.rir) : null;
+      return {
+        reps: base.reps,
+        weight: base.weight,
+        // Semantic split: resistance→rir field, timed/run→rpe field
+        rir: (!usesRPE && chipValue !== null) ? chipValue : null,
+        rpe: (usesRPE  && chipValue !== null) ? chipValue : null,
+        ...('distKm' in base ? { distKm: base.distKm } : {}),
+        ...('durationMins' in base ? { durationMins: base.durationMins } : {}),
+        ...(base.load ? { load: base.load } : {}),
+        ...(base.band ? { band: base.band } : {}),
+      };
+    }).filter(Boolean);
+    if (sets.length) exercises.push({ name, sets });
+  });
+  return exercises;
+}
+
 document.getElementById('save-workout-btn')?.addEventListener('click', async () => {
   if (!currentUser) return;
   const unrated = unratedSetRows();
@@ -9576,44 +10140,17 @@ document.getElementById('save-workout-btn')?.addEventListener('click', async () 
   }
   const date = document.getElementById('workout-date').value || todayStr();
   const time = document.getElementById('workout-time').value || nowTimeStr();
-  const exercises = [];
-  exerciseRows.querySelectorAll('.exercise-row').forEach(row => {
-    const name = row.dataset.exName;
-    if (!name) return;
-    const sets = [...row.querySelectorAll('.set-row')].map(sr => {
-      const selectedRir = sr.querySelector('.rir-chip.selected');
-      const distInput = sr.querySelector('.set-dist');
-      const secsInput = sr.querySelector('.set-secs');
-      const rawVal = Number(sr.querySelector('.set-reps')?.value) || 0;
-      const exDef = EXERCISES_ALL[name] || {};
-      const isSecs = exDef.timed && exDef.timedUnit !== 'mins';
-      // For run exercises: set-reps = minutes, set-secs = seconds (MM:SS)
-      // For timed skill exercises in secs mode: set-reps = raw seconds, no set-secs
-      // For timed exercises in mins mode: set-reps = minutes
-      const mins = secsInput ? rawVal : (isSecs ? 0 : rawVal);
-      const secs = secsInput ? (Number(secsInput.value) || 0) : (isSecs ? rawVal : 0);
-      const totalMins = (mins * 60 + secs) / 60;
-      // Determine whether this exercise uses RIR or RPE semantics
-      const isTimedEx  = !!(exDef.timed && exDef.timedUnit !== 'mins');
-      const isRunEx2   = !!(exDef.timed && exDef.intent === 'endurance');
-      const usesRPE    = isTimedEx || isRunEx2;
-      const chipValue  = selectedRir ? Number(selectedRir.dataset.rir) : null;
-      return {
-        reps: secsInput
-          ? Math.max(1, Math.round(totalMins))          // run: store rounded minutes
-          : isSecs
-            ? Math.max(1, Math.round(secs))              // timed secs: store raw seconds
-            : (Number(sr.querySelector('.set-reps')?.value) || 0), // strength: store reps
-        weight: Number(sr.querySelector('.set-weight')?.value) || 0,
-        // Semantic split: resistance→rir field, timed/run→rpe field
-        rir: (!usesRPE && chipValue !== null) ? chipValue : null,
-        rpe: (usesRPE  && chipValue !== null) ? chipValue : null,
-        ...(distInput ? { distKm: parseFloat(distInput.value) || 0 } : {}),
-        ...(secsInput || isSecs ? { durationMins: Math.round(totalMins * 10) / 10 } : {}),
-      };
-    }).filter(s => s.reps > 0 || s.durationMins > 0);    if (sets.length) exercises.push({ name, sets });
-  });
+  const exercises = gatherExercises();
   if (!exercises.length) { showToast('The System requires effort. Log at least one set before completing your quest.', 'error'); return; }
+  /* Past sessions go through this same path, so everything below awards them
+     as if logged live on `date`. Guard the date and refuse a second copy of a
+     session already recorded for it. */
+  const dateProblem = backfillDateProblem(date, todayStr());
+  if (dateProblem) { showToast(dateProblem, 'error'); syncWorkoutDateLimits(); return; }
+  if (isDuplicateSession(allWorkouts, currentUser.uid, date, exercises)) {
+    showToast('This session is already logged for that day.', 'error');
+    return;
+  }
 
   const btn = document.getElementById('save-workout-btn');
   btn.disabled = true; btn.textContent = 'Saving…';
@@ -9644,10 +10181,12 @@ document.getElementById('save-workout-btn')?.addEventListener('click', async () 
       programDayIndex: activeDayIndex ?? null, createdAt: serverTimestamp(),
       ...(runSummaryFromLogger ? { isRun: true, runSummary: runSummaryFromLogger } : {}),
     });
-    await writeUserFields({ lastWorkoutDate: date });
-    profile.lastWorkoutDate = date;
+    // A past session must not move lastWorkoutDate (or a day's lastDate) backwards.
+    const lastWorkoutDate = laterDate(profile.lastWorkoutDate, date);
+    await writeUserFields({ lastWorkoutDate });
+    profile.lastWorkoutDate = lastWorkoutDate;
     if (activeDayIndex !== null && myProgram) {
-      myProgram.days[activeDayIndex].lastDate = date;
+      myProgram.days[activeDayIndex].lastDate = laterDate(myProgram.days[activeDayIndex].lastDate, date);
       // only advance rotation in rotation mode — fixed mode doesn't use currentDayIndex
       if (myProgram.scheduleMode !== 'fixed') {
         myProgram.currentDayIndex = (activeDayIndex + 1) % myProgram.days.length;
@@ -9662,6 +10201,7 @@ document.getElementById('save-workout-btn')?.addEventListener('click', async () 
     setTimeout(() => document.getElementById('save-msg').classList.add('hidden'), 2500);
     exerciseRows.innerHTML = '';
     addExerciseRow();
+    resetLoggerDate();
     await loadAllData();
     const xpResult = await awardWorkoutXP(exercises.map(ex => {
       const def = EXERCISES_ALL[ex.name] || {};
@@ -17278,6 +17818,7 @@ async function renderRaidBoss() {
 
   el.innerHTML = `
     <div class="raid-boss-card ${cleared?'cleared':''}" style="border-color:${cleared?'rgba(139,92,255,0.3)':`${boss.color}44`};">
+      <div class="raid-boss-stage" id="raid-boss-stage"></div>
       <div class="raid-boss-header">
         <div style="flex:1;min-width:0;">
           <div class="raid-eyebrow" style="color:${boss.color};">⚔ ${boss.rank}${isFirstWeek?' · INITIATION WEEK':''}</div>
@@ -17318,6 +17859,28 @@ async function renderRaidBoss() {
       </div>
       ${sundayPreview}
     </div>`;
+  mountRaidBossStage(boss, bossTier, cleared);
+}
+
+/* The week's boss standing in 3D at the top of the raid card (art/boss-stage.js). Presentation
+   only: it is told the boss's name, tier and colour, and reads nothing else. E and D raids fight a
+   weekly named boss, each with its own model ('raid-boss:named:<slug>'); higher tiers their tier's. */
+let raidStage = null, raidStageWant = null;
+const bossSlug = (name) => String(name).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+function mountRaidBossStage(boss, tier, cleared) {
+  const host = document.getElementById('raid-boss-stage');
+  if (!host) return;
+  const named = tier === 'E' || tier === 'D';
+  const asset = named ? 'raid-boss:named:' + bossSlug(boss.name) : 'raid-boss:' + tier;
+  const accent = /^#[0-9a-f]{6}$/i.test(boss.color) ? boss.color : '#ff5c6b';
+  const want = asset + (cleared ? ':defeated' : '');
+  if (raidStage && raidStageWant === want) { raidStage.attach(host); return; }   // the card re-rendered: keep the live stage
+  raidStageWant = want;
+  import('./art/boss-stage.js').then(({ mountBossStage }) => {
+    if (raidStageWant !== want || !host.isConnected) return;
+    raidStage?.dispose();
+    raidStage = mountBossStage(host, { asset, fallback: 'raid-boss:' + tier, accent, defeated: !!cleared });
+  }).catch(e => console.warn('boss stage unavailable', e));
 }
 
 
@@ -17521,16 +18084,39 @@ function muscleFromId(id) {
   const stripped = id.replace(/_\d+$/, ''); // Figma dedupes repeated names as "Name_2", "Name_3"...
   return MUSCLES.includes(stripped) ? stripped : null;
 }
+/* ── PHYSIQUE — the Hunter's own map draws their body, not a generic one ──
+   Muscles they train (and get strong in) draw bigger; the overall build comes
+   from their check-in tape measurements, else their height and latest weight.
+   Rules in physique.js. Presentation only: reads data, writes nothing. */
+function myPhysique() {
+  const bodyType = profile?.bodyType === 'female' ? 'female' : 'male';
+  const dev = muscleDevelopment({ workouts: myWorkouts, exercises: EXERCISES_ALL, prs: myPRs, muscles: MUSCLES, uid: currentUser?.uid });
+  const build = bodyBuild({ bodyType, heightCm: profile?.heightCm, weightKg: latestBodyweightKg(), checkin: myCheckins[myCheckins.length - 1] || null });
+  return { dev, build, frame: bodyFrame(build) };
+}
+function physiqueNote() {
+  const { build } = myPhysique();
+  const how = build.source === 'measured' ? 'Body shaped from your latest check-in measurements'
+    : build.source === 'estimated' ? `Body shaped from your height and weight (BMI ${build.bmi})`
+    : (profile?.heightCm ? 'Log your weight' : 'Add your height in Settings and log your weight') + ' to shape the body to you';
+  return `<div class="physique-note">Bigger muscles are the ones you've built. ${how}.</div>`;
+}
 function bodySvg(view, stats, overrideBodyType, items, silhouette) {
   const bodyType = overrideBodyType || ((profile && profile.bodyType === 'female') ? 'female' : 'male');
+  // the Hunter's own map draws their physique; other hunters and the inventory silhouette stay generic
+  let phys = null;
+  if (!overrideBodyType && !silhouette) { try { phys = myPhysique(); } catch (e) { phys = null; } }
   // Phase 5: mirror the already-resolved muscle status into the 3D Hunter.
   // Read-only - no recalculation, no writes, no gameplay effect.
   const template = ANATOMY_TEMPLATES[bodyType];
   if (!template) return '<div class="empty-state" style="padding:20px;">Loading anatomy…</div>';
   const clone = template.cloneNode(true);
+  const centres = phys ? ANATOMY_CENTRES[bodyType] : null;
+  let muscleIndex = -1;
   clone.querySelectorAll('[id]').forEach(el => {
     const m = muscleFromId(el.id);
     if (!m) return;
+    muscleIndex++;
     // Silhouette mode — all muscles render flat dim, items will light up their zones
     const color = silhouette ? 'rgba(30,45,65,0.9)' : STATUS_COLOR[stats[m]?.status || 'Stalled'];
     const status = stats[m]?.status || 'Stalled';
@@ -17552,6 +18138,19 @@ function bodySvg(view, stats, overrideBodyType, items, silhouette) {
       shape.setAttribute('fill', color);
       shape.style.fill = color;
     });
+    // Scale the muscle about its own centre: developed muscles swell, a broader build widens
+    // the region. A wrapper carries the scale so any transform the traced shape has is kept.
+    const c = centres && centres[muscleIndex];
+    if (c && !el.parentNode?.closest?.('[data-grown]')) {
+      const { sx, sy } = muscleShape(m, phys.dev[m], phys.build, phys.frame);
+      if (sx !== 1 || sy !== 1) {
+        const g = el.ownerDocument.createElementNS('http://www.w3.org/2000/svg', 'g');
+        g.setAttribute('data-grown', m);
+        g.setAttribute('transform', `translate(${c[0]} ${c[1]}) scale(${sx} ${sy}) translate(${-c[0]} ${-c[1]})`);
+        el.parentNode.insertBefore(g, el);
+        g.appendChild(el);
+      }
+    }
   });
   // Head and hands/feet ("misc") aren't tracked muscles, but they ARE recognizable
   // Remove the large full-canvas background rectangle (fill="#1F1F1F" or similar)
@@ -17586,6 +18185,15 @@ function bodySvg(view, stats, overrideBodyType, items, silhouette) {
   // Each body type's source file has its own measured front/back split point —
   // never assumed to match between male and female files.
   const crop = ANATOMY_CROP[bodyType][view];
+  // the whole figure narrows or broadens with the build, about its centre line
+  if (phys && phys.frame !== 1) {
+    const [vx, , vw] = crop.viewBox.split(' ').map(Number);
+    const cx = vx + vw / 2;
+    const g = clone.ownerDocument.createElementNS('http://www.w3.org/2000/svg', 'g');
+    g.setAttribute('transform', `translate(${cx} 0) scale(${phys.frame} 1) translate(${-cx} 0)`);
+    [...clone.childNodes].forEach(n => { if (n.nodeName !== 'defs') g.appendChild(n); });
+    clone.appendChild(g);
+  }
   clone.setAttribute('viewBox', crop.viewBox);
   clone.setAttribute('width', String(crop.w));
   clone.setAttribute('height', String(crop.h));
@@ -17811,6 +18419,88 @@ function barChart(values, labels, opts) {
     </div>`).join('')}</div>`;
 }
 
+// ── Aura over time (Trends) ─────────────────────────────────────────────────
+// Presentation only: replays the same computeWorkoutXP + milestone XP that
+// reconcileXP sums, day by day, to draw how Hunter XP grew. Reads workouts,
+// profile.milestonesAchieved and myPRs; writes nothing.
+function auraOverTimeCard() {
+  if (!myWorkouts.length) return '';
+  const byDay = {};
+  for (const w of myWorkouts) {
+    if (!w.date) continue;
+    byDay[w.date] = (byDay[w.date] || 0) + (computeWorkoutXP(w.exercises || []).generalXP || 0);
+  }
+  const achieved = profile.milestonesAchieved || {};
+  MILESTONES.forEach(m => {
+    const a = achieved[m.id];
+    if (!a || !m.hunterXP) return;
+    const d = a.achievedAt ? todayStr(new Date(a.achievedAt)) : todayStr();
+    byDay[d] = (byDay[d] || 0) + m.hunterXP;
+  });
+  const days = Object.keys(byDay).sort();
+  if (!days.length) return '';
+  const today = todayStr();
+  if (days[days.length - 1] < today) days.push(today);
+  let cum = 0, lvl = levelFromTotalXP(0);
+  const pts = [], ups = [];
+  for (const d of days) {
+    cum += byDay[d] || 0;
+    const L = levelFromTotalXP(cum);
+    if (L > lvl) ups.push({ d, L, xp: cum });
+    lvl = L;
+    pts.push({ d, xp: cum });
+  }
+  const span = Math.max(1, daysBetween(days[0], today));
+  const W = 320, H = 132, T = 16, B = 18, Lp = 2, Rp = 2;
+  const max = Math.max(1, cum) * 1.06;
+  const x = d => Lp + (daysBetween(days[0], d) / span) * (W - Lp - Rp);
+  const y = v => T + (1 - v / max) * (H - T - B);
+  // step look: XP only moves on training days
+  const step = pts.map((p, i) => i ? 'H' + x(p.d).toFixed(1) + ' V' + y(p.xp).toFixed(1) : 'M' + x(p.d).toFixed(1) + ' ' + y(p.xp).toFixed(1)).join(' ');
+  const area = step + ' V' + (H - B) + ' H' + x(days[0]).toFixed(1) + ' Z';
+  const xpAt = d => { let v = 0; for (const p of pts) { if (p.d <= d) v = p.xp; else break; } return v; };
+  const prDays = [...new Set(Object.values(myPRs || {}).map(p => p && p.date).filter(d => d && d >= days[0] && d <= today))];
+  const since = n => { const s = todayStr(daysAgo(n)); return cum - xpAt(s); };
+  const gained30 = Math.round(since(30));
+  const ups90 = ups.filter(u => daysBetween(u.d, today) <= 90).length;
+  // month ticks
+  let ticks = '', lastM = '', lastX = -99;
+  for (let i = 0; i <= span; i += Math.max(1, Math.round(span / 60))) {
+    const d = new Date(days[0] + 'T12:00:00'); d.setDate(d.getDate() + i);
+    const m = d.toLocaleDateString(undefined, { month: 'short' }).toUpperCase();
+    if (m !== lastM && (W - x(todayStr(d))) > 22) { lastM = m; if (x(todayStr(d)) - lastX < 30) continue; lastX = x(todayStr(d)); ticks += `<text x="${x(todayStr(d)).toFixed(1)}" y="${H - 4}" fill="#7E8CA3" font-size="8" font-family="Share Tech Mono,monospace">${m}</text>`; }
+  }
+  const upMarks = ups.slice(-12).map(u =>
+    `<line x1="${x(u.d).toFixed(1)}" x2="${x(u.d).toFixed(1)}" y1="${T - 4}" y2="${H - B}" stroke="#A17FFF" stroke-opacity=".28" stroke-dasharray="2 3"/>` +
+    `<circle cx="${x(u.d).toFixed(1)}" cy="${y(u.xp).toFixed(1)}" r="3.2" fill="#A17FFF" style="filter:drop-shadow(0 0 4px #A17FFF)"><title>Level ${u.L} · ${u.d}</title></circle>`).join('');
+  const lastUp = ups[ups.length - 1];
+  const upLabel = lastUp ? `<text x="${Math.min(W - 2, Math.max(2, x(lastUp.d))).toFixed(1)}" y="${T - 6}" fill="#A17FFF" font-size="8.5" font-family="Orbitron,sans-serif" font-weight="700" text-anchor="${x(lastUp.d) > W - 30 ? 'end' : 'middle'}">LV ${lastUp.L}</text>` : '';
+  const prMarks = prDays.map(d =>
+    `<rect x="${(x(d) - 3).toFixed(1)}" y="${(y(xpAt(d)) - 3).toFixed(1)}" width="6" height="6" transform="rotate(45 ${x(d).toFixed(1)} ${y(xpAt(d)).toFixed(1)})" fill="#FFD66B"><title>PR · ${d}</title></rect>`).join('');
+  return `
+    <div class="card" id="widget-aura-time">
+      <div class="card-title"><h3>◈ Aura Over Time</h3></div>
+      <div class="stat-grid-3">
+        <div><div class="lbl">Level</div><div class="val" style="color:var(--violet)">${levelFromTotalXP(cum)}</div></div>
+        <div><div class="lbl">30 days</div><div class="val" style="color:var(--growing)">+${gained30.toLocaleString()}</div></div>
+        <div><div class="lbl">Level-ups 90d</div><div class="val">${ups90}</div></div>
+      </div>
+      <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="Hunter XP over time" style="width:100%;height:${H}px;display:block;margin-top:10px">
+        <defs><linearGradient id="auraTimeFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5BA8FF" stop-opacity=".32"/><stop offset="1" stop-color="#5BA8FF" stop-opacity="0"/></linearGradient></defs>
+        ${[0.25, 0.5, 0.75].map(f => `<line x1="0" x2="${W}" y1="${(T + f * (H - T - B)).toFixed(1)}" y2="${(T + f * (H - T - B)).toFixed(1)}" stroke="rgba(255,255,255,.05)"/>`).join('')}
+        ${upMarks}
+        <path d="${area}" fill="url(#auraTimeFill)"/>
+        <path d="${step}" fill="none" stroke="#5BA8FF" stroke-width="2" stroke-linejoin="round" style="filter:drop-shadow(0 0 4px rgba(91,168,255,.7))"/>
+        ${prMarks}${upLabel}${ticks}
+      </svg>
+      <div style="display:flex;gap:14px;font-family:var(--font-mono);font-size:9px;color:var(--text-faint);letter-spacing:.08em;margin-top:6px;flex-wrap:wrap">
+        <span><i style="display:inline-block;width:12px;border-top:2px solid #5BA8FF;vertical-align:middle;margin-right:5px"></i>XP</span>
+        <span><i style="display:inline-block;width:7px;height:7px;border-radius:7px;background:#A17FFF;vertical-align:middle;margin-right:5px"></i>LEVEL UP</span>
+        <span><i style="display:inline-block;width:6px;height:6px;background:#FFD66B;transform:rotate(45deg);vertical-align:middle;margin-right:6px"></i>PR</span>
+      </div>
+    </div>`;
+}
+
 function renderTrends() {
   document.getElementById('trends-dashboard').classList.toggle('hidden', trendsView !== 'dashboard');
   document.getElementById('trends-muscle-detail').classList.toggle('hidden', trendsView !== 'muscle-detail');
@@ -17897,7 +18587,10 @@ function renderTrends() {
       <div class="card-title"><h3>◈ Muscle Activation <span class="chev">›</span></h3></div>
       <div class="status-pill" style="border-color:${STATUS_COLOR[topStatus[0]]};color:${STATUS_TEXT_COLOR[topStatus[0]]||STATUS_COLOR[topStatus[0]]};display:inline-flex;margin-bottom:8px;">${topStatus[0]} ${topStatus[1]}</div>
       <div class="body-pair">${bodySvg('front', stats)}${bodySvg('back', stats)}</div>
+      ${physiqueNote()}
     </div>
+
+    ${auraOverTimeCard()}
 
     <div class="card">
       <div class="card-title"><h3>⚡ Streaks</h3></div>
@@ -18155,6 +18848,7 @@ function renderMuscleDetail() {
     </div>
     <div class="card">
       <div class="body-pair big">${bodySvg('front', stats)}${bodySvg('back', stats)}</div>
+      ${physiqueNote()}
       ${muscleDetailMode === 'Strength' ? `
         <div style="margin:14px 0 8px;">
           <div style="font-family:var(--font-mono);font-size:9px;letter-spacing:0.2em;color:var(--text-faint);text-transform:uppercase;margin-bottom:10px;text-align:center;">◈ Strength Classification ◈</div>
@@ -22341,22 +23035,19 @@ function openWorkoutDetail(workoutId) {
 
     return (w.exercises||[]).map(ex => {
       const exDef = EXERCISES_ALL[ex.name] || {};
-      const timed = !!exDef.timed;
-      const isRunEx = isRunExercise(ex.name);
-      const repsLabel = timed ? (exDef.timedUnit==='mins'?'Mins':'Secs') : 'Reps';
+      const kind = setInputKind(exDef);
+      const [firstHead, kgHead] = setInputHeaders(kind);
+      // Sets logged with bands, bodyweight or no weight show that instead of kg
+      const anyLoadTag = !!kgHead && (ex.sets||[]).some(s => setLoad(s) !== 'kg');
+      const secondHead = anyLoadTag ? 'Load' : kgHead;
       const sets = (ex.sets||[]).map((s,i) => {
-        // Format duration as MM:SS for run exercises
-        let durationStr = '';
-        if (isRunEx) {
-          const dur = s.durationMins || s.reps || 0;
-          const m = Math.floor(dur);
-          const sec = Math.round((dur - m) * 60);
-          durationStr = `${m}:${String(sec).padStart(2,'0')}`;
-        }
+        const first = isTimeKind(kind) ? formatSetTime(kind, storedSetSecs(kind, s)) : `${s.reps} reps`;
+        const second = kind === 'distance' ? (s.distKm ? Number(s.distKm).toFixed(2)+' km' : '—')
+          : secondHead ? loadText(s) : '';
         return `<div class="detail-set-row">
           <span class="set-idx">${i+1}</span>
-          <span>${isRunEx ? durationStr : s.reps + ' ' + repsLabel.toLowerCase()}</span>
-          <span>${isRunEx ? (s.distKm ? s.distKm.toFixed(2)+' km' : '—') : (s.weight ? s.weight+'kg' : '—')}</span>
+          <span>${first}</span>
+          <span>${second}</span>
           ${(() => {
             const _siDisp = getSetIntensity(s, EXERCISES_ALL[ex.name] || {});
             if (_siDisp.type === 'rpe') return `<span style="color:var(--text-faint);font-size:11px;">RPE ${_siDisp.value}</span>`;
@@ -22367,7 +23058,7 @@ function openWorkoutDetail(workoutId) {
       }).join('');
       return `<div class="detail-exercise">
         <p class="detail-ex-name">${escapeHtml(ex.name)}</p>
-        <div class="detail-sets-head"><span>#</span><span>${isRunEx ? 'MM:SS' : repsLabel}</span><span>${isRunEx ? 'km' : 'Weight'}</span><span></span></div>
+        <div class="detail-sets-head"><span>#</span><span>${firstHead}</span><span>${secondHead || ''}</span><span></span></div>
         ${sets}
       </div>`;
     }).join('') || '<p class="sub">No exercises logged.</p>';
@@ -22377,7 +23068,14 @@ function openWorkoutDetail(workoutId) {
     const exHtml = (w.exercises||[]).map((ex, ei) => {
       const exDef = EXERCISES_ALL[ex.name] || {};
       const timed = !!exDef.timed;
-      const repsLabel = timed ? (exDef.timedUnit==='mins'?'Mins':'Secs') : 'Reps';
+      const isRunEx = isRunExercise(ex.name);
+      // Edited in stored units: minutes for runs and timed work, seconds for holds
+      const kind = setInputKind(exDef);
+      const repsLabel = kind === 'hold' ? 'Secs' : isTimeKind(kind) ? 'Mins' : 'Reps';
+      // Load type: kg sets edit their weight; bands / bodyweight / no weight have none
+      const loadPick = offersLoadChoice(exDef) ? setLoad((ex.sets||[])[0]) : null;
+      const bandPick = isBandLoad(loadPick) ? (setBand((ex.sets||[])[0]) || DEFAULT_BAND) : null;
+      const hasWeight = (kind === 'weight_reps' || kind === 'load_reps') && loadPick === 'kg';
       const isFirst = ei === 0;
       const isLast = ei === (w.exercises.length - 1);
       return `<div class="detail-exercise" data-ei="${ei}">
@@ -22387,10 +23085,11 @@ function openWorkoutDetail(workoutId) {
           <button type="button" class="move-ex-btn" data-ei="${ei}" data-dir="down" ${isLast?'disabled':''} style="background:none;border:none;color:${isLast?'var(--text-faint)':'var(--text)'};font-size:14px;cursor:${isLast?'default':'pointer'};padding:2px 4px;">↓</button>
           <button type="button" class="delete-ex-btn" data-ei="${ei}" style="background:none;border:none;color:var(--excess);font-size:15px;cursor:pointer;padding:2px 4px;">🗑</button>
         </div>
-        <div style="display:flex;justify-content:flex-end;margin-bottom:4px;">
+        <div style="display:flex;justify-content:${loadPick ? 'space-between' : 'flex-end'};align-items:center;gap:8px;margin-bottom:4px;">
+          ${loadPick ? `<div class="load-choice" style="margin:0;flex:1;flex-wrap:wrap;"><span>Load</span><select class="edit-load" data-ei="${ei}" aria-label="Load type">${loadOptions(exDef).map(([l, label]) => `<option value="${l}" ${l === loadPick ? 'selected' : ''}>${label}</option>`).join('')}</select>${bandPick ? `<select class="edit-band" data-ei="${ei}" aria-label="Band strength">${BAND_LEVELS.map(b => `<option value="${b}" ${b === bandPick ? 'selected' : ''}>${bandLabel(b)}</option>`).join('')}</select>` : ''}</div>` : ''}
           <button class="btn btn-sm add-set-edit-btn" data-ei="${ei}" style="font-size:11px;padding:4px 8px;">+ Set</button>
         </div>
-        <div class="detail-sets-head"><span>#</span><span>${repsLabel}</span><span>kg</span><span>RIR/RPE</span><span></span></div>
+        <div class="detail-sets-head"><span>#</span><span>${repsLabel}</span><span>${hasWeight ? 'kg' : ''}</span><span>RIR/RPE</span><span></span></div>
         ${(ex.sets||[]).map((s,si) => {
           // Use correct field per schema: resistance reads rir, timed reads rpe (with legacy fallback)
           const isSkillTimed = timed && !isRunEx; // timed skill hold (planche, handstand etc)
@@ -22406,7 +23105,7 @@ function openWorkoutDetail(workoutId) {
           <div class="detail-set-row" data-si="${si}">
             <span class="set-idx">${si+1}</span>
             <input type="number" class="edit-reps" data-ei="${ei}" data-si="${si}" value="${s.reps||0}" min="0" inputmode="decimal" style="width:52px;background:rgba(255,255,255,0.02);border:1px solid rgba(91,168,255,0.1);border-radius:4px;color:var(--text);padding:4px 6px;font-size:16px;" />
-            <input type="number" class="edit-weight" data-ei="${ei}" data-si="${si}" value="${s.weight||0}" min="0" step="0.5" inputmode="decimal" style="width:52px;background:rgba(255,255,255,0.02);border:1px solid rgba(91,168,255,0.1);border-radius:4px;color:var(--text);padding:4px 6px;font-size:16px;" />
+            <input type="number" class="edit-weight" data-ei="${ei}" data-si="${si}" value="${s.weight||0}" min="0" step="0.5" inputmode="decimal" style="${hasWeight ? '' : 'visibility:hidden;'}width:52px;background:rgba(255,255,255,0.02);border:1px solid rgba(91,168,255,0.1);border-radius:4px;color:var(--text);padding:4px 6px;font-size:16px;" />
             <select class="edit-rir" data-ei="${ei}" data-si="${si}" data-field="${isSkillTimed ? 'rpe' : 'rir'}" style="background:rgba(255,255,255,0.02);border:1px solid rgba(91,168,255,0.1);border-radius:4px;color:var(--text);padding:4px 3px;font-size:16px;width:58px;">
               <option value="">—</option>${rirOptions}
             </select>
@@ -22504,6 +23203,22 @@ function openWorkoutDetail(workoutId) {
     overlay.querySelectorAll('.edit-weight').forEach(inp => inp.addEventListener('change', () => {
       w.exercises[Number(inp.dataset.ei)].sets[Number(inp.dataset.si)].weight = Number(inp.value)||0;
     }));
+    overlay.querySelectorAll('.edit-load').forEach(sel => sel.addEventListener('change', () => {
+      const ex = w.exercises[Number(sel.dataset.ei)];
+      // Keep reps typed so far, then retag every set (kg is untagged)
+      overlay.querySelectorAll(`.edit-reps[data-ei="${sel.dataset.ei}"]`).forEach(inp => {
+        ex.sets[Number(inp.dataset.si)].reps = Number(inp.value)||0;
+      });
+      ex.sets = ex.sets.map(st => {
+        const { load, band, ...rest } = st;
+        return withLoad(rest, sel.value, DEFAULT_BAND);
+      });
+      overlay.querySelector('#detail-content').innerHTML = buildEditView();
+      wireEditHandlers();
+    }));
+    overlay.querySelectorAll('.edit-band').forEach(sel => sel.addEventListener('change', () => {
+      w.exercises[Number(sel.dataset.ei)].sets.forEach(st => { if (isBandLoad(setLoad(st))) st.band = sel.value; });
+    }));
     overlay.querySelectorAll('.remove-set-edit-btn').forEach(btn => btn.addEventListener('click', () => {
       const ei = Number(btn.dataset.ei), si = Number(btn.dataset.si);
       w.exercises[ei].sets.splice(si, 1);
@@ -22513,7 +23228,7 @@ function openWorkoutDetail(workoutId) {
     overlay.querySelectorAll('.add-set-edit-btn').forEach(btn => btn.addEventListener('click', () => {
       const ei = Number(btn.dataset.ei);
       const last = w.exercises[ei].sets[w.exercises[ei].sets.length-1] || { reps:0, weight:0 };
-      w.exercises[ei].sets.push({ reps: last.reps, weight: last.weight, rir: null });
+      w.exercises[ei].sets.push({ reps: last.reps, weight: last.weight, rir: null, ...(last.load ? { load: last.load } : {}), ...(last.band ? { band: last.band } : {}) });
       overlay.querySelector('#detail-content').innerHTML = buildEditView();
       wireEditHandlers();
     }));
@@ -22580,8 +23295,14 @@ function openWorkoutDetail(workoutId) {
     const btn = overlay.querySelector('#detail-save-edit');
     btn.disabled = true; btn.textContent = 'Saving…';
     try {
+      // A load tag only belongs on an exercise that takes a load (one swapped
+      // to a run, say, drops it)
       const cleanedExercises = w.exercises.map(ex => ({
-        ...ex, sets: ex.sets.filter(s => s.reps > 0)
+        ...ex, sets: ex.sets.filter(s => s.reps > 0).map(s => {
+          if (!('load' in s) || offersLoadChoice(EXERCISES_ALL[ex.name])) return s;
+          const { load, band, ...rest } = s;
+          return rest;
+        })
       })).filter(ex => ex.sets.length > 0);
 
       // XP for the OLD version of this session was already granted when it was

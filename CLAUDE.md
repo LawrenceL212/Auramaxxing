@@ -22,14 +22,14 @@ Do **not** modify the following without explicit, per-task authorization:
 - **Scoring/progression formulas** — `computeWorkoutXP`, `xpForLevel`, `levelFromTotalXP`, `apForLevel`, `epley1RM`, `getStrengthTier`, `calcResistanceScore`, `calcTimedScore`, `computeSessionDungeonDamage`, `computeSessionArmySoldiers`
 - **Constant tables that feed them** — `TIER_XP`, `STAT_BONUS_XP`, `STAT_RANK_AP_COST`, `RANK_TIERS`, `SKILL_TIERS`, `MILESTONES`, `statWeights`/`skillTier` in `exercises.js`
 - **Firestore shape** — collection names, document fields, write paths
-- **The reconciliation system** (`index.html` ~5558–5960) and `RECONCILE_VERSIONS`
+- **The reconciliation system** (`index.html`, section `STATE RECONCILIATION SYSTEM`) and `RECONCILE_VERSIONS`
 - **Auth flow and Firestore security rules**
 
 Changing a rendering function is presentation. Changing a number that feeds a stored value is gameplay. When a task sits on the boundary, ask before proceeding.
 
 ### Why formula edits are especially dangerous here
 
-`RECONCILE_VERSIONS` (`index.html:5602`) is a per-subsystem version map (`xp`, `dungeon`, `army`, `prs`, `milestones`, `date`). On startup, `startupIntegrityCheck()` compares each against `profile._reconcileVersions.{key}` and **replays every user's entire workout history** through the current formulas for any subsystem whose version increased.
+`RECONCILE_VERSIONS` (`const RECONCILE_VERSIONS`, `index.html`) is a per-subsystem version map (`xp`, `dungeon`, `army`, `prs`, `milestones`, `date`). On startup, `startupIntegrityCheck()` compares each against `profile._reconcileVersions.{key}` and **replays every user's entire workout history** through the current formulas for any subsystem whose version increased.
 
 The consequence: editing a formula *without* bumping its version silently desynchronizes new results from stored state. Editing one *with* a bump rewrites live progression for every user on next load. Never bump a version casually — it is a migration trigger, not a cache buster.
 
@@ -48,32 +48,90 @@ firebase deploy                # or drag the folder to Netlify/Vercel
 
 Verification is manual: load the app in a browser and exercise the affected screen. There are no automated tests to run.
 
+## Finding things in index.html
+
+`index.html` is ~25,000 lines, so **search by name, never read it whole**: `grep -n "function name"`
+or a section banner (`grep -n "^   STATE RECONCILIATION"`). Line numbers below are approximate and drift;
+trust the name. Read 100–200 lines around a hit, not the file.
+
+| Lines (approx.) | What lives there |
+|---|---|
+| 14–3441 | `<style>`: all CSS. Tokens are CSS custom properties; screen styles are grouped by comment banners |
+| 3443–3930 | Markup: one `section.view#view-<name>` per screen (quest, board, trends, exercises, history, feats, inventory, world), plus the workout logger modal |
+| 3939–25035 | The main `<script type="module">` |
+| 3967 | Firebase config; 3990 exercise database merge; 4118 global state; 4552 helpers |
+| 4672 | Auth; 5230 nav (`switchView`) |
+| 7676 | Data load (Firestore reads into `allWorkouts`, `myWorkouts`, `profile`) |
+| 7820 | Quest / program screen; 8340 progressive overload engine |
+| 9032 | State reconciliation (`RECONCILE_VERSIONS`, `reconcileState`, `startupIntegrityCheck`) |
+| 9527–10400 | Workout logger: `openExercisePicker`, `addExerciseRow` (set rows, load picker), `gatherExercises`, the save handler |
+| 10283 | Rank; 11064 PR system; 11290–11700 XP formulas (`xpForLevel`, `computeWorkoutXP`, `awardWorkoutXP`) |
+| 11879 | Aura points and character stats; 13529 system modals; 14562 class system |
+| 15081 | Admin functions; 16406 debrief modal |
+| 17867 | Trends; 19028 exercise library; 19503 feats; 19588 inventory; 19948 trial keys |
+| 20938 | Dungeon damage; 22888 calendar and history (`openWorkoutDetail` with Edit); 23910 shadow army |
+
+Small, testable logic lives in separate files with tests in `test/` (`set-inputs.js`, `backfill.js`, `streak.js`, `goals.js`, `habit.js`, `physique.js`): prefer putting new logic there, not in `index.html`.
+
 ## Architecture
 
 ### Zero-build static PWA
 
-14 tracked files served verbatim. `index.html` is a **1.1 MB, ~18,500-line single file** holding all CSS, markup, and the main `<script type="module">` (starts line 3186). Firebase 10.12.2 is imported as ESM directly from `gstatic.com`, both statically at the top and via inline `await import(...)` at ~25 call sites throughout.
+14 tracked files served verbatim. `index.html` is a **1.1 MB, ~25,000-line single file** holding all CSS, markup, and the main `<script type="module">` (see the map below). Firebase 10.12.2 is imported as ESM directly from `gstatic.com`, both statically at the top and via inline `await import(...)` at ~25 call sites throughout.
 
-Any new runtime dependency must follow the same pattern — **CDN ESM URL or import map**, not npm. An import map must be declared *before* the module block at line 3186.
+Any new runtime dependency must follow the same pattern — **CDN ESM URL or import map**, not npm. An import map must be declared *before* the main module block (an `<script type="importmap">` already sits there).
 
 ### Module split
 
-Statically imported at `index.html:3188-3191`:
+Statically imported at the top of the main module:
 
 - [exercises.js](exercises.js) — `BASE_EXERCISES`; each entry carries `intent`, `statWeights` (XP distribution across the 6 stats), `muscles` (0–1 emphasis), `equipment`, optional `skillTier`. Merged with per-user custom exercises by `rebuildExercisesAll()`.
 - [progression-chains.js](progression-chains.js), [archetype-chains.js](archetype-chains.js), [auto-achievements.js](auto-achievements.js)
 
-Lazy-loaded: [classes.js](classes.js) via `await import('./classes.js')` at line 10375 (6 root archetypes, 63 paths, 250+ class names) — kept out of the initial load deliberately.
+[physique.js](physique.js) draws the Hunter's own muscle map to their body: muscles grow with
+12 weeks of training plus PR tiers, and the build comes from check-in tape measurements, else
+`profile.heightCm` (set in Settings) and the latest weigh-in. `bodySvg()` applies it; pure, so
+`node test/physique.test.mjs` tests it. Presentation only.
+
+[backfill.js](backfill.js) holds the rules for logging a past session (up to 30 days back, never
+the future, no identical session twice on one date). Past sessions use the normal save path, so every
+reward treats them as if logged on that date. Pure, so `node test/backfill.test.mjs` tests it.
+
+[set-inputs.js](set-inputs.js) decides which inputs the logger shows for a set (kg + reps, reps,
+load + reps, seconds, h:mm, or h:mm:ss + km) from fields each exercise already has, and turns them into
+the same stored fields as before. Exercises with a kg input also get a Load picker (kg, Bands,
+Band assisted on bodyweight moves, Bodyweight, No weight, plus band strength); non-kg sets store
+weight 0 with optional `load`/`band` fields, so formulas read them like a set with no kg. Pure, so
+`node test/set-inputs.test.mjs` tests it.
+
+Lazy-loaded: [classes.js](classes.js) via `await import('./classes.js')` in the class system section (6 root archetypes, 63 paths, 250+ class names) — kept out of the initial load deliberately.
 
 [countries_embedded.js](countries_embedded.js) (1.4 MB `COUNTRIES_GEO`) is imported **only** by [shadow-world.html](shadow-world.html), never by `index.html`.
 
 ### Rendering model
 
-Hand-rolled, no framework. `switchView(name)` (`index.html:4295`) toggles `.active` on `section.view#view-<name>` and syncs `.bottom-nav`. Screens are ~30 `renderX()` functions that build HTML strings and assign `innerHTML`, re-rendering wholesale rather than diffing.
+Hand-rolled, no framework. `switchView(name)` (`index.html`) toggles `.active` on `section.view#view-<name>` and syncs `.bottom-nav`. Screens are ~30 `renderX()` functions that build HTML strings and assign `innerHTML`, re-rendering wholesale rather than diffing.
 
-`#view-world` is the exception: fixed-position fullscreen, and it hosts [shadow-world.html](shadow-world.html) in an `<iframe>` (line 16804). Shadow World is an independent 851-line page drawing the country map to a **2D canvas** with CSS-transform pan/zoom.
+`#view-world` is the exception: fixed-position fullscreen, and it hosts [shadow-world.html](shadow-world.html) in an `<iframe>` (search `shadow-world.html`). Shadow World is an independent 851-line page drawing the country map to a **2D canvas** with CSS-transform pan/zoom.
 
 Global mutable state: `currentUser`, `profile`, `myProgram`, `authMode` — module-scoped `let` bindings read directly by render functions.
+
+### Art stack (`art/`)
+
+A procedural, toon-shaded three.js art pack ported from Grimoire: zero image assets, everything is code.
+`art/kit.js` (toon materials, ink outlines, cached geometry), `art/theme.js` (palette mirrored from the
+CSS tokens), `art/registry.js` (asset factories with triangle budgets, footprints and checks; pure, so
+`node test/art-registry.test.mjs` tests it), `art/packs/*.js` (the assets). Review assets in
+`/art/catalogue.html` under the local server. Authored `.glb` models (`art/models.js`, `art/look.js`,
+registered in `art/models/index.js`; see [art/MODELS.md](art/MODELS.md)) replace a code-drawn asset by
+id through `take()`/`resolve()`. Each raid tier (E–S) has its own boss model (`raid-boss:<tier>`), built in Blender from
+`art/models/src/bosses/` (a shared kit plus one script per boss); the Monarch is tier A and the default.
+The 14 weekly named bosses each have a model too (`raid-boss:named:<slug of the name>`), built on
+`art/models/src/bosses/armour.py` (a plate cut to each muscle); the raid card shows the week's boss in 3D
+through `art/boss-stage.js`, attacking when tapped.
+The reward reveal (`buildRewardScene`) and the raid boss
+(`buildSystemCoreScene`) use the pack lazily and fall back to the old primitives if it fails to load;
+wire further screens the same way, through the existing AuraGL runtime. Presentation only.
 
 ### Firestore collections
 
@@ -83,13 +141,13 @@ Eight in use: `users/{uid}`, `workouts/{autoId}`, `programs/{uid}`, `customExerc
 
 ### State reconciliation — the central invariant
 
-Documented in a header comment at `index.html:5558`. Read it before touching anything that writes progression state.
+Documented in a header comment of the `STATE RECONCILIATION SYSTEM` section. Read it before touching anything that writes progression state.
 
 - **Authoritative, never rewritten:** the `workouts` collection (exercises, sets, reps, weight, RIR/RPE, dates)
 - **Derived, repaired when stale:** `hunterXP`, `hunterLevel`, `statTrainingXP`, level-derived AP, `prs`, `activeDungeon.hp`, `shadowArmy.pool`, `milestonesAchieved`, `lastWorkoutDate`
 - **Not reconstructable — never overwrite:** manually granted `auraPoints`, stat ranks and `statTimeAtRank` (time-gated), `inventory.earnedAt`, duel state, `shadowArmy.countries`, `streakFreeze`
 
-Each `reconcileX()` function takes a `dryRun` flag; `reconcileState(scope, dryRun, versionForce)` (`index.html:5871`) orchestrates. Prefer `dryRun = true` when investigating.
+Each `reconcileX()` function takes a `dryRun` flag; `reconcileState(scope, dryRun, versionForce)` (`index.html`) orchestrates. Prefer `dryRun = true` when investigating.
 
 ## Conventions
 
