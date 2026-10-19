@@ -4028,7 +4028,7 @@ import { detectReEntry, reEntryPlan, directiveProgress, formatMeasure, DIRECTIVE
          buildWidgetConfig } from "./goals.js";
 import { analyseHabit, sampleCurve, describeReturns,
          HABIT_TARGET_DAYS, MISS_GRACE } from "./habit.js";
-import { muscleDevelopment, bodyBuild, bodyFrame, muscleShape } from "./physique.js";
+import { muscleDevelopment, bodyBuild, bodyFrame, muscleShape, muscleTransform, principalAngle } from "./physique.js";
 import { optimisePlan, applySuggestion, activeDismissals, GOALS, GOAL_LABELS } from "./optimiser.js";
 import {
   getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword,
@@ -4144,7 +4144,17 @@ function measureMuscleCentres(bodyType, template) {
       el.parentNode.insertBefore(g, el);
       g.appendChild(el);
       const b = g.getBBox();
-      centres.push([b.x + b.width / 2, b.y + b.height / 2]);
+      // the long axis of the shape, from points along its outline (limb muscles grow across it)
+      let angle = 0;
+      try {
+        const inv = g.getCTM().inverse(), pts = [];
+        (el.matches('path') ? [el] : [...el.querySelectorAll('path')]).forEach(pa => {
+          const len = pa.getTotalLength(), m = inv.multiply(pa.getCTM());
+          for (let i = 0; i < 48; i++) { const q = pa.getPointAtLength(len * i / 48); pts.push([m.a * q.x + m.c * q.y + m.e, m.b * q.x + m.d * q.y + m.f]); }
+        });
+        angle = principalAngle(pts);
+      } catch (e) { angle = 0; }
+      centres.push([b.x + b.width / 2, b.y + b.height / 2, angle]);
       g.parentNode.insertBefore(el, g);
       g.remove();
     });
@@ -18387,11 +18397,11 @@ function bodySvg(view, stats, overrideBodyType, items, silhouette) {
     // the region. A wrapper carries the scale so any transform the traced shape has is kept.
     const c = centres && centres[muscleIndex];
     if (c && !el.parentNode?.closest?.('[data-grown]')) {
-      const { sx, sy } = muscleShape(m, phys.dev[m], phys.build, phys.frame);
-      if (sx !== 1 || sy !== 1) {
+      const tf = muscleTransform(m, c, muscleShape(m, phys.dev[m], phys.build, phys.frame), c[2] || 0);
+      if (tf) {
         const g = el.ownerDocument.createElementNS('http://www.w3.org/2000/svg', 'g');
         g.setAttribute('data-grown', m);
-        g.setAttribute('transform', `translate(${c[0]} ${c[1]}) scale(${sx} ${sy}) translate(${-c[0]} ${-c[1]})`);
+        g.setAttribute('transform', tf);
         el.parentNode.insertBefore(g, el);
         g.appendChild(el);
       }
