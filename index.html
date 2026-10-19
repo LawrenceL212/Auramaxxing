@@ -7137,7 +7137,15 @@ const SystemOpening = (() => {
     return videoOk[url];
   }
   function weekBoss() { try { return JSON.parse(localStorage.getItem(WEEK_BOSS_KEY) || 'null'); } catch (e) { return null; } }
+  // The raid card is the only place the week's boss is worked out, so run it once when the stored one is missing or from an earlier week.
+  async function ensureWeekBoss() {
+    try {
+      const w = weekBoss();
+      if ((!w || w.wk !== dStr(startOfWeek(new Date()))) && typeof renderRaidBoss === 'function' && allUsers && allUsers.length) await renderRaidBoss({ keyOnly: true });
+    } catch (e) {}
+  }
   async function pickVideo() {
+    await ensureWeekBoss();
     try { if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return null; } catch (e) {}
     const b = weekBoss(), tries = [], vt = document.createElement('video');
     const exts = [['mp4', 'video/mp4'], ['webm', 'video/webm']].filter(([, m]) => vt.canPlayType(m)).map(([e]) => e);
@@ -17688,7 +17696,7 @@ function renderCompetitionBoard() {
 }
 
 /* ── Weekly Raid Boss ── */
-async function renderRaidBoss() {
+async function renderRaidBoss(opts) {
   const el = document.getElementById('raid-boss-slot');
   if (!el) return;
   const now = new Date();
@@ -18265,7 +18273,8 @@ async function renderRaidBoss() {
       </div>
       ${sundayPreview}
     </div>`;
-  try { localStorage.setItem('aura.weekBoss', JSON.stringify({ slug: bossSlug(boss.name), name: boss.name, tier: bossTier, rank: boss.rank || '' })); } catch (e) {}
+  try { localStorage.setItem('aura.weekBoss', JSON.stringify({ slug: bossSlug(boss.name), name: boss.name, tier: bossTier, rank: boss.rank || '', wk: dStr(weekStart) })); } catch (e) {}
+  if (opts && opts.keyOnly) return;   // the opening only needs to know the week's boss
   mountRaidBossStage(boss, bossTier, cleared);
 }
 
