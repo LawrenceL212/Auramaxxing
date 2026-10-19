@@ -7164,9 +7164,12 @@ const SystemOpening = (() => {
     let ended = false;
     v.addEventListener('ended', () => { ended = true; });
     v.addEventListener('error', () => { ended = true; });
-    await new Promise(res => { v.addEventListener('canplay', res, { once: true }); v.addEventListener('error', res, { once: true }); setTimeout(res, 4000); });
-    if (v.error || v.readyState < 2) { v.remove(); return false; }
-    try { await v.play(); } catch (e) { v.muted = true; try { await v.play(); } catch (e2) { v.remove(); return false; } }
+    /* Start playing straight away and wait for 'playing': iPhones ignore preload, so 'canplay' never fires until play() is called. */
+    const started = () => new Promise(res => { v.addEventListener('playing', () => res(true), { once: true }); v.addEventListener('error', () => res(false), { once: true }); setTimeout(() => res(!v.paused && v.readyState >= 2), 7000); });
+    let ok = false;
+    try { const w = started(); await v.play(); ok = await w; } catch (e) { ok = false; }
+    if (!ok && !v.error) { v.muted = true; try { const w = started(); await v.play(); ok = await w; } catch (e) { ok = false; } }
+    if (!ok || v.error) { v.remove(); return false; }
     v.classList.add('on'); voidLevel(0, 0.4);
     let bar = null;
     if (pick.boss && pick.boss.name) {
