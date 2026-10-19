@@ -110,7 +110,7 @@ git diff 9bcec20..HEAD -- index.html shadow-world.html \
 
 | Issue | Status |
 |---|---|
-| **`apEvents` composite index missing** | **CONFIRMED STILL MISSING.** `uid ==` + `orderBy timestamp desc` returns `failed-precondition`. The Admin AP Ledger remains broken. Index needed: `apEvents` · `uid` ASC · `timestamp` DESC · `__name__` DESC. |
+| **`apEvents` composite index missing** | **Was missing; now deployed.** `uid ==` + `orderBy timestamp desc` returns `failed-precondition`. Index needed: `apEvents` · `uid` ASC · `timestamp` DESC · `__name__` DESC. **Mitigated 2026-10-05:** the ledger now falls back to a uid-only read ordered on device (`ap-ledger.js`, tested in `test/ap-ledger.test.mjs`) and labels itself SORTED ON DEVICE until the index exists. Live check 2026-10-19: the ledger loaded 35 events with no "SORTED ON DEVICE" label, so the index is now deployed and the normal query runs. |
 | **Female `Lower Abs` empty SVG group** | **FIXED 2026-10-19.** The female lower-abs shapes (`Vector_146`–`148`) were filed under `Groin`, so the heatmap painted them as untracked gray while `Lower Abs` sat empty. They now live in `Lower Abs`; the unmodified render is pixel-identical. Live heatmap on a female profile **UNVERIFIED** (needs a signed-in session). |
 | **Client-side duel resolution is not a trusted architecture** | **UNCHANGED.** Still needs a Cloud Function. See the security section. |
 | **Shadow World frame rate** | **NEW.** The iframe renders a 2048×1024 (2.1 Mpx) canvas and runs at **32.9 fps internally**, holding the host page to ~40 fps while the World view is open. This is the iframe's own render loop, *not* AuraGL — the host recovers to 99 fps on leaving the view. Separate work from the cinematic layer. |
