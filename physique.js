@@ -16,15 +16,15 @@
        has tape measurements, 'estimated' from height and weight, otherwise
        'default' (all 1).
      bodyFrame(build)        -> the whole figure's width factor
-     muscleShape(muscle, dev, build, frame) -> { sx, sy }
-       The scale to draw one muscle at, on top of the frame.
+
+   Muscles are never scaled individually: the traced shapes must stay aligned
+   with the head, hands and feet. Development shows as brightness instead
+   (bodySvg), and the build shows as the whole figure's width.
    ========================================================================= */
 
 export const DEV_WINDOW_DAYS = 84;      // 12 weeks of training shapes the body
 export const DEV_HALF_LIFE_DAYS = 42;   // a session six weeks ago counts half
 export const DEV_SETS_SCALE = 45;       // weighted sets for ~63% of full volume development
-export const GROW_X = 0.2;              // a fully developed muscle draws 20% wider...
-export const GROW_Y = 0.08;             // ...and 8% taller
 
 const TIER_DEV = { Beginner: 0.1, Novice: 0.3, Intermediate: 0.55, Advanced: 0.8, Elite: 1 };
 
@@ -106,6 +106,7 @@ export function bodyBuild({ bodyType = 'male', heightCm = null, weightKg = null,
   return result;
 }
 
+/** Which body region's build factor each muscle belongs to. */
 export const MUSCLE_REGION = {
   'Upper Chest': 'chest', 'Middle Chest': 'chest', 'Lower Chest': 'chest',
   'Front Shoulders': 'shoulders', 'Lateral Shoulders': 'shoulders', 'Rear Shoulders': 'shoulders', 'Traps': 'shoulders',
@@ -116,19 +117,9 @@ export const MUSCLE_REGION = {
   'Quads': 'legs', 'Hamstrings': 'legs', 'Calves': 'legs',
 };
 
-/** The whole figure's width: the build's average, drawn by scaling the entire body (head too, a
- *  little), so a slim build narrows without opening gaps between the traced shapes. */
+/** The whole figure's width: the build's average, drawn by scaling the entire body (head and hands
+ *  too) as one, so nothing the trace joined together ever comes apart. */
 export function bodyFrame(build = IDENTITY) {
   const regions = Object.keys(IDENTITY).map((k) => build[k] ?? 1);
   return round3(clamp(regions.reduce((a, b) => a + b, 0) / regions.length, 0.9, 1.18));
-}
-
-/** frame: bodyFrame(build), already applied to the whole figure. A muscle only ever grows on top of
- *  it (a region narrower than the frame stays at the frame), so the shapes never pull apart. */
-export function muscleShape(muscle, dev = 0, build = IDENTITY, frame = 1) {
-  const d = clamp(Number(dev) || 0, 0, 1);
-  const region = Math.max(1, (build[MUSCLE_REGION[muscle]] ?? 1) / frame);
-  // abs don't swell much with training; the waist is mostly build
-  const grow = MUSCLE_REGION[muscle] === 'waist' ? 0.4 : 1;
-  return { sx: round3((1 + GROW_X * d * grow) * region), sy: round3(1 + GROW_Y * d * grow) };
 }

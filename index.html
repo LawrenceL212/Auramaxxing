@@ -4028,7 +4028,7 @@ import { detectReEntry, reEntryPlan, directiveProgress, formatMeasure, DIRECTIVE
          buildWidgetConfig } from "./goals.js";
 import { analyseHabit, sampleCurve, describeReturns,
          HABIT_TARGET_DAYS, MISS_GRACE } from "./habit.js";
-import { muscleDevelopment, bodyBuild, bodyFrame, muscleShape } from "./physique.js";
+import { muscleDevelopment, bodyBuild, bodyFrame } from "./physique.js";
 import { optimisePlan, applySuggestion, activeDismissals, GOALS, GOAL_LABELS } from "./optimiser.js";
 import {
   getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword,
@@ -4125,33 +4125,6 @@ function structuredCloneLite(o){ return JSON.parse(JSON.stringify(o)); }
    matches the user's preference and recolors muscles per the current stats.
    ========================================================================= */
 const ANATOMY_TEMPLATES = { male: null, female: null };
-/* The centre of every traced muscle shape, in its parent's coordinates, so
-   bodySvg() can grow a muscle about its own middle (physique.js). Measured
-   once per template by laying it out off screen; listed in the same order as
-   the muscle-id elements bodySvg() walks. */
-const ANATOMY_CENTRES = { male: null, female: null };
-function measureMuscleCentres(bodyType, template) {
-  try {
-    const host = document.createElement('div');
-    host.style.cssText = 'position:absolute;left:-9999px;top:0;width:10px;height:10px;overflow:hidden;visibility:hidden;';
-    const svg = template.cloneNode(true);
-    host.appendChild(svg);
-    document.body.appendChild(host);
-    const centres = [];
-    svg.querySelectorAll('[id]').forEach(el => {
-      if (!muscleFromId(el.id)) return;
-      const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-      el.parentNode.insertBefore(g, el);
-      g.appendChild(el);
-      const b = g.getBBox();
-      centres.push([b.x + b.width / 2, b.y + b.height / 2]);
-      g.parentNode.insertBefore(el, g);
-      g.remove();
-    });
-    host.remove();
-    ANATOMY_CENTRES[bodyType] = centres;
-  } catch (e) { ANATOMY_CENTRES[bodyType] = null; }
-}
 // Each file's front/back split point and canvas size differ — measured directly
 // against each exported file, never assumed to match between body types.
 const ANATOMY_CROP = {
@@ -4178,7 +4151,6 @@ async function loadAnatomyTemplate(bodyType) {
       });
     }
     ANATOMY_TEMPLATES[bodyType] = template;
-    measureMuscleCentres(bodyType, template);
     return template;
   } catch (e) {
     console.warn(`Could not load ${file} — muscle map will show a loading placeholder.`, e);
@@ -18356,12 +18328,9 @@ function bodySvg(view, stats, overrideBodyType, items, silhouette) {
   const template = ANATOMY_TEMPLATES[bodyType];
   if (!template) return '<div class="empty-state" style="padding:20px;">Loading anatomy…</div>';
   const clone = template.cloneNode(true);
-  const centres = phys ? ANATOMY_CENTRES[bodyType] : null;
-  let muscleIndex = -1;
   clone.querySelectorAll('[id]').forEach(el => {
     const m = muscleFromId(el.id);
     if (!m) return;
-    muscleIndex++;
     // Silhouette mode — all muscles render flat dim, items will light up their zones
     const color = silhouette ? 'rgba(30,45,65,0.9)' : STATUS_COLOR[stats[m]?.status || 'Stalled'];
     const status = stats[m]?.status || 'Stalled';
@@ -18375,7 +18344,7 @@ function bodySvg(view, stats, overrideBodyType, items, silhouette) {
     const glowSize = GLOW_INTENSITY[status] || '4px';
     el.style.filter = silhouette ? 'none'
       : status === 'Stalled' ? 'brightness(0.4)'
-      : `drop-shadow(0 0 ${glowSize} ${color}) brightness(0.85)`;
+      : `drop-shadow(0 0 ${glowSize} ${color}) brightness(${phys ? Math.round((0.78 + 0.14 * (phys.dev[m] || 0)) * 100) / 100 : 0.85})`;
     // Some muscles trace as a single <path>, others as a <g> wrapping several
     // sub-paths (each with its own fill) — recolor the element itself AND
     // every descendant shape, so a child's own color can't win over ours.
@@ -18383,19 +18352,6 @@ function bodySvg(view, stats, overrideBodyType, items, silhouette) {
       shape.setAttribute('fill', color);
       shape.style.fill = color;
     });
-    // Scale the muscle about its own centre: developed muscles swell, a broader build widens
-    // the region. A wrapper carries the scale so any transform the traced shape has is kept.
-    const c = centres && centres[muscleIndex];
-    if (c && !el.parentNode?.closest?.('[data-grown]')) {
-      const { sx, sy } = muscleShape(m, phys.dev[m], phys.build, phys.frame);
-      if (sx !== 1 || sy !== 1) {
-        const g = el.ownerDocument.createElementNS('http://www.w3.org/2000/svg', 'g');
-        g.setAttribute('data-grown', m);
-        g.setAttribute('transform', `translate(${c[0]} ${c[1]}) scale(${sx} ${sy}) translate(${-c[0]} ${-c[1]})`);
-        el.parentNode.insertBefore(g, el);
-        g.appendChild(el);
-      }
-    }
   });
   // Head and hands/feet ("misc") aren't tracked muscles, but they ARE recognizable
   // Remove the large full-canvas background rectangle (fill="#1F1F1F" or similar)
@@ -18430,14 +18386,29 @@ function bodySvg(view, stats, overrideBodyType, items, silhouette) {
   // Each body type's source file has its own measured front/back split point —
   // never assumed to match between male and female files.
   const crop = ANATOMY_CROP[bodyType][view];
-  // the whole figure narrows or broadens with the build, about its centre line
+  // the whole figure narrows or broadens with the build, about its centre line. Muscles are drawn
+  // exactly as traced, so they stay aligned with the head, hands and feet. A broader figure is also
+  // shortened by the same factor so it never grows past the card edges; the traced crop is clipped
+  // first so the neighbouring figure in the source file never slides into view.
   if (phys && phys.frame !== 1) {
-    const [vx, , vw] = crop.viewBox.split(' ').map(Number);
-    const cx = vx + vw / 2;
-    const g = clone.ownerDocument.createElementNS('http://www.w3.org/2000/svg', 'g');
-    g.setAttribute('transform', `translate(${cx} 0) scale(${phys.frame} 1) translate(${-cx} 0)`);
-    [...clone.childNodes].forEach(n => { if (n.nodeName !== 'defs') g.appendChild(n); });
-    clone.appendChild(g);
+    const [vx, vy, vw, vh] = crop.viewBox.split(' ').map(Number);
+    const cx = vx + vw / 2, cy = vy + vh / 2;
+    const NS = 'http://www.w3.org/2000/svg';
+    const doc = clone.ownerDocument;
+    const outer = doc.createElementNS(NS, 'g');
+    const sxF = Math.min(phys.frame, 1), syF = Math.min(1, 1 / phys.frame);
+    outer.setAttribute('transform', `translate(${cx} ${cy}) scale(${sxF} ${syF}) translate(${-cx} ${-cy})`);
+    const clip = doc.createElementNS(NS, 'clipPath');
+    clip.setAttribute('id', 'phys-clip');
+    const rect = doc.createElementNS(NS, 'rect');
+    [['x', vx], ['y', vy], ['width', vw], ['height', vh]].forEach(([k, v]) => rect.setAttribute(k, String(v)));
+    clip.appendChild(rect);
+    const inner = doc.createElementNS(NS, 'g');
+    inner.setAttribute('clip-path', 'url(#phys-clip)');
+    [...clone.childNodes].forEach(n => { if (n.nodeName !== 'defs') inner.appendChild(n); });
+    outer.appendChild(clip);
+    outer.appendChild(inner);
+    clone.appendChild(outer);
   }
   clone.setAttribute('viewBox', crop.viewBox);
   clone.setAttribute('width', String(crop.w));
