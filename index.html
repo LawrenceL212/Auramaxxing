@@ -8150,7 +8150,11 @@ function renderQuestFeed() {
 
   const rotationIdx = myProgram.currentDayIndex % myProgram.days.length;
   const today = todayWeekday();
-  const isScheduledToday = myProgram.schedule.includes(today);
+  // In fixed mode the days carry their own weekdays; the plan-level schedule can be stale or empty, so trust the days.
+  const fixedDays = myProgram.scheduleMode === 'fixed' && myProgram.days.some(d => (d.assignedDays || []).length);
+  const isScheduledToday = fixedDays
+    ? myProgram.days.some(d => (d.assignedDays || []).includes(today))
+    : myProgram.schedule.includes(today);
 
   // in fixed mode, sort days chronologically by weekday before rendering
   if (myProgram.scheduleMode === 'fixed') {
