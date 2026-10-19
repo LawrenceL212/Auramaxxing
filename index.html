@@ -904,6 +904,47 @@
     animation:smRing 1600ms var(--ease-cinema) forwards;
   }
 
+  /* ── Opening HUD: frame, scan, bigger identity, System status window ── */
+  #sys-open .hc{ position:absolute; z-index:883; width:22px; height:22px; border:0 solid rgba(91,168,255,.55);
+    opacity:0; animation:soFade 600ms var(--ease-cinema) 200ms forwards; }
+  #sys-open .hc.tl{ left:14px; top:calc(14px + env(safe-area-inset-top,0px)); border-left-width:1px; border-top-width:1px; }
+  #sys-open .hc.tr{ right:14px; top:calc(14px + env(safe-area-inset-top,0px)); border-right-width:1px; border-top-width:1px; }
+  #sys-open .hc.bl{ left:14px; bottom:14px; border-left-width:1px; border-bottom-width:1px; }
+  #sys-open .hc.br{ right:14px; bottom:14px; border-right-width:1px; border-bottom-width:1px; }
+  @keyframes soFade{ to{ opacity:1; } }
+  #sys-open .scan{ position:absolute; left:0; right:0; height:2px; top:-4px; z-index:882; opacity:0;
+    background:linear-gradient(90deg,transparent,rgba(120,185,255,.55),transparent);
+    box-shadow:0 0 18px 2px rgba(91,168,255,.35); animation:soScan 3200ms linear 500ms infinite; }
+  @keyframes soScan{ 0%{ top:-4px; opacity:0; } 8%{ opacity:.8; } 92%{ opacity:.8; } 100%{ top:100%; opacity:0; } }
+  #sys-open .kicker{ font-size:clamp(11px,3vw,13px); color:rgba(140,196,255,.95); }
+  #sys-open .line{ font-size:clamp(34px,11vw,56px); letter-spacing:.06em;
+    text-shadow:0 0 22px rgba(91,168,255,.55), 0 0 2px rgba(255,255,255,.6); }
+  #sys-open .sub{ font-size:clamp(13px,3.6vw,16px); letter-spacing:.14em; color:rgba(190,215,245,.92); }
+  #sys-open .rank{ display:none; }   /* the rank is in the sub line and the status window */
+  html[data-orient="portrait"] #sys-open .beats{ padding-bottom:calc(11dvh + env(safe-area-inset-bottom,0px)); }
+  #sys-open .win{ display:grid; grid-template-columns:repeat(3,1fr); gap:6px; width:100%; max-width:330px; margin:14px auto 0;
+    padding:10px; border:1px solid rgba(91,168,255,.4); background:rgba(4,10,24,.62);
+    box-shadow:0 0 28px rgba(91,168,255,.16), inset 0 0 22px rgba(91,168,255,.07);
+    clip-path:polygon(10px 0,100% 0,100% calc(100% - 10px),calc(100% - 10px) 100%,0 100%,0 10px);
+    opacity:0; min-height:0; }
+  #sys-open .win:empty{ display:none; }
+  #sys-open .win[data-in="1"]{ animation:mFade 360ms var(--ease-cinema) forwards; }
+  #sys-open .win[data-out="1"]{ opacity:0; transition:opacity 360ms var(--ease-cinema); }
+  #sys-open .win .cell{ display:flex; align-items:baseline; justify-content:space-between; gap:8px; padding:6px 10px;
+    border-left:2px solid var(--c,var(--brass)); background:rgba(91,168,255,.05);
+    opacity:0; animation:mRise 420ms var(--ease-cinema) calc(var(--i,0) * 90ms + 120ms) forwards; }
+  #sys-open .win .k{ font-family:var(--font-mono); font-size:12px; letter-spacing:.16em; color:rgba(190,215,245,.85); }
+  #sys-open .win .v{ font-family:var(--font-display); font-weight:var(--weight-hero); font-size:20px; color:var(--c,var(--brass)); text-shadow:0 0 12px var(--c,transparent); }
+  #sys-open .bar{ width:100%; max-width:330px; height:2px; margin:14px auto 0; background:rgba(91,168,255,.14); overflow:hidden; }
+  #sys-open .bar i{ display:block; height:100%; width:100%; transform-origin:left; transform:scaleX(var(--p,0));
+    background:linear-gradient(90deg,rgba(91,168,255,.4),rgba(160,205,255,1)); box-shadow:0 0 8px rgba(120,185,255,.8);
+    transition:transform 700ms var(--ease-cinema); }
+  @media (prefers-reduced-motion: reduce){
+    #sys-open .scan{ display:none; }
+    #sys-open .win .cell, #sys-open .hc{ animation:none !important; opacity:1 !important; }
+    #sys-open .win[data-in="1"]{ animation:none !important; opacity:1 !important; }
+  }
+
   #sys-skip{
     position:fixed; z-index:1060; right:14px;
     bottom:calc(18px + env(safe-area-inset-bottom,0px));
@@ -5228,6 +5269,7 @@ const SFX = {
   },
 };
 
+let openingRelease = () => {};   // set at login; frees notices once the opening is over (or never ran)
 if (configOk) {
   onAuthStateChanged(auth, async (user) => {
     if (user) {
@@ -5276,6 +5318,9 @@ if (configOk) {
       setTimeout(() => openLinkedWorkout(), 2600);
       // Phase 4: bring up the cinematic layer after the app is interactive, so
       // it can never delay login or data. Failure here is non-fatal by design.
+      /* The opening owns the screen: penalty, rank-up and update notices queue
+         behind it (losses first) instead of painting through it. */
+      openingRelease = StartupNotices.hold(22000);
       setTimeout(async () => {
         try {
           if (await AuraGL.init()) {
@@ -5287,12 +5332,12 @@ if (configOk) {
             // Opening cinematic runs only once the core scene is up, so it can
             // never delay auth, data load or first interaction.
             const waitCore = (tries = 0) => {
-              if (window.AuraCore?.ready) { SystemOpening.start(); return; }
-              if (tries < 40) setTimeout(() => waitCore(tries + 1), 250);
+              if (window.AuraCore?.ready) { SystemOpening.start().then(ran => { if (!ran) openingRelease(); }); return; }
+              if (tries < 40) setTimeout(() => waitCore(tries + 1), 250); else openingRelease();
             };
             waitCore();
-          }
-        } catch (e) { console.info('[AuraGL] disabled:', e); }
+          } else openingRelease();
+        } catch (e) { console.info('[AuraGL] disabled:', e); openingRelease(); }
       }, 2600);
     } else {
       currentUser = null;
@@ -6286,8 +6331,21 @@ function buildSystemCoreScene({ THREE, quality, tier }) {
   innerLight2.position.set(0, 0.3, 0);
   root.add(innerLight2);
 
+  /* Polished metal needs something to reflect or it reads as a black cut-out
+     (the sigil was a silhouette with two glints). A soft studio environment is
+     put on the sigil's own materials only - not scene.environment - so the
+     raid boss and the environments keep the lighting they were tuned with. */
+  import('three/addons/environments/RoomEnvironment.js').then(({ RoomEnvironment }) => {
+    const r = window.AuraGL?.renderer; if (!r) return;
+    const pm = new THREE.PMREMGenerator(r);
+    const tex = pm.fromScene(new RoomEnvironment(), 0.04).texture;
+    for (const [m, k] of [[coreMat, 0.55], [ringMat, 0.7], [shardMat, 0.5]]) {
+      m.envMap = tex; m.envMapIntensity = k; m.needsUpdate = true;
+    }
+    pm.dispose();
+  }).catch(e => console.info('[core] studio reflections unavailable', e));
+
   root.add(core, ring1, ring2, shards);
-  root.scale.setScalar(0.78);
   root.scale.setScalar(0.78);
 
   let ready = true, frozen = false;
@@ -6782,11 +6840,15 @@ const SystemOpening = (() => {
     host.id = 'sys-open';
     host.innerHTML =
       '<div class="void"></div><div class="ring"></div>' +
+      '<div class="scan"></div>' +
+      '<i class="hc tl"></i><i class="hc tr"></i><i class="hc bl"></i><i class="hc br"></i>' +
       '<div class="beats">' +
         '<div class="kicker" id="so-kicker"></div>' +
         '<h1 class="line" id="so-line"></h1>' +
         '<p class="sub" id="so-sub"></p>' +
         '<div class="rank" id="so-rank"></div>' +
+        '<div class="win" id="so-win" aria-hidden="true"></div>' +
+        '<div class="bar" id="so-bar"><i></i></div>' +
       '</div>';
     document.body.appendChild(host);
     const skip = document.createElement('button');
@@ -6811,6 +6873,22 @@ const SystemOpening = (() => {
     ['so-kicker', 'so-line', 'so-sub', 'so-rank'].forEach(id => {
       const n = el(id); if (n) { n.textContent = ''; n.removeAttribute('data-in'); }
     });
+  }
+  // Boot progress: a thin line that fills as the System comes online (0..1).
+  function progress(p) { const b = el('so-bar'); if (b) b.style.setProperty('--p', Math.max(0, Math.min(1, p))); }
+  /* The System status window: the Hunter's six ranks as read from their real
+     profile. Rows arrive in a short stagger (CSS, --i). Never invents a value:
+     an unranked stat shows E, the same default the rest of the app uses. */
+  function showStatusWindow() {
+    const w = el('so-win'); if (!w) return;
+    const CODES = [['strength', 'STR'], ['endurance', 'END'], ['agility', 'AGI'], ['focus', 'FOC'], ['flexibility', 'FLE'], ['defence', 'DEF']];
+    const st = profile?.stats || {};
+    w.innerHTML = CODES.map(([id, code], i) => {
+      const r = st[id] || 'E';
+      const col = (typeof RANK_COLORS === 'object' && RANK_COLORS[r]) || 'var(--brass)';
+      return `<div class="cell" style="--i:${i};--c:${col}"><span class="k">${code}</span><span class="v">${r}</span></div>`;
+    }).join('');
+    w.removeAttribute('data-in'); void w.offsetWidth; w.setAttribute('data-in', '1');
   }
   const voidLevel = (c, e) => {
     host?.style.setProperty('--void-c', c);
@@ -6926,46 +7004,56 @@ const SystemOpening = (() => {
          frame. SKIP still cuts it short. */
       say('so-kicker', 'SYSTEM · WELCOME BACK');
       say('so-line', (profile?.displayName || 'HUNTER').toUpperCase(), '2');
+      try {
+        const rank = (typeof charRankFromStats === 'function' && profile?.stats) ? charRankFromStats(profile.stats) : null;
+        if (rank) say('so-sub', `RANK ${rank} · LEVEL ${profile?.hunterLevel || 1}`);
+      } catch (e) { /* presentation only */ }
+      progress(1);
       H?.setAura?.('active');
-      await hold(640);
+      await hold(1150);
       return finish();
     }
 
     /* ── 1. VOID ───────────────────────────────────────────────────────── */
-    await beat(620);
+    await beat(380);
 
     /* ── 2. SIGNAL ─────────────────────────────────────────────────────── */
     cue('sys-pulse', 0.5);
     const ring = host.querySelector('.ring');
     if (ring) { ring.setAttribute('data-pulse', '1'); }
     say('so-kicker', '◈ SIGNAL DETECTED');
-    await beat(1150);
+    progress(0.12);
+    await beat(800);
 
     /* ── 3. GEOMETRY - rim first, so the sigil's form reads before surface */
     cue('sys-arrival', 0.45);
     clearBeats();
     voidLevel(0.86, 0.97);
-    ramp(v => H?.setReveal?.(v), 0, 0.42, 1500);
-    camera(far, [0, 0.28, midZ], 2600);
-    await beat(1500);
+    ramp(v => H?.setReveal?.(v), 0, 0.42, 1100);
+    camera(far, [0, 0.28, midZ], 2200);
+    progress(0.3);
+    await beat(1000);
 
     say('so-kicker', '◈ SYSTEM GEOMETRY RESOLVED');
     voidLevel(0.62, 0.92);
-    await beat(900);
+    progress(0.48);
+    await beat(600);
 
     /* ── 4. TELEMETRY - a narrow light travels across the sigil ────────── */
     clearBeats();
     say('so-kicker', '◈ TELEMETRY LINKED');
-    ramp(t => H?.sweepLight?.(t), 0, 1, 1400);
-    await ramp(v => H?.setReveal?.(v), 0.42, 0.88, 1400);
+    ramp(t => H?.sweepLight?.(t), 0, 1, 1100);
+    progress(0.66);
+    await ramp(v => H?.setReveal?.(v), 0.42, 0.88, 1100);
     voidLevel(0.34, 0.8);
 
     /* ── 5. RECOGNITION (build) - real state only, never invented ──────── */
     cue('sys-recognise', 0.4);
-    camera([0, 0.28, midZ], [0, 0.18, endZ], 2200);
+    camera([0, 0.28, midZ], [0, 0.18, endZ], 1900);
     say('so-kicker', '◈ HUNTER IDENTIFIED');
     say('so-line', (profile?.displayName || 'HUNTER').toUpperCase(), '2');
-    await beat(900);
+    progress(0.84);
+    await beat(650);
 
     try {
       const rank = (typeof charRankFromStats === 'function' && profile?.stats)
@@ -6981,16 +7069,18 @@ const SystemOpening = (() => {
         say('so-sub', 'UNCLASSIFIED · THE SYSTEM IS WATCHING');
       }
     } catch (e) { /* presentation only */ }
-    await beat(800);
+    showStatusWindow();
+    await beat(700);
 
     /* ── 6. AWAKENING (reveal) - the energy completes the composition ──── */
     H?.setAura?.('stirring');
-    await beat(400);
+    await beat(300);
     cue('sys-surge', 0.5);
     H?.setAura?.('surge');
-    await ramp(v => H?.setReveal?.(v), 0.88, 1, 700);
+    progress(1);
+    await ramp(v => H?.setReveal?.(v), 0.88, 1, 600);
     voidLevel(0.12, 0.62);
-    await beat(500);
+    await beat(350);
 
     /* ── 7. APPRECIATION - the completed frame simply stands ─────────────
        Nothing new arrives here on purpose: name, rank and level stay put,
@@ -6999,7 +7089,7 @@ const SystemOpening = (() => {
        reduced-motion; SKIP still cuts it short. */
     H?.setAura?.('active');
     cue('sys-reveal', 0.32);
-    await hold(2600);
+    await hold(2200);
 
     /* ── 8. AFTERMATH - clean hand-off back to the application ─────────── */
     /* hold(), not beat(): this is the sign-off the player reads, so it is
@@ -7007,8 +7097,10 @@ const SystemOpening = (() => {
        under prefers-reduced-motion, which left SYSTEM ONLINE on screen for a
        single frame. SKIP still cuts it short. */
     clearBeats();
+    el('so-win')?.removeAttribute('data-in');
+    el('so-win')?.setAttribute('data-out', '1');
     say('so-kicker', '◈ SYSTEM ONLINE');
-    await hold(850);
+    await hold(750);
     return finish();
   }
 
@@ -7029,6 +7121,8 @@ const SystemOpening = (() => {
       document.getElementById('sys-skip')?.remove();
       delete document.documentElement.dataset.opening;
       try { window.AuraGL?.activate?.('ambient'); } catch (e) {}
+      // Held notices (a penalty, a rank-up) show only once the cinematic has fully faded.
+      try { openingRelease(); } catch (e) {}
     }, 700);
     try { localStorage.setItem(SEEN_KEY, '1'); } catch (e) {}
     running = false;
@@ -23873,6 +23967,7 @@ const StartupNotices = (() => {
      first 15s of the page waits briefly so they sort by priority (a loss is
      never buried under good news); afterwards requests show at once. */
   let settleTimer = null, settled = performance.now() > 15000;
+  let holds = 0;           // fullscreen presentations (the opening) that notices must wait for
 
   function stopWatch() { try { watcher?.disconnect(); } catch (e) {} watcher = null; }
 
@@ -23885,6 +23980,7 @@ const StartupNotices = (() => {
   }
 
   function advance() {
+    if (holds > 0) return;                           // the opening owns the screen
     if (showing && showing.isConnected) return;      // current notice still up
     showing = null;
     while (pending.length) {
@@ -23906,6 +24002,16 @@ const StartupNotices = (() => {
         return;
       }
       advance();
+    },
+    /* hold(maxMs): notices queue but do not show until the returned release() is
+       called (idempotent) or maxMs passes, so a stuck presentation can never
+       swallow a penalty or a rank-up. */
+    hold(maxMs = 25000) {
+      holds++;
+      let done = false;
+      const release = () => { if (done) return; done = true; holds = Math.max(0, holds - 1); advance(); };
+      setTimeout(release, maxMs);
+      return release;
     },
     get active() { return !!(showing && showing.isConnected); },
     get waiting() { return pending.length; },
