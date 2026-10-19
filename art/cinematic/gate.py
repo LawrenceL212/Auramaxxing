@@ -39,7 +39,7 @@ def N(m, t, **kw):
 def L(m, a, ao, b, bi): m.node_tree.links.new(a.outputs[ao], b.inputs[bi])
 def val(n, name, v): n.inputs[name].default_value = v
 
-def stone(name, base, rough, crack_strength, scale=2.2, bump=0.5, wet=0.0):
+def stone(name, base, rough, crack_strength, scale=2.2, bump=0.5, wet=0.0, blocks=None):
     m = mat(name); nt = m.node_tree
     out = N(m, 'ShaderNodeOutputMaterial'); bs = N(m, 'ShaderNodeBsdfPrincipled')
     tc = N(m, 'ShaderNodeTexCoord'); mp = N(m, 'ShaderNodeMapping')
@@ -50,10 +50,27 @@ def stone(name, base, rough, crack_strength, scale=2.2, bump=0.5, wet=0.0):
     L(m, mp, 0, vor, 'Vector'); vor.feature = 'DISTANCE_TO_EDGE'; val(vor, 'Scale', 2.6)
     rm = N(m, 'ShaderNodeMapRange'); L(m, noise, 'Fac', rm, 'Value'); val(rm, 'From Min', 0.35); val(rm, 'From Max', 0.7); val(rm, 'To Min', rough * 0.7); val(rm, 'To Max', min(1, rough * 1.25 + wet))
     L(m, rm, 'Result', bs, 'Roughness')
-    L(m, noise, 'Fac', bmp, 'Height'); val(bmp, 'Strength', bump); val(bmp, 'Distance', 0.12)
+    # chipped, rounded edges: a bevel normal feeds the bump
+    bev = N(m, 'ShaderNodeBevel'); bev.samples = 4; val(bev, 'Radius', 0.05)
+    L(m, bev, 'Normal', bmp, 'Normal')
+    hmix = N(m, 'ShaderNodeMath', operation='MULTIPLY_ADD')
+    if blocks:   # ashlar courses: mortar grooves between dressed blocks, each block its own tone
+        br = N(m, 'ShaderNodeTexBrick'); L(m, mp, 0, br, 'Vector'); val(br, 'Scale', blocks); val(br, 'Mortar Size', 0.012); val(br, 'Mortar Smooth', 0.1); val(br, 'Bias', 0.0); val(br, 'Brick Width', 1.6); val(br, 'Row Height', 0.5)
+        br.inputs['Color1'].default_value = (0.9, 0.9, 0.92, 1); br.inputs['Color2'].default_value = (0.55, 0.57, 0.62, 1); br.inputs['Mortar'].default_value = (0.1, 0.1, 0.1, 1)
+        L(m, br, 'Fac', hmix, 0); val(hmix, 1, 0.5); L(m, noise, 'Fac', hmix, 2)
+    else:
+        L(m, noise, 'Fac', hmix, 0); val(hmix, 1, 1.0); val(hmix, 2, 0.0)
+    L(m, hmix, 0, bmp, 'Height'); val(bmp, 'Strength', bump); val(bmp, 'Distance', 0.12)
     L(m, bmp, 'Normal', bs, 'Normal')
     cm = N(m, 'ShaderNodeMix', data_type='RGBA'); val(cm, 'A', base); val(cm, 'B', tuple(c * 0.35 for c in base[:3]) + (1,)); L(m, noise, 'Fac', cm, 'Factor')
-    L(m, cm, 'Result', bs, 'Base Color')
+    # crevice grime: ambient occlusion darkens the corners, and rain streaks run down the faces
+    ao = N(m, 'ShaderNodeAmbientOcclusion'); ao.samples = 4; val(ao, 'Distance', 1.4)
+    gm = N(m, 'ShaderNodeMix', data_type='RGBA', blend_type='MULTIPLY'); val(gm, 'Factor', 1.0); L(m, cm, 'Result', gm, 'A'); L(m, ao, 'Color', gm, 'B')
+    stm = N(m, 'ShaderNodeMapping'); val(stm, 'Scale', (6.0, 6.0, 0.6)); L(m, tc, 'Object', stm, 0)
+    stn = N(m, 'ShaderNodeTexNoise'); val(stn, 'Scale', 2.0); val(stn, 'Detail', 6.0); L(m, stm, 0, stn, 'Vector')
+    sr = N(m, 'ShaderNodeMapRange'); L(m, stn, 'Fac', sr, 'Value'); val(sr, 'From Min', 0.45); val(sr, 'From Max', 0.8); val(sr, 'To Min', 1.0); val(sr, 'To Max', 0.42)
+    gm2 = N(m, 'ShaderNodeMix', data_type='RGBA', blend_type='MULTIPLY'); val(gm2, 'Factor', 1.0); L(m, gm, 'Result', gm2, 'A'); L(m, sr, 'Result', gm2, 'B')
+    L(m, gm2, 'Result', bs, 'Base Color')
     if crack_strength > 0:  # glowing seams along the voronoi cell edges
         cr = N(m, 'ShaderNodeMapRange'); L(m, vor, 'Distance', cr, 'Value'); val(cr, 'From Min', 0.0); val(cr, 'From Max', 0.012); val(cr, 'To Min', 1.0); val(cr, 'To Max', 0.0); cr.clamp = True
         n2 = N(m, 'ShaderNodeTexNoise'); L(m, mp, 0, n2, 'Vector'); val(n2, 'Scale', 0.9); val(n2, 'Detail', 3.0)
@@ -78,11 +95,12 @@ def displaced(ob, strength, scale, cuts=3):
 # floor
 fl = bpy.data.meshes.new('floor'); bm = bmesh.new(); bmesh.ops.create_grid(bm, x_segments=8, y_segments=8, size=60); bm.to_mesh(fl); bm.free()
 floor = bpy.data.objects.new('floor', fl); sc.collection.objects.link(floor)
-floor.data.materials.append(stone('floor', (0.05, 0.055, 0.07, 1), 0.28, 0.9, scale=0.35, bump=0.25, wet=0.1))
+floor.data.materials.append(stone('floor', (0.05, 0.055, 0.07, 1), 0.26, 0.9, scale=0.35, bump=0.35, wet=0.1, blocks=5.0))
 floor.location = (0, -14, 0)
+displaced(floor, 0.35, 6.0, 4)
 
 # the gate: two buttressed pylons and a lintel
-stone_m = stone('pylon', (0.07, 0.075, 0.09, 1), 0.55, 2.2, scale=0.22, bump=0.9)
+stone_m = stone('pylon', (0.075, 0.08, 0.095, 1), 0.55, 2.2, scale=0.22, bump=1.0, blocks=14.0)
 def pylon(sx):
     bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1.0)
     for v in bm.verts:
@@ -99,8 +117,6 @@ for i in range(14):
     displaced(to_obj('step', bm, stone_m), 0.025, 0.3, 3).location = (0, -33.0 + i * 0.9, 0)
 
 # the world beyond the gate: sky, a ringed moon, a causeway over a void to a citadel, towers and floating islands
-def emit(name, col, strength):
-    m = mat(name); o = N(m, 'ShaderNodeOutputMaterial'); e = N(m, 'ShaderNodeEmission'); val(e, 'Color', col); val(e, 'Strength', strength); L(m, e, 'Emission', o, 'Surface'); return m
 dark = mat('silhouette'); do = N(dark, 'ShaderNodeOutputMaterial'); db = N(dark, 'ShaderNodeBsdfPrincipled'); val(db, 'Base Color', (0.012, 0.015, 0.025, 1)); val(db, 'Roughness', 0.9); L(dark, db, 'BSDF', do, 'Surface')
 # sky dome behind the gate: cold bright at the horizon, deep violet overhead
 sky = mat('sky'); so = N(sky, 'ShaderNodeOutputMaterial'); se = N(sky, 'ShaderNodeEmission'); stc = N(sky, 'ShaderNodeTexCoord'); ssp = N(sky, 'ShaderNodeSeparateXYZ'); sr = N(sky, 'ShaderNodeValToRGB')
@@ -162,7 +178,7 @@ rift = to_obj('fog', bm, fg); rift.location = (0, -33.0, 1.5)
 for i in range(4):
     bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1.0)
     for v in bm.verts: v.co.x *= 15.0; v.co.y *= 1.1; v.co.z = (v.co.z + 0.5) * 1.0
-    displaced(to_obj('beam', bm, stone_m), 0.08, 1.0, 3).location = (0, 6 - i * 9.0, 19.5)
+    ob = displaced(to_obj('beam', bm, stone_m), 0.2, 1.0, 3); ob.location = (random.uniform(-2, 2), 6 - i * 9.0, 19.5 + random.uniform(-.4, .4)); ob.rotation_euler = (0, random.uniform(-.06, .06), random.uniform(-.05, .05)); ob.scale = (random.uniform(.55, 1.0), 1, 1)
 
 # floating rocks and floor debris
 rock_m = stone('rock', (0.06, 0.06, 0.07, 1), 0.6, 0.0, scale=0.5, bump=1.0)
@@ -174,12 +190,33 @@ for i in range(70):
     ob.rotation_euler = (random.random() * 6, random.random() * 6, random.random() * 6); displaced(ob, 0.5, 0.7, 1)
 
 
+def emit(name, col, strength):
+    m = mat(name); o = N(m, 'ShaderNodeOutputMaterial'); e = N(m, 'ShaderNodeEmission'); val(e, 'Color', col); val(e, 'Strength', strength); L(m, e, 'Emission', o, 'Surface'); return m
+# flame: a tapering teardrop with a hot core fading to dark orange tips, wobbling with time
+flame_m = mat('flameEm'); flo = N(flame_m, 'ShaderNodeOutputMaterial'); fem = N(flame_m, 'ShaderNodeEmission'); fr2 = N(flame_m, 'ShaderNodeValToRGB')
+fgc = N(flame_m, 'ShaderNodeTexCoord'); fsz = N(flame_m, 'ShaderNodeSeparateXYZ'); fnz = N(flame_m, 'ShaderNodeTexNoise')
+L(flame_m, fgc, 'Generated', fsz, 0); L(flame_m, fsz, 'Z', fr2, 'Fac')
+fr2.color_ramp.elements[0].position = 0.0; fr2.color_ramp.elements[0].color = (1.0, 0.9, 0.55, 1); fr2.color_ramp.elements[1].position = 1.0; fr2.color_ramp.elements[1].color = (0.9, 0.18, 0.02, 1)
+L(flame_m, fr2, 'Color', fem, 'Color'); val(fem, 'Strength', 9.0); L(flame_m, fem, 'Emission', flo, 'Surface')
+def flame_mesh():
+    bm = bmesh.new(); bmesh.ops.create_uvsphere(bm, u_segments=14, v_segments=10, radius=0.5)
+    ph = random.random() * 6
+    for v in bm.verts:
+        z = v.co.z + 0.5; k = max(0.0, 1.0 - z) ** 1.3
+        v.co.x = v.co.x * k * 0.9 + math.sin(z * 5 + T * 6 + ph) * 0.07 * z
+        v.co.y = v.co.y * k * 0.9 + math.cos(z * 4 + T * 5 + ph) * 0.05 * z
+        v.co.z = z * 1.4
+    return bm
+ember_m = emit('ember', (1.0, 0.45, 0.12, 1), 60.0)
 # ---- scale cues ----
-col_m = stone('column', (0.04, 0.05, 0.075, 1), 0.5, 0.0, scale=0.3, bump=0.8)
+col_m = stone('column', (0.045, 0.052, 0.075, 1), 0.5, 0.0, scale=0.3, bump=0.9, blocks=9.0)
 def column(x, y, h, r):
     bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=24, radius1=r, radius2=r * 0.86, depth=h)
     for v in bm.verts: v.co.z += h / 2
-    ob = to_obj('column', bm, col_m); ob.location = (x, y, 0); displaced(ob, 0.12, 0.6, 3)
+    ob = to_obj('column', bm, col_m); ob.location = (x, y, 0); ob.rotation_euler = (random.uniform(-.035, .035), random.uniform(-.035, .035), 0); displaced(ob, 0.22, 0.7, 3)
+    for k in range(5):   # rubble heaped at the foot, so nothing meets the floor cleanly
+        rb = bmesh.new(); bmesh.ops.create_icosphere(rb, subdivisions=2, radius=1.0)
+        rr = random.uniform(0.15, 0.5); rk = to_obj('foot', rb, col_m); rk.scale = (rr * 1.4, rr, rr * 0.6); rk.location = (x + random.uniform(-r * 1.6, r * 1.6), y + random.uniform(-r * 1.6, r * 1.6), rr * 0.3); displaced(rk, 0.3, 0.6, 1)
     for z0, hh in ((0, 0.9), (h - 0.6, 0.6), (h * 0.5, 0.25)):   # base, capital and a band: repeated rhythm
         bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=24, radius1=r * 1.25, radius2=r * 1.25, depth=hh)
         for v in bm.verts: v.co.z += hh / 2 + z0
@@ -203,9 +240,10 @@ for i in range(7):
         bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=14, radius1=0.38, radius2=0.22, depth=0.3)
         for v in bm.verts: v.co.z += 1.1
         to_obj('bowl', bm, iron).location = (x, y, 0)
-        bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=False, segments=8, radius1=0.26, radius2=0.0, depth=0.95)
-        for v in bm.verts: v.co.z += 1.55
-        to_obj('flame', bm, fire).location = (x, y, 0)
+        to_obj('flame', flame_mesh(), flame_m).location = (x, y, 1.25)
+        for k in range(6):   # embers lifting off each brazier
+            bm = bmesh.new(); bmesh.ops.create_icosphere(bm, subdivisions=1, radius=random.uniform(0.012, 0.03))
+            to_obj('ember', bm, ember_m).location = (x + random.uniform(-0.5, 0.5), y + random.uniform(-0.5, 0.5), random.uniform(1.8, 5.5))
 # chains and tattered banners hanging from the lintel: links the size of a forearm
 for cx in (-4.5, -1.6, 1.6, 4.5):
     for k in range(34):
@@ -216,6 +254,21 @@ for bx in (-8.2, 8.2):
     for v in bm.verts: v.co = Vector((v.co.x * 3.0, 0.0, (v.co.y - 1.0) * 5.5 + 21.0 - 5.5))
     ob = to_obj('banner', bm, col_m); ob.location = (bx, -32.0, 0); ob.rotation_euler = (0, 0, 0)
     tx = bpy.data.textures.new('bw', 'CLOUDS'); tx.noise_scale = 1.4; d = ob.modifiers.new('d', 'DISPLACE'); d.texture = tx; d.strength = 0.8; d.direction = 'Y'
+
+# ---- atmosphere: ground mist, drifting ash, motes in the light ----
+gmv = mat('groundmist'); gvo = N(gmv, 'ShaderNodeOutputMaterial'); gvs = N(gmv, 'ShaderNodeVolumeScatter'); gtc = N(gmv, 'ShaderNodeTexCoord'); gmp = N(gmv, 'ShaderNodeMapping'); gnz = N(gmv, 'ShaderNodeTexNoise')
+gsz = N(gmv, 'ShaderNodeSeparateXYZ'); gh = N(gmv, 'ShaderNodeMath', operation='SUBTRACT'); gp = N(gmv, 'ShaderNodeMath', operation='POWER'); gd = N(gmv, 'ShaderNodeMath', operation='MULTIPLY'); gd2 = N(gmv, 'ShaderNodeMath', operation='MULTIPLY')
+L(gmv, gtc, 'Generated', gsz, 0); val(gh, 0, 1.0); L(gmv, gsz, 'Z', gh, 1); L(gmv, gh, 0, gp, 0); val(gp, 1, 2.5)
+L(gmv, gtc, 'Object', gmp, 0); gmp.inputs['Location'].default_value = (T * 0.15, T * 0.05, 0); val(gmp, 'Scale', (0.35, 0.35, 0.7)); L(gmv, gmp, 0, gnz, 'Vector'); val(gnz, 'Scale', 1.4); val(gnz, 'Detail', 4.0)
+L(gmv, gnz, 'Fac', gd, 0); L(gmv, gp, 0, gd, 1); L(gmv, gd, 0, gd2, 0); val(gd2, 1, 0.55); L(gmv, gd2, 0, gvs, 'Density'); val(gvs, 'Color', (0.62, 0.66, 0.8, 1)); val(gvs, 'Anisotropy', 0.2)
+gmv.node_tree.links.new(gvs.outputs[0], gvo.inputs['Volume'])
+bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1.0)
+for v in bm.verts: v.co = Vector((v.co.x * 26, v.co.y * 80, (v.co.z + 0.5) * 3.2))
+to_obj('groundmist', bm, gmv).location = (0, -10, 0)
+ash_m = emit('ash', (0.85, 0.78, 0.7, 1), 1.6)
+for i in range(420):   # flakes of ash falling through the hall: pale in the light, giving the air a texture
+    bm = bmesh.new(); bmesh.ops.create_icosphere(bm, subdivisions=1, radius=random.uniform(0.008, 0.032))
+    to_obj('ashflake', bm, ash_m).location = (random.uniform(-9, 9), random.uniform(13, -32), random.uniform(0.3, 15))
 
 # volumetric haze: god rays from the rift
 bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1.0)
