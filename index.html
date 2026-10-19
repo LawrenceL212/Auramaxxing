@@ -5299,6 +5299,15 @@ if (configOk) {
       document.getElementById('user-avatar').textContent = initials(profile.displayName);
       document.getElementById('auth-screen').style.display = 'none';
       document.getElementById('app').style.display = 'flex';
+      // A boss clip that is already loaded starts right now, over the app, instead of after the data and 3D have loaded.
+      let earlyOpening = false;
+      try {
+        if (window.SystemOpening?.canEarly()) {
+          earlyOpening = true;
+          openingRelease = StartupNotices.hold(22000);
+          SystemOpening.start({ early: true }).then(() => openingRelease()).catch(() => openingRelease());
+        }
+      } catch (e) { earlyOpening = false; }
       await loadAnatomyTemplate(profile.bodyType === 'female' ? 'female' : 'male');
       await loadAllData();
       // run system checks on every login — penalties, rank-up alerts etc.
@@ -5312,7 +5321,7 @@ if (configOk) {
       // it can never delay login or data. Failure here is non-fatal by design.
       /* The opening owns the screen: penalty, rank-up and update notices queue
          behind it (losses first) instead of painting through it. */
-      openingRelease = StartupNotices.hold(22000);
+      if (!earlyOpening) openingRelease = StartupNotices.hold(22000);
       setTimeout(async () => {
         try {
           if (await AuraGL.init()) {
@@ -5324,7 +5333,7 @@ if (configOk) {
             // Opening cinematic runs only once the core scene is up, so it can
             // never delay auth, data load or first interaction.
             const waitCore = (tries = 0) => {
-              if (window.AuraCore?.ready) { SystemOpening.start().then(ran => { if (!ran) openingRelease(); }); return; }
+              if (window.AuraCore?.ready) { if (!earlyOpening) SystemOpening.start().then(ran => { if (!ran) openingRelease(); }); return; }
               if (tries < 40) setTimeout(() => waitCore(tries + 1), 250); else openingRelease();
             };
             waitCore();
@@ -7128,7 +7137,7 @@ const SystemOpening = (() => {
      plays exactly as before. Plays on the first login, on a replay, and once when a
      new week's boss arrives. Presentation only: the week's boss is read from
      localStorage, written by the raid card. */
-  const WEEK_BOSS_KEY = 'aura.weekBoss', VIDEO_SEEN_KEY = 'aura.opening.video';
+  const WEEK_BOSS_KEY = 'aura.weekBoss', VIDEO_SEEN_KEY = 'aura.opening.video', CLIP_OK_KEY = 'aura.opening.clipOk';
   const videoOk = {};
   async function hasVideo(url) {
     if (url in videoOk) return videoOk[url];
@@ -7144,6 +7153,24 @@ const SystemOpening = (() => {
       if ((!w || w.wk !== dStr(startOfWeek(new Date()))) && typeof renderRaidBoss === 'function' && allUsers && allUsers.length) await renderRaidBoss({ keyOnly: true });
     } catch (e) {}
   }
+  /* Load the week's clip in the background before sign-in finishes, so the opening can start the moment the app shows. */
+  let warmEl = null;
+  function warmVideo() {
+    try {
+      if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+      const b = weekBoss();
+      if (!b || !b.slug || b.wk !== dStr(startOfWeek(new Date()))) return;
+      const vt = document.createElement('video');
+      const ext = ['mp4', 'webm'].find(e => vt.canPlayType('video/' + e));
+      if (!ext) return;
+      const src = `./cinematics/opening-${b.slug}.${ext}`, v = document.createElement('video');
+      v.preload = 'auto'; v.muted = true; v.playsInline = true; v.setAttribute('playsinline', ''); v.dataset.src = src;
+      v.addEventListener('loadedmetadata', () => { videoOk[src] = true; });
+      v.addEventListener('error', () => { videoOk[src] = false; });
+      v.src = src; warmEl = v;
+    } catch (e) {}
+  }
+  warmVideo();
   async function pickVideo() {
     await ensureWeekBoss();
     try { if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return null; } catch (e) {}
@@ -7157,8 +7184,10 @@ const SystemOpening = (() => {
   async function playVideo(pick) {
     document.documentElement.dataset.opening = '1';
     build(); clearBeats(); voidLevel(1, 1);
-    const v = document.createElement('video');
-    v.className = 'vid'; v.src = pick.src; v.preload = 'auto'; v.playsInline = true; v.setAttribute('playsinline', '');
+    let v;
+    if (warmEl && warmEl.dataset.src === pick.src && !warmEl.error) { v = warmEl; warmEl = null; }
+    else { v = document.createElement('video'); v.src = pick.src; v.preload = 'auto'; v.playsInline = true; v.setAttribute('playsinline', ''); }
+    v.className = 'vid';
     v.muted = !SFX?.soundOn?.();
     host.insertBefore(v, host.children[1] || null);
     let ended = false;
@@ -7191,6 +7220,14 @@ const SystemOpening = (() => {
   return {
     get running() { return running; },
     skip() { skipped = true; },
+    /* True when this week's clip has played on this device before and is loading again, so it can start without waiting for data or 3D. */
+    canEarly() {
+      try {
+        if (!warmEl) warmVideo();
+        const b = weekBoss();
+        return !!(warmEl && localStorage.getItem(CLIP_OK_KEY) === warmEl.dataset.src && b && b.wk === dStr(startOfWeek(new Date())) && !running);
+      } catch (e) { return false; }
+    },
     /* start({force}) - never blocks auth or data; returns immediately if the
        runtime is not up, so a WebGL failure simply means no cinematic. */
     async start(opts = {}) {
@@ -7221,9 +7258,10 @@ const SystemOpening = (() => {
       }, pick ? 40000 : 16000);
       try {
         if (pick && await playVideo(pick)) {
-          try { localStorage.setItem(VIDEO_SEEN_KEY, (pick.boss && pick.boss.slug) || ''); } catch (e) {}
+          try { localStorage.setItem(VIDEO_SEEN_KEY, (pick.boss && pick.boss.slug) || ''); localStorage.setItem(CLIP_OK_KEY, pick.src); } catch (e) {}
           finish();
-        } else await run(mode);
+        } else if (opts.early && !coreReady()) finish();   // the 3D scene is not up yet, so there is nothing to fall back to
+        else await run(mode);
       } catch (e) { console.info('[Opening] aborted', e); finish(); }
       finally { clearTimeout(deadline); }
       return true;
