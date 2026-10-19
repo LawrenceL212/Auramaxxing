@@ -7902,7 +7902,22 @@ window.WorldCinema = WorldCinema;
   new MutationObserver(sync).observe(document.getElementById('view-board'), { childList: true, subtree: true });
 })();
 
+/* Going to a main page closes what was opened on top of the last one: sheets and
+   panels, and the plan editor when it holds no unsaved changes. In-progress work
+   is left alone (the workout logger, system notices, an edited plan). */
+function closeLayersOnNavigate() {
+  try {
+    const host = document.getElementById('overlay-host');
+    let removed = 0;
+    host?.querySelectorAll(':scope > .modal-overlay:not(.reentry-overlay)').forEach(el => { el.remove(); removed++; });
+    if (removed && !document.querySelector('.system-overlay, .debrief-overlay, .awakening-overlay, .numpad-overlay, body > .modal-overlay')) {
+      _lockCount = 1; unlockBodyScroll();
+    }
+    if (editingProgram && peSnap !== undefined && JSON.stringify(myProgram) === peSnap) { editingProgram = false; peSnap = undefined; }
+  } catch (e) { /* presentation only - never block navigation */ }
+}
 function switchView(name) {
+  closeLayersOnNavigate();
   // Phase 4: tell the 3D runtime which view is showing. Observation only.
   try { window.AuraGL?.onView?.(name); } catch (e) { /* presentation only */ }
 
