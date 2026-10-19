@@ -2,7 +2,7 @@
    No dependencies and no runner, like the other tests here: a plain script
    that exits non-zero on failure. */
 
-import { muscleDevelopment, bodyBuild, bodyFrame, muscleShape, MUSCLE_REGION, REFERENCE } from '../physique.js';
+import { muscleDevelopment, bodyBuild, bodyFrame, MUSCLE_REGION, REFERENCE } from '../physique.js';
 
 let pass = 0, fail = 0;
 const results = [];
@@ -64,14 +64,8 @@ check('female measured against female averages', fem.hips === 1 && fem.source ==
 
 // ── shape ───────────────────────────────────────────────────────────────
 check('every tracked muscle has a region', ['Upper Chest', 'Lats', 'Calves', 'Obliques', 'Traps'].every((m) => MUSCLE_REGION[m]));
-const s0 = muscleShape('Biceps', 0), s1 = muscleShape('Biceps', 1);
-check('undeveloped muscle draws at 1', s0.sx === 1 && s0.sy === 1);
-check('developed muscle draws bigger, wider than taller', s1.sx > s1.sy && s1.sy > 1, JSON.stringify(s1));
-check('build widens the region', muscleShape('Quads', 0, { legs: 1.1 }).sx === 1.1);
-check('abs grow less than biceps', muscleShape('Upper Abs', 1).sx < s1.sx);
 check('frame follows the build', bodyFrame(heavy) > 1 && bodyFrame(light) < 1 && bodyFrame({}) === 1, JSON.stringify([bodyFrame(heavy), bodyFrame(light)]));
-check('muscles never draw narrower than the frame', muscleShape('Quads', 0, light, bodyFrame(light)).sx === 1);
-check('a region broader than the frame widens on top of it', muscleShape('Upper Abs', 0, heavy, bodyFrame(heavy)).sx > 1);
+check('muscle shapes are never scaled individually', !('muscleShape' in (await import('../physique.js'))));
 
 console.log(results.join('\n'));
 console.log(`\n${pass} passed, ${fail} failed`);
