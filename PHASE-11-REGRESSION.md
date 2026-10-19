@@ -111,7 +111,7 @@ git diff 9bcec20..HEAD -- index.html shadow-world.html \
 | Issue | Status |
 |---|---|
 | **`apEvents` composite index missing** | **CONFIRMED STILL MISSING.** `uid ==` + `orderBy timestamp desc` returns `failed-precondition`. The Admin AP Ledger remains broken. Index needed: `apEvents` · `uid` ASC · `timestamp` DESC · `__name__` DESC. |
-| **Female `Lower Abs` empty SVG group** | **CONFIRMED.** `anatomy-female.svg` contains an empty `<g id="Lower Abs">`; `anatomy.svg` (male) has no empty groups. Both files carry 22/22 canonical region ids. |
+| **Female `Lower Abs` empty SVG group** | **FIXED 2026-10-19.** The female lower-abs shapes (`Vector_146`–`148`) were filed under `Groin`, so the heatmap painted them as untracked gray while `Lower Abs` sat empty. They now live in `Lower Abs`; the unmodified render is pixel-identical. Live heatmap on a female profile **UNVERIFIED** (needs a signed-in session). |
 | **Client-side duel resolution is not a trusted architecture** | **UNCHANGED.** Still needs a Cloud Function. See the security section. |
 | **Shadow World frame rate** | **NEW.** The iframe renders a 2048×1024 (2.1 Mpx) canvas and runs at **32.9 fps internally**, holding the host page to ~40 fps while the World view is open. This is the iframe's own render loop, *not* AuraGL — the host recovers to 99 fps on leaving the view. Separate work from the cinematic layer. |
 | **Startup announcement has no read-state** | **NEW.** The streak SYSTEM ANNOUNCEMENT re-shows on every load while `streakFreeze.active` is true. The update notice persists correctly via localStorage. Left unchanged — adding persistence would alter dismissal semantics. |
