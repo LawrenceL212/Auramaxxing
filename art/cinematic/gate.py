@@ -210,8 +210,19 @@ def flame_mesh():
 ember_m = emit('ember', (1.0, 0.45, 0.12, 1), 60.0)
 # ---- scale cues ----
 col_m = stone('column', (0.045, 0.052, 0.075, 1), 0.5, 0.0, scale=0.3, bump=0.9, blocks=9.0)
+def fluted(r1, r2, depth, segs=48, flutes=16, depth_f=0.07, rings=14):
+    """A column shaft with carved flutes and entasis, so it reads as worked stone, not a cylinder."""
+    bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=segs, radius1=r1, radius2=r2, depth=depth)
+    bmesh.ops.subdivide_edges(bm, edges=[e for e in bm.edges if abs(e.verts[0].co.z - e.verts[1].co.z) > depth * 0.5], cuts=rings, use_grid_fill=True)
+    for v in bm.verts:
+        a = math.atan2(v.co.y, v.co.x); rr = math.hypot(v.co.x, v.co.y)
+        if rr < 1e-4: continue
+        k = 1 - depth_f * (0.5 + 0.5 * math.cos(a * flutes)) ** 0.6
+        zt = v.co.z / depth + 0.5; k *= 1 + 0.025 * math.sin(zt * math.pi)
+        v.co.x *= k; v.co.y *= k
+    return bm
 def column(x, y, h, r):
-    bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=24, radius1=r, radius2=r * 0.86, depth=h)
+    bm = fluted(r, r * 0.86, h)
     for v in bm.verts: v.co.z += h / 2
     ob = to_obj('column', bm, col_m); ob.location = (x, y, 0); ob.rotation_euler = (random.uniform(-.035, .035), random.uniform(-.035, .035), 0); displaced(ob, 0.22, 0.7, 3)
     for k in range(5):   # rubble heaped at the foot, so nothing meets the floor cleanly
@@ -226,8 +237,14 @@ for i in range(9):
         column(sx * (5.6 + (i % 2) * 0.3), 8 - i * 4.4, 13 + (i % 3), 0.95)
 # tall fallen column drums and a toppled column: human-height boulders of worked stone
 for (x, y, ang) in ((-2.4, -6.5, 0.4), (3.0, -12.0, -0.9), (-1.2, 1.5, 0.2)):
-    bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=20, radius1=1.0, radius2=1.0, depth=1.6)
-    ob = to_obj('drum', bm, col_m); ob.location = (x, y, 0.9); ob.rotation_euler = (math.pi / 2, 0, ang); displaced(ob, 0.08, 0.5, 2)
+    bm = fluted(1.0, 1.0, 1.6, depth_f=0.09, rings=6)
+    for v in bm.verts:   # a fractured end: one face is torn in jagged steps, the other stays squared
+        if v.co.z > 0.6: v.co.z -= abs(math.sin(v.co.x * 7 + v.co.y * 5)) * 0.22 + random.uniform(0, 0.05)
+    ob = to_obj('drum', bm, col_m); ob.location = (x, y, 0.9); ob.rotation_euler = (math.pi / 2, 0, ang); displaced(ob, 0.03, 0.35, 2)
+    for k in range(9):   # chips and shards fallen from the break
+        rb = bmesh.new(); bmesh.ops.create_icosphere(rb, subdivisions=2, radius=1.0)
+        rr = random.uniform(0.06, 0.28); rk = to_obj('chip', rb, col_m); rk.scale = (rr * 1.5, rr, rr * 0.6)
+        rk.location = (x + random.uniform(-1.8, 1.8), y + random.uniform(-1.8, 1.8), rr * 0.3); rk.rotation_euler = (random.random() * 3, random.random() * 3, random.random() * 3); displaced(rk, 0.25, 0.4, 1)
 # braziers: bowl on a stand, 1.2 m tall, a warm flame against the cold blue
 fire = mat('flame'); fo = N(fire, 'ShaderNodeOutputMaterial'); fe = N(fire, 'ShaderNodeEmission'); val(fe, 'Color', (1.0, 0.45, 0.12, 1)); val(fe, 'Strength', 28.0); L(fire, fe, 'Emission', fo, 'Surface')
 iron = mat('iron'); io = N(iron, 'ShaderNodeOutputMaterial'); ib = N(iron, 'ShaderNodeBsdfPrincipled'); val(ib, 'Base Color', (0.02, 0.02, 0.025, 1)); val(ib, 'Metallic', 1.0); val(ib, 'Roughness', 0.4); L(iron, ib, 'BSDF', io, 'Surface')
