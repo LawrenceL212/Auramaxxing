@@ -46,7 +46,7 @@ def stone(name, base, rough, crack_strength, scale=2.2, bump=0.5, wet=0.0):
     bmp = N(m, 'ShaderNodeBump'); mix = N(m, 'ShaderNodeMath', operation='MULTIPLY')
     L(m, tc, 'Object', mp, 0); val(mp, 'Scale', (scale, scale, scale))
     L(m, mp, 0, noise, 'Vector'); val(noise, 'Scale', 3.0); val(noise, 'Detail', 12.0); val(noise, 'Roughness', 0.62)
-    L(m, mp, 0, vor, 'Vector'); vor.feature = 'DISTANCE_TO_EDGE'; val(vor, 'Scale', 1.6)
+    L(m, mp, 0, vor, 'Vector'); vor.feature = 'DISTANCE_TO_EDGE'; val(vor, 'Scale', 2.6)
     rm = N(m, 'ShaderNodeMapRange'); L(m, noise, 'Fac', rm, 'Value'); val(rm, 'From Min', 0.35); val(rm, 'From Max', 0.7); val(rm, 'To Min', rough * 0.7); val(rm, 'To Max', min(1, rough * 1.25 + wet))
     L(m, rm, 'Result', bs, 'Roughness')
     L(m, noise, 'Fac', bmp, 'Height'); val(bmp, 'Strength', bump); val(bmp, 'Distance', 0.12)
@@ -54,8 +54,11 @@ def stone(name, base, rough, crack_strength, scale=2.2, bump=0.5, wet=0.0):
     cm = N(m, 'ShaderNodeMix', data_type='RGBA'); val(cm, 'A', base); val(cm, 'B', tuple(c * 0.35 for c in base[:3]) + (1,)); L(m, noise, 'Fac', cm, 'Factor')
     L(m, cm, 'Result', bs, 'Base Color')
     if crack_strength > 0:  # glowing seams along the voronoi cell edges
-        cr = N(m, 'ShaderNodeMapRange'); L(m, vor, 'Distance', cr, 'Value'); val(cr, 'From Min', 0.0); val(cr, 'From Max', 0.035); val(cr, 'To Min', 1.0); val(cr, 'To Max', 0.0); cr.clamp = True
-        L(m, cr, 'Result', mix, 0); val(mix, 1, crack_strength)
+        cr = N(m, 'ShaderNodeMapRange'); L(m, vor, 'Distance', cr, 'Value'); val(cr, 'From Min', 0.0); val(cr, 'From Max', 0.012); val(cr, 'To Min', 1.0); val(cr, 'To Max', 0.0); cr.clamp = True
+        n2 = N(m, 'ShaderNodeTexNoise'); L(m, mp, 0, n2, 'Vector'); val(n2, 'Scale', 0.9); val(n2, 'Detail', 3.0)
+        mk = N(m, 'ShaderNodeMapRange'); L(m, n2, 'Fac', mk, 'Value'); val(mk, 'From Min', 0.52); val(mk, 'From Max', 0.64); mk.clamp = True
+        sp = N(m, 'ShaderNodeMath', operation='MULTIPLY'); L(m, cr, 'Result', sp, 0); L(m, mk, 'Result', sp, 1)
+        L(m, sp, 0, mix, 0); val(mix, 1, crack_strength)
         L(m, mix, 'Value', bs, 'Emission Strength'); bs.inputs['Emission Color'].default_value = RANK + (1,)
     bs.inputs['Specular IOR Level'].default_value = 0.5
     L(m, bs, 'BSDF', out, 'Surface')
@@ -74,11 +77,11 @@ def displaced(ob, strength, scale, cuts=3):
 # floor
 fl = bpy.data.meshes.new('floor'); bm = bmesh.new(); bmesh.ops.create_grid(bm, x_segments=8, y_segments=8, size=60); bm.to_mesh(fl); bm.free()
 floor = bpy.data.objects.new('floor', fl); sc.collection.objects.link(floor)
-floor.data.materials.append(stone('floor', (0.05, 0.055, 0.07, 1), 0.28, 2.4, scale=0.35, bump=0.25, wet=0.1))
+floor.data.materials.append(stone('floor', (0.05, 0.055, 0.07, 1), 0.28, 0.9, scale=0.35, bump=0.25, wet=0.1))
 floor.location = (0, -14, 0)
 
 # the gate: two buttressed pylons and a lintel
-stone_m = stone('pylon', (0.07, 0.075, 0.09, 1), 0.55, 6.0, scale=0.22, bump=0.9)
+stone_m = stone('pylon', (0.07, 0.075, 0.09, 1), 0.55, 2.2, scale=0.22, bump=0.9)
 def pylon(sx):
     bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1.0)
     for v in bm.verts:
@@ -102,9 +105,9 @@ L(rm, tc, 'Generated', sep, 0); val(inv, 0, 1.0)
 cx = N(rm, 'ShaderNodeMath', operation='SUBTRACT'); L(rm, sep, 'X', cx, 0); val(cx, 1, 0.5)
 L(rm, cx, 0, ab, 0); mul = N(rm, 'ShaderNodeMath', operation='MULTIPLY'); L(rm, ab, 0, mul, 0); val(mul, 1, 2.0)
 L(rm, mul, 0, inv, 1)
-pw = N(rm, 'ShaderNodeMath', operation='POWER'); L(rm, inv, 0, pw, 0); val(pw, 1, 3.0)
+pw = N(rm, 'ShaderNodeMath', operation='POWER'); L(rm, inv, 0, pw, 0); val(pw, 1, 4.5)
 col = N(rm, 'ShaderNodeMix', data_type='RGBA'); val(col, 'A', RANK + (1,)); val(col, 'B', (0.85, 0.93, 1.0, 1)); L(rm, pw, 0, col, 'Factor')
-L(rm, col, 'Result', em, 'Color'); st = N(rm, 'ShaderNodeMath', operation='MULTIPLY'); L(rm, pw, 0, st, 0); val(st, 1, 38.0 + 10 * math.sin(T * 3)); L(rm, st, 0, em, 'Strength')
+L(rm, col, 'Result', em, 'Color'); st = N(rm, 'ShaderNodeMath', operation='MULTIPLY'); L(rm, pw, 0, st, 0); val(st, 1, 9.0 + 2 * math.sin(T * 3) + 6 * max(0, (T - 4.4) / 2.0) ** 2); L(rm, st, 0, em, 'Strength')
 L(rm, em, 'Emission', o, 'Surface')
 bm = bmesh.new(); bmesh.ops.create_grid(bm, x_segments=1, y_segments=1, size=0.5)
 for v in bm.verts: v.co = Vector((v.co.x * 2 * (6.4 + 1.2 * max(0, T - 4) / 2), 0, (v.co.y + 0.5) * 2 * 25.5))
@@ -123,7 +126,7 @@ for i in range(70):
 # volumetric haze: god rays from the rift
 bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1.0)
 for v in bm.verts: v.co = Vector((v.co.x * 60, v.co.y * 70, (v.co.z + 0.5) * 34))
-vm = mat('haze'); vo = N(vm, 'ShaderNodeOutputMaterial'); vs = N(vm, 'ShaderNodeVolumeScatter'); val(vs, 'Density', 0.018); val(vs, 'Anisotropy', 0.45); val(vs, 'Color', (0.55, 0.7, 1.0, 1))
+vm = mat('haze'); vo = N(vm, 'ShaderNodeOutputMaterial'); vs = N(vm, 'ShaderNodeVolumeScatter'); val(vs, 'Density', 0.007); val(vs, 'Anisotropy', 0.45); val(vs, 'Color', (0.55, 0.7, 1.0, 1))
 vm.node_tree.links.new(vs.outputs[0], vo.inputs['Volume'])
 haze = to_obj('haze', bm, vm); haze.location = (0, -14, 12)
 
