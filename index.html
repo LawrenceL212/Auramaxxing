@@ -7195,10 +7195,8 @@ const SystemOpening = (() => {
       let seen = false;
       try { seen = !!localStorage.getItem(SEEN_KEY); } catch (e) {}
       const mode = (opts.force === 'first' || !seen) ? 'first' : 'return';
-      let pick = null, seenSlug = null;
-      try { seenSlug = localStorage.getItem(VIDEO_SEEN_KEY); } catch (e) {}
-      const wk = weekBoss();
-      if (opts.force || !seen || (wk && wk.slug && wk.slug !== seenSlug)) pick = await pickVideo();
+      // The boss clip plays on every app open after sign-in, before anything else; without a clip the live opening runs as before.
+      const pick = await pickVideo();
       if (!pick && !coreReady() && !opts.force) {
         // No WebGL: mark seen and let the app present normally.
         try { localStorage.setItem(SEEN_KEY, '1'); } catch (e) {}
