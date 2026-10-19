@@ -1680,6 +1680,6 @@ def finish(name, out, J, bones, parts, glow, part_info, mats, flat, tri_target, 
     bpy.ops.export_scene.gltf(
         filepath=out, export_format='GLB', export_yup=True, export_apply=False, export_extras=True,
         export_skins=True, export_animations=True, export_animation_mode='ACTIONS', export_force_sampling=True,
-        export_image_format='JPEG', export_jpeg_quality=86, export_draco_mesh_compression_enable=True,
+        export_image_format='JPEG', export_jpeg_quality=86, export_draco_mesh_compression_enable=not os.environ.get('NO_DRACO'),
         export_draco_mesh_compression_level=6, export_materials='EXPORT')
     print('exported', out, os.path.getsize(out), 'bytes; triangles', tri_count(boss) + sum(tri_count(ob) for ob, _ in glow.values()), flush=True)

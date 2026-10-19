@@ -904,6 +904,47 @@
     animation:smRing 1600ms var(--ease-cinema) forwards;
   }
 
+  /* ── Opening HUD: frame, scan, bigger identity, System status window ── */
+  #sys-open .hc{ position:absolute; z-index:883; width:22px; height:22px; border:0 solid rgba(91,168,255,.55);
+    opacity:0; animation:soFade 600ms var(--ease-cinema) 200ms forwards; }
+  #sys-open .hc.tl{ left:14px; top:calc(14px + env(safe-area-inset-top,0px)); border-left-width:1px; border-top-width:1px; }
+  #sys-open .hc.tr{ right:14px; top:calc(14px + env(safe-area-inset-top,0px)); border-right-width:1px; border-top-width:1px; }
+  #sys-open .hc.bl{ left:14px; bottom:14px; border-left-width:1px; border-bottom-width:1px; }
+  #sys-open .hc.br{ right:14px; bottom:14px; border-right-width:1px; border-bottom-width:1px; }
+  @keyframes soFade{ to{ opacity:1; } }
+  #sys-open .scan{ position:absolute; left:0; right:0; height:2px; top:-4px; z-index:882; opacity:0;
+    background:linear-gradient(90deg,transparent,rgba(120,185,255,.55),transparent);
+    box-shadow:0 0 18px 2px rgba(91,168,255,.35); animation:soScan 3200ms linear 500ms infinite; }
+  @keyframes soScan{ 0%{ top:-4px; opacity:0; } 8%{ opacity:.8; } 92%{ opacity:.8; } 100%{ top:100%; opacity:0; } }
+  #sys-open .kicker{ font-size:clamp(11px,3vw,13px); color:rgba(140,196,255,.95); }
+  #sys-open .line{ font-size:clamp(34px,11vw,56px); letter-spacing:.06em;
+    text-shadow:0 0 22px rgba(91,168,255,.55), 0 0 2px rgba(255,255,255,.6); }
+  #sys-open .sub{ font-size:clamp(13px,3.6vw,16px); letter-spacing:.14em; color:rgba(190,215,245,.92); }
+  #sys-open .rank{ display:none; }   /* the rank is in the sub line and the status window */
+  html[data-orient="portrait"] #sys-open .beats{ padding-bottom:calc(11dvh + env(safe-area-inset-bottom,0px)); }
+  #sys-open .win{ display:grid; grid-template-columns:repeat(3,1fr); gap:6px; width:100%; max-width:330px; margin:14px auto 0;
+    padding:10px; border:1px solid rgba(91,168,255,.4); background:rgba(4,10,24,.62);
+    box-shadow:0 0 28px rgba(91,168,255,.16), inset 0 0 22px rgba(91,168,255,.07);
+    clip-path:polygon(10px 0,100% 0,100% calc(100% - 10px),calc(100% - 10px) 100%,0 100%,0 10px);
+    opacity:0; min-height:0; }
+  #sys-open .win:empty{ display:none; }
+  #sys-open .win[data-in="1"]{ animation:mFade 360ms var(--ease-cinema) forwards; }
+  #sys-open .win[data-out="1"]{ opacity:0; transition:opacity 360ms var(--ease-cinema); }
+  #sys-open .win .cell{ display:flex; align-items:baseline; justify-content:space-between; gap:8px; padding:6px 10px;
+    border-left:2px solid var(--c,var(--brass)); background:rgba(91,168,255,.05);
+    opacity:0; animation:mRise 420ms var(--ease-cinema) calc(var(--i,0) * 90ms + 120ms) forwards; }
+  #sys-open .win .k{ font-family:var(--font-mono); font-size:12px; letter-spacing:.16em; color:rgba(190,215,245,.85); }
+  #sys-open .win .v{ font-family:var(--font-display); font-weight:var(--weight-hero); font-size:20px; color:var(--c,var(--brass)); text-shadow:0 0 12px var(--c,transparent); }
+  #sys-open .bar{ width:100%; max-width:330px; height:2px; margin:14px auto 0; background:rgba(91,168,255,.14); overflow:hidden; }
+  #sys-open .bar i{ display:block; height:100%; width:100%; transform-origin:left; transform:scaleX(var(--p,0));
+    background:linear-gradient(90deg,rgba(91,168,255,.4),rgba(160,205,255,1)); box-shadow:0 0 8px rgba(120,185,255,.8);
+    transition:transform 700ms var(--ease-cinema); }
+  @media (prefers-reduced-motion: reduce){
+    #sys-open .scan{ display:none; }
+    #sys-open .win .cell, #sys-open .hc{ animation:none !important; opacity:1 !important; }
+    #sys-open .win[data-in="1"]{ animation:none !important; opacity:1 !important; }
+  }
+
   #sys-skip{
     position:fixed; z-index:1060; right:14px;
     bottom:calc(18px + env(safe-area-inset-bottom,0px));
@@ -916,6 +957,23 @@
   }
   html[data-opening="1"] #sys-skip{ opacity:1; pointer-events:auto; }
   #sys-skip:hover, #sys-skip:active{ color:var(--text); }
+
+  /* Pre-rendered opening: a full-bleed video under the System text, with the week's boss named
+     over it. Only used when ./cinematics/ has a clip; otherwise the live scene plays. */
+  #sys-open .vid{ position:absolute; inset:0; width:100%; height:100%; object-fit:cover; background:#000;
+    opacity:0; transition:opacity 500ms var(--ease-cinema); }
+  #sys-open .vid.on{ opacity:1; }
+  #sys-open .bossbar{ position:absolute; left:0; right:0; bottom:calc(15dvh + env(safe-area-inset-bottom,0px));
+    text-align:center; opacity:0; pointer-events:none; padding:0 18px; }
+  #sys-open .bossbar.on{ animation:bbIn 1100ms var(--ease-cinema) forwards; }
+  #sys-open .bossbar .t{ font-family:var(--font-mono); font-size:clamp(15px,4.6vw,22px); letter-spacing:.28em; text-transform:uppercase;
+    color:#f3e7c9; text-shadow:0 0 18px rgba(0,0,0,.9),0 2px 6px rgba(0,0,0,.9); }
+  #sys-open .bossbar .r{ margin-top:8px; font-family:var(--font-mono); font-size:10px; letter-spacing:.3em; color:rgba(243,231,201,.62); text-transform:uppercase; }
+  #sys-open .bossbar::before, #sys-open .bossbar::after{ content:''; display:block; height:1px; width:min(70vw,320px); margin:0 auto;
+    background:linear-gradient(90deg,transparent,rgba(243,231,201,.55),transparent); }
+  #sys-open .bossbar::before{ margin-bottom:12px; } #sys-open .bossbar::after{ margin-top:12px; }
+  @keyframes bbIn{ 0%{opacity:0;letter-spacing:.5em;filter:blur(6px);} 100%{opacity:1;filter:blur(0);} }
+  @media (prefers-reduced-motion: reduce){ #sys-open .bossbar.on{ animation:none; opacity:1; } }
 
   /* Portrait: the Hunter sits high, text sits low, so they never fight for the
      same band of the screen. Keyed on html[data-orient] rather than an
@@ -4943,6 +5001,7 @@ function openSettingsModal() {
       '<button type="button" class="weekday-chip haptic-chip ' + (SFX.hapticOn()?'on':'') + '" data-val="on" style="flex:1;">On</button>' +
       '<button type="button" class="weekday-chip haptic-chip ' + (!SFX.hapticOn()?'on':'') + '" data-val="off" style="flex:1;">Off</button>' +
     '</div></div>' +
+    '<button type="button" id="settings-replay-intro" style="width:100%;margin-top:10px;padding:11px;background:rgba(91,168,255,0.07);border:1px solid rgba(91,168,255,0.28);border-radius:var(--radius-sm);color:var(--text);font-family:var(--font-mono);font-size:11px;letter-spacing:.14em;cursor:pointer;touch-action:manipulation;">\u25b6 REPLAY SYSTEM OPENING</button>' +
     '<div style="display:flex;gap:8px;margin-top:8px;">' +
       '<button class="btn" id="cancel-settings" style="flex:1;font-size:13px;">Close</button>' +
       '<button class="btn btn-primary" id="save-settings" style="flex:2;font-size:13px;">Save</button>' +
@@ -4997,6 +5056,7 @@ function openSettingsModal() {
   overlay.addEventListener('click', (e) => { if (e.target === overlay) { overlay.remove(); unlockBodyScroll(); } });
   overlay.querySelector('#system-cmd-close')?.addEventListener('click', () => { overlay.remove(); unlockBodyScroll(); });
   overlay.querySelector('#cancel-settings').addEventListener('click', () => { overlay.remove(); unlockBodyScroll(); });
+  overlay.querySelector('#settings-replay-intro')?.addEventListener('click', () => { overlay.remove(); unlockBodyScroll(); try { window.SystemOpening?.start({ force: 'first' }); } catch (e) {} });
   overlay.querySelector('#settings-exit-btn')?.addEventListener('click', () => { overlay.remove(); unlockBodyScroll(); signOut(auth); });
   const onEsc = (e) => { if (e.key === 'Escape') { overlay.remove(); unlockBodyScroll(); document.removeEventListener('keydown', onEsc); } };
   document.addEventListener('keydown', onEsc);
@@ -5229,6 +5289,7 @@ const SFX = {
   },
 };
 
+let openingRelease = () => {};   // set at login; frees notices once the opening is over (or never ran)
 if (configOk) {
   onAuthStateChanged(auth, async (user) => {
     if (user) {
@@ -5277,6 +5338,9 @@ if (configOk) {
       setTimeout(() => openLinkedWorkout(), 2600);
       // Phase 4: bring up the cinematic layer after the app is interactive, so
       // it can never delay login or data. Failure here is non-fatal by design.
+      /* The opening owns the screen: penalty, rank-up and update notices queue
+         behind it (losses first) instead of painting through it. */
+      openingRelease = StartupNotices.hold(22000);
       setTimeout(async () => {
         try {
           if (await AuraGL.init()) {
@@ -5288,12 +5352,12 @@ if (configOk) {
             // Opening cinematic runs only once the core scene is up, so it can
             // never delay auth, data load or first interaction.
             const waitCore = (tries = 0) => {
-              if (window.AuraCore?.ready) { SystemOpening.start(); return; }
-              if (tries < 40) setTimeout(() => waitCore(tries + 1), 250);
+              if (window.AuraCore?.ready) { SystemOpening.start().then(ran => { if (!ran) openingRelease(); }); return; }
+              if (tries < 40) setTimeout(() => waitCore(tries + 1), 250); else openingRelease();
             };
             waitCore();
-          }
-        } catch (e) { console.info('[AuraGL] disabled:', e); }
+          } else openingRelease();
+        } catch (e) { console.info('[AuraGL] disabled:', e); openingRelease(); }
       }, 2600);
     } else {
       currentUser = null;
@@ -6287,8 +6351,21 @@ function buildSystemCoreScene({ THREE, quality, tier }) {
   innerLight2.position.set(0, 0.3, 0);
   root.add(innerLight2);
 
+  /* Polished metal needs something to reflect or it reads as a black cut-out
+     (the sigil was a silhouette with two glints). A soft studio environment is
+     put on the sigil's own materials only - not scene.environment - so the
+     raid boss and the environments keep the lighting they were tuned with. */
+  import('three/addons/environments/RoomEnvironment.js').then(({ RoomEnvironment }) => {
+    const r = window.AuraGL?.renderer; if (!r) return;
+    const pm = new THREE.PMREMGenerator(r);
+    const tex = pm.fromScene(new RoomEnvironment(), 0.04).texture;
+    for (const [m, k] of [[coreMat, 0.55], [ringMat, 0.7], [shardMat, 0.5]]) {
+      m.envMap = tex; m.envMapIntensity = k; m.needsUpdate = true;
+    }
+    pm.dispose();
+  }).catch(e => console.info('[core] studio reflections unavailable', e));
+
   root.add(core, ring1, ring2, shards);
-  root.scale.setScalar(0.78);
   root.scale.setScalar(0.78);
 
   let ready = true, frozen = false;
@@ -6783,11 +6860,15 @@ const SystemOpening = (() => {
     host.id = 'sys-open';
     host.innerHTML =
       '<div class="void"></div><div class="ring"></div>' +
+      '<div class="scan"></div>' +
+      '<i class="hc tl"></i><i class="hc tr"></i><i class="hc bl"></i><i class="hc br"></i>' +
       '<div class="beats">' +
         '<div class="kicker" id="so-kicker"></div>' +
         '<h1 class="line" id="so-line"></h1>' +
         '<p class="sub" id="so-sub"></p>' +
         '<div class="rank" id="so-rank"></div>' +
+        '<div class="win" id="so-win" aria-hidden="true"></div>' +
+        '<div class="bar" id="so-bar"><i></i></div>' +
       '</div>';
     document.body.appendChild(host);
     const skip = document.createElement('button');
@@ -6812,6 +6893,22 @@ const SystemOpening = (() => {
     ['so-kicker', 'so-line', 'so-sub', 'so-rank'].forEach(id => {
       const n = el(id); if (n) { n.textContent = ''; n.removeAttribute('data-in'); }
     });
+  }
+  // Boot progress: a thin line that fills as the System comes online (0..1).
+  function progress(p) { const b = el('so-bar'); if (b) b.style.setProperty('--p', Math.max(0, Math.min(1, p))); }
+  /* The System status window: the Hunter's six ranks as read from their real
+     profile. Rows arrive in a short stagger (CSS, --i). Never invents a value:
+     an unranked stat shows E, the same default the rest of the app uses. */
+  function showStatusWindow() {
+    const w = el('so-win'); if (!w) return;
+    const CODES = [['strength', 'STR'], ['endurance', 'END'], ['agility', 'AGI'], ['focus', 'FOC'], ['flexibility', 'FLE'], ['defence', 'DEF']];
+    const st = profile?.stats || {};
+    w.innerHTML = CODES.map(([id, code], i) => {
+      const r = st[id] || 'E';
+      const col = (typeof RANK_COLORS === 'object' && RANK_COLORS[r]) || 'var(--brass)';
+      return `<div class="cell" style="--i:${i};--c:${col}"><span class="k">${code}</span><span class="v">${r}</span></div>`;
+    }).join('');
+    w.removeAttribute('data-in'); void w.offsetWidth; w.setAttribute('data-in', '1');
   }
   const voidLevel = (c, e) => {
     host?.style.setProperty('--void-c', c);
@@ -6927,46 +7024,56 @@ const SystemOpening = (() => {
          frame. SKIP still cuts it short. */
       say('so-kicker', 'SYSTEM · WELCOME BACK');
       say('so-line', (profile?.displayName || 'HUNTER').toUpperCase(), '2');
+      try {
+        const rank = (typeof charRankFromStats === 'function' && profile?.stats) ? charRankFromStats(profile.stats) : null;
+        if (rank) say('so-sub', `RANK ${rank} · LEVEL ${profile?.hunterLevel || 1}`);
+      } catch (e) { /* presentation only */ }
+      progress(1);
       H?.setAura?.('active');
-      await hold(640);
+      await hold(1150);
       return finish();
     }
 
     /* ── 1. VOID ───────────────────────────────────────────────────────── */
-    await beat(620);
+    await beat(380);
 
     /* ── 2. SIGNAL ─────────────────────────────────────────────────────── */
     cue('sys-pulse', 0.5);
     const ring = host.querySelector('.ring');
     if (ring) { ring.setAttribute('data-pulse', '1'); }
     say('so-kicker', '◈ SIGNAL DETECTED');
-    await beat(1150);
+    progress(0.12);
+    await beat(800);
 
     /* ── 3. GEOMETRY - rim first, so the sigil's form reads before surface */
     cue('sys-arrival', 0.45);
     clearBeats();
     voidLevel(0.86, 0.97);
-    ramp(v => H?.setReveal?.(v), 0, 0.42, 1500);
-    camera(far, [0, 0.28, midZ], 2600);
-    await beat(1500);
+    ramp(v => H?.setReveal?.(v), 0, 0.42, 1100);
+    camera(far, [0, 0.28, midZ], 2200);
+    progress(0.3);
+    await beat(1000);
 
     say('so-kicker', '◈ SYSTEM GEOMETRY RESOLVED');
     voidLevel(0.62, 0.92);
-    await beat(900);
+    progress(0.48);
+    await beat(600);
 
     /* ── 4. TELEMETRY - a narrow light travels across the sigil ────────── */
     clearBeats();
     say('so-kicker', '◈ TELEMETRY LINKED');
-    ramp(t => H?.sweepLight?.(t), 0, 1, 1400);
-    await ramp(v => H?.setReveal?.(v), 0.42, 0.88, 1400);
+    ramp(t => H?.sweepLight?.(t), 0, 1, 1100);
+    progress(0.66);
+    await ramp(v => H?.setReveal?.(v), 0.42, 0.88, 1100);
     voidLevel(0.34, 0.8);
 
     /* ── 5. RECOGNITION (build) - real state only, never invented ──────── */
     cue('sys-recognise', 0.4);
-    camera([0, 0.28, midZ], [0, 0.18, endZ], 2200);
+    camera([0, 0.28, midZ], [0, 0.18, endZ], 1900);
     say('so-kicker', '◈ HUNTER IDENTIFIED');
     say('so-line', (profile?.displayName || 'HUNTER').toUpperCase(), '2');
-    await beat(900);
+    progress(0.84);
+    await beat(650);
 
     try {
       const rank = (typeof charRankFromStats === 'function' && profile?.stats)
@@ -6982,16 +7089,18 @@ const SystemOpening = (() => {
         say('so-sub', 'UNCLASSIFIED · THE SYSTEM IS WATCHING');
       }
     } catch (e) { /* presentation only */ }
-    await beat(800);
+    showStatusWindow();
+    await beat(700);
 
     /* ── 6. AWAKENING (reveal) - the energy completes the composition ──── */
     H?.setAura?.('stirring');
-    await beat(400);
+    await beat(300);
     cue('sys-surge', 0.5);
     H?.setAura?.('surge');
-    await ramp(v => H?.setReveal?.(v), 0.88, 1, 700);
+    progress(1);
+    await ramp(v => H?.setReveal?.(v), 0.88, 1, 600);
     voidLevel(0.12, 0.62);
-    await beat(500);
+    await beat(350);
 
     /* ── 7. APPRECIATION - the completed frame simply stands ─────────────
        Nothing new arrives here on purpose: name, rank and level stay put,
@@ -7000,7 +7109,7 @@ const SystemOpening = (() => {
        reduced-motion; SKIP still cuts it short. */
     H?.setAura?.('active');
     cue('sys-reveal', 0.32);
-    await hold(2600);
+    await hold(2200);
 
     /* ── 8. AFTERMATH - clean hand-off back to the application ─────────── */
     /* hold(), not beat(): this is the sign-off the player reads, so it is
@@ -7008,8 +7117,10 @@ const SystemOpening = (() => {
        under prefers-reduced-motion, which left SYSTEM ONLINE on screen for a
        single frame. SKIP still cuts it short. */
     clearBeats();
+    el('so-win')?.removeAttribute('data-in');
+    el('so-win')?.setAttribute('data-out', '1');
     say('so-kicker', '◈ SYSTEM ONLINE');
-    await hold(850);
+    await hold(750);
     return finish();
   }
 
@@ -7030,9 +7141,67 @@ const SystemOpening = (() => {
       document.getElementById('sys-skip')?.remove();
       delete document.documentElement.dataset.opening;
       try { window.AuraGL?.activate?.('ambient'); } catch (e) {}
+      // Held notices (a penalty, a rank-up) show only once the cinematic has fully faded.
+      try { openingRelease(); } catch (e) {}
     }, 700);
     try { localStorage.setItem(SEEN_KEY, '1'); } catch (e) {}
     running = false;
+    return true;
+  }
+
+
+  /* ── Pre-rendered opening (optional) ─────────────────────────────────────
+     ./cinematics/opening-<boss-slug>.mp4 (or .webm) plays for that week's raid boss, with
+     ./cinematics/opening.mp4 as the shared fallback. No file means the live scene
+     plays exactly as before. Plays on the first login, on a replay, and once when a
+     new week's boss arrives. Presentation only: the week's boss is read from
+     localStorage, written by the raid card. */
+  const WEEK_BOSS_KEY = 'aura.weekBoss', VIDEO_SEEN_KEY = 'aura.opening.video';
+  const videoOk = {};
+  async function hasVideo(url) {
+    if (url in videoOk) return videoOk[url];
+    try { const r = await fetch(url, { method: 'HEAD' }); videoOk[url] = r.ok && /video/i.test(r.headers.get('content-type') || ''); }
+    catch (e) { videoOk[url] = false; }
+    return videoOk[url];
+  }
+  function weekBoss() { try { return JSON.parse(localStorage.getItem(WEEK_BOSS_KEY) || 'null'); } catch (e) { return null; } }
+  async function pickVideo() {
+    try { if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return null; } catch (e) {}
+    const b = weekBoss(), tries = [], vt = document.createElement('video');
+    const exts = [['mp4', 'video/mp4'], ['webm', 'video/webm']].filter(([, m]) => vt.canPlayType(m)).map(([e]) => e);
+    for (const ext of exts) if (b && b.slug) tries.push({ src: `./cinematics/opening-${b.slug}.${ext}`, boss: b });
+    for (const ext of exts) tries.push({ src: `./cinematics/opening.${ext}`, boss: b });
+    for (const t of tries) if (await hasVideo(t.src)) return t;
+    return null;
+  }
+  async function playVideo(pick) {
+    document.documentElement.dataset.opening = '1';
+    build(); clearBeats(); voidLevel(1, 1);
+    const v = document.createElement('video');
+    v.className = 'vid'; v.src = pick.src; v.preload = 'auto'; v.playsInline = true; v.setAttribute('playsinline', '');
+    v.muted = !SFX?.soundOn?.();
+    host.insertBefore(v, host.children[1] || null);
+    let ended = false;
+    v.addEventListener('ended', () => { ended = true; });
+    v.addEventListener('error', () => { ended = true; });
+    await new Promise(res => { v.addEventListener('canplay', res, { once: true }); v.addEventListener('error', res, { once: true }); setTimeout(res, 4000); });
+    if (v.error || v.readyState < 2) { v.remove(); return false; }
+    try { await v.play(); } catch (e) { v.muted = true; try { await v.play(); } catch (e2) { v.remove(); return false; } }
+    v.classList.add('on'); voidLevel(0, 0.4);
+    let bar = null;
+    if (pick.boss && pick.boss.name) {
+      bar = document.createElement('div'); bar.className = 'bossbar';
+      bar.innerHTML = '<div class="t"></div><div class="r"></div>';
+      bar.querySelector('.t').textContent = pick.boss.name;
+      bar.querySelector('.r').textContent = pick.boss.rank || '';
+      host.appendChild(bar);
+    }
+    const t0 = performance.now(), cap = ((v.duration && isFinite(v.duration)) ? v.duration : 12) * 1000 + 2500;
+    while (!ended && !skipped && performance.now() - t0 < cap) {
+      if (bar && !bar.classList.contains('on') && v.duration && v.currentTime > v.duration * 0.6) bar.classList.add('on');
+      await new Promise(r => setTimeout(r, 120));
+    }
+    try { v.pause(); } catch (e) {}
     return true;
   }
 
@@ -7046,7 +7215,11 @@ const SystemOpening = (() => {
       let seen = false;
       try { seen = !!localStorage.getItem(SEEN_KEY); } catch (e) {}
       const mode = (opts.force === 'first' || !seen) ? 'first' : 'return';
-      if (!coreReady() && !opts.force) {
+      let pick = null, seenSlug = null;
+      try { seenSlug = localStorage.getItem(VIDEO_SEEN_KEY); } catch (e) {}
+      const wk = weekBoss();
+      if (opts.force || !seen || (wk && wk.slug && wk.slug !== seenSlug)) pick = await pickVideo();
+      if (!pick && !coreReady() && !opts.force) {
         // No WebGL: mark seen and let the app present normally.
         try { localStorage.setItem(SEEN_KEY, '1'); } catch (e) {}
         return false;
@@ -7064,8 +7237,13 @@ const SystemOpening = (() => {
           skipped = true;
           try { finish(); } catch (e) { document.documentElement.dataset.opening = 'done'; }
         }
-      }, 16000);
-      try { await run(mode); } catch (e) { console.info('[Opening] aborted', e); finish(); }
+      }, pick ? 40000 : 16000);
+      try {
+        if (pick && await playVideo(pick)) {
+          try { localStorage.setItem(VIDEO_SEEN_KEY, (pick.boss && pick.boss.slug) || ''); } catch (e) {}
+          finish();
+        } else await run(mode);
+      } catch (e) { console.info('[Opening] aborted', e); finish(); }
       finally { clearTimeout(deadline); }
       return true;
     },
@@ -18115,6 +18293,7 @@ async function renderRaidBoss() {
       </div>
       ${sundayPreview}
     </div>`;
+  try { localStorage.setItem('aura.weekBoss', JSON.stringify({ slug: bossSlug(boss.name), name: boss.name, tier: bossTier, rank: boss.rank || '' })); } catch (e) {}
   mountRaidBossStage(boss, bossTier, cleared);
 }
 
@@ -23884,6 +24063,7 @@ const StartupNotices = (() => {
      first 15s of the page waits briefly so they sort by priority (a loss is
      never buried under good news); afterwards requests show at once. */
   let settleTimer = null, settled = performance.now() > 15000;
+  let holds = 0;           // fullscreen presentations (the opening) that notices must wait for
 
   function stopWatch() { try { watcher?.disconnect(); } catch (e) {} watcher = null; }
 
@@ -23896,6 +24076,7 @@ const StartupNotices = (() => {
   }
 
   function advance() {
+    if (holds > 0) return;                           // the opening owns the screen
     if (showing && showing.isConnected) return;      // current notice still up
     showing = null;
     while (pending.length) {
@@ -23917,6 +24098,16 @@ const StartupNotices = (() => {
         return;
       }
       advance();
+    },
+    /* hold(maxMs): notices queue but do not show until the returned release() is
+       called (idempotent) or maxMs passes, so a stuck presentation can never
+       swallow a penalty or a rank-up. */
+    hold(maxMs = 25000) {
+      holds++;
+      let done = false;
+      const release = () => { if (done) return; done = true; holds = Math.max(0, holds - 1); advance(); };
+      setTimeout(release, maxMs);
+      return release;
     },
     get active() { return !!(showing && showing.isConnected); },
     get waiting() { return pending.length; },
