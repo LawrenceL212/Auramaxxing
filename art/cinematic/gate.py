@@ -10,6 +10,7 @@ OUT = arg('--out', '/tmp/gate.png'); T = arg('--t', 3.2, float); SPP = arg('--sp
 RW = int(argv[argv.index('--res') + 1]) if '--res' in argv else 540
 RH = int(argv[argv.index('--res') + 2]) if '--res' in argv else 1170
 RANK = (0.18, 0.5, 1.0)
+BOSS = arg('--boss', '/home/claude/Auramaxxing/art/models/antares.glb'); BOSS_H = arg('--boss-h', 38.0, float)
 random.seed(5)
 
 bpy.ops.wm.read_factory_settings(use_empty=True)
@@ -103,19 +104,13 @@ def emit(name, col, strength):
 dark = mat('silhouette'); do = N(dark, 'ShaderNodeOutputMaterial'); db = N(dark, 'ShaderNodeBsdfPrincipled'); val(db, 'Base Color', (0.012, 0.015, 0.025, 1)); val(db, 'Roughness', 0.9); L(dark, db, 'BSDF', do, 'Surface')
 # sky dome behind the gate: cold bright at the horizon, deep violet overhead
 sky = mat('sky'); so = N(sky, 'ShaderNodeOutputMaterial'); se = N(sky, 'ShaderNodeEmission'); stc = N(sky, 'ShaderNodeTexCoord'); ssp = N(sky, 'ShaderNodeSeparateXYZ'); sr = N(sky, 'ShaderNodeValToRGB')
-L(sky, stc, 'Generated', ssp, 0); sr.color_ramp.elements[0].position = 0.0; sr.color_ramp.elements[0].color = (0.55, 0.75, 1.0, 1); sr.color_ramp.elements[1].position = 0.55; sr.color_ramp.elements[1].color = (0.015, 0.012, 0.07, 1)
-e2 = sr.color_ramp.elements.new(0.22); e2.color = (0.25, 0.32, 0.7, 1)
+L(sky, stc, 'Generated', ssp, 0); sr.color_ramp.elements[0].position = 0.0; sr.color_ramp.elements[0].color = (1.0, 0.7, 0.34, 1); sr.color_ramp.elements[1].position = 0.55; sr.color_ramp.elements[1].color = (0.02, 0.018, 0.03, 1)
+e2 = sr.color_ramp.elements.new(0.22); e2.color = (0.42, 0.28, 0.2, 1)
 L(sky, ssp, 'Z', sr, 'Fac'); L(sky, sr, 'Color', se, 'Color'); val(se, 'Strength', 2.4); L(sky, se, 'Emission', so, 'Surface')
 bm = bmesh.new(); bmesh.ops.create_uvsphere(bm, u_segments=32, v_segments=16, radius=170)
 bmesh.ops.delete(bm, geom=[v for v in bm.verts if v.co.y > -6 or v.co.z < -2], context='VERTS')
 for v in bm.verts: v.co.y -= 0
 to_obj('sky', bm, sky).location = (0, -50, 0)
-# a huge ringed moon low on the horizon
-bm = bmesh.new(); bmesh.ops.create_uvsphere(bm, u_segments=48, v_segments=24, radius=14)
-moon = to_obj('moon', bm, emit('moon', (0.8, 0.88, 1.0, 1), 6.0)); moon.location = (24, -150, 30)
-bm = bmesh.new(); bmesh.ops.create_circle(bm, cap_ends=False, segments=96, radius=26)
-ring = to_obj('moonring', bm, emit('ring', (0.7, 0.8, 1.0, 1), 1.6)); ring.location = (24, -150, 30); ring.rotation_euler = (math.radians(72), 0, math.radians(20))
-ring.scale = (1, 1, 1)
 # the causeway: a long stone road across a void, with low parapets, running to a citadel
 bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1.0)
 for v in bm.verts: v.co.x *= 8.0; v.co.y *= 110.0; v.co.z = (v.co.z + 0.5) * 0.8 - 0.8
@@ -124,39 +119,45 @@ for sx in (-1, 1):
     bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1.0)
     for v in bm.verts: v.co.x *= 0.5; v.co.y *= 110.0; v.co.z = (v.co.z + 0.5) * 1.0
     to_obj('parapet', bm, stone_m).location = (sx * 4.0, -92, 0.0)
-for i in range(10):   # lamp posts along the causeway, receding: a ruler for distance
-    for sx in (-1, 1):
-        bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=8, radius1=0.12, radius2=0.1, depth=3.0)
-        for v in bm.verts: v.co.z += 1.5
-        to_obj('post', bm, stone_m).location = (sx * 4.0, -40 - i * 11, 0.9)
-        bm = bmesh.new(); bmesh.ops.create_uvsphere(bm, u_segments=8, v_segments=6, radius=0.22)
-        to_obj('lamp', bm, emit('lamp', (0.5, 0.75, 1.0, 1), 60.0)).location = (sx * 4.0, -40 - i * 11, 4.3)
-# the citadel at the end of the road
-for i, (w, d, h, x, y) in enumerate([(26, 12, 30, 0, -150), (12, 8, 56, -10, -152), (10, 8, 66, 12, -154), (8, 6, 80, 2, -156), (7, 7, 48, -20, -150), (9, 7, 44, 22, -151)]):
-    bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1.0)
-    for v in bm.verts: v.co.x *= w * (1 - 0.35 * (v.co.z > 0)); v.co.y *= d; v.co.z = (v.co.z + 0.5) * h
-    displaced(to_obj('tower', bm, dark), 0.08, 3.0, 4).location = (x, y, -2)
-    for k in range(int(h / 4)):   # lit windows
-        bm = bmesh.new(); bmesh.ops.create_cube(bm, size=0.7)
-        to_obj('win', bm, emit('win', (1.0, 0.78, 0.45, 1), 25.0)).location = (x + random.uniform(-w * .3, w * .3), y + d / 2 + 0.2, 4 + k * 4)
-# distant towers and floating islands either side of the road: layers of depth
-for i in range(22):
-    sx = random.choice([-1, 1]); x = sx * random.uniform(14, 70); y = random.uniform(-150, -70); h = random.uniform(15, 70)
-    bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=random.choice([4, 6, 8]), radius1=random.uniform(2, 5), radius2=random.uniform(0.2, 2), depth=h)
+# the arena: a broken stone floor ringed by dead pillars, with the boss standing in the middle distance, backlit
+bm = bmesh.new(); bmesh.ops.create_circle(bm, cap_ends=True, segments=64, radius=70)
+ar = to_obj('arena', bm, stone_m); ar.location = (0, -128, 0.0); displaced(ar, 0.04, 0.8, 1)
+for i in range(16):
+    a = i / 16 * math.tau; px, py = 58 * math.cos(a), -128 + 58 * math.sin(a)
+    if py > -75: continue
+    h = random.uniform(10, 34)
+    bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=random.choice([5, 6, 8]), radius1=random.uniform(2.4, 4), radius2=random.uniform(1.2, 2.6), depth=h)
     for v in bm.verts: v.co.z += h / 2
-    displaced(to_obj('spire', bm, dark), 0.12, 2.0, 3).location = (x, y, -3)
-for i in range(9):
-    bm = bmesh.new(); bmesh.ops.create_icosphere(bm, subdivisions=3, radius=1.0)
-    isl = to_obj('island', bm, dark); isl.scale = (random.uniform(5, 12), random.uniform(5, 12), random.uniform(1.5, 3)); isl.location = (random.uniform(-60, 60), random.uniform(-140, -80), random.uniform(18, 46)); displaced(isl, 0.5, 1.5, 1)
-# the portal veil: a faint shimmering membrane across the opening, not a wall of light
-vl = mat('veil'); vo2 = N(vl, 'ShaderNodeOutputMaterial'); mx = N(vl, 'ShaderNodeMixShader'); tr = N(vl, 'ShaderNodeBsdfTransparent'); ve = N(vl, 'ShaderNodeEmission')
-vtc = N(vl, 'ShaderNodeTexCoord'); vn = N(vl, 'ShaderNodeTexNoise'); vr = N(vl, 'ShaderNodeMapRange')
-L(vl, vtc, 'Object', vn, 'Vector'); val(vn, 'Scale', 0.35); val(vn, 'Detail', 1.0)
-L(vl, vn, 'Fac', vr, 'Value'); val(vr, 'From Min', 0.3); val(vr, 'From Max', 0.6); val(vr, 'To Min', 0.0); val(vr, 'To Max', 0.012 + 0.8 * max(0, (T - 5.2) / 1.0) ** 2)
-L(vl, vr, 'Result', mx, 0); L(vl, tr, 'BSDF', mx, 1); L(vl, ve, 'Emission', mx, 2); val(ve, 'Color', RANK + (1,)); val(ve, 'Strength', 2.0 + 25 * max(0, (T - 5.2) / 1.0) ** 2); L(vl, mx, 'Shader', vo2, 'Surface')
-bm = bmesh.new(); bmesh.ops.create_grid(bm, x_segments=1, y_segments=1, size=0.5)
-for v in bm.verts: v.co = Vector((v.co.x * 2 * 6.4, 0, (v.co.y + 0.5) * 2 * 25.5))
-rift = to_obj('rift', bm, vl); rift.location = (0, -33.0, 1.5)
+    displaced(to_obj('deadpillar', bm, dark), 0.15, 2.0, 3).location = (px, py, 0)
+for i in range(30):   # rubble scattered across the arena
+    bm = bmesh.new(); bmesh.ops.create_icosphere(bm, subdivisions=2, radius=1.0)
+    ob = to_obj('arubble', bm, dark); r = random.uniform(1.0, 2.2); ob.scale = (r, r, r * 0.6); ob.location = (random.uniform(-40, 40), random.uniform(-125, -70), 0.3); displaced(ob, 0.4, 1.0, 1)
+# the boss: Antares from the art pack, huge, facing the gate
+bpy.ops.import_scene.gltf(filepath=BOSS)
+bobs = [o for o in bpy.context.selected_objects]
+root = bpy.data.objects.new('boss', None); sc.collection.objects.link(root)
+for o in bobs:
+    if o.parent is None: o.parent = root
+mn = Vector((1e9,) * 3); mx2 = Vector((-1e9,) * 3)
+for o in bobs:
+    if o.type == 'MESH':
+        for c in o.bound_box:
+            w = o.matrix_world @ Vector(c); mn = Vector(map(min, mn, w)); mx2 = Vector(map(max, mx2, w))
+bh = max(mx2.z - mn.z, 0.01)
+root.scale = (BOSS_H / bh,) * 3; root.rotation_euler = (0, 0, math.pi); root.location = (0, -104, 0)
+# the fog gate: a wall of golden mist in the opening, lit from beyond, swirling slowly
+fg = mat('fog'); fo = N(fg, 'ShaderNodeOutputMaterial'); pv = N(fg, 'ShaderNodeVolumePrincipled')
+ftc = N(fg, 'ShaderNodeTexCoord'); fmp = N(fg, 'ShaderNodeMapping'); fn = N(fg, 'ShaderNodeTexNoise'); fr = N(fg, 'ShaderNodeValToRGB'); fm = N(fg, 'ShaderNodeMath', operation='MULTIPLY')
+L(fg, ftc, 'Object', fmp, 0); fmp.inputs['Location'].default_value = (T * 0.05, T * 0.12, T * 0.03); val(fmp, 'Scale', (1.6, 1.6, 0.35))
+L(fg, fmp, 0, fn, 'Vector'); val(fn, 'Scale', 1.2); val(fn, 'Detail', 5.0); val(fn, 'Roughness', 0.6)
+L(fg, fn, 'Fac', fr, 'Fac'); fr.color_ramp.elements[0].position = 0.35; fr.color_ramp.elements[0].color = (0.1, 0.1, 0.1, 1); fr.color_ramp.elements[1].position = 0.8; fr.color_ramp.elements[1].color = (1, 1, 1, 1)
+L(fg, fr, 'Color', fm, 0); val(fm, 1, 0.38 + 1.2 * max(0, (T - 4.8) / 1.2))
+L(fg, fm, 0, pv, 'Density'); val(pv, 'Color', (1.0, 0.86, 0.6, 1)); val(pv, 'Anisotropy', 0.3)
+pv.inputs['Emission Strength'].default_value = 0.7 + 7.0 * max(0, (T - 5.0) / 1.2) ** 2; pv.inputs['Emission Color'].default_value = (1.0, 0.82, 0.5, 1)
+L(fg, pv, 'Volume', fo, 'Volume')
+bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1.0)
+for v in bm.verts: v.co = Vector((v.co.x * 6.5, v.co.y * 1.6, (v.co.z + 0.5) * 25.5))
+rift = to_obj('fog', bm, fg); rift.location = (0, -33.0, 1.5)
 # vaulted ceiling beams across the hall, so it reads as an interior with a far end
 for i in range(4):
     bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1.0)
