@@ -7166,9 +7166,10 @@ const SystemOpening = (() => {
   function weekBoss() { try { return JSON.parse(localStorage.getItem(WEEK_BOSS_KEY) || 'null'); } catch (e) { return null; } }
   async function pickVideo() {
     try { if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return null; } catch (e) {}
-    const b = weekBoss(), tries = [];
-    for (const ext of ['mp4', 'webm']) if (b && b.slug) tries.push({ src: `./cinematics/opening-${b.slug}.${ext}`, boss: b });
-    for (const ext of ['mp4', 'webm']) tries.push({ src: `./cinematics/opening.${ext}`, boss: b });
+    const b = weekBoss(), tries = [], vt = document.createElement('video');
+    const exts = [['mp4', 'video/mp4'], ['webm', 'video/webm']].filter(([, m]) => vt.canPlayType(m)).map(([e]) => e);
+    for (const ext of exts) if (b && b.slug) tries.push({ src: `./cinematics/opening-${b.slug}.${ext}`, boss: b });
+    for (const ext of exts) tries.push({ src: `./cinematics/opening.${ext}`, boss: b });
     for (const t of tries) if (await hasVideo(t.src)) return t;
     return null;
   }
