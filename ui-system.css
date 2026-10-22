@@ -35,6 +35,8 @@
    .ui-art            Slot for painted art with a code stand-in (ui-art.js).
    .ui-sigil          Broken-sigil + blade-rays emblem (SVG from uiSigil()),
                       slowly rotating ring; .still turns the motion off.
+   .ui-screen-head    Sticky head for a tab: .ui-title plus a .ui-seg switch (Rank, Codex).
+   .ui-title          Orbitron screen title.
    .ui-stack          Vertical stack with 16px gaps; .ui-gap-12 / .ui-gap-8.
    .ui-hide-sm        Helper: hidden under 360px wide.
 
@@ -97,6 +99,15 @@
   color:var(--text-faint);
 }
 .ui-seg-btn.on{color:var(--text);background:rgba(91,168,255,.16);box-shadow:inset 0 -2px 0 var(--brass);}
+
+/* ── screen head (title + switch) ───────────────────────────────────── */
+.ui-screen-head{
+  position:sticky;top:calc(-1 * var(--fluid-pad,14px));z-index:20;
+  margin:calc(-1 * var(--fluid-pad,14px)) calc(-1 * var(--fluid-pad,14px)) 12px;
+  padding:8px var(--fluid-pad,14px) 8px;
+  background:linear-gradient(180deg,rgba(5,7,13,.97) 80%,rgba(5,7,13,.86));backdrop-filter:blur(8px);
+}
+.ui-title{margin:0 0 8px;font-family:var(--font-display);font-weight:800;font-size:22px;letter-spacing:.06em;text-transform:uppercase;line-height:1.1;color:var(--text);}
 
 /* ── buttons ─────────────────────────────────────────────────────────── */
 .ui-btn-primary,.ui-btn-blue{
