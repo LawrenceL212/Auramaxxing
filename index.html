@@ -3627,12 +3627,13 @@
   .hunt-plan-head{display:flex;align-items:center;justify-content:space-between;gap:8px;}
   .hunt-plan-head .icon-btn{min-height:44px;}
 
-  .hunt-spacer{height:calc(32px + env(safe-area-inset-bottom,0px));}
-  /* Begin Hunt sits directly under the Today card. To pin it above the nav instead:
-     position:fixed;left:0;right:0;bottom:calc(56px + env(safe-area-inset-bottom,0px));z-index:9; */
-  .hunt-bar{margin-top:var(--space-4);padding:0 var(--fluid-pad);position:relative;z-index:12;}
-  .hunt-bar.hidden{display:none !important;}
-  .hunt-bar-in{display:flex;gap:8px;max-width:640px;margin:0 auto;position:relative;pointer-events:auto;}
+  .hunt-spacer{height:114px;} /* bar height (24 fade + 54 button + 12) + 24 */
+  /* Begin Hunt is pinned directly above the bottom nav (thumb zone). --hunt-nav-h is the nav's
+     measured height, set in syncHuntBar. z-index 9 sits under the nav (10) and under modals. */
+  .hunt-bar{position:fixed;left:0;right:0;bottom:var(--hunt-nav-h,calc(56px + env(safe-area-inset-bottom,0px)));z-index:9;
+    padding:24px 16px 0;background:linear-gradient(180deg,transparent,var(--void) 55%);pointer-events:none;}
+  .hunt-bar.hidden,.hunt-bar.off{display:none !important;}
+  .hunt-bar-in{display:flex;gap:8px;max-width:640px;margin:0 auto;position:relative;pointer-events:auto;padding-bottom:12px;}
   .hunt-plus{flex:none;width:54px;height:54px;display:grid;place-items:center;cursor:pointer;touch-action:manipulation;
     background:var(--card);border:1px solid var(--border);border-radius:var(--radius-md);color:var(--text);box-shadow:var(--depth-1);}
   .hunt-plus[aria-expanded="true"]{border-color:var(--brass);color:var(--brass);}
@@ -3644,7 +3645,7 @@
     box-shadow:var(--glow-blue),inset 0 1px 0 rgba(255,255,255,.25);transition:transform var(--dur-snap) var(--ease-impact);}
   .hunt-begin:active{transform:scale(.98);}
   .hunt-begin.cleared{background:rgba(139,92,255,.2);border-color:rgba(139,92,255,.55);color:var(--text);box-shadow:var(--glow-violet);}
-  .hunt-menu{position:absolute;left:0;top:calc(100% + 8px);z-index:20;min-width:236px;padding:4px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-md);box-shadow:var(--depth-3);}
+  .hunt-menu{position:absolute;left:0;bottom:calc(100% - 4px);z-index:20;min-width:236px;padding:4px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-md);box-shadow:var(--depth-3);}
   .hunt-menu.hidden{display:none;}
   .hunt-menu button{display:flex;align-items:center;gap:12px;width:100%;min-height:48px;padding:0 12px;background:none;border:0;border-radius:var(--radius-sm);color:var(--text);font-family:var(--font-body);font-size:15px;font-weight:600;cursor:pointer;touch-action:manipulation;text-align:left;}
   .hunt-menu button + button{border-top:1px solid rgba(91,168,255,.08);}
@@ -3849,21 +3850,9 @@
       <!-- Quest feed first — the card IS the screen, Begin Hunt is the first thing in reach.
            Directive, objectives and the habit curve follow as context. -->
       <div id="hunt-top"></div>
+      <div class="hunt-days" id="hunt-days"></div>
       <div id="program-card-wrap" style="margin-top:var(--space-4);padding:0 var(--fluid-pad);"></div>
 
-      <!-- Begin Hunt sits directly under the Today card; + opens the three log actions (same ids and handlers as before) -->
-      <div class="hunt-bar" id="hunt-bar">
-        <div class="hunt-bar-in">
-          <button class="hunt-plus" id="hunt-plus-btn" aria-label="Log a session" aria-haspopup="true" aria-expanded="false"><svg width="22" height="22" viewBox="0 0 22 22" aria-hidden="true"><path d="M11 3v16M3 11h16" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg></button>
-          <button class="hunt-begin" id="hunt-begin-btn" data-mode="begin"></button>
-          <div class="hunt-menu hidden" id="hunt-menu" role="menu">
-            <button id="manual-log-btn" role="menuitem"><svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true"><rect x="3" y="3" width="14" height="14" rx="2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M10 6.5v7M6.5 10h7" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>Log a session</button>
-            <button id="log-run-btn" role="menuitem"><svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true"><path d="M2 14c3-1 4-4 6-6s4-1 6 1 3 3 4 3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><circle cx="12" cy="4" r="1.8" fill="currentColor"/></svg>Log a run</button>
-            <button id="past-log-btn" role="menuitem"><svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true"><path d="M4 10a6 6 0 1 0 2-4.5M4 3v3.5h3.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M10 6.5V10l2.5 1.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>Log a past session</button>
-          </div>
-        </div>
-      </div>
-      <div class="hunt-days" id="hunt-days"></div>
       <div id="hunt-next"></div>
       <div class="hunt-tiles" id="hunt-tiles"></div>
 
@@ -4163,6 +4152,20 @@
     </section>
 
   </main>
+
+  <!-- Begin Hunt is pinned above the bottom nav (thumb zone). Lives outside the view sections because the active view's
+       enter animation makes it a containing block for fixed children; switchView toggles .off.  + opens the three log actions (same ids and handlers as before) -->
+      <div class="hunt-bar" id="hunt-bar">
+        <div class="hunt-bar-in">
+          <button class="hunt-plus" id="hunt-plus-btn" aria-label="Log a session" aria-haspopup="true" aria-expanded="false"><svg width="22" height="22" viewBox="0 0 22 22" aria-hidden="true"><path d="M11 3v16M3 11h16" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg></button>
+          <button class="hunt-begin" id="hunt-begin-btn" data-mode="begin"></button>
+          <div class="hunt-menu hidden" id="hunt-menu" role="menu">
+            <button id="manual-log-btn" role="menuitem"><svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true"><rect x="3" y="3" width="14" height="14" rx="2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M10 6.5v7M6.5 10h7" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>Log a session</button>
+            <button id="log-run-btn" role="menuitem"><svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true"><path d="M2 14c3-1 4-4 6-6s4-1 6 1 3 3 4 3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><circle cx="12" cy="4" r="1.8" fill="currentColor"/></svg>Log a run</button>
+            <button id="past-log-btn" role="menuitem"><svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true"><path d="M4 10a6 6 0 1 0 2-4.5M4 3v3.5h3.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M10 6.5V10l2.5 1.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>Log a past session</button>
+          </div>
+        </div>
+      </div>
 
   <nav class="bottom-nav">
     <div class="nav-inner">
@@ -8166,6 +8169,7 @@ function switchView(name) {
   if (!viewEl) { console.warn('switchView: no element for view', name); return; }
   viewEl.classList.add('active');
   document.querySelectorAll('.bottom-nav button').forEach(b => b.classList.toggle('active', b.dataset.view === name));
+  document.getElementById('hunt-bar')?.classList.toggle('off', name !== 'quest');
 
   // World iframe stays loaded — section CSS handles visibility
   if (name === 'world') {
@@ -8639,6 +8643,8 @@ function syncHuntBar() {
   const bar = document.getElementById('hunt-bar');
   const btn = document.getElementById('hunt-begin-btn');
   if (!bar || !btn) return;
+  const nav = document.querySelector('nav.bottom-nav');
+  if (nav) document.documentElement.style.setProperty('--hunt-nav-h', nav.offsetHeight + 'px');
   const hasPlan = !!(myProgram && myProgram.days && myProgram.days.length);
   bar.classList.toggle('hidden', !!editingProgram);
   btn.classList.remove('cleared');
