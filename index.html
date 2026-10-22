@@ -3746,6 +3746,120 @@
     color:rgba(140,196,255,0.95);font-family:var(--font-mono);font-size:11px;letter-spacing:0.1em;text-transform:uppercase;cursor:pointer;touch-action:manipulation;}
   .rank-jump button.on{background:rgba(91,168,255,0.2);border-color:rgba(91,168,255,0.6);color:#fff;}
   #view-board [data-jump-target]{scroll-margin-top:56px;}
+
+  /* =========================================================================
+     RANK + CODEX — the shared System look (mockups tab-rank / tab-codex).
+     Layout and look only: every renderer, handler and id is unchanged.
+     ========================================================================= */
+  #view-board .rank-pane{display:none;}
+  #view-board .rank-pane.on{display:flex;flex-direction:column;gap:16px;}
+  #view-board .rank-pane > .ui-banner{margin-bottom:-6px;}
+  .rk-empty{display:none;margin:24px 0;text-align:center;font-size:14px;color:var(--text-faint);}
+  #view-board .rank-pane[data-pane="raid"]:has(#raid-boss-slot:empty) .rk-empty,
+  #view-board .rank-pane[data-pane="feed"]:not(:has(#guild-feed-slot:not(:empty),#progression-roadmap-slot:not(:empty))) .rk-empty{display:block;}
+  #view-board .rank-pane > div:empty{display:none;}
+
+  /* Hunter window */
+  #view-board .char-screen.ui-window{overflow:visible;border-radius:0;margin:0;background:var(--ui-window-bg);}
+  #view-board .char-screen-inner{padding:16px 14px 14px;}
+  #view-board .char-screen-bg{inset:1px;}
+  .rk-head{display:flex;align-items:center;gap:16px;margin-bottom:12px;}
+  #view-board #char-rank-badge{
+    width:54px !important;height:54px !important;flex:none;margin:8px;display:grid;place-items:center;
+    border:1.5px solid var(--rank,var(--ui-gold));background:rgba(10,13,24,.75);transform:rotate(45deg);
+    box-shadow:0 0 18px var(--rank,var(--ui-gold)),inset 0 0 12px rgba(255,214,107,.12);animation:none !important;
+  }
+  #view-board #char-rank-badge .char-rank-orb-ring{display:none;}
+  #view-board #char-rank-badge .char-rank-letter{transform:rotate(-45deg);font-size:26px !important;font-weight:800;text-shadow:none !important;line-height:1;}
+  .rk-head-main{flex:1;min-width:0;}
+  .rk-lv{font-family:var(--font-display);font-weight:800;font-size:22px;line-height:1.1;letter-spacing:.02em;white-space:nowrap;}
+  #view-board .rk-lv .hunter-level-number{font:inherit !important;color:inherit !important;text-shadow:none !important;letter-spacing:inherit;}
+  #view-board .rk-head .hunter-xp-bar-wrap{height:8px;margin:8px 0 4px;border-radius:0;background:rgba(91,168,255,.15);border:0;}
+  #view-board .rk-head .hunter-xp-bar{background:var(--ui-gold-grad);border-radius:0;}
+  .rk-xp{font-family:var(--font-mono);font-size:11px;letter-spacing:.12em;color:var(--text-faint);}
+  .rk-xp .hunter-xp-session{font-size:11px;}
+  .rk-identity{padding:10px 0 12px;border-top:1px solid rgba(91,168,255,.12);}
+  .rk-identity .char-name{font-size:20px !important;}
+  .rk-eyebrow{font-family:var(--font-mono);font-size:11px;letter-spacing:.2em;color:var(--text-faint);text-transform:uppercase;margin-bottom:6px;}
+  .rk-body-row{display:flex;gap:10px;align-items:stretch;}
+  .rk-body{flex:none;width:148px;}
+  .rk-body-stage{height:252px;padding:0;border-radius:0 !important;background:radial-gradient(60% 60% at 50% 50%,rgba(91,168,255,.22),transparent 75%) !important;}
+  .rk-body-stage .char-body-content{height:100%;align-items:center;}
+  .rk-body-stage .char-body-content .body-pair{max-width:none !important;width:100%;padding:0;gap:0;}
+  .rk-stats{flex:1;min-width:0;display:flex;flex-direction:column;}
+  .rk-stat{
+    flex:1;min-height:42px;display:grid;grid-template-columns:80px 1fr 14px;align-items:center;gap:8px;
+    background:none;border:0;border-top:1px solid rgba(91,168,255,.1);padding:0;cursor:pointer;touch-action:manipulation;
+    color:var(--text);font-family:var(--font-body);text-align:left;
+  }
+  .rk-stat:first-child{border-top:0;}
+  .rk-stat b{font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .rk-stat em{font-family:var(--font-mono);font-size:12px;font-style:normal;text-align:right;}
+  .rk-pips{display:flex;gap:2px;}
+  .rk-pips i{flex:1;height:8px;background:rgba(91,168,255,.15);display:block;}
+  .rk-pips i.on{background:var(--c);box-shadow:0 0 6px var(--c);}
+  .rk-stat:active{filter:brightness(1.3);}
+  .rk-tiles{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px;}
+  #view-board .rk-tiles .char-power-value{font:inherit !important;color:inherit;line-height:inherit;}
+  .rk-dominant{font-family:var(--font-mono);font-size:11px;letter-spacing:.1em;color:var(--text-dim);margin-top:10px;text-transform:uppercase;}
+  .rk-dominant:empty{display:none;}
+  #view-board #power-breakdown-panel{margin:12px 0 0;padding:12px 14px;background:rgba(91,168,255,.06);border:1px solid rgba(91,168,255,.28);}
+  .rk-note{font-size:12px;color:var(--text-faint);margin-top:8px;padding-top:8px;border-top:1px solid rgba(91,168,255,.12);}
+  #view-board #system-progression-hint{margin-top:14px;padding:10px 0;font-family:var(--font-mono);font-size:11px;letter-spacing:.08em;line-height:1.7;text-align:center;color:var(--text-faint);cursor:pointer;border-top:1px solid rgba(91,168,255,.12);}
+  #view-board #system-progression-hint span{color:var(--text-dim);}
+  #view-board #char-stats{margin-top:4px;padding-top:12px;border-top:1px solid rgba(91,168,255,.12);}
+  #view-board #char-rank-hint{margin:12px 0 0;}
+  #view-board .rk-gen{width:100%;margin-top:14px;align-items:center;justify-content:center;font-family:var(--font-mono);font-size:12px;letter-spacing:.14em;color:var(--brass);border-color:var(--ui-line);}
+  .rk-links{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:14px;padding-top:12px;border-top:1px solid rgba(91,168,255,.12);}
+  .rk-links button{min-height:44px;background:none;border:1px solid rgba(91,168,255,.25);color:var(--text-dim);font-family:var(--font-mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;cursor:pointer;touch-action:manipulation;}
+
+  /* Party: one window of rows, then the threat board */
+  #view-board .today-list{gap:0 !important;margin:0 !important;padding:2px 14px;position:relative;background:var(--ui-window-bg);border:1px solid var(--ui-line);box-shadow:var(--ui-window-glow);}
+  #view-board .today-row{border:0 !important;border-top:1px solid rgba(91,168,255,.12) !important;border-radius:0 !important;background:none !important;padding:10px 0 !important;min-height:56px;}
+  #view-board .today-row:first-child{border-top:0 !important;}
+  #board-body{display:flex;flex-direction:column;gap:12px;}
+  #board-body > .threat-card{margin:0 !important;border-radius:0 !important;background-image:var(--ui-window-bg) !important;clip-path:polygon(8px 0,100% 0,100% calc(100% - 8px),calc(100% - 8px) 100%,0 100%,0 8px);}
+  #board-body button{min-height:44px;}
+
+  /* Raid + Feed slots sit in System windows */
+  #view-board #guild-feed-slot:not(:empty){padding:14px 16px;background:var(--ui-window-bg);border:1px solid var(--ui-line);box-shadow:var(--ui-window-glow);position:relative;}
+
+  /* Codex (Progress, History, Feats, Items): one stack of System windows */
+  #trends-dashboard:not(.hidden){display:flex;flex-direction:column;gap:16px;}
+  #trends-widgets{display:contents;}
+  #trends-dashboard > div:empty{display:none;}
+  #trends-widgets > [data-cx="volume"]{order:1;}
+  #trends-widgets > [data-cx="body"]{order:2;}
+  #trends-dashboard > #pr-panel{order:3;}
+  #trends-widgets > [data-cx="recovery"]{order:4;}
+  #trends-dashboard > #strength-rankings{order:5;}
+  #trends-dashboard > #weekly-superlatives{order:6;}
+  #trends-dashboard > #party-dashboard{order:7;}
+  #trends-widgets > :not([data-cx="volume"]):not([data-cx="body"]):not([data-cx="recovery"]){order:10;}
+  #widget-muscle .body-pair{max-width:250px;margin-left:auto;margin-right:auto;}
+  #widget-muscle > .status-pill{display:none !important;} /* the legend row below the map carries the same count */
+  .cx-chips{display:flex;flex-wrap:wrap;gap:8px;}
+  .cx-chips .ui-chip{min-height:44px;padding:4px 14px;font-size:13px;border:1px solid currentColor;}
+  #view-history .history-seg{margin-bottom:16px;}
+  #pr-panel .pr-panel-header h3,#pr-panel .card-title h3{font-family:var(--font-mono);font-size:11px;letter-spacing:.24em;color:var(--brass);text-transform:uppercase;font-weight:400;}
+  #pr-panel .pr-name{white-space:normal;}
+
+  :is(#view-board,#view-trends,#view-history,#view-feats,#view-inventory) .card{
+    position:relative;margin:0 0 16px;border-radius:0;background:var(--ui-window-bg);
+    border:1px solid var(--ui-line);box-shadow:var(--ui-window-glow);
+  }
+  :is(#view-board,#view-trends,#view-history,#view-feats,#view-inventory) .card::before,
+  :is(#view-board,#view-trends,#view-history,#view-feats,#view-inventory) .card::after{
+    content:"";position:absolute;width:12px;height:12px;border:2px solid var(--brass);pointer-events:none;
+  }
+  :is(#view-board,#view-trends,#view-history,#view-feats,#view-inventory) .card::before{left:-3px;top:-3px;border-right:0;border-bottom:0;}
+  :is(#view-board,#view-trends,#view-history,#view-feats,#view-inventory) .card::after{right:-3px;bottom:-3px;border-left:0;border-top:0;}
+  :is(#view-trends,#view-history,#view-feats,#view-inventory) .card-title h3{font-size:11px;letter-spacing:.24em;color:var(--brass);}
+  #trends-dashboard .card{margin-bottom:0;}
+
+  /* 11px floor: small inline sizes inside these screens read at 11px */
+  :is(#view-board,#view-trends,#view-history,#view-feats,#view-inventory)
+    :is([style*="font-size:7px"],[style*="font-size:8px"],[style*="font-size:9px"],[style*="font-size:10px"]){font-size:11px !important;}
 </style>
 </head>
 <body>
@@ -3897,122 +4011,124 @@
 
     <!-- ---- RANK ---- -->
     <section class="view" id="view-board">
-      <nav class="rank-jump" id="rank-jump" aria-label="Jump to section">
-        <button type="button" data-jump="char-card" class="on">Hunter</button>
-        <button type="button" data-jump="rank-threats">Threats</button>
-        <button type="button" data-jump="rank-party">Party</button>
-        <button type="button" data-jump="raid-boss-slot">Raid</button>
-        <button type="button" data-jump="guild-feed-slot">Log</button>
-        <button type="button" data-jump="progression-roadmap-slot">Journey</button>
-      </nav>
+      <!-- RANK (mockup tab-rank): one screen, four switches. Hunter opens first. Nothing was removed:
+           Hunter = card, power breakdown, class and title, Hunter card generator; Party = party today
+           + threat board + gate duels; Raid = week boss; Feed = guild feed, monthly report, journey. -->
+      <div class="ui-screen-head" id="rank-head">
+        <h1 class="ui-title">Rank</h1>
+        <div class="ui-seg" id="rank-seg" role="tablist" aria-label="Rank sections">
+          <button type="button" class="ui-seg-btn on" role="tab" aria-selected="true" data-pane="hunter">Hunter</button>
+          <button type="button" class="ui-seg-btn" role="tab" aria-selected="false" data-pane="party">Party</button>
+          <button type="button" class="ui-seg-btn" role="tab" aria-selected="false" data-pane="raid">Raid</button>
+          <button type="button" class="ui-seg-btn" role="tab" aria-selected="false" data-pane="feed">Feed</button>
+        </div>
+      </div>
 
-      <!-- CHARACTER SCREEN — hero first -->
-      <div class="char-screen" id="char-card">
+      <!-- ── HUNTER ── -->
+      <div class="rank-pane on" data-pane="hunter">
+      <div class="char-screen ui-window gold" id="char-card">
         <div class="char-screen-bg" id="char-screen-bg"></div>
         <div class="char-screen-inner">
 
-          <!-- ── HUNTER STAGE — anatomy is the hero ── -->
-          <div class="char-stage-wrap">
-
-            <!-- Floating identity — left, above anatomy -->
-            <div class="char-stage-identity">
-              <div class="char-eyebrow">◈ SYSTEM ASSESSMENT</div>
-              <div class="char-name" id="char-name">—</div>
-              <div class="char-title" id="char-title">The System is watching</div>
+          <div class="rk-head">
+            <div class="char-rank-orb" id="char-rank-badge">
+              <div class="char-rank-orb-ring"></div>
+              <div class="char-rank-orb-ring r2"></div>
+              <span class="char-rank-letter">E</span>
             </div>
-
-            <!-- Rank + Power — right, floating -->
-            <div class="char-stage-stats">
-              <div class="char-rank-orb" id="char-rank-badge">
-                <div class="char-rank-orb-ring"></div>
-                <div class="char-rank-orb-ring r2"></div>
-                <span class="char-rank-letter">E</span>
-              </div>
-              <div class="char-power-col">
-                <div class="char-power-value" id="char-power-value" onclick="togglePowerBreakdown()" title="Tap for breakdown">0</div>
-                <div class="char-power-label">POWER</div>
-                <div id="char-dominant-stat"></div>
-                <div class="char-ap-row"><span class="char-ap-value" id="ap-amount">0</span><span class="char-ap-label">AP</span></div>
-              </div>
-            </div>
-
-            <!-- Anatomy body — the visual centrepiece -->
-            <div class="char-body-stage" id="char-body-stage">
-              <div class="char-body-atmosphere"></div>
-              <div class="char-body-content" id="char-body-content">
-                <!-- bodySvg injected by renderCharCard -->
-              </div>
-              <div class="char-body-ground"></div>
-            </div>
-
-          </div><!-- /char-stage-wrap -->
-
-          <!-- XP progress — below the stage -->
-          <div class="hunter-level-banner" id="hunter-level-banner">
-            <div class="hunter-level-left">
-              <div class="hunter-level-eyebrow">HUNTER LEVEL</div>
-              <div class="hunter-level-number" id="hunter-level-number">1</div>
-            </div>
-            <div class="hunter-level-xp-col">
-              <div class="hunter-level-xp-label">
-                <span id="hunter-xp-current">0</span>
-                <span style="color:var(--text-faint);margin:0 4px;">/</span>
-                <span id="hunter-xp-needed">50</span>
-                <span style="color:var(--text-faint);margin-left:4px;">XP</span>
-                <span id="hunter-xp-session" class="hunter-xp-session"></span>
-              </div>
+            <div class="rk-head-main">
+              <div class="rk-lv">LV <span class="hunter-level-number" id="hunter-level-number">1</span> &middot; <span id="rk-rank-txt">E</span>-RANK</div>
               <div class="hunter-xp-bar-wrap">
                 <div class="hunter-xp-bar" id="hunter-xp-bar" style="width:0%"></div>
                 <div class="hunter-xp-bar-glow" id="hunter-xp-bar-glow" style="width:0%"></div>
               </div>
+              <div class="rk-xp">
+                <span id="hunter-xp-current">0</span> / <span id="hunter-xp-needed">50</span> XP
+                <span id="hunter-xp-session" class="hunter-xp-session"></span>
+              </div>
             </div>
           </div>
 
-          <div id="power-breakdown-panel" style="display:none;background:rgba(91,168,255,.04);border:1px solid rgba(91,168,255,.08);border-radius:8px;padding:10px 14px;margin:0 0 10px;font-size:11px;">
-            <div style="font-family:var(--font-mono);font-size:8px;color:rgba(91,168,255,0.78);letter-spacing:.1em;margin-bottom:8px;">◈ POWER BREAKDOWN</div>
-            <div id="power-breakdown-rows"></div>
-            <div style="font-size:9px;color:rgba(91,168,255,0.78);margin-top:8px;border-top:1px solid rgba(91,168,255,.06);padding-top:6px;">Power = your stats converted to a numeric score. Train all stats to grow it.</div>
+          <!-- Identity: name, title, class badge and active effects are added under the title -->
+          <div class="char-stage-identity rk-identity">
+            <div class="char-eyebrow">&#9672; SYSTEM ASSESSMENT</div>
+            <div class="char-name" id="char-name">&mdash;</div>
+            <div class="char-title" id="char-title">The System is watching</div>
           </div>
 
-          <div class="char-divider"></div>
+          <!-- Muscle map (kept) beside the six stats -->
+          <div class="rk-body-row">
+            <div class="rk-body" id="char-body-stage">
+              <div class="rk-eyebrow">&#9672; YOUR BODY</div>
+              <div class="char-body-stage rk-body-stage">
+                <div class="char-body-atmosphere"></div>
+                <div class="char-body-content" id="char-body-content">
+                  <!-- bodySvg injected by renderCharCard -->
+                </div>
+              </div>
+            </div>
+            <div class="rk-stats" id="rk-stat-bars" aria-label="Six stats"></div>
+          </div>
+
+          <!-- Power (tap for the breakdown) and AP to invest -->
+          <div class="rk-tiles">
+            <button type="button" class="ui-tile gold" id="rk-power-tile" onclick="togglePowerBreakdown()" aria-label="Power. Tap for breakdown">
+              <span class="ui-tile-v"><span class="char-power-value" id="char-power-value">0</span></span>
+              <span class="ui-tile-s">POWER &middot; breakdown</span>
+            </button>
+            <button type="button" class="ui-tile violet" id="rk-ap-tile" aria-label="Aura Points. Tap to invest">
+              <span class="ui-tile-v"><span id="ap-amount">0</span> AP</span>
+              <span class="ui-tile-s">to invest</span>
+            </button>
+          </div>
+          <div class="rk-dominant" id="char-dominant-stat"></div>
+
+          <div id="power-breakdown-panel" style="display:none;">
+            <div class="rk-eyebrow">&#9672; POWER BREAKDOWN</div>
+            <div id="power-breakdown-rows"></div>
+            <div class="rk-note">Power = your stats converted to a numeric score. Train all stats to grow it.</div>
+          </div>
+
           <div id="calibration-observation-slot"></div>
-          <div id="system-progression-hint" style="font-family:var(--font-mono);font-size:9px;color:rgba(91,168,255,0.78);letter-spacing:0.08em;text-align:center;padding:8px 0;margin-bottom:12px;line-height:1.7;cursor:pointer;" title="Tap to learn more">
-            ◈ THE SYSTEM OBSERVES YOUR TRAINING ◈<br>
-            <span style="color:rgba(91,168,255,0.78);">Train → XP → Level Up → AP · Spend AP to raise stats</span>
+          <div id="system-progression-hint" title="Tap to learn more">
+            &#9672; THE SYSTEM OBSERVES YOUR TRAINING &#9672;<br>
+            <span>Train &rarr; XP &rarr; Level Up &rarr; AP &middot; Spend AP to raise stats</span>
           </div>
           <div class="char-stats" id="char-stats"></div>
           <p class="char-rank-hint" id="char-rank-hint"></p>
-          <button onclick="generateHunterCard()" style="width:100%;margin-top:14px;padding:11px;background:rgba(91,168,255,.04);border:1px solid rgba(91,168,255,.1);border-radius:var(--radius-md);color:rgba(91,168,255,0.78);font-family:var(--font-mono);font-size:11px;letter-spacing:.1em;cursor:pointer;touch-action:manipulation;">◈ GENERATE HUNTER CARD</button>
+          <button class="ui-tile rk-gen" onclick="generateHunterCard()">&#9672; GENERATE HUNTER CARD</button>
           <div id="hunter-card-output" style="display:none;margin-top:12px;"></div>
-          <!-- Secondary navigation — accessible from Rank screen -->
-          <div style="display:flex;gap:6px;margin-top:16px;padding-top:12px;border-top:1px solid rgba(91,168,255,0.06);">
-            <button onclick="switchView('exercises')" style="flex:1;padding:8px 4px;background:transparent;border:1px solid rgba(91,168,255,0.1);border-radius:var(--radius-sm);color:rgba(91,168,255,0.78);font-family:var(--font-mono);font-size:10px;letter-spacing:.08em;cursor:pointer;">Arsenal</button>
-            <button onclick="switchView('history')" style="flex:1;padding:8px 4px;background:transparent;border:1px solid rgba(91,168,255,0.1);border-radius:var(--radius-sm);color:rgba(91,168,255,0.78);font-family:var(--font-mono);font-size:10px;letter-spacing:.08em;cursor:pointer;">Shadow Log</button>
-            <button onclick="switchView('feats')" style="flex:1;padding:8px 4px;background:transparent;border:1px solid rgba(91,168,255,0.1);border-radius:var(--radius-sm);color:rgba(91,168,255,0.78);font-family:var(--font-mono);font-size:10px;letter-spacing:.08em;cursor:pointer;">Gates</button>
+          <!-- Secondary navigation: still reachable from the Rank screen -->
+          <div class="rk-links">
+            <button type="button" onclick="switchView('exercises')">Arsenal</button>
+            <button type="button" onclick="switchView('history')">Shadow Log</button>
+            <button type="button" onclick="switchView('feats')">Gates</button>
           </div>
         </div>
       </div>
+      </div><!-- /hunter pane -->
 
+      <!-- ── PARTY ── -->
+      <div class="rank-pane" data-pane="party">
+        <div class="ui-banner" id="rank-party">&#9672; Party today</div>
+        <div class="today-list" id="today-list"></div>
+        <div id="today-debrief-card-slot"></div>
+        <div class="ui-banner" id="rank-threats">&#9672; Threat board</div>
+        <div id="board-body"></div>
+      </div>
 
+      <!-- ── RAID ── -->
+      <div class="rank-pane" data-pane="raid">
+        <div id="raid-boss-slot"></div>
+        <p class="rk-empty">No raid boss to show yet.</p>
+      </div>
 
-
-      <!-- ◈ THREAT ASSESSMENT -->
-      <div class="sl-section-head" id="rank-threats">◈ THREAT ASSESSMENT</div>
-      <div id="board-body"></div>
-
-      <!-- ◈ PARTY STATUS -->
-      <div class="sl-section-head" id="rank-party">◈ PARTY STATUS</div>
-      <div class="today-list" id="today-list"></div>
-      <div id="today-debrief-card-slot"></div>
-
-      <!-- WEEKLY RAID BOSS -->
-      <div id="raid-boss-slot"></div>
-
-      <!-- GUILD FEED -->
-      <div id="guild-feed-slot"></div>
-
-      <!-- PROGRESSION ROADMAP -->
-      <div id="progression-roadmap-slot"></div>
+      <!-- ── FEED ── -->
+      <div class="rank-pane" data-pane="feed">
+        <div id="guild-feed-slot"></div>
+        <div id="progression-roadmap-slot"></div>
+        <p class="rk-empty">Nothing in the feed yet.</p>
+      </div>
 
       <!-- Hunter profile modal -->
       <div class="hunter-modal hidden" id="hunter-modal">
@@ -4022,8 +4138,9 @@
 
     <!-- ---- TRENDS ---- -->
     <section class="view" id="view-trends">
+      <!-- CODEX heads (title + Progress / History / Feats / Items switch) are built by buildCodexHeads(). -->
+      <div class="ui-screen-head codex-head" data-codex="trends"></div>
       <div id="trends-dashboard">
-        <div style="font-family:var(--font-mono);font-size:8px;color:rgba(91,168,255,0.78);letter-spacing:.25em;margin-bottom:4px;">◈ SYSTEM CODEX</div><h2 style="margin:0 0 2px;font-size:22px;">Your Body</h2><p class="sub" style="margin-bottom:16px;">What the System has analysed.</p>
         <!-- Body/muscle analysis FIRST — anatomy is the hero -->
         <div id="trends-widgets"></div>
         <!-- PR Records — supporting content below -->
@@ -4068,13 +4185,12 @@
 
     <!-- ---- HISTORY ---- -->
     <section class="view" id="view-history">
-      
-      <div style="font-family:var(--font-mono);font-size:9px;color:rgba(91,168,255,0.78);letter-spacing:.2em;padding:12px var(--fluid-pad) 4px;">◈ SYSTEM LOG</div>
+      <div class="ui-screen-head codex-head" data-codex="history"></div>
 
       <!-- Tab toggle: Calendar / System Feed -->
-      <div style="display:flex;gap:6px;margin-bottom:12px;">
-        <button id="history-tab-cal" class="btn btn-sm" style="flex:1;font-family:var(--font-mono);font-size:11px;" onclick="switchHistoryTab('cal')">📅 Calendar</button>
-        <button id="history-tab-feed" class="btn btn-sm" style="flex:1;font-family:var(--font-mono);font-size:11px;opacity:.5;" onclick="switchHistoryTab('feed')">◈ System Feed</button>
+      <div class="ui-seg history-seg">
+        <button id="history-tab-cal" class="ui-seg-btn on" onclick="switchHistoryTab('cal')">📅 Calendar</button>
+        <button id="history-tab-feed" class="ui-seg-btn" style="opacity:.5;" onclick="switchHistoryTab('feed')">◈ System Feed</button>
       </div>
 
       <div id="history-cal-view">
@@ -4097,6 +4213,7 @@
 
     <!-- ---- GATES ---- -->
     <section class="view" id="view-feats">
+      <div class="ui-screen-head codex-head" data-codex="feats"></div>
       <!-- System Gate Trial -->
       <div id="trial-card-slot"></div>
       <div id="feats-content"></div>
@@ -4104,6 +4221,7 @@
 
     <!-- ---- INVENTORY ---- -->
     <section class="view" id="view-inventory">
+      <div class="ui-screen-head codex-head" data-codex="inventory"></div>
       <div id="inventory-content"></div>
     </section>
 
@@ -8095,6 +8213,44 @@ function closeLayersOnNavigate() {
     if (editingProgram && peSnap !== undefined && JSON.stringify(myProgram) === peSnap) { editingProgram = false; peSnap = undefined; }
   } catch (e) { /* presentation only - never block navigation */ }
 }
+/* ── RANK + CODEX switches (presentation only) ─────────────────────────────
+   Rank holds four panes behind a segmented switch; Codex is four existing
+   views (Progress = trends, History, Feats, Items = inventory) that share one
+   head. Every pane keeps its renderers and handlers; the switch only shows,
+   hides and navigates. History, Feats and Items still highlight Codex in the
+   bottom nav. */
+const CODEX_VIEWS = ['trends', 'history', 'feats', 'inventory'];
+function codexNavTab(name) { return CODEX_VIEWS.includes(name) ? 'trends' : name; }
+function setRankPane(pane, scroll) {
+  const view = document.getElementById('view-board');
+  if (!view) return;
+  if (!view.querySelector(`.rank-pane[data-pane="${pane}"]`)) pane = 'hunter';
+  view.querySelectorAll('.rank-pane').forEach(el => el.classList.toggle('on', el.dataset.pane === pane));
+  view.querySelectorAll('#rank-seg .ui-seg-btn').forEach(b => {
+    const on = b.dataset.pane === pane;
+    b.classList.toggle('on', on);
+    b.setAttribute('aria-selected', on ? 'true' : 'false');
+  });
+  if (scroll) { const area = document.querySelector('main.view-area'); if (area) area.scrollTop = 0; }
+}
+window.setRankPane = setRankPane;
+(() => {
+  document.getElementById('rank-seg')?.addEventListener('click', e => {
+    const b = e.target.closest('.ui-seg-btn[data-pane]'); if (b) setRankPane(b.dataset.pane, true);
+  });
+  const TABS = [['trends', 'Progress'], ['history', 'History'], ['feats', 'Feats'], ['inventory', 'Items']];
+  document.querySelectorAll('.codex-head[data-codex]').forEach(head => {
+    const cur = head.dataset.codex;
+    head.innerHTML = `<h1 class="ui-title">Codex</h1>
+      <div class="ui-seg" role="tablist" aria-label="Codex sections">${TABS.map(([v, label]) =>
+        `<button type="button" class="ui-seg-btn${v === cur ? ' on' : ''}" role="tab" aria-selected="${v === cur}" data-codex-go="${v}">${label}</button>`).join('')}</div>`;
+    head.addEventListener('click', e => {
+      const b = e.target.closest('[data-codex-go]'); if (!b || b.dataset.codexGo === cur) return;
+      switchView(b.dataset.codexGo);
+    });
+  });
+})();
+
 function switchView(name) {
   closeLayersOnNavigate();
   // Phase 4: tell the 3D runtime which view is showing. Observation only.
@@ -8130,7 +8286,7 @@ function switchView(name) {
   const viewEl = document.getElementById('view-' + name);
   if (!viewEl) { console.warn('switchView: no element for view', name); return; }
   viewEl.classList.add('active');
-  document.querySelectorAll('.bottom-nav button').forEach(b => b.classList.toggle('active', b.dataset.view === name));
+  document.querySelectorAll('.bottom-nav button').forEach(b => b.classList.toggle('active', b.dataset.view === codexNavTab(name)));
   document.getElementById('hunt-bar')?.classList.toggle('off', name !== 'quest');
 
   // World iframe stays loaded — section CSS handles visibility
@@ -8150,6 +8306,7 @@ function switchView(name) {
   if (_amb) _amb.style.opacity = ['world','trends'].includes(name) ? '0.3' : '0.6';
 
   if (name === 'board') {
+    setRankPane('hunter', true);
     renderBoard();
     renderCharCard();
     renderTodayCard();
@@ -14160,6 +14317,24 @@ function buildGateHtml(statId, gates, ap) {
   return html;
 }
 
+/** The six stats beside the muscle map: one pip per rank (E..S) lit up to the current rank. Tap opens the existing invest panel. */
+function renderRankStatBars() {
+  const host = document.getElementById('rk-stat-bars');
+  if (!host) return;
+  const stats = profile.stats || defaultStats();
+  const COL = { strength: '#5BA8FF', endurance: '#2FB8C6', agility: '#6FFFB0', focus: '#A17FFF', flexibility: '#FFD66B', defence: '#FF6B35' };
+  const order = ['strength', 'endurance', 'agility', 'focus', 'flexibility', 'defence'];
+  const defs = order.map(id => STAT_DEFS.find(d => d.id === id)).filter(Boolean);
+  host.innerHTML = defs.map(def => {
+    const rank = stats[def.id] || 'E';
+    const idx = RANK_TIERS.indexOf(rank);
+    const pips = RANK_TIERS.map((_, i) => `<i${i <= idx ? ' class="on"' : ''}></i>`).join('');
+    return `<button type="button" class="rk-stat" data-stat="${def.id}" style="--c:${COL[def.id] || 'var(--brass)'}" aria-label="${def.label} rank ${rank}. Tap to invest AP"><b>${def.label}</b><span class="rk-pips">${pips}</span><em style="color:${RANK_COLORS[rank] || 'var(--text-faint)'}">${rank}</em></button>`;
+  }).join('');
+  host.querySelectorAll('.rk-stat[data-stat]').forEach(b => b.addEventListener('click', () => openStatInvestPanel(b.dataset.stat)));
+  document.getElementById('rk-ap-tile')?.addEventListener('click', openApInvestPicker, { once: false });
+}
+
 function renderCharCard() {
   const stats = profile.stats || defaultStats();
   const ap = profile.auraPoints || 0;
@@ -14378,6 +14553,9 @@ function renderCharCard() {
   // rank orb
   const badge = document.getElementById('char-rank-badge');
   badge.className = `char-rank-orb ${rankClass}`;
+  badge.style.setProperty('--rank', RANK_COLORS[charRank]);
+  const rankTxt = document.getElementById('rk-rank-txt');
+  if (rankTxt) rankTxt.textContent = charRank;
   const letter = badge.querySelector('.char-rank-letter') || badge;
   letter.textContent = charRank;
   letter.style.color = RANK_COLORS[charRank];
@@ -14624,6 +14802,7 @@ function renderCharCard() {
 
   // system progression hint — tap to open explanation
   document.getElementById('system-progression-hint')?.addEventListener('click', showProgressionHint);
+  try { renderRankStatBars(); } catch (e) { console.warn('Rank stat bars failed:', e); }
 
   // hint — show what the current overall rank means in real-world terms
   const hint = document.getElementById('char-rank-hint');
@@ -19626,6 +19805,26 @@ function auraOverTimeCard() {
     </div>`;
 }
 
+/** Muscle recovery chips for Codex, read from the soreness model's own recovery fraction (the same one the muscle map uses). */
+function codexRecoveryCard(stats) {
+  const rows = Object.entries(stats || {}).filter(([, s]) => s && typeof s.recoveryFraction === 'number');
+  const sore = rows.filter(([, s]) => s.recoveryFraction < 0.3).sort((a, b) => a[1].recoveryFraction - b[1].recoveryFraction);
+  const mid = rows.filter(([, s]) => s.recoveryFraction >= 0.3 && s.recoveryFraction < 1).sort((a, b) => a[1].recoveryFraction - b[1].recoveryFraction);
+  const ready = rows.length - sore.length - mid.length;
+  const chip = (m, s, cls) => `<button type="button" class="ui-chip ${cls}" data-recovery-muscle="${escapeHtml(m)}">${escapeHtml(m)}${s.daysSince < 99 ? ` ${s.daysSince}d` : ''}</button>`;
+  const shown = [...sore.map(r => [...r, 'red']), ...mid.map(r => [...r, 'gold'])];
+  const extra = Math.max(0, shown.length - 6);
+  return `<div class="card" data-cx="recovery" id="codex-recovery">
+    <div class="card-title"><h3>◈ Muscle recovery</h3></div>
+    <div class="cx-chips">
+      <span class="ui-chip green"><i></i>${ready} ready</span>
+      ${shown.slice(0, 6).map(([m, s, cls]) => chip(m, s, cls)).join('')}
+      ${extra ? `<button type="button" class="ui-chip dim" id="codex-recovery-more">+${extra} more</button>` : ''}
+    </div>
+    <p class="sub" style="margin:10px 0 0;">Red is still sore, gold is recovering; the number is days since you last trained it.</p>
+  </div>`;
+}
+
 function renderTrends() {
   document.getElementById('trends-dashboard').classList.toggle('hidden', trendsView !== 'dashboard');
   document.getElementById('trends-muscle-detail').classList.toggle('hidden', trendsView !== 'muscle-detail');
@@ -19709,14 +19908,17 @@ function renderTrends() {
   const modeHour = hourCounts.indexOf(Math.max(...hourCounts));
 
   document.getElementById('trends-widgets').innerHTML = `
-    <div class="card widget" id="widget-muscle">
+    <div class="card widget" id="widget-muscle" data-cx="body">
       <div class="card-title"><h3>◈ Muscle Activation <span class="chev">›</span></h3></div>
       <div class="status-pill" style="border-color:${STATUS_COLOR[topStatus[0]]};color:${STATUS_TEXT_COLOR[topStatus[0]]||STATUS_COLOR[topStatus[0]]};display:inline-flex;margin-bottom:8px;">${topStatus[0]} ${topStatus[1]}</div>
       <div class="body-pair">${bodySvg('front', stats)}${bodySvg('back', stats)}</div>
+      ${statusCountRow(stats)}
       ${physiqueNote()}
     </div>
 
-    ${auraOverTimeCard()}
+    ${codexRecoveryCard(stats)}
+
+    <div data-cx="aura">${auraOverTimeCard()}</div>
 
     <div class="card">
       <div class="card-title"><h3>⚡ Streaks</h3></div>
@@ -19738,7 +19940,7 @@ function renderTrends() {
       <div class="consistency-grid">${gridCols.map(col => col.map(on => `<div class="consistency-cell ${on?'on':''}"></div>`).join('')).join('')}</div>
     </div>
 
-    <div class="card">
+    <div class="card" data-cx="volume">
       <div class="card-title"><h3>▲ Volume</h3></div>
       <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:2px;">
         <span class="bignum" style="font-size:20px;">${thisWeekVol.toLocaleString()} <small>vol</small></span>
@@ -19877,14 +20079,20 @@ function renderTrends() {
     </div>
   `;
   document.getElementById('widget-muscle')?.addEventListener('click', () => { trendsView = 'muscle-detail'; renderTrends(); });
+  document.getElementById('codex-recovery-more')?.addEventListener('click', () => { trendsView = 'muscle-detail'; renderTrends(); });
+  document.querySelectorAll('#codex-recovery [data-recovery-muscle]').forEach(b =>
+    b.addEventListener('click', () => openMusclePRPanel(b.dataset.recoveryMuscle)));
 
   // Animate bignum count-up — skip elements with fraction format (e.g. "3 / 7")
   document.querySelectorAll('#trends-widgets .bignum').forEach(el => {
     const text = el.textContent.trim();
     if (text.includes('/')) return; // skip fraction displays
-    const num = parseFloat(text.replace(/[^0-9.]/g, ''));
+    // The number and its unit come from the element's own text: the <small> unit is re-appended below,
+    // and a thousands comma is not a suffix (it used to render "18,426 , volvol").
+    const ownText = [...el.childNodes].filter(n => n.nodeType === 3).map(n => n.textContent).join('').trim() || text;
+    const num = parseFloat(ownText.replace(/[^0-9.]/g, ''));
     if (!isNaN(num) && num > 0) {
-      const suffix = text.replace(/[0-9.]/g, '').trim();
+      const suffix = ownText.replace(/[0-9.,]/g, '').trim();
       const small = el.querySelector('small');
       const smallText = small ? small.outerHTML : '';
       let start = 0;
@@ -23560,6 +23768,8 @@ function switchHistoryTab(tab) {
   document.getElementById('history-feed-view').style.display = tab === 'feed' ? '' : 'none';
   document.getElementById('history-tab-cal').style.opacity = tab === 'cal' ? '1' : '.5';
   document.getElementById('history-tab-feed').style.opacity = tab === 'feed' ? '1' : '.5';
+  document.getElementById('history-tab-cal').classList.toggle('on', tab === 'cal');
+  document.getElementById('history-tab-feed').classList.toggle('on', tab === 'feed');
   if (tab === 'feed') renderSystemFeed();
 }
 window.switchHistoryTab = switchHistoryTab;
