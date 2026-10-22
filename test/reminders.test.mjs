@@ -87,9 +87,10 @@ for (const t of ['planned', 'evening']) {
 }
 
 // ── the Cloud Function carries copies of the pure modules; they must not drift
-const norm = (s) => s.replace("'./streak.mjs'", "'./streak.js'");
-check('functions/lib/reminders.mjs matches reminders.js', norm(fs.readFileSync(new URL('../functions/lib/reminders.mjs', import.meta.url), 'utf8')), fs.readFileSync(new URL('../reminders.js', import.meta.url), 'utf8'));
-check('functions/lib/streak.mjs matches streak.js', fs.readFileSync(new URL('../functions/lib/streak.mjs', import.meta.url), 'utf8'), fs.readFileSync(new URL('../streak.js', import.meta.url), 'utf8'));
+const lf = (s) => s.replace(/\r\n/g, '\n');
+const norm = (s) => lf(s).replace("'./streak.mjs'", "'./streak.js'");
+check('functions/lib/reminders.mjs matches reminders.js', norm(fs.readFileSync(new URL('../functions/lib/reminders.mjs', import.meta.url), 'utf8')), lf(fs.readFileSync(new URL('../reminders.js', import.meta.url), 'utf8')));
+check('functions/lib/streak.mjs matches streak.js', lf(fs.readFileSync(new URL('../functions/lib/streak.mjs', import.meta.url), 'utf8')), lf(fs.readFileSync(new URL('../streak.js', import.meta.url), 'utf8')));
 
 console.log(out.join('\n'));
 console.log(`\n${pass} passed, ${fail} failed`);
