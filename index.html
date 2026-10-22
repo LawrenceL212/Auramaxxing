@@ -2002,6 +2002,9 @@
   .pe-fact{flex:1 1 90px;background:rgba(0,0,0,0.25);border:1px solid rgba(91,168,255,0.12);border-radius:10px;padding:7px 9px;display:flex;flex-direction:column;}
   .pe-fact span{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--text-faint);}
   .pe-fact b{font-size:13px;}
+  .party-rival{font-size:11.5px;color:var(--text-dim);margin:2px 0 6px;}
+  .party-rival.hidden{display:none;}
+  .party-rival.me{color:var(--growing);}
   .pe-rival{font-size:12px;margin-bottom:10px;padding:7px 10px;border-radius:8px;background:rgba(231,178,74,0.08);border:1px solid rgba(231,178,74,0.25);color:var(--text);}
   .pe-rival.me{background:rgba(79,209,161,0.08);border-color:rgba(79,209,161,0.3);}
   .pe-bigspark{margin-bottom:10px;display:flex;flex-direction:column;gap:2px;}
@@ -10377,6 +10380,7 @@ function addExerciseRow(presetName, targetSets, targetReps, prefillSets) {
       <button type="button" class="remove-x">×</button>
     </div>
     <div class="muscle-tags"></div>
+    <div class="party-rival hidden"></div>
     <div class="load-choice hidden"><span>Load</span><select class="load-select" aria-label="Load type"></select><select class="band-select hidden" aria-label="Band strength">${BAND_LEVELS.map(b => `<option value="${b}">${bandLabel(b)}</option>`).join('')}</select></div>
     <div class="set-table-head hidden" id="set-table-head-${Date.now()}"><span>#</span><span class="reps-header">Reps</span><span class="weight-header">Weight (kg)</span><span></span></div>
     <div class="sets-list"></div>
@@ -10816,6 +10820,15 @@ function addExerciseRow(presetName, targetSets, targetReps, prefillSets) {
     const def = EXERCISES_ALL[row.dataset.exName] || {};
     const map = def.muscles || {};
     tagsEl.innerHTML = Object.keys(map).map(m => `<span class="tag">${m}</span>`).join('');
+    // Who in the party leads you on this lift (their PRs load once, in the background).
+    const rivalEl = row.querySelector('.party-rival');
+    if (rivalEl) {
+      if (!partyPRsAsked && allUsers.length > 1) { partyPRsAsked = true; loadAllUserPRs().then(refreshTags).catch(() => {}); }
+      const rival = row.dataset.exName ? liftRival(row.dataset.exName, myPRs || {}, allUsers.filter(u => u.uid !== currentUser?.uid).map(u => [u.displayName || 'Hunter', allUserPRs[u.uid] || {}])) : null;
+      rivalEl.classList.toggle('hidden', !rival);
+      rivalEl.className = 'party-rival' + (rival ? ' ' + rival.lead : ' hidden');
+      rivalEl.textContent = rival ? (rival.lead === 'them' ? '⚔ ' : '🏆 ') + rival.text : '';
+    }
     const head = row.querySelector('.set-table-head');
     if (head) {
       const [first, second] = setInputHeaders(currentKind());
