@@ -119,6 +119,11 @@ Lazy-loaded: [classes.js](classes.js) via `await import('./classes.js')` in the 
 
 [countries_embedded.js](countries_embedded.js) (1.4 MB `COUNTRIES_GEO`) is imported **only** by [shadow-world.html](shadow-world.html), never by `index.html`.
 
+Arsenal (`view-exercises`) and World (`view-world`) wear the same look. World is a portrait page with an
+Army / Dungeons / Raids switch (`setWorldPane`, `renderWorldDungeons`, `renderWorldRaids` in `index.html`); the
+Shadow World iframe and its message handlers are untouched, and "Full map" restores the old fullscreen map.
+Presentation only; the map in `nothing-lost-map.md` lists where each old part went.
+
 ### Rendering model
 
 Hand-rolled, no framework. `switchView(name)` (`index.html`) toggles `.active` on `section.view#view-<name>` and syncs `.bottom-nav`. Screens are ~30 `renderX()` functions that build HTML strings and assign `innerHTML`, re-rendering wholesale rather than diffing.
