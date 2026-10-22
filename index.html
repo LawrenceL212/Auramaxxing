@@ -4093,6 +4093,10 @@
     </div>
   </div>
   <p id="workout-date-hint" class="hidden" style="margin:-8px 0 14px;font-family:var(--font-mono);font-size:10px;letter-spacing:.04em;color:var(--brass);"></p>
+  <div class="field hidden" id="workout-planday-field" style="margin:0 0 14px;">
+    <label for="workout-planday">Plan day</label>
+    <select id="workout-planday"></select>
+  </div>
   <div id="exercise-rows"></div>
   <button class="btn add-exercise-btn" id="add-exercise-btn" style="font-family:var(--font-mono);letter-spacing:.06em;">+ Add Exercise</button>
   <div class="save-bar">
@@ -4152,6 +4156,7 @@ import { getAutoAchievements } from "./auto-achievements.js";
 import { computeStreakFrom, STREAK_RULES_START, shiftDay } from "./streak.js";
 import { newestApEvents, isMissingIndexError, LEDGER_LIMIT } from "./ap-ledger.js";
 import { backfillDateProblem, earliestBackfillDate, isDuplicateSession, laterDate } from "./backfill.js";
+import { defaultPlanDay, planDayOptions, shouldAdvanceRotation } from "./plan-day.js";
 import { setInputKind, setInputHeaders, storedSet, storedSetSecs, partsToSecs, secsToParts,
          formatSetTime, isTimeKind, LOAD_TYPES, loadLabel, offersLoadChoice, defaultLoad,
          setLoad, loggedLoad, withLoad, BAND_LEVELS, DEFAULT_BAND, bandLabel, loggedBand,
@@ -9048,6 +9053,42 @@ function startProgramDay(idx) {
    BACKFILL_MAX_DAYS days, and the logger says so when the date is not today.
    The save paths re-check with backfillDateProblem(), since a typed or linked
    date can get past the picker's limits. */
+/* Plan day picker for a past session. Shown only for a valid past date when the
+   Hunter has a programme, so the session can be tagged to the day it was
+   (the existing programDayIndex field) instead of landing as an extra. */
+let planPickDate = null;   // date the picker was last defaulted for; null while hidden
+let planPickIdx = null;    // chosen plan day, null = extra session
+function refreshPlanDayPicker() {
+  const wrap = document.getElementById('workout-planday-field');
+  const sel = document.getElementById('workout-planday');
+  if (!wrap || !sel) return;
+  const today = todayStr();
+  const date = document.getElementById('workout-date')?.value;
+  const show = !!(date && date < today && !backfillDateProblem(date, today) &&
+    currentUser && myProgram?.days?.length);
+  wrap.classList.toggle('hidden', !show);
+  if (!show) { planPickDate = null; return; }
+  if (planPickDate === date) return;
+  const first = planPickDate === null;
+  planPickDate = date;
+  const ctx = { program: myProgram, date, today, workouts: myWorkouts, uid: currentUser.uid };
+  planPickIdx = (first && activeDayIndex !== null && activeDayIndex < myProgram.days.length)
+    ? activeDayIndex : defaultPlanDay(ctx);
+  const opts = planDayOptions(ctx);
+  sel.innerHTML = '<option value="">No plan day (extra session)</option>' + opts.map(o =>
+    `<option value="${o.index}">${escapeHtml(o.name)}${o.assignedDays.length ? ' · ' + o.assignedDays.join(', ') : ''}${o.done ? ' · done this week' : ''}</option>`).join('');
+  sel.value = planPickIdx === null ? '' : String(planPickIdx);
+}
+document.getElementById('workout-planday')?.addEventListener('change', e => {
+  planPickIdx = e.target.value === '' ? null : Number(e.target.value);
+});
+/* The plan day this save belongs to: the picker's choice for a past session,
+   otherwise the day the hunt was started from. */
+function planDayForSave() {
+  const wrap = document.getElementById('workout-planday-field');
+  if (wrap && !wrap.classList.contains('hidden')) return planPickIdx;
+  return activeDayIndex ?? null;
+}
 function syncWorkoutDateLimits() {
   const today = todayStr();
   ['workout-date', 'run-date'].forEach(id => {
@@ -9057,6 +9098,7 @@ function syncWorkoutDateLimits() {
     el.min = earliestBackfillDate(today);
   });
   const date = document.getElementById('workout-date')?.value;
+  refreshPlanDayPicker();
   const hint = document.getElementById('workout-date-hint');
   if (!hint) return;
   const problem = date ? backfillDateProblem(date, today) : null;
@@ -10856,6 +10898,7 @@ document.getElementById('save-workout-btn')?.addEventListener('click', async () 
     return;
   }
 
+  const savedDayIdx = planDayForSave();
   const btn = document.getElementById('save-workout-btn');
   btn.disabled = true; btn.textContent = 'Saving…';
   let savedWorkoutRef = null;
@@ -10882,25 +10925,29 @@ document.getElementById('save-workout-btn')?.addEventListener('click', async () 
        but a later step did not". */
     savedWorkoutRef = await addDoc(collection(db, 'workouts'), {
       uid: currentUser.uid, displayName: profile.displayName, date, time, exercises,
-      programDayIndex: activeDayIndex ?? null, createdAt: serverTimestamp(),
+      programDayIndex: savedDayIdx, createdAt: serverTimestamp(),
       ...(runSummaryFromLogger ? { isRun: true, runSummary: runSummaryFromLogger } : {}),
     });
     // A past session must not move lastWorkoutDate (or a day's lastDate) backwards.
+    const prevLastWorkoutDate = profile.lastWorkoutDate;
     const lastWorkoutDate = laterDate(profile.lastWorkoutDate, date);
     await writeUserFields({ lastWorkoutDate });
     profile.lastWorkoutDate = lastWorkoutDate;
-    if (activeDayIndex !== null && myProgram) {
-      myProgram.days[activeDayIndex].lastDate = laterDate(myProgram.days[activeDayIndex].lastDate, date);
-      // only advance rotation in rotation mode — fixed mode doesn't use currentDayIndex
-      if (myProgram.scheduleMode !== 'fixed') {
-        myProgram.currentDayIndex = (activeDayIndex + 1) % myProgram.days.length;
+    if (savedDayIdx !== null && myProgram?.days?.[savedDayIdx]) {
+      myProgram.days[savedDayIdx].lastDate = laterDate(myProgram.days[savedDayIdx].lastDate, date);
+      /* Rotation mode only; fixed mode doesn't use currentDayIndex. A live save
+         always advances. A past session advances it only when it is the day the
+         rotation is waiting on and nothing newer is logged (see plan-day.js);
+         otherwise it is just tagged to its day. */
+      if (shouldAdvanceRotation({ program: myProgram, idx: savedDayIdx, date, today: todayStr(), lastWorkoutDate: prevLastWorkoutDate })) {
+        myProgram.currentDayIndex = (savedDayIdx + 1) % myProgram.days.length;
       }
       questCarouselIndex = myProgram.currentDayIndex;
       await setDoc(doc(db, 'programs', currentUser.uid), myProgram);
-      activeDayIndex = null;
       document.getElementById('logger-title').textContent = 'HUNT ACTIVE';
-  document.getElementById('logger-exercise-hero')?.removeAttribute('data-exercise');
+      document.getElementById('logger-exercise-hero')?.removeAttribute('data-exercise');
     }
+    activeDayIndex = null;
     document.getElementById('save-msg').classList.remove('hidden');
     setTimeout(() => document.getElementById('save-msg').classList.add('hidden'), 2500);
     exerciseRows.innerHTML = '';
@@ -10991,7 +11038,7 @@ document.getElementById('save-workout-btn')?.addEventListener('click', async () 
       console.error('Workout save failed, holding it locally:', err);
       const held = holdUnsentWorkout({
         uid: currentUser.uid, displayName: profile.displayName, date, time, exercises,
-        programDayIndex: activeDayIndex ?? null,
+        programDayIndex: savedDayIdx,
         ...(runSummaryFromLogger ? { isRun: true, runSummary: runSummaryFromLogger } : {}),
       }, err);
       showToast(held
