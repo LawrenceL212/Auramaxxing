@@ -2,7 +2,7 @@
    No dependencies and no runner, in the style of test/hunt-view.test.mjs. */
 
 import {
-  muscleGroupOf, sessionMuscleArt, rewardTiles, investableAp, nextAfterHunt, tabDots, DOT_TABS,
+  muscleGroupOf, sessionMuscleArt, rewardTiles, investableAp, nextAfterHunt, tabDots, DOT_TABS, tabDotBanner,
 } from '../flow-view.js';
 import { UI_ART_NAMES } from '../ui-art.js';
 import { BASE_EXERCISES } from '../exercises.js';
@@ -80,6 +80,16 @@ check('World dot with undeployed soldiers', tabDots({ pool: { iron: 0, swift: 4 
 check('no World dot with an empty pool', tabDots({ pool: { iron: 0 } }).world, false);
 check('negative pool is not a dot', tabDots({ pool: { iron: -3 } }).world, false);
 check('keys match the five tabs', Object.keys(tabDots({})), DOT_TABS);
+
+// ── dot banner: says why, and agrees with the dot
+check('board banner names the AP', tabDotBanner('board', { ap: 120, stats: [{ maxInvestable: 500 }] }), { view: 'board', kind: 'ap', text: '120 AP to invest', action: 'Invest' });
+check('board banner limited by the cap', tabDotBanner('board', { ap: 120, stats: [{ maxInvestable: 7 }] }).text, '7 AP to invest');
+check('no banner without a dot (board)', tabDotBanner('board', { ap: 0, stats: [{ maxInvestable: 500 }] }), null);
+check('world banner counts soldiers', tabDotBanner('world', { pool: { a: 3, b: 4 } }).text, '7 soldiers to deploy');
+check('world banner singular', tabDotBanner('world', { pool: { a: 1 } }).text, '1 soldier to deploy');
+check('no banner for an empty pool', tabDotBanner('world', { pool: { a: 0 } }), null);
+check('no banner on tabs that never get a dot', ['quest', 'trends', 'exercises'].map(v => tabDotBanner(v, { ap: 99, stats: [{ maxInvestable: 9 }], pool: { a: 9 } })), [null, null, null]);
+check('banner and dot agree', ['board', 'world'].every(v => !!tabDotBanner(v, { ap: 5, stats: [{ maxInvestable: 5 }], pool: { a: 2 } }) === tabDots({ ap: 5, stats: [{ maxInvestable: 5 }], pool: { a: 2 } })[v]), true);
 
 console.log(results.join('\n'));
 console.log(`\n${pass} passed, ${fail} failed`);

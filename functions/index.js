@@ -46,6 +46,18 @@ const { getDuelScore } = require('./lib/scoring');
 const { getDuelStreakTier, getDuelTrophyTier, DUEL_TROPHY_ITEMS } = require('./lib/rewards');
 
 admin.initializeApp();
+
+/* Hourly push reminders. Read-only except pruning dead device tokens. See PUSH-SETUP.md. */
+const { onSchedule } = require('firebase-functions/v2/scheduler');
+const { runReminders } = require('./send-reminders');
+exports.sendReminders = onSchedule({ schedule: '0 * * * *', timeZone: 'Etc/UTC', region: 'us-central1', timeoutSeconds: 300, memory: '256MiB' }, async () => {
+  const { FieldValue, FieldPath } = require('firebase-admin/firestore');
+  const stats = await runReminders({
+    db: admin.firestore(), messaging: admin.messaging(),
+    deleteField: () => FieldValue.delete(), fieldPath: (...p) => new FieldPath(...p),
+  });
+  console.log('sendReminders', JSON.stringify(stats));
+});
 const db = admin.firestore();
 
 const todayStr = (d = new Date()) => {

@@ -127,3 +127,22 @@ export function tabDots({ ap = 0, stats = [], pool = {} } = {}) {
     world: soldiers > 0,
   };
 }
+
+/**
+ * The one line shown at the top of a tab that has a dot, saying why.
+ * `null` when the tab has no dot. Same inputs as tabDots, so the two never disagree.
+ *   board  "120 AP to invest"        -> action opens the stat picker
+ *   world  "40 soldiers to deploy"   -> action opens the map
+ */
+export function tabDotBanner(view, state = {}) {
+  const fmt = (n) => Math.floor(n).toLocaleString('en-US');
+  if (view === 'board') {
+    const n = investableAp(state.ap, state.stats);
+    return n > 0 ? { view, kind: 'ap', text: `${fmt(n)} AP to invest`, action: 'Invest' } : null;
+  }
+  if (view === 'world') {
+    const n = Object.values(state.pool || {}).reduce((a, v) => a + Math.max(0, Number(v) || 0), 0);
+    return n > 0 ? { view, kind: 'army', text: `${fmt(n)} ${n === 1 ? 'soldier' : 'soldiers'} to deploy`, action: 'Open map' } : null;
+  }
+  return null;
+}
