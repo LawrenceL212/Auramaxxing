@@ -3746,6 +3746,73 @@
     color:rgba(140,196,255,0.95);font-family:var(--font-mono);font-size:11px;letter-spacing:0.1em;text-transform:uppercase;cursor:pointer;touch-action:manipulation;}
   .rank-jump button.on{background:rgba(91,168,255,0.2);border-color:rgba(91,168,255,0.6);color:#fff;}
   #view-board [data-jump-target]{scroll-margin-top:56px;}
+
+  /* ══════════════════════════════════════════════════════════════════════
+     FLOW SCREENS — layout only. Look from ui-system.css; logic in flow-view.js.
+     Enter Gate, logger header, Gate Complete (debrief), Rank Up, nav dots.
+     ══════════════════════════════════════════════════════════════════════ */
+  .flow-gate{position:fixed;inset:0;z-index:260;display:flex;flex-direction:column;background:#05060a;overflow:hidden;animation:overlayIn .3s ease both;}
+  .flow-gate-bg{position:absolute;inset:0;pointer-events:none;}
+  .flow-gate-bg > .ui-art{position:absolute;inset:0;}
+  .flow-gate-sigil{position:absolute;left:50%;top:27%;transform:translate(-50%,-50%);opacity:.9;}
+  .flow-gate-main{position:relative;flex:1;display:flex;flex-direction:column;justify-content:center;padding:max(34dvh,150px) 19px calc(24px + env(safe-area-inset-bottom,0)) 19px;overflow-y:auto;}
+  .flow-gate-card{display:flex;flex-direction:column;gap:12px;padding:16px 16px 14px;text-align:center;}
+  .flow-gate-eyebrow{font-family:var(--font-mono);font-size:11px;letter-spacing:.2em;color:var(--text-faint);text-transform:uppercase;}
+  .flow-gate-title{margin:0;font-family:var(--font-display);font-weight:800;font-size:clamp(26px,9vw,34px);line-height:1.1;letter-spacing:.03em;text-transform:uppercase;color:var(--text);text-shadow:0 0 24px rgba(255,214,107,.55);overflow-wrap:anywhere;}
+  .flow-gate-chips{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;}
+  .flow-gate-back{align-self:center;min-height:44px;padding:0 20px;background:none;border:0;cursor:pointer;touch-action:manipulation;font-family:var(--font-display);font-weight:700;font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--text-dim);}
+  @media (max-height:720px){ .flow-gate-main{padding-top:max(26dvh,120px);} .flow-gate-card{gap:8px;padding:12px 14px 8px;} }
+
+  .workout-modal-header.flow-head{align-items:center;gap:12px;padding:12px 16px 10px !important;background:var(--ui-window-bg);border-bottom:1px solid var(--ui-line);box-shadow:0 6px 24px rgba(91,168,255,.1);}
+  .flow-fig{flex:none;width:56px;height:56px;border:1px solid rgba(91,168,255,.5);background:#0a1226;box-shadow:0 0 14px rgba(91,168,255,.25);overflow:hidden;
+    clip-path:polygon(8px 0,100% 0,100% calc(100% - 8px),calc(100% - 8px) 100%,0 100%,0 8px);}
+  .flow-fig .ui-art{width:100%;height:100%;}
+  .flow-head-main{flex:1;min-width:0;}
+  .flow-head-btns{flex:none;display:flex;gap:8px;}
+  @media (max-height:720px){ .flow-fig{width:44px;height:44px;} }
+
+  .debrief-overlay{justify-content:flex-start;}
+  .debrief-overlay > .debrief-window{margin:auto;flex:none;}
+  .debrief-window.flow-complete{max-width:420px;padding:0 !important;background:var(--ui-window-bg);border:1px solid var(--ui-line-gold);box-shadow:var(--ui-window-glow-gold);border-radius:0;}
+  .debrief-window.flow-complete::before,.debrief-window.flow-complete::after{width:14px;height:14px;border-color:var(--ui-gold);}
+  .debrief-window.flow-complete::before{top:-3px;left:-3px;border-width:2px 0 0 2px;border-style:solid;}
+  .debrief-window.flow-complete::after{bottom:-3px;right:-3px;border-width:0 2px 2px 0;border-style:solid;}
+  .flow-complete-art{position:relative;height:120px;overflow:hidden;-webkit-mask-image:linear-gradient(180deg,#000 55%,transparent);mask-image:linear-gradient(180deg,#000 55%,transparent);}
+  .flow-complete-art > .ui-art{position:absolute;inset:0;}
+  .flow-complete-head{position:relative;margin-top:-78px;text-align:center;padding:0 16px 14px;animation:achieveIn .4s var(--ease-cinema) both;}
+  .flow-complete-title{margin:6px 0 0;font-family:var(--font-display);font-weight:900;font-size:clamp(24px,8vw,30px);letter-spacing:.06em;text-transform:uppercase;color:var(--text);text-shadow:0 0 22px rgba(255,214,107,.6);}
+  .flow-complete-in{padding:0 16px 16px;}
+  .flow-tiles{display:grid;gap:10px;margin-bottom:16px;animation:achieveIn .5s var(--ease-cinema) .2s both;}
+  .flow-tile{cursor:default;align-items:center;text-align:center;gap:4px;padding:10px 6px;}
+  .flow-tile:active{filter:none;}
+  .flow-tile .ui-art{width:30px;height:30px;}
+  .flow-tile .ui-tile-v{justify-content:center;font-family:var(--font-display);font-weight:800;font-size:20px;}
+  .flow-actions{display:flex;flex-direction:column;gap:8px;margin-top:6px;}
+  .flow-next{flex-direction:column;gap:2px;}
+  .flow-next small{font-family:var(--font-body);font-weight:600;font-size:11px;letter-spacing:.04em;text-transform:none;opacity:.8;}
+  .debrief-close-btn.flow-ghost{min-height:44px;background:none;border:1px solid rgba(91,168,255,.35);color:var(--text-dim);font-size:12px;letter-spacing:.14em;text-transform:uppercase;border-radius:0;}
+  .debrief-close-btn.flow-ghost:hover{filter:none;box-shadow:none;color:var(--text);}
+  .debrief-close-btn.flow-solo{min-height:54px;}
+  .debrief-window.flow-complete .xp-debrief-bar-wrap{margin-top:2px;}
+
+  .system-window.flow-rankup{position:relative;max-width:420px;width:calc(100% - 38px);padding:0 !important;overflow:visible;background:var(--ui-window-bg);border:1px solid var(--ui-line-gold);box-shadow:var(--ui-window-glow-gold);border-radius:0;}
+  .system-window.flow-rankup::before,.system-window.flow-rankup::after{width:14px;height:14px;border-color:var(--ui-gold);}
+  .system-window.flow-rankup::before{top:-3px;left:-3px;border-width:2px 0 0 2px;border-style:solid;}
+  .system-window.flow-rankup::after{bottom:-3px;right:-3px;border-width:0 2px 2px 0;border-style:solid;}
+  .flow-rankup-art{position:absolute;inset:0;overflow:hidden;pointer-events:none;}
+  .flow-rankup-art > .ui-art{position:absolute;inset:0;opacity:.85;}
+  .flow-rankup-in{position:relative;display:flex;flex-direction:column;align-items:center;gap:12px;padding:22px 18px 18px;}
+  .flow-rank-row{display:flex;align-items:center;justify-content:center;gap:26px;margin:30px 0 28px;}
+  .flow-rank-old{font-family:var(--font-display);font-weight:800;font-size:22px;opacity:.7;}
+  .flow-rank-arrow{color:var(--text-faint);font-size:18px;}
+  .ui-crest.xl{width:84px;height:84px;font-size:42px;}
+  .flow-rankup-title{margin:0;font-family:var(--font-display);font-weight:900;font-size:clamp(22px,7.5vw,28px);letter-spacing:.05em;text-transform:uppercase;color:var(--text);text-shadow:0 0 22px rgba(255,214,107,.55);}
+  .flow-rankup-in .system-body{margin:0;}
+  .flow-rankup-in .system-detail{margin:0;}
+  .flow-rankup-in .system-btn{align-self:stretch;}
+  .flow-rankup-in .system-btn.ui-btn-primary{display:flex;align-self:stretch;width:auto;min-height:58px;padding:0 16px;border-radius:0;font-size:16px;letter-spacing:.12em;background:var(--ui-gold-grad);color:#1a0f00;box-shadow:0 0 30px rgba(255,214,107,.6);}
+
+  nav.bottom-nav button .ui-dot{top:7px;right:calc(50% - 21px);width:9px;height:9px;pointer-events:none;box-shadow:0 0 0 2px rgba(5,6,10,.98),0 0 8px var(--ui-gold);}
 </style>
 </head>
 <body>
@@ -4176,21 +4243,22 @@
 <!-- Full-screen workout logging modal — opened by Begin Hunt or manual logging -->
 <div class="workout-modal-overlay hidden" id="workout-modal-overlay">
   <div class="workout-modal">
-    <div class="workout-modal-header" style="position:relative;">
-  <div style="padding-right:104px;">
-    <div style="font-family:var(--font-mono);font-size:9px;letter-spacing:0.2em;color:rgba(91,168,255,0.78);margin-bottom:2px;">◈ QUEST ACTIVE ◈</div>
+    <div class="workout-modal-header flow-head">
+  <div class="flow-fig" id="logger-figure" aria-hidden="true"></div>
+  <div class="flow-head-main">
+    <div style="font-family:var(--font-mono);font-size:11px;letter-spacing:0.2em;color:rgba(91,168,255,0.78);margin-bottom:2px;">◈ QUEST ACTIVE ◈</div>
     <div id="logger-title" style="font-family:var(--font-display);font-size:20px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;line-height:1.1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin:0 0 2px;">HUNT ACTIVE</div>
     <div style="display:flex;justify-content:space-between;margin-top:4px;">
-      <span style="font-family:var(--font-mono);font-size:10px;color:rgba(91,168,255,0.78);" id="logger-set-count" style="letter-spacing:.06em;"></span>
-      <span style="font-family:var(--font-mono);font-size:10px;color:rgba(255,214,107,0.7);transition:all 0.3s;" id="logger-xp-live">+0 XP</span>
+      <span style="font-family:var(--font-mono);font-size:11px;color:rgba(91,168,255,0.78);" id="logger-set-count" style="letter-spacing:.06em;"></span>
+      <span style="font-family:var(--font-mono);font-size:11px;color:rgba(255,214,107,0.7);transition:all 0.3s;" id="logger-xp-live">+0 XP</span>
     </div>
     <div style="height:2px;background:rgba(91,168,255,0.08);margin-top:6px;border-radius:1px;overflow:hidden;">
       <div id="logger-xp-bar" style="height:100%;width:0%;background:linear-gradient(90deg,var(--brass),#FFD66B);border-radius:1px;transition:width 0.6s cubic-bezier(0.16,1,0.3,1);box-shadow:0 0 6px rgba(255,214,107,0.4);"></div>
     </div>
   </div>
-  <div style="position:absolute;top:0;right:0;display:flex;gap:8px;">
-    <button id="minimise-workout-modal" style="width:44px;height:44px;display:flex;align-items:center;justify-content:center;background:rgba(91,168,255,0.1);border:1px solid rgba(91,168,255,0.3);border-radius:8px;color:#61a5ff;font-size:20px;cursor:pointer;touch-action:manipulation;">−</button>
-    <button id="end-workout-modal" style="width:44px;height:44px;display:flex;align-items:center;justify-content:center;background:rgba(255,77,103,0.1);border:1px solid rgba(255,77,103,0.35);border-radius:8px;color:#ff3d5a;font-size:18px;cursor:pointer;touch-action:manipulation;">✕</button>
+  <div class="flow-head-btns">
+    <button id="minimise-workout-modal" aria-label="Minimise workout" style="width:44px;height:44px;display:flex;align-items:center;justify-content:center;background:rgba(91,168,255,0.1);border:1px solid rgba(91,168,255,0.3);border-radius:8px;color:#61a5ff;font-size:20px;cursor:pointer;touch-action:manipulation;">−</button>
+    <button id="end-workout-modal" aria-label="End workout" style="width:44px;height:44px;display:flex;align-items:center;justify-content:center;background:rgba(255,77,103,0.1);border:1px solid rgba(255,77,103,0.35);border-radius:8px;color:#ff3d5a;font-size:18px;cursor:pointer;touch-action:manipulation;">✕</button>
   </div>
     </div>
     <div class="rest-timer-bar">
@@ -4281,7 +4349,8 @@ import { computeStreakFrom, STREAK_RULES_START, shiftDay } from "./streak.js";
 import { newestApEvents, isMissingIndexError, LEDGER_LIMIT } from "./ap-ledger.js";
 import { backfillDateProblem, earliestBackfillDate, isDuplicateSession, laterDate } from "./backfill.js";
 import { defaultPlanDay, planDayOptions, shouldAdvanceRotation } from "./plan-day.js";
-import { uiArtHtml, uiArtHydrate, uiSigil, uiRing, uiIcon, equipmentKind, muscleTint } from "./ui-art.js";
+import { uiArt, uiArtHtml, uiArtHydrate, uiSigil, uiRing, uiIcon, equipmentKind, muscleTint } from "./ui-art.js";
+import { sessionMuscleArt, rewardTiles, investableAp, nextAfterHunt, tabDots } from "./flow-view.js";
 import { QUICK_TITLE, buildQuickCircuit, quickLoggerRows } from "./quick-quest.js";
 import { weekStrip, weekProgress, latestDate, agoLabel, estimateMinutes, totalSets, topMuscles, ringArc,
   lastSet, lastTimeLabel, upNext, leftLabel } from "./hunt-view.js";
@@ -8132,6 +8201,7 @@ function switchView(name) {
   viewEl.classList.add('active');
   document.querySelectorAll('.bottom-nav button').forEach(b => b.classList.toggle('active', b.dataset.view === name));
   document.getElementById('hunt-bar')?.classList.toggle('off', name !== 'quest');
+  refreshTabDots();
 
   // World iframe stays loaded — section CSS handles visibility
   if (name === 'world') {
@@ -8717,6 +8787,7 @@ function renderHuntChrome() {
   try { renderHuntNext(); } catch (e) { console.warn('Hunt next failed:', e); }
   try { renderHuntDmg(); } catch (e) { console.warn('Hunt dmg failed:', e); }
   try { syncHuntBar(); } catch (e) { console.warn('Hunt bar failed:', e); }
+  refreshTabDots();
 }
 
 /** The shown day changed (carousel): refresh what depends on it. */
@@ -8755,8 +8826,10 @@ function startQuickQuest() {
   begin?.addEventListener('click', () => {
     if (begin.dataset.mode === 'create') { document.getElementById('build-program-btn')?.click(); return; }
     if (!myProgram || !myProgram.days || !myProgram.days.length) return;
-    SFX.beginQuest();
-    startProgramDay(questCarouselIndex);
+    /* a hunt already in progress is resumed as before; otherwise the Enter Gate card comes first */
+    const inProgress = [...document.querySelectorAll('#exercise-rows .exercise-row')].some(r => r.dataset.exName);
+    if (inProgress) { SFX.beginQuest(); startProgramDay(questCarouselIndex); return; }
+    try { showEnterGate(questCarouselIndex); } catch (e) { console.warn('Enter Gate failed:', e); SFX.beginQuest(); startProgramDay(questCarouselIndex); }
   });
   document.getElementById('hunt-quick-btn')?.addEventListener('click', () => { SFX.beginQuest(); startQuickQuest(); });
   // day arrows live in the header, which re-renders: delegate
@@ -9469,8 +9542,98 @@ function resetLoggerDate() {
   syncWorkoutDateLimits();
 }
 
+/* Logger header figure: the muscle group the session leans on, from the exercises on screen.
+   Presentation only; a code stand-in shows until art/ui/muscle-<group>.webp exists. */
+function refreshLoggerFigure() {
+  const host = document.getElementById('logger-figure');
+  if (!host) return;
+  const list = [...document.querySelectorAll('#exercise-rows .exercise-row')]
+    .filter(r => r.dataset.exName)
+    .map(r => ({ name: r.dataset.exName, sets: r.querySelectorAll('.set-row').length }));
+  const art = sessionMuscleArt(list, EXERCISES_ALL);
+  if (host.dataset.art === art) return;
+  host.dataset.art = art;
+  host.replaceChildren(uiArt(art, { alt: '' }));
+}
+(function watchLoggerFigure() {
+  const rowsEl = document.getElementById('exercise-rows');
+  if (!rowsEl || typeof MutationObserver === 'undefined') return;
+  let queued = false;
+  new MutationObserver(() => {
+    if (queued) return;
+    queued = true;
+    requestAnimationFrame(() => { queued = false; try { refreshLoggerFigure(); } catch (_) {} });
+  }).observe(rowsEl, { childList: true, subtree: true, attributes: true, attributeFilter: ['data-ex-name'] });
+})();
+
+/* Enter Gate: the title card shown before the logger. "Enter Gate" runs startProgramDay, exactly what
+   Begin Hunt ran before; "Not yet" backs out and starts nothing. Chips are the day's real numbers. */
+function showEnterGate(idx) {
+  const s = huntDayStats(idx);
+  const exs = (s.day && s.day.exercises) || [];
+  const muscles = topMuscles(exs, EXERCISES_ALL, 3);
+  const sets = totalSets(exs), mins = estimateMinutes(exs);
+  const chips = [
+    ...muscles.map(m => `<span class="ui-chip">${escapeHtml(m)}</span>`),
+    exs.length ? `<span class="ui-chip dim">${exs.length} exercise${exs.length === 1 ? '' : 's'}</span>` : '',
+    sets ? `<span class="ui-chip dim">${sets} sets</span>` : '',
+    mins ? `<span class="ui-chip dim">~${mins} min</span>` : '',
+  ].join('');
+  const el = document.createElement('div');
+  el.className = 'flow-gate';
+  el.setAttribute('role', 'dialog');
+  el.setAttribute('aria-modal', 'true');
+  el.setAttribute('aria-label', 'Enter Gate');
+  el.innerHTML = `
+    <div class="flow-gate-bg">${uiArtHtml('gate-entry')}<div class="flow-gate-sigil">${uiSigil({ size: 300 })}</div></div>
+    <div class="flow-gate-main">
+      <div class="ui-window gold flow-gate-card">
+        <div class="ui-banner gold">◈ Gate detected</div>
+        <div class="flow-gate-eyebrow">${s.isActiveDay ? "Today's hunt" : 'Log this session'}</div>
+        <h2 class="flow-gate-title">${escapeHtml(s.day.name)}</h2>
+        <div class="flow-gate-chips">${chips}</div>
+        <button class="ui-btn-primary" id="gate-enter">Enter Gate</button>
+        <button class="flow-gate-back" id="gate-back">Not yet</button>
+      </div>
+    </div>`;
+  getOverlayHost().appendChild(el);
+  uiArtHydrate(el);
+  lockBodyScroll();
+  const close = () => { document.removeEventListener('keydown', onKey); el.remove(); unlockBodyScroll(); };
+  const onKey = e => { if (e.key === 'Escape') close(); };
+  document.addEventListener('keydown', onKey);
+  el.querySelector('#gate-back').addEventListener('click', close);
+  el.querySelector('#gate-enter').addEventListener('click', () => { close(); SFX.beginQuest(); startProgramDay(idx); });
+  el.querySelector('#gate-enter').focus();
+}
+
+/* Bottom nav dots: a dot only where the tab holds something real to act on (see flow-view.js tabDots). */
+function refreshTabDots() {
+  try {
+    const nav = document.querySelector('nav.bottom-nav');
+    if (!nav) return;
+    const dots = (currentUser && profile)
+      ? tabDots({ ap: profile.auraPoints || 0, stats: STAT_DEFS.map(d => checkV2UpgradeGates(d.id)), pool: profile.shadowArmy && profile.shadowArmy.pool })
+      : {};
+    const WHY = { board: 'AP to invest', world: 'soldiers to deploy' };
+    nav.querySelectorAll('button[data-view]').forEach(b => {
+      const on = !!dots[b.dataset.view];
+      let d = b.querySelector('.ui-dot');
+      if (on && !d) { d = document.createElement('span'); d.className = 'ui-dot gold'; d.setAttribute('aria-hidden', 'true'); b.appendChild(d); }
+      if (!on && d) d.remove();
+      if (on) b.setAttribute('aria-label', `${b.textContent.trim()}, ${WHY[b.dataset.view]}`);
+      else b.removeAttribute('aria-label');
+    });
+  } catch (e) { console.warn('Tab dots failed:', e); }
+}
+
+/* Dots follow state that changes in many places (XP awards, AP spends, deploys), so they re-check on a slow
+   timer as well as on navigation. It only reads the profile already in memory. */
+setInterval(() => { if (!document.hidden) refreshTabDots(); }, 3000);
+
 function openWorkoutModal() {
   syncWorkoutDateLimits();
+  try { refreshLoggerFigure(); } catch (_) {}
   document.getElementById('workout-modal-overlay').classList.remove('hidden');
   document.getElementById('workout-pill').classList.add('hidden');
   lockBodyScroll();
@@ -14161,6 +14324,7 @@ function buildGateHtml(statId, gates, ap) {
 }
 
 function renderCharCard() {
+  refreshTabDots();
   const stats = profile.stats || defaultStats();
   const ap = profile.auraPoints || 0;
   const charRank = charRankFromStats(stats);
@@ -14731,6 +14895,7 @@ function buildSystemModal(html, onClose) {
   overlay.className = 'system-overlay';
   overlay.innerHTML = html;
   getOverlayHost().appendChild(overlay);
+  try { uiArtHydrate(overlay); } catch (_) {}
   lockBodyScroll();
   const cleanup = () => { overlay.remove(); unlockBodyScroll(); if (onClose) onClose(); };
   const btn = overlay.querySelector('.system-btn');
@@ -14906,18 +15071,20 @@ function showRankUpModal(statLabel, oldRank, newRank, hunterName) {
     ? 'All limits have been shattered. You stand beyond human comprehension.'
     : `Hunter ${escapeHtml(hunterName || 'Unknown')} has exceeded human limits in ${statLabel}.`;
   return showSystemModal(`
-    <div class="system-window levelup">
-      <p class="system-eyebrow">System Alert</p>
-      <div class="system-icon">⚡</div>
-      <h2 class="system-title">${title}</h2>
-      <div class="system-rank-change">
-        <span style="color:${RANK_COLORS[oldRank]}">${oldRank}</span>
-        <span class="arrow">→</span>
-        <span style="color:${RANK_COLORS[newRank]};font-size:36px;text-shadow:0 0 20px ${RANK_COLORS[newRank]}">${newRank}</span>
+    <div class="system-window levelup flow-rankup">
+      <div class="flow-rankup-art">${uiArtHtml('rank-up-aura')}</div>
+      <div class="flow-rankup-in">
+        <div class="ui-banner gold" style="align-self:stretch;">◈ System alert</div>
+        <h2 class="flow-rankup-title system-title">${title}</h2>
+        <div class="flow-rank-row" aria-label="Rank ${oldRank} to ${newRank}">
+          <span class="flow-rank-old" style="color:${RANK_COLORS[oldRank]}">${oldRank}</span>
+          <span class="flow-rank-arrow">→</span>
+          <span class="ui-crest xl" style="--rank:${RANK_COLORS[newRank]}"><span>${newRank}</span></span>
+        </div>
+        <p class="system-body">${msg}</p>
+        <p class="system-detail">The shadows grow stronger.</p>
+        <button class="system-btn ui-btn-primary">Rise</button>
       </div>
-      <p class="system-body">${msg}</p>
-      <p class="system-detail">The shadows grow stronger.</p>
-      <button class="system-btn success">Rise</button>
     </div>`);
 }
 
@@ -17541,6 +17708,7 @@ function checkPersistentQuestBanner() {
    or empty falls back to today's workouts, which is only correct for a debrief
    that is in fact about today. */
 function showDebriefModal(exercises, apEarned, prs, done, soldiersEarned = {}, sourceWorkouts = null) {
+  refreshTabDots();
   const totalSets = exercises.reduce((n, ex) => n + (ex.sets||[]).filter(s=>s.reps>0).length, 0);
   const totalVol = exercises.reduce((n, ex) =>
     n + (ex.sets||[]).filter(s=>s.reps>0 && s.weight>0).reduce((v,s) => v + s.reps * s.weight, 0), 0);
@@ -17686,10 +17854,10 @@ function showDebriefModal(exercises, apEarned, prs, done, soldiersEarned = {}, s
         <div style="font-family:var(--font-display);font-size:20px;font-weight:900;color:var(--text);">${totalVol>=1000?(totalVol/1000).toFixed(1)+'t':Math.round(totalVol)+'kg'}</div>
         <div style="font-family:var(--font-mono);font-size:8px;color:var(--text-faint);letter-spacing:.1em;">VOLUME</div>
       </div>` : ''}
-      <div style="flex:1;text-align:center;">
+      ${streak > 0 ? '' : `<div style="flex:1;text-align:center;">
         <div style="font-family:var(--font-display);font-size:20px;font-weight:900;color:var(--text);">${streak}d</div>
         <div style="font-family:var(--font-mono);font-size:8px;color:var(--text-faint);letter-spacing:.1em;">STREAK</div>
-      </div>
+      </div>`}
     </div>`;
 
   /* A legacy "Personal Records" row list used to sit below the Shadow Army
@@ -17698,15 +17866,33 @@ function showDebriefModal(exercises, apEarned, prs, done, soldiersEarned = {}, s
      block above superseded it ("each PR gets weight, not a row") but the old
      markup was left behind, so it is removed rather than revived: reviving it
      would list every PR twice. */
+  /* Gate Complete reward tiles: real XP, AP and streak only (no gold exists in this game), and the one
+     suggested next step, from real state (flow-view.js). */
+  const flowTiles = rewardTiles({ xp: generalXP, ap: apEarned, streak });
+  const flowTilesHtml = flowTiles.length ? `
+    <div class="flow-tiles" style="grid-template-columns:repeat(${flowTiles.length},minmax(0,1fr));">
+      ${flowTiles.map(t => `<div class="ui-tile ${t.key === 'ap' ? 'violet' : 'gold'} flow-tile" aria-label="${t.value} ${t.label}">${uiArtHtml(t.art, { alt: '' })}<span class="ui-tile-v">${t.value}</span><span class="ui-tile-s">${t.label}</span></div>`).join('')}
+    </div>` : '';
+  let flowNext = null;
+  try {
+    flowNext = nextAfterHunt({
+      investable: investableAp(profile.auraPoints || 0, STAT_DEFS.map(d => checkV2UpgradeGates(d.id))),
+      lastWeighIn: latestDate(myWeights, myCheckins),
+      today: todayStr(),
+    });
+  } catch (e) { console.warn('Next step failed:', e); }
+
   const el = document.createElement('div');
   el.className = 'debrief-overlay';
   el.innerHTML = `
-    <div class="debrief-window">
-      <div style="text-align:center;padding-bottom:14px;border-bottom:1px solid rgba(91,168,255,0.08);margin-bottom:14px;animation:achieveIn .4s var(--ease-cinema) both;">
-        <div style="font-family:var(--font-mono);font-size:8px;color:rgba(91,168,255,0.78);letter-spacing:.25em;margin-bottom:8px;">◈ SYSTEM RECORD</div>
-        <div style="font-family:var(--font-display);font-size:26px;font-weight:900;letter-spacing:.06em;">HUNT COMPLETE</div>
+    <div class="debrief-window ui-window gold flow-complete">
+      <div class="flow-complete-art">${uiArtHtml('gate-complete')}</div>
+      <div class="flow-complete-head">
+        <div class="ui-banner gold">◈ System record</div>
+        <div class="flow-complete-title">Gate Complete</div>
       </div>
-
+      <div class="flow-complete-in">
+      ${flowTilesHtml}
       ${levelUpHtml}
       ${primaryHero}
       ${prHtml}
@@ -17765,14 +17951,19 @@ function showDebriefModal(exercises, apEarned, prs, done, soldiersEarned = {}, s
           <button class="btn btn-sm" id="save-rir-btn" style="margin-top:8px;width:100%;">Save RIR</button>
         </div>` : ''}
 
-      ${apEarned ? `
+      ${apEarned && !flowTiles.some(t => t.key === 'ap') ? `
         <div style="background:rgba(255,214,107,0.06);border:1px solid rgba(255,214,107,0.15);border-radius:6px;padding:10px;margin-bottom:12px;text-align:center;">
           <div style="font-family:var(--font-mono);font-size:9px;color:rgba(255,214,107,0.78);margin-bottom:4px;">LEVEL-UP REWARD</div>
           <div style="font-size:20px;color:#FFD66B;font-weight:700;">+${apEarned} AP</div>
         </div>` : ''}
 
-      <button class="debrief-close-btn">Back to the Hunt</button>
+      <div class="flow-actions">
+        ${flowNext ? `<button class="ui-btn-primary flow-next" id="debrief-next-btn" data-kind="${flowNext.kind}"><span>Next · ${flowNext.label}</span><small>${flowNext.sub}</small></button>` : ''}
+        <button class="debrief-close-btn ${flowNext ? 'flow-ghost' : 'ui-btn-primary flow-solo'}">Back to the Hunt</button>
+      </div>
+      </div>
     </div>`;
+  uiArtHydrate(el);
 
   getOverlayHost().appendChild(el);
 
@@ -17850,9 +18041,23 @@ function showDebriefModal(exercises, apEarned, prs, done, soldiersEarned = {}, s
     saveRirBtn.disabled = false; saveRirBtn.textContent = 'Save RIR';
   });
 
+  el.querySelector('#debrief-next-btn')?.addEventListener('click', () => {
+    const kind = flowNext && flowNext.kind;
+    el.querySelector('.debrief-close-btn').click();
+    /* the same handlers the Hunt tiles use: AP picker, weigh-in, Codex tab */
+    setTimeout(() => {
+      try {
+        if (kind === 'ap') openApInvestPicker();
+        else if (kind === 'weigh') window.openCheckinModal();
+        else if (kind === 'codex') switchView('trends');
+      } catch (e) { console.warn('Next step failed:', e); }
+    }, 350);
+  });
+
   el.querySelector('.debrief-close-btn').addEventListener('click', () => {
     el.style.animation = 'toastOut .3s ease forwards';
     setTimeout(() => el.remove(), 300);
+    refreshTabDots();
     if (document.getElementById('view-board').classList.contains('active')) {
       renderTodayCard(); renderCharCard();
     }
