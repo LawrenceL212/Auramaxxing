@@ -3524,7 +3524,7 @@
      resting shadow, Orbitron for numbers and names, Rajdhani for labels.
      Presentation only.
      ══════════════════════════════════════════════════════════════════════ */
-  .hunt-status{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:var(--space-2) var(--fluid-pad) 0;}
+  .hunt-status{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:var(--space-3) var(--fluid-pad) 0;}
   .hunt-status-title{font-family:var(--font-mono);font-size:11px;letter-spacing:.3em;color:var(--text-faint);text-transform:uppercase;}
   .hunt-chip{
     display:inline-flex;align-items:center;gap:7px;min-height:44px;padding:0 12px;
@@ -3555,8 +3555,7 @@
   .hunt-risk-time{font-family:var(--font-mono);font-size:11px;letter-spacing:.14em;color:var(--excess);}
 
   /* Today card — the existing .quest-card material, tighter */
-  #program-card-wrap{padding-top:0 !important;}
-  .quest-card.hunt-today{padding:14px 14px 6px;}
+  .quest-card.hunt-today{padding:16px 16px 8px;}
   .ht-head{display:flex;align-items:center;gap:14px;margin-bottom:10px;}
   .ht-ring{flex:none;position:relative;width:64px;height:64px;}
   .ht-ring svg{display:block;}
@@ -3584,7 +3583,7 @@
   .quest-card.quest-complete .ht-ring-n{color:var(--violet);}
 
   /* Day switcher: arrows at 44px with the day dots between, under the card */
-  .hunt-days{display:flex;align-items:center;justify-content:center;gap:6px;margin-top:2px;}
+  .hunt-days{display:flex;flex-wrap:nowrap;align-items:center;justify-content:center;gap:12px;margin-top:var(--space-4);}
   .hunt-days:empty{display:none;}
   .hunt-days .carousel-arrow{width:44px;height:44px;box-shadow:none;}
   .hunt-days .day-dots{margin:0;}
@@ -3595,26 +3594,26 @@
   .hunt-rest-t b{display:block;font-family:var(--font-display);font-size:13px;letter-spacing:.08em;color:var(--text);}
   .hunt-rest .rest-day-log-btn{width:auto;min-height:44px;padding:0 12px;font-size:12px;flex:none;}
 
-  .hunt-next{margin:8px var(--fluid-pad) 0;min-height:44px;padding:6px 12px;display:flex;align-items:center;justify-content:space-between;gap:10px;background:var(--card);border:1px solid var(--border);border-radius:var(--radius-md);box-shadow:var(--depth-1);}
+  .hunt-next{margin:var(--space-4) var(--fluid-pad) 0;min-height:44px;padding:6px 12px;display:flex;align-items:center;justify-content:space-between;gap:10px;background:var(--card);border:1px solid var(--border);border-radius:var(--radius-md);box-shadow:var(--depth-1);}
   .hunt-next b{font-size:15px;font-weight:700;color:var(--text);white-space:nowrap;}
   .hunt-next b em{font-style:normal;color:var(--text-faint);font-weight:600;margin-right:6px;}
   .hunt-next span{min-width:0;overflow:hidden;text-overflow:ellipsis;font-family:var(--font-mono);font-size:11px;letter-spacing:.12em;color:var(--text-faint);text-transform:uppercase;white-space:nowrap;}
 
   /* quiet text row: AP to invest, weigh-in, dungeon damage */
-  .hunt-tiles{display:flex;justify-content:space-between;gap:4px;padding:2px var(--fluid-pad) 0;}
-  .hunt-tile{flex:1;min-width:0;min-height:48px;padding:2px 6px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;cursor:pointer;touch-action:manipulation;
-    background:none;border:0;color:var(--text-dim);font-family:var(--font-body);}
+  .hunt-tiles{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:var(--space-4);padding:0 var(--fluid-pad);}
+  .hunt-tiles:empty{display:none;}
+  .hunt-tile{min-width:0;min-height:48px;padding:4px 8px;display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:2px;cursor:pointer;touch-action:manipulation;
+    background:none;border:1px solid var(--border);border-radius:var(--radius-md);color:var(--text-dim);font-family:var(--font-body);text-align:left;}
   .hunt-tile:active{opacity:.6;}
   .hunt-tile b{font-size:14px;font-weight:700;display:inline-flex;align-items:center;gap:5px;white-space:nowrap;}
   .hunt-tile.ap b{font-family:var(--font-display);font-size:13px;color:var(--violet);}
   .hunt-tile.dmg b{font-family:var(--font-display);font-size:13px;color:var(--legendary);}
-  .hunt-tile span{font-family:var(--font-mono);font-size:11px;letter-spacing:.04em;color:var(--text-faint);white-space:nowrap;}
-  .hunt-tile + .hunt-tile{border-left:1px solid var(--border);}
+  .hunt-tile span{font-family:var(--font-mono);font-size:11px;letter-spacing:.04em;color:var(--text-faint);}
 
   .hunt-objectives{padding-top:10px;}
   .hunt-objectives #objectives-strip{padding:0 var(--fluid-pad) !important;margin-bottom:0;}
 
-  details.hunt-more{margin:10px var(--fluid-pad) 0;background:var(--card);border:1px solid var(--border);border-radius:var(--radius-md);box-shadow:var(--depth-1);}
+  details.hunt-more{margin:var(--space-4) var(--fluid-pad) 0;background:var(--card);border:1px solid var(--border);border-radius:var(--radius-md);box-shadow:var(--depth-1);}
   details.hunt-more > summary{list-style:none;cursor:pointer;min-height:56px;padding:8px 12px;display:flex;align-items:center;gap:10px;touch-action:manipulation;}
   details.hunt-more > summary::-webkit-details-marker{display:none;}
   .hm-main{flex:1;min-width:0;}
@@ -3628,10 +3627,10 @@
   .hunt-plan-head{display:flex;align-items:center;justify-content:space-between;gap:8px;}
   .hunt-plan-head .icon-btn{min-height:44px;}
 
-  .hunt-spacer{height:16px;}
+  .hunt-spacer{height:calc(32px + env(safe-area-inset-bottom,0px));}
   /* Begin Hunt sits directly under the Today card. To pin it above the nav instead:
      position:fixed;left:0;right:0;bottom:calc(56px + env(safe-area-inset-bottom,0px));z-index:9; */
-  .hunt-bar{padding:8px var(--fluid-pad) 0;position:relative;z-index:12;}
+  .hunt-bar{margin-top:var(--space-4);padding:0 var(--fluid-pad);position:relative;z-index:12;}
   .hunt-bar.hidden{display:none !important;}
   .hunt-bar-in{display:flex;gap:8px;max-width:640px;margin:0 auto;position:relative;pointer-events:auto;}
   .hunt-plus{flex:none;width:54px;height:54px;display:grid;place-items:center;cursor:pointer;touch-action:manipulation;
@@ -3850,7 +3849,7 @@
       <!-- Quest feed first — the card IS the screen, Begin Hunt is the first thing in reach.
            Directive, objectives and the habit curve follow as context. -->
       <div id="hunt-top"></div>
-      <div id="program-card-wrap" style="padding:var(--space-3) var(--fluid-pad) 0;"></div>
+      <div id="program-card-wrap" style="margin-top:var(--space-4);padding:0 var(--fluid-pad);"></div>
 
       <!-- Begin Hunt sits directly under the Today card; + opens the three log actions (same ids and handlers as before) -->
       <div class="hunt-bar" id="hunt-bar">
@@ -3868,7 +3867,7 @@
       <div id="hunt-next"></div>
       <div class="hunt-tiles" id="hunt-tiles"></div>
 
-      <div id="objectives-strip" style="padding:var(--space-3) var(--fluid-pad) 0;"></div>
+      <div id="objectives-strip" style="margin-top:var(--space-4);padding:0 var(--fluid-pad);"></div>
 
       <!-- More: everything that used to sit below the card, nothing removed -->
       <details class="hunt-more" id="hunt-more">
