@@ -4496,13 +4496,27 @@
   <div class="hunt-bar" id="hunt-bar">
     <div class="hunt-bar-in">
       <button class="ui-btn-square" id="hunt-plus-btn" aria-label="Log a session" aria-haspopup="true" aria-expanded="false"><svg width="22" height="22" viewBox="0 0 22 22" aria-hidden="true"><path d="M11 3v16M3 11h16" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg></button>
-      <button class="ui-quick" id="hunt-quick-btn" aria-label="Quick: 15 minute bodyweight circuit"><span style="display:inline-flex;align-items:center;gap:4px;"><svg width="13" height="13" viewBox="0 0 16 16" aria-hidden="true"><path d="M9 1 3 9h4l-1 6 7-9H9z" fill="currentColor"/></svg></span>QUICK<small>15 min</small></button>
+      <button class="ui-quick" id="hunt-quick-btn" aria-label="Quick: pick a 15 minute workout"><span style="display:inline-flex;align-items:center;gap:4px;"><svg width="13" height="13" viewBox="0 0 16 16" aria-hidden="true"><path d="M9 1 3 9h4l-1 6 7-9H9z" fill="currentColor"/></svg></span>QUICK<small>15 min</small></button>
       <button class="ui-btn-primary hunt-begin" id="hunt-begin-btn" data-mode="begin"></button>
       <div class="hunt-menu hidden" id="hunt-menu" role="menu">
         <button id="manual-log-btn" role="menuitem"><svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true"><rect x="3" y="3" width="14" height="14" rx="2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M10 6.5v7M6.5 10h7" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>Log a session</button>
         <button id="log-run-btn" role="menuitem"><svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true"><path d="M2 14c3-1 4-4 6-6s4-1 6 1 3 3 4 3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><circle cx="12" cy="4" r="1.8" fill="currentColor"/></svg>Log a run</button>
         <button id="past-log-btn" role="menuitem"><svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true"><path d="M4 10a6 6 0 1 0 2-4.5M4 3v3.5h3.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M10 6.5V10l2.5 1.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>Log a past session</button>
       </div>
+    </div>
+  </div>
+
+  <!-- Quick 15 picker: a bottom sheet (ui-system.css). Steps: type, up to two questions, preview. Built by renderQuickSheet(). -->
+  <div class="ui-sheet-scrim hidden" id="quick-sheet">
+    <div class="ui-sheet ui-window gold" role="dialog" aria-modal="true" aria-labelledby="quick-sheet-title">
+      <div class="ui-sheet-grab" aria-hidden="true"></div>
+      <div class="ui-sheet-head">
+        <button class="ui-sheet-icon" id="quick-back" aria-label="Back"><svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true"><path d="M12 4 6 10l6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+        <h2 class="ui-title" id="quick-sheet-title">Quick 15</h2>
+        <button class="ui-sheet-icon" id="quick-close" aria-label="Close"><svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><path d="M4 4l10 10M14 4 4 14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>
+      </div>
+      <div class="ui-steps" id="quick-steps" aria-hidden="true"></div>
+      <div class="ui-sheet-body" id="quick-body"></div>
     </div>
   </div>
 
@@ -4641,7 +4655,7 @@ import { defaultPlanDay, planDayOptions, shouldAdvanceRotation } from "./plan-da
 import { uiArt, uiArtHtml, uiArtHydrate, uiSigil, uiRing, uiIcon, equipmentKind, muscleTint } from "./ui-art.js";
 import { huntFxHtml, startHuntFx } from "./hunt-fx.js";
 import { sessionMuscleArt, rewardTiles, investableAp, nextAfterHunt, tabDots } from "./flow-view.js";
-import { QUICK_TITLE, buildQuickCircuit, quickLoggerRows } from "./quick-quest.js";
+import { QUICK_TITLE, QUICK_TYPES, buildQuickCircuit, quickLoggerRows, generateQuick, quickQuestions } from "./quick-quest.js";
 import { weekStrip, weekProgress, latestDate, agoLabel, estimateMinutes, totalSets, topMuscles, ringArc,
   lastSet, lastTimeLabel, upNext, leftLabel } from "./hunt-view.js";
 import { setInputKind, setInputHeaders, storedSet, storedSetSecs, partsToSecs, secsToParts,
@@ -9149,22 +9163,107 @@ function huntDayChanged() {
   try { syncHuntBar(); } catch (_) {}
 }
 
-/** Quick 15: the normal logger, pre-filled with the fixed bodyweight circuit from quick-quest.js.
+/** Quick 15: the normal logger, pre-filled with a generated 15 minute workout (quick-quest.js).
     It saves through the ordinary path as a normal workout (programDayIndex null), so XP, streak, PRs and raids all apply. */
-function startQuickQuest() {
+function startQuickQuest(circuit) {
   const rows = document.getElementById('exercise-rows');
-  const busy = [...rows.querySelectorAll('.exercise-row')].some(r => r.dataset.exName);
-  if (busy) { showToast('Finish or discard the hunt in progress first.', 'error'); openWorkoutModal(); return; }
   document.getElementById('workout-date').value = todayStr();
   document.getElementById('workout-time').value = nowTimeStr();
   activeDayIndex = null;
   document.getElementById('logger-title').textContent = QUICK_TITLE;
   document.getElementById('logger-exercise-hero')?.removeAttribute('data-exercise');
   rows.innerHTML = '';
-  quickLoggerRows(buildQuickCircuit(EXERCISES_ALL)).forEach(r => addExerciseRow(r.name, r.sets, r.targetReps, r.prefillSets));
+  quickLoggerRows(circuit && circuit.length ? circuit : buildQuickCircuit(EXERCISES_ALL)).forEach(r => addExerciseRow(r.name, r.sets, r.targetReps, r.prefillSets));
   refreshCompleteButton();
   openWorkoutModal();
 }
+
+/* Quick 15 picker: type -> up to two single-tap questions -> preview (Remix / Start). Random builds at once. */
+const quickPick = { step: 0, choice: {}, result: null, random: false };
+function quickGenerate(avoid) {
+  const choice = quickPick.random ? { type: 'random' } : quickPick.choice;
+  quickPick.result = generateQuick({ choice, db: EXERCISES_ALL, workouts: myWorkouts, uid: currentUser && currentUser.uid, today: todayStr(), avoid });
+}
+function quickSetLabel(e) {
+  const def = EXERCISES_ALL[e.name] || {};
+  if (def.timed && def.timedUnit === 'mins') return `${e.sets} × ${e.reps} min`;
+  if (def.timed) return `${e.sets} × ${e.reps}s`;
+  return e.weight > 0 ? `${e.sets} × ${e.reps} @ ${Math.round(e.weight * 100) / 100}kg` : `${e.sets} × ${e.reps}`;
+}
+function renderQuickSheet() {
+  const body = document.getElementById('quick-body');
+  const qs = quickPick.choice.type ? quickQuestions(quickPick.choice.type, EXERCISES_ALL) : [];
+  const preview = quickPick.step === 'preview';
+  const total = quickPick.random ? 2 : 2 + (qs.length || 2);
+  const at = preview ? total - 1 : quickPick.step;
+  document.getElementById('quick-steps').innerHTML = Array.from({ length: total }, (_, i) => `<i class="${i <= at ? 'on' : ''}"></i>`).join('');
+  document.getElementById('quick-back').hidden = quickPick.step === 0;
+  document.getElementById('quick-sheet-title').textContent = preview && quickPick.result ? quickPick.result.label : 'Quick 15';
+  if (preview) {
+    const r = quickPick.result;
+    const sets = (r.circuit || []).reduce((n, e) => n + (Number(e.sets) || 0), 0);
+    body.innerHTML = `
+      <div class="ui-sheet-meta"><span class="ui-chip gold"><i></i>~${r.minutes} min</span><span class="ui-chip dim">${r.circuit.length} exercise${r.circuit.length === 1 ? '' : 's'} · ${sets} set${sets === 1 ? '' : 's'}</span></div>
+      ${r.circuit.map(e => { const def = EXERCISES_ALL[e.name] || {}; return `<div class="ui-row"><span class="ui-glyph" style="--tint:${muscleTint(def.muscles)}">${uiIcon(equipmentKind(e.name, def))}</span><span class="ui-row-name">${escapeHtml(e.name)}</span><span class="ui-row-k">${escapeHtml(quickSetLabel(e))}</span></div>`; }).join('')}
+      ${r.fellBack ? '<p class="ui-sheet-note">Not enough matching exercises for that choice, so this is the bodyweight circuit.</p>' : ''}
+      <div class="ui-sheet-actions"><button class="ui-btn-blue" id="quick-remix">Remix</button><button class="ui-btn-primary" id="quick-start"${r.circuit.length ? '' : ' disabled'}>Start</button></div>`;
+    return;
+  }
+  if (quickPick.step === 0) {
+    body.innerHTML = `<p class="ui-sheet-q">What do you want to do?</p><div class="ui-pick-grid">
+      ${QUICK_TYPES.map(t => `<button class="ui-pick" data-quick-type="${t.id}">${t.label}<small>${t.sub}</small></button>`).join('')}
+      <button class="ui-pick gold wide" data-quick-type="random">Random<small>Skip the questions</small></button></div>`;
+    return;
+  }
+  const q = qs[quickPick.step - 1];
+  body.innerHTML = `<p class="ui-sheet-q">${escapeHtml(q.title)}</p><div class="ui-pick-grid">
+    ${q.options.map(o => `<button class="ui-pick" data-quick-key="${q.key}" data-quick-val="${o.id}">${escapeHtml(o.label)}</button>`).join('')}</div>`;
+}
+function openQuickSheet() {
+  const rows = document.getElementById('exercise-rows');
+  const busy = [...rows.querySelectorAll('.exercise-row')].some(r => r.dataset.exName);
+  if (busy) { showToast('Finish or discard the hunt in progress first.', 'error'); openWorkoutModal(); return; }
+  quickPick.step = 0; quickPick.choice = {}; quickPick.result = null; quickPick.random = false;
+  renderQuickSheet();
+  document.getElementById('quick-sheet').classList.remove('hidden');
+  document.getElementById('quick-body').querySelector('button')?.focus();
+}
+function closeQuickSheet() { document.getElementById('quick-sheet')?.classList.add('hidden'); document.getElementById('hunt-quick-btn')?.focus(); }
+(function wireQuickSheet() {
+  const sheet = document.getElementById('quick-sheet');
+  if (!sheet) return;
+  const refocus = () => document.getElementById('quick-body').querySelector('button:not(:disabled)')?.focus();
+  const toPreview = avoid => { quickGenerate(avoid); quickPick.step = 'preview'; renderQuickSheet(); refocus(); };
+  sheet.addEventListener('click', e => {
+    if (e.target === sheet) return closeQuickSheet();
+    const t = e.target.closest('button'); if (!t) return;
+    if (t.id === 'quick-close') return closeQuickSheet();
+    if (t.id === 'quick-back') {
+      if (quickPick.step === 'preview') quickPick.step = quickPick.random ? 0 : quickQuestions(quickPick.choice.type, EXERCISES_ALL).length;
+      else quickPick.step = Math.max(0, quickPick.step - 1);
+      if (quickPick.step === 0) { quickPick.random = false; quickPick.choice = {}; }
+      renderQuickSheet(); return refocus();
+    }
+    if (t.dataset.quickType) {
+      SFX.chipSelect();
+      if (t.dataset.quickType === 'random') { quickPick.random = true; return toPreview(); }
+      quickPick.random = false; quickPick.choice = { type: t.dataset.quickType }; quickPick.step = 1; renderQuickSheet(); return refocus();
+    }
+    if (t.dataset.quickKey) {
+      SFX.chipSelect();
+      quickPick.choice[t.dataset.quickKey] = t.dataset.quickVal;
+      const n = quickQuestions(quickPick.choice.type, EXERCISES_ALL).length;
+      if (quickPick.step >= n) return toPreview();
+      quickPick.step += 1; renderQuickSheet(); return refocus();
+    }
+    if (t.id === 'quick-remix') { SFX.chipSelect(); return toPreview(quickPick.result && quickPick.result.circuit); }
+    if (t.id === 'quick-start') {
+      const circuit = quickPick.result && quickPick.result.circuit;
+      closeQuickSheet(); SFX.beginQuest(); startQuickQuest(circuit);
+    }
+  });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && !sheet.classList.contains('hidden')) closeQuickSheet(); });
+})();
 
 (function wireHuntBar() {
   const plus = document.getElementById('hunt-plus-btn');
@@ -9183,7 +9282,7 @@ function startQuickQuest() {
     if (inProgress) { SFX.beginQuest(); startProgramDay(questCarouselIndex); return; }
     try { showEnterGate(questCarouselIndex); } catch (e) { console.warn('Enter Gate failed:', e); SFX.beginQuest(); startProgramDay(questCarouselIndex); }
   });
-  document.getElementById('hunt-quick-btn')?.addEventListener('click', () => { SFX.beginQuest(); startQuickQuest(); });
+  document.getElementById('hunt-quick-btn')?.addEventListener('click', () => { SFX.chipSelect(); openQuickSheet(); });
   // day arrows live in the header, which re-renders: delegate
   document.getElementById('hunt-hero')?.addEventListener('click', e => {
     const b = e.target.closest('[data-hunt-dir]');
