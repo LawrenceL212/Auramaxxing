@@ -153,12 +153,17 @@ export function lastSet(workouts, uid, name, before) {
   return best;
 }
 
-/** "60kg×8", "8 reps" for a set with no kg, "45s" / "20m" for timed moves, "" with no history. */
-export function lastTimeLabel(set, { timed = false, timedUnit = 'secs' } = {}) {
+/**
+ * "60kg × 8 × 4": the top set of last time and the planned number of sets.
+ * No kg on the set reads "BW × 10 × 3" for a bodyweight move and "10 × 3" otherwise;
+ * timed moves read "45s × 3" ("20m" for minutes). "" with no history.
+ */
+export function lastTimeLabel(set, { timed = false, timedUnit = 'secs', bodyweight = false } = {}, sets) {
   if (!set) return '';
-  if (timed) return `${set.reps}${timedUnit === 'mins' ? 'm' : 's'}`;
-  if (set.weight > 0) return `${Math.round(set.weight * 100) / 100}kg×${set.reps}`;
-  return `${set.reps} reps`;
+  const tail = sets ? ` × ${sets}` : '';
+  if (timed) return `${set.reps}${timedUnit === 'mins' ? 'm' : 's'}${tail}`;
+  if (set.weight > 0) return `${Math.round(set.weight * 100) / 100}kg × ${set.reps}${tail}`;
+  return `${bodyweight ? 'BW × ' : ''}${set.reps}${tail}`;
 }
 
 /**

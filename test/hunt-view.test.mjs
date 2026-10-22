@@ -105,9 +105,11 @@ check('lastSet: newest session of mine, heaviest then most reps', lastSet(W, 'u'
 check('lastSet: ignores other Hunters', lastSet(W, 'other', 'Dips'), null);
 check('lastSet: before a date', lastSet(W, 'u', 'Bench Press', '2026-10-08'), { date: '2026-10-01', weight: 62.5, reps: 5 });
 check('lastSet: none', lastSet(W, 'u', 'Squat'), null);
-check('label: kg x reps', lastTimeLabel({ weight: 60, reps: 8 }), '60kg×8');
-check('label: no kg reads reps, not bodyweight', lastTimeLabel({ weight: 0, reps: 10 }), '10 reps');
-check('label: timed secs', lastTimeLabel({ weight: 0, reps: 45 }, { timed: true }), '45s');
+check('label: kg x reps x sets', lastTimeLabel({ weight: 60, reps: 8 }, {}, 4), '60kg × 8 × 4');
+check('label: kg x reps without sets', lastTimeLabel({ weight: 60, reps: 8 }), '60kg × 8');
+check('label: bodyweight move reads BW', lastTimeLabel({ weight: 0, reps: 10 }, { bodyweight: true }, 3), 'BW × 10 × 3');
+check('label: no kg on a non-bodyweight move reads reps only', lastTimeLabel({ weight: 0, reps: 10 }, {}, 3), '10 × 3');
+check('label: timed secs', lastTimeLabel({ weight: 0, reps: 45 }, { timed: true }, 3), '45s × 3');
 check('label: timed mins', lastTimeLabel({ weight: 0, reps: 20 }, { timed: true, timedUnit: 'mins' }), '20m');
 check('label: no history', lastTimeLabel(null), '');
 

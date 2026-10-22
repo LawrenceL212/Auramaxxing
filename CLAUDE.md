@@ -113,6 +113,8 @@ consistency) and tunes the plan toward the ones that are stalled, behind or miss
 tapped, through the same `programs/{uid}` write as the plan editor; the plan stores the picked
 `goal` and stamps a changed exercise `optimisedAt`. Pure, so `node test/optimiser.test.mjs` tests it.
 
+[ui-system.css](ui-system.css) is the shared "System window" look (`.ui-window`, `.ui-banner`, `.ui-btn-primary`, `.ui-chip`, `.ui-tile`, `.ui-row`, `.ui-crest`, ...), linked from `index.html`; every rule is scoped to a `.ui-*` class, so it restyles nothing that does not opt in. [ui-art.js](ui-art.js) gives painted-art slots (`uiArt(name)`, files go in `art/ui/`, code stand-ins until then) and the sigil/ring/equipment-icon SVG generators. [hunt-view.js](hunt-view.js) (week strip, last-time label, up-next) and [quick-quest.js](quick-quest.js) (the fixed bodyweight Quick 15 circuit, logged as an ordinary workout) are pure, tested in `test/hunt-view.test.mjs`, `test/quick-quest.test.mjs`, `test/ui-art.test.mjs`. Presentation only.
+
 Lazy-loaded: [classes.js](classes.js) via `await import('./classes.js')` in the class system section (6 root archetypes, 63 paths, 250+ class names) — kept out of the initial load deliberately.
 
 [countries_embedded.js](countries_embedded.js) (1.4 MB `COUNTRIES_GEO`) is imported **only** by [shadow-world.html](shadow-world.html), never by `index.html`.

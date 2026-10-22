@@ -6,6 +6,7 @@
 <title>Auramaxxing — Level Up Your Training</title>
 <meta name="theme-color" content="#05070D" />
 <link rel="manifest" href="manifest.json" />
+<link rel="stylesheet" href="ui-system.css" />
 <link rel="icon" href="icons/icon-192.png" />
 <link rel="apple-touch-icon" href="icons/icon-192.png" />
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -3518,134 +3519,96 @@
   #habit-card-wrap{ margin-bottom:10px; }
 
   /* ══════════════════════════════════════════════════════════════════════
-     HUNT SCREEN — status row, week strip, Today card, tiles, thumb bar, More
-     Same material as Rank and Codex: --card surfaces, --border hairlines,
-     --radius-md corners, mono 11px banners (.sl-section-head), --depth-1
-     resting shadow, Orbitron for numbers and names, Rajdhani for labels.
-     Presentation only.
+     HUNT SCREEN — layout only. The look comes from ui-system.css (.ui-window,
+     .ui-banner, .ui-chip, .ui-btn-primary, .ui-quick, .ui-tile, .ui-row ...).
+     Structure follows mockup A7: status row, sigil + crest header, gold Today
+     window, three tiles, pinned bar. 16px between blocks; nothing absolute
+     except the decorative sigil and the pinned bar.
      ══════════════════════════════════════════════════════════════════════ */
-  .hunt-status{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:var(--space-3) var(--fluid-pad) 0;}
-  .hunt-status-title{font-family:var(--font-mono);font-size:11px;letter-spacing:.3em;color:var(--text-faint);text-transform:uppercase;}
-  .hunt-chip{
-    display:inline-flex;align-items:center;gap:7px;min-height:44px;padding:0 12px;
-    background:var(--card);border:1px solid var(--border);border-radius:var(--radius-md);
-    box-shadow:var(--depth-1);color:var(--text);
-    font-family:var(--font-display);font-weight:800;font-size:15px;letter-spacing:.03em;
+  #view-quest{padding:0 !important;}
+  .hunt-block{margin-top:var(--space-4);}
+  #program-card-wrap{padding:0 3px;} /* room for the window's corner brackets */
+  .hunt-status{display:flex;align-items:center;justify-content:space-between;gap:8px;padding-top:var(--space-3);position:relative;z-index:2;}
+  .hunt-streak{display:inline-flex;align-items:center;gap:6px;min-height:44px;padding:0 12px;background:rgba(15,19,27,.9);border:1px solid rgba(91,168,255,.18);border-radius:20px;font-family:var(--font-display);font-weight:800;font-size:15px;color:var(--text);}
+  .hunt-streak .ui-art{width:18px;height:18px;display:block;}
+  .hunt-dots{display:flex;align-items:center;gap:7px;}
+  .hunt-dots i{width:12px;height:12px;border-radius:50%;border:1.5px solid rgba(91,168,255,.3);display:block;}
+  .hunt-dots i.done{background:var(--growing);border-color:var(--growing);box-shadow:0 0 8px rgba(111,255,176,.6);}
+  .hunt-dots i.rest{border-style:dashed;opacity:.5;}
+  .hunt-dots i.missed{border-color:rgba(107,120,148,.4);}
+  .hunt-dots i.today{border-color:var(--brass);box-shadow:0 0 10px var(--brass);background:rgba(91,168,255,.35);}
+  .hunt-dots i.today.done{background:var(--growing);border-color:var(--growing);box-shadow:0 0 0 2px var(--void),0 0 0 3.5px var(--brass),0 0 10px var(--brass);}
+  .hunt-lvl{min-height:44px;min-width:44px;padding:0 4px;background:none;border:0;cursor:pointer;touch-action:manipulation;font-family:var(--font-mono);font-size:12px;letter-spacing:.14em;color:var(--violet);}
+
+  .hunt-hero{position:relative;display:flex;flex-direction:column;align-items:center;text-align:center;margin-top:4px;}
+  .hunt-hero-bg{position:absolute;left:calc(-1 * var(--fluid-pad));right:calc(-1 * var(--fluid-pad));top:-150px;height:470px;overflow:hidden;pointer-events:none;z-index:0;
+    -webkit-mask-image:linear-gradient(180deg,#000 72%,transparent);mask-image:linear-gradient(180deg,#000 72%,transparent);}
+  .hunt-hero-bg > .ui-art{position:absolute;inset:0;opacity:.9;}
+  .hunt-hero-sigil{position:absolute;left:50%;top:-4px;transform:translateX(-50%);}
+  .hunt-hero > *:not(.hunt-hero-bg){position:relative;z-index:1;}
+  .hunt-crest{position:relative;width:84px;height:84px;display:grid;place-items:center;margin-top:2px;}
+  .hunt-crest .ui-ring{position:absolute;inset:0;}
+  .hunt-count{margin-top:8px;font-family:var(--font-display);font-weight:700;font-size:12px;color:var(--ui-gold);}
+  .hunt-gate{margin-top:6px;font-family:var(--font-mono);font-size:11px;letter-spacing:.3em;color:var(--ui-gold);text-transform:uppercase;}
+  .hunt-chips{display:flex;flex-wrap:wrap;justify-content:center;gap:10px;margin-top:8px;}
+  .hunt-day-row{display:flex;align-items:center;justify-content:center;gap:2px;width:100%;margin-top:6px;}
+  .hunt-day-name{margin:0;min-width:0;max-width:calc(100% - 96px);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-transform:uppercase;
+    font-family:var(--font-display);font-weight:800;font-size:clamp(26px,9vw,36px);line-height:1.1;letter-spacing:.03em;color:var(--text);text-shadow:0 0 24px rgba(255,214,107,.6);}
+  .hunt-arrow{flex:none;width:44px;height:44px;display:grid;place-items:center;background:none;border:1px solid var(--border);border-radius:50%;color:var(--brass);font-size:22px;line-height:1;cursor:pointer;touch-action:manipulation;}
+  .hunt-arrow:active{background:var(--brass-dim);}
+  .hunt-arrow.off{visibility:hidden;}
+  .hunt-hero .day-dots{margin:2px 0 0;}
+  .hunt-risk{margin-top:6px;display:inline-flex;align-items:center;gap:6px;font-family:var(--font-mono);font-size:11px;letter-spacing:.14em;color:var(--excess);text-transform:uppercase;}
+
+  /* the Today window is the existing carousel card, wearing .ui-window.gold */
+  .quest-card.hunt-today.ui-window{
+    background:var(--ui-window-bg);border:1px solid var(--ui-line-gold);border-radius:0;overflow:visible;
+    box-shadow:var(--ui-window-glow-gold);padding:14px 16px 6px;
   }
-  button.hunt-chip{cursor:pointer;touch-action:manipulation;font-family:var(--font-display);}
-  button.hunt-chip:active{transform:scale(.97);}
-  .hunt-chip.lvl{color:var(--violet);}
-  .hunt-chip svg{flex:none;}
-  .hunt-banner{padding:12px var(--fluid-pad) 8px;}
-  .hunt-banner.first{padding-top:10px;}
-
-  .hunt-week{display:flex;flex:1;justify-content:space-between;gap:2px;min-width:0;padding:0 4px;}
-  .hw-d{display:flex;flex-direction:column;align-items:center;gap:3px;font-family:var(--font-mono);font-size:11px;letter-spacing:.04em;color:var(--text-faint);}
-  .hw-c{width:24px;height:24px;border-radius:50%;display:grid;place-items:center;border:2px solid rgba(91,168,255,.2);color:var(--void);}
-  .hw-d.done .hw-c{background:var(--growing);border-color:var(--growing);}
-  .hw-d.rest .hw-c{border-style:dashed;border-color:rgba(91,168,255,.35);opacity:.6;}
-  .hw-d.missed .hw-c{border-color:rgba(107,120,148,.4);}
-  .hw-d.today{color:var(--text);}
-  .hw-d.today .hw-c{border-color:var(--brass);box-shadow:var(--glow-blue);}
-  .hw-d.today.done .hw-c{border-color:var(--growing);box-shadow:0 0 0 2px var(--void),0 0 0 4px var(--brass),var(--glow-blue);}
-  .hw-dot{width:6px;height:6px;border-radius:50%;background:var(--brass);box-shadow:0 0 8px var(--brass);}
-
-  .ht-risk{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:0 0 8px;padding:6px 0;border-top:1px solid rgba(255,77,103,.35);font-size:13px;font-weight:700;color:var(--text);}
-  .ht-risk > span:first-child{display:inline-flex;align-items:center;gap:8px;}
-  .hunt-risk-time{font-family:var(--font-mono);font-size:11px;letter-spacing:.14em;color:var(--excess);}
-
-  /* Today card — the existing .quest-card material, tighter */
-  .quest-card.hunt-today{padding:16px 16px 8px;}
-  .ht-head{display:flex;align-items:center;gap:14px;margin-bottom:10px;}
-  .ht-ring{flex:none;position:relative;width:64px;height:64px;}
-  .ht-ring svg{display:block;}
-  .ht-ring-n{position:absolute;inset:0;display:grid;place-items:center;font-family:var(--font-display);font-weight:800;font-size:14px;color:var(--text);}
-  .ht-titles{min-width:0;flex:1;}
-  .ht-name{font-family:var(--font-display);font-weight:var(--weight-hero);font-size:clamp(20px,6.2vw,26px);line-height:var(--lh-tight);letter-spacing:var(--tracking-title);color:var(--text);margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-transform:uppercase;}
-  .ht-meta{font-family:var(--font-mono);font-size:11px;letter-spacing:.14em;color:var(--text-faint);margin-top:4px;text-transform:uppercase;}
-  .ht-chips{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 6px;}
-  .ht-chip{font-family:var(--font-body);font-size:12px;font-weight:700;padding:3px 9px;border-radius:var(--radius-sm);background:var(--brass-dim);color:var(--brass);border:1px solid var(--border);letter-spacing:.02em;display:inline-flex;align-items:center;gap:6px;min-height:22px;}
-  .ht-chip.ok{color:var(--growing);border-color:rgba(111,255,176,.3);background:rgba(111,255,176,.08);}
-  .ht-chip.dim{color:var(--text-dim);background:rgba(255,255,255,.04);border-color:rgba(255,255,255,.08);}
-  .ht-chip.vio{color:var(--violet);background:var(--violet-dim);border-color:rgba(139,92,255,.3);}
-  .ht-chip i{width:6px;height:6px;border-radius:50%;background:currentColor;display:block;}
-  .ht-rows{margin:0;}
-  .ht-row{display:grid;grid-template-columns:24px minmax(0,1fr) auto auto;align-items:center;gap:10px;min-height:44px;padding:5px 0;border-top:1px solid rgba(91,168,255,.08);}
-  .ht-n{width:24px;height:24px;border-radius:var(--radius-sm);background:var(--elevated);display:grid;place-items:center;font-family:var(--font-mono);font-size:12px;color:var(--text-dim);}
-  .ht-name-ex{font-size:15px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-  .ht-last{font-family:var(--font-mono);font-size:11px;color:var(--text-faint);white-space:nowrap;}
-  .ht-dots{display:flex;gap:3px;flex-wrap:wrap;justify-content:flex-end;max-width:64px;}
-  .ht-dots s{width:8px;height:8px;border-radius:2px;background:rgba(91,168,255,.28);display:block;}
+  .quest-card.hunt-today.ui-window::before{left:-3px;top:-3px;right:auto;bottom:auto;width:14px;height:14px;border:2px solid var(--ui-gold);border-right:0;border-bottom:0;}
+  .quest-card.hunt-today.ui-window::after{right:-3px;bottom:-3px;left:auto;top:auto;width:14px;height:14px;border:2px solid var(--ui-gold);border-left:0;border-top:0;}
+  .ht-banner{margin-bottom:2px;}
+  .ht-main{flex:1;min-width:0;}
+  .ht-main .ui-row-name{display:block;}
+  .ht-dots{display:flex;gap:3px;margin-top:3px;}
+  .ht-dots s{width:12px;height:4px;border-radius:2px;background:rgba(91,168,255,.28);display:block;}
   .ht-dots s.on{background:var(--growing);box-shadow:0 0 6px rgba(111,255,176,.5);}
-  .ht-row.complete .ht-n{background:rgba(111,255,176,.12);color:var(--growing);}
-  .ht-row.complete .ht-name-ex{color:var(--growing);}
-  .ht-foot{display:flex;flex-wrap:wrap;gap:6px;padding:8px 0 6px;border-top:1px solid rgba(91,168,255,.08);}
-  .quest-card.quest-complete .ht-ring-n{color:var(--violet);}
-
-  /* Day switcher: arrows at 44px with the day dots between, under the card */
-  .hunt-days{display:flex;flex-wrap:nowrap;align-items:center;justify-content:center;gap:12px;margin-top:var(--space-4);}
-  .hunt-days:empty{display:none;}
-  .hunt-days .carousel-arrow{width:44px;height:44px;box-shadow:none;}
-  .hunt-days .day-dots{margin:0;}
-
-  .hunt-rest{display:flex;align-items:center;gap:12px;margin-bottom:10px;padding:10px 12px;border:1px solid var(--border);border-radius:var(--radius-md);background:var(--card);box-shadow:var(--depth-1);}
+  .ht-row.complete .ui-row-name{color:var(--growing);}
+  .ht-foot{display:flex;flex-wrap:wrap;gap:6px;padding:8px 0 8px;border-top:1px solid rgba(91,168,255,.12);}
+  .hunt-rest{display:flex;align-items:center;gap:12px;margin-bottom:16px;padding:10px 12px;}
   .hunt-rest-ring{flex:none;width:34px;height:34px;border-radius:50%;border:2px dashed rgba(91,168,255,.5);}
   .hunt-rest-t{flex:1;min-width:0;}
   .hunt-rest-t b{display:block;font-family:var(--font-display);font-size:13px;letter-spacing:.08em;color:var(--text);}
   .hunt-rest .rest-day-log-btn{width:auto;min-height:44px;padding:0 12px;font-size:12px;flex:none;}
 
-  .hunt-next{margin:var(--space-4) var(--fluid-pad) 0;min-height:44px;padding:6px 12px;display:flex;align-items:center;justify-content:space-between;gap:10px;background:var(--card);border:1px solid var(--border);border-radius:var(--radius-md);box-shadow:var(--depth-1);}
-  .hunt-next b{font-size:15px;font-weight:700;color:var(--text);white-space:nowrap;}
-  .hunt-next b em{font-style:normal;color:var(--text-faint);font-weight:600;margin-right:6px;}
-  .hunt-next span{min-width:0;overflow:hidden;text-overflow:ellipsis;font-family:var(--font-mono);font-size:11px;letter-spacing:.12em;color:var(--text-faint);text-transform:uppercase;white-space:nowrap;}
-
-  /* quiet text row: AP to invest, weigh-in, dungeon damage */
-  .hunt-tiles{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:var(--space-4);padding:0 var(--fluid-pad);}
+  .hunt-tiles{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;}
   .hunt-tiles:empty{display:none;}
-  .hunt-tile{min-width:0;min-height:48px;padding:4px 8px;display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:2px;cursor:pointer;touch-action:manipulation;
-    background:none;border:1px solid var(--border);border-radius:var(--radius-md);color:var(--text-dim);font-family:var(--font-body);text-align:left;}
-  .hunt-tile:active{opacity:.6;}
-  .hunt-tile b{font-size:14px;font-weight:700;display:inline-flex;align-items:center;gap:5px;white-space:nowrap;}
-  .hunt-tile.ap b{font-family:var(--font-display);font-size:13px;color:var(--violet);}
-  .hunt-tile.dmg b{font-family:var(--font-display);font-size:13px;color:var(--legendary);}
-  .hunt-tile span{font-family:var(--font-mono);font-size:11px;letter-spacing:.04em;color:var(--text-faint);}
+  .hunt-tiles .ui-tile-v{font-size:16px;}
+  .hunt-tiles .ui-tile-s{display:flex;align-items:center;gap:3px;}
+  #hunt-more-tile[aria-expanded="true"] .hm-chev{transform:rotate(180deg);}
+  .hm-chev{display:inline-block;transition:transform var(--dur-fast) var(--ease-ui);}
 
-  .hunt-objectives{padding-top:10px;}
-  .hunt-objectives #objectives-strip{padding:0 var(--fluid-pad) !important;margin-bottom:0;}
-
-  details.hunt-more{margin:var(--space-4) var(--fluid-pad) 0;background:var(--card);border:1px solid var(--border);border-radius:var(--radius-md);box-shadow:var(--depth-1);}
-  details.hunt-more > summary{list-style:none;cursor:pointer;min-height:56px;padding:8px 12px;display:flex;align-items:center;gap:10px;touch-action:manipulation;}
-  details.hunt-more > summary::-webkit-details-marker{display:none;}
-  .hm-main{flex:1;min-width:0;}
-  .hm-label{font-family:var(--font-mono);font-size:11px;letter-spacing:.3em;color:var(--text-faint);text-transform:uppercase;}
-  .hm-row{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;}
-  .hm-chev{flex:none;color:var(--text-faint);transition:transform var(--dur-fast) var(--ease-ui);}
-  details.hunt-more[open] .hm-chev{transform:rotate(180deg);}
-  .hunt-more-body{padding:0 12px 12px;border-top:1px solid var(--border);}
-  .hunt-more-body > div{margin-top:10px;}
-  .hunt-more-body #directives-strip,.hunt-more-body #habit-card-wrap,.hunt-more-body #program-editor-wrap{padding:0 !important;}
+  #hunt-more{margin-top:var(--space-4);}
+  #hunt-more[hidden]{display:none;}
+  #hunt-more > .hunt-more-body > div:empty{display:none;}
+  .hunt-more-body{display:flex;flex-direction:column;gap:var(--space-4);}
+  .hunt-more-body #directives-strip,.hunt-more-body #habit-card-wrap,.hunt-more-body #objectives-strip{padding:0 !important;margin:0 !important;}
   .hunt-plan-head{display:flex;align-items:center;justify-content:space-between;gap:8px;}
   .hunt-plan-head .icon-btn{min-height:44px;}
+  .hunt-next{min-height:44px;padding:6px 12px;display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:8px;}
+  .hunt-next b{font-size:15px;font-weight:700;color:var(--text);white-space:nowrap;}
+  .hunt-next span{min-width:0;overflow:hidden;text-overflow:ellipsis;font-family:var(--font-mono);font-size:11px;letter-spacing:.12em;color:var(--text-faint);text-transform:uppercase;white-space:nowrap;}
 
-  .hunt-spacer{height:114px;} /* bar height (24 fade + 54 button + 12) + 24 */
-  /* Begin Hunt is pinned directly above the bottom nav (thumb zone). --hunt-nav-h is the nav's
-     measured height, set in syncHuntBar. z-index 9 sits under the nav (10) and under modals. */
+  .hunt-spacer{height:130px;} /* pinned bar (24 fade + 58 button + 12) + 24 + breathing room */
+  /* Pinned bar: fixed above the bottom nav. Lives outside the view sections because the active
+     view's enter animation makes it a containing block for fixed children; switchView toggles .off. */
   .hunt-bar{position:fixed;left:0;right:0;bottom:var(--hunt-nav-h,calc(56px + env(safe-area-inset-bottom,0px)));z-index:9;
-    padding:24px 16px 0;background:linear-gradient(180deg,transparent,var(--void) 55%);pointer-events:none;}
+    padding:24px 16px 0;background:linear-gradient(180deg,transparent,rgba(7,9,14,.96) 38%);pointer-events:none;}
   .hunt-bar.hidden,.hunt-bar.off{display:none !important;}
-  .hunt-bar-in{display:flex;gap:8px;max-width:640px;margin:0 auto;position:relative;pointer-events:auto;padding-bottom:12px;}
-  .hunt-plus{flex:none;width:54px;height:54px;display:grid;place-items:center;cursor:pointer;touch-action:manipulation;
-    background:var(--card);border:1px solid var(--border);border-radius:var(--radius-md);color:var(--text);box-shadow:var(--depth-1);}
-  .hunt-plus[aria-expanded="true"]{border-color:var(--brass);color:var(--brass);}
-  .hunt-plus svg{transition:transform var(--dur-fast) var(--ease-ui);}
-  .hunt-plus[aria-expanded="true"] svg{transform:rotate(45deg);}
-  .hunt-begin{flex:1;min-width:0;height:54px;display:flex;align-items:center;justify-content:center;gap:10px;cursor:pointer;touch-action:manipulation;
-    border-radius:var(--radius-md);border:1px solid var(--brass);background:var(--brass);color:var(--void);
-    font-family:var(--font-display);font-weight:800;font-size:16px;letter-spacing:.1em;text-transform:uppercase;
-    box-shadow:var(--glow-blue),inset 0 1px 0 rgba(255,255,255,.25);transition:transform var(--dur-snap) var(--ease-impact);}
-  .hunt-begin:active{transform:scale(.98);}
-  .hunt-begin.cleared{background:rgba(139,92,255,.2);border-color:rgba(139,92,255,.55);color:var(--text);box-shadow:var(--glow-violet);}
-  .hunt-menu{position:absolute;left:0;bottom:calc(100% - 4px);z-index:20;min-width:236px;padding:4px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-md);box-shadow:var(--depth-3);}
+  .hunt-bar-in{display:flex;gap:10px;max-width:640px;margin:0 auto;position:relative;pointer-events:auto;padding-bottom:12px;}
+  .hunt-begin{flex:1;min-width:0;padding:0 10px;font-size:15px;letter-spacing:.08em;white-space:nowrap;}
+  .hunt-bar .ui-quick{width:88px;}
+  .hunt-menu{position:absolute;left:0;bottom:calc(100% - 4px);min-width:236px;z-index:20;padding:4px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-md);box-shadow:var(--depth-3);}
   .hunt-menu.hidden{display:none;}
   .hunt-menu button{display:flex;align-items:center;gap:12px;width:100%;min-height:48px;padding:0 12px;background:none;border:0;border-radius:var(--radius-sm);color:var(--text);font-family:var(--font-body);font-size:15px;font-weight:600;cursor:pointer;touch-action:manipulation;text-align:left;}
   .hunt-menu button + button{border-top:1px solid rgba(91,168,255,.08);}
@@ -3845,30 +3808,26 @@
     <!-- ---- QUEST (log + program) ---- -->
     <section class="view active" id="view-quest" style="padding:0;">
 
-      <!-- ── HUNT SCREEN — mission not a form ── -->
-      <!-- Objectives float at top — data not a card -->
-      <!-- Quest feed first — the card IS the screen, Begin Hunt is the first thing in reach.
-           Directive, objectives and the habit curve follow as context. -->
+      <!-- ── HUNT SCREEN (mockup A7): status row, sigil + crest header, gold Today window, three tiles.
+           Begin Hunt / Quick / + are the pinned bar (#hunt-bar, below). Everything that used to sit under
+           the card lives in the More panel, opened by the More tile: nothing was removed. ── -->
       <div id="hunt-top"></div>
-      <div class="hunt-days" id="hunt-days"></div>
-      <div id="program-card-wrap" style="margin-top:var(--space-4);padding:0 var(--fluid-pad);"></div>
+      <div class="hunt-hero" id="hunt-hero"></div>
+      <div id="program-card-wrap" class="hunt-block"></div>
+      <div class="hunt-tiles hunt-block" id="hunt-tiles"></div>
 
-      <div id="hunt-next"></div>
-      <div class="hunt-tiles" id="hunt-tiles"></div>
-
-      <div id="objectives-strip" style="margin-top:var(--space-4);padding:0 var(--fluid-pad);"></div>
-
-      <!-- More: everything that used to sit below the card, nothing removed -->
-      <details class="hunt-more" id="hunt-more">
-        <summary id="hunt-more-sum"><div class="hm-main"><div class="hm-label">◈ More</div></div></summary>
+      <div id="hunt-more" hidden>
         <div class="hunt-more-body">
+          <div id="hunt-next"></div>
+          <div id="hunt-dmg"></div>
           <div id="hunt-plan-head"></div>
           <div id="plan-optimiser"></div>
           <div id="program-editor-wrap"></div>
           <div id="directives-strip"></div>
+          <div id="objectives-strip"></div>
           <div id="habit-card-wrap"></div>
         </div>
-      </details>
+      </div>
       <div class="hunt-spacer"></div>
     </section>
 
@@ -4153,19 +4112,20 @@
 
   </main>
 
-  <!-- Begin Hunt is pinned above the bottom nav (thumb zone). Lives outside the view sections because the active view's
-       enter animation makes it a containing block for fixed children; switchView toggles .off.  + opens the three log actions (same ids and handlers as before) -->
-      <div class="hunt-bar" id="hunt-bar">
-        <div class="hunt-bar-in">
-          <button class="hunt-plus" id="hunt-plus-btn" aria-label="Log a session" aria-haspopup="true" aria-expanded="false"><svg width="22" height="22" viewBox="0 0 22 22" aria-hidden="true"><path d="M11 3v16M3 11h16" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg></button>
-          <button class="hunt-begin" id="hunt-begin-btn" data-mode="begin"></button>
-          <div class="hunt-menu hidden" id="hunt-menu" role="menu">
-            <button id="manual-log-btn" role="menuitem"><svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true"><rect x="3" y="3" width="14" height="14" rx="2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M10 6.5v7M6.5 10h7" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>Log a session</button>
-            <button id="log-run-btn" role="menuitem"><svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true"><path d="M2 14c3-1 4-4 6-6s4-1 6 1 3 3 4 3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><circle cx="12" cy="4" r="1.8" fill="currentColor"/></svg>Log a run</button>
-            <button id="past-log-btn" role="menuitem"><svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true"><path d="M4 10a6 6 0 1 0 2-4.5M4 3v3.5h3.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M10 6.5V10l2.5 1.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>Log a past session</button>
-          </div>
-        </div>
+  <!-- Pinned bar (thumb zone): + menu, Quick 15, Begin Hunt. Lives outside the view sections because the active view's
+       enter animation makes it a containing block for fixed children; switchView toggles .off. The three log buttons keep their ids and handlers. -->
+  <div class="hunt-bar" id="hunt-bar">
+    <div class="hunt-bar-in">
+      <button class="ui-btn-square" id="hunt-plus-btn" aria-label="Log a session" aria-haspopup="true" aria-expanded="false"><svg width="22" height="22" viewBox="0 0 22 22" aria-hidden="true"><path d="M11 3v16M3 11h16" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg></button>
+      <button class="ui-quick" id="hunt-quick-btn" aria-label="Quick: 15 minute bodyweight circuit"><span style="display:inline-flex;align-items:center;gap:4px;"><svg width="13" height="13" viewBox="0 0 16 16" aria-hidden="true"><path d="M9 1 3 9h4l-1 6 7-9H9z" fill="currentColor"/></svg></span>QUICK<small>15 min</small></button>
+      <button class="ui-btn-primary hunt-begin" id="hunt-begin-btn" data-mode="begin"></button>
+      <div class="hunt-menu hidden" id="hunt-menu" role="menu">
+        <button id="manual-log-btn" role="menuitem"><svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true"><rect x="3" y="3" width="14" height="14" rx="2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M10 6.5v7M6.5 10h7" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>Log a session</button>
+        <button id="log-run-btn" role="menuitem"><svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true"><path d="M2 14c3-1 4-4 6-6s4-1 6 1 3 3 4 3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><circle cx="12" cy="4" r="1.8" fill="currentColor"/></svg>Log a run</button>
+        <button id="past-log-btn" role="menuitem"><svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true"><path d="M4 10a6 6 0 1 0 2-4.5M4 3v3.5h3.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M10 6.5V10l2.5 1.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>Log a past session</button>
       </div>
+    </div>
+  </div>
 
   <nav class="bottom-nav">
     <div class="nav-inner">
@@ -4321,6 +4281,8 @@ import { computeStreakFrom, STREAK_RULES_START, shiftDay } from "./streak.js";
 import { newestApEvents, isMissingIndexError, LEDGER_LIMIT } from "./ap-ledger.js";
 import { backfillDateProblem, earliestBackfillDate, isDuplicateSession, laterDate } from "./backfill.js";
 import { defaultPlanDay, planDayOptions, shouldAdvanceRotation } from "./plan-day.js";
+import { uiArtHtml, uiArtHydrate, uiSigil, uiRing, uiIcon, equipmentKind, muscleTint } from "./ui-art.js";
+import { QUICK_TITLE, buildQuickCircuit, quickLoggerRows } from "./quick-quest.js";
 import { weekStrip, weekProgress, latestDate, agoLabel, estimateMinutes, totalSets, topMuscles, ringArc,
   lastSet, lastTimeLabel, upNext, leftLabel } from "./hunt-view.js";
 import { setInputKind, setInputHeaders, storedSet, storedSetSecs, partsToSecs, secsToParts,
@@ -8393,32 +8355,32 @@ document.getElementById('workout-time').value = nowTimeStr();
 function renderQuestFeed() {
   const wrap = document.getElementById('program-card-wrap');
   const editorWrap = document.getElementById('program-editor-wrap');
+  const clearHunt = () => ['hunt-plan-head', 'hunt-next', 'plan-optimiser'].forEach(id => { const e = document.getElementById(id); if (e) e.innerHTML = ''; });
   if (editingProgram) {
     wrap.innerHTML = '';
-    ['hunt-plan-head', 'hunt-days', 'hunt-next', 'plan-optimiser'].forEach(id => { const e = document.getElementById(id); if (e) e.innerHTML = ''; });
-    const mo = document.getElementById('hunt-more');
-    if (mo && !mo.open) { mo.open = true; _huntEditOpened = true; }
+    clearHunt();
+    if (document.getElementById('hunt-more')?.hidden) { setHuntMore(true); _huntEditOpened = true; }
     renderProgramEditor(editorWrap);
     renderHuntChrome();
     return;
   }
   editorWrap.innerHTML = '';
+  if (_huntEditOpened) { _huntEditOpened = false; setHuntMore(false); }
 
   if (!myProgram || !myProgram.days || !myProgram.days.length) {
     wrap.innerHTML = `
-      <div style="padding:32px 20px;text-align:center;">
-        <div style="font-family:var(--font-mono);font-size:8px;color:rgba(91,168,255,0.78);letter-spacing:.25em;margin-bottom:20px;">◈ SYSTEM</div>
+      <div class="ui-window" style="padding:28px 20px;text-align:center;">
+        <div class="ui-banner" style="justify-content:center;margin-bottom:16px;">◈ System</div>
         <div style="font-family:var(--font-display);font-size:24px;font-weight:900;color:var(--text-dim);letter-spacing:.06em;margin-bottom:8px;">NO HUNT ASSIGNED</div>
-        <p style="font-size:13px;color:var(--text-faint);margin:0 0 28px;line-height:1.7;">The System is watching.<br>You have not yet defined your training.</p>
-        <button class="btn btn-primary" id="build-program-btn" style="width:auto;padding:11px 20px;">+ Create plan</button>
+        <p style="font-size:13px;color:var(--text-faint);margin:0 0 24px;line-height:1.7;">The System is watching.<br>You have not yet defined your training.</p>
+        <button class="btn btn-primary" id="build-program-btn" style="width:auto;padding:11px 20px;min-height:44px;">+ Create plan</button>
       </div>`;
     document.getElementById('build-program-btn')?.addEventListener('click', () => { editingProgram = true; renderQuestFeed(); });
-    ['hunt-plan-head', 'hunt-days', 'hunt-next', 'plan-optimiser'].forEach(id => { const e = document.getElementById(id); if (e) e.innerHTML = ''; });
+    clearHunt();
     renderHuntChrome();
     return;
   }
 
-  const rotationIdx = myProgram.currentDayIndex % myProgram.days.length;
   const today = todayWeekday();
   // In fixed mode the days carry their own weekdays; the plan-level schedule can be stale or empty, so trust the days.
   const fixedDays = myProgram.scheduleMode === 'fixed' && myProgram.days.some(d => (d.assignedDays || []).length);
@@ -8444,8 +8406,6 @@ function renderQuestFeed() {
     if (todayDayIdx >= 0) questCarouselIndex = todayDayIdx;
   }
 
-  const dots = myProgram.days.map((_, i) => `<span class="day-dot ${i===questCarouselIndex?'current':''} ${i===rotationIdx && i!==questCarouselIndex?'done':''}"></span>`).join('');
-
   const planHead = document.getElementById('hunt-plan-head');
   if (planHead) planHead.innerHTML = `
     <div class="quest-feed-head hunt-plan-head" style="margin-bottom:0;">
@@ -8455,29 +8415,23 @@ function renderQuestFeed() {
         <button class="icon-btn" id="edit-program-btn">✎ Edit plan</button>
       </div>
     </div>`;
-  const daysHost = document.getElementById('hunt-days');
-  if (daysHost) daysHost.innerHTML = myProgram.days.length > 1 ? `
-    <button class="carousel-arrow" id="carousel-prev" aria-label="Previous day">‹</button>
-    <div class="day-dots">${dots}</div>
-    <button class="carousel-arrow" id="carousel-next" aria-label="Next day">›</button>` : '';
 
   wrap.innerHTML = `
     ${!isScheduledToday ? `
-    <div class="hunt-rest">
+    <div class="ui-window hunt-rest">
       <span class="hunt-rest-ring" aria-hidden="true"></span>
-      <div class="hunt-rest-t"><b>RECOVERY PHASE</b><span class="ht-chip ok" style="margin-top:4px;">${HI.check}Streak protected</span></div>
+      <div class="hunt-rest-t"><b>RECOVERY PHASE</b><span class="ui-chip green" style="margin-top:4px;">${HI.check}Streak protected</span></div>
       <button class="btn rest-day-log-btn" id="rest-day-log-btn">+ Bonus session</button>
     </div>` : ''}
     <div class="quest-carousel">
       <div class="quest-carousel-card">
-        <div class="quest-card hunt-today ${isQuestComplete(questCarouselIndex) ? 'quest-complete' : ''}">
+        <div class="quest-card hunt-today ui-window gold ${isQuestComplete(questCarouselIndex) ? 'quest-complete' : ''}">
           ${buildQuestCardHTML(questCarouselIndex)}
         </div>
       </div>
     </div>
   `;
   renderPlanOptimiser();
-  if (_huntEditOpened) { _huntEditOpened = false; const mo = document.getElementById('hunt-more'); if (mo) mo.open = false; }
 
   document.getElementById('edit-program-btn')?.addEventListener('click', () => { editingProgram = true; renderQuestFeed(); });
   document.getElementById('rest-day-log-btn')?.addEventListener('click', () => {
@@ -8488,8 +8442,6 @@ function renderQuestFeed() {
     peSnap = myProgram ? JSON.stringify(myProgram) : undefined; myProgram = null; editingProgram = true; renderQuestFeed();
   });
   wireQuestCard(wrap.querySelector('.quest-card'), questCarouselIndex);
-  document.getElementById('carousel-prev')?.addEventListener('click', () => { SFX.swipe(); navigateCarousel('prev'); });
-  document.getElementById('carousel-next')?.addEventListener('click', () => { SFX.swipe(); navigateCarousel('next'); });
   attachSwipeHandlers(wrap.querySelector('.quest-carousel-card'),
     () => { SFX.swipe(); navigateCarousel('next'); },
     () => { SFX.swipe(); navigateCarousel('prev'); }
@@ -8497,12 +8449,11 @@ function renderQuestFeed() {
   renderHuntChrome();
 }
 
-
 /* =========================================================================
    HUNT SCREEN CHROME
-   The status row, week strip, streak-at-risk strip, up-next row, tiles, thumb
-   bar and the More fold summary. Presentation only: it reads the same state
-   the Hunt card reads and writes nothing. Pure pieces live in hunt-view.js.
+   Status row, sigil header, tiles, More panel and the pinned bar. Presentation
+   only: it reads the same state the Hunt card reads and writes nothing. The
+   look is ui-system.css; pure pieces live in hunt-view.js and quick-quest.js.
    ========================================================================= */
 const HI = {
   flame: '<svg width="16" height="18" viewBox="0 0 16 18" aria-hidden="true"><path d="M8 1c1 4 5 5 5 10a5 5 0 0 1-10 0c0-2 1-3 2-4 0 2 1 2 2 2 0-3-1-5 1-8z" fill="#FF8A3D"/></svg>',
@@ -8522,11 +8473,33 @@ const HI = {
 let _huntRiskTimer = null;
 let _huntEditOpened = false;
 
-/** The plan day the Hunt card is showing, with the re-entry view applied the same way the card does. */
-function huntShownDay() {
-  if (!myProgram || !myProgram.days || !myProgram.days.length) return null;
-  const raw = myProgram.days[questCarouselIndex] || myProgram.days[0];
-  return (reEntryActive() && raw) ? { ...raw, exercises: reEntryPlan(raw.exercises || []) } : raw;
+/** The day the Hunt card is showing: its exercises, which are done, and whether it is today's. */
+function huntDayStats(idx) {
+  const rotationIdx = myProgram.currentDayIndex % myProgram.days.length;
+  const rawDay = myProgram.days[idx];
+  /* On the first Hunt back after a gap the programmed sets are halved, which is
+     what the re-entry notice promises. The stored programme is untouched — this
+     is only a view of it, and it reverts the moment a session closes the gap. */
+  const day = (reEntryActive() && rawDay)
+    ? { ...rawDay, exercises: reEntryPlan(rawDay.exercises || []) }
+    : rawDay;
+  const isFixed = myProgram.scheduleMode === 'fixed';
+  const isActiveDay = isFixed ? (day.assignedDays || []).includes(todayWeekday()) : idx === rotationIdx;
+  const allComplete = isQuestComplete(idx);
+  // the best matching workout this week for this day
+  let matched = null;
+  if (isFixed) {
+    const weekStart = todayStr(startOfWeek(new Date()));
+    matched = myWorkouts.find(w => w.uid === currentUser.uid && w.date >= weekStart && Number(w.programDayIndex) === idx) || null;
+  }
+  const setsFor = name => (isFixed && matched)
+    ? (matched.exercises || []).filter(e => e.name === name).reduce((sum, e) => sum + (e.sets || []).filter(s => s.reps > 0).length, 0)
+    : setsLoggedToday(name, idx);
+  const rows = day.exercises.map(ex => {
+    const done = setsFor(ex.name);
+    return { ex, done, complete: allComplete || done >= ex.sets };
+  });
+  return { idx, day, isActiveDay, allComplete, rows, completed: rows.filter(r => r.complete).length, total: rows.length };
 }
 
 function huntTodayState() {
@@ -8536,30 +8509,6 @@ function huntTodayState() {
   return { strip, today: strip.find(d => d.isToday), trainedToday: dates.has(todayStr()) };
 }
 
-function renderHuntTop() {
-  const host = document.getElementById('hunt-top');
-  if (!host) return;
-  if (!currentUser || !profile) { host.innerHTML = ''; return; }
-  const st = huntTodayState();
-  const streak = computeStreak(currentUser.uid);
-  const wp = weekProgress(st.strip);
-  const goal = Number(profile.weeklyGoal) > 0 ? Number(profile.weeklyGoal) : wp.planned;
-  const atRisk = huntStreakAtRisk();
-  const STATE_LABEL = { done: 'trained', rest: 'rest day', pending: 'today, not yet trained', missed: 'missed', upcoming: 'upcoming' };
-  const circles = st.strip.map(d => {
-    const inner = d.state === 'done' ? HI.check : (d.isToday && d.state === 'pending') ? '<span class="hw-dot"></span>' : '';
-    return `<div class="hw-d ${d.state}${d.isToday ? ' today' : ''}" title="${d.weekday} · ${STATE_LABEL[d.state]}" aria-label="${d.weekday}: ${STATE_LABEL[d.state]}"><span class="hw-c">${inner}</span>${d.letter}</div>`;
-  }).join('');
-  host.innerHTML = `
-    <div class="hunt-status">
-      <div class="hunt-chip" title="Streak" aria-label="Streak ${streak}">${HI.flame}${streak}</div>
-      <div class="hunt-week" role="group" aria-label="This week: ${wp.trained} of ${goal}" title="This week ${wp.trained}/${goal}">${circles}</div>
-      <button class="hunt-chip lvl" id="hunt-level-chip" aria-label="Hunter level ${profile.hunterLevel || 1}. Open Rank">${HI.diamond}${profile.hunterLevel || 1}</button>
-    </div>`;
-  document.getElementById('hunt-level-chip')?.addEventListener('click', () => switchView('board'));
-  syncHuntRisk(atRisk);
-}
-
 /** Streak at risk: a streak to lose, a training day, nothing logged yet today. */
 function huntStreakAtRisk() {
   if (!currentUser || !profile) return false;
@@ -8567,11 +8516,14 @@ function huntStreakAtRisk() {
   return computeStreak(currentUser.uid) > 0 && st.today.state === 'pending';
 }
 
-/** Keep the countdown inside the Today card ticking while it is on screen. */
-function syncHuntRisk(atRisk) {
-  tickHuntRisk();
-  if (atRisk && !_huntRiskTimer) _huntRiskTimer = setInterval(tickHuntRisk, 30000);
-  if (!atRisk && _huntRiskTimer) { clearInterval(_huntRiskTimer); _huntRiskTimer = null; }
+/** Hunter rank from the six stat ranks (the Rank screen's own rule), and how many stats already stand at the next rank. */
+function huntRankInfo() {
+  const stats = (profile && profile.stats) || defaultStats();
+  const rank = charRankFromStats(stats);
+  const at = RANK_TIERS.indexOf(rank);
+  const next = RANK_TIERS[at + 1] || null;
+  const have = next ? STAT_DEFS.filter(d => RANK_TIERS.indexOf(stats[d.id] || 'E') >= at + 1).length : 0;
+  return { rank, next, have, total: STAT_DEFS.length };
 }
 
 function tickHuntRisk() {
@@ -8582,11 +8534,75 @@ function tickHuntRisk() {
   el.textContent = leftLabel((midnight - now) / 1000);
 }
 
-/** Estimated dungeon damage for the shown day, from last-time sets, using the game's own damage function (read only). */
+function syncHuntRisk(atRisk) {
+  tickHuntRisk();
+  if (atRisk && !_huntRiskTimer) _huntRiskTimer = setInterval(tickHuntRisk, 30000);
+  if (!atRisk && _huntRiskTimer) { clearInterval(_huntRiskTimer); _huntRiskTimer = null; }
+}
+
+function renderHuntTop() {
+  const host = document.getElementById('hunt-top');
+  if (!host) return;
+  if (!currentUser || !profile) { host.innerHTML = ''; return; }
+  const st = huntTodayState();
+  const streak = computeStreak(currentUser.uid);
+  const wp = weekProgress(st.strip);
+  const goal = Number(profile.weeklyGoal) > 0 ? Number(profile.weeklyGoal) : wp.planned;
+  const STATE_LABEL = { done: 'trained', rest: 'rest day', pending: 'today, not yet trained', missed: 'missed', upcoming: 'upcoming' };
+  const dots = st.strip.map(d =>
+    `<i class="${d.state}${d.isToday ? ' today' : ''}" title="${d.weekday} · ${STATE_LABEL[d.state]}"></i>`).join('');
+  const level = levelFromTotalXP(profile.hunterXP || 0); // derived from XP, as the Rank screen does, so the two never disagree
+  host.innerHTML = `
+    <div class="hunt-status">
+      <div class="hunt-streak" aria-label="Streak ${streak}">${uiArtHtml('icon-streak', { alt: 'Streak' })}${streak}</div>
+      <div class="hunt-dots" role="img" aria-label="This week: ${wp.trained} of ${goal} sessions">${dots}</div>
+      <button class="hunt-lvl" id="hunt-level-chip" aria-label="Hunter level ${level}. Open Rank">LV ${level}</button>
+    </div>`;
+  uiArtHydrate(host);
+  document.getElementById('hunt-level-chip')?.addEventListener('click', () => switchView('board'));
+}
+
+function renderHuntHero() {
+  const host = document.getElementById('hunt-hero');
+  if (!host) return;
+  if (!currentUser || !profile || editingProgram) { host.innerHTML = ''; return; }
+  const hasPlan = !!(myProgram && myProgram.days && myProgram.days.length);
+  const ri = huntRankInfo();
+  const stats = hasPlan ? huntDayStats(questCarouselIndex) : null;
+  const frac = stats && stats.total ? stats.completed / stats.total : 0;
+  const atRisk = !!(stats && stats.isActiveDay && !stats.allComplete && huntStreakAtRisk());
+  const chips = [];
+  try {
+    const a = analyseHabit(habitContext());
+    if (a.taken) chips.push(`<span class="ui-chip green">HABIT ${Math.round(a.strength)}%</span>`);
+  } catch (_) { /* header only */ }
+  if (ri.next) chips.push(`<span class="ui-chip gold" title="${ri.have} of ${ri.total} stats are already ${ri.next} or higher">RANK ${ri.rank}→${ri.next} · ${ri.have}/${ri.total}</span>`);
+  const multi = hasPlan && myProgram.days.length > 1;
+  const rotationIdx = hasPlan ? myProgram.currentDayIndex % myProgram.days.length : 0;
+  const dots = hasPlan ? myProgram.days.map((_, i) => `<span class="day-dot ${i === questCarouselIndex ? 'current' : ''} ${i === rotationIdx && i !== questCarouselIndex ? 'done' : ''}"></span>`).join('') : '';
+  host.innerHTML = `
+    <div class="hunt-hero-bg">${uiArtHtml('gate-card-bg')}<div class="hunt-hero-sigil">${uiSigil({ size: 390 })}</div></div>
+    <div class="hunt-crest"><span class="ui-ring">${uiRing({ size: 84, r: 38, stroke: 4, frac, id: 'huntRg' })}</span><div class="ui-crest"><span>${ri.rank}</span></div></div>
+    ${stats ? `<div class="hunt-count" title="${stats.completed}/${stats.total} exercises cleared">${stats.completed} / ${stats.total}</div>` : ''}
+    <div class="hunt-gate">${ri.rank}-RANK GATE</div>
+    ${chips.length ? `<div class="hunt-chips">${chips.join('')}</div>` : ''}
+    ${hasPlan ? `<div class="hunt-day-row">
+      <button class="hunt-arrow ${multi ? '' : 'off'}" id="carousel-prev" data-hunt-dir="prev" aria-label="Previous day" ${multi ? '' : 'tabindex="-1"'}>‹</button>
+      <h2 class="hunt-day-name">${escapeHtml(stats.day.name)}</h2>
+      <button class="hunt-arrow ${multi ? '' : 'off'}" id="carousel-next" data-hunt-dir="next" aria-label="Next day" ${multi ? '' : 'tabindex="-1"'}>›</button>
+    </div>
+    ${multi ? `<div class="day-dots">${dots}</div>` : ''}` : ''}
+    ${atRisk ? `<div class="hunt-risk" id="hunt-risk">${HI.warn}<span>Streak at risk · <span id="hunt-risk-time"></span></span></div>` : ''}`;
+  uiArtHydrate(host);
+  syncHuntRisk(atRisk);
+}
+
+/** Dungeon damage the shown day would deal, from last-time sets, using the game's own damage function (read only). */
 function huntDungeonEstimate() {
   const dungeon = profile && profile.activeDungeon;
-  const day = huntShownDay();
-  if (!dungeon || !day || !day.exercises.length) return 0;
+  if (!dungeon || !myProgram || !myProgram.days || !myProgram.days.length) return 0;
+  const day = huntDayStats(questCarouselIndex).day;
+  if (!day || !day.exercises.length) return 0;
   const exs = [];
   for (const ex of day.exercises) {
     const last = lastSet(myWorkouts, currentUser.uid, ex.name);
@@ -8597,19 +8613,30 @@ function huntDungeonEstimate() {
   try { return computeSessionDungeonDamage(applyDungeonRegen(dungeon), exs, null) || 0; } catch (_) { return 0; }
 }
 
+function setHuntMore(open, scroll) {
+  const mo = document.getElementById('hunt-more');
+  if (!mo) return;
+  mo.hidden = !open;
+  document.getElementById('hunt-more-tile')?.setAttribute('aria-expanded', open ? 'true' : 'false');
+  if (open && scroll) mo.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
 function renderHuntTiles() {
   const host = document.getElementById('hunt-tiles');
   if (!host) return;
   if (!currentUser || !profile || editingProgram) { host.innerHTML = ''; return; }
   const ap = Math.floor(profile.auraPoints || 0);
   const lastW = latestDate(myWeights, myCheckins);
-  const dmg = huntDungeonEstimate();
+  let tips = 0;
+  try { if (myProgram && myProgram.days && myProgram.days.length) tips = optimisePlan(planOptCtx(myProgram, todayStr())).suggestions.length; } catch (_) {}
+  const open = !document.getElementById('hunt-more')?.hidden;
   host.innerHTML = `
-    <button class="hunt-tile ap ${ap > 0 ? 'has' : ''}" id="hunt-ap-tile" aria-label="${ap} Aura Points. Tap to invest"><b>${HI.diamond}${ap.toLocaleString()} AP</b><span>to invest</span></button>
-    <button class="hunt-tile" id="hunt-weight-tile" aria-label="Log weight. Last ${agoLabel(lastW, todayStr())}"><b>${HI.bars}Weigh-in</b><span>${lastW ? agoLabel(lastW, todayStr()) : 'not logged'}</span></button>
-    ${dmg > 0 ? `<div class="hunt-tile dmg" style="cursor:default;" aria-label="Estimated dungeon damage ${dmg}"><b>${HI.bolt}~${dmg.toLocaleString()}</b><span>dungeon dmg</span></div>` : ''}`;
+    <button class="ui-tile violet" id="hunt-ap-tile" aria-label="${ap} Aura Points. Tap to invest"><span class="ui-tile-v">${ap.toLocaleString()} AP</span><span class="ui-tile-s">to invest</span></button>
+    <button class="ui-tile" id="hunt-weight-tile" aria-label="Weigh in. Last ${agoLabel(lastW, todayStr())}"><span class="ui-tile-v">Weigh in</span><span class="ui-tile-s">${lastW ? agoLabel(lastW, todayStr()) : 'not logged'}</span></button>
+    <button class="ui-tile ui-dot-host" id="hunt-more-tile" aria-expanded="${open}" aria-controls="hunt-more"><span class="ui-tile-v">More</span><span class="ui-tile-s">plan · goals <span class="hm-chev">${HI.chev.replace('width="18" height="18"', 'width="12" height="12"')}</span></span>${tips ? '<span class="ui-dot gold" title="Plan tips waiting"></span>' : ''}</button>`;
   document.getElementById('hunt-ap-tile')?.addEventListener('click', openApInvestPicker);
   document.getElementById('hunt-weight-tile')?.addEventListener('click', () => window.openCheckinModal());
+  document.getElementById('hunt-more-tile')?.addEventListener('click', () => setHuntMore(document.getElementById('hunt-more').hidden, true));
 }
 
 /** Stat picker for the AP tile: each row opens the existing invest panel for that stat. */
@@ -8638,7 +8665,7 @@ function openApInvestPicker() {
   }));
 }
 
-/** The sticky thumb bar: label and mode follow the day the card is showing. */
+/** The pinned bar: Begin Hunt's label and mode follow the day the card is showing. */
 function syncHuntBar() {
   const bar = document.getElementById('hunt-bar');
   const btn = document.getElementById('hunt-begin-btn');
@@ -8647,19 +8674,16 @@ function syncHuntBar() {
   if (nav) document.documentElement.style.setProperty('--hunt-nav-h', nav.offsetHeight + 'px');
   const hasPlan = !!(myProgram && myProgram.days && myProgram.days.length);
   bar.classList.toggle('hidden', !!editingProgram);
-  btn.classList.remove('cleared');
+  btn.classList.remove('is-done');
   if (!hasPlan) { btn.dataset.mode = 'create'; btn.innerHTML = HI.plus.replace('width="22" height="22"', 'width="16" height="16"') + 'Create plan'; return; }
-  const idx = questCarouselIndex;
-  const rotationIdx = myProgram.currentDayIndex % myProgram.days.length;
-  const day = myProgram.days[idx];
-  const isActiveDay = myProgram.scheduleMode === 'fixed' ? (day.assignedDays || []).includes(todayWeekday()) : idx === rotationIdx;
-  const cleared = isQuestComplete(idx);
+  const s = huntDayStats(questCarouselIndex);
   btn.dataset.mode = 'begin';
-  if (cleared) { btn.classList.add('cleared'); btn.innerHTML = HI.check + 'Cleared'; }
-  else if (isActiveDay) btn.innerHTML = HI.play + 'Begin Hunt';
+  if (s.allComplete) { btn.classList.add('is-done'); btn.innerHTML = HI.check + 'Cleared'; }
+  else if (s.isActiveDay) btn.innerHTML = HI.play + 'Begin Hunt';
   else btn.innerHTML = HI.play + 'Log session';
 }
 
+/** Up next and the dungeon estimate live in the More panel. */
 function renderHuntNext() {
   const host = document.getElementById('hunt-next');
   if (!host) return;
@@ -8672,52 +8696,51 @@ function renderHuntNext() {
   if (!day) return;
   const muscles = topMuscles(day.exercises || [], EXERCISES_ALL, 2).join(' · ');
   host.innerHTML = `
-    <div class="hunt-next"><b>${escapeHtml(nx.when)} · ${escapeHtml(day.name)}</b><span>${escapeHtml(muscles)}</span></div>`;
+    <div class="ui-banner">◈ Up next</div>
+    <div class="ui-window hunt-next"><b>${escapeHtml(nx.when)} · ${escapeHtml(day.name)}</b><span>${escapeHtml(muscles)}</span></div>`;
 }
 
-/** The collapsed More header carries the habit curve and this week's progress, so nothing is hidden behind a tap. */
-function renderHuntMoreSummary() {
-  const host = document.getElementById('hunt-more-sum');
-  if (!host || !currentUser || !profile) return;
-  const chips = [];
-  try {
-    const a = analyseHabit(habitContext());
-    if (a.taken) {
-      const cls = { held: 'ok', 'at-risk': 'vio', broken: 'dim', unstarted: 'dim' }[a.ruleStatus] || 'dim';
-      chips.push(`<span class="ht-chip">Habit ${Math.round(a.strength)}%</span>`);
-      chips.push(`<span class="ht-chip ${cls}">${{ held: 'Rule held', 'at-risk': 'One missed', broken: 'Rule broken', unstarted: 'Rule —' }[a.ruleStatus]}</span>`);
-    }
-  } catch (_) { /* summary only */ }
-  try {
-    const st = huntTodayState();
-    const wp = weekProgress(st.strip);
-    chips.push(`<span class="ht-chip dim">${wp.trained}/${wp.planned} sessions this week</span>`);
-  } catch (_) { /* summary only */ }
-  try {
-    if (myProgram && myProgram.days && myProgram.days.length) {
-      const n = optimisePlan(planOptCtx(myProgram, todayStr())).suggestions.length;
-      if (n) chips.push(`<span class="ht-chip vio">${n} plan tip${n === 1 ? '' : 's'}</span>`);
-    }
-  } catch (_) { /* summary only */ }
-  try {
-    const d = activeDirectives();
-    if (d.length) chips.push(`<span class="ht-chip dim">${d.length} directive${d.length === 1 ? '' : 's'}</span>`);
-  } catch (_) { /* summary only */ }
-  host.innerHTML = `<div class="hm-main"><div class="hm-label">◈ More</div><div class="hm-row">${chips.join('')}</div></div><span class="hm-chev">${HI.chev}</span>`;
+function renderHuntDmg() {
+  const host = document.getElementById('hunt-dmg');
+  if (!host) return;
+  host.innerHTML = '';
+  if (!currentUser || !profile || editingProgram) return;
+  const dmg = huntDungeonEstimate();
+  if (dmg <= 0) return;
+  host.innerHTML = `<div class="ui-window ui-window-pad" style="padding-bottom:0;"><div class="ui-row"><span class="ui-glyph" style="--tint:var(--legendary)">${HI.bolt}</span><span class="ui-row-name">Dungeon damage</span><span class="ui-row-k" title="Estimated from your last-time sets">~${dmg.toLocaleString()}</span></div></div>`;
 }
 
 function renderHuntChrome() {
   try { renderHuntTop(); } catch (e) { console.warn('Hunt top failed:', e); }
-  try { renderHuntNext(); } catch (e) { console.warn('Hunt next failed:', e); }
+  try { renderHuntHero(); } catch (e) { console.warn('Hunt hero failed:', e); }
   try { renderHuntTiles(); } catch (e) { console.warn('Hunt tiles failed:', e); }
-  try { renderHuntMoreSummary(); } catch (e) { console.warn('Hunt summary failed:', e); }
+  try { renderHuntNext(); } catch (e) { console.warn('Hunt next failed:', e); }
+  try { renderHuntDmg(); } catch (e) { console.warn('Hunt dmg failed:', e); }
   try { syncHuntBar(); } catch (e) { console.warn('Hunt bar failed:', e); }
 }
 
 /** The shown day changed (carousel): refresh what depends on it. */
 function huntDayChanged() {
-  try { renderHuntTiles(); } catch (_) {}
+  try { renderHuntHero(); } catch (_) {}
+  try { renderHuntDmg(); } catch (_) {}
   try { syncHuntBar(); } catch (_) {}
+}
+
+/** Quick 15: the normal logger, pre-filled with the fixed bodyweight circuit from quick-quest.js.
+    It saves through the ordinary path as a normal workout (programDayIndex null), so XP, streak, PRs and raids all apply. */
+function startQuickQuest() {
+  const rows = document.getElementById('exercise-rows');
+  const busy = [...rows.querySelectorAll('.exercise-row')].some(r => r.dataset.exName);
+  if (busy) { showToast('Finish or discard the hunt in progress first.', 'error'); openWorkoutModal(); return; }
+  document.getElementById('workout-date').value = todayStr();
+  document.getElementById('workout-time').value = nowTimeStr();
+  activeDayIndex = null;
+  document.getElementById('logger-title').textContent = QUICK_TITLE;
+  document.getElementById('logger-exercise-hero')?.removeAttribute('data-exercise');
+  rows.innerHTML = '';
+  quickLoggerRows(buildQuickCircuit(EXERCISES_ALL)).forEach(r => addExerciseRow(r.name, r.sets, r.targetReps, r.prefillSets));
+  refreshCompleteButton();
+  openWorkoutModal();
 }
 
 (function wireHuntBar() {
@@ -8734,6 +8757,12 @@ function huntDayChanged() {
     if (!myProgram || !myProgram.days || !myProgram.days.length) return;
     SFX.beginQuest();
     startProgramDay(questCarouselIndex);
+  });
+  document.getElementById('hunt-quick-btn')?.addEventListener('click', () => { SFX.beginQuest(); startQuickQuest(); });
+  // day arrows live in the header, which re-renders: delegate
+  document.getElementById('hunt-hero')?.addEventListener('click', e => {
+    const b = e.target.closest('[data-hunt-dir]');
+    if (b && !b.classList.contains('off')) { SFX.swipe(); navigateCarousel(b.dataset.huntDir); }
   });
   window.addEventListener('resize', () => { try { syncHuntBar(); } catch (_) {} });
 })();
@@ -8758,77 +8787,33 @@ function isQuestComplete(idx) {
 }
 
 function buildQuestCardHTML(idx) {
-  const rotationIdx = myProgram.currentDayIndex % myProgram.days.length;
-  const rawDay = myProgram.days[idx];
-  /* On the first Hunt back after a gap the programmed sets are halved, which is
-     what the re-entry notice promises. The stored programme is untouched — this
-     is only a view of it, and it reverts the moment a session closes the gap. */
-  const day = (reEntryActive() && rawDay)
-    ? { ...rawDay, exercises: reEntryPlan(rawDay.exercises || []) }
-    : rawDay;
-  const today = todayWeekday();
-  const isActiveDay = myProgram.scheduleMode === 'fixed'
-    ? (day.assignedDays||[]).includes(today)
-    : idx === rotationIdx;
-  const allComplete = isQuestComplete(idx);
-
-  // find the best matching workout this week for this day (by exercise overlap)
-  function getBestMatchWorkout() {
-    if (myProgram.scheduleMode !== 'fixed') return null;
-    const weekStart = todayStr(startOfWeek(new Date()));
-    return myWorkouts.find(w =>
-      w.uid === currentUser.uid &&
-      w.date >= weekStart &&
-      Number(w.programDayIndex) === idx
-    ) || null;
-  }
-  const matchedWorkout = getBestMatchWorkout();
-
-  function setsForChecklist(exName) {
-    if (myProgram.scheduleMode === 'fixed' && matchedWorkout) {
-      return (matchedWorkout.exercises||[])
-        .filter(e => e.name === exName)
-        .reduce((sum, e) => sum + (e.sets||[]).filter(s => s.reps > 0).length, 0);
-    }
-    return setsLoggedToday(exName, idx);
-  }
-
+  const st = huntDayStats(idx);
+  const { day, isActiveDay, allComplete } = st;
   const STAT_COLORS = { strength:'var(--brass)', endurance:'#FF6B35', agility:'#FFD66B', focus:'var(--maintaining)', defence:'var(--violet)', flexibility:'var(--growing)' };
   const STAT_LABELS = { strength:'Strength', endurance:'Endurance', agility:'Agility', focus:'Focus', defence:'Defence', flexibility:'Flexibility' };
 
-  const rowData = day.exercises.map(ex => {
-    const done = setsForChecklist(ex.name);
-    const exDef = EXERCISES_ALL[ex.name] || {};
+  const rows = st.rows.map(r => {
+    const ex = r.ex;
+    const def = EXERCISES_ALL[ex.name] || {};
+    const kind = equipmentKind(ex.name, def);
+    const tint = muscleTint(def.muscles);
+    const sets = Math.max(0, Number(ex.sets) || 0);
     const last = lastSet(myWorkouts, currentUser.uid, ex.name);
-    return { ex, done, complete: allComplete || done >= ex.sets,
-      lastLabel: lastTimeLabel(last, { timed: !!exDef.timed, timedUnit: exDef.timedUnit }) };
-  });
-  const totalExercises = rowData.length;
-  const completedExercises = rowData.filter(r => r.complete).length;
-
-  const rows = rowData.map((r, i) => {
-    const sets = Math.max(0, Number(r.ex.sets) || 0);
-    const dots = Array.from({ length: sets }, (_, k) => `<s class="${(r.complete || k < r.done) ? 'on' : ''}"></s>`).join('');
-    return `<div class="ht-row ${r.complete ? 'complete' : ''}">
-      <span class="ht-n">${r.complete ? '✓' : i + 1}</span>
-      <span class="ht-name-ex">${escapeHtml(r.ex.name)}</span>
-      <span class="ht-last">${escapeHtml(r.lastLabel)}</span>
-      <span class="ht-dots" title="${Math.min(r.done, sets)}/${sets} sets">${dots}</span>
+    const opts = { timed: !!def.timed, timedUnit: def.timedUnit, bodyweight: kind === 'bodyweight' };
+    let k = last ? lastTimeLabel(last, opts, sets) : '';
+    if (!k) {
+      const repsVal = ex.reps || (ex.repRange ? String(ex.repRange).match(/(\d+)/)?.[1] : null) || '?';
+      k = def.timed ? `${repsVal}${def.timedUnit === 'mins' ? 'm' : 's'} × ${sets}` : `${repsVal} × ${sets}`;
+    }
+    const dots = Array.from({ length: sets }, (_, i) => `<s class="${(r.complete || i < r.done) ? 'on' : ''}"></s>`).join('');
+    return `<div class="ui-row ht-row ${r.complete ? 'complete' : ''}">
+      <span class="ui-glyph" style="--tint:${r.complete ? 'var(--growing)' : tint}" title="${escapeHtml(kind)}">${r.complete ? HI.check.replace('width="16" height="16"', 'width="14" height="14"') : uiIcon(kind)}</span>
+      <div class="ht-main"><span class="ui-row-name">${escapeHtml(ex.name)}</span><div class="ht-dots" title="${Math.min(r.done, sets)}/${sets} sets">${dots}</div></div>
+      <span class="ui-row-k">${escapeHtml(k)}</span>
     </div>`;
   }).join('');
 
-  // ring: exercises cleared (the old OBJECTIVES bar), with the day's size and length beside it
-  const arc = ringArc(completedExercises, totalExercises, 26);
   const mins = estimateMinutes(day.exercises);
-  const nSets = totalSets(day.exercises);
-  const meta = [mins ? `~${mins} min` : '', nSets ? `${nSets} sets` : ''].filter(Boolean).join(' · ');
-  const muscleChips = topMuscles(day.exercises, EXERCISES_ALL, 3).map(m => `<span class="ht-chip">${escapeHtml(m)}</span>`).join('');
-  const eyebrow = isActiveDay ? '◈ TODAY'
-    : myProgram.scheduleMode === 'fixed' && day.assignedDays?.length ? `◈ ${day.assignedDays.join(' · ').toUpperCase()}`
-    : `◈ DAY ${idx + 1} OF ${myProgram.days.length}`;
-
-  // streak at risk: a thin line inside the card, only while it is true
-  const atRisk = isActiveDay && !allComplete && huntStreakAtRisk();
 
   // what finishing the day trains: stat chips and a PR flag, from the same data as before
   function buildRewardChips() {
@@ -8838,28 +8823,18 @@ function buildQuestCardHTML(idx) {
       const primary = getStatForExercise(ex.name);
       if (primary) statGains[primary] = (statGains[primary] || 0) + ex.sets;
     });
-    const chips = Object.keys(statGains).map(id => `<span class="ht-chip dim" style="color:${STAT_COLORS[id]};"><i></i>${STAT_LABELS[id] || id}</span>`);
-    if (day.exercises.some(ex => myPRs[ex.name]?.e1rm)) chips.push('<span class="ht-chip vio"><i></i>PR possible</span>');
+    const chips = Object.keys(statGains).map(id => `<span class="ui-chip dim" style="color:${STAT_COLORS[id]};"><i></i>${STAT_LABELS[id] || id}</span>`);
+    if (day.exercises.some(ex => myPRs[ex.name]?.e1rm)) chips.push('<span class="ui-chip violet"><i></i>PR possible</span>');
     return chips.join('');
   }
   const footChips = allComplete
-    ? `<span class="ht-chip ok">${HI.check}Hunt cleared · streak secured</span>`
-    : (isActiveDay ? '' : `<span class="ht-chip dim">Last logged: ${escapeHtml(fmtDaysAgo(day.lastDate))}</span>`) + buildRewardChips();
+    ? `<span class="ui-chip green">${HI.check}Hunt cleared · streak secured</span>`
+    : (isActiveDay ? '' : `<span class="ui-chip dim">${day.lastDate ? 'Last logged: ' + escapeHtml(fmtDaysAgo(day.lastDate)) : 'Not logged yet'}</span>`)
+      + (!isActiveDay && myProgram.scheduleMode === 'fixed' && day.assignedDays?.length ? `<span class="ui-chip dim">Scheduled · ${escapeHtml(day.assignedDays.join(' '))}</span>` : '')
+      + buildRewardChips();
 
   return `
-    <div class="ht-head">
-      <div class="ht-ring" title="${completedExercises}/${totalExercises} exercises cleared">
-        <svg width="64" height="64" viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="26" fill="none" stroke="rgba(91,168,255,.18)" stroke-width="5"/><circle cx="32" cy="32" r="26" fill="none" stroke="${allComplete ? 'var(--violet)' : 'var(--growing)'}" stroke-width="5" stroke-linecap="round" stroke-dasharray="${arc.dash.toFixed(1)} ${(arc.circ * 2).toFixed(1)}" transform="rotate(-90 32 32)"/></svg>
-        <span class="ht-ring-n">${completedExercises}/${totalExercises}</span>
-      </div>
-      <div class="ht-titles">
-        <div class="quest-eyebrow" style="margin-bottom:2px;">${eyebrow}</div>
-        <h2 class="ht-name">${escapeHtml(day.name)}</h2>
-        ${meta ? `<div class="ht-meta">${meta}</div>` : ''}
-      </div>
-    </div>
-    ${muscleChips ? `<div class="ht-chips">${muscleChips}</div>` : ''}
-    ${atRisk ? `<div class="ht-risk" id="hunt-risk"><span>${HI.warn}Streak at risk</span><span class="hunt-risk-time" id="hunt-risk-time"></span></div>` : ''}
+    <div class="ui-banner gold ht-banner">◈ Quest · ${st.completed}/${st.total}${mins ? `<span class="ui-banner-end">~${mins} min</span>` : ''}</div>
     <div class="ht-rows">${rows}</div>
     ${footChips ? `<div class="ht-foot">${footChips}</div>` : ''}`;
 }
@@ -9011,7 +8986,7 @@ function wireQuestCard(cardEl, idx) {
   if (btn) btn.addEventListener('click', () => { SFX.beginQuest(); startProgramDay(idx); });
   // spawn ambient effects
   const isComplete = cardEl.classList.contains('quest-complete');
-  requestAnimationFrame(() => spawnQuestEffects(cardEl, isComplete));
+  if (!cardEl.classList.contains('hunt-today')) requestAnimationFrame(() => spawnQuestEffects(cardEl, isComplete));
 }
 
 let carouselAnimating = false;
@@ -9049,7 +9024,7 @@ function navigateCarousel(direction) {
   questCarouselIndex = newIdx;
   huntDayChanged();
   const temp = document.createElement('div');
-  temp.className = 'quest-card hunt-today' + (isQuestComplete(newIdx) ? ' quest-complete' : '');
+  temp.className = 'quest-card hunt-today ui-window gold' + (isQuestComplete(newIdx) ? ' quest-complete' : '');
   temp.innerHTML = buildQuestCardHTML(newIdx);
   temp.style.position = 'absolute';
   temp.style.top = '0';
@@ -11928,7 +11903,6 @@ function renderHabitCard() {
     '</div>';
 
   wireHabitHover(el, a);
-  try { renderHuntMoreSummary(); } catch (_) {}
 }
 
 /* ── THE LIVE DEADLINE ─────────────────────────────────────────────────────
