@@ -32,7 +32,7 @@ export const UI_ART_NAMES = [
   'icon-gold', 'icon-xp', 'icon-ap', 'icon-streak',
   'muscle-chest', 'muscle-back', 'muscle-shoulders', 'muscle-arms', 'muscle-legs',
   'muscle-core', 'muscle-glutes', 'muscle-calves', 'muscle-cardio', 'muscle-fullbody',
-  'hunt-map-bg',
+  'hunt-map-bg', 'hunt-backdrop',
 ];
 
 const _exists = new Map();   // name -> Promise<boolean>

@@ -1291,11 +1291,11 @@
   }
   nav.bottom-nav .nav-inner{display:flex;width:100%;max-width:640px;}
   nav.bottom-nav button{
-    flex:1;background:none;border:none;color:var(--text-faint);
+    flex:1;background:none;border:none;color:#AEBBD0;
     /* Minimum 44px touch target — reliable on all phones */
     padding:10px 2px calc(9px + env(safe-area-inset-bottom, 0) / 5);
     cursor:pointer;display:flex;flex-direction:column;
-    align-items:center;gap:3px;font-size:9.5px;letter-spacing:0.03em;
+    align-items:center;gap:4px;font-size:10px;letter-spacing:0.08em;
     text-transform:uppercase;font-weight:600;
     touch-action:manipulation;
     transition:color .15s, transform .1s;
@@ -1312,7 +1312,7 @@
     animation:navIndicatorIn 0.3s cubic-bezier(0.16,1,0.3,1) both;
   }
   @keyframes navIndicatorIn{from{opacity:0;transform:scaleX(0)}to{opacity:1;transform:scaleX(1)}}
-  nav.bottom-nav svg{width:19px;height:19px;stroke:currentColor;fill:none;stroke-width:1.8;}
+  nav.bottom-nav svg{width:23px;height:23px;stroke:currentColor;fill:none;stroke-width:1.8;}
 
   /* ---------- Quest / program ---------- */
   .program-empty{text-align:center;padding:20px 8px;}
@@ -2656,6 +2656,8 @@
     animation: questBannerSettle 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
     pointer-events: auto;
   }
+  /* the Gate Complete screen has its own title; never let the 10s alert drop over it */
+  body:has(.debrief-overlay) .quest-clear-banner{visibility:hidden;}
   @keyframes questBannerDrop {
     0%   { transform: translateX(-50%) translateY(-120%); opacity: 0; }
     8%   { transform: translateX(-50%) translateY(0px);   opacity: 1; }
@@ -3538,25 +3540,76 @@
   .hunt-dots i.missed{border-color:rgba(107,120,148,.4);}
   .hunt-dots i.today{border-color:var(--brass);box-shadow:0 0 10px var(--brass);background:rgba(91,168,255,.35);}
   .hunt-dots i.today.done{background:var(--growing);border-color:var(--growing);box-shadow:0 0 0 2px var(--void),0 0 0 3.5px var(--brass),0 0 10px var(--brass);}
-  .hunt-lvl{min-height:44px;min-width:44px;padding:0 4px;background:none;border:0;cursor:pointer;touch-action:manipulation;font-family:var(--font-mono);font-size:12px;letter-spacing:.14em;color:var(--violet);}
+  .hunt-status-r{display:flex;align-items:center;gap:6px;}
+  .hunt-lvl{display:inline-flex;align-items:center;gap:5px;min-height:44px;min-width:44px;padding:0 14px;cursor:pointer;touch-action:manipulation;
+    background:rgba(18,12,40,.85);border:1px solid rgba(161,127,255,.7);border-radius:20px;box-shadow:0 0 14px rgba(161,127,255,.45);}
+  .hunt-lvl .hl-k{font-family:var(--font-mono);font-size:11px;letter-spacing:.14em;color:#c9b6ff;}
+  .hunt-lvl .hl-n{font-family:var(--font-display);font-weight:800;font-size:17px;line-height:1;color:#fff;text-shadow:0 0 10px rgba(161,127,255,.9);}
+  .hunt-lvl:active{filter:brightness(1.2);}
+  .hunt-gear{flex:none;width:44px;height:44px;display:grid;place-items:center;cursor:pointer;touch-action:manipulation;color:#C3CEE0;
+    background:rgba(15,19,27,.9);border:1px solid rgba(91,168,255,.3);border-radius:50%;}
+  .hunt-gear:active{color:var(--brass);background:var(--brass-dim);}
+  @media (max-width:370px){.hunt-dots{gap:4px;}.hunt-lvl{padding:0 10px;}.hunt-status{gap:4px;}}
 
   .hunt-hero{position:relative;display:flex;flex-direction:column;align-items:center;text-align:center;margin-top:4px;}
-  .hunt-hero-bg{position:absolute;left:calc(-1 * var(--fluid-pad));right:calc(-1 * var(--fluid-pad));top:-150px;height:470px;overflow:hidden;pointer-events:none;z-index:0;
-    -webkit-mask-image:linear-gradient(180deg,#000 72%,transparent);mask-image:linear-gradient(180deg,#000 72%,transparent);}
-  .hunt-hero-bg > .ui-art{position:absolute;inset:0;opacity:.9;}
-  .hunt-hero-sigil{position:absolute;left:50%;top:-4px;transform:translateX(-50%);}
+  /* The gate backdrop: a 390 x 540 painted box centred on the column so the arch sits exactly behind the rank crest.
+     Edges and bottom fade to the page colour (.hunt-fade); .hunt-scrim darkens the middle so the title and chips read. */
+  .hunt-hero-bg{position:absolute;left:50%;width:390px;margin-left:-195px;top:-112px;height:540px;overflow:hidden;pointer-events:none;z-index:0;}
+  .hunt-bd{position:absolute;inset:0;}
+  .hunt-bd > .ui-art{position:absolute;inset:0;}
+  .hunt-bd > .ui-art img{object-position:50% 0;}
+  .hunt-scrim{position:absolute;inset:0;
+    background:radial-gradient(ellipse 150px 190px at 50% 215px,rgba(5,6,10,.72),rgba(5,6,10,.35) 60%,transparent 100%),
+               linear-gradient(180deg,rgba(5,6,10,.35) 0%,rgba(5,6,10,.15) 22%,rgba(5,6,10,.55) 52%,rgba(5,6,10,.9) 70%);}
+  .hunt-fade{position:absolute;inset:0;z-index:2;
+    background:linear-gradient(90deg,var(--void) 0,var(--void) 4%,rgba(5,6,10,.78) 11%,rgba(5,6,10,.25) 24%,transparent 36%,transparent 64%,rgba(5,6,10,.25) 76%,rgba(5,6,10,.78) 89%,var(--void) 96%,var(--void) 100%),
+               linear-gradient(180deg,var(--void) 0,rgba(5,6,10,.6) 9%,transparent 26%,transparent 62%,var(--void) 92%);}
+  .hunt-hero-sigil{position:absolute;left:50%;top:-39px;transform:translateX(-50%);}
+  /* ── living gate (hunt-fx.js): compositor-only CSS + one small SVG; nothing here touches game state ── */
+  .hunt-fx{display:contents;} /* its children position against .hunt-bd; z-order: backdrop < scrim < glow/mist/motes < fade < bolts/flash */
+  .hfx-glow,.hfx-mist,.hfx-mote{z-index:1;}
+  .hfx-bolts,.hfx-flash{z-index:3;}
+  .hfx-glow{position:absolute;left:50px;top:57px;width:290px;height:290px;
+    background:radial-gradient(closest-side,transparent 54%,rgba(91,168,255,.4) 74%,rgba(91,168,255,.1) 90%,transparent 100%);
+    animation:hfxPulse 5.2s ease-in-out infinite;will-change:opacity,transform;}
+  @keyframes hfxPulse{0%,100%{opacity:.45;transform:scale(.985);}50%{opacity:1;transform:scale(1.035);}}
+  .hfx-mist{position:absolute;left:-60px;width:510px;height:120px;opacity:.5;will-change:transform,opacity;
+    background:radial-gradient(ellipse closest-side,rgba(170,195,255,.2),transparent);}
+  .hfx-mist.m1{top:262px;animation:hfxMist 17s ease-in-out infinite alternate;}
+  .hfx-mist.m2{top:300px;animation:hfxMist 23s ease-in-out -9s infinite alternate-reverse;opacity:.35;}
+  @keyframes hfxMist{0%{transform:translate3d(-34px,0,0);opacity:.25;}100%{transform:translate3d(34px,0,0);opacity:.6;}}
+  .hfx-mote{position:absolute;border-radius:50%;opacity:0;background:radial-gradient(circle,#fff,rgba(130,190,255,.55) 55%,transparent 75%);
+    animation:hfxRise 10s linear infinite;will-change:transform,opacity;}
+  @keyframes hfxRise{0%{opacity:0;transform:translate3d(0,0,0);}15%{opacity:.85;}70%{opacity:.5;}100%{opacity:0;transform:translate3d(14px,-170px,0);}}
+  .hfx-bolts{position:absolute;left:0;top:0;width:390px;height:540px;overflow:visible;}
+  .hfx-bolt{opacity:0;}
+  .hfx-bg{stroke:#3d86ff;stroke-width:8;stroke-opacity:.45;}
+  .hfx-bc{stroke:#f2f8ff;stroke-width:2.2;}
+  .hfx-flash{position:absolute;left:65px;top:72px;width:260px;height:260px;opacity:0;
+    background:radial-gradient(closest-side,rgba(225,240,255,.95),rgba(110,170,255,.45) 55%,transparent 100%);}
+  .hfx-paused .hunt-fx *{animation-play-state:paused !important;}
+  @media (prefers-reduced-motion:reduce){
+    .hfx-mist,.hfx-mote,.hfx-bolts,.hfx-flash{display:none;}
+    .hfx-glow{animation:none;opacity:.7;}
+  }
   .hunt-hero > *:not(.hunt-hero-bg){position:relative;z-index:1;}
   .hunt-crest{position:relative;width:84px;height:84px;display:grid;place-items:center;margin-top:2px;}
   .hunt-crest .ui-ring{position:absolute;inset:0;}
   .hunt-count{margin-top:8px;font-family:var(--font-display);font-weight:700;font-size:12px;color:var(--ui-gold);}
   .hunt-gate{margin-top:6px;font-family:var(--font-mono);font-size:11px;letter-spacing:.3em;color:var(--ui-gold);text-transform:uppercase;}
   .hunt-chips{display:flex;flex-wrap:wrap;justify-content:center;gap:10px;margin-top:8px;}
-  .hunt-day-row{display:flex;align-items:center;justify-content:center;gap:2px;width:100%;margin-top:6px;}
-  .hunt-day-name{margin:0;min-width:0;max-width:calc(100% - 96px);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-transform:uppercase;
-    font-family:var(--font-display);font-weight:800;font-size:clamp(26px,9vw,36px);line-height:1.1;letter-spacing:.03em;color:var(--text);text-shadow:0 0 24px rgba(255,214,107,.6);}
+  .hunt-day-row{display:flex;align-items:center;justify-content:center;gap:4px;width:100%;margin-top:8px;}
+  .hunt-plate{flex:0 1 auto;min-width:0;max-width:100%;text-align:center;padding:8px 18px 10px;
+    background:linear-gradient(180deg,rgba(7,9,14,.82),rgba(7,9,14,.66));border:1px solid rgba(255,214,107,.55);
+    box-shadow:0 0 22px rgba(255,214,107,.25),inset 0 0 18px rgba(255,214,107,.08);
+    clip-path:polygon(10px 0,100% 0,100% calc(100% - 10px),calc(100% - 10px) 100%,0 100%,0 10px);}
+  .hunt-plate-k{font-family:var(--font-mono);font-size:10px;letter-spacing:.3em;color:var(--ui-gold);text-transform:uppercase;}
+  .hunt-day-name{margin:2px 0 0;min-width:0;text-transform:uppercase;text-wrap:balance;overflow-wrap:anywhere;
+    font-family:var(--font-display);font-weight:800;font-size:34px;line-height:1.08;letter-spacing:.02em;color:#fff;
+    text-shadow:0 0 18px rgba(255,214,107,.7),0 2px 0 #000;}
   .hunt-arrow{flex:none;width:44px;height:44px;display:grid;place-items:center;background:none;border:1px solid var(--border);border-radius:50%;color:var(--brass);font-size:22px;line-height:1;cursor:pointer;touch-action:manipulation;}
   .hunt-arrow:active{background:var(--brass-dim);}
-  .hunt-arrow.off{visibility:hidden;}
+  .hunt-arrow.off{display:none;}
   .hunt-hero .day-dots{margin:2px 0 0;}
   .hunt-risk{margin-top:6px;display:inline-flex;align-items:center;gap:6px;font-family:var(--font-mono);font-size:11px;letter-spacing:.14em;color:var(--excess);text-transform:uppercase;}
 
@@ -3583,8 +3636,10 @@
 
   .hunt-tiles{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;}
   .hunt-tiles:empty{display:none;}
+  .hunt-tiles .ui-tile{background:linear-gradient(180deg,#1b2436,#141b2a);border-color:rgba(91,168,255,.4);}
+  .hunt-tiles .ui-tile.violet{border-color:rgba(161,127,255,.55);}
   .hunt-tiles .ui-tile-v{font-size:16px;}
-  .hunt-tiles .ui-tile-s{display:flex;align-items:center;gap:3px;}
+  .hunt-tiles .ui-tile-s{display:flex;align-items:center;gap:3px;font-size:13px;color:#D6DFEE;}
   #hunt-more-tile[aria-expanded="true"] .hm-chev{transform:rotate(180deg);}
   .hm-chev{display:inline-block;transition:transform var(--dur-fast) var(--ease-ui);}
 
@@ -3624,6 +3679,135 @@
   .ap-pick-bar{grid-column:1 / -1;height:4px;border-radius:2px;background:rgba(91,168,255,.12);overflow:hidden;}
   .ap-pick-bar i{display:block;height:100%;background:var(--violet);}
   .ap-pick-row .can{font-family:var(--font-mono);font-size:11px;color:var(--growing);}
+
+  /* ══════════════════════════════════════════════════════════════════════
+     ARSENAL + WORLD — layout only, on the shared look in ui-system.css
+     (.ui-window, .ui-banner, .ui-seg, .ui-row, .ui-glyph, .ui-chip,
+     .ui-btn-blue). Mockups: tab-arsenal.html, tab-world.html. Every id and
+     handler of the old screens is kept; only wrappers and styling changed.
+     ══════════════════════════════════════════════════════════════════════ */
+  .tab-title{margin:0;padding-top:var(--space-3);font-family:var(--font-display);font-weight:800;font-size:24px;letter-spacing:.06em;text-transform:uppercase;color:var(--text);line-height:1.2;}
+  .view .tab-title{font-size:24px;margin:0;}
+  .tab-glow{position:absolute;left:0;right:0;top:0;height:380px;pointer-events:none;z-index:0;
+    background:radial-gradient(70% 55% at 50% 15%,rgba(91,168,255,.2),transparent 70%);}
+  .tab-glow.violet{background:radial-gradient(70% 55% at 50% 15%,rgba(161,127,255,.2),transparent 70%);}
+
+  /* Arsenal */
+  #view-exercises{position:relative;overflow-x:clip;}
+  #view-exercises > *:not(.tab-glow){position:relative;z-index:1;}
+  .ars-search{position:relative;margin-top:12px;}
+  .ars-search svg{position:absolute;left:14px;top:50%;transform:translateY(-50%);color:var(--text-faint);pointer-events:none;}
+  #view-exercises .lib-search{display:block;min-height:48px;margin:0;padding:0 14px 0 42px;font-size:16px;border-radius:0;border:1px solid rgba(91,168,255,.3);background:rgba(15,19,27,.92);
+    clip-path:polygon(8px 0,100% 0,100% calc(100% - 8px),calc(100% - 8px) 100%,0 100%,0 8px);}
+  #view-exercises .lib-search:focus{outline:none;border-color:var(--brass);box-shadow:0 0 14px rgba(91,168,255,.3);}
+  .ars-filters{margin-top:12px;}
+  .ars-filters-k{font-family:var(--font-mono);font-size:11px;letter-spacing:.18em;color:var(--text-faint);margin-bottom:6px;text-transform:uppercase;}
+  .ars-chips{display:flex;gap:8px;overflow-x:auto;padding:2px 16px 4px 0;margin-right:calc(-1 * var(--fluid-pad));scrollbar-width:none;touch-action:pan-x;
+    -webkit-mask-image:linear-gradient(90deg,#000 90%,transparent);mask-image:linear-gradient(90deg,#000 90%,transparent);}
+  .ars-chips::-webkit-scrollbar{display:none;}
+  #view-exercises .lib-stat-chip{flex:none;min-height:44px;padding:0 14px;border-radius:0;font-size:14px;font-weight:700;letter-spacing:.02em;
+    border:1px solid rgba(91,168,255,.25);background:rgba(15,19,27,.7);color:var(--text-dim);touch-action:manipulation;}
+  #view-exercises .lib-stat-chip.active{background:var(--brass);border-color:var(--brass);color:#06111f;box-shadow:0 0 14px rgba(91,168,255,.45);}
+  #view-exercises .lib-stat-chip[data-stat].active{background:var(--brass);border-color:var(--brass);color:#06111f;}
+  #view-exercises .lib-filters{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:10px 0 0;padding:0;overflow:visible;}
+  #view-exercises .lib-filters select{width:100%;min-width:0;min-height:44px;padding:0 10px;border-radius:0;font-size:14px;color:var(--text);
+    border:1px solid rgba(91,168,255,.25);background:rgba(15,19,27,.92);}
+  .ars-sec{margin-top:var(--space-4);}
+  .ars-sec:empty,#ex-today:empty{display:none;}
+  #view-exercises .ui-banner{margin-bottom:10px;}
+  .ars-list{padding:2px 12px;}
+  .ars-list.ex-grid{display:flex;flex-direction:column;gap:0;}
+  .ars-list .ex-card{position:relative;display:flex;align-items:center;gap:12px;min-height:56px;padding:6px 0;border:0;border-top:1px solid rgba(91,168,255,.12);border-radius:0;background:transparent;animation:none;}
+  .ars-list .ex-card:first-child{border-top:0;}
+  .ars-list .ex-card:hover{transform:none;box-shadow:none;background:rgba(91,168,255,.04);}
+  .ars-list .ex-card.match{box-shadow:inset 3px 0 0 var(--match,var(--brass));padding-left:8px;}
+  .ars-list .ex-card .ui-glyph{width:32px;height:32px;}
+  .ars-list .ex-card .ex-main{flex:1;min-width:0;}
+  .ars-list .ex-card .ex-name{margin:0;font-size:17px;font-weight:600;line-height:1.2;color:var(--text);overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;}
+  .ars-list .ex-card .ex-muscle{margin:2px 0 0;display:flex;flex-wrap:wrap;align-items:center;gap:2px 8px;font-size:12px;color:var(--text-faint);}
+  .ars-list .ex-card .ex-equip{background:none;padding:0;font-size:12px;color:var(--text-faint);}
+  .ars-list .ex-card .ex-equip::before{content:"·";margin-right:8px;}
+  .ars-list .ex-card .ex-intent{font-family:var(--font-mono);font-size:11px;letter-spacing:.06em;}
+  .ars-list .ex-card .ex-stats{display:inline-flex;gap:4px;flex-shrink:0;}
+  .ars-list .ex-card .ex-custom-dot{top:6px;left:-6px;right:auto;}
+  .ars-list .ex-card .ex-technique-link,.ars-list .ex-card .ex-edit-link{width:44px;height:44px;border-radius:0;font-size:16px;}
+  .ars-list .ex-card .ex-technique-link{color:var(--brass);}
+  .ars-list .ex-card .ex-edit-link{color:var(--violet);}
+  .ars-list .empty-state{grid-column:auto;padding:24px 8px;text-align:center;}
+  #view-exercises > .ars-bar{position:sticky;/* sticky measures from main's content box, which stops 80px + safe area above the bottom edge */
+    bottom:calc(var(--hunt-nav-h,calc(56px + env(safe-area-inset-bottom,0px))) + 4px - 80px - env(safe-area-inset-bottom,0px));z-index:9;margin:var(--space-4) -4px 0;padding:24px 4px 12px;
+    background:linear-gradient(180deg,transparent,rgba(7,9,14,.96) 38%);pointer-events:none;}
+  .ars-bar .ui-btn-blue{width:100%;pointer-events:auto;}
+
+  /* World: one portrait page with an Army / Dungeons / Raids switch. The map
+     keeps its iframe alive off screen exactly as before (#view-world stays in
+     the DOM, hidden); "Full map" restores the old fullscreen map + Armies sheet. */
+  section.view#view-world{display:block;position:fixed;top:0;left:0;right:0;width:100%;height:100vh;visibility:hidden;pointer-events:none;z-index:-1;overflow:hidden;flex-direction:column;}
+  section.view#view-world.active{position:relative;top:auto;left:auto;right:auto;bottom:auto;width:auto;height:auto;visibility:visible;pointer-events:auto;z-index:1;overflow-x:clip;overflow-y:visible;
+    padding:0 0 calc(80px + env(safe-area-inset-bottom,0px));flex-direction:column;}
+  #view-world > *:not(.tab-glow){position:relative;z-index:1;}
+  .world-head{display:flex;flex-direction:column;gap:12px;}
+  .world-seg{margin-top:12px;}
+  #view-world > .world-pane[hidden]{display:block !important;position:absolute;left:-9999px;top:0;width:100%;visibility:hidden;pointer-events:none;height:0;overflow:hidden;margin:0;}
+  #view-world > .world-pane.world-pane-army[hidden]{height:auto;overflow:visible;}
+  .world-pane{margin-top:var(--space-4);}
+  .world-frame{position:relative;height:clamp(300px,46dvh,440px);padding:0;overflow:visible;border-color:rgba(161,127,255,.55);box-shadow:0 0 34px rgba(161,127,255,.2),inset 0 0 40px rgba(161,127,255,.06);}
+  .world-frame::before,.world-frame::after{border-color:var(--violet);}
+  #view-world #world-layout{display:flex;flex-direction:row;width:100%;height:100%;overflow:hidden;background:#03050a;}
+  #view-world #world-map-wrap{flex:1;height:100%;min-width:0;position:relative;overflow:hidden;}
+  .world-army-chip{position:absolute;left:10px;top:56px;z-index:26;pointer-events:none;padding:6px 10px;background:rgba(10,13,24,.82);border:1px solid rgba(161,127,255,.45);font-family:var(--font-mono);font-size:11px;letter-spacing:.14em;color:var(--violet);text-transform:uppercase;}
+  .world-army-chip b{display:block;font-family:var(--font-display);font-size:26px;letter-spacing:.02em;color:var(--text);line-height:1.1;}
+  .world-army-chip small{font-size:11px;letter-spacing:.06em;color:var(--text-dim);text-transform:none;font-family:var(--font-body);font-weight:600;}
+  #world-full-btn{position:absolute;right:8px;top:8px;z-index:27;min-width:44px;min-height:44px;padding:0 10px;display:flex;align-items:center;justify-content:center;gap:6px;cursor:pointer;touch-action:manipulation;
+    background:rgba(10,13,24,.85);border:1px solid rgba(91,168,255,.4);color:var(--text);font-family:var(--font-mono);font-size:11px;letter-spacing:.1em;}
+  #view-world:not(.world-full) #world-armies-btn{display:none !important;}
+  #view-world:not(.world-full) #world-sidebar{display:none !important;}
+  #world-territories{padding:2px 12px;}
+  #world-territories .ws-row{padding:10px 0;border-bottom:0;border-top:1px solid rgba(91,168,255,.12);}
+  #world-territories .ws-row:first-child{border-top:0;}
+  #world-territories .ws-name{font-size:17px;font-weight:600;margin-bottom:4px;}
+  #world-territories .ws-pool{font-size:12px;margin-bottom:6px;}
+  #world-territories .ws-bar{height:6px;border-radius:0;}
+  #world-territories .ws-owned{font-size:12px;margin-top:6px;}
+  #world-territories .ws-row{min-height:48px;}
+  .world-note{margin:10px 0 0;font-size:12px;color:var(--text-faint);}
+  .world-army-total{display:flex;gap:10px;margin-top:var(--space-4);}
+  .world-army-total .ui-tile{flex:1;cursor:default;}
+  .world-empty{padding:18px 8px;text-align:center;color:var(--text-faint);font-size:14px;}
+  .wd-active{padding:14px 16px;}
+  .wd-hp{height:8px;background:rgba(255,255,255,.07);overflow:hidden;margin:10px 0 6px;}
+  .wd-hp i{display:block;height:100%;}
+  .wd-meta{display:flex;justify-content:space-between;gap:8px;font-size:12px;color:var(--text-faint);}
+  .wd-abandon{width:100%;min-height:44px;margin-top:12px;background:rgba(255,77,103,.06);border:1px solid rgba(255,77,103,.35);color:var(--excess);font-family:var(--font-body);font-weight:700;font-size:14px;cursor:pointer;touch-action:manipulation;}
+  .wd-slot{margin-top:var(--space-4);}
+  .wd-chain{border-top:1px solid rgba(91,168,255,.12);}
+  .wd-chain:first-child{border-top:0;}
+  .wd-chain > summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:12px;min-height:56px;padding:6px 0;touch-action:manipulation;}
+  .wd-chain > summary::-webkit-details-marker{display:none;}
+  .wd-chain > summary .ui-row-name{font-size:16px;}
+  .wd-chain[open] > summary .wd-chev{transform:rotate(180deg);}
+  .wd-chev{flex:none;color:var(--text-faint);transition:transform var(--dur-fast) var(--ease-ui);}
+  .wd-tiers{padding:0 0 10px 0;display:flex;flex-direction:column;gap:6px;}
+  .wd-tier{display:flex;align-items:center;gap:10px;min-height:44px;padding:6px 10px;border:1px solid rgba(91,168,255,.12);background:rgba(0,0,0,.2);}
+  .wd-tier.cleared{border-color:rgba(111,255,176,.4);background:rgba(111,255,176,.05);}
+  .wd-tier.active{border-color:rgba(161,127,255,.6);background:rgba(161,127,255,.08);}
+  .wd-tier.next{border-style:dashed;border-color:rgba(91,168,255,.4);}
+  .wd-tier .wd-t{font-family:var(--font-mono);font-size:12px;color:var(--text-faint);min-width:22px;}
+  .wd-tier .wd-n{flex:1;min-width:0;font-size:14px;font-weight:600;color:var(--text-dim);}
+  .wd-tier.cleared .wd-n{color:var(--growing);}
+  .wd-tier.active .wd-n{color:var(--violet);}
+  .wd-tier .wd-d{display:block;font-size:12px;font-weight:500;color:var(--text-faint);margin-top:2px;}
+  .wd-tier .wd-r{font-size:11px;color:var(--text-faint);white-space:nowrap;}
+  .wd-enter{flex:none;min-height:44px;padding:0 14px;background:var(--ui-blue-grad);border:0;color:#fff;font-family:var(--font-display);font-weight:800;font-size:12px;letter-spacing:.1em;cursor:pointer;touch-action:manipulation;}
+  .wr-row .ui-row-name{font-size:16px;}
+  .wr-go{width:100%;margin-top:var(--space-4);}
+
+  /* Full map: the old fullscreen map, Armies sheet and landscape lock */
+  section.view#view-world.active.world-full{position:fixed;top:0;left:0;right:0;bottom:var(--hunt-nav-h,calc(56px + env(safe-area-inset-bottom,0px)));width:100%;max-width:none;height:auto;margin:0;padding:0;z-index:10;overflow:hidden;background:var(--void);}
+  #view-world.world-full .tab-glow,#view-world.world-full .world-head,#view-world.world-full .world-pane:not(.world-pane-army),#view-world.world-full .world-pane-army > :not(.world-frame){display:none !important;}
+  #view-world.world-full .world-pane-army{margin:0;height:100%;}
+  #view-world.world-full .world-frame{height:100%;border:0;box-shadow:none;}
+  #view-world.world-full .world-frame::before,#view-world.world-full .world-frame::after{display:none;}
   .habit-card{
     border:1px solid var(--border); background:var(--card);
     border-radius:12px; padding:clamp(12px,2.6vw,17px);
@@ -3737,6 +3921,7 @@
   .ex-card .ex-custom-dot{top:8px;right:auto;left:-1px;}
 
   /* ── Rank: section jump bar ── */
+  #view-trends,#view-history,#view-feats,#view-inventory{overflow-x:clip;} /* same fix as Rank: overflow-x:hidden made the section a scroll box that clipped the Codex head's negative top margin (title cut ~10px under the app header) */
   #view-board{overflow-x:clip;}  /* overflow-x:hidden would make the section a scroll container and break the sticky bar */
   .rank-jump{position:sticky;top:calc(-1 * var(--fluid-pad));z-index:20;display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;
     margin:calc(-1 * var(--fluid-pad)) calc(-1 * var(--fluid-pad)) 8px;padding:10px var(--fluid-pad);
@@ -3746,6 +3931,187 @@
     color:rgba(140,196,255,0.95);font-family:var(--font-mono);font-size:11px;letter-spacing:0.1em;text-transform:uppercase;cursor:pointer;touch-action:manipulation;}
   .rank-jump button.on{background:rgba(91,168,255,0.2);border-color:rgba(91,168,255,0.6);color:#fff;}
   #view-board [data-jump-target]{scroll-margin-top:56px;}
+
+  /* =========================================================================
+     RANK + CODEX — the shared System look (mockups tab-rank / tab-codex).
+     Layout and look only: every renderer, handler and id is unchanged.
+     ========================================================================= */
+  #view-board .rank-pane{display:none;}
+  #view-board .rank-pane.on{display:flex;flex-direction:column;gap:16px;}
+  #view-board .rank-pane > .ui-banner{margin-bottom:-6px;}
+  .rk-empty{display:none;margin:24px 0;text-align:center;font-size:14px;color:var(--text-faint);}
+  #view-board .rank-pane[data-pane="raid"]:has(#raid-boss-slot:empty) .rk-empty,
+  #view-board .rank-pane[data-pane="feed"]:not(:has(#guild-feed-slot:not(:empty),#progression-roadmap-slot:not(:empty))) .rk-empty{display:block;}
+  #view-board .rank-pane > div:empty{display:none;}
+
+  /* Hunter window */
+  #view-board .char-screen.ui-window{overflow:visible;border-radius:0;margin:0;background:var(--ui-window-bg);}
+  #view-board .char-screen-inner{padding:16px 14px 14px;}
+  #view-board .char-screen-bg{inset:1px;}
+  .rk-head{display:flex;align-items:center;gap:16px;margin-bottom:12px;}
+  #view-board #char-rank-badge{
+    width:54px !important;height:54px !important;flex:none;margin:8px;display:grid;place-items:center;
+    border:1.5px solid var(--rank,var(--ui-gold));background:rgba(10,13,24,.75);transform:rotate(45deg);
+    box-shadow:0 0 18px var(--rank,var(--ui-gold)),inset 0 0 12px rgba(255,214,107,.12);animation:none !important;
+  }
+  #view-board #char-rank-badge .char-rank-orb-ring{display:none;}
+  #view-board #char-rank-badge .char-rank-letter{transform:rotate(-45deg);font-size:26px !important;font-weight:800;text-shadow:none !important;line-height:1;}
+  .rk-head-main{flex:1;min-width:0;}
+  .rk-lv{font-family:var(--font-display);font-weight:800;font-size:22px;line-height:1.1;letter-spacing:.02em;white-space:nowrap;}
+  #view-board .rk-lv .hunter-level-number{font:inherit !important;color:inherit !important;text-shadow:none !important;letter-spacing:inherit;}
+  #view-board .rk-head .hunter-xp-bar-wrap{height:8px;margin:8px 0 4px;border-radius:0;background:rgba(91,168,255,.15);border:0;}
+  #view-board .rk-head .hunter-xp-bar{background:var(--ui-gold-grad);border-radius:0;}
+  .rk-xp{font-family:var(--font-mono);font-size:11px;letter-spacing:.12em;color:var(--text-faint);}
+  .rk-xp .hunter-xp-session{font-size:11px;}
+  .rk-identity{padding:10px 0 12px;border-top:1px solid rgba(91,168,255,.12);}
+  .rk-identity .char-name{font-size:20px !important;}
+  .rk-eyebrow{font-family:var(--font-mono);font-size:11px;letter-spacing:.2em;color:var(--text-faint);text-transform:uppercase;margin-bottom:6px;}
+  .rk-body-row{display:flex;gap:10px;align-items:stretch;}
+  .rk-body{flex:none;width:148px;}
+  .rk-body-stage{height:252px;padding:0;border-radius:0 !important;background:radial-gradient(60% 60% at 50% 50%,rgba(91,168,255,.22),transparent 75%) !important;}
+  .rk-body-stage .char-body-content{height:100%;align-items:center;}
+  .rk-body-stage .char-body-content .body-pair{max-width:none !important;width:100%;padding:0;gap:0;}
+  .rk-stats{flex:1;min-width:0;display:flex;flex-direction:column;}
+  .rk-stat{
+    flex:1;min-height:42px;display:grid;grid-template-columns:80px 1fr 14px;align-items:center;gap:8px;
+    background:none;border:0;border-top:1px solid rgba(91,168,255,.1);padding:0;cursor:pointer;touch-action:manipulation;
+    color:var(--text);font-family:var(--font-body);text-align:left;
+  }
+  .rk-stat:first-child{border-top:0;}
+  .rk-stat b{font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .rk-stat em{font-family:var(--font-mono);font-size:12px;font-style:normal;text-align:right;}
+  .rk-pips{display:flex;gap:2px;}
+  .rk-pips i{flex:1;height:8px;background:rgba(91,168,255,.15);display:block;}
+  .rk-pips i.on{background:var(--c);box-shadow:0 0 6px var(--c);}
+  .rk-stat:active{filter:brightness(1.3);}
+  .rk-tiles{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px;}
+  #view-board .rk-tiles .char-power-value{font:inherit !important;color:inherit;line-height:inherit;}
+  .rk-dominant{font-family:var(--font-mono);font-size:11px;letter-spacing:.1em;color:var(--text-dim);margin-top:10px;text-transform:uppercase;}
+  .rk-dominant:empty{display:none;}
+  #view-board #power-breakdown-panel{margin:12px 0 0;padding:12px 14px;background:rgba(91,168,255,.06);border:1px solid rgba(91,168,255,.28);}
+  .rk-note{font-size:12px;color:var(--text-faint);margin-top:8px;padding-top:8px;border-top:1px solid rgba(91,168,255,.12);}
+  #view-board #system-progression-hint{margin-top:14px;padding:10px 0;font-family:var(--font-mono);font-size:11px;letter-spacing:.08em;line-height:1.7;text-align:center;color:var(--text-faint);cursor:pointer;border-top:1px solid rgba(91,168,255,.12);}
+  #view-board #system-progression-hint span{color:var(--text-dim);}
+  #view-board #char-stats{margin-top:4px;padding-top:12px;border-top:1px solid rgba(91,168,255,.12);}
+  #view-board #char-rank-hint{margin:12px 0 0;}
+  #view-board .rk-gen{width:100%;margin-top:14px;align-items:center;justify-content:center;font-family:var(--font-mono);font-size:12px;letter-spacing:.14em;color:var(--brass);border-color:var(--ui-line);}
+  .rk-links{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:14px;padding-top:12px;border-top:1px solid rgba(91,168,255,.12);}
+  .rk-links button{min-height:44px;background:none;border:1px solid rgba(91,168,255,.25);color:var(--text-dim);font-family:var(--font-mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;cursor:pointer;touch-action:manipulation;}
+
+  /* Party: one window of rows, then the threat board */
+  #view-board .today-list{gap:0 !important;margin:0 !important;padding:2px 14px;position:relative;background:var(--ui-window-bg);border:1px solid var(--ui-line);box-shadow:var(--ui-window-glow);}
+  #view-board .today-row{border:0 !important;border-top:1px solid rgba(91,168,255,.12) !important;border-radius:0 !important;background:none !important;padding:10px 0 !important;min-height:56px;}
+  #view-board .today-row:first-child{border-top:0 !important;}
+  #board-body{display:flex;flex-direction:column;gap:12px;}
+  #board-body > .threat-card{margin:0 !important;border-radius:0 !important;background-image:var(--ui-window-bg) !important;clip-path:polygon(8px 0,100% 0,100% calc(100% - 8px),calc(100% - 8px) 100%,0 100%,0 8px);}
+  #board-body button{min-height:44px;}
+
+  /* Raid + Feed slots sit in System windows */
+  #view-board #guild-feed-slot:not(:empty){padding:14px 16px;background:var(--ui-window-bg);border:1px solid var(--ui-line);box-shadow:var(--ui-window-glow);position:relative;}
+
+  /* Codex (Progress, History, Feats, Items): one stack of System windows */
+  #trends-dashboard:not(.hidden){display:flex;flex-direction:column;gap:16px;}
+  #trends-widgets{display:contents;}
+  #trends-dashboard > div:empty{display:none;}
+  #trends-widgets > [data-cx="volume"]{order:1;}
+  #trends-widgets > [data-cx="body"]{order:2;}
+  #trends-dashboard > #pr-panel{order:3;}
+  #trends-widgets > [data-cx="recovery"]{order:4;}
+  #trends-dashboard > #strength-rankings{order:5;}
+  #trends-dashboard > #weekly-superlatives{order:6;}
+  #trends-dashboard > #party-dashboard{order:7;}
+  #trends-widgets > :not([data-cx="volume"]):not([data-cx="body"]):not([data-cx="recovery"]){order:10;}
+  #widget-muscle .body-pair{max-width:250px;margin-left:auto;margin-right:auto;}
+  #widget-muscle > .status-pill{display:none !important;} /* the legend row below the map carries the same count */
+  .cx-chips{display:flex;flex-wrap:wrap;gap:8px;}
+  .cx-chips .ui-chip{min-height:44px;padding:4px 14px;font-size:13px;border:1px solid currentColor;}
+  #view-history .history-seg{margin-bottom:16px;}
+  #pr-panel .pr-panel-header h3,#pr-panel .card-title h3{font-family:var(--font-mono);font-size:11px;letter-spacing:.24em;color:var(--brass);text-transform:uppercase;font-weight:400;}
+  #pr-panel .pr-name{white-space:normal;}
+
+  :is(#view-board,#view-trends,#view-history,#view-feats,#view-inventory) .card{
+    position:relative;margin:0 0 16px;border-radius:0;background:var(--ui-window-bg);
+    border:1px solid var(--ui-line);box-shadow:var(--ui-window-glow);
+  }
+  :is(#view-board,#view-trends,#view-history,#view-feats,#view-inventory) .card::before,
+  :is(#view-board,#view-trends,#view-history,#view-feats,#view-inventory) .card::after{
+    content:"";position:absolute;width:12px;height:12px;border:2px solid var(--brass);pointer-events:none;
+  }
+  :is(#view-board,#view-trends,#view-history,#view-feats,#view-inventory) .card::before{left:-3px;top:-3px;border-right:0;border-bottom:0;}
+  :is(#view-board,#view-trends,#view-history,#view-feats,#view-inventory) .card::after{right:-3px;bottom:-3px;border-left:0;border-top:0;}
+  :is(#view-trends,#view-history,#view-feats,#view-inventory) .card-title h3{font-size:11px;letter-spacing:.24em;color:var(--brass);}
+  #trends-dashboard .card{margin-bottom:0;}
+
+  /* 11px floor: small inline sizes inside these screens read at 11px */
+  :is(#view-board,#view-trends,#view-history,#view-feats,#view-inventory)
+    :is([style*="font-size:7px"],[style*="font-size:8px"],[style*="font-size:9px"],[style*="font-size:10px"]){font-size:11px !important;}
+
+  /* ══════════════════════════════════════════════════════════════════════
+     FLOW SCREENS — layout only. Look from ui-system.css; logic in flow-view.js.
+     Enter Gate, logger header, Gate Complete (debrief), Rank Up, nav dots.
+     ══════════════════════════════════════════════════════════════════════ */
+  .flow-gate{position:fixed;inset:0;z-index:260;display:flex;flex-direction:column;background:#05060a;overflow:hidden;animation:overlayIn .3s ease both;}
+  .flow-gate-bg{position:absolute;inset:0;pointer-events:none;}
+  .flow-gate-bg > .ui-art{position:absolute;inset:0;}
+  .flow-gate-sigil{position:absolute;left:50%;top:27%;transform:translate(-50%,-50%);opacity:.9;}
+  .flow-gate-main{position:relative;flex:1;display:flex;flex-direction:column;justify-content:center;padding:max(34dvh,150px) 19px calc(24px + env(safe-area-inset-bottom,0)) 19px;overflow-y:auto;}
+  .flow-gate-card{display:flex;flex-direction:column;gap:12px;padding:16px 16px 14px;text-align:center;}
+  .flow-gate-eyebrow{font-family:var(--font-mono);font-size:11px;letter-spacing:.2em;color:var(--text-faint);text-transform:uppercase;}
+  .flow-gate-title{margin:0;font-family:var(--font-display);font-weight:800;font-size:clamp(26px,9vw,34px);line-height:1.1;letter-spacing:.03em;text-transform:uppercase;color:var(--text);text-shadow:0 0 24px rgba(255,214,107,.55);overflow-wrap:anywhere;}
+  .flow-gate-chips{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;}
+  .flow-gate-back{align-self:center;min-height:44px;padding:0 20px;background:none;border:0;cursor:pointer;touch-action:manipulation;font-family:var(--font-display);font-weight:700;font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--text-dim);}
+  @media (max-height:720px){ .flow-gate-main{padding-top:max(26dvh,120px);} .flow-gate-card{gap:8px;padding:12px 14px 8px;} }
+
+  .workout-modal-header.flow-head{align-items:center;gap:12px;padding:12px 16px 10px !important;background:var(--ui-window-bg);border-bottom:1px solid var(--ui-line);box-shadow:0 6px 24px rgba(91,168,255,.1);}
+  .flow-fig{flex:none;width:56px;height:56px;border:1px solid rgba(91,168,255,.5);background:#0a1226;box-shadow:0 0 14px rgba(91,168,255,.25);overflow:hidden;
+    clip-path:polygon(8px 0,100% 0,100% calc(100% - 8px),calc(100% - 8px) 100%,0 100%,0 8px);}
+  .flow-fig .ui-art{width:100%;height:100%;}
+  .flow-head-main{flex:1;min-width:0;}
+  .flow-head-btns{flex:none;display:flex;gap:8px;}
+  @media (max-height:720px){ .flow-fig{width:44px;height:44px;} }
+
+  .debrief-overlay{justify-content:flex-start;}
+  .debrief-overlay > .debrief-window{margin:auto;flex:none;}
+  .debrief-window.flow-complete{max-width:420px;padding:0 !important;background:var(--ui-window-bg);border:1px solid var(--ui-line-gold);box-shadow:var(--ui-window-glow-gold);border-radius:0;}
+  .debrief-window.flow-complete::before,.debrief-window.flow-complete::after{width:14px;height:14px;border-color:var(--ui-gold);}
+  .debrief-window.flow-complete::before{top:-3px;left:-3px;border-width:2px 0 0 2px;border-style:solid;}
+  .debrief-window.flow-complete::after{bottom:-3px;right:-3px;border-width:0 2px 2px 0;border-style:solid;}
+  .flow-complete-art{position:relative;height:120px;overflow:hidden;-webkit-mask-image:linear-gradient(180deg,#000 55%,transparent);mask-image:linear-gradient(180deg,#000 55%,transparent);}
+  .flow-complete-art > .ui-art{position:absolute;inset:0;}
+  .flow-complete-head{position:relative;margin-top:-78px;text-align:center;padding:0 16px 14px;animation:achieveIn .4s var(--ease-cinema) both;}
+  .flow-complete-title{margin:6px 0 0;font-family:var(--font-display);font-weight:900;font-size:clamp(24px,8vw,30px);letter-spacing:.06em;text-transform:uppercase;color:var(--text);text-shadow:0 0 22px rgba(255,214,107,.6);}
+  .flow-complete-in{padding:0 16px 16px;}
+  .flow-tiles{display:grid;gap:10px;margin-bottom:16px;animation:achieveIn .5s var(--ease-cinema) .2s both;}
+  .flow-tile{cursor:default;align-items:center;text-align:center;gap:4px;padding:10px 6px;}
+  .flow-tile:active{filter:none;}
+  .flow-tile .ui-art{width:30px;height:30px;}
+  .flow-tile .ui-tile-v{justify-content:center;font-family:var(--font-display);font-weight:800;font-size:20px;}
+  .flow-actions{display:flex;flex-direction:column;gap:8px;margin-top:6px;}
+  .flow-next{flex-direction:column;gap:2px;}
+  .flow-next small{font-family:var(--font-body);font-weight:600;font-size:11px;letter-spacing:.04em;text-transform:none;opacity:.8;}
+  .debrief-close-btn.flow-ghost{min-height:44px;background:none;border:1px solid rgba(91,168,255,.35);color:var(--text-dim);font-size:12px;letter-spacing:.14em;text-transform:uppercase;border-radius:0;}
+  .debrief-close-btn.flow-ghost:hover{filter:none;box-shadow:none;color:var(--text);}
+  .debrief-close-btn.flow-solo{min-height:54px;}
+  .debrief-window.flow-complete .xp-debrief-bar-wrap{margin-top:2px;}
+
+  .system-window.flow-rankup{position:relative;max-width:420px;width:calc(100% - 38px);padding:0 !important;overflow:visible;background:var(--ui-window-bg);border:1px solid var(--ui-line-gold);box-shadow:var(--ui-window-glow-gold);border-radius:0;}
+  .system-window.flow-rankup::before,.system-window.flow-rankup::after{width:14px;height:14px;border-color:var(--ui-gold);}
+  .system-window.flow-rankup::before{top:-3px;left:-3px;border-width:2px 0 0 2px;border-style:solid;}
+  .system-window.flow-rankup::after{bottom:-3px;right:-3px;border-width:0 2px 2px 0;border-style:solid;}
+  .flow-rankup-art{position:absolute;inset:0;overflow:hidden;pointer-events:none;}
+  .flow-rankup-art > .ui-art{position:absolute;inset:0;opacity:.85;}
+  .flow-rankup-in{position:relative;display:flex;flex-direction:column;align-items:center;gap:12px;padding:22px 18px 18px;}
+  .flow-rank-row{display:flex;align-items:center;justify-content:center;gap:26px;margin:30px 0 28px;}
+  .flow-rank-old{font-family:var(--font-display);font-weight:800;font-size:22px;opacity:.7;}
+  .flow-rank-arrow{color:var(--text-faint);font-size:18px;}
+  .ui-crest.xl{width:84px;height:84px;font-size:42px;}
+  .flow-rankup-title{margin:0;font-family:var(--font-display);font-weight:900;font-size:clamp(22px,7.5vw,28px);letter-spacing:.05em;text-transform:uppercase;color:var(--text);text-shadow:0 0 22px rgba(255,214,107,.55);}
+  .flow-rankup-in .system-body{margin:0;}
+  .flow-rankup-in .system-detail{margin:0;}
+  .flow-rankup-in .system-btn{align-self:stretch;}
+  .flow-rankup-in .system-btn.ui-btn-primary{display:flex;align-self:stretch;width:auto;min-height:58px;padding:0 16px;border-radius:0;font-size:16px;letter-spacing:.12em;background:var(--ui-gold-grad);color:#1a0f00;box-shadow:0 0 30px rgba(255,214,107,.6);}
+
+  nav.bottom-nav button .ui-dot{top:7px;right:calc(50% - 21px);width:9px;height:9px;pointer-events:none;box-shadow:0 0 0 2px rgba(5,6,10,.98),0 0 8px var(--ui-gold);}
 </style>
 </head>
 <body>
@@ -3897,122 +4263,124 @@
 
     <!-- ---- RANK ---- -->
     <section class="view" id="view-board">
-      <nav class="rank-jump" id="rank-jump" aria-label="Jump to section">
-        <button type="button" data-jump="char-card" class="on">Hunter</button>
-        <button type="button" data-jump="rank-threats">Threats</button>
-        <button type="button" data-jump="rank-party">Party</button>
-        <button type="button" data-jump="raid-boss-slot">Raid</button>
-        <button type="button" data-jump="guild-feed-slot">Log</button>
-        <button type="button" data-jump="progression-roadmap-slot">Journey</button>
-      </nav>
+      <!-- RANK (mockup tab-rank): one screen, four switches. Hunter opens first. Nothing was removed:
+           Hunter = card, power breakdown, class and title, Hunter card generator; Party = party today
+           + threat board + gate duels; Raid = week boss; Feed = guild feed, monthly report, journey. -->
+      <div class="ui-screen-head" id="rank-head">
+        <h1 class="ui-title">Rank</h1>
+        <div class="ui-seg" id="rank-seg" role="tablist" aria-label="Rank sections">
+          <button type="button" class="ui-seg-btn on" role="tab" aria-selected="true" data-pane="hunter">Hunter</button>
+          <button type="button" class="ui-seg-btn" role="tab" aria-selected="false" data-pane="party">Party</button>
+          <button type="button" class="ui-seg-btn" role="tab" aria-selected="false" data-pane="raid">Raid</button>
+          <button type="button" class="ui-seg-btn" role="tab" aria-selected="false" data-pane="feed">Feed</button>
+        </div>
+      </div>
 
-      <!-- CHARACTER SCREEN — hero first -->
-      <div class="char-screen" id="char-card">
+      <!-- ── HUNTER ── -->
+      <div class="rank-pane on" data-pane="hunter">
+      <div class="char-screen ui-window gold" id="char-card">
         <div class="char-screen-bg" id="char-screen-bg"></div>
         <div class="char-screen-inner">
 
-          <!-- ── HUNTER STAGE — anatomy is the hero ── -->
-          <div class="char-stage-wrap">
-
-            <!-- Floating identity — left, above anatomy -->
-            <div class="char-stage-identity">
-              <div class="char-eyebrow">◈ SYSTEM ASSESSMENT</div>
-              <div class="char-name" id="char-name">—</div>
-              <div class="char-title" id="char-title">The System is watching</div>
+          <div class="rk-head">
+            <div class="char-rank-orb" id="char-rank-badge">
+              <div class="char-rank-orb-ring"></div>
+              <div class="char-rank-orb-ring r2"></div>
+              <span class="char-rank-letter">E</span>
             </div>
-
-            <!-- Rank + Power — right, floating -->
-            <div class="char-stage-stats">
-              <div class="char-rank-orb" id="char-rank-badge">
-                <div class="char-rank-orb-ring"></div>
-                <div class="char-rank-orb-ring r2"></div>
-                <span class="char-rank-letter">E</span>
-              </div>
-              <div class="char-power-col">
-                <div class="char-power-value" id="char-power-value" onclick="togglePowerBreakdown()" title="Tap for breakdown">0</div>
-                <div class="char-power-label">POWER</div>
-                <div id="char-dominant-stat"></div>
-                <div class="char-ap-row"><span class="char-ap-value" id="ap-amount">0</span><span class="char-ap-label">AP</span></div>
-              </div>
-            </div>
-
-            <!-- Anatomy body — the visual centrepiece -->
-            <div class="char-body-stage" id="char-body-stage">
-              <div class="char-body-atmosphere"></div>
-              <div class="char-body-content" id="char-body-content">
-                <!-- bodySvg injected by renderCharCard -->
-              </div>
-              <div class="char-body-ground"></div>
-            </div>
-
-          </div><!-- /char-stage-wrap -->
-
-          <!-- XP progress — below the stage -->
-          <div class="hunter-level-banner" id="hunter-level-banner">
-            <div class="hunter-level-left">
-              <div class="hunter-level-eyebrow">HUNTER LEVEL</div>
-              <div class="hunter-level-number" id="hunter-level-number">1</div>
-            </div>
-            <div class="hunter-level-xp-col">
-              <div class="hunter-level-xp-label">
-                <span id="hunter-xp-current">0</span>
-                <span style="color:var(--text-faint);margin:0 4px;">/</span>
-                <span id="hunter-xp-needed">50</span>
-                <span style="color:var(--text-faint);margin-left:4px;">XP</span>
-                <span id="hunter-xp-session" class="hunter-xp-session"></span>
-              </div>
+            <div class="rk-head-main">
+              <div class="rk-lv">LV <span class="hunter-level-number" id="hunter-level-number">1</span> &middot; <span id="rk-rank-txt">E</span>-RANK</div>
               <div class="hunter-xp-bar-wrap">
                 <div class="hunter-xp-bar" id="hunter-xp-bar" style="width:0%"></div>
                 <div class="hunter-xp-bar-glow" id="hunter-xp-bar-glow" style="width:0%"></div>
               </div>
+              <div class="rk-xp">
+                <span id="hunter-xp-current">0</span> / <span id="hunter-xp-needed">50</span> XP
+                <span id="hunter-xp-session" class="hunter-xp-session"></span>
+              </div>
             </div>
           </div>
 
-          <div id="power-breakdown-panel" style="display:none;background:rgba(91,168,255,.04);border:1px solid rgba(91,168,255,.08);border-radius:8px;padding:10px 14px;margin:0 0 10px;font-size:11px;">
-            <div style="font-family:var(--font-mono);font-size:8px;color:rgba(91,168,255,0.78);letter-spacing:.1em;margin-bottom:8px;">◈ POWER BREAKDOWN</div>
-            <div id="power-breakdown-rows"></div>
-            <div style="font-size:9px;color:rgba(91,168,255,0.78);margin-top:8px;border-top:1px solid rgba(91,168,255,.06);padding-top:6px;">Power = your stats converted to a numeric score. Train all stats to grow it.</div>
+          <!-- Identity: name, title, class badge and active effects are added under the title -->
+          <div class="char-stage-identity rk-identity">
+            <div class="char-eyebrow">&#9672; SYSTEM ASSESSMENT</div>
+            <div class="char-name" id="char-name">&mdash;</div>
+            <div class="char-title" id="char-title">The System is watching</div>
           </div>
 
-          <div class="char-divider"></div>
+          <!-- Muscle map (kept) beside the six stats -->
+          <div class="rk-body-row">
+            <div class="rk-body" id="char-body-stage">
+              <div class="rk-eyebrow">&#9672; YOUR BODY</div>
+              <div class="char-body-stage rk-body-stage">
+                <div class="char-body-atmosphere"></div>
+                <div class="char-body-content" id="char-body-content">
+                  <!-- bodySvg injected by renderCharCard -->
+                </div>
+              </div>
+            </div>
+            <div class="rk-stats" id="rk-stat-bars" aria-label="Six stats"></div>
+          </div>
+
+          <!-- Power (tap for the breakdown) and AP to invest -->
+          <div class="rk-tiles">
+            <button type="button" class="ui-tile gold" id="rk-power-tile" onclick="togglePowerBreakdown()" aria-label="Power. Tap for breakdown">
+              <span class="ui-tile-v"><span class="char-power-value" id="char-power-value">0</span></span>
+              <span class="ui-tile-s">POWER &middot; breakdown</span>
+            </button>
+            <button type="button" class="ui-tile violet" id="rk-ap-tile" aria-label="Aura Points. Tap to invest">
+              <span class="ui-tile-v"><span id="ap-amount">0</span> AP</span>
+              <span class="ui-tile-s">to invest</span>
+            </button>
+          </div>
+          <div class="rk-dominant" id="char-dominant-stat"></div>
+
+          <div id="power-breakdown-panel" style="display:none;">
+            <div class="rk-eyebrow">&#9672; POWER BREAKDOWN</div>
+            <div id="power-breakdown-rows"></div>
+            <div class="rk-note">Power = your stats converted to a numeric score. Train all stats to grow it.</div>
+          </div>
+
           <div id="calibration-observation-slot"></div>
-          <div id="system-progression-hint" style="font-family:var(--font-mono);font-size:9px;color:rgba(91,168,255,0.78);letter-spacing:0.08em;text-align:center;padding:8px 0;margin-bottom:12px;line-height:1.7;cursor:pointer;" title="Tap to learn more">
-            ◈ THE SYSTEM OBSERVES YOUR TRAINING ◈<br>
-            <span style="color:rgba(91,168,255,0.78);">Train → XP → Level Up → AP · Spend AP to raise stats</span>
+          <div id="system-progression-hint" title="Tap to learn more">
+            &#9672; THE SYSTEM OBSERVES YOUR TRAINING &#9672;<br>
+            <span>Train &rarr; XP &rarr; Level Up &rarr; AP &middot; Spend AP to raise stats</span>
           </div>
           <div class="char-stats" id="char-stats"></div>
           <p class="char-rank-hint" id="char-rank-hint"></p>
-          <button onclick="generateHunterCard()" style="width:100%;margin-top:14px;padding:11px;background:rgba(91,168,255,.04);border:1px solid rgba(91,168,255,.1);border-radius:var(--radius-md);color:rgba(91,168,255,0.78);font-family:var(--font-mono);font-size:11px;letter-spacing:.1em;cursor:pointer;touch-action:manipulation;">◈ GENERATE HUNTER CARD</button>
+          <button class="ui-tile rk-gen" onclick="generateHunterCard()">&#9672; GENERATE HUNTER CARD</button>
           <div id="hunter-card-output" style="display:none;margin-top:12px;"></div>
-          <!-- Secondary navigation — accessible from Rank screen -->
-          <div style="display:flex;gap:6px;margin-top:16px;padding-top:12px;border-top:1px solid rgba(91,168,255,0.06);">
-            <button onclick="switchView('exercises')" style="flex:1;padding:8px 4px;background:transparent;border:1px solid rgba(91,168,255,0.1);border-radius:var(--radius-sm);color:rgba(91,168,255,0.78);font-family:var(--font-mono);font-size:10px;letter-spacing:.08em;cursor:pointer;">Arsenal</button>
-            <button onclick="switchView('history')" style="flex:1;padding:8px 4px;background:transparent;border:1px solid rgba(91,168,255,0.1);border-radius:var(--radius-sm);color:rgba(91,168,255,0.78);font-family:var(--font-mono);font-size:10px;letter-spacing:.08em;cursor:pointer;">Shadow Log</button>
-            <button onclick="switchView('feats')" style="flex:1;padding:8px 4px;background:transparent;border:1px solid rgba(91,168,255,0.1);border-radius:var(--radius-sm);color:rgba(91,168,255,0.78);font-family:var(--font-mono);font-size:10px;letter-spacing:.08em;cursor:pointer;">Gates</button>
+          <!-- Secondary navigation: still reachable from the Rank screen -->
+          <div class="rk-links">
+            <button type="button" onclick="switchView('exercises')">Arsenal</button>
+            <button type="button" onclick="switchView('history')">Shadow Log</button>
+            <button type="button" onclick="switchView('feats')">Gates</button>
           </div>
         </div>
       </div>
+      </div><!-- /hunter pane -->
 
+      <!-- ── PARTY ── -->
+      <div class="rank-pane" data-pane="party">
+        <div class="ui-banner" id="rank-party">&#9672; Party today</div>
+        <div class="today-list" id="today-list"></div>
+        <div id="today-debrief-card-slot"></div>
+        <div class="ui-banner" id="rank-threats">&#9672; Threat board</div>
+        <div id="board-body"></div>
+      </div>
 
+      <!-- ── RAID ── -->
+      <div class="rank-pane" data-pane="raid">
+        <div id="raid-boss-slot"></div>
+        <p class="rk-empty">No raid boss to show yet.</p>
+      </div>
 
-
-      <!-- ◈ THREAT ASSESSMENT -->
-      <div class="sl-section-head" id="rank-threats">◈ THREAT ASSESSMENT</div>
-      <div id="board-body"></div>
-
-      <!-- ◈ PARTY STATUS -->
-      <div class="sl-section-head" id="rank-party">◈ PARTY STATUS</div>
-      <div class="today-list" id="today-list"></div>
-      <div id="today-debrief-card-slot"></div>
-
-      <!-- WEEKLY RAID BOSS -->
-      <div id="raid-boss-slot"></div>
-
-      <!-- GUILD FEED -->
-      <div id="guild-feed-slot"></div>
-
-      <!-- PROGRESSION ROADMAP -->
-      <div id="progression-roadmap-slot"></div>
+      <!-- ── FEED ── -->
+      <div class="rank-pane" data-pane="feed">
+        <div id="guild-feed-slot"></div>
+        <div id="progression-roadmap-slot"></div>
+        <p class="rk-empty">Nothing in the feed yet.</p>
+      </div>
 
       <!-- Hunter profile modal -->
       <div class="hunter-modal hidden" id="hunter-modal">
@@ -4022,8 +4390,9 @@
 
     <!-- ---- TRENDS ---- -->
     <section class="view" id="view-trends">
+      <!-- CODEX heads (title + Progress / History / Feats / Items switch) are built by buildCodexHeads(). -->
+      <div class="ui-screen-head codex-head" data-codex="trends"></div>
       <div id="trends-dashboard">
-        <div style="font-family:var(--font-mono);font-size:8px;color:rgba(91,168,255,0.78);letter-spacing:.25em;margin-bottom:4px;">◈ SYSTEM CODEX</div><h2 style="margin:0 0 2px;font-size:22px;">Your Body</h2><p class="sub" style="margin-bottom:16px;">What the System has analysed.</p>
         <!-- Body/muscle analysis FIRST — anatomy is the hero -->
         <div id="trends-widgets"></div>
         <!-- PR Records — supporting content below -->
@@ -4040,16 +4409,17 @@
 
     <!-- ---- EXERCISES ---- -->
     <section class="view" id="view-exercises">
-      <div class="card-title" style="margin-bottom:6px;">
-        <h2 style="margin:0;">Exercises</h2>
-        <button class="btn btn-sm" id="add-exercise-lib-btn">+ Add</button>
+      <div class="tab-glow"></div>
+      <h2 class="tab-title">Arsenal</h2>
+      <p class="sub" style="margin:4px 0 0;">Your full move list — search it, filter it, or add your own.</p>
+      <div class="ars-search">
+        <svg width="18" height="18" viewBox="0 0 20 20" aria-hidden="true"><circle cx="8.5" cy="8.5" r="5.5" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M13 13l4.5 4.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+        <input type="text" class="lib-search" id="lib-search" placeholder="Search exercises…" aria-label="Search exercises" />
       </div>
-      <p class="sub">Your full move list — search it, filter it, or add your own.</p>
-      <input type="text" class="lib-search" id="lib-search" placeholder="Search exercises…" />
       <!-- Stat filter — tap to find exercises that raise that stat's Training Cap -->
-      <div style="margin-bottom:10px;">
-        <div style="font-family:var(--font-mono);font-size:9px;color:var(--text-faint);letter-spacing:0.1em;margin-bottom:6px;">FILTER BY STAT TRAINED</div>
-        <div style="display:flex;gap:6px;flex-wrap:wrap;" id="lib-stat-chips">
+      <div class="ars-filters">
+        <div class="ars-filters-k">Filter by stat trained</div>
+        <div class="ars-chips" id="lib-stat-chips">
           <button class="lib-stat-chip active" data-stat="">All</button>
           <button class="lib-stat-chip" data-stat="strength">⚔️ Strength</button>
           <button class="lib-stat-chip" data-stat="endurance">🔥 Endurance</button>
@@ -4060,21 +4430,28 @@
         </div>
       </div>
       <div class="lib-filters">
-        <select id="lib-muscle-filter"><option value="">All muscles</option></select>
-        <select id="lib-equip-filter"><option value="">All equipment</option></select>
+        <select id="lib-muscle-filter" aria-label="Filter by muscle"><option value="">All muscles</option></select>
+        <select id="lib-equip-filter" aria-label="Filter by equipment"><option value="">All equipment</option></select>
       </div>
-      <div class="ex-grid" id="ex-grid"></div>
+      <div class="ars-sec" id="ex-today-sec" hidden>
+        <div class="ui-banner" id="ex-today-banner">IN TODAY'S GATE</div>
+        <div class="ui-window ars-list" id="ex-today"></div>
+      </div>
+      <div class="ars-sec">
+        <div class="ui-banner" id="ex-count-banner">All exercises</div>
+        <div class="ui-window ars-list ex-grid" id="ex-grid"></div>
+      </div>
+      <div class="ars-bar"><button class="ui-btn-blue" id="add-exercise-lib-btn" type="button">+ New custom exercise</button></div>
     </section>
 
     <!-- ---- HISTORY ---- -->
     <section class="view" id="view-history">
-      
-      <div style="font-family:var(--font-mono);font-size:9px;color:rgba(91,168,255,0.78);letter-spacing:.2em;padding:12px var(--fluid-pad) 4px;">◈ SYSTEM LOG</div>
+      <div class="ui-screen-head codex-head" data-codex="history"></div>
 
       <!-- Tab toggle: Calendar / System Feed -->
-      <div style="display:flex;gap:6px;margin-bottom:12px;">
-        <button id="history-tab-cal" class="btn btn-sm" style="flex:1;font-family:var(--font-mono);font-size:11px;" onclick="switchHistoryTab('cal')">📅 Calendar</button>
-        <button id="history-tab-feed" class="btn btn-sm" style="flex:1;font-family:var(--font-mono);font-size:11px;opacity:.5;" onclick="switchHistoryTab('feed')">◈ System Feed</button>
+      <div class="ui-seg history-seg">
+        <button id="history-tab-cal" class="ui-seg-btn on" onclick="switchHistoryTab('cal')">📅 Calendar</button>
+        <button id="history-tab-feed" class="ui-seg-btn" style="opacity:.5;" onclick="switchHistoryTab('feed')">◈ System Feed</button>
       </div>
 
       <div id="history-cal-view">
@@ -4097,6 +4474,7 @@
 
     <!-- ---- GATES ---- -->
     <section class="view" id="view-feats">
+      <div class="ui-screen-head codex-head" data-codex="feats"></div>
       <!-- System Gate Trial -->
       <div id="trial-card-slot"></div>
       <div id="feats-content"></div>
@@ -4104,10 +4482,11 @@
 
     <!-- ---- INVENTORY ---- -->
     <section class="view" id="view-inventory">
+      <div class="ui-screen-head codex-head" data-codex="inventory"></div>
       <div id="inventory-content"></div>
     </section>
 
-    <section class="view" id="view-world" style="padding:0;"></section>
+    <section class="view" id="view-world"></section>
     </section>
 
   </main>
@@ -4130,42 +4509,19 @@
   <nav class="bottom-nav">
     <div class="nav-inner">
       <button data-view="quest" class="active">
-        <!-- Sword/blade glyph — Hunt -->
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M4 20 L18 6 M18 6 L14 6 M18 6 L18 10"/>
-          <path d="M4 20 L7 17" stroke-width="2.5"/>
-          <path d="M9 15 L12 12"/>
-        </svg>Hunt
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 21V10a8 8 0 0 1 16 0v11"/><path d="M9 21v-9a3 3 0 0 1 6 0v9"/></svg>Hunt
       </button>
       <button data-view="board">
-        <!-- Crown/rank sigil — Rank -->
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M3 17 L5 8 L9 13 L12 6 L15 13 L19 8 L21 17 Z"/>
-          <line x1="3" y1="20" x2="21" y2="20"/>
-        </svg>Rank
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l8 4v6c0 4.5-3.4 7.4-8 8-4.6-.6-8-3.5-8-8V7z"/><path d="M8.5 12.5L12 9l3.5 3.5M8.5 16L12 12.5 15.5 16"/></svg>Rank
       </button>
       <button data-view="trends">
-        <!-- Body/anatomy pulse — Codex -->
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M12 3 C10 3 8 5 8 8 L8 10 C8 11 7 12 6 12 C7 12 8 13 8 14 L8 18 C8 21 10 22 12 22 C14 22 16 21 16 18 L16 14 C16 13 17 12 18 12 C17 12 16 11 16 10 L16 8 C16 5 14 3 12 3Z"/>
-        </svg>Codex
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 4h10a4 4 0 0 1 4 4v12H9a4 4 0 0 1-4-4z"/><path d="M9 4v12M12 8.5h4"/></svg>Codex
       </button>
       <button data-view="exercises">
-        <!-- Shield — Arsenal -->
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M12 3 L20 7 L20 13 C20 17.4 16.4 21.1 12 22 C7.6 21.1 4 17.4 4 13 L4 7 Z"/>
-          <path d="M9 12 L11 14 L15 10"/>
-        </svg>Arsenal
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 4L9 15M7 13l4 4M9 15l-4 4"/><path d="M4 4l11 11M17 13l-4 4M15 15l4 4"/><circle cx="4.5" cy="19.5" r="1"/><circle cx="19.5" cy="19.5" r="1"/></svg>Arsenal
       </button>
       <button data-view="world">
-        <!-- Territory/world sigil — World -->
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-          <circle cx="12" cy="12" r="9"/>
-          <path d="M12 3 L12 21"/>
-          <path d="M3.5 9 L20.5 9"/>
-          <path d="M3.5 15 L20.5 15"/>
-          <path d="M12 3 C9 6 9 9 12 12 C15 15 15 18 12 21"/>
-        </svg>World
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18"/></svg>World
       </button>
     </div>
   </nav>
@@ -4176,21 +4532,22 @@
 <!-- Full-screen workout logging modal — opened by Begin Hunt or manual logging -->
 <div class="workout-modal-overlay hidden" id="workout-modal-overlay">
   <div class="workout-modal">
-    <div class="workout-modal-header" style="position:relative;">
-  <div style="padding-right:104px;">
-    <div style="font-family:var(--font-mono);font-size:9px;letter-spacing:0.2em;color:rgba(91,168,255,0.78);margin-bottom:2px;">◈ QUEST ACTIVE ◈</div>
+    <div class="workout-modal-header flow-head">
+  <div class="flow-fig" id="logger-figure" aria-hidden="true"></div>
+  <div class="flow-head-main">
+    <div style="font-family:var(--font-mono);font-size:11px;letter-spacing:0.2em;color:rgba(91,168,255,0.78);margin-bottom:2px;">◈ QUEST ACTIVE ◈</div>
     <div id="logger-title" style="font-family:var(--font-display);font-size:20px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;line-height:1.1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin:0 0 2px;">HUNT ACTIVE</div>
     <div style="display:flex;justify-content:space-between;margin-top:4px;">
-      <span style="font-family:var(--font-mono);font-size:10px;color:rgba(91,168,255,0.78);" id="logger-set-count" style="letter-spacing:.06em;"></span>
-      <span style="font-family:var(--font-mono);font-size:10px;color:rgba(255,214,107,0.7);transition:all 0.3s;" id="logger-xp-live">+0 XP</span>
+      <span style="font-family:var(--font-mono);font-size:11px;color:rgba(91,168,255,0.78);" id="logger-set-count" style="letter-spacing:.06em;"></span>
+      <span style="font-family:var(--font-mono);font-size:11px;color:rgba(255,214,107,0.7);transition:all 0.3s;" id="logger-xp-live">+0 XP</span>
     </div>
     <div style="height:2px;background:rgba(91,168,255,0.08);margin-top:6px;border-radius:1px;overflow:hidden;">
       <div id="logger-xp-bar" style="height:100%;width:0%;background:linear-gradient(90deg,var(--brass),#FFD66B);border-radius:1px;transition:width 0.6s cubic-bezier(0.16,1,0.3,1);box-shadow:0 0 6px rgba(255,214,107,0.4);"></div>
     </div>
   </div>
-  <div style="position:absolute;top:0;right:0;display:flex;gap:8px;">
-    <button id="minimise-workout-modal" style="width:44px;height:44px;display:flex;align-items:center;justify-content:center;background:rgba(91,168,255,0.1);border:1px solid rgba(91,168,255,0.3);border-radius:8px;color:#61a5ff;font-size:20px;cursor:pointer;touch-action:manipulation;">−</button>
-    <button id="end-workout-modal" style="width:44px;height:44px;display:flex;align-items:center;justify-content:center;background:rgba(255,77,103,0.1);border:1px solid rgba(255,77,103,0.35);border-radius:8px;color:#ff3d5a;font-size:18px;cursor:pointer;touch-action:manipulation;">✕</button>
+  <div class="flow-head-btns">
+    <button id="minimise-workout-modal" aria-label="Minimise workout" style="width:44px;height:44px;display:flex;align-items:center;justify-content:center;background:rgba(91,168,255,0.1);border:1px solid rgba(91,168,255,0.3);border-radius:8px;color:#61a5ff;font-size:20px;cursor:pointer;touch-action:manipulation;">−</button>
+    <button id="end-workout-modal" aria-label="End workout" style="width:44px;height:44px;display:flex;align-items:center;justify-content:center;background:rgba(255,77,103,0.1);border:1px solid rgba(255,77,103,0.35);border-radius:8px;color:#ff3d5a;font-size:18px;cursor:pointer;touch-action:manipulation;">✕</button>
   </div>
     </div>
     <div class="rest-timer-bar">
@@ -4281,7 +4638,9 @@ import { computeStreakFrom, STREAK_RULES_START, shiftDay } from "./streak.js";
 import { newestApEvents, isMissingIndexError, LEDGER_LIMIT } from "./ap-ledger.js";
 import { backfillDateProblem, earliestBackfillDate, isDuplicateSession, laterDate } from "./backfill.js";
 import { defaultPlanDay, planDayOptions, shouldAdvanceRotation } from "./plan-day.js";
-import { uiArtHtml, uiArtHydrate, uiSigil, uiRing, uiIcon, equipmentKind, muscleTint } from "./ui-art.js";
+import { uiArt, uiArtHtml, uiArtHydrate, uiSigil, uiRing, uiIcon, equipmentKind, muscleTint } from "./ui-art.js";
+import { huntFxHtml, startHuntFx } from "./hunt-fx.js";
+import { sessionMuscleArt, rewardTiles, investableAp, nextAfterHunt, tabDots } from "./flow-view.js";
 import { QUICK_TITLE, buildQuickCircuit, quickLoggerRows } from "./quick-quest.js";
 import { weekStrip, weekProgress, latestDate, agoLabel, estimateMinutes, totalSets, topMuscles, ringArc,
   lastSet, lastTimeLabel, upNext, leftLabel } from "./hunt-view.js";
@@ -8095,6 +8454,44 @@ function closeLayersOnNavigate() {
     if (editingProgram && peSnap !== undefined && JSON.stringify(myProgram) === peSnap) { editingProgram = false; peSnap = undefined; }
   } catch (e) { /* presentation only - never block navigation */ }
 }
+/* ── RANK + CODEX switches (presentation only) ─────────────────────────────
+   Rank holds four panes behind a segmented switch; Codex is four existing
+   views (Progress = trends, History, Feats, Items = inventory) that share one
+   head. Every pane keeps its renderers and handlers; the switch only shows,
+   hides and navigates. History, Feats and Items still highlight Codex in the
+   bottom nav. */
+const CODEX_VIEWS = ['trends', 'history', 'feats', 'inventory'];
+function codexNavTab(name) { return CODEX_VIEWS.includes(name) ? 'trends' : name; }
+function setRankPane(pane, scroll) {
+  const view = document.getElementById('view-board');
+  if (!view) return;
+  if (!view.querySelector(`.rank-pane[data-pane="${pane}"]`)) pane = 'hunter';
+  view.querySelectorAll('.rank-pane').forEach(el => el.classList.toggle('on', el.dataset.pane === pane));
+  view.querySelectorAll('#rank-seg .ui-seg-btn').forEach(b => {
+    const on = b.dataset.pane === pane;
+    b.classList.toggle('on', on);
+    b.setAttribute('aria-selected', on ? 'true' : 'false');
+  });
+  if (scroll) { const area = document.querySelector('main.view-area'); if (area) area.scrollTop = 0; }
+}
+window.setRankPane = setRankPane;
+(() => {
+  document.getElementById('rank-seg')?.addEventListener('click', e => {
+    const b = e.target.closest('.ui-seg-btn[data-pane]'); if (b) setRankPane(b.dataset.pane, true);
+  });
+  const TABS = [['trends', 'Progress'], ['history', 'History'], ['feats', 'Feats'], ['inventory', 'Items']];
+  document.querySelectorAll('.codex-head[data-codex]').forEach(head => {
+    const cur = head.dataset.codex;
+    head.innerHTML = `<h1 class="ui-title">Codex</h1>
+      <div class="ui-seg" role="tablist" aria-label="Codex sections">${TABS.map(([v, label]) =>
+        `<button type="button" class="ui-seg-btn${v === cur ? ' on' : ''}" role="tab" aria-selected="${v === cur}" data-codex-go="${v}">${label}</button>`).join('')}</div>`;
+    head.addEventListener('click', e => {
+      const b = e.target.closest('[data-codex-go]'); if (!b || b.dataset.codexGo === cur) return;
+      switchView(b.dataset.codexGo);
+    });
+  });
+})();
+
 function switchView(name) {
   closeLayersOnNavigate();
   // Phase 4: tell the 3D runtime which view is showing. Observation only.
@@ -8115,7 +8512,7 @@ function switchView(name) {
   try {
     const wf = document.querySelector('#view-world iframe');
     if (wf && wf.contentWindow) {
-      wf.contentWindow.postMessage({ type: 'setActive', active: name === 'world' }, '*');
+      wf.contentWindow.postMessage({ type: 'setActive', active: name === 'world' && worldPane === 'army' }, '*');
     }
   } catch (e) { /* iframe not ready yet — it starts paused and is told on entry */ }
 
@@ -8130,19 +8527,20 @@ function switchView(name) {
   const viewEl = document.getElementById('view-' + name);
   if (!viewEl) { console.warn('switchView: no element for view', name); return; }
   viewEl.classList.add('active');
-  document.querySelectorAll('.bottom-nav button').forEach(b => b.classList.toggle('active', b.dataset.view === name));
+  document.querySelectorAll('.bottom-nav button').forEach(b => b.classList.toggle('active', b.dataset.view === codexNavTab(name)));
   document.getElementById('hunt-bar')?.classList.toggle('off', name !== 'quest');
+  refreshTabDots();
 
   // World iframe stays loaded — section CSS handles visibility
   if (name === 'world') {
     renderShadowWorld();
     renderWorldSidebar();
-    // Lock to landscape on mobile
-    if (window.innerWidth <= 640 && screen.orientation?.lock) {
-      screen.orientation.lock('landscape').catch(() => {});
-    }
+    // World is a scrolling page now: always open it from the top
+    try { const m = document.querySelector('main'); if (m) m.scrollTop = 0; } catch (e) { /* presentation only */ }
+    // The landscape lock now belongs to the Full map button (toggleWorldFull); the page itself is portrait.
   } else {
-    // Unlock orientation when leaving world
+    // Leaving World closes the full map and unlocks orientation
+    try { toggleWorldFull(false); } catch (e) { /* presentation only */ }
     if (screen.orientation?.unlock) screen.orientation.unlock();
   }
   // Phase J: Dim ambient on heavy screens, full on light screens
@@ -8150,6 +8548,7 @@ function switchView(name) {
   if (_amb) _amb.style.opacity = ['world','trends'].includes(name) ? '0.3' : '0.6';
 
   if (name === 'board') {
+    setRankPane('hunter', true);
     renderBoard();
     renderCharCard();
     renderTodayCard();
@@ -8556,10 +8955,15 @@ function renderHuntTop() {
     <div class="hunt-status">
       <div class="hunt-streak" aria-label="Streak ${streak}">${uiArtHtml('icon-streak', { alt: 'Streak' })}${streak}</div>
       <div class="hunt-dots" role="img" aria-label="This week: ${wp.trained} of ${goal} sessions">${dots}</div>
-      <button class="hunt-lvl" id="hunt-level-chip" aria-label="Hunter level ${level}. Open Rank">LV ${level}</button>
+      <div class="hunt-status-r">
+        <button class="hunt-lvl" id="hunt-level-chip" aria-label="Hunter level ${level}. Open Rank"><span class="hl-k">LV</span><span class="hl-n">${level}</span></button>
+        <button class="hunt-gear" id="hunt-gear-btn" aria-label="Settings" title="Settings"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.8l1.5 2.4a7 7 0 0 1 2.1.9l2.7-.7 1.8 3.1-1.9 2a7 7 0 0 1 0 2.1l1.9 2-1.8 3.1-2.7-.7a7 7 0 0 1-2.1.9L12 21.2l-1.5-2.4a7 7 0 0 1-2.1-.9l-2.7.7-1.8-3.1 1.9-2a7 7 0 0 1 0-2.1l-1.9-2 1.8-3.1 2.7.7a7 7 0 0 1 2.1-.9z"/></svg></button>
+      </div>
     </div>`;
   uiArtHydrate(host);
   document.getElementById('hunt-level-chip')?.addEventListener('click', () => switchView('board'));
+  // the gear is a second door to the existing Settings handler (#settings-btn in the top bar), not a new one
+  document.getElementById('hunt-gear-btn')?.addEventListener('click', () => document.getElementById('settings-btn')?.click());
 }
 
 function renderHuntHero() {
@@ -8581,20 +8985,38 @@ function renderHuntHero() {
   const rotationIdx = hasPlan ? myProgram.currentDayIndex % myProgram.days.length : 0;
   const dots = hasPlan ? myProgram.days.map((_, i) => `<span class="day-dot ${i === questCarouselIndex ? 'current' : ''} ${i === rotationIdx && i !== questCarouselIndex ? 'done' : ''}"></span>`).join('') : '';
   host.innerHTML = `
-    <div class="hunt-hero-bg">${uiArtHtml('gate-card-bg')}<div class="hunt-hero-sigil">${uiSigil({ size: 390 })}</div></div>
+    <div class="hunt-hero-bg"><div class="hunt-bd">${uiArtHtml('hunt-backdrop')}<div class="hunt-scrim"></div>${huntFxHtml()}<div class="hunt-fade"></div><div class="hunt-hero-sigil">${uiSigil({ size: 390 })}</div></div></div>
     <div class="hunt-crest"><span class="ui-ring">${uiRing({ size: 84, r: 38, stroke: 4, frac, id: 'huntRg' })}</span><div class="ui-crest"><span>${ri.rank}</span></div></div>
     ${stats ? `<div class="hunt-count" title="${stats.completed}/${stats.total} exercises cleared">${stats.completed} / ${stats.total}</div>` : ''}
     <div class="hunt-gate">${ri.rank}-RANK GATE</div>
     ${chips.length ? `<div class="hunt-chips">${chips.join('')}</div>` : ''}
     ${hasPlan ? `<div class="hunt-day-row">
       <button class="hunt-arrow ${multi ? '' : 'off'}" id="carousel-prev" data-hunt-dir="prev" aria-label="Previous day" ${multi ? '' : 'tabindex="-1"'}>‹</button>
-      <h2 class="hunt-day-name">${escapeHtml(stats.day.name)}</h2>
+      <div class="hunt-plate"><div class="hunt-plate-k">${stats.isActiveDay ? "TODAY'S GATE" : 'GATE'}</div><h2 class="hunt-day-name">${escapeHtml(stats.day.name)}</h2></div>
       <button class="hunt-arrow ${multi ? '' : 'off'}" id="carousel-next" data-hunt-dir="next" aria-label="Next day" ${multi ? '' : 'tabindex="-1"'}>›</button>
     </div>
     ${multi ? `<div class="day-dots">${dots}</div>` : ''}` : ''}
     ${atRisk ? `<div class="hunt-risk" id="hunt-risk">${HI.warn}<span>Streak at risk · <span id="hunt-risk-time"></span></span></div>` : ''}`;
   uiArtHydrate(host);
   syncHuntRisk(atRisk);
+  fitHuntTitle();
+  startHuntFx();
+}
+
+/** Size the Today's Gate name: one line if it fits at 28px or more, otherwise two lines, otherwise smaller (down to 14px) for 3+. Presentation only. */
+function fitHuntTitle() {
+  const run = () => {
+    const h = document.querySelector('#hunt-hero .hunt-day-name');
+    if (!h || !h.getClientRects().length) return;
+    const lines = () => { const lh = parseFloat(getComputedStyle(h).lineHeight) || (parseFloat(h.style.fontSize) * 1.08); return Math.round(h.getBoundingClientRect().height / lh); };
+    const set = px => { h.style.fontSize = px + 'px'; };
+    for (let px = 36; px >= 28; px -= 2) { set(px); if (lines() <= 1) return; }
+    for (let px = 34; px >= 20; px -= 2) { set(px); if (lines() <= 2) return; }
+    for (let px = 18; px >= 14; px -= 2) { set(px); if (lines() <= 3) return; }
+    set(14);
+  };
+  run();
+  try { document.fonts && document.fonts.ready.then(run); } catch (_) { /* sizing only */ }
 }
 
 /** Dungeon damage the shown day would deal, from last-time sets, using the game's own damage function (read only). */
@@ -8717,6 +9139,7 @@ function renderHuntChrome() {
   try { renderHuntNext(); } catch (e) { console.warn('Hunt next failed:', e); }
   try { renderHuntDmg(); } catch (e) { console.warn('Hunt dmg failed:', e); }
   try { syncHuntBar(); } catch (e) { console.warn('Hunt bar failed:', e); }
+  refreshTabDots();
 }
 
 /** The shown day changed (carousel): refresh what depends on it. */
@@ -8755,8 +9178,10 @@ function startQuickQuest() {
   begin?.addEventListener('click', () => {
     if (begin.dataset.mode === 'create') { document.getElementById('build-program-btn')?.click(); return; }
     if (!myProgram || !myProgram.days || !myProgram.days.length) return;
-    SFX.beginQuest();
-    startProgramDay(questCarouselIndex);
+    /* a hunt already in progress is resumed as before; otherwise the Enter Gate card comes first */
+    const inProgress = [...document.querySelectorAll('#exercise-rows .exercise-row')].some(r => r.dataset.exName);
+    if (inProgress) { SFX.beginQuest(); startProgramDay(questCarouselIndex); return; }
+    try { showEnterGate(questCarouselIndex); } catch (e) { console.warn('Enter Gate failed:', e); SFX.beginQuest(); startProgramDay(questCarouselIndex); }
   });
   document.getElementById('hunt-quick-btn')?.addEventListener('click', () => { SFX.beginQuest(); startQuickQuest(); });
   // day arrows live in the header, which re-renders: delegate
@@ -9469,8 +9894,98 @@ function resetLoggerDate() {
   syncWorkoutDateLimits();
 }
 
+/* Logger header figure: the muscle group the session leans on, from the exercises on screen.
+   Presentation only; a code stand-in shows until art/ui/muscle-<group>.webp exists. */
+function refreshLoggerFigure() {
+  const host = document.getElementById('logger-figure');
+  if (!host) return;
+  const list = [...document.querySelectorAll('#exercise-rows .exercise-row')]
+    .filter(r => r.dataset.exName)
+    .map(r => ({ name: r.dataset.exName, sets: r.querySelectorAll('.set-row').length }));
+  const art = sessionMuscleArt(list, EXERCISES_ALL);
+  if (host.dataset.art === art) return;
+  host.dataset.art = art;
+  host.replaceChildren(uiArt(art, { alt: '' }));
+}
+(function watchLoggerFigure() {
+  const rowsEl = document.getElementById('exercise-rows');
+  if (!rowsEl || typeof MutationObserver === 'undefined') return;
+  let queued = false;
+  new MutationObserver(() => {
+    if (queued) return;
+    queued = true;
+    requestAnimationFrame(() => { queued = false; try { refreshLoggerFigure(); } catch (_) {} });
+  }).observe(rowsEl, { childList: true, subtree: true, attributes: true, attributeFilter: ['data-ex-name'] });
+})();
+
+/* Enter Gate: the title card shown before the logger. "Enter Gate" runs startProgramDay, exactly what
+   Begin Hunt ran before; "Not yet" backs out and starts nothing. Chips are the day's real numbers. */
+function showEnterGate(idx) {
+  const s = huntDayStats(idx);
+  const exs = (s.day && s.day.exercises) || [];
+  const muscles = topMuscles(exs, EXERCISES_ALL, 3);
+  const sets = totalSets(exs), mins = estimateMinutes(exs);
+  const chips = [
+    ...muscles.map(m => `<span class="ui-chip">${escapeHtml(m)}</span>`),
+    exs.length ? `<span class="ui-chip dim">${exs.length} exercise${exs.length === 1 ? '' : 's'}</span>` : '',
+    sets ? `<span class="ui-chip dim">${sets} sets</span>` : '',
+    mins ? `<span class="ui-chip dim">~${mins} min</span>` : '',
+  ].join('');
+  const el = document.createElement('div');
+  el.className = 'flow-gate';
+  el.setAttribute('role', 'dialog');
+  el.setAttribute('aria-modal', 'true');
+  el.setAttribute('aria-label', 'Enter Gate');
+  el.innerHTML = `
+    <div class="flow-gate-bg">${uiArtHtml('gate-entry')}<div class="flow-gate-sigil">${uiSigil({ size: 300 })}</div></div>
+    <div class="flow-gate-main">
+      <div class="ui-window gold flow-gate-card">
+        <div class="ui-banner gold">◈ Gate detected</div>
+        <div class="flow-gate-eyebrow">${s.isActiveDay ? "Today's hunt" : 'Log this session'}</div>
+        <h2 class="flow-gate-title">${escapeHtml(s.day.name)}</h2>
+        <div class="flow-gate-chips">${chips}</div>
+        <button class="ui-btn-primary" id="gate-enter">Enter Gate</button>
+        <button class="flow-gate-back" id="gate-back">Not yet</button>
+      </div>
+    </div>`;
+  getOverlayHost().appendChild(el);
+  uiArtHydrate(el);
+  lockBodyScroll();
+  const close = () => { document.removeEventListener('keydown', onKey); el.remove(); unlockBodyScroll(); };
+  const onKey = e => { if (e.key === 'Escape') close(); };
+  document.addEventListener('keydown', onKey);
+  el.querySelector('#gate-back').addEventListener('click', close);
+  el.querySelector('#gate-enter').addEventListener('click', () => { close(); SFX.beginQuest(); startProgramDay(idx); });
+  el.querySelector('#gate-enter').focus();
+}
+
+/* Bottom nav dots: a dot only where the tab holds something real to act on (see flow-view.js tabDots). */
+function refreshTabDots() {
+  try {
+    const nav = document.querySelector('nav.bottom-nav');
+    if (!nav) return;
+    const dots = (currentUser && profile)
+      ? tabDots({ ap: profile.auraPoints || 0, stats: STAT_DEFS.map(d => checkV2UpgradeGates(d.id)), pool: profile.shadowArmy && profile.shadowArmy.pool })
+      : {};
+    const WHY = { board: 'AP to invest', world: 'soldiers to deploy' };
+    nav.querySelectorAll('button[data-view]').forEach(b => {
+      const on = !!dots[b.dataset.view];
+      let d = b.querySelector('.ui-dot');
+      if (on && !d) { d = document.createElement('span'); d.className = 'ui-dot gold'; d.setAttribute('aria-hidden', 'true'); b.appendChild(d); }
+      if (!on && d) d.remove();
+      if (on) b.setAttribute('aria-label', `${b.textContent.trim()}, ${WHY[b.dataset.view]}`);
+      else b.removeAttribute('aria-label');
+    });
+  } catch (e) { console.warn('Tab dots failed:', e); }
+}
+
+/* Dots follow state that changes in many places (XP awards, AP spends, deploys), so they re-check on a slow
+   timer as well as on navigation. It only reads the profile already in memory. */
+setInterval(() => { if (!document.hidden) refreshTabDots(); }, 3000);
+
 function openWorkoutModal() {
   syncWorkoutDateLimits();
+  try { refreshLoggerFigure(); } catch (_) {}
   document.getElementById('workout-modal-overlay').classList.remove('hidden');
   document.getElementById('workout-pill').classList.add('hidden');
   lockBodyScroll();
@@ -14160,7 +14675,26 @@ function buildGateHtml(statId, gates, ap) {
   return html;
 }
 
+/** The six stats beside the muscle map: one pip per rank (E..S) lit up to the current rank. Tap opens the existing invest panel. */
+function renderRankStatBars() {
+  const host = document.getElementById('rk-stat-bars');
+  if (!host) return;
+  const stats = profile.stats || defaultStats();
+  const COL = { strength: '#5BA8FF', endurance: '#2FB8C6', agility: '#6FFFB0', focus: '#A17FFF', flexibility: '#FFD66B', defence: '#FF6B35' };
+  const order = ['strength', 'endurance', 'agility', 'focus', 'flexibility', 'defence'];
+  const defs = order.map(id => STAT_DEFS.find(d => d.id === id)).filter(Boolean);
+  host.innerHTML = defs.map(def => {
+    const rank = stats[def.id] || 'E';
+    const idx = RANK_TIERS.indexOf(rank);
+    const pips = RANK_TIERS.map((_, i) => `<i${i <= idx ? ' class="on"' : ''}></i>`).join('');
+    return `<button type="button" class="rk-stat" data-stat="${def.id}" style="--c:${COL[def.id] || 'var(--brass)'}" aria-label="${def.label} rank ${rank}. Tap to invest AP"><b>${def.label}</b><span class="rk-pips">${pips}</span><em style="color:${RANK_COLORS[rank] || 'var(--text-faint)'}">${rank}</em></button>`;
+  }).join('');
+  host.querySelectorAll('.rk-stat[data-stat]').forEach(b => b.addEventListener('click', () => openStatInvestPanel(b.dataset.stat)));
+  document.getElementById('rk-ap-tile')?.addEventListener('click', openApInvestPicker, { once: false });
+}
+
 function renderCharCard() {
+  refreshTabDots();
   const stats = profile.stats || defaultStats();
   const ap = profile.auraPoints || 0;
   const charRank = charRankFromStats(stats);
@@ -14378,6 +14912,9 @@ function renderCharCard() {
   // rank orb
   const badge = document.getElementById('char-rank-badge');
   badge.className = `char-rank-orb ${rankClass}`;
+  badge.style.setProperty('--rank', RANK_COLORS[charRank]);
+  const rankTxt = document.getElementById('rk-rank-txt');
+  if (rankTxt) rankTxt.textContent = charRank;
   const letter = badge.querySelector('.char-rank-letter') || badge;
   letter.textContent = charRank;
   letter.style.color = RANK_COLORS[charRank];
@@ -14624,6 +15161,7 @@ function renderCharCard() {
 
   // system progression hint — tap to open explanation
   document.getElementById('system-progression-hint')?.addEventListener('click', showProgressionHint);
+  try { renderRankStatBars(); } catch (e) { console.warn('Rank stat bars failed:', e); }
 
   // hint — show what the current overall rank means in real-world terms
   const hint = document.getElementById('char-rank-hint');
@@ -14731,6 +15269,7 @@ function buildSystemModal(html, onClose) {
   overlay.className = 'system-overlay';
   overlay.innerHTML = html;
   getOverlayHost().appendChild(overlay);
+  try { uiArtHydrate(overlay); } catch (_) {}
   lockBodyScroll();
   const cleanup = () => { overlay.remove(); unlockBodyScroll(); if (onClose) onClose(); };
   const btn = overlay.querySelector('.system-btn');
@@ -14906,18 +15445,20 @@ function showRankUpModal(statLabel, oldRank, newRank, hunterName) {
     ? 'All limits have been shattered. You stand beyond human comprehension.'
     : `Hunter ${escapeHtml(hunterName || 'Unknown')} has exceeded human limits in ${statLabel}.`;
   return showSystemModal(`
-    <div class="system-window levelup">
-      <p class="system-eyebrow">System Alert</p>
-      <div class="system-icon">⚡</div>
-      <h2 class="system-title">${title}</h2>
-      <div class="system-rank-change">
-        <span style="color:${RANK_COLORS[oldRank]}">${oldRank}</span>
-        <span class="arrow">→</span>
-        <span style="color:${RANK_COLORS[newRank]};font-size:36px;text-shadow:0 0 20px ${RANK_COLORS[newRank]}">${newRank}</span>
+    <div class="system-window levelup flow-rankup">
+      <div class="flow-rankup-art">${uiArtHtml('rank-up-aura')}</div>
+      <div class="flow-rankup-in">
+        <div class="ui-banner gold" style="align-self:stretch;">◈ System alert</div>
+        <h2 class="flow-rankup-title system-title">${title}</h2>
+        <div class="flow-rank-row" aria-label="Rank ${oldRank} to ${newRank}">
+          <span class="flow-rank-old" style="color:${RANK_COLORS[oldRank]}">${oldRank}</span>
+          <span class="flow-rank-arrow">→</span>
+          <span class="ui-crest xl" style="--rank:${RANK_COLORS[newRank]}"><span>${newRank}</span></span>
+        </div>
+        <p class="system-body">${msg}</p>
+        <p class="system-detail">The shadows grow stronger.</p>
+        <button class="system-btn ui-btn-primary">Rise</button>
       </div>
-      <p class="system-body">${msg}</p>
-      <p class="system-detail">The shadows grow stronger.</p>
-      <button class="system-btn success">Rise</button>
     </div>`);
 }
 
@@ -17541,6 +18082,7 @@ function checkPersistentQuestBanner() {
    or empty falls back to today's workouts, which is only correct for a debrief
    that is in fact about today. */
 function showDebriefModal(exercises, apEarned, prs, done, soldiersEarned = {}, sourceWorkouts = null) {
+  refreshTabDots();
   const totalSets = exercises.reduce((n, ex) => n + (ex.sets||[]).filter(s=>s.reps>0).length, 0);
   const totalVol = exercises.reduce((n, ex) =>
     n + (ex.sets||[]).filter(s=>s.reps>0 && s.weight>0).reduce((v,s) => v + s.reps * s.weight, 0), 0);
@@ -17686,10 +18228,10 @@ function showDebriefModal(exercises, apEarned, prs, done, soldiersEarned = {}, s
         <div style="font-family:var(--font-display);font-size:20px;font-weight:900;color:var(--text);">${totalVol>=1000?(totalVol/1000).toFixed(1)+'t':Math.round(totalVol)+'kg'}</div>
         <div style="font-family:var(--font-mono);font-size:8px;color:var(--text-faint);letter-spacing:.1em;">VOLUME</div>
       </div>` : ''}
-      <div style="flex:1;text-align:center;">
+      ${streak > 0 ? '' : `<div style="flex:1;text-align:center;">
         <div style="font-family:var(--font-display);font-size:20px;font-weight:900;color:var(--text);">${streak}d</div>
         <div style="font-family:var(--font-mono);font-size:8px;color:var(--text-faint);letter-spacing:.1em;">STREAK</div>
-      </div>
+      </div>`}
     </div>`;
 
   /* A legacy "Personal Records" row list used to sit below the Shadow Army
@@ -17698,15 +18240,33 @@ function showDebriefModal(exercises, apEarned, prs, done, soldiersEarned = {}, s
      block above superseded it ("each PR gets weight, not a row") but the old
      markup was left behind, so it is removed rather than revived: reviving it
      would list every PR twice. */
+  /* Gate Complete reward tiles: real XP, AP and streak only (no gold exists in this game), and the one
+     suggested next step, from real state (flow-view.js). */
+  const flowTiles = rewardTiles({ xp: generalXP, ap: apEarned, streak });
+  const flowTilesHtml = flowTiles.length ? `
+    <div class="flow-tiles" style="grid-template-columns:repeat(${flowTiles.length},minmax(0,1fr));">
+      ${flowTiles.map(t => `<div class="ui-tile ${t.key === 'ap' ? 'violet' : 'gold'} flow-tile" aria-label="${t.value} ${t.label}">${uiArtHtml(t.art, { alt: '' })}<span class="ui-tile-v">${t.value}</span><span class="ui-tile-s">${t.label}</span></div>`).join('')}
+    </div>` : '';
+  let flowNext = null;
+  try {
+    flowNext = nextAfterHunt({
+      investable: investableAp(profile.auraPoints || 0, STAT_DEFS.map(d => checkV2UpgradeGates(d.id))),
+      lastWeighIn: latestDate(myWeights, myCheckins),
+      today: todayStr(),
+    });
+  } catch (e) { console.warn('Next step failed:', e); }
+
   const el = document.createElement('div');
   el.className = 'debrief-overlay';
   el.innerHTML = `
-    <div class="debrief-window">
-      <div style="text-align:center;padding-bottom:14px;border-bottom:1px solid rgba(91,168,255,0.08);margin-bottom:14px;animation:achieveIn .4s var(--ease-cinema) both;">
-        <div style="font-family:var(--font-mono);font-size:8px;color:rgba(91,168,255,0.78);letter-spacing:.25em;margin-bottom:8px;">◈ SYSTEM RECORD</div>
-        <div style="font-family:var(--font-display);font-size:26px;font-weight:900;letter-spacing:.06em;">HUNT COMPLETE</div>
+    <div class="debrief-window ui-window gold flow-complete">
+      <div class="flow-complete-art">${uiArtHtml('gate-complete')}</div>
+      <div class="flow-complete-head">
+        <div class="ui-banner gold">◈ System record</div>
+        <div class="flow-complete-title">Gate Complete</div>
       </div>
-
+      <div class="flow-complete-in">
+      ${flowTilesHtml}
       ${levelUpHtml}
       ${primaryHero}
       ${prHtml}
@@ -17765,14 +18325,19 @@ function showDebriefModal(exercises, apEarned, prs, done, soldiersEarned = {}, s
           <button class="btn btn-sm" id="save-rir-btn" style="margin-top:8px;width:100%;">Save RIR</button>
         </div>` : ''}
 
-      ${apEarned ? `
+      ${apEarned && !flowTiles.some(t => t.key === 'ap') ? `
         <div style="background:rgba(255,214,107,0.06);border:1px solid rgba(255,214,107,0.15);border-radius:6px;padding:10px;margin-bottom:12px;text-align:center;">
           <div style="font-family:var(--font-mono);font-size:9px;color:rgba(255,214,107,0.78);margin-bottom:4px;">LEVEL-UP REWARD</div>
           <div style="font-size:20px;color:#FFD66B;font-weight:700;">+${apEarned} AP</div>
         </div>` : ''}
 
-      <button class="debrief-close-btn">Back to the Hunt</button>
+      <div class="flow-actions">
+        ${flowNext ? `<button class="ui-btn-primary flow-next" id="debrief-next-btn" data-kind="${flowNext.kind}"><span>Next · ${flowNext.label}</span><small>${flowNext.sub}</small></button>` : ''}
+        <button class="debrief-close-btn ${flowNext ? 'flow-ghost' : 'ui-btn-primary flow-solo'}">Back to the Hunt</button>
+      </div>
+      </div>
     </div>`;
+  uiArtHydrate(el);
 
   getOverlayHost().appendChild(el);
 
@@ -17850,9 +18415,23 @@ function showDebriefModal(exercises, apEarned, prs, done, soldiersEarned = {}, s
     saveRirBtn.disabled = false; saveRirBtn.textContent = 'Save RIR';
   });
 
+  el.querySelector('#debrief-next-btn')?.addEventListener('click', () => {
+    const kind = flowNext && flowNext.kind;
+    el.querySelector('.debrief-close-btn').click();
+    /* the same handlers the Hunt tiles use: AP picker, weigh-in, Codex tab */
+    setTimeout(() => {
+      try {
+        if (kind === 'ap') openApInvestPicker();
+        else if (kind === 'weigh') window.openCheckinModal();
+        else if (kind === 'codex') switchView('trends');
+      } catch (e) { console.warn('Next step failed:', e); }
+    }, 350);
+  });
+
   el.querySelector('.debrief-close-btn').addEventListener('click', () => {
     el.style.animation = 'toastOut .3s ease forwards';
     setTimeout(() => el.remove(), 300);
+    refreshTabDots();
     if (document.getElementById('view-board').classList.contains('active')) {
       renderTodayCard(); renderCharCard();
     }
@@ -19626,6 +20205,26 @@ function auraOverTimeCard() {
     </div>`;
 }
 
+/** Muscle recovery chips for Codex, read from the soreness model's own recovery fraction (the same one the muscle map uses). */
+function codexRecoveryCard(stats) {
+  const rows = Object.entries(stats || {}).filter(([, s]) => s && typeof s.recoveryFraction === 'number');
+  const sore = rows.filter(([, s]) => s.recoveryFraction < 0.3).sort((a, b) => a[1].recoveryFraction - b[1].recoveryFraction);
+  const mid = rows.filter(([, s]) => s.recoveryFraction >= 0.3 && s.recoveryFraction < 1).sort((a, b) => a[1].recoveryFraction - b[1].recoveryFraction);
+  const ready = rows.length - sore.length - mid.length;
+  const chip = (m, s, cls) => `<button type="button" class="ui-chip ${cls}" data-recovery-muscle="${escapeHtml(m)}">${escapeHtml(m)}${s.daysSince < 99 ? ` ${s.daysSince}d` : ''}</button>`;
+  const shown = [...sore.map(r => [...r, 'red']), ...mid.map(r => [...r, 'gold'])];
+  const extra = Math.max(0, shown.length - 6);
+  return `<div class="card" data-cx="recovery" id="codex-recovery">
+    <div class="card-title"><h3>◈ Muscle recovery</h3></div>
+    <div class="cx-chips">
+      <span class="ui-chip green"><i></i>${ready} ready</span>
+      ${shown.slice(0, 6).map(([m, s, cls]) => chip(m, s, cls)).join('')}
+      ${extra ? `<button type="button" class="ui-chip dim" id="codex-recovery-more">+${extra} more</button>` : ''}
+    </div>
+    <p class="sub" style="margin:10px 0 0;">Red is still sore, gold is recovering; the number is days since you last trained it.</p>
+  </div>`;
+}
+
 function renderTrends() {
   document.getElementById('trends-dashboard').classList.toggle('hidden', trendsView !== 'dashboard');
   document.getElementById('trends-muscle-detail').classList.toggle('hidden', trendsView !== 'muscle-detail');
@@ -19709,14 +20308,17 @@ function renderTrends() {
   const modeHour = hourCounts.indexOf(Math.max(...hourCounts));
 
   document.getElementById('trends-widgets').innerHTML = `
-    <div class="card widget" id="widget-muscle">
+    <div class="card widget" id="widget-muscle" data-cx="body">
       <div class="card-title"><h3>◈ Muscle Activation <span class="chev">›</span></h3></div>
       <div class="status-pill" style="border-color:${STATUS_COLOR[topStatus[0]]};color:${STATUS_TEXT_COLOR[topStatus[0]]||STATUS_COLOR[topStatus[0]]};display:inline-flex;margin-bottom:8px;">${topStatus[0]} ${topStatus[1]}</div>
       <div class="body-pair">${bodySvg('front', stats)}${bodySvg('back', stats)}</div>
+      ${statusCountRow(stats)}
       ${physiqueNote()}
     </div>
 
-    ${auraOverTimeCard()}
+    ${codexRecoveryCard(stats)}
+
+    <div data-cx="aura">${auraOverTimeCard()}</div>
 
     <div class="card">
       <div class="card-title"><h3>⚡ Streaks</h3></div>
@@ -19738,7 +20340,7 @@ function renderTrends() {
       <div class="consistency-grid">${gridCols.map(col => col.map(on => `<div class="consistency-cell ${on?'on':''}"></div>`).join('')).join('')}</div>
     </div>
 
-    <div class="card">
+    <div class="card" data-cx="volume">
       <div class="card-title"><h3>▲ Volume</h3></div>
       <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:2px;">
         <span class="bignum" style="font-size:20px;">${thisWeekVol.toLocaleString()} <small>vol</small></span>
@@ -19877,14 +20479,20 @@ function renderTrends() {
     </div>
   `;
   document.getElementById('widget-muscle')?.addEventListener('click', () => { trendsView = 'muscle-detail'; renderTrends(); });
+  document.getElementById('codex-recovery-more')?.addEventListener('click', () => { trendsView = 'muscle-detail'; renderTrends(); });
+  document.querySelectorAll('#codex-recovery [data-recovery-muscle]').forEach(b =>
+    b.addEventListener('click', () => openMusclePRPanel(b.dataset.recoveryMuscle)));
 
   // Animate bignum count-up — skip elements with fraction format (e.g. "3 / 7")
   document.querySelectorAll('#trends-widgets .bignum').forEach(el => {
     const text = el.textContent.trim();
     if (text.includes('/')) return; // skip fraction displays
-    const num = parseFloat(text.replace(/[^0-9.]/g, ''));
+    // The number and its unit come from the element's own text: the <small> unit is re-appended below,
+    // and a thousands comma is not a suffix (it used to render "18,426 , volvol").
+    const ownText = [...el.childNodes].filter(n => n.nodeType === 3).map(n => n.textContent).join('').trim() || text;
+    const num = parseFloat(ownText.replace(/[^0-9.]/g, ''));
     if (!isNaN(num) && num > 0) {
-      const suffix = text.replace(/[0-9.]/g, '').trim();
+      const suffix = ownText.replace(/[0-9.,]/g, '').trim();
       const small = el.querySelector('small');
       const smallText = small ? small.outerHTML : '';
       let start = 0;
@@ -20234,7 +20842,10 @@ function renderExerciseLibrary() {
     focus:'#FFD66B', flexibility:'#27AE60', defence:'var(--growing)',
   };
 
-  document.getElementById('ex-grid').innerHTML = rows.map(([name, def], idx) => {
+  // One row of the list. Same facts as before (name, main muscle, equipment, intent, top stats,
+  // technique link, edit, custom dot, stat-match highlight); the glyph is new: the equipment
+  // icon, tinted by the main muscle group.
+  const cardHtml = ([name, def], idx) => {
     const primary = Object.keys(def.muscles||{})[0] || '';
     const custom = customByName.get(name);
     const intent = def.intent || '';
@@ -20257,33 +20868,54 @@ function renderExerciseLibrary() {
         </span>`;
       }).join('');
 
-    // Highlight card border if it's a strong match for the active stat filter
+    // Highlight the row if it's a strong match for the active stat filter
     const statWeight = libStatFilter ? (weights[libStatFilter] || 0) : 0;
     const isHighMatch = statWeight >= 0.5;
-    const borderStyle = isHighMatch
-      ? `border-color:${STAT_COLOR[libStatFilter] || 'var(--border)'}44;box-shadow:0 0 12px ${STAT_COLOR[libStatFilter] || 'transparent'}15;`
-      : '';
+    const matchStyle = isHighMatch ? `--match:${STAT_COLOR[libStatFilter] || 'var(--brass)'};` : '';
+    const kind = equipmentKind(name, def);
 
-    return `<div class="ex-card" style="animation-delay:${Math.min(idx * 0.02, 0.3)}s;${borderStyle}">
+    return `<div class="ex-card${isHighMatch ? ' match' : ''}" style="animation-delay:${Math.min(idx * 0.02, 0.3)}s;${matchStyle}">
       ${custom ? '<span class="ex-custom-dot" title="Customized from default"></span>' : ''}
+      <span class="ui-glyph" style="--tint:${muscleTint(def.muscles)};" title="${escapeHtml(def.equipment || 'Other')}">${uiIcon(kind)}</span>
       <div class="ex-main">
         <p class="ex-name">${escapeHtml(name)}</p>
-        <p class="ex-muscle">${primary}<span class="ex-equip">${def.equipment || 'Other'}</span>${intent ? `<span class="ex-intent" style="color:${intentColor};">${intent}</span>` : ''}</p>
+        <p class="ex-muscle">${primary}<span class="ex-equip">${def.equipment || 'Other'}</span>${intent ? `<span class="ex-intent" style="color:${intentColor};">${intent}</span>` : ''}${statBadges ? `<span class="ex-stats">${statBadges}</span>` : ''}</p>
       </div>
-      ${statBadges ? `<div class="ex-stats">${statBadges}</div>` : ''}
       <div class="ex-actions">
         <a class="ex-technique-link" href="${techniqueLink(name)}" target="_blank" rel="noopener" aria-label="Technique video for ${escapeHtml(name)}">▶</a>
         <button type="button" class="ex-edit-link" data-name="${escapeHtml(name)}" aria-label="Edit ${escapeHtml(name)}">✎</button>
       </div>
     </div>`;
-  }).join('') || `<p class="empty-state" style="grid-column:1/-1;">
+  };
+
+  const grid = document.getElementById('ex-grid');
+  grid.innerHTML = rows.map((r, i) => cardHtml(r, i)).join('') || `<p class="empty-state" style="grid-column:1/-1;">
     No exercises found${libStatFilter ? ` that train ${libStatFilter}` : ''}.
     ${libStatFilter ? `<br><span style="font-size:12px;color:var(--text-faint);">Try a different stat or clear the filter.</span>` : ''}
   </p>`;
+  const countEl = document.getElementById('ex-count-banner');
+  if (countEl) countEl.textContent = `${(q || muscleFilter || equipFilter || libStatFilter) ? 'Matching' : 'All'} exercises · ${rows.length}`;
 
-  document.getElementById('ex-grid').querySelectorAll('.ex-edit-link').forEach(btn => btn.addEventListener('click', () => {
+  // Today's gate: the exercises already planned for the day the Hunt is showing. Shown only
+  // when nothing is being searched or filtered. Same rows, same handlers.
+  const todaySec = document.getElementById('ex-today-sec');
+  const todayHost = document.getElementById('ex-today');
+  let todayRows = [];
+  if (todaySec && todayHost) {
+    const filtering = !!(q || muscleFilter || equipFilter || libStatFilter);
+    const day = !filtering && myProgram && myProgram.days ? myProgram.days[questCarouselIndex] : null;
+    const seen = new Set();
+    todayRows = ((day && day.exercises) || [])
+      .map(ex => ex && ex.name)
+      .filter(n => n && EXERCISES_ALL[n] && !seen.has(n) && seen.add(n))
+      .map(n => [n, EXERCISES_ALL[n]]);
+    todaySec.hidden = !todayRows.length;
+    todayHost.innerHTML = todayRows.map((r, i) => cardHtml(r, i)).join('');
+  }
+
+  [grid, document.getElementById('ex-today')].forEach(host => host && host.querySelectorAll('.ex-edit-link').forEach(btn => btn.addEventListener('click', () => {
     openEditExerciseModal(btn.dataset.name);
-  }));
+  })));
 }
 
 document.getElementById('add-exercise-lib-btn')?.addEventListener('click', openAddExerciseModal);
@@ -22480,25 +23112,99 @@ function getEffectiveInventory() {
   return result;
 }
 
+/* ── WORLD screen (portrait page: Army / Dungeons / Raids) ─────────────────
+   The map iframe, its Armies sheet and every message handler are unchanged.
+   Army: the map in a window, then the territory list. Dungeons: the 22 chains
+   and their 110 dungeons (same data, same Enter / Abandon handlers as the
+   Inventory screen). Raids: slayer titles. "Full map" restores the old
+   fullscreen map. Presentation only: nothing here writes. */
+let worldPane = 'army';
+
+function worldIframeActive() {
+  return document.querySelector('section.view.active')?.id === 'view-world' && worldPane === 'army';
+}
+function postWorldActive() {
+  try {
+    const wf = document.querySelector('#view-world iframe');
+    if (wf && wf.contentWindow) wf.contentWindow.postMessage({ type: 'setActive', active: worldIframeActive() }, '*');
+  } catch (e) { /* iframe not ready yet */ }
+}
+
+function setWorldPane(name) {
+  worldPane = ['army', 'dungeons', 'raids'].includes(name) ? name : 'army';
+  document.querySelectorAll('#world-seg .ui-seg-btn').forEach(b => {
+    const on = b.dataset.wpane === worldPane;
+    b.classList.toggle('on', on);
+    b.setAttribute('aria-selected', on ? 'true' : 'false');
+  });
+  document.querySelectorAll('#view-world .world-pane').forEach(pn => { pn.hidden = pn.dataset.pane !== worldPane; });
+  if (worldPane !== 'army') toggleWorldFull(false);
+  postWorldActive();
+  try { renderWorldPanes(); } catch (e) { console.warn('World panes failed:', e); }
+}
+
+function toggleWorldFull(on) {
+  const v = document.getElementById('view-world');
+  if (!v) return;
+  const full = on === undefined ? !v.classList.contains('world-full') : !!on;
+  if (full === v.classList.contains('world-full')) return;
+  v.classList.toggle('world-full', full);
+  const btn = document.getElementById('world-full-btn');
+  if (btn) {
+    btn.textContent = full ? '✕ Exit' : '⛶ Full map';
+    btn.setAttribute('aria-label', full ? 'Exit full map' : 'Open full map');
+  }
+  try {
+    if (full) { if (window.innerWidth <= 640 && screen.orientation?.lock) screen.orientation.lock('landscape').catch(() => {}); }
+    else if (screen.orientation?.unlock) screen.orientation.unlock();
+  } catch (e) { /* best effort */ }
+}
+
 function renderShadowWorld() {
   const el = document.getElementById('view-world');
   if (!el) return;
   if (el.querySelector('iframe')) return;
   el.innerHTML = `
-    <div id="world-layout">
-      <div id="world-map-wrap">
-        <iframe src="./shadow-world.html?v=2" allowfullscreen></iframe>
-        <button id="world-armies-btn" onclick="toggleWorldSidebar()" style="display:none;">⚔ Armies</button>
+    <div class="tab-glow violet"></div>
+    <div class="world-head">
+      <h2 class="tab-title">World</h2>
+      <div class="ui-seg world-seg" id="world-seg" role="tablist">
+        <button class="ui-seg-btn on" role="tab" aria-selected="true" data-wpane="army">Army</button>
+        <button class="ui-seg-btn" role="tab" aria-selected="false" data-wpane="dungeons">Dungeons</button>
+        <button class="ui-seg-btn" role="tab" aria-selected="false" data-wpane="raids">Raids</button>
       </div>
-      <div id="world-sidebar">
-        <div class="ws-head">◈ ARMIES</div>
-        <div id="world-sidebar-continents"></div>
+    </div>
+    <div class="world-pane world-pane-army" data-pane="army">
+      <div class="ui-window world-frame">
+        <div id="world-layout">
+          <div id="world-map-wrap">
+            <iframe src="./shadow-world.html?v=2" allowfullscreen title="Shadow World map"></iframe>
+            <div class="world-army-chip" id="world-army-chip" hidden></div>
+            <button id="world-full-btn" type="button" aria-label="Open full map">⛶ Full map</button>
+            <button id="world-armies-btn" onclick="toggleWorldSidebar()" style="display:none;">⚔ Armies</button>
+          </div>
+          <div id="world-sidebar">
+            <div class="ws-head">◈ ARMIES</div>
+            <div id="world-sidebar-continents"></div>
+          </div>
+        </div>
       </div>
-    </div>`;
+      <div class="world-army-total" id="world-army-total"></div>
+      <div class="ui-banner" style="margin:16px 0 10px;">Territories</div>
+      <div class="ui-window" id="world-territories"></div>
+    </div>
+    <div class="world-pane" data-pane="dungeons" hidden><div id="world-dungeons"></div></div>
+    <div class="world-pane" data-pane="raids" hidden><div id="world-raids"></div></div>`;
   // Show armies button only on mobile
   if (window.innerWidth <= 640) {
     document.getElementById('world-armies-btn').style.display = 'flex';
   }
+  document.getElementById('world-seg').addEventListener('click', e => {
+    const b = e.target.closest('.ui-seg-btn');
+    if (b) setWorldPane(b.dataset.wpane);
+  });
+  document.getElementById('world-full-btn').addEventListener('click', () => toggleWorldFull());
+  worldPane = 'army';
   renderWorldSidebar();
 }
 
@@ -22521,6 +23227,7 @@ window.toggleWorldSidebar = () => {
 
 function renderWorldSidebar() {
   const el = document.getElementById('world-sidebar-continents');
+  const listEl = document.getElementById('world-territories');
   if (!el) return;
 
   const PLAYER_COLORS = {
@@ -22560,7 +23267,7 @@ function renderWorldSidebar() {
 
   const myPool = profile?.shadowArmy?.pool || {};
 
-  el.innerHTML = CONT_META.map(m => {
+  const rowsHtml = CONT_META.map(m => {
     const ids = COUNTRY_IDS[m.ckey] || [];
     const pool = myPool[m.armyKey] || 0;
 
@@ -22590,9 +23297,156 @@ function renderWorldSidebar() {
       <div class="ws-owned" style="color:rgba(91,168,255,0.78)">${holderText||'unclaimed'}${myHeld?` · <span style="color:#d4a017">you: ${myHeld}/6</span>`:''}</div>
     </div>`;
   }).join('');
+  el.innerHTML = rowsHtml;           // the Armies sheet of the full map
+  if (listEl) listEl.innerHTML = rowsHtml;   // the territory list on the World page
+  try { renderWorldPanes(); } catch (e) { console.warn('World panes failed:', e); }
+}
+
+/* World page: army total over the map, Dungeons pane, Raids pane. Reads only. */
+function renderWorldPanes() {
+  renderWorldArmyTotals();
+  if (worldPane === 'dungeons') renderWorldDungeons();
+  if (worldPane === 'raids') renderWorldRaids();
+}
+
+function worldArmyNumbers() {
+  const sa = profile?.shadowArmy || {};
+  const reserve = Object.values(sa.pool || {}).reduce((a, n) => a + (Number(n) || 0), 0);
+  const held = Object.entries(sa.countries || {}).filter(([, c]) => c && (!c.ownerUid || c.ownerUid === currentUser?.uid));
+  const deployed = held.reduce((a, [, c]) => a + (Number(c.soldiers) || 0), 0);
+  return { reserve, deployed, territories: held.length, total: reserve + deployed };
+}
+
+function renderWorldArmyTotals() {
+  const chip = document.getElementById('world-army-chip');
+  const tiles = document.getElementById('world-army-total');
+  if (!chip || !tiles || !profile) return;
+  const n = worldArmyNumbers();
+  chip.hidden = false;
+  chip.innerHTML = `Shadow army<b>${n.total.toLocaleString()}</b><small>${n.reserve.toLocaleString()} in reserve</small>`;
+  tiles.innerHTML = `
+    <div class="ui-tile violet" aria-label="Soldiers in reserve"><span class="ui-tile-v">${n.reserve.toLocaleString()}</span><span class="ui-tile-s">In reserve</span></div>
+    <div class="ui-tile violet" aria-label="Soldiers deployed"><span class="ui-tile-v">${n.deployed.toLocaleString()}</span><span class="ui-tile-s">Deployed</span></div>
+    <div class="ui-tile violet" aria-label="Territories held"><span class="ui-tile-v">${n.territories}</span><span class="ui-tile-s">Territories</span></div>`;
+}
+
+function renderWorldDungeons() {
+  const el = document.getElementById('world-dungeons');
+  if (!el) return;
+  if (!allWorkouts || !currentUser || !profile) { el.innerHTML = '<p class="world-empty">Loading…</p>'; return; }
+  const d = buildAssessmentData(allWorkouts.filter(w => w.uid === currentUser.uid));
+  const SLOT_LABELS = { weapon:'Weapon', armour:'Armour', boots:'Boots', accessory:'Accessory', ring:'Ring', aura:'Aura' };
+  const active = profile.activeDungeon ? applyDungeonRegen(profile.activeDungeon) : null;
+  const bySlot = {};
+  let clearedTotal = 0, dungeonTotal = 0;
+  Object.entries(DUNGEON_CHAINS).forEach(([key, chain]) => {
+    let highest = 0;
+    chain.dungeons.forEach((dg, i) => {
+      let allPrev = true;
+      for (let j = 0; j < i; j++) if (!chain.dungeons[j].boss(d)) { allPrev = false; break; }
+      if (allPrev && dg.boss(d)) highest = dg.tier;
+    });
+    clearedTotal += highest;
+    dungeonTotal += chain.dungeons.length;
+    (bySlot[chain.slot] = bySlot[chain.slot] || []).push({ key, chain, highest });
+  });
+
+  const activeHtml = active ? (() => {
+    const chain = DUNGEON_CHAINS[active.chainKey] || {};
+    const hpPct = Math.max(0, (active.hp / active.maxHp) * 100);
+    const hpColor = hpPct > 60 ? 'var(--growing)' : hpPct > 30 ? 'var(--brass)' : 'var(--excess)';
+    const daysLeft = 7 - daysBetween(active.startDate, todayStr());
+    const regen = DUNGEON_REGEN_RATE[active.tier] || 0;
+    return `<div class="ui-window gold wd-active">
+      <div class="ui-banner gold" style="margin-bottom:10px;">Active dungeon</div>
+      <div class="ui-row" style="padding:0 0 4px;">
+        <span class="ui-glyph" style="--tint:var(--violet);font-size:16px;">${chain.icon || '⚔️'}</span>
+        <span class="ui-row-name">${escapeHtml(active.bossName || 'Unknown Boss')}<span class="ui-row-sub">${escapeHtml(chain.label || '')} · Tier ${active.tier} · ${daysLeft}d remaining</span></span>
+        <span class="ui-row-k" style="color:${hpColor};">${Math.round(active.hp).toLocaleString()} HP</span>
+      </div>
+      <div class="wd-hp"><i style="width:${hpPct.toFixed(1)}%;background:${hpColor};box-shadow:0 0 8px ${hpColor};"></i></div>
+      <div class="wd-meta"><span>${Math.round(active.totalDamage || 0).toLocaleString()} damage dealt</span><span>${regen > 0 ? `Regen ${(regen * 100).toFixed(0)}%/idle day` : 'No regen'}</span></div>
+      <button type="button" class="wd-abandon" id="world-abandon-btn">⛔ Abandon dungeon</button>
+    </div>`;
+  })() : '';
+
+  const slotsHtml = Object.entries(bySlot).map(([slot, list]) => {
+    const rows = list.map(({ key, chain, highest }) => {
+      const nextTier = highest + 1;
+      const nextDg = nextTier <= chain.dungeons.length ? chain.dungeons[nextTier - 1] : null;
+      const done = highest === chain.dungeons.length;
+      const tiers = chain.dungeons.map(dg => {
+        const tier = dg.tier;
+        const cleared = tier <= highest;
+        const isNext = tier === nextTier;
+        const isActive = active?.chainKey === key && active?.tier === tier;
+        const item = ITEM_DEFINITIONS[`${key}_${tier}`];
+        const canEnter = isNext && !active;
+        const cls = cleared ? 'cleared' : isActive ? 'active' : isNext ? 'next' : '';
+        return `<div class="wd-tier ${cls}">
+          <span class="wd-t">T${tier}</span>
+          <span class="wd-n">${cleared ? '✓ ' : isActive ? '⚔ Active · ' : isNext ? '⚔ ' : ''}${escapeHtml(item?.name || dg.name)}
+            ${isNext && !cleared ? `<span class="wd-d">${escapeHtml(dg.bossDesc)}</span>` : ''}
+            ${isActive ? `<span class="wd-d">${Math.round(active.hp).toLocaleString()} HP left · ${Math.round((active.hp / active.maxHp) * 100)}%</span>` : ''}</span>
+          ${canEnter ? `<button type="button" class="wd-enter" data-enter="${key}" data-tier="${tier}">Enter</button>` : `<span class="wd-r">${item?.rarity || ''}</span>`}
+        </div>`;
+      }).join('');
+      const label = done ? '★ Complete' : highest > 0 ? `T${highest}/${chain.dungeons.length}` : 'Locked';
+      return `<details class="wd-chain"${active?.chainKey === key ? ' open' : ''}>
+        <summary>
+          <span class="ui-glyph" style="--tint:${chain.color || 'var(--brass)'};font-size:16px;">${chain.icon || '⚔️'}</span>
+          <span class="ui-row-name">${escapeHtml(chain.label)}<span class="ui-row-sub">${nextDg && !done ? `Next: ${escapeHtml(nextDg.name)}` : escapeHtml(chain.desc || '')}</span></span>
+          <span class="ui-row-k" style="color:${highest > 0 ? 'var(--ui-gold)' : 'var(--text-faint)'};">${label}</span>
+          <svg class="wd-chev" width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><path d="M3 5l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </summary>
+        <div class="wd-tiers">${tiers}</div>
+      </details>`;
+    }).join('');
+    return `<div class="wd-slot"><div class="ui-banner">${SLOT_LABELS[slot] || slot}</div><div class="ui-window" style="padding:2px 12px;margin-top:10px;">${rows}</div></div>`;
+  }).join('');
+
+  el.innerHTML = `
+    <div class="ui-banner">Dungeon chains<span class="ui-banner-end">${clearedTotal} / ${dungeonTotal} cleared</span></div>
+    <p class="world-note">${Object.keys(DUNGEON_CHAINS).length} chains of ${dungeonTotal / Object.keys(DUNGEON_CHAINS).length} dungeons. Clear a tier by proving it in your logs, then enter the next.</p>
+    <div style="margin-top:12px;">${activeHtml}</div>
+    ${slotsHtml}`;
+
+  el.querySelectorAll('.wd-enter').forEach(btn => btn.addEventListener('click', () => {
+    Promise.resolve(startDungeon(btn.dataset.enter, Number(btn.dataset.tier))).then(() => renderWorldDungeons()).catch(console.warn);
+  }));
+  el.querySelector('#world-abandon-btn')?.addEventListener('click', () => {
+    Promise.resolve(window.abandonDungeon()).then(() => renderWorldDungeons()).catch(console.warn);
+  });
+}
+
+function renderWorldRaids() {
+  const el = document.getElementById('world-raids');
+  if (!el) return;
+  if (!profile || !currentUser) { el.innerHTML = '<p class="world-empty">Loading…</p>'; return; }
+  const mine = profile.slayerTitles || [];
+  const claim = String(profile.lastRaidClaimWeek || '').match(/(\d{4}-\d{2}-\d{2})$/);
+  const party = (allUsers || []).filter(u => u.uid !== currentUser.uid && (u.slayerTitles || []).length)
+    .map(u => ({ name: u.displayName || 'Hunter', titles: u.slayerTitles }));
+  el.innerHTML = `
+    <div class="ui-banner">Raid history</div>
+    <div class="world-army-total">
+      <div class="ui-tile gold" aria-label="Bosses slain"><span class="ui-tile-v">${mine.length}</span><span class="ui-tile-s">Bosses slain</span></div>
+      <div class="ui-tile" aria-label="Last raid reward"><span class="ui-tile-v">${claim ? claim[1] : '—'}</span><span class="ui-tile-s">Last cleared week</span></div>
+    </div>
+    <div class="ui-banner" style="margin:16px 0 10px;">Your titles</div>
+    <div class="ui-window" style="padding:2px 12px;">
+      ${mine.length ? mine.slice().reverse().map(t => `<div class="ui-row wr-row"><span class="ui-glyph" style="--tint:var(--ui-gold);font-size:15px;">💀</span><span class="ui-row-name">${escapeHtml(t)}</span></div>`).join('') : '<p class="world-empty">No raid boss slain yet. Clear a weekly boss with your party to earn a title.</p>'}
+    </div>
+    ${party.length ? `<div class="ui-banner" style="margin:16px 0 10px;">Party slayers</div>
+    <div class="ui-window" style="padding:2px 12px;">
+      ${party.map(u => `<div class="ui-row wr-row"><span class="ui-glyph" style="--tint:var(--violet);font-size:15px;">💀</span><span class="ui-row-name">${escapeHtml(u.name)}<span class="ui-row-sub">${escapeHtml(u.titles[u.titles.length - 1])}</span></span><span class="ui-row-k">${u.titles.length}</span></div>`).join('')}
+    </div>` : ''}
+    <button type="button" class="ui-btn-blue wr-go" id="world-raid-go">This week's boss</button>`;
+  el.querySelector('#world-raid-go')?.addEventListener('click', () => switchView('board'));
 }
 
 window.focusWorldContinent = (ckey) => {
+  if (worldPane !== 'army') setWorldPane('army');
   const iframe = document.querySelector('#world-map-wrap iframe');
   if (iframe?.contentWindow) {
     iframe.contentWindow.postMessage({ type:'focusContinent', ckey }, '*');
@@ -22605,7 +23459,7 @@ window.addEventListener('message', async (e) => {
   // state then, because the setActive sent at creation time can be lost.
   if (e.data?.type === 'shadowWorldReady') {
     try {
-      const active = document.querySelector('section.view.active')?.id === 'view-world';
+      const active = worldIframeActive();
       e.source?.postMessage({ type: 'setActive', active }, '*');
     } catch (err) { /* presentation only */ }
     return;
@@ -23560,6 +24414,8 @@ function switchHistoryTab(tab) {
   document.getElementById('history-feed-view').style.display = tab === 'feed' ? '' : 'none';
   document.getElementById('history-tab-cal').style.opacity = tab === 'cal' ? '1' : '.5';
   document.getElementById('history-tab-feed').style.opacity = tab === 'feed' ? '1' : '.5';
+  document.getElementById('history-tab-cal').classList.toggle('on', tab === 'cal');
+  document.getElementById('history-tab-feed').classList.toggle('on', tab === 'feed');
   if (tab === 'feed') renderSystemFeed();
 }
 window.switchHistoryTab = switchHistoryTab;
