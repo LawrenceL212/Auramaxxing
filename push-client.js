@@ -10,7 +10,7 @@
    Firebase console > Project settings > Cloud Messaging > Web configuration.
    See PUSH-SETUP.md. While this is the placeholder, Enable explains that
    reminders are not switched on yet instead of failing. */
-export const FCM_VAPID_KEY = 'PASTE_YOUR_WEB_PUSH_VAPID_KEY_HERE';
+export const FCM_VAPID_KEY = 'BOeBVbIsL_Pksg04thTCw93Vdorx6AGUUe_Z0k8eDs4W1ASEukf5XBKlGUNORvOeMNNCwaYI77PIg2UFBzPBXfg';
 
 const FCM_URL = 'https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging.js';
 const SW_FILE = 'firebase-messaging-sw.js';
