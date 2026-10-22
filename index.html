@@ -1291,11 +1291,11 @@
   }
   nav.bottom-nav .nav-inner{display:flex;width:100%;max-width:640px;}
   nav.bottom-nav button{
-    flex:1;background:none;border:none;color:var(--text-faint);
+    flex:1;background:none;border:none;color:#AEBBD0;
     /* Minimum 44px touch target — reliable on all phones */
     padding:10px 2px calc(9px + env(safe-area-inset-bottom, 0) / 5);
     cursor:pointer;display:flex;flex-direction:column;
-    align-items:center;gap:3px;font-size:9.5px;letter-spacing:0.03em;
+    align-items:center;gap:4px;font-size:10px;letter-spacing:0.08em;
     text-transform:uppercase;font-weight:600;
     touch-action:manipulation;
     transition:color .15s, transform .1s;
@@ -1312,7 +1312,7 @@
     animation:navIndicatorIn 0.3s cubic-bezier(0.16,1,0.3,1) both;
   }
   @keyframes navIndicatorIn{from{opacity:0;transform:scaleX(0)}to{opacity:1;transform:scaleX(1)}}
-  nav.bottom-nav svg{width:19px;height:19px;stroke:currentColor;fill:none;stroke-width:1.8;}
+  nav.bottom-nav svg{width:23px;height:23px;stroke:currentColor;fill:none;stroke-width:1.8;}
 
   /* ---------- Quest / program ---------- */
   .program-empty{text-align:center;padding:20px 8px;}
@@ -2656,6 +2656,8 @@
     animation: questBannerSettle 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
     pointer-events: auto;
   }
+  /* the Gate Complete screen has its own title; never let the 10s alert drop over it */
+  body:has(.debrief-overlay) .quest-clear-banner{visibility:hidden;}
   @keyframes questBannerDrop {
     0%   { transform: translateX(-50%) translateY(-120%); opacity: 0; }
     8%   { transform: translateX(-50%) translateY(0px);   opacity: 1; }
@@ -3538,25 +3540,76 @@
   .hunt-dots i.missed{border-color:rgba(107,120,148,.4);}
   .hunt-dots i.today{border-color:var(--brass);box-shadow:0 0 10px var(--brass);background:rgba(91,168,255,.35);}
   .hunt-dots i.today.done{background:var(--growing);border-color:var(--growing);box-shadow:0 0 0 2px var(--void),0 0 0 3.5px var(--brass),0 0 10px var(--brass);}
-  .hunt-lvl{min-height:44px;min-width:44px;padding:0 4px;background:none;border:0;cursor:pointer;touch-action:manipulation;font-family:var(--font-mono);font-size:12px;letter-spacing:.14em;color:var(--violet);}
+  .hunt-status-r{display:flex;align-items:center;gap:6px;}
+  .hunt-lvl{display:inline-flex;align-items:center;gap:5px;min-height:44px;min-width:44px;padding:0 14px;cursor:pointer;touch-action:manipulation;
+    background:rgba(18,12,40,.85);border:1px solid rgba(161,127,255,.7);border-radius:20px;box-shadow:0 0 14px rgba(161,127,255,.45);}
+  .hunt-lvl .hl-k{font-family:var(--font-mono);font-size:11px;letter-spacing:.14em;color:#c9b6ff;}
+  .hunt-lvl .hl-n{font-family:var(--font-display);font-weight:800;font-size:17px;line-height:1;color:#fff;text-shadow:0 0 10px rgba(161,127,255,.9);}
+  .hunt-lvl:active{filter:brightness(1.2);}
+  .hunt-gear{flex:none;width:44px;height:44px;display:grid;place-items:center;cursor:pointer;touch-action:manipulation;color:#C3CEE0;
+    background:rgba(15,19,27,.9);border:1px solid rgba(91,168,255,.3);border-radius:50%;}
+  .hunt-gear:active{color:var(--brass);background:var(--brass-dim);}
+  @media (max-width:370px){.hunt-dots{gap:4px;}.hunt-lvl{padding:0 10px;}.hunt-status{gap:4px;}}
 
   .hunt-hero{position:relative;display:flex;flex-direction:column;align-items:center;text-align:center;margin-top:4px;}
-  .hunt-hero-bg{position:absolute;left:calc(-1 * var(--fluid-pad));right:calc(-1 * var(--fluid-pad));top:-150px;height:470px;overflow:hidden;pointer-events:none;z-index:0;
-    -webkit-mask-image:linear-gradient(180deg,#000 72%,transparent);mask-image:linear-gradient(180deg,#000 72%,transparent);}
-  .hunt-hero-bg > .ui-art{position:absolute;inset:0;opacity:.9;}
-  .hunt-hero-sigil{position:absolute;left:50%;top:-4px;transform:translateX(-50%);}
+  /* The gate backdrop: a 390 x 540 painted box centred on the column so the arch sits exactly behind the rank crest.
+     Edges and bottom fade to the page colour (.hunt-fade); .hunt-scrim darkens the middle so the title and chips read. */
+  .hunt-hero-bg{position:absolute;left:50%;width:390px;margin-left:-195px;top:-112px;height:540px;overflow:hidden;pointer-events:none;z-index:0;}
+  .hunt-bd{position:absolute;inset:0;}
+  .hunt-bd > .ui-art{position:absolute;inset:0;}
+  .hunt-bd > .ui-art img{object-position:50% 0;}
+  .hunt-scrim{position:absolute;inset:0;
+    background:radial-gradient(ellipse 150px 190px at 50% 215px,rgba(5,6,10,.72),rgba(5,6,10,.35) 60%,transparent 100%),
+               linear-gradient(180deg,rgba(5,6,10,.35) 0%,rgba(5,6,10,.15) 22%,rgba(5,6,10,.55) 52%,rgba(5,6,10,.9) 70%);}
+  .hunt-fade{position:absolute;inset:0;z-index:2;
+    background:linear-gradient(90deg,var(--void) 0,var(--void) 4%,rgba(5,6,10,.78) 11%,rgba(5,6,10,.25) 24%,transparent 36%,transparent 64%,rgba(5,6,10,.25) 76%,rgba(5,6,10,.78) 89%,var(--void) 96%,var(--void) 100%),
+               linear-gradient(180deg,var(--void) 0,rgba(5,6,10,.6) 9%,transparent 26%,transparent 62%,var(--void) 92%);}
+  .hunt-hero-sigil{position:absolute;left:50%;top:-39px;transform:translateX(-50%);}
+  /* ── living gate (hunt-fx.js): compositor-only CSS + one small SVG; nothing here touches game state ── */
+  .hunt-fx{display:contents;} /* its children position against .hunt-bd; z-order: backdrop < scrim < glow/mist/motes < fade < bolts/flash */
+  .hfx-glow,.hfx-mist,.hfx-mote{z-index:1;}
+  .hfx-bolts,.hfx-flash{z-index:3;}
+  .hfx-glow{position:absolute;left:50px;top:57px;width:290px;height:290px;
+    background:radial-gradient(closest-side,transparent 54%,rgba(91,168,255,.4) 74%,rgba(91,168,255,.1) 90%,transparent 100%);
+    animation:hfxPulse 5.2s ease-in-out infinite;will-change:opacity,transform;}
+  @keyframes hfxPulse{0%,100%{opacity:.45;transform:scale(.985);}50%{opacity:1;transform:scale(1.035);}}
+  .hfx-mist{position:absolute;left:-60px;width:510px;height:120px;opacity:.5;will-change:transform,opacity;
+    background:radial-gradient(ellipse closest-side,rgba(170,195,255,.2),transparent);}
+  .hfx-mist.m1{top:262px;animation:hfxMist 17s ease-in-out infinite alternate;}
+  .hfx-mist.m2{top:300px;animation:hfxMist 23s ease-in-out -9s infinite alternate-reverse;opacity:.35;}
+  @keyframes hfxMist{0%{transform:translate3d(-34px,0,0);opacity:.25;}100%{transform:translate3d(34px,0,0);opacity:.6;}}
+  .hfx-mote{position:absolute;border-radius:50%;opacity:0;background:radial-gradient(circle,#fff,rgba(130,190,255,.55) 55%,transparent 75%);
+    animation:hfxRise 10s linear infinite;will-change:transform,opacity;}
+  @keyframes hfxRise{0%{opacity:0;transform:translate3d(0,0,0);}15%{opacity:.85;}70%{opacity:.5;}100%{opacity:0;transform:translate3d(14px,-170px,0);}}
+  .hfx-bolts{position:absolute;left:0;top:0;width:390px;height:540px;overflow:visible;}
+  .hfx-bolt{opacity:0;}
+  .hfx-bg{stroke:#3d86ff;stroke-width:8;stroke-opacity:.45;}
+  .hfx-bc{stroke:#f2f8ff;stroke-width:2.2;}
+  .hfx-flash{position:absolute;left:65px;top:72px;width:260px;height:260px;opacity:0;
+    background:radial-gradient(closest-side,rgba(225,240,255,.95),rgba(110,170,255,.45) 55%,transparent 100%);}
+  .hfx-paused .hunt-fx *{animation-play-state:paused !important;}
+  @media (prefers-reduced-motion:reduce){
+    .hfx-mist,.hfx-mote,.hfx-bolts,.hfx-flash{display:none;}
+    .hfx-glow{animation:none;opacity:.7;}
+  }
   .hunt-hero > *:not(.hunt-hero-bg){position:relative;z-index:1;}
   .hunt-crest{position:relative;width:84px;height:84px;display:grid;place-items:center;margin-top:2px;}
   .hunt-crest .ui-ring{position:absolute;inset:0;}
   .hunt-count{margin-top:8px;font-family:var(--font-display);font-weight:700;font-size:12px;color:var(--ui-gold);}
   .hunt-gate{margin-top:6px;font-family:var(--font-mono);font-size:11px;letter-spacing:.3em;color:var(--ui-gold);text-transform:uppercase;}
   .hunt-chips{display:flex;flex-wrap:wrap;justify-content:center;gap:10px;margin-top:8px;}
-  .hunt-day-row{display:flex;align-items:center;justify-content:center;gap:2px;width:100%;margin-top:6px;}
-  .hunt-day-name{margin:0;min-width:0;max-width:calc(100% - 96px);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-transform:uppercase;
-    font-family:var(--font-display);font-weight:800;font-size:clamp(26px,9vw,36px);line-height:1.1;letter-spacing:.03em;color:var(--text);text-shadow:0 0 24px rgba(255,214,107,.6);}
+  .hunt-day-row{display:flex;align-items:center;justify-content:center;gap:4px;width:100%;margin-top:8px;}
+  .hunt-plate{flex:0 1 auto;min-width:0;max-width:100%;text-align:center;padding:8px 18px 10px;
+    background:linear-gradient(180deg,rgba(7,9,14,.82),rgba(7,9,14,.66));border:1px solid rgba(255,214,107,.55);
+    box-shadow:0 0 22px rgba(255,214,107,.25),inset 0 0 18px rgba(255,214,107,.08);
+    clip-path:polygon(10px 0,100% 0,100% calc(100% - 10px),calc(100% - 10px) 100%,0 100%,0 10px);}
+  .hunt-plate-k{font-family:var(--font-mono);font-size:10px;letter-spacing:.3em;color:var(--ui-gold);text-transform:uppercase;}
+  .hunt-day-name{margin:2px 0 0;min-width:0;text-transform:uppercase;text-wrap:balance;overflow-wrap:anywhere;
+    font-family:var(--font-display);font-weight:800;font-size:34px;line-height:1.08;letter-spacing:.02em;color:#fff;
+    text-shadow:0 0 18px rgba(255,214,107,.7),0 2px 0 #000;}
   .hunt-arrow{flex:none;width:44px;height:44px;display:grid;place-items:center;background:none;border:1px solid var(--border);border-radius:50%;color:var(--brass);font-size:22px;line-height:1;cursor:pointer;touch-action:manipulation;}
   .hunt-arrow:active{background:var(--brass-dim);}
-  .hunt-arrow.off{visibility:hidden;}
+  .hunt-arrow.off{display:none;}
   .hunt-hero .day-dots{margin:2px 0 0;}
   .hunt-risk{margin-top:6px;display:inline-flex;align-items:center;gap:6px;font-family:var(--font-mono);font-size:11px;letter-spacing:.14em;color:var(--excess);text-transform:uppercase;}
 
@@ -3583,8 +3636,10 @@
 
   .hunt-tiles{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;}
   .hunt-tiles:empty{display:none;}
+  .hunt-tiles .ui-tile{background:linear-gradient(180deg,#1b2436,#141b2a);border-color:rgba(91,168,255,.4);}
+  .hunt-tiles .ui-tile.violet{border-color:rgba(161,127,255,.55);}
   .hunt-tiles .ui-tile-v{font-size:16px;}
-  .hunt-tiles .ui-tile-s{display:flex;align-items:center;gap:3px;}
+  .hunt-tiles .ui-tile-s{display:flex;align-items:center;gap:3px;font-size:13px;color:#D6DFEE;}
   #hunt-more-tile[aria-expanded="true"] .hm-chev{transform:rotate(180deg);}
   .hm-chev{display:inline-block;transition:transform var(--dur-fast) var(--ease-ui);}
 
@@ -3866,6 +3921,7 @@
   .ex-card .ex-custom-dot{top:8px;right:auto;left:-1px;}
 
   /* ── Rank: section jump bar ── */
+  #view-trends,#view-history,#view-feats,#view-inventory{overflow-x:clip;} /* same fix as Rank: overflow-x:hidden made the section a scroll box that clipped the Codex head's negative top margin (title cut ~10px under the app header) */
   #view-board{overflow-x:clip;}  /* overflow-x:hidden would make the section a scroll container and break the sticky bar */
   .rank-jump{position:sticky;top:calc(-1 * var(--fluid-pad));z-index:20;display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;
     margin:calc(-1 * var(--fluid-pad)) calc(-1 * var(--fluid-pad)) 8px;padding:10px var(--fluid-pad);
@@ -4453,42 +4509,19 @@
   <nav class="bottom-nav">
     <div class="nav-inner">
       <button data-view="quest" class="active">
-        <!-- Sword/blade glyph — Hunt -->
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M4 20 L18 6 M18 6 L14 6 M18 6 L18 10"/>
-          <path d="M4 20 L7 17" stroke-width="2.5"/>
-          <path d="M9 15 L12 12"/>
-        </svg>Hunt
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 21V10a8 8 0 0 1 16 0v11"/><path d="M9 21v-9a3 3 0 0 1 6 0v9"/></svg>Hunt
       </button>
       <button data-view="board">
-        <!-- Crown/rank sigil — Rank -->
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M3 17 L5 8 L9 13 L12 6 L15 13 L19 8 L21 17 Z"/>
-          <line x1="3" y1="20" x2="21" y2="20"/>
-        </svg>Rank
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l8 4v6c0 4.5-3.4 7.4-8 8-4.6-.6-8-3.5-8-8V7z"/><path d="M8.5 12.5L12 9l3.5 3.5M8.5 16L12 12.5 15.5 16"/></svg>Rank
       </button>
       <button data-view="trends">
-        <!-- Body/anatomy pulse — Codex -->
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M12 3 C10 3 8 5 8 8 L8 10 C8 11 7 12 6 12 C7 12 8 13 8 14 L8 18 C8 21 10 22 12 22 C14 22 16 21 16 18 L16 14 C16 13 17 12 18 12 C17 12 16 11 16 10 L16 8 C16 5 14 3 12 3Z"/>
-        </svg>Codex
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 4h10a4 4 0 0 1 4 4v12H9a4 4 0 0 1-4-4z"/><path d="M9 4v12M12 8.5h4"/></svg>Codex
       </button>
       <button data-view="exercises">
-        <!-- Shield — Arsenal -->
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M12 3 L20 7 L20 13 C20 17.4 16.4 21.1 12 22 C7.6 21.1 4 17.4 4 13 L4 7 Z"/>
-          <path d="M9 12 L11 14 L15 10"/>
-        </svg>Arsenal
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 4L9 15M7 13l4 4M9 15l-4 4"/><path d="M4 4l11 11M17 13l-4 4M15 15l4 4"/><circle cx="4.5" cy="19.5" r="1"/><circle cx="19.5" cy="19.5" r="1"/></svg>Arsenal
       </button>
       <button data-view="world">
-        <!-- Territory/world sigil — World -->
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-          <circle cx="12" cy="12" r="9"/>
-          <path d="M12 3 L12 21"/>
-          <path d="M3.5 9 L20.5 9"/>
-          <path d="M3.5 15 L20.5 15"/>
-          <path d="M12 3 C9 6 9 9 12 12 C15 15 15 18 12 21"/>
-        </svg>World
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18"/></svg>World
       </button>
     </div>
   </nav>
@@ -4606,6 +4639,7 @@ import { newestApEvents, isMissingIndexError, LEDGER_LIMIT } from "./ap-ledger.j
 import { backfillDateProblem, earliestBackfillDate, isDuplicateSession, laterDate } from "./backfill.js";
 import { defaultPlanDay, planDayOptions, shouldAdvanceRotation } from "./plan-day.js";
 import { uiArt, uiArtHtml, uiArtHydrate, uiSigil, uiRing, uiIcon, equipmentKind, muscleTint } from "./ui-art.js";
+import { huntFxHtml, startHuntFx } from "./hunt-fx.js";
 import { sessionMuscleArt, rewardTiles, investableAp, nextAfterHunt, tabDots } from "./flow-view.js";
 import { QUICK_TITLE, buildQuickCircuit, quickLoggerRows } from "./quick-quest.js";
 import { weekStrip, weekProgress, latestDate, agoLabel, estimateMinutes, totalSets, topMuscles, ringArc,
@@ -8921,10 +8955,15 @@ function renderHuntTop() {
     <div class="hunt-status">
       <div class="hunt-streak" aria-label="Streak ${streak}">${uiArtHtml('icon-streak', { alt: 'Streak' })}${streak}</div>
       <div class="hunt-dots" role="img" aria-label="This week: ${wp.trained} of ${goal} sessions">${dots}</div>
-      <button class="hunt-lvl" id="hunt-level-chip" aria-label="Hunter level ${level}. Open Rank">LV ${level}</button>
+      <div class="hunt-status-r">
+        <button class="hunt-lvl" id="hunt-level-chip" aria-label="Hunter level ${level}. Open Rank"><span class="hl-k">LV</span><span class="hl-n">${level}</span></button>
+        <button class="hunt-gear" id="hunt-gear-btn" aria-label="Settings" title="Settings"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.8l1.5 2.4a7 7 0 0 1 2.1.9l2.7-.7 1.8 3.1-1.9 2a7 7 0 0 1 0 2.1l1.9 2-1.8 3.1-2.7-.7a7 7 0 0 1-2.1.9L12 21.2l-1.5-2.4a7 7 0 0 1-2.1-.9l-2.7.7-1.8-3.1 1.9-2a7 7 0 0 1 0-2.1l-1.9-2 1.8-3.1 2.7.7a7 7 0 0 1 2.1-.9z"/></svg></button>
+      </div>
     </div>`;
   uiArtHydrate(host);
   document.getElementById('hunt-level-chip')?.addEventListener('click', () => switchView('board'));
+  // the gear is a second door to the existing Settings handler (#settings-btn in the top bar), not a new one
+  document.getElementById('hunt-gear-btn')?.addEventListener('click', () => document.getElementById('settings-btn')?.click());
 }
 
 function renderHuntHero() {
@@ -8946,20 +8985,38 @@ function renderHuntHero() {
   const rotationIdx = hasPlan ? myProgram.currentDayIndex % myProgram.days.length : 0;
   const dots = hasPlan ? myProgram.days.map((_, i) => `<span class="day-dot ${i === questCarouselIndex ? 'current' : ''} ${i === rotationIdx && i !== questCarouselIndex ? 'done' : ''}"></span>`).join('') : '';
   host.innerHTML = `
-    <div class="hunt-hero-bg">${uiArtHtml('gate-card-bg')}<div class="hunt-hero-sigil">${uiSigil({ size: 390 })}</div></div>
+    <div class="hunt-hero-bg"><div class="hunt-bd">${uiArtHtml('hunt-backdrop')}<div class="hunt-scrim"></div>${huntFxHtml()}<div class="hunt-fade"></div><div class="hunt-hero-sigil">${uiSigil({ size: 390 })}</div></div></div>
     <div class="hunt-crest"><span class="ui-ring">${uiRing({ size: 84, r: 38, stroke: 4, frac, id: 'huntRg' })}</span><div class="ui-crest"><span>${ri.rank}</span></div></div>
     ${stats ? `<div class="hunt-count" title="${stats.completed}/${stats.total} exercises cleared">${stats.completed} / ${stats.total}</div>` : ''}
     <div class="hunt-gate">${ri.rank}-RANK GATE</div>
     ${chips.length ? `<div class="hunt-chips">${chips.join('')}</div>` : ''}
     ${hasPlan ? `<div class="hunt-day-row">
       <button class="hunt-arrow ${multi ? '' : 'off'}" id="carousel-prev" data-hunt-dir="prev" aria-label="Previous day" ${multi ? '' : 'tabindex="-1"'}>‹</button>
-      <h2 class="hunt-day-name">${escapeHtml(stats.day.name)}</h2>
+      <div class="hunt-plate"><div class="hunt-plate-k">${stats.isActiveDay ? "TODAY'S GATE" : 'GATE'}</div><h2 class="hunt-day-name">${escapeHtml(stats.day.name)}</h2></div>
       <button class="hunt-arrow ${multi ? '' : 'off'}" id="carousel-next" data-hunt-dir="next" aria-label="Next day" ${multi ? '' : 'tabindex="-1"'}>›</button>
     </div>
     ${multi ? `<div class="day-dots">${dots}</div>` : ''}` : ''}
     ${atRisk ? `<div class="hunt-risk" id="hunt-risk">${HI.warn}<span>Streak at risk · <span id="hunt-risk-time"></span></span></div>` : ''}`;
   uiArtHydrate(host);
   syncHuntRisk(atRisk);
+  fitHuntTitle();
+  startHuntFx();
+}
+
+/** Size the Today's Gate name: one line if it fits at 28px or more, otherwise two lines, otherwise smaller (down to 14px) for 3+. Presentation only. */
+function fitHuntTitle() {
+  const run = () => {
+    const h = document.querySelector('#hunt-hero .hunt-day-name');
+    if (!h || !h.getClientRects().length) return;
+    const lines = () => { const lh = parseFloat(getComputedStyle(h).lineHeight) || (parseFloat(h.style.fontSize) * 1.08); return Math.round(h.getBoundingClientRect().height / lh); };
+    const set = px => { h.style.fontSize = px + 'px'; };
+    for (let px = 36; px >= 28; px -= 2) { set(px); if (lines() <= 1) return; }
+    for (let px = 34; px >= 20; px -= 2) { set(px); if (lines() <= 2) return; }
+    for (let px = 18; px >= 14; px -= 2) { set(px); if (lines() <= 3) return; }
+    set(14);
+  };
+  run();
+  try { document.fonts && document.fonts.ready.then(run); } catch (_) { /* sizing only */ }
 }
 
 /** Dungeon damage the shown day would deal, from last-time sets, using the game's own damage function (read only). */
