@@ -23,10 +23,10 @@ const mem = () => { const m = new Map(); return { getItem: k => m.has(k) ? m.get
 const st = mem(); const a = getDeviceId(st);
 check('device id is stable', getDeviceId(st), a);
 check('device id is a safe field-path key', /^[A-Za-z0-9]+$/.test(a), true);
-check('placeholder VAPID key is not configured', [isVapidConfigured(), isVapidConfigured('PASTE_X_xxxxxxxxxxxxxxxxxxxxxxxx'), isVapidConfigured('B' + 'x'.repeat(86))], [false, false, true]);
-check('placeholder constant is the one to edit', /^PASTE_/.test(FCM_VAPID_KEY), true);
+check('placeholder VAPID key is not configured', [isVapidConfigured('PASTE_YOUR_WEB_PUSH_VAPID_KEY_HERE'), isVapidConfigured('PASTE_X_xxxxxxxxxxxxxxxxxxxxxxxx'), isVapidConfigured('B' + 'x'.repeat(86))], [false, false, true]);
+check('the real VAPID key is filled in and valid', isVapidConfigured(FCM_VAPID_KEY), true);
 
 check('enable: iOS tab -> needs-install (nothing requested)', (await enablePush({}, pushEnv(w({ ua: IPHONE })))).status, 'needs-install');
 check('enable: unsupported', (await enablePush({}, { supported: false })).status, 'unsupported');
-check('enable: placeholder key -> no-key', (await enablePush({}, pushEnv(w()))).status, 'no-key');
+check('enable: placeholder key -> no-key', (await enablePush({}, pushEnv(w()), 'PASTE_YOUR_WEB_PUSH_VAPID_KEY_HERE')).status, 'no-key');
 console.log(`\n${pass} passed, ${fail} failed`); process.exit(fail ? 1 : 0);

@@ -78,16 +78,16 @@ export async function getDeviceToken(app, vapidKey = FCM_VAPID_KEY) {
  * Ask for permission and get a token. Never throws.
  * @returns {{status:'granted', token, deviceId, platform} | {status:'unsupported'|'needs-install'|'no-key'|'denied'|'dismissed'|'error', error?}}
  */
-export async function enablePush(app, env = pushEnv()) {
+export async function enablePush(app, env = pushEnv(), vapidKey = FCM_VAPID_KEY) {
   try {
     if (env.needsInstall) return { status: 'needs-install' };
     if (!env.supported) return { status: 'unsupported' };
-    if (!isVapidConfigured()) return { status: 'no-key' };
+    if (!isVapidConfigured(vapidKey)) return { status: 'no-key' };
     if (env.permission === 'denied') return { status: 'denied' };
     const perm = env.permission === 'granted' ? 'granted' : await Notification.requestPermission();
     if (perm === 'denied') return { status: 'denied' };
     if (perm !== 'granted') return { status: 'dismissed' };
-    const token = await getDeviceToken(app);
+    const token = await getDeviceToken(app, vapidKey);
     if (!token) return { status: 'error', error: 'no token' };
     return { status: 'granted', token, deviceId: getDeviceId(), platform: env.platform };
   } catch (e) {
