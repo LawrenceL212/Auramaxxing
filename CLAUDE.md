@@ -113,9 +113,18 @@ consistency) and tunes the plan toward the ones that are stalled, behind or miss
 tapped, through the same `programs/{uid}` write as the plan editor; the plan stores the picked
 `goal` and stamps a changed exercise `optimisedAt`. Pure, so `node test/optimiser.test.mjs` tests it.
 
+[ui-system.css](ui-system.css) is the shared "System window" look (`.ui-window`, `.ui-banner`, `.ui-btn-primary`, `.ui-chip`, `.ui-tile`, `.ui-row`, `.ui-crest`, ...), linked from `index.html`; every rule is scoped to a `.ui-*` class, so it restyles nothing that does not opt in. [ui-art.js](ui-art.js) gives painted-art slots (`uiArt(name)`, files go in `art/ui/`, code stand-ins until then) and the sigil/ring/equipment-icon SVG generators. [hunt-view.js](hunt-view.js) (week strip, last-time label, up-next) and [quick-quest.js](quick-quest.js) (the fixed bodyweight Quick 15 circuit, logged as an ordinary workout) are pure, tested in `test/hunt-view.test.mjs`, `test/quick-quest.test.mjs`, `test/ui-art.test.mjs`. Presentation only.
+
+[flow-view.js](flow-view.js) is the pure side of the flow screens (Enter Gate before the logger, the logger header's muscle figure, Gate Complete reward tiles, Rank Up, the after-hunt next step, bottom-nav dots), tested in `test/flow-view.test.mjs`. Reward tiles show only real XP / AP / streak (the game has no gold); a nav dot shows only for AP that can actually be invested (Rank) or soldiers waiting to deploy (World). Presentation only: every button reuses its existing handler.
+
 Lazy-loaded: [classes.js](classes.js) via `await import('./classes.js')` in the class system section (6 root archetypes, 63 paths, 250+ class names) — kept out of the initial load deliberately.
 
 [countries_embedded.js](countries_embedded.js) (1.4 MB `COUNTRIES_GEO`) is imported **only** by [shadow-world.html](shadow-world.html), never by `index.html`.
+
+Arsenal (`view-exercises`) and World (`view-world`) wear the same look. World is a portrait page with an
+Army / Dungeons / Raids switch (`setWorldPane`, `renderWorldDungeons`, `renderWorldRaids` in `index.html`); the
+Shadow World iframe and its message handlers are untouched, and "Full map" restores the old fullscreen map.
+Presentation only; the map in `nothing-lost-map.md` lists where each old part went.
 
 ### Rendering model
 
