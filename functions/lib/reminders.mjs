@@ -7,12 +7,12 @@
    and tested by test/reminders.test.mjs.
 
    THE TWO REMINDERS
-     planned   "Today is on your plan" - sent once, in the first whole hour at or
+     planned   "A gate has opened" - sent once, in the first whole hour at or
                after the Hunter's usual logging time, if they have not trained.
                The usual time is learned from the last 6 weeks of workout
                times (median), or 17:00 until there are enough sessions, or the
                Hunter's own pushPrefs.usualTime when they have set one.
-     evening   "Your streak is still alive" - sent at 20:00 local, only when a
+     evening   "Streak is at N" - sent at 20:00 local, only when a
                streak of 2+ days would break if today ends with no session.
 
    RULES THAT ALWAYS HOLD
@@ -87,17 +87,95 @@ export function plannedSlotHour(usualMin) {
   return Math.min(PLANNED_SLOT_MAX, Math.max(PLANNED_SLOT_MIN, Math.ceil(usualMin / 60)));
 }
 
-/** Copy. Plain statements and an easy next step; nothing about loss or guilt. */
-export function reminderCopy(type, { streak = 0 } = {}) {
-  if (type === 'evening') {
-    return {
-      title: 'Your streak is still going',
-      body: `${streak} days running. A short session today keeps it that way, and Quick 15 counts. Reminders can be turned off in Settings.`,
-    };
+/* ── COPY: the System speaks ───────────────────────────────────────────────
+   Each reminder type has a pool of messages in the game's voice. Which one a
+   Hunter gets is a pure function of (uid, type, calendar day), so it varies
+   between Hunters and days but is reproducible, and never repeats on
+   consecutive days (the index steps by a number coprime to the pool size).
+   Facts come from data the sender already has: the plan day's name, its
+   exercise count and rough length, and the streak. No guilt, no loss framing,
+   no "!"; titles <= 40 and bodies <= 110 characters so iOS lock screens show
+   them whole. */
+export const COPY_MAX_TITLE = 40;
+export const COPY_MAX_BODY = 110;
+
+const hash = (str) => { let h = 2166136261; for (const ch of String(str)) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619); } return h >>> 0; };
+const gcd = (a, b) => (b ? gcd(b, a % b) : a);
+const dayNumber = (date) => Math.floor(Date.parse(date + 'T00:00:00Z') / 86400000);
+
+/** Index into a pool of `n`: deterministic per (seed, date), different on consecutive days. */
+export function pickIndex(n, seed, date) {
+  if (n <= 1) return 0;
+  const h = hash(seed);
+  const offset = h % n;
+  let step = 1 + ((h >>> 8) % (n - 1));
+  while (gcd(step, n) !== 1) step = (step % (n - 1)) + 1;
+  return (offset + dayNumber(date) * step) % n;
+}
+
+const plural = (n, w) => `${n} ${w}${n === 1 ? '' : 's'}`;
+/** "Push. 5 exercises, about 50 min." Skips whatever is unknown. */
+function planFacts(c) {
+  const bits = [];
+  if (c.exercises > 0) bits.push(plural(c.exercises, 'exercise'));
+  if (c.mins > 0) bits.push(`about ${c.mins} min`);
+  const tail = bits.join(', ');
+  if (c.dayName && tail) return `${c.dayName}. ${tail}.`;
+  if (c.dayName) return `${c.dayName}.`;
+  return tail ? `${tail[0].toUpperCase()}${tail.slice(1)}.` : '';
+}
+const streakBit = (c) => (c.streak >= 2 ? ` Your streak is at ${c.streak}.` : '');
+
+const POOLS = {
+  planned: [
+    (c) => ({ title: '[SYSTEM] A gate has opened', body: planFacts(c) ? `Today: ${planFacts(c)}${streakBit(c)}` : `Your plan has a quest for today.${streakBit(c)}` }),
+    (c) => ({ title: '[SYSTEM] Daily quest available', body: planFacts(c) ? `${planFacts(c)} The gate waits for you.${streakBit(c)}` : `Today's gate is ready when you are.${streakBit(c)}` }),
+    (c) => ({ title: '[SYSTEM] You are cleared to enter', body: planFacts(c) ? `Today's dungeon: ${planFacts(c)}` : `A dungeon is open on your plan today.${streakBit(c)}` }),
+    (c) => ({ title: '[SYSTEM] A new quest has arrived', body: planFacts(c) ? `${planFacts(c)} Ready when you are.${streakBit(c)}` : `Ready when you are.${streakBit(c)}` }),
+    (c) => ({ title: '[SYSTEM] Arise, Hunter', body: planFacts(c) ? `Today's training: ${planFacts(c)}${streakBit(c)}` : `Today's training is ready.${streakBit(c)}` }),
+    (c) => ({ title: '[SYSTEM] Gate detected nearby', body: planFacts(c) ? `${planFacts(c)} Quick 15 also counts.${streakBit(c)}` : `Quick 15 also counts as a clear.${streakBit(c)}` }),
+  ],
+  evening: [
+    (c) => ({ title: '[SYSTEM] Streak status: active', body: `${plural(c.streak, 'day')} running. A short session today keeps it going. Quick 15 counts.` }),
+    (c) => ({ title: '[SYSTEM] Your streak is at ' + c.streak, body: 'The evening gate is open. Even a Quick 15 adds to the run.' }),
+    (c) => ({ title: '[SYSTEM] Evening gate available', body: `${plural(c.streak, 'day')} in a row so far. Fifteen minutes is enough to extend it.` }),
+    (c) => ({ title: '[SYSTEM] A short clear is available', body: `Streak at ${c.streak}. Quick 15 is one tap away.` }),
+    (c) => ({ title: '[SYSTEM] Streak update', body: `${plural(c.streak, 'day')} running, nicely done. Add one more with a short session tonight.` }),
+  ],
+  test: [
+    () => ({ title: '[SYSTEM] Test signal received', body: 'This is what a reminder looks like. Real ones come from the hourly sender.' }),
+    () => ({ title: '[SYSTEM] Connection confirmed', body: 'This device can show System notices. Real reminders arrive on schedule.' }),
+  ],
+};
+
+/** Copy for a reminder. ctx: { streak, dayName, exercises, mins, uid, date }. Plain statements, an easy next step, nothing about loss. */
+export function reminderCopy(type, ctx = {}) {
+  const pool = POOLS[type] || POOLS.planned;
+  const c = { streak: 0, exercises: 0, mins: 0, ...ctx };
+  const i = pickIndex(pool.length, `${c.uid || ''}|${type}`, c.date || '1970-01-01');
+  const { title, body } = pool[i](c);
+  return { title: clip(title, COPY_MAX_TITLE), body: clip(body.trim(), COPY_MAX_BODY) };
+}
+function clip(str, max) { return str.length <= max ? str : str.slice(0, max - 1).replace(/[\s.,;:]+$/, '') + '\u2026'; }
+
+/** Today's plan day for the sender: { dayName, exercises, mins } or null. Fixed plans use the day assigned to that weekday, rotation plans the day the rotation is on. */
+export function planDayFor(program, date) {
+  const days = program && Array.isArray(program.days) ? program.days : [];
+  if (!days.length) return null;
+  let day = null;
+  if (program.scheduleMode === 'fixed') {
+    const wd = weekdayOf(date);
+    day = days.filter(d => (d.assignedDays || []).includes(wd)).sort((a, b) => (b.exercises?.length ? 1 : 0) - (a.exercises?.length ? 1 : 0))[0] || null;
+  } else {
+    day = days[(Number(program.currentDayIndex) || 0) % days.length];
   }
+  if (!day) return null;
+  const exs = Array.isArray(day.exercises) ? day.exercises : [];
+  const sets = exs.reduce((n, e) => n + (Number(e && e.sets) || 0), 0);
   return {
-    title: 'Today is on your plan',
-    body: 'Your gate is open whenever you are ready. Reminders can be turned off in Settings.',
+    dayName: String(day.name || day.tag || '').slice(0, 24).trim(),
+    exercises: exs.length,
+    mins: sets ? Math.max(5, Math.round(sets * 3 / 5) * 5) : 0,   // same estimate as hunt-view.js estimateMinutes
   };
 }
 
@@ -108,10 +186,12 @@ export function reminderCopy(type, { streak = 0 } = {}) {
  * @param in.schedule   programme weekdays ['Mon', ...]; empty means no plan
  * @param in.freeze     users/{uid}.streakFreeze
  * @param in.backfill   users/{uid}.streakBackfill
+ * @param in.program    users' programs/{uid} doc (days, scheduleMode, currentDayIndex) for the copy; optional
+ * @param in.uid        seeds which message of the pool is used; optional
  * @param in.sentToday  reminders already sent today (default 0)
  * @returns { send:false, reason } | { send:true, type, title, body, tag }
  */
-export function decideReminder({ now, prefs, workouts = [], schedule = [], freeze = null, backfill = [], sentToday = 0 } = {}) {
+export function decideReminder({ now, prefs, workouts = [], schedule = [], freeze = null, backfill = [], sentToday = 0, program = null, uid = '' } = {}) {
   const no = (reason) => ({ send: false, reason });
   if (!prefs || !prefs.enabled) return no('disabled');
   if (!prefs.tz) return no('no-timezone');
@@ -133,12 +213,12 @@ export function decideReminder({ now, prefs, workouts = [], schedule = [], freez
   const plannedOn = prefs.planned !== false;
 
   const eveningDue = eveningOn && t.hour === EVENING_HOUR && streak >= MIN_STREAK_TO_WARN;
-  if (eveningDue) return { send: true, type: 'evening', tag: 'streak-' + t.date, ...reminderCopy('evening', { streak }) };
+  if (eveningDue) return { send: true, type: 'evening', tag: 'streak-' + t.date, ...reminderCopy('evening', { streak, uid, date: t.date }) };
 
   if (plannedOn && Array.isArray(schedule) && schedule.includes(weekdayOf(t.date))) {
     const override = toMin(prefs.usualTime);
     const usual = override !== null ? override : learnUsualMinutes(workouts, t.date);
-    if (t.hour === plannedSlotHour(usual)) return { send: true, type: 'planned', tag: 'planned-' + t.date, ...reminderCopy('planned') };
+    if (t.hour === plannedSlotHour(usual)) return { send: true, type: 'planned', tag: 'planned-' + t.date, ...reminderCopy('planned', { streak, uid, date: t.date, ...(planDayFor(program, t.date) || {}) }) };
   }
   return no('not-due');
 }

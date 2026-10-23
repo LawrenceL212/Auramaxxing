@@ -6,6 +6,8 @@
    reminders on. Everything fails soft: the app works the same without it.
    ========================================================================= */
 
+import { reminderCopy } from './reminders.js';
+
 /* >>> enzo: paste the Web Push certificate "Key pair" (public VAPID key) from
    Firebase console > Project settings > Cloud Messaging > Web configuration.
    See PUSH-SETUP.md. While this is the placeholder, Enable explains that
@@ -107,8 +109,9 @@ export async function dropDeviceToken(app) {
 export async function showTestNotification() {
   const reg = await registerPushSW();
   const ready = await navigator.serviceWorker.ready;
-  await (ready || reg).showNotification('Test reminder', {
-    body: 'This is what a reminder looks like. Real ones arrive from the hourly sender.',
-    icon: 'icons/icon-192.png', tag: 'aura-test', data: { local: true },
+  const c = reminderCopy('test', { uid: getDeviceId(), date: new Date().toISOString().slice(0, 10) });
+  await (ready || reg).showNotification(c.title, {
+    body: c.body, icon: 'icons/notify-192.png', badge: 'icons/notify-badge-96.png',
+    tag: 'aura-test', renotify: true, data: { type: 'test', local: true },
   });
 }

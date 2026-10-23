@@ -11,6 +11,9 @@
    `runReminders` takes its Firestore / messaging handles as arguments so it can be
    exercised with fakes (test/send-reminders.test.mjs); index.js passes the real ones. */
 
+const ICON = 'icons/notify-192.png';
+const BADGE = 'icons/notify-badge-96.png';
+
 const DEAD_TOKEN_CODES = new Set([
   'messaging/registration-token-not-registered',
   'messaging/invalid-registration-token',
@@ -26,9 +29,8 @@ const lib = async () => (_lib ||= await import('./lib/reminders.mjs'));
  * @param {Function} deps.deleteField  () => FieldValue.delete()
  * @param {Function} deps.fieldPath    (...segments) => FieldPath
  * @param {number} [deps.now]
- * @param {string} [deps.link]      where a tap opens
  */
-async function runReminders({ db, messaging, deleteField, fieldPath, now = Date.now(), link = '/' }) {
+async function runReminders({ db, messaging, deleteField, fieldPath, now = Date.now() }) {
   const { decideReminder, localParts, isQuietHour } = await lib();
   const stats = { users: 0, sent: 0, skipped: 0, pruned: 0, errors: 0 };
   const snap = await db.collection('users').where('pushPrefs.enabled', '==', true).get();
@@ -51,19 +53,22 @@ async function runReminders({ db, messaging, deleteField, fieldPath, now = Date.
         db.doc('programs/' + uid).get(),
       ]);
       const workouts = wSnap.docs.map(d => d.data());
-      const schedule = pSnap.exists ? (pSnap.data().schedule || []) : [];
+      const program = pSnap.exists ? pSnap.data() : null;
+      const schedule = (program && program.schedule) || [];
 
       const decision = decideReminder({
-        now, prefs, workouts, schedule,
+        now, prefs, workouts, schedule, program, uid,
         freeze: user.streakFreeze || null, backfill: user.streakBackfill || [],
       });
       if (!decision.send) { stats.skipped++; continue; }
 
       const res = await messaging.sendEachForMulticast({
         tokens: devices.map(([, d]) => d.token),
-        notification: { title: decision.title, body: decision.body },
-        data: { type: decision.type },
-        webpush: { notification: { tag: decision.tag, icon: '/icons/icon-192.png' }, fcmOptions: { link } },
+        // Data-only: the service worker builds the notification (System icon, badge, same-day tag,
+        // Begin Hunt / Quick 15 buttons, tap opens the Hunt screen). Icon paths are relative to the
+        // worker's scope so a GitHub Pages project path works.
+        data: { type: decision.type, title: decision.title, body: decision.body, tag: decision.tag, icon: ICON, badge: BADGE },
+        webpush: { headers: { Urgency: 'normal', TTL: '7200' } },
       });
       stats.sent += res.successCount;
 
