@@ -122,3 +122,20 @@ Five collections back the original app (the code now uses eight, see CLAUDE.md):
 - Supersets / rest timers inside the logger
 - Personal-record tracking per exercise
 - Comments or reactions on teammates' logged workouts
+
+## Gate Duels need a Cloud Function (one extra deploy)
+
+Duels settle through the `resolveGateDuel` callable, because settlement writes
+to both players' user documents. Until it is deployed only the admin can settle
+duels. Deploy just that function (Node 22):
+
+```bash
+cd functions && npm install && cd ..
+firebase deploy --only functions:resolveGateDuel --project auramaxxing-3d4bb
+```
+
+No Firestore rules change is required. An optional hardening block for `duels`
+(and why `--only firestore:rules` is not available from this repo) is in
+`functions/README.md`, step 2. There is no PUSH-SETUP file on this branch; the
+push-notification functions have their own notes on their branch.
+
