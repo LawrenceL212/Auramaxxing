@@ -17,6 +17,7 @@
    .ui-btn-primary    Gold gradient call to action: glow, angular clip, a light
                       sweep (animated, off under prefers-reduced-motion).
    .ui-btn-blue       The blue/violet version of the same button.
+   .ui-btn-outline    Gold outline secondary button (e.g. New plan).
    .ui-btn-square     54px square icon button (the "+" next to a main button).
    .ui-quick          Green quick-action button (label + small sub line).
    .ui-chip           Small status chip. Colours: .gold .green .violet .red .dim
@@ -128,6 +129,15 @@
 @keyframes uiSweep{0%,55%{transform:translateX(-120%) skewX(-20deg);}100%{transform:translateX(620%) skewX(-20deg);}}
 .ui-btn-primary.is-done{background:rgba(139,92,255,.2);color:var(--text);box-shadow:var(--glow-violet);border:1px solid rgba(139,92,255,.55);}
 .ui-btn-primary.is-done::after{display:none;}
+.ui-btn-outline{
+  position:relative;display:flex;align-items:center;justify-content:center;gap:8px;
+  min-height:48px;padding:0 16px;cursor:pointer;touch-action:manipulation;
+  background:rgba(255,214,107,.08);color:var(--ui-gold);border:1.5px solid var(--ui-gold);border-radius:4px;
+  font-family:var(--font-display);font-weight:800;font-size:14px;letter-spacing:.12em;text-transform:uppercase;
+  box-shadow:0 0 14px rgba(255,214,107,.25);
+  transition:transform var(--dur-snap) var(--ease-impact),filter var(--dur-fast);
+}
+.ui-btn-outline:active{transform:scale(.98);filter:brightness(1.15);background:rgba(255,214,107,.16);}
 .ui-btn-square{
   flex:none;width:54px;min-height:58px;display:grid;place-items:center;cursor:pointer;touch-action:manipulation;
   background:rgba(15,19,27,.92);border:1px solid rgba(91,168,255,.4);color:var(--text);

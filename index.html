@@ -3646,6 +3646,9 @@
   #hunt-more{margin-top:var(--space-4);}
   #hunt-more[hidden]{display:none;}
   #hunt-more > .hunt-more-body > div:empty{display:none;}
+  .hunt-plan-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px;}
+  .hunt-plan-btn{min-height:48px !important;font-size:13px !important;letter-spacing:.1em !important;padding:0 10px !important;}
+  .hunt-plan-btn svg{flex:none;}
   .hunt-more-body{display:flex;flex-direction:column;gap:var(--space-4);}
   .hunt-more-body #directives-strip,.hunt-more-body #habit-card-wrap,.hunt-more-body #objectives-strip{padding:0 !important;margin:0 !important;}
   .hunt-plan-head{display:flex;align-items:center;justify-content:space-between;gap:8px;}
@@ -4184,9 +4187,9 @@
 
       <div id="hunt-more" hidden>
         <div class="hunt-more-body">
+          <div id="hunt-plan-head"></div>
           <div id="hunt-next"></div>
           <div id="hunt-dmg"></div>
-          <div id="hunt-plan-head"></div>
           <div id="plan-optimiser"></div>
           <div id="program-editor-wrap"></div>
           <div id="directives-strip"></div>
@@ -8809,10 +8812,10 @@ function renderQuestFeed() {
   if (planHead) planHead.innerHTML = `
     <div class="quest-feed-head hunt-plan-head" style="margin-bottom:0;">
       <span class="quest-feed-title">${escapeHtml(myProgram.name)}</span>
-      <div style="display:flex;gap:8px;">
-        <button class="icon-btn" id="new-program-btn" style="font-size:12px;color:var(--text-dim);">+ New plan</button>
-        <button class="icon-btn" id="edit-program-btn">✎ Edit plan</button>
-      </div>
+    </div>
+    <div class="hunt-plan-actions">
+      <button class="ui-btn-blue hunt-plan-btn" id="edit-program-btn">${HI.pencil}<span>Edit plan</span></button>
+      <button class="ui-btn-outline hunt-plan-btn" id="new-program-btn">${HI.plus}<span>New plan</span></button>
     </div>`;
 
   wrap.innerHTML = `
@@ -8859,6 +8862,7 @@ const HI = {
   diamond: '<svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><polygon points="8,1 15,8 8,15 1,8" fill="currentColor"/></svg>',
   bars: '<svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><rect x="2" y="10" width="3" height="6" fill="var(--growing)"/><rect x="7.5" y="6" width="3" height="10" fill="var(--growing)"/><rect x="13" y="2" width="3" height="14" fill="var(--growing)"/></svg>',
   bolt: '<svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M9 1 3 9h4l-1 6 7-9H9z" fill="currentColor"/></svg>',
+  pencil: '<svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><path d="M3 15l.8-3.6L12.2 2.9a1.5 1.5 0 0 1 2.1 0l.8.8a1.5 1.5 0 0 1 0 2.1L6.6 14.2z M10.8 4.3l2.9 2.9" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"/></svg>',
   plus: '<svg width="22" height="22" viewBox="0 0 22 22" aria-hidden="true"><path d="M11 3v16M3 11h16" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg>',
   play: '<svg width="14" height="16" viewBox="0 0 14 16" aria-hidden="true"><polygon points="1,1 13,8 1,15" fill="currentColor"/></svg>',
   check: '<svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8.5l3.2 3.2L13 5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>',
