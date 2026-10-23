@@ -271,3 +271,11 @@
   .ui-btn-primary::after,.ui-btn-blue::after{animation:none;display:none;}
   .ui-sigil .ui-sigil-spin{animation:none;}
 }
+
+/* ── hint bar: one line saying why a tab has a dot (tabDotBanner in flow-view.js) ── */
+.ui-hint{display:flex;align-items:center;gap:10px;margin:0 0 12px;padding:6px 6px 6px 12px;min-height:48px;
+  border:1px solid rgba(255,214,107,.34);border-radius:12px;background:rgba(255,214,107,.08);}
+.ui-hint-text{flex:1;min-width:0;font-size:15px;font-weight:600;color:var(--text);}
+.ui-hint-btn{flex:none;min-height:40px;padding:0 14px;border-radius:9px;border:1px solid var(--ui-gold);background:rgba(255,214,107,.14);
+  color:var(--ui-gold);font:inherit;font-family:var(--font-mono);font-size:12px;letter-spacing:.1em;text-transform:uppercase;cursor:pointer;touch-action:manipulation;}
+.ui-hint-x{flex:none;width:40px;height:40px;border:0;background:transparent;color:var(--text-faint);font-size:16px;cursor:pointer;touch-action:manipulation;}
