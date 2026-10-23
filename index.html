@@ -3807,6 +3807,8 @@
 
   /* Full map: the old fullscreen map, Armies sheet and landscape lock */
   section.view#view-world.active.world-full{position:fixed;top:0;left:0;right:0;bottom:var(--hunt-nav-h,calc(56px + env(safe-area-inset-bottom,0px)));width:100%;max-width:none;height:auto;margin:0;padding:0;z-index:10;overflow:hidden;background:var(--void);}
+  #view-world.world-full > .ui-hint{display:none;}
+  #view-world > .ui-hint{margin-top:10px;}
   #view-world.world-full .tab-glow,#view-world.world-full .world-head,#view-world.world-full .world-pane:not(.world-pane-army),#view-world.world-full .world-pane-army > :not(.world-frame){display:none !important;}
   #view-world.world-full .world-pane-army{margin:0;height:100%;}
   #view-world.world-full .world-frame{height:100%;border:0;box-shadow:none;}
@@ -4499,13 +4501,27 @@
   <div class="hunt-bar" id="hunt-bar">
     <div class="hunt-bar-in">
       <button class="ui-btn-square" id="hunt-plus-btn" aria-label="Log a session" aria-haspopup="true" aria-expanded="false"><svg width="22" height="22" viewBox="0 0 22 22" aria-hidden="true"><path d="M11 3v16M3 11h16" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg></button>
-      <button class="ui-quick" id="hunt-quick-btn" aria-label="Quick: 15 minute bodyweight circuit"><span style="display:inline-flex;align-items:center;gap:4px;"><svg width="13" height="13" viewBox="0 0 16 16" aria-hidden="true"><path d="M9 1 3 9h4l-1 6 7-9H9z" fill="currentColor"/></svg></span>QUICK<small>15 min</small></button>
+      <button class="ui-quick" id="hunt-quick-btn" aria-label="Quick: pick a 15 minute workout"><span style="display:inline-flex;align-items:center;gap:4px;"><svg width="13" height="13" viewBox="0 0 16 16" aria-hidden="true"><path d="M9 1 3 9h4l-1 6 7-9H9z" fill="currentColor"/></svg></span>QUICK<small>15 min</small></button>
       <button class="ui-btn-primary hunt-begin" id="hunt-begin-btn" data-mode="begin"></button>
       <div class="hunt-menu hidden" id="hunt-menu" role="menu">
         <button id="manual-log-btn" role="menuitem"><svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true"><rect x="3" y="3" width="14" height="14" rx="2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M10 6.5v7M6.5 10h7" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>Log a session</button>
         <button id="log-run-btn" role="menuitem"><svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true"><path d="M2 14c3-1 4-4 6-6s4-1 6 1 3 3 4 3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><circle cx="12" cy="4" r="1.8" fill="currentColor"/></svg>Log a run</button>
         <button id="past-log-btn" role="menuitem"><svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true"><path d="M4 10a6 6 0 1 0 2-4.5M4 3v3.5h3.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M10 6.5V10l2.5 1.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>Log a past session</button>
       </div>
+    </div>
+  </div>
+
+  <!-- Quick 15 picker: a bottom sheet (ui-system.css). Steps: type, up to two questions, preview. Built by renderQuickSheet(). -->
+  <div class="ui-sheet-scrim hidden" id="quick-sheet">
+    <div class="ui-sheet ui-window gold" role="dialog" aria-modal="true" aria-labelledby="quick-sheet-title">
+      <div class="ui-sheet-grab" aria-hidden="true"></div>
+      <div class="ui-sheet-head">
+        <button class="ui-sheet-icon" id="quick-back" aria-label="Back"><svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true"><path d="M12 4 6 10l6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+        <h2 class="ui-title" id="quick-sheet-title">Quick 15</h2>
+        <button class="ui-sheet-icon" id="quick-close" aria-label="Close"><svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><path d="M4 4l10 10M14 4 4 14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>
+      </div>
+      <div class="ui-steps" id="quick-steps" aria-hidden="true"></div>
+      <div class="ui-sheet-body" id="quick-body"></div>
     </div>
   </div>
 
@@ -4643,8 +4659,9 @@ import { backfillDateProblem, earliestBackfillDate, isDuplicateSession, laterDat
 import { defaultPlanDay, planDayOptions, shouldAdvanceRotation } from "./plan-day.js";
 import { uiArt, uiArtHtml, uiArtHydrate, uiSigil, uiRing, uiIcon, equipmentKind, muscleTint } from "./ui-art.js";
 import { huntFxHtml, startHuntFx } from "./hunt-fx.js";
-import { sessionMuscleArt, rewardTiles, investableAp, nextAfterHunt, tabDots } from "./flow-view.js";
-import { QUICK_TITLE, buildQuickCircuit, quickLoggerRows } from "./quick-quest.js";
+import { sessionMuscleArt, rewardTiles, investableAp, nextAfterHunt, tabDots, tabDotBanner } from "./flow-view.js";
+import { pushEnv, enablePush, getDeviceId, getDeviceToken, dropDeviceToken, showTestNotification, userTimezone, isVapidConfigured } from "./push-client.js";
+import { QUICK_TITLE, QUICK_TYPES, buildQuickCircuit, quickLoggerRows, generateQuick, quickQuestions } from "./quick-quest.js";
 import { weekStrip, weekProgress, latestDate, agoLabel, estimateMinutes, totalSets, topMuscles, ringArc,
   lastSet, lastTimeLabel, upNext, leftLabel } from "./hunt-view.js";
 import { setInputKind, setInputHeaders, storedSet, storedSetSecs, partsToSecs, secsToParts,
@@ -4666,7 +4683,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import {
   getFirestore, collection, doc, setDoc, addDoc, getDoc, getDocs,
-  query, where, orderBy, limit, serverTimestamp, updateDoc, deleteDoc, increment, runTransaction
+  query, where, orderBy, limit, serverTimestamp, updateDoc, deleteDoc, increment, runTransaction, deleteField
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 /* =========================================================================
@@ -5471,6 +5488,124 @@ function startDailyTimer() {
 }
 document.getElementById('settings-btn')?.addEventListener('click', () => openSettingsModal());
 
+/* =========================================================================
+   REMINDERS (push) - Settings section and device sync
+   Stores one optional map on the signed-in Hunter's own users/{uid} document:
+     pushDevices.<deviceId> = { token, platform, createdAt }
+     pushPrefs = { enabled, planned, evening, usualTime, tz }
+   The hourly Cloud Function reads them; nothing here touches progression.
+   ========================================================================= */
+function pushActive() {
+  return !!(profile?.pushPrefs?.enabled && profile?.pushDevices?.[getDeviceId()]?.token);
+}
+
+function renderRemindersBox(box) {
+  if (!box) return;
+  const env = pushEnv();
+  const prefs = profile?.pushPrefs || {};
+  const active = pushActive();
+  const row = (key, label, sub) => {
+    const on = prefs[key] !== false;
+    return '<div style="margin-top:10px;"><div style="font-size:13px;color:var(--text);">' + label + '</div>' +
+      '<div style="font-size:11px;color:var(--text-dim);margin:2px 0 6px;">' + sub + '</div>' +
+      '<div class="weekday-chips">' +
+      '<button type="button" class="weekday-chip rem-pref ' + (on ? 'on' : '') + '" data-key="' + key + '" data-val="on" style="flex:1;">On</button>' +
+      '<button type="button" class="weekday-chip rem-pref ' + (!on ? 'on' : '') + '" data-key="' + key + '" data-val="off" style="flex:1;">Off</button>' +
+      '</div></div>';
+  };
+  let h = '<label>Reminders</label>' +
+    '<div style="font-size:11px;color:var(--text-dim);margin-bottom:8px;">Gentle nudges on this device: a note when a planned day is still open, and one evening heads-up when a streak is running. At most 2 a day, never between 22:00 and 07:00, and never once you have trained.</div>';
+  if (env.needsInstall) {
+    h += '<div id="rem-ios" style="font-size:12px;color:var(--brass);padding:8px 10px;border:1px solid rgba(255,214,107,0.3);border-radius:var(--radius-sm);margin-bottom:8px;">On iPhone, reminders only work once Auramaxxing is on your Home Screen (iOS 16.4 or later). Tap Share, then Add to Home Screen, and open the app from there.</div>';
+  }
+  if (!env.needsInstall && env.permission === 'denied') {
+    h += '<div id="rem-blocked" style="font-size:12px;color:var(--text-dim);margin-bottom:8px;">Notifications are blocked for this app. You can allow them in your device or browser settings, then come back and tap Enable.</div>';
+  }
+  if (!active) {
+    h += '<button type="button" class="btn btn-sm" id="rem-enable" style="width:100%;">Enable reminders</button>';
+  } else {
+    h += '<div style="font-size:12px;color:var(--growing);margin-bottom:2px;">On for this device.</div>' +
+      row('planned', 'Planned-day nudge', 'If a planned day is still open around the time you usually train.') +
+      row('evening', 'Evening streak heads-up', 'Around 20:00 when a streak of 2+ days is running and today is still open.') +
+      '<div style="margin-top:10px;"><div style="font-size:13px;color:var(--text);">Usual training time</div>' +
+      '<div style="font-size:11px;color:var(--text-dim);margin:2px 0 6px;">Left empty, it is learned from your last 6 weeks (17:00 until there is enough history).</div>' +
+      '<div style="display:flex;gap:8px;"><input id="rem-usual" type="time" value="' + escapeHtml(prefs.usualTime || '') + '" style="max-width:130px;" /><button type="button" class="btn btn-sm" id="rem-usual-clear">Auto</button></div></div>' +
+      '<div style="display:flex;gap:8px;margin-top:12px;"><button type="button" class="btn btn-sm" id="rem-test" style="flex:1;">Send test</button>' +
+      '<button type="button" class="btn btn-sm" id="rem-off" style="flex:1;color:var(--excess);border-color:rgba(255,77,103,0.4);">Turn off</button></div>' +
+      '<div style="font-size:10px;color:var(--text-faint);margin-top:6px;">Test checks that this device can show a notification. Real reminders come from the hourly sender.</div>';
+  }
+  h += '<div id="rem-status" role="status" style="font-size:12px;margin-top:8px;min-height:16px;color:var(--text-dim);"></div>';
+  box.innerHTML = h;
+  const say = (t) => { const el = box.querySelector('#rem-status'); if (el) el.textContent = t; };
+
+  box.querySelector('#rem-enable')?.addEventListener('click', async (e) => {
+    const btn = e.currentTarget; btn.disabled = true; say('One moment…');
+    const r = await enablePush(app);
+    if (r.status === 'granted') {
+      try {
+        const fields = { ['pushDevices.' + r.deviceId]: { token: r.token, platform: r.platform, createdAt: Date.now() } };
+        if (profile?.pushPrefs) { fields['pushPrefs.enabled'] = true; fields['pushPrefs.tz'] = userTimezone(); }
+        else fields.pushPrefs = { enabled: true, planned: true, evening: true, usualTime: null, tz: userTimezone() };
+        await writeUserFields(fields);
+        renderRemindersBox(box);
+        const st = box.querySelector('#rem-status'); if (st) st.textContent = 'Reminders are on.';
+      } catch (err) { btn.disabled = false; say('Could not save that. Check your connection and try again.'); }
+      return;
+    }
+    btn.disabled = false;
+    const msg = {
+      'needs-install': 'Add Auramaxxing to your Home Screen first, then open it from there.',
+      unsupported: 'This browser cannot show push notifications.',
+      'no-key': 'Reminders are not switched on for this app yet.',
+      denied: 'Notifications are blocked. Allow them in your device or browser settings to use reminders.',
+      dismissed: 'No problem. You can enable reminders any time.',
+    }[r.status] || 'Could not turn reminders on. Try again in a moment.';
+    say(msg);
+    if (r.status === 'denied') { renderRemindersBox(box); const st = box.querySelector('#rem-status'); if (st) st.textContent = msg; }
+  });
+
+  box.querySelectorAll('.rem-pref').forEach(b => b.addEventListener('click', async () => {
+    try { await writeUserFields({ ['pushPrefs.' + b.dataset.key]: b.dataset.val === 'on' }); renderRemindersBox(box); }
+    catch (err) { say('Could not save that.'); }
+  }));
+  const saveUsual = async (v) => { try { await writeUserFields({ 'pushPrefs.usualTime': v || null }); renderRemindersBox(box); } catch (err) { say('Could not save that.'); } };
+  box.querySelector('#rem-usual')?.addEventListener('change', (e) => saveUsual(e.target.value));
+  box.querySelector('#rem-usual-clear')?.addEventListener('click', () => saveUsual(''));
+  box.querySelector('#rem-test')?.addEventListener('click', async () => {
+    try { await showTestNotification(); say('Sent. Look for it in your notifications.'); }
+    catch (err) { say('This device could not show a notification.'); }
+  });
+  box.querySelector('#rem-off')?.addEventListener('click', async () => {
+    say('Turning off…');
+    try {
+      const id = getDeviceId();
+      await updateDoc(doc(db, 'users', currentUser.uid), { 'pushPrefs.enabled': false, ['pushDevices.' + id]: deleteField() });
+      if (profile.pushPrefs) profile.pushPrefs.enabled = false;
+      if (profile.pushDevices) delete profile.pushDevices[id];
+      await dropDeviceToken(app);
+      renderRemindersBox(box);
+      const st = box.querySelector('#rem-status'); if (st) st.textContent = 'Reminders are off.';
+    } catch (err) { say('Could not turn off. Check your connection and try again.'); }
+  });
+}
+
+/* On later visits, quietly keep this device's token and timezone current. Does nothing unless
+   reminders are already on and permission is still granted. */
+async function syncPushOnLoad() {
+  try {
+    if (!pushActive() || !isVapidConfigured()) return;
+    const env = pushEnv();
+    if (!env.supported || env.permission !== 'granted') return;
+    const id = getDeviceId();
+    const fields = {};
+    const token = await getDeviceToken(app);
+    if (token && token !== profile.pushDevices[id].token) fields['pushDevices.' + id] = { ...profile.pushDevices[id], token };
+    const tz = userTimezone();
+    if (tz && tz !== profile.pushPrefs.tz) fields['pushPrefs.tz'] = tz;
+    if (Object.keys(fields).length) await writeUserFields(fields);
+  } catch (e) { console.warn('Push sync skipped:', e); }
+}
+
 function openSettingsModal() {
   const overlay = document.createElement('div');
   overlay.className = 'system-overlay system-cmd-overlay';
@@ -5544,6 +5679,11 @@ function openSettingsModal() {
       '<button type="button" class="weekday-chip haptic-chip ' + (SFX.hapticOn()?'on':'') + '" data-val="on" style="flex:1;">On</button>' +
       '<button type="button" class="weekday-chip haptic-chip ' + (!SFX.hapticOn()?'on':'') + '" data-val="off" style="flex:1;">Off</button>' +
     '</div></div>' +
+    '<div class="field"><label>Tab dots</label><div class="weekday-chips">' +
+      '<button type="button" class="weekday-chip tabdots-chip ' + (tabDotsOn()?'on':'') + '" data-val="on" style="flex:1;">On</button>' +
+      '<button type="button" class="weekday-chip tabdots-chip ' + (!tabDotsOn()?'on':'') + '" data-val="off" style="flex:1;">Off</button>' +
+    '</div><div style="font-size:11px;color:var(--text-dim);margin-top:4px;">A gold dot on a tab means something there is waiting for you, such as AP to invest. Tap the tab to see what.</div></div>' +
+    '<div class="field" id="rem-box"></div>' +
     '<button type="button" id="settings-replay-intro" style="width:100%;margin-top:10px;padding:11px;background:rgba(91,168,255,0.07);border:1px solid rgba(91,168,255,0.28);border-radius:var(--radius-sm);color:var(--text);font-family:var(--font-mono);font-size:11px;letter-spacing:.14em;cursor:pointer;touch-action:manipulation;">\u25b6 REPLAY SYSTEM OPENING</button>' +
     '<div style="display:flex;gap:8px;margin-top:8px;">' +
       '<button class="btn" id="cancel-settings" style="flex:1;font-size:13px;">Close</button>' +
@@ -5591,6 +5731,11 @@ function openSettingsModal() {
     overlay.querySelectorAll('.sound-chip').forEach(c => c.classList.toggle('on', c.dataset.val === chip.dataset.val));
     if (chip.dataset.val === 'on') SFX.tap();
   }));
+  overlay.querySelectorAll('.tabdots-chip').forEach(chip => chip.addEventListener('click', () => {
+    setTabDotsOn(chip.dataset.val === 'on');
+    overlay.querySelectorAll('.tabdots-chip').forEach(c => c.classList.toggle('on', c.dataset.val === chip.dataset.val));
+  }));
+  renderRemindersBox(overlay.querySelector('#rem-box'));
   overlay.querySelectorAll('.haptic-chip').forEach(chip => chip.addEventListener('click', () => {
     localStorage.setItem('aura_haptic', chip.dataset.val);
     overlay.querySelectorAll('.haptic-chip').forEach(c => c.classList.toggle('on', c.dataset.val === chip.dataset.val));
@@ -5884,6 +6029,7 @@ if (configOk) {
       // run system checks on every login — penalties, rank-up alerts etc.
       setTimeout(() => runSystemChecks(), 800);
       setTimeout(() => ensureStatBaselines(), 1200);
+      setTimeout(() => syncPushOnLoad(), 4000);
       // startup integrity check — lightweight; triggers full reconcile only if version changed
       setTimeout(() => startupIntegrityCheck(), 2000);
       // A workout JARVIS filled in, handed over by link (#log=…)
@@ -8532,6 +8678,7 @@ function switchView(name) {
   viewEl.classList.add('active');
   document.querySelectorAll('.bottom-nav button').forEach(b => b.classList.toggle('active', b.dataset.view === codexNavTab(name)));
   document.getElementById('hunt-bar')?.classList.toggle('off', name !== 'quest');
+  hintViewName = name;
   refreshTabDots();
 
   // World iframe stays loaded — section CSS handles visibility
@@ -9153,22 +9300,107 @@ function huntDayChanged() {
   try { syncHuntBar(); } catch (_) {}
 }
 
-/** Quick 15: the normal logger, pre-filled with the fixed bodyweight circuit from quick-quest.js.
+/** Quick 15: the normal logger, pre-filled with a generated 15 minute workout (quick-quest.js).
     It saves through the ordinary path as a normal workout (programDayIndex null), so XP, streak, PRs and raids all apply. */
-function startQuickQuest() {
+function startQuickQuest(circuit) {
   const rows = document.getElementById('exercise-rows');
-  const busy = [...rows.querySelectorAll('.exercise-row')].some(r => r.dataset.exName);
-  if (busy) { showToast('Finish or discard the hunt in progress first.', 'error'); openWorkoutModal(); return; }
   document.getElementById('workout-date').value = todayStr();
   document.getElementById('workout-time').value = nowTimeStr();
   activeDayIndex = null;
   document.getElementById('logger-title').textContent = QUICK_TITLE;
   document.getElementById('logger-exercise-hero')?.removeAttribute('data-exercise');
   rows.innerHTML = '';
-  quickLoggerRows(buildQuickCircuit(EXERCISES_ALL)).forEach(r => addExerciseRow(r.name, r.sets, r.targetReps, r.prefillSets));
+  quickLoggerRows(circuit && circuit.length ? circuit : buildQuickCircuit(EXERCISES_ALL)).forEach(r => addExerciseRow(r.name, r.sets, r.targetReps, r.prefillSets));
   refreshCompleteButton();
   openWorkoutModal();
 }
+
+/* Quick 15 picker: type -> up to two single-tap questions -> preview (Remix / Start). Random builds at once. */
+const quickPick = { step: 0, choice: {}, result: null, random: false };
+function quickGenerate(avoid) {
+  const choice = quickPick.random ? { type: 'random' } : quickPick.choice;
+  quickPick.result = generateQuick({ choice, db: EXERCISES_ALL, workouts: myWorkouts, uid: currentUser && currentUser.uid, today: todayStr(), avoid });
+}
+function quickSetLabel(e) {
+  const def = EXERCISES_ALL[e.name] || {};
+  if (def.timed && def.timedUnit === 'mins') return `${e.sets} × ${e.reps} min`;
+  if (def.timed) return `${e.sets} × ${e.reps}s`;
+  return e.weight > 0 ? `${e.sets} × ${e.reps} @ ${Math.round(e.weight * 100) / 100}kg` : `${e.sets} × ${e.reps}`;
+}
+function renderQuickSheet() {
+  const body = document.getElementById('quick-body');
+  const qs = quickPick.choice.type ? quickQuestions(quickPick.choice.type, EXERCISES_ALL) : [];
+  const preview = quickPick.step === 'preview';
+  const total = quickPick.random ? 2 : 2 + (qs.length || 2);
+  const at = preview ? total - 1 : quickPick.step;
+  document.getElementById('quick-steps').innerHTML = Array.from({ length: total }, (_, i) => `<i class="${i <= at ? 'on' : ''}"></i>`).join('');
+  document.getElementById('quick-back').hidden = quickPick.step === 0;
+  document.getElementById('quick-sheet-title').textContent = preview && quickPick.result ? quickPick.result.label : 'Quick 15';
+  if (preview) {
+    const r = quickPick.result;
+    const sets = (r.circuit || []).reduce((n, e) => n + (Number(e.sets) || 0), 0);
+    body.innerHTML = `
+      <div class="ui-sheet-meta"><span class="ui-chip gold"><i></i>~${r.minutes} min</span><span class="ui-chip dim">${r.circuit.length} exercise${r.circuit.length === 1 ? '' : 's'} · ${sets} set${sets === 1 ? '' : 's'}</span></div>
+      ${r.circuit.map(e => { const def = EXERCISES_ALL[e.name] || {}; return `<div class="ui-row"><span class="ui-glyph" style="--tint:${muscleTint(def.muscles)}">${uiIcon(equipmentKind(e.name, def))}</span><span class="ui-row-name">${escapeHtml(e.name)}</span><span class="ui-row-k">${escapeHtml(quickSetLabel(e))}</span></div>`; }).join('')}
+      ${r.fellBack ? '<p class="ui-sheet-note">Not enough matching exercises for that choice, so this is the bodyweight circuit.</p>' : ''}
+      <div class="ui-sheet-actions"><button class="ui-btn-blue" id="quick-remix">Remix</button><button class="ui-btn-primary" id="quick-start"${r.circuit.length ? '' : ' disabled'}>Start</button></div>`;
+    return;
+  }
+  if (quickPick.step === 0) {
+    body.innerHTML = `<p class="ui-sheet-q">What do you want to do?</p><div class="ui-pick-grid">
+      ${QUICK_TYPES.map(t => `<button class="ui-pick" data-quick-type="${t.id}">${t.label}<small>${t.sub}</small></button>`).join('')}
+      <button class="ui-pick gold wide" data-quick-type="random">Random<small>Skip the questions</small></button></div>`;
+    return;
+  }
+  const q = qs[quickPick.step - 1];
+  body.innerHTML = `<p class="ui-sheet-q">${escapeHtml(q.title)}</p><div class="ui-pick-grid">
+    ${q.options.map(o => `<button class="ui-pick" data-quick-key="${q.key}" data-quick-val="${o.id}">${escapeHtml(o.label)}</button>`).join('')}</div>`;
+}
+function openQuickSheet() {
+  const rows = document.getElementById('exercise-rows');
+  const busy = [...rows.querySelectorAll('.exercise-row')].some(r => r.dataset.exName);
+  if (busy) { showToast('Finish or discard the hunt in progress first.', 'error'); openWorkoutModal(); return; }
+  quickPick.step = 0; quickPick.choice = {}; quickPick.result = null; quickPick.random = false;
+  renderQuickSheet();
+  document.getElementById('quick-sheet').classList.remove('hidden');
+  document.getElementById('quick-body').querySelector('button')?.focus();
+}
+function closeQuickSheet() { document.getElementById('quick-sheet')?.classList.add('hidden'); document.getElementById('hunt-quick-btn')?.focus(); }
+(function wireQuickSheet() {
+  const sheet = document.getElementById('quick-sheet');
+  if (!sheet) return;
+  const refocus = () => document.getElementById('quick-body').querySelector('button:not(:disabled)')?.focus();
+  const toPreview = avoid => { quickGenerate(avoid); quickPick.step = 'preview'; renderQuickSheet(); refocus(); };
+  sheet.addEventListener('click', e => {
+    if (e.target === sheet) return closeQuickSheet();
+    const t = e.target.closest('button'); if (!t) return;
+    if (t.id === 'quick-close') return closeQuickSheet();
+    if (t.id === 'quick-back') {
+      if (quickPick.step === 'preview') quickPick.step = quickPick.random ? 0 : quickQuestions(quickPick.choice.type, EXERCISES_ALL).length;
+      else quickPick.step = Math.max(0, quickPick.step - 1);
+      if (quickPick.step === 0) { quickPick.random = false; quickPick.choice = {}; }
+      renderQuickSheet(); return refocus();
+    }
+    if (t.dataset.quickType) {
+      SFX.chipSelect();
+      if (t.dataset.quickType === 'random') { quickPick.random = true; return toPreview(); }
+      quickPick.random = false; quickPick.choice = { type: t.dataset.quickType }; quickPick.step = 1; renderQuickSheet(); return refocus();
+    }
+    if (t.dataset.quickKey) {
+      SFX.chipSelect();
+      quickPick.choice[t.dataset.quickKey] = t.dataset.quickVal;
+      const n = quickQuestions(quickPick.choice.type, EXERCISES_ALL).length;
+      if (quickPick.step >= n) return toPreview();
+      quickPick.step += 1; renderQuickSheet(); return refocus();
+    }
+    if (t.id === 'quick-remix') { SFX.chipSelect(); return toPreview(quickPick.result && quickPick.result.circuit); }
+    if (t.id === 'quick-start') {
+      const circuit = quickPick.result && quickPick.result.circuit;
+      closeQuickSheet(); SFX.beginQuest(); startQuickQuest(circuit);
+    }
+  });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && !sheet.classList.contains('hidden')) closeQuickSheet(); });
+})();
 
 (function wireHuntBar() {
   const plus = document.getElementById('hunt-plus-btn');
@@ -9187,7 +9419,7 @@ function startQuickQuest() {
     if (inProgress) { SFX.beginQuest(); startProgramDay(questCarouselIndex); return; }
     try { showEnterGate(questCarouselIndex); } catch (e) { console.warn('Enter Gate failed:', e); SFX.beginQuest(); startProgramDay(questCarouselIndex); }
   });
-  document.getElementById('hunt-quick-btn')?.addEventListener('click', () => { SFX.beginQuest(); startQuickQuest(); });
+  document.getElementById('hunt-quick-btn')?.addEventListener('click', () => { SFX.chipSelect(); openQuickSheet(); });
   // day arrows live in the header, which re-renders: delegate
   document.getElementById('hunt-hero')?.addEventListener('click', e => {
     const b = e.target.closest('[data-hunt-dir]');
@@ -9963,14 +10195,44 @@ function showEnterGate(idx) {
   el.querySelector('#gate-enter').focus();
 }
 
-/* Bottom nav dots: a dot only where the tab holds something real to act on (see flow-view.js tabDots). */
+/* Bottom nav dots: a dot only where the tab holds something real to act on (see flow-view.js tabDots).
+   Settings > Tab dots switches them (and their hint bar) off; the choice lives in this browser only. */
+const TAB_DOTS_KEY = 'aura_tab_dots';
+function tabDotsOn() { try { return localStorage.getItem(TAB_DOTS_KEY) !== 'off'; } catch (e) { return true; } }
+function setTabDotsOn(on) { try { localStorage.setItem(TAB_DOTS_KEY, on ? 'on' : 'off'); } catch (e) {} refreshTabDots(); }
+/* The hint bar shows on the tab the Hunter just opened, while that tab still has a dot. */
+let hintViewName = null;
+function tabDotState() {
+  return { ap: profile.auraPoints || 0, stats: STAT_DEFS.map(d => checkV2UpgradeGates(d.id)), pool: profile.shadowArmy && profile.shadowArmy.pool };
+}
+function syncTabDotHint(active) {
+  const old = document.getElementById('tab-dot-hint');
+  const b = (hintViewName && hintViewName === active && tabDotsOn() && currentUser && profile) ? tabDotBanner(active, tabDotState()) : null;
+  if (!b) { if (old) old.remove(); if (hintViewName && hintViewName !== active) hintViewName = null; return; }
+  const host = document.getElementById('view-' + active);
+  if (!host) return;
+  if (old && old.parentNode === host && old.dataset.kind === b.kind) { old.querySelector('.ui-hint-text').textContent = b.text; return; }
+  if (old) old.remove();
+  const el = document.createElement('div');
+  el.className = 'ui-hint'; el.id = 'tab-dot-hint'; el.dataset.kind = b.kind; el.setAttribute('role', 'status');
+  el.innerHTML = '<span class="ui-dot inline gold" aria-hidden="true"></span><span class="ui-hint-text"></span>' +
+    '<button type="button" class="ui-hint-btn"></button><button type="button" class="ui-hint-x" aria-label="Dismiss">\u2715</button>';
+  el.querySelector('.ui-hint-text').textContent = b.text;
+  el.querySelector('.ui-hint-btn').textContent = b.action;
+  el.querySelector('.ui-hint-btn').addEventListener('click', () => {
+    if (b.kind === 'ap') openApInvestPicker();
+    else { setWorldPane('army'); toggleWorldFull(true); }
+  });
+  el.querySelector('.ui-hint-x').addEventListener('click', () => { hintViewName = null; el.remove(); });
+  // Sit under the screen's own head (its sticky head pulls up over anything placed before it).
+  const anchor = host.querySelector(':scope > .ui-screen-head, :scope > .world-head');
+  host.insertBefore(el, anchor ? anchor.nextSibling : host.firstChild);
+}
 function refreshTabDots() {
   try {
     const nav = document.querySelector('nav.bottom-nav');
     if (!nav) return;
-    const dots = (currentUser && profile)
-      ? tabDots({ ap: profile.auraPoints || 0, stats: STAT_DEFS.map(d => checkV2UpgradeGates(d.id)), pool: profile.shadowArmy && profile.shadowArmy.pool })
-      : {};
+    const dots = (currentUser && profile && tabDotsOn()) ? tabDots(tabDotState()) : {};
     const WHY = { board: 'AP to invest', world: 'soldiers to deploy' };
     nav.querySelectorAll('button[data-view]').forEach(b => {
       const on = !!dots[b.dataset.view];
@@ -9980,6 +10242,7 @@ function refreshTabDots() {
       if (on) b.setAttribute('aria-label', `${b.textContent.trim()}, ${WHY[b.dataset.view]}`);
       else b.removeAttribute('aria-label');
     });
+    syncTabDotHint(document.querySelector('section.view.active')?.id.replace('view-', ''));
   } catch (e) { console.warn('Tab dots failed:', e); }
 }
 

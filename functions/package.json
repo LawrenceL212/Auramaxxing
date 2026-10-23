@@ -1,14 +1,16 @@
 {
   "name": "auramaxxing-functions",
-  "description": "Trusted server-side settlement for Auramaxxing Gate Duels",
+  "description": "Auramaxxing Cloud Functions: Gate Duel settlement (not deployed) and push reminders",
   "private": true,
   "main": "index.js",
   "engines": { "node": "22" },
   "scripts": {
     "gen": "node generate-exercise-scale.mjs",
-    "lint": "node --check index.js && node --check lib/scoring.js && node --check lib/rewards.js && node --check lib/settle-duel.js && node --check lib/exercise-scale.js",
+    "lint": "node --check index.js && node --check send-reminders.js && node --check lib/scoring.js && node --check lib/rewards.js && node --check lib/settle-duel.js && node --check lib/exercise-scale.js",
     "serve": "firebase emulators:start --only functions",
-    "deploy": "firebase deploy --only functions:resolveGateDuel"
+    "deploy": "firebase deploy --only functions:resolveGateDuel",
+    "deploy:reminders": "firebase deploy --only functions:sendReminders",
+    "sync-reminders": "sh scripts/sync-reminders.sh"
   },
   "dependencies": {
     "firebase-admin": "^12.1.0",

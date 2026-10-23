@@ -179,4 +179,4 @@ Each `reconcileX()` function takes a `dryRun` flag; `reconcileState(scope, dryRu
 
 `manifest.json` declares `display: standalone` and **`orientation: portrait`** — the installed PWA is portrait-locked. Layout breakpoints in `index.html` target ~390/768/960 px with `env(safe-area-inset-bottom)` padding for the bottom nav. Any presentation work must hold up on a 390 px-wide portrait viewport; desktop-only designs are out of scope for this app.
 
-There is no service worker despite the PWA manifest — the app is online-only and will not load offline.
+The only service worker is [firebase-messaging-sw.js](firebase-messaging-sw.js), for push reminders (see [PUSH-SETUP.md](PUSH-SETUP.md)). It has no fetch handler and caches nothing, and it registers only after a Hunter enables reminders — the app is still online-only and will not load offline.
