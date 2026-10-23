@@ -279,3 +279,19 @@
 .ui-hint-btn{flex:none;min-height:40px;padding:0 14px;border-radius:9px;border:1px solid var(--ui-gold);background:rgba(255,214,107,.14);
   color:var(--ui-gold);font:inherit;font-family:var(--font-mono);font-size:12px;letter-spacing:.1em;text-transform:uppercase;cursor:pointer;touch-action:manipulation;}
 .ui-hint-x{flex:none;width:40px;height:40px;border:0;background:transparent;color:var(--text-faint);font-size:16px;cursor:pointer;touch-action:manipulation;}
+
+/* ── Penalty Zone notice (opt-in: .system-window.pz) ─────────────────────── */
+.system-window.pz{text-align:center;}
+.pz .system-title{color:var(--excess);margin-bottom:10px;}
+.pz-cause{font-size:15px;font-weight:600;color:var(--text);line-height:1.5;margin:0 0 14px;}
+.pz-cost{display:flex;flex-direction:column;align-items:center;gap:2px;margin:0 0 8px;padding:12px 8px;
+  border:1px solid rgba(255,77,103,.45);background:rgba(255,77,103,.08);border-radius:4px;}
+.pz-cost-num{font-family:var(--font-mono);font-weight:900;font-size:36px;line-height:1.1;color:var(--excess);text-shadow:0 0 18px rgba(255,77,103,.55);}
+.pz-cost-bal{font-family:var(--font-mono);font-size:13px;color:var(--text-dim);letter-spacing:.04em;}
+.pz-rule{font-size:12px;color:var(--text-faint);line-height:1.5;margin:0 0 16px;}
+.pz-row{display:flex;gap:10px;align-items:flex-start;text-align:left;font-size:13px;line-height:1.5;color:var(--text-dim);margin:0 0 10px;}
+.pz-mark{flex:none;width:20px;font-family:var(--font-mono);font-weight:800;}
+.pz-safe .pz-mark{color:var(--growing);}
+.pz-clear{color:var(--text);}
+.pz-clear .pz-mark{color:var(--ui-gold);}
+.pz .system-btn{margin-top:20px;}
