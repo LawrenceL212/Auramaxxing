@@ -27208,16 +27208,25 @@ function maybeAnnounceDuelTerms(duel) {
    an authoritative answer and re-running the client path would risk paying AP
    twice. Those surface as errors instead.
    ───────────────────────────────────────────────────────────────────────── */
+const DUEL_ADMIN_UID = 'eUtGPwQBcCSO0x3xS3ZGYFGXNIT2';   // same uid the admin tools above check
 function duelFunctionUnreachable(e) {
   const code = String((e && e.code) || '');
-  // firebase callable codes; 'internal' is what an undeployed callable returns
+  /* Callable not deployed = functions/not-found; offline/blocked = unavailable
+     or a fetch error. 'internal' is NOT here: it means the function ran and
+     failed, and the client path has no status guard, so re-running it could
+     pay AP twice. */
   return code === 'functions/not-found' || code === 'functions/unavailable'
-      || code === 'functions/internal'  || code === 'functions/deadline-exceeded'
-      || code === 'not-found' || code === 'unavailable' || code === 'internal'
+      || code === 'functions/deadline-exceeded' || code === 'not-found' || code === 'unavailable'
       || /Failed to fetch|NetworkError|ERR_/i.test(String((e && e.message) || ''));
 }
 
+let duelSettling = false;   // one settlement call at a time per device
+const duelSettleTried = new Set();   // one attempt per duel per page load, so a failure is stated once
 async function settleGateDuel(duelId, duelData) {
+  if (duelSettling || duelSettleTried.has(duelId)) return false;
+  duelSettling = true;
+  duelSettleTried.add(duelId);
+  showToast('⚔ The Gate has closed — the System is settling your duel…', 'success');
   try {
     const { getFunctions, httpsCallable } =
       await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-functions.js');
@@ -27238,16 +27247,29 @@ async function settleGateDuel(duelId, duelData) {
     showDuelResultModal(duelData, res.winnerId, res.loserId,
       res.challengerScore, res.defenderScore, res.apWager,
       trophyTier, winnerTier, res.territoryResult || null);
+    try { renderCompetitionBoard(); renderBoard(); } catch (_) {}
     return true;
   } catch (e) {
-    if (duelFunctionUnreachable(e)) {
-      console.warn('Duel settlement function unreachable — falling back to the client path.', e);
+    const isAdmin = currentUser && currentUser.uid === DUEL_ADMIN_UID;
+    if (duelFunctionUnreachable(e) && isAdmin) {
+      console.warn('Duel settlement function unreachable — admin falls back to the client path.', e);
       await resolveGateDuel(duelId, duelData);
       return true;
     }
     console.error('Gate Duel settlement failed:', e);
-    showToast(duelErrorMessage(e, 'settle the duel'), 'error');
+    const code = String((e && e.code) || '');
+    if (duelFunctionUnreachable(e)) {
+      showToast('The System cannot settle duels right now. Your duel is safe — it will settle the next time you open the app.', 'error');
+    } else if (/failed-precondition/.test(code) && /not ended/i.test((e && e.message) || '')) {
+      showToast('The Gate has not fully closed yet — it settles shortly after the day ends everywhere.', 'success');
+    } else if (/permission-denied/.test(code)) {
+      showToast('Only the two duellists can settle this duel.', 'error');
+    } else {
+      showToast(duelErrorMessage(e, 'settle the duel'), 'error');
+    }
     return false;
+  } finally {
+    duelSettling = false;
   }
 }
 
