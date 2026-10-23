@@ -38,7 +38,10 @@ const deps = (f) => ({ ...f, now: NOW, deleteField: () => 'DEL', fieldPath: (...
   const f = fakes({ users: [user()], workouts: days(5), programs: { u1: { schedule: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] } } });
   const s = await runReminders(deps(f));
   check('sends one multicast to both devices', [f.log.sends.length, f.log.sends[0].tokens, s.sent], [1, ['tok1', 'tok2'], 2]);
-  check('payload is the evening reminder', f.log.sends[0].data.type, 'evening');
+  const m = f.log.sends[0];
+  check('payload is the evening reminder', m.data.type, 'evening');
+  check('data-only push carries System copy, tag and relative icon paths', [m.notification, m.data.title.startsWith('[SYSTEM]'), m.data.tag, m.data.icon, m.data.badge], [undefined, true, 'streak-' + today, 'icons/notify-192.png', 'icons/notify-badge-96.png']);
+  check('every data value is a string (FCM requirement)', Object.values(m.data).every(v => typeof v === 'string'), true);
   check('no writes when all tokens are fine', f.log.updates.length, 0);
 }
 {

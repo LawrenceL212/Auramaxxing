@@ -6034,6 +6034,7 @@ if (configOk) {
       setTimeout(() => startupIntegrityCheck(), 2000);
       // A workout JARVIS filled in, handed over by link (#log=…)
       setTimeout(() => openLinkedWorkout(), 2600);
+      setTimeout(() => openDeepLink(), 3000);
       // Phase 4: bring up the cinematic layer after the app is interactive, so
       // it can never delay login or data. Failure here is non-fatal by design.
       /* The opening owns the screen: penalty, rank-up and update notices queue
@@ -10005,6 +10006,25 @@ function readLinkedWorkout() {
     return d && Array.isArray(d.x) && d.x.length ? d : null;
   } catch (e) { console.warn('Linked workout unreadable:', e); return null; }
 }
+/* Notification deep links: index.html?go=hunt opens the Hunt screen, ?go=quick opens the Quick 15 picker.
+   The param is read once at load and removed from the URL; a tap while the app is already open arrives as a
+   service worker message instead. Presentation only. */
+let pendingGo = null;
+try {
+  const q = new URLSearchParams(location.search), g = q.get('go');
+  if (g === 'hunt' || g === 'quick') pendingGo = g;
+  if (q.has('go')) { q.delete('go'); const rest = q.toString(); history.replaceState(null, '', location.pathname + (rest ? '?' + rest : '') + location.hash); }
+} catch (e) { /* keep going */ }
+function openDeepLink(go) {
+  go = go || pendingGo; pendingGo = null;
+  if (go !== 'hunt' && go !== 'quick') return;
+  if (!currentUser) { pendingGo = go; return; }
+  try { switchView('quest'); if (go === 'quick') openQuickSheet(); } catch (e) { console.warn('Deep link skipped:', e); }
+}
+try {
+  navigator.serviceWorker?.addEventListener('message', (e) => { if (e.data && e.data.type === 'aura-go') openDeepLink(e.data.go); });
+} catch (e) { /* no service worker */ }
+
 function openLinkedWorkout() {
   const d = readLinkedWorkout();
   if (!d) return;

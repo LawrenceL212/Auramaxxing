@@ -1,6 +1,6 @@
 /* Tests for reminders.js.  Run:  node test/reminders.test.mjs  (plain script, exits non-zero on failure) */
 import fs from 'node:fs';
-import { decideReminder, learnUsualMinutes, plannedSlotHour, localParts, isQuietHour, reminderCopy, MAX_PER_DAY } from '../reminders.js';
+import { pickIndex, planDayFor, COPY_MAX_TITLE, COPY_MAX_BODY, decideReminder, learnUsualMinutes, plannedSlotHour, localParts, isQuietHour, reminderCopy, MAX_PER_DAY } from '../reminders.js';
 import { shiftDay, weekdayOf } from '../streak.js';
 
 let pass = 0, fail = 0;
@@ -53,7 +53,7 @@ check('no programme at all means no planned nudge', decide('17:00', { schedule: 
 // ── evening streak warning
 const ev = decide('20:00');
 check('evening warning for a live streak', [ev.send, ev.type], [true, 'evening']);
-check('evening copy names the streak, no loss language', /5 days/.test(ev.body) && !/lose|lost|break|fail|miss|don't|never/i.test(ev.title + ev.body), true);
+check('evening copy names the streak, no loss language', /\b5\b/.test(ev.title + ' ' + ev.body) && !/lose|lost|break|fail|miss|don't|never/i.test(ev.title + ' ' + ev.body), true);
 check('evening switch off', decide('20:00', { prefs: { evening: false } }).send, false);
 check('streak of 1 is not warned', decide('20:00', { workouts: [run(1)] }).send, false);
 check('no streak, no warning', decide('20:00', { workouts: [] }).send, false);
@@ -80,11 +80,42 @@ check('same instant is quiet or not-due elsewhere', decideReminder({ now: at('As
 check('New York 22:30 is quiet', decide('22:30', { tz: 'America/New_York' }).reason, 'quiet-hours');
 check('trained today is judged on the local date', decideReminder({ now: at('Asia/Tokyo', TODAY, '20:00'), prefs: prefs({ tz: 'Asia/Tokyo' }), workouts: [{ date: TODAY, time: '07:00' }, ...streak5], schedule: ALL }).reason, 'trained-today');
 
-// ── tone
-for (const t of ['planned', 'evening']) {
-  const c = reminderCopy(t, { streak: 4 });
-  check(`${t} copy is short and gentle`, c.title.length <= 40 && c.body.length <= 140 && !/!|lose|lost|last chance|hurry|don't|only \d|expires|miss/i.test(c.title + c.body), true);
+// ── tone and copy pools
+const BAD = /!|lose|lost|last chance|hurry|don't|only \d|expires|miss|break|broke|fail|never|ruin|waste|lazy|shame|disappoint|behind|slip|\bgone\b|wasted|punish|penalt/i;
+const FULL = { streak: 6, dayName: 'Push', exercises: 5, mins: 50, uid: 'u1' };
+let allOk = true, shown = [];
+for (const type of ['planned', 'evening', 'test']) {
+  for (let d = 0; d < 40; d++) {
+    for (const ctx of [FULL, { streak: 2, uid: 'u2' }, { streak: 0, dayName: 'Legs', exercises: 1, mins: 15, uid: 'u3' }, {}]) {
+      const c = reminderCopy(type, { ...ctx, date: shiftDay('2026-10-01', d) });
+      if (c.title.length > COPY_MAX_TITLE || c.body.length > COPY_MAX_BODY || BAD.test(c.title + c.body) || /undefined|NaN|\bnull\b/.test(c.title + c.body) || !c.title.startsWith('[SYSTEM]')) { allOk = false; shown.push(type + ':' + JSON.stringify(c)); }
+    }
+  }
 }
+check('every message in every pool is System-voiced, short, kind and has no blanks', [allOk, shown.slice(0, 2)], [true, []]);
+check('planned copy uses the real day, exercise count and streak', (() => { for (let d = 0; d < 6; d++) { const c = reminderCopy('planned', { ...FULL, date: shiftDay('2026-10-01', d) }); if (/Push/.test(c.body) && /5 exercises/.test(c.body) && /about 50 min/.test(c.body)) return true; } return false; })(), true);
+check('the headline example reads as intended', (() => { for (let d = 0; d < 6; d++) { const c = reminderCopy('planned', { ...FULL, date: shiftDay('2026-10-01', d) }); if (c.title === '[SYSTEM] A gate has opened') return c.body; } return null; })(), 'Today: Push. 5 exercises, about 50 min. Your streak is at 6.');
+for (const type of ['planned', 'evening', 'test']) {
+  let repeats = 0; const seen = new Set();
+  for (const uid of ['a', 'b', 'enzo', 'u1', 'x9']) for (let d = 0; d < 120; d++) {
+    const t0 = reminderCopy(type, { ...FULL, uid, date: shiftDay('2026-01-01', d) }).title, t1 = reminderCopy(type, { ...FULL, uid, date: shiftDay('2026-01-01', d + 1) }).title;
+    if (t0 === t1) repeats++; seen.add(t0);
+  }
+  check(`${type}: never the same message two days running; the pool is used`, [repeats, seen.size > 1], [0, true]);
+}
+check('copy is deterministic per user and day', reminderCopy('planned', { ...FULL, date: '2026-10-21' }), reminderCopy('planned', { ...FULL, date: '2026-10-21' }));
+check('different users get different rotations', new Set(['a', 'b', 'c', 'd', 'e', 'f', 'g'].map(u => pickIndex(6, u + '|planned', '2026-10-21'))).size > 1, true);
+check('pickIndex handles tiny pools', [pickIndex(1, 'x', '2026-10-21'), pickIndex(2, 'x', '2026-10-21') !== pickIndex(2, 'x', '2026-10-22')], [0, true]);
+
+// ── plan day facts for the copy
+const prog = { scheduleMode: 'fixed', days: [{ name: 'Push', exercises: [{ sets: 4 }, { sets: 4 }, { sets: 4 }, { sets: 3 }, { sets: 3 }], assignedDays: ['Wed'] }, { name: 'Pull', exercises: [], assignedDays: ['Fri'] }] };
+check('fixed plan: the day assigned to the weekday', planDayFor(prog, TODAY), { dayName: 'Push', exercises: 5, mins: 55 });
+check('fixed plan: no day assigned -> null', planDayFor(prog, '2026-10-22'), null);
+check('rotation plan: the day the rotation is on', planDayFor({ days: [{ name: 'A', exercises: [] }, { name: 'B', exercises: [{ sets: 2 }] }], currentDayIndex: 1 }, TODAY), { dayName: 'B', exercises: 1, mins: 5 });
+check('no program -> null', planDayFor(null, TODAY), null);
+const withProg = decideReminder({ now: at('UTC', TODAY, '18:00'), prefs: prefs(), workouts: streak5, schedule: ['Wed'], program: prog, uid: 'u1' });
+check('decideReminder passes the plan facts and streak into the planned copy', [withProg.type, /Push/.test(withProg.body), /5 exercises/.test(withProg.body), /streak is at \d/.test(withProg.body)], ['planned', true, true, true]);
+check('decision carries a per-day tag so a same-day reminder replaces', [withProg.tag, ev.tag], ['planned-' + TODAY, 'streak-' + TODAY]);
 
 // ── the Cloud Function carries copies of the pure modules; they must not drift
 const lf = (s) => s.replace(/\r\n/g, '\n');

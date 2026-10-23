@@ -10,6 +10,7 @@ Code is merged-ready but **nothing works until you do steps 1-5**. Until the VAP
 | Browser side: permission, token, test | `push-client.js` (VAPID constant lives here) |
 | Settings > Reminders, Tab dots switch | `index.html` |
 | Which reminder to send, rules, copy (pure, tested) | `reminders.js`, `test/reminders.test.mjs` |
+| Notification look and tap targets (pure, tested): icon, badge, same-day tag, Begin Hunt / Quick 15 buttons | `notification-options.js`, `icons/notify-192.png`, `icons/notify-badge-96.png` (made by `icons/make-notify-icons.mjs`) |
 | Hourly sender (Cloud Function) | `functions/send-reminders.js`, `functions/index.js` (`sendReminders`) |
 | Copies of pure modules for the function | `functions/lib/reminders.mjs`, `functions/lib/streak.mjs` |
 
@@ -55,3 +56,16 @@ The sender has no memory (it writes nothing), so each reminder has exactly one h
 
 - **Tokens are readable by other signed-in users.** The existing rule `match /users/{userId} { allow read: if request.auth != null }` applies to the new `pushDevices` field, and the app already loads every user document. An FCM token alone cannot send anything (sending needs your server credentials), but if you want them private, the clean fix is moving tokens to a subcollection `users/{uid}/private/push` with owner-only rules. That is a rules change and was not authorised here, so it is not done.
 - Not verified on real devices: delivery on iOS and Android, a Blaze deploy, real FCM. Phase 11 regression has not been run.
+
+
+## System-voice notifications update (redeploy the sender only)
+
+The reminder copy now comes from pools of System-voice messages (`[SYSTEM] A gate has opened`, "Today: Push. 5 exercises, about 50 min. Your streak is at 6."), picked per user per day so it varies and never repeats two days running. The sender also now ships a data-only push; the service worker builds the notification (System icon and badge, one notification per day via `tag` + `renotify`, **Begin Hunt** / **Quick 15** buttons on Android). Tapping the notification itself (the only option on iOS) opens the Hunt screen; the buttons open `index.html?go=hunt` or `?go=quick`, which the app reads and then removes from the URL.
+
+Because the **sender's copy and payload changed**, enzo must redeploy the sender (and only the sender):
+
+```
+firebase deploy --only functions:sendReminders --project auramaxxing-3d4bb
+```
+
+Also deploy the site as usual so the new service worker, `notification-options.js` and the two icons go live. Order does not matter much: an old service worker ignores the new data-only push (no notification) until the site is deployed, so deploy the site first if you want no gap. Delivery and appearance on real iOS and Android devices are UNVERIFIED; Reminders > Send test shows the new look on the device you are holding.

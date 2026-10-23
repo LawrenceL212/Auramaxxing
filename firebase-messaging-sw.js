@@ -10,6 +10,8 @@
    cannot reliably use ES module imports in Safari and Firefox. Keep the version
    in step with index.html (10.12.2). */
 
+importScripts('notification-options.js');   // relative to this file, so it works under a Pages project path
+
 self.addEventListener('install', () => self.skipWaiting());
 self.addEventListener('activate', (e) => e.waitUntil(self.clients.claim()));
 
@@ -26,21 +28,34 @@ try {
     messagingSenderId: '634364008045',
     appId: '1:634364008045:web:6e982579ecb217750e5164',
   });
-  // Notification-style messages from the sender are shown by the SDK itself.
-  firebase.messaging();
+  // The sender ships data-only pushes; we build and show the notification so it carries
+  // the System icon, badge, tag and Android buttons (notification-options.js).
+  const messaging = firebase.messaging();
+  messaging.onBackgroundMessage((payload) => {
+    const n = self.AuraNotify.buildNotification(payload && payload.data, self.registration.scope);
+    return self.registration.showNotification(n.title, n.options);
+  });
 } catch (err) {
   // Offline or blocked CDN: the local test notification below still works.
 }
 
-/* Tapping a notification opens (or focuses) the app. Messages from FCM carry
-   their own link and are handled by the SDK; this covers the local test one. */
+/* Tapping the notification, or Begin Hunt / Quick 15 (Android buttons), focuses the open app and tells it
+   where to go, or opens the app at index.html?go=hunt|quick. Old-style FCM notification messages carry their
+   own link and are handled by the SDK. */
 self.addEventListener('notificationclick', (event) => {
   const data = event.notification && event.notification.data;
   if (data && data.FCM_MSG) return;
   event.notification.close();
+  const go = self.AuraNotify.goFor(event.action);
   event.waitUntil((async () => {
     const all = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
-    for (const c of all) { if ('focus' in c) return c.focus(); }
-    return self.clients.openWindow('./index.html');
+    for (const c of all) {
+      if (c.url.startsWith(self.registration.scope) && 'focus' in c) {
+        await c.focus();
+        c.postMessage({ type: 'aura-go', go });
+        return;
+      }
+    }
+    return self.clients.openWindow(self.AuraNotify.targetUrl(event.action, self.registration.scope));
   })());
 });
