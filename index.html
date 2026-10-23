@@ -4664,6 +4664,7 @@ import { pushEnv, enablePush, getDeviceId, getDeviceToken, dropDeviceToken, show
 import { QUICK_TITLE, QUICK_TYPES, buildQuickCircuit, quickLoggerRows, generateQuick, quickQuestions } from "./quick-quest.js";
 import { weekStrip, weekProgress, latestDate, agoLabel, estimateMinutes, totalSets, topMuscles, ringArc,
   lastSet, lastTimeLabel, upNext, leftLabel } from "./hunt-view.js";
+import { penaltyView } from "./penalty-view.js";
 import { setInputKind, setInputHeaders, storedSet, storedSetSecs, partsToSecs, secsToParts,
          formatSetTime, isTimeKind, LOAD_TYPES, loadLabel, offersLoadChoice, defaultLoad,
          setLoad, loggedLoad, withLoad, BAND_LEVELS, DEFAULT_BAND, bandLabel, loggedBand,
@@ -15625,8 +15626,15 @@ function showAwakeningModal(statLabel, oldRank, newRank, hunterName) {
   }, 200);
 }
 
-function showPenaltyModal(missedDays, apLost) {
-  return showSystemModal(`
+/* Penalty Zone notice. The rule and the numbers come from checkPenalty() untouched; penalty-view.js only words
+   them: the missed day, the cost, what was left alone and what keeps the next one away. Presentation only. */
+function showPenaltyModal(missedDays, apLost, info) {
+  let v = null;
+  try {
+    v = penaltyView({ apLost, apBefore: info && info.apBefore, missedDate: info && info.missedDate, program: myProgram, today: todayStr() });
+  } catch (e) { console.warn('Penalty notice fell back:', e); }
+  if (!v || !info) {
+    return showSystemModal(`
     <div class="system-window penalty">
       <p class="system-eyebrow">⚠ System Alert</p>
       <div class="system-icon">💀</div>
@@ -15635,6 +15643,18 @@ function showPenaltyModal(missedDays, apLost) {
       <p class="system-ap-loss">−${apLost} Aura Points</p>
       <p class="system-detail">Consistent hunters are forged in the dungeon,<br>not outside it.</p>
       <button class="system-btn danger">Acknowledge</button>
+    </div>`, undefined, 0);
+  }
+  return showSystemModal(`
+    <div class="system-window penalty pz">
+      <p class="system-eyebrow">⚠ ${escapeHtml(v.eyebrow)}</p>
+      <h2 class="system-title">${escapeHtml(v.title)}</h2>
+      <p class="pz-cause">${escapeHtml(v.cause)}</p>
+      <div class="pz-cost"><span class="pz-cost-num">${escapeHtml(v.cost)}</span><span class="pz-cost-bal">${escapeHtml(v.balance)}</span></div>
+      <p class="pz-rule">${escapeHtml(v.rule)}</p>
+      <div class="pz-row pz-safe"><span class="pz-mark">✓</span><span>${escapeHtml(v.untouched)}</span></div>
+      <div class="pz-row pz-clear"><span class="pz-mark">▸</span><span>${escapeHtml(v.clear)}</span></div>
+      <button class="system-btn danger">Understood</button>
     </div>`, undefined, 0);
 }
 
@@ -16032,13 +16052,14 @@ async function checkPenalty() {
   const hour = new Date().getHours();
   if (hour < 6) return null;
 
+  const prevAp = profile.auraPoints || 0;
   const apLost = Math.max(5, Math.round((profile.auraPoints || 0) * 0.05));
   const newAp = Math.max(0, (profile.auraPoints || 0) - apLost);
   await writeUserFields({ auraPoints: increment(-apLost), lastPenaltyCheck: todayStr() });
   logAp(currentUser.uid, -apLost, `Missed training day penalty (${yStr})`, profile.auraPoints || 0);
   profile.auraPoints = newAp;
   profile.lastPenaltyCheck = todayStr();
-  return { apLost };
+  return { apLost, apBefore: prevAp, missedDate: yStr };
 }
 
 // Check for pending rank-up modals (set when upgradeStatWithAp runs)
@@ -16345,7 +16366,7 @@ async function runSystemChecks() {
 
   const penalty = await safe('checkPenalty', checkPenalty);
   if (penalty) {
-    showPenaltyModal(1, penalty.apLost);
+    showPenaltyModal(1, penalty.apLost, penalty);
     SFX.penalty();
     return;
   }
