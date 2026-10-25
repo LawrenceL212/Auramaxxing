@@ -4656,7 +4656,7 @@ import { getAutoAchievements } from "./auto-achievements.js";
 import { computeStreakFrom, STREAK_RULES_START, shiftDay } from "./streak.js";
 import { newestApEvents, isMissingIndexError, LEDGER_LIMIT } from "./ap-ledger.js";
 import { backfillDateProblem, earliestBackfillDate, isDuplicateSession, laterDate } from "./backfill.js";
-import { defaultPlanDay, planDayOptions, shouldAdvanceRotation } from "./plan-day.js";
+import { defaultPlanDay, planDayOptions, shouldAdvanceRotation, dayCreditedToExtra } from "./plan-day.js";
 import { uiArt, uiArtHtml, uiArtHydrate, uiSigil, uiRing, uiIcon, equipmentKind, muscleTint } from "./ui-art.js";
 import { huntFxHtml, startHuntFx } from "./hunt-fx.js";
 import { sessionMuscleArt, rewardTiles, investableAp, nextAfterHunt, tabDots, tabDotBanner } from "./flow-view.js";
@@ -5274,14 +5274,9 @@ function setsLoggedToday(name, dayIndex) {
         return dayIndex === undefined || dayIndex === null || Number(w.programDayIndex) === Number(dayIndex);
       }
       if (dayIndex === undefined || dayIndex === null || !myProgram) return true;
-      const targetDay = myProgram.days[dayIndex];
-      if (!targetDay) return true;
-      const wExNames = new Set((w.exercises||[]).map(e => e.name));
-      const bestMatch = myProgram.days.reduce((best, day, i) => {
-        const overlap = day.exercises.filter(e => wExNames.has(e.name)).length;
-        return overlap > best.overlap ? { i, overlap } : best;
-      }, { i: -1, overlap: -1 });
-      return bestMatch.i === dayIndex;
+      /* An extra session (Quick 15, a free log) has no plan day. It may tick only a day that is up today and
+         shares its exercises; it must never tick another day's quest (see dayCreditedToExtra). */
+      return dayCreditedToExtra({ program: myProgram, exerciseNames: (w.exercises || []).map(e => e.name), todayWeekdayName: todayWeekday() }) === Number(dayIndex);
     })
     .flatMap(w => w.exercises)
     .filter(e => e.name === name)

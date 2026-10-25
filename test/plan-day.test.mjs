@@ -1,6 +1,6 @@
 /* Tests for choosing the plan day of a past session.  Run:  node test/plan-day.test.mjs */
 
-import { weekStartOf, dayDoneInWeek, defaultPlanDay, planDayOptions, shouldAdvanceRotation } from '../plan-day.js';
+import { weekStartOf, dayDoneInWeek, defaultPlanDay, planDayOptions, shouldAdvanceRotation, dayCreditedToExtra } from '../plan-day.js';
 
 let pass = 0, fail = 0;
 const results = [];
@@ -66,6 +66,20 @@ check('past: not the waiting day, no advance', adv({ idx: 2, date: '2026-10-21',
 check('past: extra session never advances', adv({ idx: null, date: '2026-10-21', lastWorkoutDate: null }), false);
 check('past: no history yet advances when waiting', adv({ idx: 1, date: '2026-10-21', lastWorkoutDate: null }), true);
 check('fixed mode never advances', shouldAdvanceRotation({ program: fixed, idx: 0, date: today, today, lastWorkoutDate: null }), false);
+
+// ── dayCreditedToExtra: an extra (Quick 15) may only tick a day that is up today ──
+{
+  const ex = n => ({ name: n, sets: 3, reps: 10 });
+  const rotP = { scheduleMode: 'rotation', currentDayIndex: 0, days: [{ name: 'Push', exercises: [ex('Bench')] }, { name: 'Pull', exercises: [ex('Push-up'), ex('Row'), ex('Pull-up')] }] };
+  const q = ['Push-up', 'Row', 'Squat'];
+  check('extra does not tick tomorrow\'s quest (rotation)', dayCreditedToExtra({ program: rotP, exerciseNames: q }), null);
+  check('extra ticks today\'s quest when it overlaps', dayCreditedToExtra({ program: { ...rotP, currentDayIndex: 1 }, exerciseNames: q }), 1);
+  check('no overlap credits nothing, not day 1', dayCreditedToExtra({ program: rotP, exerciseNames: ['Squat'] }), null);
+  const fx = { scheduleMode: 'fixed', days: [{ name: 'A', assignedDays: ['Mon'], exercises: [ex('Push-up')] }, { name: 'B', assignedDays: ['Tue'], exercises: [ex('Push-up'), ex('Row')] }] };
+  check('fixed: only days assigned today (Mon)', dayCreditedToExtra({ program: fx, exerciseNames: q, todayWeekdayName: 'Mon' }), 0);
+  check('fixed: rest day credits nothing', dayCreditedToExtra({ program: fx, exerciseNames: q, todayWeekdayName: 'Wed' }), null);
+  check('no plan', dayCreditedToExtra({ program: null, exerciseNames: q }), null);
+}
 
 console.log(results.join('\n'));
 console.log(`\n${pass} passed, ${fail} failed`);

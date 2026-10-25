@@ -85,3 +85,28 @@ export function shouldAdvanceRotation({ program, idx, date, today, lastWorkoutDa
   const waiting = (Number(program.currentDayIndex) || 0) % program.days.length;
   return idx === waiting && date >= (lastWorkoutDate || '');
 }
+
+/**
+ * Which plan day a session with no plan day (an extra, such as Quick 15) may
+ * tick on the quest cards. Only a day that is up today can be ticked by it:
+ * the rotation's current day, or a fixed day assigned to today's weekday.
+ * Among those, the day sharing the most exercises wins, and a day sharing none
+ * is never picked. Returns the day index, or null.
+ * (It used to pick the best match over every day, and a tie of zero went to
+ * day 1, so an extra could tick tomorrow's quest.)
+ */
+export function dayCreditedToExtra({ program, exerciseNames, todayWeekdayName }) {
+  if (!hasDays(program)) return null;
+  const names = new Set(exerciseNames || []);
+  const days = program.days;
+  const fixed = program.scheduleMode === 'fixed';
+  const rotationIdx = (Number(program.currentDayIndex) || 0) % days.length;
+  let best = null, bestOverlap = 0;
+  days.forEach((d, i) => {
+    const up = fixed ? (d.assignedDays || []).includes(todayWeekdayName) : i === rotationIdx;
+    if (!up) return;
+    const overlap = (d.exercises || []).filter(e => names.has(e.name)).length;
+    if (overlap > bestOverlap) { best = i; bestOverlap = overlap; }
+  });
+  return best;
+}
