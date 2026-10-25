@@ -2636,6 +2636,7 @@
   .run-unit-btn.selected{background:var(--maintaining);color:#fff;font-weight:700;}
 
   /* ========== Post-Workout Debrief ========== */
+  /* pan-y, not none: this overlay is the scroll container, so none blocked finger scrolling on phones. */
   .debrief-overlay{position:fixed;inset:0;touch-action:pan-y;overscroll-behavior:none;z-index:500;background:rgba(5,7,13,0.95);backdrop-filter:blur(8px);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;animation:sysOverlayIn .3s ease;overflow-y:auto;}
 
   /* ── Quest Clear Banner ── */
