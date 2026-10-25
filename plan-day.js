@@ -110,3 +110,13 @@ export function dayCreditedToExtra({ program, exerciseNames, todayWeekdayName })
   });
   return best;
 }
+
+/**
+ * True when workout `w` is tagged to plan day `idx`. An extra session (Quick 15,
+ * a free log) stores programDayIndex null, and Number(null) is 0, so a bare
+ * Number() comparison made every extra count as day 0 of a fixed plan.
+ */
+export function isTaggedToDay(w, idx) {
+  if (!w || w.programDayIndex === null || w.programDayIndex === undefined || w.programDayIndex === '') return false;
+  return Number(w.programDayIndex) === Number(idx);
+}

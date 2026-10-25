@@ -1,6 +1,6 @@
 /* Tests for choosing the plan day of a past session.  Run:  node test/plan-day.test.mjs */
 
-import { weekStartOf, dayDoneInWeek, defaultPlanDay, planDayOptions, shouldAdvanceRotation, dayCreditedToExtra } from '../plan-day.js';
+import { weekStartOf, dayDoneInWeek, defaultPlanDay, planDayOptions, shouldAdvanceRotation, dayCreditedToExtra, isTaggedToDay } from '../plan-day.js';
 
 let pass = 0, fail = 0;
 const results = [];
@@ -80,6 +80,14 @@ check('fixed mode never advances', shouldAdvanceRotation({ program: fixed, idx: 
   check('fixed: rest day credits nothing', dayCreditedToExtra({ program: fx, exerciseNames: q, todayWeekdayName: 'Wed' }), null);
   check('no plan', dayCreditedToExtra({ program: null, exerciseNames: q }), null);
 }
+
+// ── isTaggedToDay: an extra session (programDayIndex null) is not day 0 ──
+check('null tag is not day 0', isTaggedToDay({ programDayIndex: null }, 0), false);
+check('missing tag is not day 0', isTaggedToDay({}, 0), false);
+check('real day 0 tag', isTaggedToDay({ programDayIndex: 0 }, 0), true);
+check('string tag matches', isTaggedToDay({ programDayIndex: '2' }, 2), true);
+check('other day does not match', isTaggedToDay({ programDayIndex: 1 }, 2), false);
+check('no workout', isTaggedToDay(null, 0), false);
 
 console.log(results.join('\n'));
 console.log(`\n${pass} passed, ${fail} failed`);
