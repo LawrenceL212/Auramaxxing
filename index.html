@@ -4656,7 +4656,7 @@ import { getAutoAchievements } from "./auto-achievements.js";
 import { computeStreakFrom, STREAK_RULES_START, shiftDay } from "./streak.js";
 import { newestApEvents, isMissingIndexError, LEDGER_LIMIT } from "./ap-ledger.js";
 import { backfillDateProblem, earliestBackfillDate, isDuplicateSession, laterDate } from "./backfill.js";
-import { defaultPlanDay, planDayOptions, shouldAdvanceRotation, dayCreditedToExtra } from "./plan-day.js";
+import { defaultPlanDay, planDayOptions, shouldAdvanceRotation, dayCreditedToExtra, isTaggedToDay } from "./plan-day.js";
 import { uiArt, uiArtHtml, uiArtHydrate, uiSigil, uiRing, uiIcon, equipmentKind, muscleTint } from "./ui-art.js";
 import { huntFxHtml, startHuntFx } from "./hunt-fx.js";
 import { sessionMuscleArt, rewardTiles, investableAp, nextAfterHunt, tabDots, tabDotBanner } from "./flow-view.js";
@@ -9037,7 +9037,7 @@ function huntDayStats(idx) {
   let matched = null;
   if (isFixed) {
     const weekStart = todayStr(startOfWeek(new Date()));
-    matched = myWorkouts.find(w => w.uid === currentUser.uid && w.date >= weekStart && Number(w.programDayIndex) === idx) || null;
+    matched = myWorkouts.find(w => w.uid === currentUser.uid && w.date >= weekStart && isTaggedToDay(w, idx)) || null;
   }
   const setsFor = name => (isFixed && matched)
     ? (matched.exercises || []).filter(e => e.name === name).reduce((sum, e) => sum + (e.sets || []).filter(s => s.reps > 0).length, 0)
@@ -9434,7 +9434,7 @@ function isQuestComplete(idx) {
     return myWorkouts.some(w =>
       w.uid === currentUser.uid &&
       w.date >= weekStart &&
-      Number(w.programDayIndex) === idx
+      isTaggedToDay(w, idx)
     );
   } else {
     const n = myProgram.days.length;
