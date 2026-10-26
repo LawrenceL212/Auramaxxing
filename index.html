@@ -4667,6 +4667,7 @@ import { QUICK_TITLE, QUICK_TYPES, buildQuickCircuit, quickLoggerRows, generateQ
 import { weekStrip, weekProgress, latestDate, agoLabel, estimateMinutes, totalSets, topMuscles, ringArc,
   lastSet, lastTimeLabel, upNext, leftLabel } from "./hunt-view.js";
 import { penaltyView } from "./penalty-view.js";
+import { scorePlan, diffPlans } from "./plan-metrics.js";
 import { skinfoldBodyFat, feasibility, feasibilityText, historyDigest, catalogue, excludedFromText, validatePlan, planGroups } from "./plan-gen.js";
 import { setInputKind, setInputHeaders, storedSet, storedSetSecs, partsToSecs, secsToParts,
          formatSetTime, isTimeKind, LOAD_TYPES, loadLabel, offersLoadChoice, defaultLoad,
@@ -9760,26 +9761,52 @@ function attachSwipeHandlers(el, onSwipeLeft, onSwipeRight) {
    writes programs/{uid} exactly as the plan editor does, and keeps the old
    plan for an Undo. Standing preferences ("never legs") stay on this device.
    ========================================================================= */
-const GP = { goal: '', nums: {}, busy: false, error: '', question: '', result: null, raw: null, understood: null, backup: null, open: false };
+const GP = { mode: 'new', goal: '', nums: {}, busy: false, error: '', question: '', result: null, raw: null, understood: null, backup: null, open: false };
 function gpStandingKey() { return 'aura_goalplan_standing_' + (currentUser?.uid || ''); }
 function gpStanding() { try { return JSON.parse(localStorage.getItem(gpStandingKey()) || '[]') || []; } catch (_) { return []; } }
 function gpSetStanding(list) { try { localStorage.setItem(gpStandingKey(), JSON.stringify(list.slice(0, 8))); } catch (_) { /* private mode */ } }
 
+function gpPlanScore(program, extra = {}) {
+  return scorePlan({
+    program, exercises: EXERCISES_ALL, workouts: myWorkouts.filter(w => w.uid === currentUser?.uid), today: todayStr(),
+    goal: program.goal, prs: myPRs || {}, excluded: [...(extra.excluded || []), ...gpStanding().flatMap(s => excludedFromText(s))],
+  });
+}
 function renderGoalPlanEntry() {
   const host = document.getElementById('goal-plan-entry');
   if (!host) return;
+  const has = !!myProgram?.days?.length;
+  let sc = null;
+  if (has) { try { sc = gpPlanScore(myProgram); } catch (e) { console.warn('Plan score failed:', e); } }
   host.innerHTML = `
-    <button type="button" class="gp-entry" id="gp-open">
-      <span class="gp-entry-eyebrow">✦ BUILD A PLAN WITH THE SYSTEM</span>
-      <span class="gp-entry-text">${myProgram?.days?.length ? 'Tell it a goal and get a new plan, built from your history.' : 'Tell it your goal and it builds your first plan.'}</span>
-    </button>`;
-  host.querySelector('#gp-open').addEventListener('click', openGoalPlan);
+    <div class="gp-entry-wrap">
+      ${sc ? `<button type="button" class="gp-entry gp-entry-score" id="gp-score-open"><span class="gp-entry-eyebrow">◈ PLAN SCORE</span><span class="gp-entry-text"><b class="gp-big gp-${gpScoreTone(sc.score)}">${sc.score}</b> ${escapeHtml(sc.grade)} · tap for the breakdown</span></button>` : ''}
+      ${has ? `<button type="button" class="gp-entry" id="gp-adjust-open"><span class="gp-entry-eyebrow">✦ ASK YOUR TRAINER</span><span class="gp-entry-text">Tell it anything: “my knee hurts”, “only 30 minutes”, “more arms”. It adjusts your plan.</span></button>` : ''}
+      <button type="button" class="gp-entry" id="gp-open"><span class="gp-entry-eyebrow">✦ BUILD A PLAN WITH THE SYSTEM</span><span class="gp-entry-text">${has ? 'Tell it a goal and get a new plan, built from your history.' : 'Tell it your goal and it builds your first plan.'}</span></button>
+    </div>`;
+  host.querySelector('#gp-open').addEventListener('click', () => openGoalPlan('new'));
+  host.querySelector('#gp-adjust-open')?.addEventListener('click', () => openGoalPlan('adjust'));
+  host.querySelector('#gp-score-open')?.addEventListener('click', () => openGoalPlan('score'));
+}
+function gpScoreTone(n) { return n >= 70 ? 'good' : n >= 55 ? 'ok' : 'low'; }
+function gpScoreHtml(sc, before) {
+  const rows = sc.metrics.map(m => `<details class="gp-metric gp-m-${m.status}"><summary><span class="gp-dot"></span><span class="gp-m-label">${escapeHtml(m.label)}</span><span class="gp-m-value">${escapeHtml(m.value)}</span></summary><div class="gp-m-body">${escapeHtml(m.detail)}${m.fix ? `<div class="gp-m-fix">${escapeHtml(m.fix)}</div>` : ''}${m.fromLogs ? '<div class="gp-dim">From your logged sessions.</div>' : ''}</div></details>`).join('');
+  return `<div class="gp-score">
+    <div class="gp-score-top"><div class="gp-bignum gp-${gpScoreTone(sc.score)}">${sc.score}</div><div><div class="gp-score-grade">${escapeHtml(sc.grade)}</div><div class="gp-dim">${before != null ? `Was ${before} before this change` : 'Plan score out of 100'}</div></div></div>
+    ${rows}
+    <div class="gp-dim">Computed from your plan and logs: weekly sets per muscle, frequency, push/pull and upper/lower balance, session length, rep ranges for your goal, recovery gaps, lifts rising and sessions kept. A guide, not a verdict.</div>
+  </div>`;
 }
 
-async function openGoalPlan() {
-  GP.open = true; GP.error = ''; GP.question = '';
+async function openGoalPlan(mode = 'new') {
+  GP.open = true; GP.error = ''; GP.question = ''; GP.mode = mode; GP.result = null; GP.raw = null; GP.base = null;
+  if (mode === 'adjust') GP.goal = '';
+  if (mode !== 'new' && myProgram) { GP.base = gpPlanForAi(myProgram); GP.raw = GP.base; }
   if (!myCheckins.length) { try { await loadCheckins(); } catch (_) { /* optional */ } }
   renderGoalPlan();
+}
+function gpPlanForAi(p) {
+  return { name: p.name, schedule: p.schedule, days: (p.days || []).map(d => ({ name: d.name, exercises: (d.exercises || []).map(e => ({ name: e.name, sets: e.sets, reps: e.reps })) })) };
 }
 function closeGoalPlan() {
   GP.open = false;
@@ -9836,7 +9863,16 @@ function renderGoalPlan() {
   const standing = gpStanding();
   const n = GP.nums;
   const v = k => escapeHtml(n[k] ?? '');
-  const input = `
+  const adjust = GP.mode === 'adjust', scoreMode = GP.mode === 'score';
+  const curScore = (adjust || scoreMode) && myProgram?.days?.length ? gpPlanScore(myProgram) : null;
+  const adjustInput = `
+    <label class="gp-label" for="gp-goal">What should change?</label>
+    <textarea id="gp-goal" class="gp-text" rows="3" maxlength="1200" placeholder="Any sentence. For example: my left knee hurts, only 30 minutes a session this week, more arms, swap barbell for dumbbells, I want to add a run on Sundays.">${escapeHtml(GP.goal)}</textarea>
+    ${standing.length ? `<div class="gp-standing">Always respected: ${standing.map(s => `<span class="gp-tag">${escapeHtml(s)} <button type="button" class="gp-x" data-s="${escapeHtml(s)}" aria-label="Forget ${escapeHtml(s)}">×</button></span>`).join(' ')}</div>` : ''}
+    <button type="button" class="gp-go" id="gp-build" ${GP.busy ? 'disabled' : ''}>${GP.busy ? 'Your trainer is working…' : 'Adjust my plan'}</button>
+    ${curScore ? `<div class="gp-sub">YOUR PLAN TODAY</div>${gpScoreHtml(curScore)}` : ''}`;
+  const scoreOnly = curScore ? `${gpScoreHtml(curScore)}<button type="button" class="gp-go" id="gp-to-adjust">Ask your trainer to fix it</button>` : '<div class="gp-dim">No plan yet.</div>';
+  const input = adjust ? adjustInput : scoreMode ? scoreOnly : `
     <label class="gp-label" for="gp-goal">What do you want?</label>
     <textarea id="gp-goal" class="gp-text" rows="4" maxlength="1200" placeholder="Say it your way: the look you want, a race, what you hate training, an injury, the days you have. For example: lean and defined by January, 3 days a week, no legs, I want to run a half marathon.">${escapeHtml(GP.goal)}</textarea>
     <details class="gp-more" ${(n.weeks || n.targetBf || n.targetKg || n.s1) ? 'open' : ''}>
@@ -9864,6 +9900,9 @@ function renderGoalPlan() {
     const prog = r.program;
     const groups = planGroups(prog, EXERCISES_ALL);
     const max = Math.max(1, ...Object.values(groups));
+    const newScore = gpPlanScore(prog, { excluded: r.excluded });
+    const before = adjust && myProgram?.days?.length ? gpPlanScore(myProgram, { excluded: r.excluded }) : null;
+    const diff = adjust ? diffPlans(myProgram, prog) : null;
     const days = prog.days.map((d, di) => `
       <div class="gp-day"><div class="gp-day-name">${escapeHtml(d.name)}</div>
         ${d.exercises.map(e => `<div class="gp-ex"><div class="gp-ex-top"><b>${escapeHtml(e.name)}</b><span>${e.sets} × ${e.reps}</span></div>
@@ -9871,22 +9910,25 @@ function renderGoalPlan() {
       </div>`).join('');
     preview = `
       <div class="gp-preview">
-        <div class="gp-eyebrow">YOUR PLAN</div>
+        <div class="gp-eyebrow">${adjust ? 'ADJUSTED PLAN' : 'YOUR PLAN'}</div>
         <div class="gp-plan-name">${escapeHtml(prog.name)} · ${prog.days.length} day${prog.days.length === 1 ? '' : 's'}</div>
         <div class="gp-dim">Trains ${prog.schedule.join(', ')}</div>
         ${r.summary ? `<p class="gp-summary">${escapeHtml(r.summary)}</p>` : ''}
         ${r.notes.map(t => `<div class="gp-note">${escapeHtml(t)}</div>`).join('')}
+        ${adjust && before ? `<div class="gp-diff"><div class="gp-sub">WHAT CHANGED</div>${[...diff.added.map(t => ['+', t]), ...diff.removed.map(t => ['−', t]), ...diff.changed.map(t => ['~', t])].map(([k, t]) => `<div class="gp-diff-row gp-d${k === '+' ? 'a' : k === '−' ? 'r' : 'c'}"><b>${k}</b> ${escapeHtml(t)}</div>`).join('') || '<div class="gp-dim">No exercise changes. Only the plan details moved.</div>'}</div>` : ''}
+        <div class="gp-sub">PLAN SCORE</div>
+        ${gpScoreHtml(newScore, before ? before.score : null)}
         ${days}
         <div class="gp-sub">WEEKLY SETS BY MUSCLE</div>
         ${Object.entries(groups).sort((a, c) => c[1] - a[1]).map(([g, val]) => `<div class="gp-vol"><span>${g}</span><i style="width:${Math.round(val / max * 100)}%"></i><b>${val}</b></div>`).join('')}
         ${r.excluded.length ? `<label class="gp-keep"><input type="checkbox" id="gp-keep" checked> Always leave out ${escapeHtml(r.excluded.join(', '))}</label>` : ''}
-        <div class="gp-revise"><input id="gp-rev" class="gp-input" placeholder="Change something: “swap squats, my knee hurts”, “add a run day”" maxlength="600"><button type="button" id="gp-revise-btn" ${GP.busy ? 'disabled' : ''}>Revise</button></div>
+        <div class="gp-revise"><input id="gp-rev" class="gp-input" placeholder="Change more: “swap squats, my knee hurts”, “add a run day”" maxlength="600"><button type="button" id="gp-revise-btn" ${GP.busy ? 'disabled' : ''}>Revise</button></div>
         <div class="gp-actions"><button type="button" class="gp-go" id="gp-accept" ${GP.busy ? 'disabled' : ''}>Accept plan</button><button type="button" class="gp-ghost" id="gp-regen" ${GP.busy ? 'disabled' : ''}>Regenerate</button></div>
-        <div class="gp-dim">Accepting replaces your current plan. You get an Undo.</div>
+        <div class="gp-dim">${adjust ? 'Accepting updates your current plan.' : 'Accepting replaces your current plan.'} You get an Undo.</div>
       </div>`;
   }
   el.innerHTML = `<div class="hunter-modal-inner gp-inner">
-    <div class="hunter-modal-header"><div class="gp-title">✦ BUILD A PLAN</div><button type="button" class="gp-close" id="gp-close" aria-label="Close">✕</button></div>
+    <div class="hunter-modal-header"><div class="gp-title">${adjust ? '✦ ASK YOUR TRAINER' : scoreMode ? '◈ PLAN SCORE' : '✦ BUILD A PLAN'}</div><button type="button" class="gp-close" id="gp-close" aria-label="Close">✕</button></div>
     ${GP.question ? `<div class="gp-ask"><b>The System asks</b><div>${escapeHtml(GP.question)}</div><div class="gp-dim">Add the answer to what you wrote, then build again.</div></div>` : ''}
     ${GP.error ? `<div class="gp-error" role="alert">${escapeHtml(GP.error)}</div>` : ''}
     ${r && r.program ? '' : input}
@@ -9916,6 +9958,7 @@ function gpWire(el) {
   }));
   el.querySelector('#gp-build')?.addEventListener('click', () => { gpReadInputs(el); gpRun(null); });
   el.querySelector('#gp-regen')?.addEventListener('click', () => gpRun(null));
+  el.querySelector('#gp-to-adjust')?.addEventListener('click', () => { GP.mode = 'adjust'; GP.goal = ''; GP.base = myProgram ? gpPlanForAi(myProgram) : null; GP.raw = GP.base; renderGoalPlan(); });
   el.querySelector('#gp-revise-btn')?.addEventListener('click', () => {
     const text = el.querySelector('#gp-rev').value.trim();
     if (text) gpRun(text);
@@ -9941,8 +9984,9 @@ async function gpRun(revision) {
     const standing = gpStanding();
     const res = (await call({
       goal, digest, catalogue: catalogue(EXERCISES_ALL), standing,
-      feasibility: gpGoalCheck() || undefined,
-      currentPlan: revision && GP.raw ? GP.raw : undefined, revision: revision || undefined,
+      feasibility: GP.mode === 'new' ? (gpGoalCheck() || undefined) : undefined,
+      currentPlan: revision ? (GP.raw || undefined) : (GP.mode === 'adjust' ? GP.base : undefined),
+      revision: revision || (GP.mode === 'adjust' ? goal : undefined),
     })).data;
     if (res.question && !res.plan) { GP.question = res.question; GP.busy = false; renderGoalPlan(); return; }
     GP.raw = res.plan;
@@ -9969,6 +10013,7 @@ async function gpAccept(el) {
   GP.busy = true; renderGoalPlan();
   const prev = myProgram ? JSON.parse(JSON.stringify(myProgram)) : null;
   const next = { ...(prev || {}), ...r.program };
+  if (prev?.days) next.days = next.days.map(d => { const old = prev.days.find(o => o.name === d.name); return old?.lastDate ? { ...d, lastDate: old.lastDate } : d; });
   if (prev?.goal) next.goal = prev.goal; else delete next.goal;
   try {
     await setDoc(doc(db, 'programs', currentUser.uid), next);
