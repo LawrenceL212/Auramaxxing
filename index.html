@@ -4118,6 +4118,48 @@
   .flow-rankup-in .system-btn.ui-btn-primary{display:flex;align-self:stretch;width:auto;min-height:58px;padding:0 16px;border-radius:0;font-size:16px;letter-spacing:.12em;background:var(--ui-gold-grad);color:#1a0f00;box-shadow:0 0 30px rgba(255,214,107,.6);}
 
   nav.bottom-nav button .ui-dot{top:7px;right:calc(50% - 21px);width:9px;height:9px;pointer-events:none;box-shadow:0 0 0 2px rgba(5,6,10,.98),0 0 8px var(--ui-gold);}
+  /* ── One-tap weigh-in sheet and the on-track block (weigh-in.js) ── */
+  .wi-sheet{background:linear-gradient(180deg,rgba(18,28,56,.98),rgba(10,13,24,.995));}
+  .wi-sheet .ui-sheet-body{padding-bottom:2px;}
+  .wi-big .sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;}
+  .wi-date{margin:0 0 4px;text-align:center;font-family:var(--font-mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--text-faint);}
+  .wi-big{position:relative;display:flex;align-items:baseline;justify-content:center;gap:6px;margin:2px 0 12px;}
+  .wi-big input{width:5.2ch;background:none;border:0;border-bottom:1px solid rgba(255,214,107,.35);border-radius:0;padding:0;text-align:center;color:var(--text);font-family:var(--font-display);font-weight:800;font-size:clamp(52px,17vw,68px);line-height:1.05;letter-spacing:.02em;text-shadow:0 0 24px rgba(255,214,107,.25);}
+  .wi-big input:focus{outline:none;border-bottom-color:var(--ui-gold);}
+  .wi-unit{font-family:var(--font-display);font-weight:700;font-size:18px;color:var(--text-dim);}
+  .wi-steps{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;}
+  .wi-step{min-height:52px;background:rgba(91,168,255,.08);border:1px solid rgba(91,168,255,.35);color:var(--text);font-family:var(--font-display);font-weight:700;font-size:16px;cursor:pointer;touch-action:manipulation;clip-path:polygon(8px 0,100% 0,100% calc(100% - 8px),calc(100% - 8px) 100%,0 100%,0 8px);}
+  .wi-step:active{filter:brightness(1.3);background:rgba(91,168,255,.2);}
+  .wi-vs{margin:12px 0 0;text-align:center;font-size:14px;color:var(--text-dim);}
+  .wi-vs b{color:var(--text);font-weight:700;}
+  .wi-vs b.down{color:var(--growing);} .wi-vs b.up{color:var(--brass);}
+  .wi-more{display:block;width:100%;min-height:44px;margin-top:6px;background:none;border:0;color:var(--brass);font-family:var(--font-body);font-size:14px;font-weight:600;cursor:pointer;}
+  .wi-msg{margin:4px 0 0;min-height:16px;text-align:center;font-size:12px;color:var(--excess);}
+  .wi-done{margin:0 0 10px;text-align:center;font-family:var(--font-display);font-size:26px;font-weight:800;color:var(--text);}
+  .wi-done span{font-size:12px;letter-spacing:.2em;text-transform:uppercase;color:var(--growing);vertical-align:middle;margin-right:4px;}
+  .wi-chart{margin:0 0 10px;}
+  .wi-chart svg{display:block;height:120px;}
+  .wi-legend{display:flex;gap:14px;justify-content:center;margin-top:4px;font-size:11px;color:var(--text-faint);}
+  .wi-legend span{display:inline-flex;align-items:center;gap:5px;}
+  .wi-legend i{display:inline-block;}
+  .wi-legend .dot{width:6px;height:6px;border-radius:50%;background:var(--text-faint);}
+  .wi-legend .ln{width:14px;height:3px;border-radius:2px;background:var(--violet);}
+  .wi-legend .gl{width:14px;height:0;border-top:1px dashed var(--legendary);}
+  .wi-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;}
+  .wi-stat{padding:9px 6px;text-align:center;background:rgba(15,19,27,.92);border:1px solid rgba(91,168,255,.18);clip-path:polygon(8px 0,100% 0,100% calc(100% - 8px),calc(100% - 8px) 100%,0 100%,0 8px);}
+  .wi-stat b{display:block;font-family:var(--font-display);font-size:17px;font-weight:700;color:var(--text);}
+  .wi-stat span{display:block;margin-top:2px;font-size:11px;color:var(--text-faint);}
+  .wi-stat.good b{color:var(--growing);} .wi-stat.bad b{color:var(--rank-a);}
+  .wi-goal{display:block;width:100%;margin-top:10px;padding:10px 12px;text-align:left;background:rgba(255,214,107,.06);border:1px solid rgba(255,214,107,.35);color:var(--text);font-family:var(--font-body);font-size:14px;cursor:pointer;touch-action:manipulation;}
+  .wi-goal.is-empty{min-height:48px;color:var(--ui-gold);font-weight:600;}
+  .wi-goal-top{display:flex;justify-content:space-between;font-family:var(--font-mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--ui-gold);}
+  .wi-bar{display:block;height:6px;margin:7px 0;background:rgba(255,214,107,.12);overflow:hidden;}
+  .wi-bar i{display:block;height:100%;background:var(--ui-gold-grad);box-shadow:0 0 8px rgba(255,214,107,.5);}
+  .wi-goal-line{display:block;font-weight:600;}
+  .wi-goal.is-on .wi-goal-line,.wi-goal.is-reached .wi-goal-line{color:var(--growing);}
+  .wi-goal.is-behind .wi-goal-line,.wi-goal.is-off .wi-goal-line{color:var(--rank-a);}
+  .wi-week{margin:8px 0 0;font-size:12px;color:var(--text-faint);text-align:center;}
+  .wi-log-btn{width:100%;margin-top:12px;min-height:52px;font-size:14px;}
 </style>
 </head>
 <body>
@@ -4671,6 +4713,7 @@ import { setInputKind, setInputHeaders, storedSet, storedSetSecs, partsToSecs, s
          setLoad, loggedLoad, withLoad, BAND_LEVELS, DEFAULT_BAND, bandLabel, loggedBand,
          setBand, loadText, loadOptions, isBandLoad } from "./set-inputs.js";
 import { feltEasier, EASIER_LABEL } from "./set-compare.js";
+import { MIN_KG, MAX_KG, STEPS, startWeight, stepWeight, parseWeight, weightStats, signedKg, goalPace, paceLine, trendSvg } from "./weigh-in.js";
 import { detectReEntry, reEntryPlan, directiveProgress, formatMeasure, DIRECTIVE_METRICS,
          countdown, formatCountdown, timeElapsedFraction, buildDirectivesICS,
          buildWidgetConfig } from "./goals.js";
@@ -9206,7 +9249,7 @@ function renderHuntTiles() {
     <button class="ui-tile" id="hunt-weight-tile" aria-label="Weigh in. Last ${agoLabel(lastW, todayStr())}"><span class="ui-tile-v">Weigh in</span><span class="ui-tile-s">${lastW ? agoLabel(lastW, todayStr()) : 'not logged'}</span></button>
     <button class="ui-tile ui-dot-host" id="hunt-more-tile" aria-expanded="${open}" aria-controls="hunt-more"><span class="ui-tile-v">More</span><span class="ui-tile-s">plan · goals <span class="hm-chev">${HI.chev.replace('width="18" height="18"', 'width="12" height="12"')}</span></span>${tips ? '<span class="ui-dot gold" title="Plan tips waiting"></span>' : ''}</button>`;
   document.getElementById('hunt-ap-tile')?.addEventListener('click', openApInvestPicker);
-  document.getElementById('hunt-weight-tile')?.addEventListener('click', () => window.openCheckinModal());
+  document.getElementById('hunt-weight-tile')?.addEventListener('click', () => window.openWeighInSheet());
   document.getElementById('hunt-more-tile')?.addEventListener('click', () => setHuntMore(document.getElementById('hunt-more').hidden, true));
 }
 
@@ -12739,12 +12782,14 @@ document.addEventListener('visibilitychange', () => {
   if (!document.hidden) tickDirectiveCountdowns();
 });
 
-function openDirectiveEditor(id) {
+function openDirectiveEditor(id, preset) {
   const existing = activeDirectives().find(d => d.id === id) || null;
+  // A new directive can arrive pre-filled (the weigh-in sheet opens it on Bodyweight).
+  const fresh = (!existing && preset) || {};
   const el = document.createElement('div');
   el.className = 'modal-overlay';
   const metricOpts = Object.entries(DIRECTIVE_METRICS).map(([k, m]) =>
-    '<option value="' + k + '"' + (existing?.metric === k ? ' selected' : '') + '>' +
+    '<option value="' + k + '"' + ((existing?.metric ?? fresh.metric) === k ? ' selected' : '') + '>' +
       m.label + (m.unit ? ' (' + m.unit + ')' : '') + '</option>').join('');
   el.innerHTML =
     '<div class="modal" style="max-width:420px;">' +
@@ -12752,7 +12797,7 @@ function openDirectiveEditor(id) {
       '<h3 style="margin:0 0 4px;">' + (existing ? 'Edit directive' : 'What are you training for?') + '</h3>' +
       '<p style="font-size:12px;color:var(--text-dim);margin:0 0 14px;">Name the thing. The System will track it against your record.</p>' +
       '<div class="field"><label>Directive</label>' +
-        '<input id="dir-title" maxlength="60" placeholder="Run a half marathon" value="' + escapeHtml(existing?.title || '') + '" /></div>' +
+        '<input id="dir-title" maxlength="60" placeholder="Run a half marathon" value="' + escapeHtml(existing?.title || fresh.title || '') + '" /></div>' +
       /* The reason, asked for explicitly. A Hunter who can see the date but not
          why they set it has the deadline without the motive, which is the state
          this whole screen exists to prevent. */
@@ -12766,7 +12811,7 @@ function openDirectiveEditor(id) {
         '<select id="dir-metric" style="width:100%;background:var(--card-2);color:var(--text);border:1px solid rgba(91,168,255,0.18);border-radius:6px;padding:8px;">' +
         metricOpts + '</select></div>' +
       '<div class="field"><label>Target value <span style="color:var(--text-faint);">(optional)</span></label>' +
-        '<input id="dir-target" type="number" step="0.1" placeholder="21.1" value="' + (existing?.target ?? '') + '" /></div>' +
+        '<input id="dir-target" type="number" step="0.1" inputmode="decimal" placeholder="' + (fresh.metric === 'body_weight_kg' ? '75' : '21.1') + '" value="' + (existing?.target ?? '') + '" /></div>' +
       '<div style="display:flex;gap:8px;margin-top:14px;">' +
         '<button class="btn btn-primary" id="dir-save" style="flex:2;">Set directive</button>' +
         (existing ? '<button class="btn btn-sm" id="dir-delete" style="flex:1;color:var(--excess);">Remove</button>'
@@ -12813,6 +12858,7 @@ function openDirectiveEditor(id) {
       await writeUserFields({ directives: list });
       profile.directives = list;
       close(); renderDirectivesStrip();
+      try { if (document.getElementById('view-trends')?.classList.contains('active')) renderTrends(); } catch (_) {}
       showToast('Directive set. It will follow you.', 'success');
     } catch (e) { showToast('Could not save: ' + (e?.message || e), 'error'); }
   });
@@ -16154,7 +16200,7 @@ window.openCheckinModal = () => {
       </div>` : ''}
 
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
-        ${checkinField('Weight', 'ci-weight', 'kg', lastC?.weight, '75.0', 'Your current bodyweight')}
+        ${checkinField('Weight', 'ci-weight', 'kg', myWeights.find(w => w.date === todayStr())?.weight ?? lastC?.weight, '75.0', 'Your current bodyweight')}
         ${checkinField('Waist', 'ci-waist', 'cm', lastC?.waist, '90', 'At navel, relaxed')}
         ${checkinField('Neck', 'ci-neck', 'cm', lastC?.neck, '38', 'At narrowest point')}
         ${gender === 'female' ? checkinField('Hips', 'ci-hip', 'cm', lastC?.hip, '95', 'At widest point') : ''}
@@ -16331,6 +16377,147 @@ window.saveCheckin = async () => {
     msgEl.style.color = '#FF4D67';
     msgEl.textContent = 'Error: ' + e.message;
   }
+};
+
+// ── ONE-TAP WEIGH-IN ──────────────────────────────────────────────────────────
+// The Hunt "Weigh in" tile opens this sheet: a big number that starts at the last
+// weight, −/+ steppers, one Log button. It writes the same bodyweight doc and
+// bodyweightKg as the Codex weight card always has (one doc per date, today's is
+// overwritten) and grants no XP; the full check-in stays one tap away. After the
+// save the sheet shows whether the Hunter is on track (weigh-in.js, pure).
+
+/** The first live Bodyweight directive with a target, if the Hunter set one. */
+function weightGoalDirective() {
+  return activeDirectives().find(d => d.metric === 'body_weight_kg' && Number(d.target) > 0) || null;
+}
+
+/** The on-track block: 7-day average, 30 days, per week, goal bar and pace, this week. */
+function weightOnTrackHtml({ chart = true } = {}) {
+  const today = todayStr();
+  const st = weightStats(myWeights, today);
+  if (!st.latest) return '';
+  const goal = weightGoalDirective();
+  const pace = goal ? goalPace(st, goal, today) : null;
+  const tile = (v, s, cls = '') => `<div class="wi-stat ${cls}"><b>${v}</b><span>${s}</span></div>`;
+  const tone = (n) => n === null ? '' : (pace ? (Math.sign(n) === Math.sign(pace.target - pace.start) ? 'good' : n === 0 ? '' : 'bad') : '');
+  const svg = chart ? trendSvg(myWeights, { today, days: 30, goal: goal ? Number(goal.target) : null }) : '';
+  return `
+    ${svg ? `<div class="wi-chart">${svg}<div class="wi-legend"><span><i class="dot"></i>weigh-in</span><span><i class="ln"></i>7-day average</span>${svg.includes('>goal ') ? '<span><i class="gl"></i>goal</span>' : ''}</div></div>` : ''}
+    <div class="wi-stats">
+      ${tile(st.avg7.toFixed(1), '7-day avg')}
+      ${tile(st.change30 === null ? '—' : signedKg(st.change30), '30 days', tone(st.change30))}
+      ${tile(st.ratePerWeek === null ? '—' : signedKg(st.ratePerWeek), 'per week', tone(st.ratePerWeek))}
+    </div>
+    ${goal ? `<button class="wi-goal ${pace ? 'is-' + pace.status : ''}" data-id="${escapeHtml(goal.id)}">
+        <span class="wi-goal-top"><span>Goal · ${escapeHtml(String(goal.target))} kg</span><span>${pace ? pace.pct : 0}%</span></span>
+        <span class="wi-bar"><i style="width:${pace ? pace.pct : 0}%"></i></span>
+        <span class="wi-goal-line">${escapeHtml(paceLine(pace))}</span>
+      </button>`
+      : `<button class="wi-goal is-empty">Set a weight goal to see if you are on pace →</button>`}
+    <p class="wi-week">${st.thisWeek} weigh-in${st.thisWeek === 1 ? '' : 's'} this week${st.ratePerWeek === null ? ' · a few more and the weekly rate appears' : ''}</p>`;
+}
+
+function wireWeightGoal(root, after) {
+  root.querySelector('.wi-goal')?.addEventListener('click', (e) => {
+    after && after();
+    openDirectiveEditor(e.currentTarget.dataset.id || null, { metric: 'body_weight_kg', title: 'Reach my goal weight' });
+  });
+}
+
+window.openWeighInSheet = () => {
+  document.getElementById('weighin-sheet')?.remove();
+  const today = todayStr();
+  const st = weightStats(myWeights, today);
+  let val = startWeight(myWeights, today, profile?.bodyweightKg);
+  const scrim = document.createElement('div');
+  scrim.className = 'ui-sheet-scrim';
+  scrim.id = 'weighin-sheet';
+  const dateLbl = new Date(today + 'T12:00:00').toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' });
+  scrim.innerHTML = `
+    <div class="ui-sheet ui-window gold wi-sheet" role="dialog" aria-modal="true" aria-labelledby="wi-title">
+      <div class="ui-sheet-grab" aria-hidden="true"></div>
+      <div class="ui-sheet-head">
+        <h2 class="ui-title" id="wi-title">Weigh-in</h2>
+        <button class="ui-sheet-icon" id="wi-close" aria-label="Close"><svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><path d="M4 4l10 10M14 4 4 14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>
+      </div>
+      <div class="ui-sheet-body" id="wi-body"></div>
+    </div>`;
+  getOverlayHost().appendChild(scrim);
+  lockBodyScroll();
+  const body = scrim.querySelector('#wi-body');
+  const close = () => { scrim.remove(); unlockBodyScroll(); document.removeEventListener('keydown', onEsc); };
+  const onEsc = (e) => { if (e.key === 'Escape') close(); };
+  document.addEventListener('keydown', onEsc);
+  scrim.addEventListener('click', (e) => { if (e.target === scrim) close(); });
+  scrim.querySelector('#wi-close').addEventListener('click', close);
+
+  const prev = st.loggedToday ? st.previous : (st.latest ? { date: st.latestDate, weight: st.latest } : null);
+  const vsHtml = () => {
+    if (!prev) return 'First weigh-in. Every one after this builds your trend.';
+    const d = Math.round((val - prev.weight) * 10) / 10;
+    return `Last: <b>${prev.weight.toFixed(1)} kg</b> · ${agoLabel(prev.date, today).toLowerCase()} · <b class="${d < 0 ? 'down' : d > 0 ? 'up' : ''}">${signedKg(d)}</b>`;
+  };
+
+  const renderEntry = () => {
+    body.innerHTML = `
+      <p class="wi-date">${st.loggedToday ? 'Today · already logged, saving updates it' : 'Today · ' + escapeHtml(dateLbl)}</p>
+      <label class="wi-big"><span class="sr-only">Weight in kg</span>
+        <input id="wi-val" type="text" inputmode="decimal" autocomplete="off" value="${val.toFixed(1)}" aria-describedby="wi-vs" /><span class="wi-unit">kg</span></label>
+      <div class="wi-steps">${STEPS.map(s => `<button class="wi-step" data-step="${s}" aria-label="${s > 0 ? 'Add' : 'Subtract'} ${Math.abs(s)} kg">${s > 0 ? '+' : '−'}${Math.abs(s)}</button>`).join('')}</div>
+      <p class="wi-vs" id="wi-vs" aria-live="polite">${vsHtml()}</p>
+      <div class="ui-sheet-actions"><button class="ui-btn-primary" id="wi-save" style="flex:1;">${st.loggedToday ? 'Update weight' : 'Log weight'}</button></div>
+      <button class="wi-more" id="wi-checkin">Add tape measurements · weekly check-in →</button>
+      <p class="wi-msg" id="wi-msg" role="status"></p>`;
+    const input = body.querySelector('#wi-val');
+    const sync = () => { input.value = val.toFixed(1); body.querySelector('#wi-vs').innerHTML = vsHtml(); };
+    input.addEventListener('focus', () => input.select());
+    input.addEventListener('input', () => { const v = parseWeight(input.value); if (v !== null) { val = v; body.querySelector('#wi-vs').innerHTML = vsHtml(); } });
+    input.addEventListener('blur', sync);
+    input.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); body.querySelector('#wi-save').click(); } });
+    body.querySelectorAll('.wi-step').forEach(b => b.addEventListener('click', () => { val = stepWeight(val, Number(b.dataset.step)); sync(); }));
+    body.querySelector('#wi-checkin').addEventListener('click', () => { close(); window.openCheckinModal(); });
+    body.querySelector('#wi-save').addEventListener('click', save);
+  };
+
+  const save = async () => {
+    const btn = body.querySelector('#wi-save');
+    const msg = body.querySelector('#wi-msg');
+    const typed = parseWeight(body.querySelector('#wi-val').value);
+    if (typed === null) { msg.textContent = `Enter a weight between ${MIN_KG} and ${MAX_KG} kg.`; return; }
+    val = typed;
+    btn.disabled = true; btn.textContent = 'Saving…';
+    try {
+      // Same write as the Codex weight card: one bodyweight doc per date.
+      const existing = myWeights.find(w => w.date === today && w.uid === currentUser.uid);
+      const data = { uid: currentUser.uid, date: today, weight: val, createdAt: serverTimestamp() };
+      let id = existing && existing.id;
+      if (id) await setDoc(doc(db, 'bodyweight', id), data);
+      else id = (await addDoc(collection(db, 'bodyweight'), data)).id;
+      await writeUserFields({ bodyweightKg: val });
+      profile.bodyweightKg = val;
+      myWeights = [...myWeights.filter(w => w.date !== today), { id, uid: currentUser.uid, date: today, weight: val }]
+        .sort((a, b) => a.date.localeCompare(b.date));
+      try { renderHuntTiles(); } catch (_) {}
+      try { if (document.getElementById('view-trends')?.classList.contains('active')) renderTrends(); } catch (_) {}
+      renderDone();
+    } catch (e) {
+      btn.disabled = false; btn.textContent = st.loggedToday ? 'Update weight' : 'Log weight';
+      msg.textContent = 'Could not save. Check your connection and try again.';
+    }
+  };
+
+  const renderDone = () => {
+    body.innerHTML = `
+      <p class="wi-done"><span>Logged</span> <b>${val.toFixed(1)} kg</b></p>
+      ${weightOnTrackHtml()}
+      <div class="ui-sheet-actions"><button class="ui-btn-blue" id="wi-ok" style="flex:1;">Done</button></div>`;
+    body.querySelector('#wi-ok').addEventListener('click', close);
+    wireWeightGoal(body, close);
+    body.querySelector('#wi-ok').focus();
+  };
+
+  renderEntry();
+  body.querySelector('#wi-save').focus();
 };
 
 // ── END WEEKLY CHECK-IN ───────────────────────────────────────────────────────
@@ -18726,7 +18913,7 @@ function showDebriefModal(exercises, apEarned, prs, done, soldiersEarned = {}, s
     setTimeout(() => {
       try {
         if (kind === 'ap') openApInvestPicker();
-        else if (kind === 'weigh') window.openCheckinModal();
+        else if (kind === 'weigh') window.openWeighInSheet();
         else if (kind === 'codex') switchView('trends');
       } catch (e) { console.warn('Next step failed:', e); }
     }, 350);
@@ -20708,11 +20895,8 @@ function renderTrends() {
 
     <div class="card">
       <div class="card-title"><h3>◐ Weight</h3></div>
-      ${weightLineChart(myWeights)}
-      <div class="weight-input-row">
-        <input type="number" step="0.1" id="weight-input" placeholder="Log today's weight (kg)" inputmode="decimal" />
-        <button class="btn btn-sm" id="weight-save-btn">Save</button>
-      </div>
+      ${myWeights.length ? weightOnTrackHtml() : weightLineChart(myWeights)}
+      <button class="ui-btn-primary wi-log-btn" id="weight-log-btn">${myWeights.some(w => w.date === todayStr()) ? 'Update today\'s weight' : 'Log weight'}</button>
       <!-- Entry list with edit/delete -->
       <div id="weight-entries-list" style="margin-top:12px;">
         ${[...myWeights].reverse().map(e => `
@@ -20813,6 +20997,8 @@ function renderTrends() {
       requestAnimationFrame(update);
     }
   });
+  document.getElementById('weight-log-btn')?.addEventListener('click', () => window.openWeighInSheet());
+  wireWeightGoal(document.getElementById('trends-widgets') || document);
   const wBtn = document.getElementById('weight-save-btn');
   if (wBtn) wBtn.addEventListener('click', async () => {
     const val = Number(document.getElementById('weight-input').value);
