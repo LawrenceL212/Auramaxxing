@@ -73,6 +73,45 @@ async function generatePlan({ data, apiKey, fetchImpl }) {
   return { question: reply.question ? clip(reply.question, 300) : null, understood: reply.understood || null, exclude, plan: reply.plan || null };
 }
 
+
+const ASK_SYSTEM = [
+  'You are the personal trainer inside a fitness game, talking to one Hunter about their own training.',
+  'Answer the question using ONLY the data given (their plan, logged sessions, recovery, rhythm and body metrics). Quote their real numbers. If the data needed is missing, say what is missing and how to log it. Never invent numbers.',
+  'Be a good trainer: direct, practical, kind, under 120 words, plain sentences, no hype, no lists longer than four items.',
+  'You are not a doctor. For pain, injury, illness, eating disorders or medication, give sensible general guidance and tell them to see a qualified professional. Do not diagnose.',
+  'Stay on training, recovery, food for training, sleep, and their body metrics. Politely decline anything else in one sentence.',
+  'If the best answer involves changing their plan, put ONE sentence in "change" that they can tap to have the plan adjusted (for example "Swap squats for leg press while my knee recovers."). Otherwise "change" is null. Never claim you already changed anything.',
+  'Reply with a single JSON object and nothing else: {"answer":"...","change":null}',
+].join('\n');
+
+/** A question for the trainer, with the computed context the app sends. */
+function buildAskRequest(data) {
+  const q = clip(data && data.question, 600).trim();
+  if (q.length < 2) { const e = new Error('Ask the trainer something first.'); e.code = 'invalid-argument'; throw e; }
+  const history = Array.isArray(data.history) ? data.history.slice(-6).map(h => `${h && h.role === 'trainer' ? 'Trainer' : 'Hunter'}: ${clip(h && h.text, 500)}`) : [];
+  const parts = [`Hunter's data (JSON, computed by the app): ${clip(JSON.stringify(data.context || {}), 7000)}`];
+  if (data.plan) parts.push(`Current plan (JSON): ${clip(JSON.stringify(data.plan), 4000)}`);
+  if (history.length) parts.push(`Conversation so far:\n${history.join('\n')}`);
+  parts.push(`Hunter asks: ${q}`);
+  return { model: MODEL, max_tokens: 700, system: ASK_SYSTEM, messages: [{ role: 'user', content: parts.join('\n\n') }] };
+}
+
+async function askTrainer({ data, apiKey, fetchImpl }) {
+  const body = buildAskRequest(data);
+  const res = await fetchImpl('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) { const e = new Error('The trainer is not reachable right now. Try again in a minute.'); e.code = 'unavailable'; e.status = res.status; throw e; }
+  const json = await res.json();
+  const text = (json.content || []).filter(b => b.type === 'text').map(b => b.text).join('');
+  const reply = parseReply(text);
+  const answer = reply && reply.answer ? clip(reply.answer, 1500) : clip(text, 1500).trim();
+  if (!answer) { const e = new Error('The trainer gave no answer. Try again.'); e.code = 'internal'; throw e; }
+  return { answer, change: reply && reply.change ? clip(reply.change, 300) : null };
+}
+
 /** At most `max` calls per user per hour, per function instance. */
 function makeThrottle(max, now = Date.now) {
   const seen = new Map();
@@ -84,4 +123,4 @@ function makeThrottle(max, now = Date.now) {
   };
 }
 
-module.exports = { buildRequest, parseReply, generatePlan, makeThrottle, MODEL, GROUPS };
+module.exports = { buildRequest, buildAskRequest, parseReply, generatePlan, askTrainer, makeThrottle, MODEL, GROUPS };

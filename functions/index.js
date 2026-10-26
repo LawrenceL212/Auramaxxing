@@ -105,7 +105,7 @@ exports.resolveGateDuel = functions.https.onCall(async (data, context) => {
    a Firebase secret (firebase functions:secrets:set ANTHROPIC_API_KEY). Not saved anywhere. */
 const { onCall, HttpsError } = require('firebase-functions/v2/https');
 const { defineSecret } = require('firebase-functions/params');
-const { generatePlan: runGeneratePlan, makeThrottle } = require('./lib/generate-plan');
+const { generatePlan: runGeneratePlan, askTrainer: runAskTrainer, makeThrottle } = require('./lib/generate-plan');
 const ANTHROPIC_API_KEY = defineSecret('ANTHROPIC_API_KEY');
 const planThrottle = makeThrottle(10);
 exports.generatePlan = onCall({ region: 'us-central1', secrets: [ANTHROPIC_API_KEY], timeoutSeconds: 120, memory: '256MiB', maxInstances: 5 }, async (request) => {
@@ -117,5 +117,20 @@ exports.generatePlan = onCall({ region: 'us-central1', secrets: [ANTHROPIC_API_K
     if (e && e.code) throw new HttpsError(e.code, e.message);
     functions.logger.error('generatePlan failed', e);
     throw new HttpsError('internal', 'Could not build a plan.');
+  }
+});
+
+/* Ask your trainer: a question answered from the Hunter's own data. Read-only; the reply is text and an optional
+   one-sentence plan change that the Hunter has to tap and then accept. */
+const askThrottle = makeThrottle(40);
+exports.askTrainer = onCall({ region: 'us-central1', secrets: [ANTHROPIC_API_KEY], timeoutSeconds: 60, memory: '256MiB', maxInstances: 5 }, async (request) => {
+  if (!request.auth) throw new HttpsError('unauthenticated', 'Sign in to ask the trainer.');
+  if (!askThrottle(request.auth.uid)) throw new HttpsError('resource-exhausted', 'That is enough questions for one hour. Try again later.');
+  try {
+    return await runAskTrainer({ data: request.data, apiKey: ANTHROPIC_API_KEY.value(), fetchImpl: fetch });
+  } catch (e) {
+    if (e && e.code) throw new HttpsError(e.code, e.message);
+    functions.logger.error('askTrainer failed', e);
+    throw new HttpsError('internal', 'Could not reach the trainer.');
   }
 });

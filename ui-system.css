@@ -368,3 +368,10 @@
 .gp-find-ask{min-height:44px;margin-top:4px;background:none;border:0;padding:0;color:var(--brass,#c9a24a);font-weight:800;font-size:13px;text-align:left}
 .gp-ready{display:flex;flex-wrap:wrap;gap:6px}.gp-rd{border:1px solid var(--border,#2b2a40);border-radius:99px;padding:4px 10px;font-size:12px}
 .gp-rd-recovering{border-color:var(--excess,#e05a5a);color:var(--excess,#e05a5a)}.gp-rd-ready{border-color:var(--brass,#c9a24a)}.gp-rd-fresh{border-color:var(--growing,#4fc38a)}
+.gp-chat{display:flex;flex-direction:column;gap:8px;margin:6px 0 10px}
+.gp-msg{max-width:92%;padding:10px 12px;border-radius:14px;font-size:14px;line-height:1.5}
+.gp-me{align-self:flex-end;background:rgba(139,108,240,.22)}
+.gp-tr{align-self:flex-start;border:1px solid var(--border,#2b2a40)}
+.gp-typing{color:var(--text-dim,#a9a6bd);font-size:13px}
+.gp-prompts{display:flex;flex-wrap:wrap;gap:6px}
+.gp-prompt{min-height:40px;padding:6px 12px;border:1px solid var(--border,#2b2a40);border-radius:99px;background:none;color:var(--text,#e8e6f0);font-size:13px}

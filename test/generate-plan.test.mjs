@@ -1,6 +1,6 @@
 /* Tests for the generatePlan request/reply helpers.  node test/generate-plan.test.mjs */
 import { createRequire } from 'module';
-const { buildRequest, parseReply, generatePlan, makeThrottle, MODEL } = createRequire(import.meta.url)('../functions/lib/generate-plan.js');
+const { buildAskRequest, askTrainer, buildRequest, parseReply, generatePlan, makeThrottle, MODEL } = createRequire(import.meta.url)('../functions/lib/generate-plan.js');
 
 let pass = 0, fail = 0;
 const out = [];
@@ -38,6 +38,19 @@ err = null; try { await generatePlan({ data: { goal: 'lean', catalogue: cat }, a
 check('API outage is unavailable', err, 'unavailable');
 err = null; try { await generatePlan({ data: { goal: 'lean', catalogue: cat }, apiKey: 'k', fetchImpl: async () => ({ ok: true, json: async () => ({ content: [{ type: 'text', text: 'sorry' }] }) }) }); } catch (e) { err = e.code; }
 check('unreadable reply is internal', err, 'internal');
+
+const ar = buildAskRequest({ question: 'Why am I stalling?', context: { stats: { liftsStalled: 2 } }, history: [{ role: 'hunter', text: 'hi' }, { role: 'trainer', text: 'hello' }] });
+check('ask carries the data', ar.messages[0].content.includes('liftsStalled'), true);
+check('ask carries the conversation', ar.messages[0].content.includes('Trainer: hello'), true);
+check('ask is short', ar.max_tokens <= 800, true);
+err = null; try { buildAskRequest({ question: ' ' }); } catch (e) { err = e.code; }
+check('empty question refused', err, 'invalid-argument');
+const a1 = await askTrainer({ data: { question: 'How am I doing?' }, apiKey: 'k', fetchImpl: ok({ answer: 'Bench is up 4 kg.', change: 'Add a set of rows.' }) });
+check('answer and change come back', [a1.answer, a1.change], ['Bench is up 4 kg.', 'Add a set of rows.']);
+const a2 = await askTrainer({ data: { question: 'How am I doing?' }, apiKey: 'k', fetchImpl: async () => ({ ok: true, json: async () => ({ content: [{ type: 'text', text: 'Plain words, no JSON.' }] }) }) });
+check('plain text is still an answer', [a2.answer, a2.change], ['Plain words, no JSON.', null]);
+err = null; try { await askTrainer({ data: { question: 'x?' }, apiKey: 'k', fetchImpl: async () => ({ ok: false, status: 500 }) }); } catch (e) { err = e.code; }
+check('ask outage is unavailable', err, 'unavailable');
 
 let t = 0; const th = makeThrottle(2, () => t);
 check('throttle allows two', [th('u'), th('u')], [true, true]);
