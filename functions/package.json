@@ -6,9 +6,10 @@
   "engines": { "node": "22" },
   "scripts": {
     "gen": "node generate-exercise-scale.mjs",
-    "lint": "node --check index.js && node --check send-reminders.js && node --check lib/scoring.js && node --check lib/rewards.js && node --check lib/settle-duel.js && node --check lib/exercise-scale.js",
+    "lint": "node --check index.js && node --check send-reminders.js && node --check lib/scoring.js && node --check lib/rewards.js && node --check lib/settle-duel.js && node --check lib/exercise-scale.js && node --check lib/generate-plan.js",
     "serve": "firebase emulators:start --only functions",
     "deploy": "firebase deploy --only functions:resolveGateDuel",
+    "deploy:plan": "firebase deploy --only functions:generatePlan",
     "deploy:reminders": "firebase deploy --only functions:sendReminders",
     "sync-reminders": "sh scripts/sync-reminders.sh"
   },

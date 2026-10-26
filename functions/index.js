@@ -100,3 +100,22 @@ exports.resolveGateDuel = functions.https.onCall(async (data, context) => {
     throw new functions.https.HttpsError('internal', 'Could not settle the duel.');
   }
 });
+
+/* Goal to plan: Claude writes a proposal; the app checks and previews it. The key is
+   a Firebase secret (firebase functions:secrets:set ANTHROPIC_API_KEY). Not saved anywhere. */
+const { onCall, HttpsError } = require('firebase-functions/v2/https');
+const { defineSecret } = require('firebase-functions/params');
+const { generatePlan: runGeneratePlan, makeThrottle } = require('./lib/generate-plan');
+const ANTHROPIC_API_KEY = defineSecret('ANTHROPIC_API_KEY');
+const planThrottle = makeThrottle(10);
+exports.generatePlan = onCall({ region: 'us-central1', secrets: [ANTHROPIC_API_KEY], timeoutSeconds: 120, memory: '256MiB', maxInstances: 5 }, async (request) => {
+  if (!request.auth) throw new HttpsError('unauthenticated', 'Sign in to build a plan.');
+  if (!planThrottle(request.auth.uid)) throw new HttpsError('resource-exhausted', 'That is enough plans for one hour. Try again later.');
+  try {
+    return await runGeneratePlan({ data: request.data, apiKey: ANTHROPIC_API_KEY.value(), fetchImpl: fetch });
+  } catch (e) {
+    if (e && e.code) throw new HttpsError(e.code, e.message);
+    functions.logger.error('generatePlan failed', e);
+    throw new HttpsError('internal', 'Could not build a plan.');
+  }
+});
