@@ -9780,17 +9780,30 @@ function renderGoalPlanEntry() {
   let sc = null, tr = null;
   try { tr = gpTrainerRead(); } catch (e) { console.warn('Trainer read failed:', e); }
   if (has) { try { sc = gpPlanScore(myProgram); } catch (e) { console.warn('Plan score failed:', e); } }
+  const open = tr ? tr.flags.filter(f => f.tone !== 'good').length : 0;
+  const line = tr && tr.flags.length ? tr.headline : (has ? 'Your trainer is ready when you are.' : 'Tell your trainer your goal and it builds your first plan.');
   host.innerHTML = `
-    <div class="gp-entry-wrap">
-      ${tr && tr.flags.length ? `<button type="button" class="gp-entry gp-entry-read gp-f-${tr.tone}" id="gp-read-open"><span class="gp-entry-eyebrow">◈ TRAINER READ</span><span class="gp-entry-text">${escapeHtml(tr.headline)}${tr.flags.filter(f => f.tone !== 'good').length > 1 ? ` · +${tr.flags.filter(f => f.tone !== 'good').length - 1} more` : ''}</span></button>` : ''}
-      ${sc ? `<button type="button" class="gp-entry gp-entry-score" id="gp-score-open"><span class="gp-entry-eyebrow">◈ PLAN SCORE</span><span class="gp-entry-text"><b class="gp-big gp-${gpScoreTone(sc.score)}">${sc.score}</b> ${escapeHtml(sc.grade)} · tap for the breakdown</span></button>` : ''}
-      ${has ? `<button type="button" class="gp-entry" id="gp-adjust-open"><span class="gp-entry-eyebrow">✦ ASK YOUR TRAINER</span><span class="gp-entry-text">Ask anything: “why have I stalled?”, “am I overtraining?”. It answers from your data and can change your plan.</span></button>` : ''}
-      <button type="button" class="gp-entry" id="gp-open"><span class="gp-entry-eyebrow">✦ BUILD A PLAN WITH THE SYSTEM</span><span class="gp-entry-text">${has ? 'Tell it a goal and get a new plan, built from your history.' : 'Tell it your goal and it builds your first plan.'}</span></button>
+    <div class="gp-card gp-f-${tr ? tr.tone : 'none'}">
+      <button type="button" class="gp-card-main" id="gp-read-open">
+        ${sc ? gpRing(sc.score, 52) : '<span class="gp-card-icon">✦</span>'}
+        <span class="gp-card-body">
+          <span class="gp-card-eyebrow">YOUR TRAINER</span>
+          <span class="gp-card-line">${escapeHtml(line)}</span>
+          ${open ? `<span class="gp-card-sub">${open} thing${open === 1 ? '' : 's'} to look at</span>` : ''}
+        </span>
+      </button>
+      <div class="gp-card-actions">
+        <button type="button" id="gp-adjust-open">Ask</button>
+        <button type="button" id="gp-open">${has ? 'New plan' : 'Build my plan'}</button>
+      </div>
     </div>`;
   host.querySelector('#gp-open').addEventListener('click', () => openGoalPlan('new'));
-  host.querySelector('#gp-adjust-open')?.addEventListener('click', () => openGoalPlan('chat'));
-  host.querySelector('#gp-score-open')?.addEventListener('click', () => openGoalPlan('score'));
-  host.querySelector('#gp-read-open')?.addEventListener('click', () => openGoalPlan('read'));
+  host.querySelector('#gp-adjust-open').addEventListener('click', () => openGoalPlan('chat'));
+  host.querySelector('#gp-read-open').addEventListener('click', () => openGoalPlan(tr && tr.flags.length ? 'read' : has ? 'score' : 'new'));
+}
+function gpRing(score, size = 52) {
+  const r = 20, c = 2 * Math.PI * r, tone = gpScoreTone(score);
+  return `<span class="gp-ring gp-${tone}" style="width:${size}px;height:${size}px"><svg viewBox="0 0 48 48" aria-hidden="true"><circle cx="24" cy="24" r="${r}" class="gp-ring-bg"/><circle cx="24" cy="24" r="${r}" class="gp-ring-fg" stroke-dasharray="${(c * score / 100).toFixed(1)} ${c.toFixed(1)}" transform="rotate(-90 24 24)"/></svg><b>${score}</b></span>`;
 }
 function gpTrainerRead() {
   const bw = (profile?.directives || []).find(d => d && d.metric === 'body_weight_kg' && Number(d.target) > 0);
@@ -9851,22 +9864,23 @@ async function gpAsk(text) {
   if (m) m.scrollTo(0, m.scrollHeight);
 }
 function gpReadHtml(tr) {
-  const AREAS = [['rhythm', 'RHYTHM · time between sessions'], ['recovery', 'RECOVERY'], ['performance', 'PERFORMANCE'], ['body', 'BODY']];
-  const secs = AREAS.map(([k, label]) => {
-    const fl = tr.flags.filter(f => f.area === k);
-    if (!fl.length) return '';
-    return `<div class="gp-sub">${label}</div>${fl.map((f, i) => `<div class="gp-find gp-f-${f.tone}"><span class="gp-dot"></span><div><div class="gp-find-title">${escapeHtml(f.title)}</div><div class="gp-find-detail">${escapeHtml(f.detail)}</div>${f.ask ? `<button type="button" class="gp-find-ask" data-ask="${escapeHtml(f.ask)}">Ask your trainer →</button>` : ''}</div></div>`).join('')}`;
-  }).join('');
-  const ready = tr.readiness.length ? `<div class="gp-sub">MUSCLE READINESS</div><div class="gp-ready">${tr.readiness.map(r => `<span class="gp-rd gp-rd-${r.state}">${escapeHtml(r.group)} · ${r.days === 0 ? 'today' : r.days + 'd'}</span>`).join('')}</div><div class="gp-dim">Days since each group was last trained hard. Red is still recovering.</div>` : '';
-  return `<div class="gp-read-head gp-f-${tr.tone}"><div class="gp-eyebrow">TRAINER READ</div><div class="gp-read-title">${escapeHtml(tr.headline)}</div><div class="gp-dim">Re-checked every time you open the app, from your sessions, recovery and body metrics.</div></div>${secs}${ready}`;
+  const AREA = { rhythm: 'Rhythm', recovery: 'Recovery', performance: 'Performance', body: 'Body' };
+  const one = f => `<div class="gp-find gp-f-${f.tone}"><span class="gp-dot"></span><div><div class="gp-find-title">${escapeHtml(f.title)}</div><div class="gp-find-detail">${escapeHtml(f.detail)}</div>${f.ask ? `<button type="button" class="gp-find-ask" data-ask="${escapeHtml(f.ask)}">Ask your trainer →</button>` : ''}</div></div>`;
+  const top = tr.flags.slice(0, 3), rest = tr.flags.slice(3);
+  const ready = tr.readiness.length ? `<details class="gp-fold"><summary>Muscle readiness</summary><div class="gp-ready">${tr.readiness.map(r => `<span class="gp-rd gp-rd-${r.state}">${escapeHtml(r.group)} · ${r.days === 0 ? 'today' : r.days + 'd'}</span>`).join('')}</div><div class="gp-dim">Days since each group was last trained hard.</div></details>` : '';
+  const need = tr.flags.filter(f => f.tone !== 'good').length;
+  return `<div class="gp-read-title">${tr.flags.length ? (need ? `${need} thing${need === 1 ? '' : 's'} to look at` : 'All on track') : escapeHtml(tr.headline)}</div>
+    <div class="gp-list">${top.map(one).join('')}</div>
+    ${rest.length ? `<details class="gp-fold"><summary>${rest.length} more</summary><div class="gp-list">${rest.map(f => `<div class="gp-area">${AREA[f.area]}</div>${one(f)}`).join('')}</div></details>` : ''}
+    ${ready}`;
 }
 function gpScoreTone(n) { return n >= 70 ? 'good' : n >= 55 ? 'ok' : 'low'; }
 function gpScoreHtml(sc, before) {
   const rows = sc.metrics.map(m => `<details class="gp-metric gp-m-${m.status}"><summary><span class="gp-dot"></span><span class="gp-m-label">${escapeHtml(m.label)}</span><span class="gp-m-value">${escapeHtml(m.value)}</span></summary><div class="gp-m-body">${escapeHtml(m.detail)}${m.fix ? `<div class="gp-m-fix">${escapeHtml(m.fix)}</div>` : ''}${m.fromLogs ? '<div class="gp-dim">From your logged sessions.</div>' : ''}</div></details>`).join('');
   return `<div class="gp-score">
-    <div class="gp-score-top"><div class="gp-bignum gp-${gpScoreTone(sc.score)}">${sc.score}</div><div><div class="gp-score-grade">${escapeHtml(sc.grade)}</div><div class="gp-dim">${before != null ? `Was ${before} before this change` : 'Plan score out of 100'}</div></div></div>
-    ${rows}
-    <div class="gp-dim">Computed from your plan and logs: weekly sets per muscle, frequency, push/pull and upper/lower balance, session length, rep ranges for your goal, recovery gaps, lifts rising and sessions kept. A guide, not a verdict.</div>
+    <div class="gp-score-top">${gpRing(sc.score, 72)}<div><div class="gp-score-grade">${escapeHtml(sc.grade)}</div><div class="gp-dim">${before != null ? `Was ${before} before this change` : 'Plan score out of 100'}</div></div></div>
+    <div class="gp-list">${rows}</div>
+    <div class="gp-dim gp-foot">Computed from your plan and logs. A guide, not a verdict.</div>
   </div>`;
 }
 
@@ -9876,6 +9890,12 @@ async function openGoalPlan(mode = 'new') {
   if (mode !== 'chat') GP.chatBusy = false;
   if (mode !== 'new' && myProgram) { GP.base = gpPlanForAi(myProgram); GP.raw = GP.base; }
   if (!myCheckins.length) { try { await loadCheckins(); } catch (_) { /* optional */ } }
+  renderGoalPlan();
+}
+function gpSwitch(mode) {
+  if (mode === GP.mode) return;
+  GP.mode = mode; GP.error = ''; GP.question = ''; GP.result = null;
+  if (mode === 'score' || mode === 'adjust') { GP.base = myProgram ? gpPlanForAi(myProgram) : null; GP.raw = GP.base; }
   renderGoalPlan();
 }
 function gpPlanForAi(p) {
@@ -10001,7 +10021,8 @@ function renderGoalPlan() {
       </div>`;
   }
   el.innerHTML = `<div class="hunter-modal-inner gp-inner">
-    <div class="hunter-modal-header"><div class="gp-title">${adjust ? '✦ ASK YOUR TRAINER' : scoreMode ? '◈ PLAN SCORE' : readMode ? '◈ TRAINER READ' : chatMode ? '✦ YOUR TRAINER' : '✦ BUILD A PLAN'}</div><button type="button" class="gp-close" id="gp-close" aria-label="Close">✕</button></div>
+    <div class="hunter-modal-header"><div class="gp-title">${adjust ? 'Adjust your plan' : 'Your trainer'}</div><button type="button" class="gp-close" id="gp-close" aria-label="Close">✕</button></div>
+    ${r && r.program ? '' : `<div class="gp-tabs" role="tablist">${[['read', 'Read'], ['score', 'Plan'], ['chat', 'Ask'], ['new', 'Build']].map(([k, t]) => `<button type="button" role="tab" class="gp-tab ${GP.mode === k ? 'on' : ''}" data-mode="${k}" aria-selected="${GP.mode === k}">${t}</button>`).join('')}</div>`}
     ${GP.question ? `<div class="gp-ask"><b>The System asks</b><div>${escapeHtml(GP.question)}</div><div class="gp-dim">Add the answer to what you wrote, then build again.</div></div>` : ''}
     ${GP.error ? `<div class="gp-error" role="alert">${escapeHtml(GP.error)}</div>` : ''}
     ${r && r.program ? '' : input}
@@ -10030,6 +10051,7 @@ function gpWire(el) {
     renderGoalPlan();
   }));
   el.querySelector('#gp-build')?.addEventListener('click', () => { gpReadInputs(el); gpRun(null); });
+  el.querySelectorAll('.gp-tab').forEach(b => b.addEventListener('click', () => { gpReadInputs(el); gpSwitch(b.dataset.mode); }));
   el.querySelectorAll('.gp-prompt').forEach(b => b.addEventListener('click', () => gpAsk(b.dataset.q)));
   el.querySelector('#gp-chat-send')?.addEventListener('click', () => gpAsk(el.querySelector('#gp-chat-in').value));
   el.querySelector('#gp-chat-in')?.addEventListener('keydown', e => { if (e.key === 'Enter') gpAsk(e.target.value); });
