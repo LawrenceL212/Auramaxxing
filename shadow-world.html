@@ -42,6 +42,48 @@ canvas { display:block; }
 #deploy-row input { background:rgba(61,165,255,.06); border:1px solid rgba(61,165,255,.2); border-radius:8px; color:#e0e8ff; font-family:'Courier New',monospace; font-size:16px; padding:8px 12px; width:80px; text-align:center; -webkit-text-fill-color:#e0e8ff; }
 #pool-info { font-size:11px; color:rgba(61,165,255,.4); margin-bottom:12px; line-height:1.7; }
 #cont-progress { margin-bottom:12px; }
+/* Deploy planner: a continent view to load several territories at once */
+#planner { position:absolute; inset:0; z-index:36; background:rgba(2,6,14,.82); backdrop-filter:blur(4px); display:flex; align-items:flex-end; justify-content:center; }
+#planner[hidden] { display:none; }
+#pl-sheet { width:100%; max-width:520px; max-height:94dvh; overflow-y:auto; -webkit-overflow-scrolling:touch; overscroll-behavior:contain; touch-action:pan-y; background:linear-gradient(180deg,#121a2e,#0d1220); border:1px solid rgba(91,168,255,.3); border-bottom:0; border-radius:18px 18px 0 0; padding:14px 14px calc(18px + env(safe-area-inset-bottom,0px)); font-family:'Rajdhani',sans-serif; color:#f2f5fa; }
+.pl-top { display:flex; align-items:center; gap:10px; margin-bottom:10px; }
+.pl-crest { flex:none; width:40px; height:40px; display:grid; place-items:center; font-size:20px; border:1px solid var(--pl,#f59e0b); background:rgba(255,255,255,.05); clip-path:polygon(50% 0,100% 20%,100% 70%,50% 100%,0 70%,0 20%); }
+.pl-cn { font-family:'Orbitron',sans-serif; font-size:15px; letter-spacing:.04em; }
+.pl-cs { font-family:'Share Tech Mono',monospace; font-size:11px; letter-spacing:.12em; text-transform:uppercase; color:var(--pl,#f59e0b); }
+.pl-res { margin-left:auto; text-align:right; }
+.pl-res b { display:block; font-family:'Orbitron',sans-serif; font-size:22px; color:#ffd66b; }
+.pl-res span { font-family:'Share Tech Mono',monospace; font-size:10px; letter-spacing:.12em; color:#5d6a86; }
+.pl-x { flex:none; width:44px; height:44px; border:1px solid rgba(91,168,255,.3); background:transparent; color:#97a3bd; border-radius:8px; font-size:16px; cursor:pointer; }
+.pl-pre { display:grid; grid-template-columns:repeat(2,1fr); gap:8px; margin-bottom:10px; }
+.pl-pre button { min-height:44px; border:1px solid rgba(91,168,255,.3); background:rgba(91,168,255,.06); color:#f2f5fa; font-family:'Share Tech Mono',monospace; font-size:13px; border-radius:6px; cursor:pointer; touch-action:manipulation; }
+.pl-map { border:1px solid rgba(91,168,255,.28); background:radial-gradient(120% 90% at 50% 0%,rgba(91,168,255,.10),transparent 70%),#05070c; border-radius:8px; margin-bottom:8px; padding:4px; }
+.pl-map svg { display:block; width:100%; height:auto; }
+.pl-map path { stroke:#05070c; stroke-width:.6; stroke-linejoin:round; cursor:pointer; }
+.pl-map g.me path { fill:rgba(245,158,11,.55); } .pl-map g.free path { fill:rgba(91,168,255,.22); } .pl-map g.foe path { fill:rgba(255,107,130,.5); } .pl-map g.add path { fill:rgba(255,214,107,.65); }
+.pl-map g.sel path { stroke:#ffd66b; stroke-width:2; filter:drop-shadow(0 0 6px rgba(255,214,107,.8)); }
+.pl-badge { font-family:'Orbitron',sans-serif; font-weight:800; font-size:11px; text-anchor:middle; pointer-events:none; fill:#fff; paint-order:stroke; stroke:#05070c; stroke-width:3px; }
+.pl-lab { font-family:'Share Tech Mono',monospace; font-size:7.5px; text-anchor:middle; pointer-events:none; fill:#cfd8ea; paint-order:stroke; stroke:#05070c; stroke-width:2.5px; }
+.pl-chips { display:flex; gap:6px; overflow-x:auto; padding-bottom:6px; margin-bottom:8px; }
+.pl-chip { flex:none; min-height:40px; padding:0 10px; border:1px solid rgba(91,168,255,.3); background:rgba(91,168,255,.05); color:#cfd8ea; font-family:'Share Tech Mono',monospace; font-size:12px; border-radius:6px; cursor:pointer; white-space:nowrap; }
+.pl-chip.sel { border-color:#ffd66b; color:#ffd66b; } .pl-chip.foe { border-color:rgba(255,107,130,.6); } .pl-chip.me { border-color:rgba(245,158,11,.6); }
+.pl-key { display:flex; flex-wrap:wrap; gap:4px 12px; margin:0 0 8px; font-family:'Share Tech Mono',monospace; font-size:11px; color:#97a3bd; }
+.pl-key i { display:inline-block; width:10px; height:10px; border-radius:2px; margin-right:5px; vertical-align:-1px; }
+.pl-card { border:1px solid rgba(245,158,11,.5); background:rgba(91,168,255,.04); padding:10px; border-radius:8px; margin-bottom:10px; display:grid; grid-template-columns:1fr auto; gap:6px 10px; }
+.pl-card.free { border-style:dashed; border-color:rgba(91,168,255,.4); } .pl-card.foe { border-color:rgba(255,107,130,.5); background:rgba(255,107,130,.05); }
+.pl-tn { font-weight:700; font-size:17px; } .pl-tn small { font-family:'Share Tech Mono',monospace; font-weight:400; font-size:11px; color:#5d6a86; margin-left:6px; letter-spacing:.08em; }
+.pl-tg { font-family:'Share Tech Mono',monospace; font-size:12px; color:#97a3bd; } .pl-tg b { color:#f2f5fa; font-weight:400; } .pl-tg i { font-style:normal; color:#6fffb0; }
+.pl-ctl { display:flex; align-items:center; gap:6px; }
+.pl-ctl button { width:44px; height:44px; border-radius:50%; border:1.5px solid #ffd66b; background:rgba(255,214,107,.08); color:#ffd66b; font-family:'Orbitron',sans-serif; font-size:20px; cursor:pointer; touch-action:manipulation; }
+.pl-ctl output { min-width:34px; text-align:center; font-family:'Orbitron',sans-serif; font-size:16px; color:#ffd66b; }
+.pl-bar { grid-column:1/-1; height:7px; background:rgba(255,255,255,.07); border-radius:4px; overflow:hidden; display:flex; }
+.pl-bar .a { background:#f59e0b; } .pl-bar .n { background:repeating-linear-gradient(45deg,#ffd66b 0 5px,#e0a92e 5px 10px); }
+.pl-foot { grid-column:1/-1; display:flex; gap:8px; align-items:center; justify-content:space-between; flex-wrap:wrap; }
+.pl-step { display:flex; gap:6px; } .pl-step button, .pl-war { min-height:40px; padding:0 12px; border:1px solid rgba(91,168,255,.3); background:transparent; color:#97a3bd; font-family:'Share Tech Mono',monospace; border-radius:6px; cursor:pointer; }
+.pl-step button.on { color:#ffd66b; border-color:#ffd66b; } .pl-war { color:#ff6b82; border-color:#ff6b82; }
+.pl-sum { margin:0 0 12px; border:1px solid rgba(91,168,255,.28); background:rgba(91,168,255,.05); padding:10px 12px; display:grid; gap:6px; font-family:'Share Tech Mono',monospace; font-size:13px; }
+.pl-row { display:flex; justify-content:space-between; gap:8px; color:#97a3bd; } .pl-row em { font-style:normal; color:#f2f5fa; text-align:right; } .pl-row em.g { color:#6fffb0; }
+.pl-go { width:100%; min-height:56px; border:0; cursor:pointer; font-family:'Orbitron',sans-serif; font-weight:800; font-size:14px; letter-spacing:.1em; text-transform:uppercase; color:#1a0f00; background:linear-gradient(90deg,#ff8a3d,#ffd66b); box-shadow:0 0 26px rgba(255,214,107,.4); clip-path:polygon(10px 0,100% 0,100% calc(100% - 10px),calc(100% - 10px) 100%,0 100%,0 10px); }
+.pl-go[disabled] { filter:grayscale(1) brightness(.5); box-shadow:none; cursor:default; }
 /* In-game notification */
 #sw-notif { position:absolute; top:50px; left:50%; transform:translateX(-50%); z-index:40; pointer-events:none; display:flex; flex-direction:column; gap:6px; align-items:center; }
 .sw-notif-msg { background:rgba(2,12,24,0.95); border:1px solid rgba(61,165,255,.3); border-radius:10px; padding:10px 18px; font-size:12px; color:#e0e8ff; white-space:nowrap; animation:notifPop .25s cubic-bezier(.16,1,.3,1); box-shadow:0 4px 20px rgba(0,0,0,.4); }
@@ -190,6 +232,10 @@ canvas { display:block; }
   <div id="gate-locked">⚔ THE GATE — Locked<br><span style="font-size:9px;color:rgba(148,163,184,.4);">Dominate 3 continents to unlock</span></div>
   <div id="tt"></div>
   <div id="panel-backdrop" onclick="closePanel()"></div>
+<div id="planner" role="dialog" aria-modal="true" aria-label="Deploy planner" hidden>
+  <div id="pl-sheet"></div>
+</div>
+
   <div id="panel">
     <div id="panel-header">
       <div>
@@ -202,6 +248,7 @@ canvas { display:block; }
     <div id="cont-progress"></div>
     <div id="ps"></div>
     <div id="pool-info"></div>
+    <div id="planner-row" style="display:none;margin-bottom:12px;"><button class="pb bd" id="open-planner" style="width:100%;min-height:48px;">⚑ DEPLOY PLANNER · SEE THE CONTINENT</button></div>
     <div id="deploy-row" style="display:none;">
       <input type="number" id="deploy-input" min="1" value="10" inputmode="numeric" />
       <button class="pb bd" id="deploy-btn" style="flex:none;padding:9px 16px;">⚑ Deploy</button>
@@ -297,6 +344,26 @@ const GAME_COUNTRIES = [
   { id:'an_4', name:'Voidgate',     ckey:'antarctica', isCapital:false, lat:-80,lon:-120, realCountries:[] },
   { id:'an_5', name:'The Rift',     ckey:'antarctica', isCapital:false, lat:-80,lon:-60,  realCountries:[] },
 ];
+
+/* Real place names. `name` keeps the game's own name (shown as a small tag); `place` is the real region the
+   territory covers and is what the map, panel and planner lead with. Display only: ids and stored data are unchanged. */
+const PLACE = {
+  na_0:['Canada','Canada'], na_1:['United States','United States'], na_2:['Mexico & Central America','Mexico & C. America'],
+  na_3:['The Caribbean','Caribbean'], na_4:['Greenland','Greenland'], na_5:['Arctic Canada','Arctic Canada'],
+  sa_0:['Northern South America','N. South America'], sa_1:['Brazil','Brazil'], sa_2:['Central Andes','Central Andes'],
+  sa_3:['River Plate','River Plate'], sa_4:['Chile','Chile'], sa_5:['Falkland Islands','Falklands'],
+  eu_0:['Western Europe','Western Europe'], eu_1:['Central Europe & Balkans','Central Europe'], eu_2:['Southern Europe','Southern Europe'],
+  eu_3:['Nordic Countries','Nordics'], eu_4:['Baltics & Ukraine','Baltics & Ukraine'], eu_5:['Turkey & Caucasus','Turkey & Caucasus'],
+  af_0:['North Africa','North Africa'], af_1:['Central Africa','Central Africa'], af_2:['East Africa','East Africa'],
+  af_3:['Southern Africa','Southern Africa'], af_4:['South Africa','South Africa'], af_5:['Indian Ocean Islands','Indian Ocean'],
+  as_0:['Russia & Central Asia','Russia & C. Asia'], as_1:['China & South Asia','China & S. Asia'], as_2:['Southeast Asia','Southeast Asia'],
+  as_3:['Japan & the Koreas','Japan & Koreas'], as_4:['Philippines','Philippines'], as_5:['South China Sea','South China Sea'],
+  au_0:['Australia','Australia'], au_1:['Tasmania & Bass Strait','Tasmania'], au_2:['Melanesia','Melanesia'],
+  au_3:['Fiji & Polynesia','Fiji & Polynesia'], au_4:['Micronesia','Micronesia'], au_5:['New Zealand','New Zealand'],
+  an_0:['Queen Maud Land','Queen Maud Land'], an_1:['Enderby Land','Enderby Land'], an_2:['Wilkes Land','Wilkes Land'],
+  an_3:['Ross Sea','Ross Sea'], an_4:['Marie Byrd Land','Marie Byrd Land'], an_5:['Antarctic Peninsula','Antarctic Peninsula'],
+};
+GAME_COUNTRIES.forEach(gc => { const pl = PLACE[gc.id]; gc.place = pl ? pl[0] : gc.name; gc.short = pl ? pl[1] : gc.name; });
 
 // ── LOOKUP: country name → game country ──
 const nameToGame = {};
@@ -658,9 +725,9 @@ function draw(t = 0) {
     ctx.textAlign = 'center';
     // Text shadow
     ctx.strokeStyle = 'rgba(0,0,0,0.9)'; ctx.lineWidth = 3;
-    ctx.strokeText(c.name, x, y - dotR - 6);
+    ctx.strokeText(c.short||c.name, x, y - dotR - 6);
     ctx.fillStyle = p ? `rgb(${p.r},${p.g},${p.b})` : (m.hex + 'aa');
-    ctx.fillText(c.name, x, y - dotR - 6);
+    ctx.fillText(c.short||c.name, x, y - dotR - 6);
 
     // Soldiers — shield icon + count + strength bar
     if (soldiers > 0 && p) {
@@ -904,7 +971,7 @@ function updateTT(sx,sy){
     const isAnt=c.ckey==='antarctica';
     tt.style.display='block';tt.style.left=(sx+12)+'px';tt.style.top=(sy-28)+'px';
     if(isAnt&&!isAntarcticaUnlocked()){tt.textContent='??? — Dominate 3 continents to reveal';return;}
-    tt.textContent=c.name+(state?` · ${p?.name||'?'} · 🛡 ${state.soldiers.toLocaleString()}`:' · Unclaimed');
+    tt.textContent=(c.place||c.name)+(state?` · ${p?.name||'?'} · 🛡 ${state.soldiers.toLocaleString()}`:' · Unclaimed');
   }else tt.style.display='none';
 }
 
@@ -932,7 +999,7 @@ function openPanel(c) {
 
   document.getElementById('pc').textContent = `${m.icon} ${m.name.toUpperCase()} · ${m.stat}`;
   document.getElementById('pc').style.color = m.hex;
-  document.getElementById('pn').textContent = (c.isCapital?'★ ':'')+c.name;
+  document.getElementById('pn').innerHTML = (c.isCapital?'★ ':'')+(c.place||c.name)+(c.place&&c.place!==c.name?` <span style="font-size:10px;font-weight:400;letter-spacing:.1em;color:rgba(61,165,255,.45);">${c.name.toUpperCase()}</span>`:'');
   document.getElementById('pn').style.color = ownerP?.hex||'#61a5ff';
 
   document.getElementById('po').innerHTML = state&&ownerP
@@ -1012,9 +1079,160 @@ function openPanel(c) {
     pa.innerHTML = `<button class="pb ba" onclick="declareWar('${c.id}','${state.ownerUid}')">⚔ Declare War on ${ownerP?.name||'?'}</button>`;
   }
 
+  const plRow = document.getElementById('planner-row');
+  const canPlan = myPool > 0 && !isExplorationLocked() && c.ckey !== 'antarctica';
+  plRow.style.display = canPlan ? 'block' : 'none';
+  document.getElementById('open-planner').onclick = () => openPlanner(c.ckey, c.id);
+
   document.getElementById('panel').classList.add('open');
   document.getElementById('panel-backdrop').classList.add('open');
 }
+
+// ── DEPLOY PLANNER ──
+// A continent view: tap a territory on the map (or its chip), load soldiers, deploy several at once.
+// It sends the same 'deployToCountry' message as the quick deploy, one territory at a time, waiting for the
+// parent's 'deployDone' so each write sees the pool left by the one before.
+const PL_BOX = { northAmerica:[-170,-50,5,84], southAmerica:[-84,-33,-57,14], europe:[-26,62,33,72], africa:[-20,52,-36,38], asia:[26,150,-12,78], australia:[110,180,-48,2] };
+let PL = null; // { ckey, terr:[gc], add:{id:n}, sel:id, step }
+function plHeld(gc) {
+  const st = LIVE_COUNTRIES[gc.id];
+  if (!st || !st.ownerUid) return 'free';
+  return st.ownerUid === CURRENT_UID ? 'me' : 'foe';
+}
+function plPool() { const m = CONT[PL.ckey]; return (LIVE_POOL[CURRENT_UID]||{})[m.armyKey]||0; }
+function plLeft() { return plPool() - Object.values(PL.add).reduce((a,b)=>a+b,0); }
+function plSet(id, v) {
+  const others = Object.entries(PL.add).reduce((a,[k,n])=>a+(k===id?0:n),0);
+  PL.add[id] = Math.max(0, Math.min(plPool()-others, v));
+}
+function plEsc(t) { return String(t).replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch])); }
+function plMapSvg() {
+  const box = PL_BOX[PL.ckey];
+  if (!box) return '';
+  const [lon0,lon1,lat0,lat1] = box;
+  const mid = (lat0+lat1)/2, cosM = Math.max(.35, Math.cos(mid*Math.PI/180));
+  let s = 360/((lon1-lon0)*cosM);
+  s = Math.min(s, 300/(lat1-lat0));
+  const w = (lon1-lon0)*cosM*s, hgt = (lat1-lat0)*s, ox = (360-w)/2;
+  const px = (lon,lat) => [ox+(Math.max(lon0,Math.min(lon1,lon))-lon0)*cosM*s, (lat1-Math.max(lat0,Math.min(lat1,lat)))*s];
+  let paths = '', labels = '';
+  PL.terr.forEach(gc => {
+    const b = gcBounds[gc.id];
+    if (!b || !b.rings.length) return;
+    let d = '';
+    b.rings.forEach(ring => {
+      if (!ring.some(([lo,la]) => lo>=lon0&&lo<=lon1&&la>=lat0&&la<=lat1)) return;
+      const step = ring.length>400 ? 3 : ring.length>120 ? 2 : 1;
+      let seg = '';
+      for (let i=0;i<ring.length;i+=step) { const [x,y]=px(ring[i][0],ring[i][1]); seg += (seg?'L':'M')+x.toFixed(1)+' '+y.toFixed(1); }
+      d += seg+'Z';
+    });
+    if (!d) return;
+    const own = plHeld(gc), n = PL.add[gc.id]||0;
+    const cls = (own==='foe'?'foe':(n>0?'add':own)) + (PL.sel===gc.id?' sel':'');
+    paths += `<g class="${cls}" data-id="${gc.id}"><path d="${d}"></path></g>`;
+    const [lx,ly] = px(gc.lon, gc.lat), st = LIVE_COUNTRIES[gc.id], tot = (st?.soldiers||0)+n;
+    labels += `<text class="pl-lab" x="${lx.toFixed(1)}" y="${(ly-9).toFixed(1)}">${gc.isCapital?'★ ':''}${plEsc(gc.short)}</text><text class="pl-badge" x="${lx.toFixed(1)}" y="${(ly+4).toFixed(1)}">${tot||'+'}</text>`;
+  });
+  return `<svg viewBox="0 0 360 ${Math.round(hgt)}" role="img" aria-label="Map of ${plEsc(CONT[PL.ckey].name)}. Tap a territory to load soldiers.">${paths}${labels}</svg>`;
+}
+function renderPlanner() {
+  const m = CONT[PL.ckey], pool = plPool(), left = plLeft();
+  const sel = PL.terr.find(g => g.id===PL.sel) || PL.terr[0];
+  const heldNow = PL.terr.filter(g => plHeld(g)==='me').length;
+  const heldAfter = PL.terr.filter(g => plHeld(g)==='me' || (plHeld(g)==='free' && (PL.add[g.id]||0)>0)).length;
+  const used = pool-left, n = Object.values(PL.add).filter(v=>v>0).length;
+  const mapSvg = plMapSvg();
+  const chips = PL.terr.map(g => {
+    const own = plHeld(g), st = LIVE_COUNTRIES[g.id], tot = (st?.soldiers||0)+(PL.add[g.id]||0);
+    return `<button type="button" class="pl-chip ${own==='foe'?'foe':own==='me'?'me':''} ${g.id===sel.id?'sel':''}" data-id="${g.id}">${g.isCapital?'★ ':''}${plEsc(g.short)} · ${tot}</button>`;
+  }).join('');
+  const own = plHeld(sel), st = LIVE_COUNTRIES[sel.id], stationed = st?.soldiers||0, add = PL.add[sel.id]||0;
+  const fan = sel.place && sel.place!==sel.name ? `${plEsc(sel.name.toUpperCase())} · ` : '';
+  let card;
+  if (own==='foe') {
+    const owner = PLAYERS[st.ownerUid];
+    card = `<div class="pl-card foe"><div><div class="pl-tn">${sel.isCapital?'★ ':''}${plEsc(sel.place)}<small>${fan}${plEsc((owner?.name||'?').toUpperCase())}</small></div><div class="pl-tg"><b>${stationed.toLocaleString()}</b> stationed · home advantage 1.2×</div></div><div></div><div class="pl-foot"><span style="color:#ff6b82;font-size:14px;">Can't deploy onto enemy ground</span><button type="button" class="pl-war" id="pl-war">⚔ Declare war</button></div></div>`;
+  } else {
+    const max = Math.max(20, stationed+add);
+    card = `<div class="pl-card ${own==='me'?'':'free'}"><div><div class="pl-tn">${sel.isCapital?'★ ':''}${plEsc(sel.place)}<small>${fan}${own==='me'?'YOURS':'FREE · 1 SOLDIER CLAIMS IT'}</small></div><div class="pl-tg"><b>${stationed.toLocaleString()}</b>${add?` → <i>${(stationed+add).toLocaleString()}</i>`:''} stationed</div></div><div class="pl-ctl"><button type="button" data-d="-1" aria-label="Remove soldiers">−</button><output>${add}</output><button type="button" data-d="1" aria-label="Add soldiers">+</button></div><div class="pl-bar"><div class="a" style="width:${stationed/max*100}%"></div><div class="n" style="width:${add/max*100}%"></div></div><div class="pl-foot"><div class="pl-step">${[1,5,10].map(v=>`<button type="button" data-step="${v}" class="${PL.step===v?'on':''}">×${v}</button>`).join('')}<button type="button" data-max="1">Max</button></div></div></div>`;
+  }
+  const mineAfter = PL.terr.map(g => ({g, v:(LIVE_COUNTRIES[g.id]?.soldiers||0)+(PL.add[g.id]||0), ok: plHeld(g)==='me' || (plHeld(g)==='free' && (PL.add[g.id]||0)>0)})).filter(x=>x.ok);
+  const weak = mineAfter.length ? mineAfter.reduce((a,b)=>b.v<a.v?b:a) : null;
+  const foes = PL.terr.filter(g => plHeld(g)==='foe');
+  const need = 6-heldAfter;
+  const dom = heldAfter===6 ? '★ Dominated' : need>0 ? (foes.length ? `needs ${need} more, incl. ${plEsc(foes[0].short)}` : `needs ${need} more`) : '';
+  document.getElementById('pl-sheet').innerHTML = `
+    <div class="pl-top" style="--pl:${m.hex}"><div class="pl-crest">${m.icon}</div><div><div class="pl-cn">${plEsc(m.name)}</div><div class="pl-cs">${plEsc(m.stat)} · ${heldNow} of 6 held</div></div><div class="pl-res"><b>${left.toLocaleString()}</b><span>LEFT TO PLACE</span></div><button type="button" class="pl-x" id="pl-close" aria-label="Close planner">✕</button></div>
+    <div class="pl-pre"><button type="button" data-pre="claim">Claim all free</button><button type="button" data-pre="even">Spread evenly</button><button type="button" data-pre="weak">Reinforce weakest</button><button type="button" data-pre="clear">Clear</button></div>
+    ${mapSvg?`<div class="pl-map">${mapSvg}</div><div class="pl-key"><span><i style="background:rgba(245,158,11,.7)"></i>Yours</span><span><i style="background:rgba(91,168,255,.35)"></i>Free</span><span><i style="background:rgba(255,107,130,.7)"></i>Rival</span><span><i style="background:rgba(255,214,107,.8)"></i>Adding</span></div>`:''}
+    <div class="pl-chips">${chips}</div>
+    ${card}
+    <div class="pl-sum"><div class="pl-row"><span>Countries held</span><em class="${heldAfter>heldNow?'g':''}">${heldNow}/6 → ${heldAfter}/6</em></div><div class="pl-row"><span>Weakest garrison</span><em>${weak?plEsc(weak.g.short)+' · '+weak.v.toLocaleString():'—'}</em></div><div class="pl-row"><span>Domination</span><em>${dom}</em></div></div>
+    <button type="button" class="pl-go" id="pl-go" ${used?'':'disabled'}>${used?`Deploy ${used.toLocaleString()} to ${n} ${n===1?'territory':'territories'}`:'Place soldiers'}</button>`;
+}
+function openPlanner(ckey, selId) {
+  const terr = GAME_COUNTRIES.filter(g => g.ckey===ckey);
+  PL = { ckey, terr, add:{}, sel:selId, step:5 };
+  terr.forEach(g => PL.add[g.id]=0);
+  closePanel();
+  document.getElementById('planner').hidden = false;
+  renderPlanner();
+}
+function closePlanner() { document.getElementById('planner').hidden = true; PL = null; }
+function plPreset(kind) {
+  const pool = plPool();
+  PL.terr.forEach(g => PL.add[g.id]=0);
+  const free = PL.terr.filter(g => plHeld(g)==='free'), mine = PL.terr.filter(g => plHeld(g)==='me');
+  if (kind==='claim') { free.slice(0,pool).forEach(g => PL.add[g.id]=1); }
+  else if (kind==='even') { const ids = free.concat(mine); if (ids.length) { const each = Math.floor(pool/ids.length); ids.forEach(g => PL.add[g.id]=each); } }
+  else if (kind==='weak' && mine.length) { const w = mine.reduce((a,b)=>((LIVE_COUNTRIES[b.id]?.soldiers||0)<(LIVE_COUNTRIES[a.id]?.soldiers||0)?b:a)); PL.add[w.id]=Math.min(pool,Math.max(1,Math.round(pool*.25))); PL.sel=w.id; }
+  renderPlanner();
+}
+let PL_WAIT = null;
+function plSendOne(gc, amount) {
+  const m = CONT[gc.ckey];
+  return new Promise(resolve => {
+    const t = setTimeout(() => { PL_WAIT = null; resolve(false); }, 8000);
+    PL_WAIT = ok => { clearTimeout(t); PL_WAIT = null; resolve(ok); };
+    window.parent.postMessage({ type:'deployToCountry', gcId:gc.id, armyKey:m.armyKey, amount, ckey:gc.ckey }, PARENT_ORIGIN);
+  });
+}
+async function plDeploy() {
+  if (!PL) return;
+  if (isExplorationLocked()) { swNotify('⚠ Exploration locked — wait for the countdown', '#ff3d5a'); return; }
+  const m = CONT[PL.ckey], jobs = PL.terr.filter(g => (PL.add[g.id]||0)>0 && plHeld(g)!=='foe');
+  const total = jobs.reduce((a,g)=>a+PL.add[g.id],0);
+  if (!jobs.length || total>plPool()) return;
+  const btn = document.getElementById('pl-go'); if (btn) { btn.disabled = true; btn.textContent = 'Deploying…'; }
+  let placed = 0, failed = 0;
+  for (const g of jobs) {
+    const amount = PL.add[g.id];
+    const ok = await plSendOne(g, amount);
+    if (!ok) { failed++; continue; }
+    placed += amount;
+    if (!LIVE_COUNTRIES[g.id]) LIVE_COUNTRIES[g.id] = { ownerUid:CURRENT_UID, soldiers:0 };
+    else if (!LIVE_COUNTRIES[g.id].ownerUid) LIVE_COUNTRIES[g.id].ownerUid = CURRENT_UID;
+    LIVE_COUNTRIES[g.id].soldiers = (LIVE_COUNTRIES[g.id].soldiers||0) + amount;
+    if (!LIVE_POOL[CURRENT_UID]) LIVE_POOL[CURRENT_UID] = {};
+    LIVE_POOL[CURRENT_UID][m.armyKey] = Math.max(0, ((LIVE_POOL[CURRENT_UID][m.armyKey])||0) - amount);
+  }
+  updateGateLock();
+  swNotify(failed ? `⚠ ${placed.toLocaleString()} deployed, ${failed} territor${failed===1?'y':'ies'} failed — check your reserve` : `⚑ ${placed.toLocaleString()} soldiers deployed across ${jobs.length} ${jobs.length===1?'territory':'territories'}`, failed?'#ff3d5a':(PLAYERS[CURRENT_UID]?.hex||'#61a5ff'));
+  closePlanner();
+}
+document.getElementById('planner').addEventListener('click', e => {
+  if (!PL) return;
+  if (e.target.id==='planner' || e.target.closest('#pl-close')) { closePlanner(); return; }
+  const g = e.target.closest('g[data-id]'), chip = e.target.closest('.pl-chip');
+  if (g || chip) { PL.sel = (g||chip).dataset.id; renderPlanner(); return; }
+  const pre = e.target.closest('[data-pre]'); if (pre) { plPreset(pre.dataset.pre); return; }
+  const step = e.target.closest('[data-step]'); if (step) { PL.step = +step.dataset.step; renderPlanner(); return; }
+  if (e.target.closest('[data-max]')) { plSet(PL.sel, plLeft()+(PL.add[PL.sel]||0)); renderPlanner(); return; }
+  const d = e.target.closest('button[data-d]'); if (d) { plSet(PL.sel, (PL.add[PL.sel]||0)+(+d.dataset.d)*PL.step); renderPlanner(); return; }
+  if (e.target.closest('#pl-war')) { const gc = PL.terr.find(x=>x.id===PL.sel); const st = LIVE_COUNTRIES[gc.id]; closePlanner(); declareWar(gc.id, st.ownerUid); return; }
+  if (e.target.closest('#pl-go')) plDeploy();
+});
 
 function deployToCountry(c, amount) {
   if (isExplorationLocked()) { swNotify('⚠ Exploration locked — wait for the countdown', '#ff3d5a'); return; }
@@ -1038,7 +1256,7 @@ function deployToCountry(c, amount) {
   LIVE_COUNTRIES[c.id].soldiers=(LIVE_COUNTRIES[c.id].soldiers||0)+amount;
   if (!LIVE_POOL[CURRENT_UID]) LIVE_POOL[CURRENT_UID]={};
   LIVE_POOL[CURRENT_UID][m.armyKey]=Math.max(0,myPool-amount);
-  swNotify(`⚑ ${amount.toLocaleString()} soldiers deployed to ${c.name}`, PLAYERS[CURRENT_UID]?.hex||'#61a5ff');
+  swNotify(`⚑ ${amount.toLocaleString()} soldiers deployed to ${c.place||c.name}`, PLAYERS[CURRENT_UID]?.hex||'#61a5ff');
   updateGateLock();
   closePanel();
 }
@@ -1082,6 +1300,7 @@ window.addEventListener('resize', resetView);
 // Listen for continent focus from parent
 window.addEventListener('message', (e) => {
   if (e.source !== window.parent) return;
+  if (e.data?.type === 'deployDone') { if (PL_WAIT) PL_WAIT(!!e.data.ok); return; }
   if (e.data?.type === 'focusContinent') {
     const CC={northAmerica:[42,-100],southAmerica:[-20,-58],europe:[54,14],africa:[5,20],asia:[42,82],australia:[-28,134],antarctica:[-78,0]};
     const [lat,lon]=CC[e.data.ckey]||[0,0];
