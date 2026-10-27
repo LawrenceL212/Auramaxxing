@@ -74,6 +74,18 @@ async function generatePlan({ data, apiKey, fetchImpl }) {
 }
 
 
+
+const OUTLOOKS = ['on_track', 'slow', 'off_track', 'not_enough_data'];
+const SUMMARY_SYSTEM = [
+  'You are the personal trainer inside a fitness game, writing a progress update for one Hunter from their own data.',
+  'Use ONLY the data given. Quote their real numbers (lift trends, weight pace, sessions a week, plan score). Never invent numbers. If something cannot be judged because there is too little data, say so.',
+  'Write exactly three short paragraphs, plain sentences, no hype, no lists: (1) how the last month looks, (2) whether they are progressing toward their goal and roughly when they would get there at the current pace, if the data supports an estimate, (3) the one or two changes that would help most.',
+  'Under 150 words in total. You are not a doctor; for pain or injury suggest a qualified professional.',
+  'If one change to the plan would help most, put it as ONE tappable sentence in "change", else null. Never claim you already changed anything.',
+  '"outlook" is one of: on_track, slow, off_track, not_enough_data.',
+  'Reply with a single JSON object and nothing else: {"answer":"para1\\n\\npara2\\n\\npara3","outlook":"on_track","change":null}',
+].join('\n');
+
 const ASK_SYSTEM = [
   'You are the personal trainer inside a fitness game, talking to one Hunter about their own training.',
   'Answer the question using ONLY the data given (their plan, logged sessions, recovery, rhythm and body metrics). Quote their real numbers. If the data needed is missing, say what is missing and how to log it. Never invent numbers.',
@@ -86,14 +98,15 @@ const ASK_SYSTEM = [
 
 /** A question for the trainer, with the computed context the app sends. */
 function buildAskRequest(data) {
-  const q = clip(data && data.question, 600).trim();
+  const summary = !!(data && data.summary);
+  const q = summary ? 'Give me my progress update.' : clip(data && data.question, 600).trim();
   if (q.length < 2) { const e = new Error('Ask the trainer something first.'); e.code = 'invalid-argument'; throw e; }
   const history = Array.isArray(data.history) ? data.history.slice(-6).map(h => `${h && h.role === 'trainer' ? 'Trainer' : 'Hunter'}: ${clip(h && h.text, 500)}`) : [];
   const parts = [`Hunter's data (JSON, computed by the app): ${clip(JSON.stringify(data.context || {}), 7000)}`];
   if (data.plan) parts.push(`Current plan (JSON): ${clip(JSON.stringify(data.plan), 4000)}`);
   if (history.length) parts.push(`Conversation so far:\n${history.join('\n')}`);
   parts.push(`Hunter asks: ${q}`);
-  return { model: MODEL, max_tokens: 700, system: ASK_SYSTEM, messages: [{ role: 'user', content: parts.join('\n\n') }] };
+  return { model: MODEL, max_tokens: summary ? 900 : 700, system: summary ? SUMMARY_SYSTEM : ASK_SYSTEM, messages: [{ role: 'user', content: parts.join('\n\n') }] };
 }
 
 async function askTrainer({ data, apiKey, fetchImpl }) {
@@ -109,7 +122,7 @@ async function askTrainer({ data, apiKey, fetchImpl }) {
   const reply = parseReply(text);
   const answer = reply && reply.answer ? clip(reply.answer, 1500) : clip(text, 1500).trim();
   if (!answer) { const e = new Error('The trainer gave no answer. Try again.'); e.code = 'internal'; throw e; }
-  return { answer, change: reply && reply.change ? clip(reply.change, 300) : null };
+  return { answer, change: reply && reply.change ? clip(reply.change, 300) : null, outlook: reply && OUTLOOKS.includes(reply.outlook) ? reply.outlook : null };
 }
 
 /** At most `max` calls per user per hour, per function instance. */

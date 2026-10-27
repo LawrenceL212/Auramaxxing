@@ -401,3 +401,12 @@
 .gp-typing{color:var(--text-dim,#a9a6bd);font-size:14px}
 .gp-prompts{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px}
 .gp-prompt{min-height:44px;padding:8px 14px;border:1px solid rgba(255,255,255,.12);border-radius:99px;background:none;color:var(--text,#e8e6f0);font-size:14px}
+
+/* progress update */
+.gp-sum{margin:0 0 22px;padding:16px;border-radius:16px;background:rgba(255,255,255,.04)}
+.gp-sum-go{margin-top:0;margin-bottom:10px}
+.gp-sum-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}
+.gp-chip{display:inline-block;padding:4px 12px;border-radius:99px;font-size:13px;font-weight:700;background:rgba(255,255,255,.08)}
+.gp-t-good{color:var(--growing,#4fc38a)}.gp-t-ok{color:var(--brass,#c9a24a)}.gp-t-low{color:var(--excess,#e05a5a)}
+.gp-sum-p{font-size:15px;line-height:1.65;margin:0 0 12px}
+.gp-link{min-height:44px;background:none;border:0;padding:0;color:var(--text-dim,#a9a6bd);font-size:13px;text-decoration:underline}

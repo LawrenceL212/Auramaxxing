@@ -4668,7 +4668,7 @@ import { weekStrip, weekProgress, latestDate, agoLabel, estimateMinutes, totalSe
   lastSet, lastTimeLabel, upNext, leftLabel } from "./hunt-view.js";
 import { penaltyView } from "./penalty-view.js";
 import { scorePlan, diffPlans } from "./plan-metrics.js";
-import { trainerRead } from "./trainer-insights.js";
+import { trainerRead, localSummary } from "./trainer-insights.js";
 import { skinfoldBodyFat, feasibility, feasibilityText, historyDigest, catalogue, excludedFromText, validatePlan, planGroups } from "./plan-gen.js";
 import { setInputKind, setInputHeaders, storedSet, storedSetSecs, partsToSecs, secsToParts,
          formatSetTime, isTimeKind, LOAD_TYPES, loadLabel, offersLoadChoice, defaultLoad,
@@ -9762,7 +9762,7 @@ function attachSwipeHandlers(el, onSwipeLeft, onSwipeRight) {
    writes programs/{uid} exactly as the plan editor does, and keeps the old
    plan for an Undo. Standing preferences ("never legs") stay on this device.
    ========================================================================= */
-const GP = { chat: [], chatBusy: false, mode: 'new', goal: '', nums: {}, busy: false, error: '', question: '', result: null, raw: null, understood: null, backup: null, open: false };
+const GP = { summary: null, sumBusy: false, chat: [], chatBusy: false, mode: 'new', goal: '', nums: {}, busy: false, error: '', question: '', result: null, raw: null, understood: null, backup: null, open: false };
 function gpStandingKey() { return 'aura_goalplan_standing_' + (currentUser?.uid || ''); }
 function gpStanding() { try { return JSON.parse(localStorage.getItem(gpStandingKey()) || '[]') || []; } catch (_) { return []; } }
 function gpSetStanding(list) { try { localStorage.setItem(gpStandingKey(), JSON.stringify(list.slice(0, 8))); } catch (_) { /* private mode */ } }
@@ -9826,6 +9826,46 @@ function gpTrainerContext() {
     standingPreferences: gpStanding(),
   };
 }
+function gpSumKey() { return 'aura_goalplan_summary_' + (currentUser?.uid || ''); }
+function gpLoadSummary() {
+  if (GP.summary) return GP.summary;
+  try { GP.summary = JSON.parse(localStorage.getItem(gpSumKey()) || 'null'); } catch (_) { GP.summary = null; }
+  return GP.summary;
+}
+const GP_OUTLOOK = { on_track: ['On track', 'good'], slow: ['Slower than it could be', 'ok'], off_track: ['Not working yet', 'low'], not_enough_data: ['Too early to say', 'none'] };
+function gpSummaryHtml() {
+  const sm = gpLoadSummary();
+  if (GP.sumBusy) return '<div class="gp-sum"><div class="gp-dim">Your trainer is reading your last eight weeks…</div></div>';
+  if (!sm) return `<div class="gp-sum"><button type="button" class="gp-go gp-sum-go" id="gp-sum-btn">Get my progress update</button><div class="gp-dim">A short written read of how you are doing, whether you are progressing, and what to change next.</div></div>`;
+  const [label, tone] = GP_OUTLOOK[sm.outlook] || GP_OUTLOOK.not_enough_data;
+  return `<div class="gp-sum"><div class="gp-sum-head"><span class="gp-chip gp-t-${tone}">${escapeHtml(label)}</span><span class="gp-dim">${escapeHtml(sm.date || '')}${sm.local ? ' · computed' : ''}</span></div>
+    ${String(sm.answer).split(/\n\n+/).map(p => `<p class="gp-sum-p">${escapeHtml(p)}</p>`).join('')}
+    ${sm.change ? `<button type="button" class="gp-find-ask" data-ask="${escapeHtml(sm.change)}">Change my plan: ${escapeHtml(sm.change)} →</button>` : ''}
+    ${sm.local ? '<div class="gp-dim">The written update was not available, so this is a summary computed from your numbers.</div>' : ''}
+    <button type="button" class="gp-link" id="gp-sum-btn">Refresh update</button></div>`;
+}
+async function gpSummarise() {
+  if (GP.sumBusy) return;
+  GP.sumBusy = true; GP.error = '';
+  renderGoalPlan();
+  const today = todayStr();
+  let out;
+  try {
+    const { getFunctions, httpsCallable } = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-functions.js");
+    const call = httpsCallable(getFunctions(app, 'us-central1'), 'askTrainer');
+    const res = (await call({ summary: true, context: gpTrainerContext(), plan: myProgram?.days?.length ? gpPlanForAi(myProgram) : undefined })).data;
+    out = { answer: res.answer, outlook: res.outlook, change: res.change || null, date: today };
+  } catch (e) {
+    console.warn('Progress update failed:', e);
+    let score = null;
+    if (myProgram?.days?.length) { try { score = gpPlanScore(myProgram); } catch (_) { /* optional */ } }
+    out = { ...localSummary(gpTrainerRead(), score), date: today, local: true };
+  }
+  GP.summary = out;
+  try { localStorage.setItem(gpSumKey(), JSON.stringify(out)); } catch (_) { /* private mode */ }
+  GP.sumBusy = false;
+  renderGoalPlan();
+}
 const GP_PROMPTS = ['How am I doing?', 'Why have I stalled?', 'Am I overtraining?', 'What should I do next?', 'What should I eat?'];
 function gpChatHtml() {
   const msgs = GP.chat.map((m, i) => m.role === 'hunter'
@@ -9869,7 +9909,7 @@ function gpReadHtml(tr) {
   const top = tr.flags.slice(0, 3), rest = tr.flags.slice(3);
   const ready = tr.readiness.length ? `<details class="gp-fold"><summary>Muscle readiness</summary><div class="gp-ready">${tr.readiness.map(r => `<span class="gp-rd gp-rd-${r.state}">${escapeHtml(r.group)} · ${r.days === 0 ? 'today' : r.days + 'd'}</span>`).join('')}</div><div class="gp-dim">Days since each group was last trained hard.</div></details>` : '';
   const need = tr.flags.filter(f => f.tone !== 'good').length;
-  return `<div class="gp-read-title">${tr.flags.length ? (need ? `${need} thing${need === 1 ? '' : 's'} to look at` : 'All on track') : escapeHtml(tr.headline)}</div>
+  return `${gpSummaryHtml()}<div class="gp-read-title">${tr.flags.length ? (need ? `${need} thing${need === 1 ? '' : 's'} to look at` : 'All on track') : escapeHtml(tr.headline)}</div>
     <div class="gp-list">${top.map(one).join('')}</div>
     ${rest.length ? `<details class="gp-fold"><summary>${rest.length} more</summary><div class="gp-list">${rest.map(f => `<div class="gp-area">${AREA[f.area]}</div>${one(f)}`).join('')}</div></details>` : ''}
     ${ready}`;
@@ -10052,6 +10092,7 @@ function gpWire(el) {
   }));
   el.querySelector('#gp-build')?.addEventListener('click', () => { gpReadInputs(el); gpRun(null); });
   el.querySelectorAll('.gp-tab').forEach(b => b.addEventListener('click', () => { gpReadInputs(el); gpSwitch(b.dataset.mode); }));
+  el.querySelector('#gp-sum-btn')?.addEventListener('click', gpSummarise);
   el.querySelectorAll('.gp-prompt').forEach(b => b.addEventListener('click', () => gpAsk(b.dataset.q)));
   el.querySelector('#gp-chat-send')?.addEventListener('click', () => gpAsk(el.querySelector('#gp-chat-in').value));
   el.querySelector('#gp-chat-in')?.addEventListener('keydown', e => { if (e.key === 'Enter') gpAsk(e.target.value); });

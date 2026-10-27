@@ -52,6 +52,14 @@ check('plain text is still an answer', [a2.answer, a2.change], ['Plain words, no
 err = null; try { await askTrainer({ data: { question: 'x?' }, apiKey: 'k', fetchImpl: async () => ({ ok: false, status: 500 }) }); } catch (e) { err = e.code; }
 check('ask outage is unavailable', err, 'unavailable');
 
+const sr = buildAskRequest({ summary: true, context: { stats: {} } });
+check('summary asks for a progress update', sr.messages[0].content.includes('Give me my progress update.'), true);
+check('summary needs no question', sr.system.includes('progress update'), true);
+const a3 = await askTrainer({ data: { summary: true }, apiKey: 'k', fetchImpl: ok({ answer: 'p1\n\np2\n\np3', outlook: 'slow', change: null }) });
+check('summary returns the outlook', a3.outlook, 'slow');
+const a4 = await askTrainer({ data: { summary: true }, apiKey: 'k', fetchImpl: ok({ answer: 'x', outlook: 'amazing' }) });
+check('unknown outlook is dropped', a4.outlook, null);
+
 let t = 0; const th = makeThrottle(2, () => t);
 check('throttle allows two', [th('u'), th('u')], [true, true]);
 check('then refuses', th('u'), false);

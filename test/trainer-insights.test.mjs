@@ -1,6 +1,6 @@
 /* Tests for the trainer read.  node test/trainer-insights.test.mjs */
 import { BASE_EXERCISES } from '../exercises.js';
-import { trainerRead, weightTrend } from '../trainer-insights.js';
+import { trainerRead, weightTrend, localSummary } from '../trainer-insights.js';
 
 let pass = 0, fail = 0;
 const out = [];
@@ -71,6 +71,12 @@ const mixed = read({ workouts: away, weights: [{ date: ago(15), weight: 80 }] })
 check('actions come first', mixed.flags[0].tone, 'act');
 check('headline is the top action', mixed.headline, mixed.flags[0].title);
 check('on track when only good news', read({ workouts: steady, weights: [{ date: ago(1), weight: 80 }] }).tone, 'good');
+
+const ls = localSummary(r1, { score: 78 });
+check('local summary quotes real numbers', /rising/.test(ls.answer) && /78/.test(ls.answer), true);
+check('local summary has an outlook', ['on_track', 'slow', 'off_track'].includes(ls.outlook), true);
+check('too little data says so', localSummary(none, null).outlook, 'not_enough_data');
+check('a long break is not on track', localSummary(r2, null).outlook !== 'on_track', true);
 
 console.log(out.join('\n'));
 console.log(`\n${pass} passed, ${fail} failed`);

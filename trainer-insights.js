@@ -190,3 +190,25 @@ export function trainerRead(ctx) {
     : acts.length ? acts[0].title : watch.length ? watch[0].title : 'On track. Nothing needs changing.';
   return { headline, tone, flags, readiness, stats };
 }
+
+/**
+ * A plain summary built only from the computed read, for when the AI summary
+ * is not available. Same shape as the AI one: { answer, outlook }.
+ */
+export function localSummary(tr, score) {
+  const st = tr.stats || {};
+  if (!st.sessionsLogged || st.sessionsLogged < 3) return { answer: 'There is not enough training logged yet to judge progress. Log a few more sessions and check again.', outlook: 'not_enough_data' };
+  const p1 = [];
+  if (st.perWeekNow != null) p1.push(`You are training about ${st.perWeekNow} time${st.perWeekNow === 1 ? '' : 's'} a week${st.perWeekBefore ? ` (${st.perWeekBefore} the month before)` : ''}.`);
+  if (st.liftsTracked) p1.push(`${st.liftsRising} of ${st.liftsTracked} tracked lifts are rising.`);
+  if (st.weightPerWeekKg != null) p1.push(`Weight is moving ${st.weightPerWeekKg > 0 ? 'up' : 'down'} about ${Math.abs(st.weightPerWeekKg)} kg a week.`);
+  if (score) p1.push(`Your plan scores ${score.score} out of 100.`);
+  const bad = tr.flags.filter(f => f.tone === 'act'), watch = tr.flags.filter(f => f.tone === 'watch');
+  let outlook = 'on_track';
+  if (st.liftsTracked && st.liftsRising / st.liftsTracked < 0.34) outlook = 'slow';
+  if (bad.length >= 2) outlook = 'off_track';
+  else if (bad.length === 1 && outlook === 'on_track') outlook = 'slow';
+  const p2 = outlook === 'on_track' ? 'At this pace you are progressing.' : outlook === 'slow' ? 'Progress is slower than it could be.' : 'Several signs say the current approach is not working.';
+  const next = [...bad, ...watch].slice(0, 2).map(f => f.title + '.');
+  return { answer: [p1.join(' '), p2, next.length ? 'Look at: ' + next.join(' ') : 'Nothing needs changing right now.'].join('\n\n'), outlook, change: (bad[0] || watch[0] || {}).ask || null };
+}
