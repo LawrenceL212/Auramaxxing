@@ -1,6 +1,6 @@
 /* Tests for the trainer read.  node test/trainer-insights.test.mjs */
 import { BASE_EXERCISES } from '../exercises.js';
-import { trainerRead, weightTrend, localSummary } from '../trainer-insights.js';
+import { trainerRead, weightTrend, localSummary, fullHistory } from '../trainer-insights.js';
 
 let pass = 0, fail = 0;
 const out = [];
@@ -77,6 +77,22 @@ check('local summary quotes real numbers', /rising/.test(ls.answer) && /78/.test
 check('local summary has an outlook', ['on_track', 'slow', 'off_track'].includes(ls.outlook), true);
 check('too little data says so', localSummary(none, null).outlook, 'not_enough_data');
 check('a long break is not on track', localSummary(r2, null).outlook !== 'on_track', true);
+
+// whole history
+const old = []; for (let i = 0; i < 40; i++) old.push(sess(i * 7 + 2, [['Bench Press', 40 + (39 - i) * 1.2], ['Squat', 60 + (39 - i) * 2]]));
+const fh = fullHistory({ workouts: old, exercises: EX, today: TODAY, weights: [{ date: ago(270), weight: 90 }, { date: ago(5), weight: 80 }], checkins: [{ date: ago(200), weight: 88, waist: 95 }, { date: ago(4), weight: 80, waist: 86 }] });
+check('history starts at the first session', fh.since, ago(39 * 7 + 2));
+check('counts every session', fh.sessions, 40);
+check('bench gain measured from the first session', fh.lifts.find(l => l.name === 'Bench Press').gainKg > 40, true);
+check('body weight over the whole period', [fh.body.firstKg, fh.body.nowKg, fh.body.changeKg], [90, 80, -10]);
+check('waist over the whole period', fh.waist.changeCm, -9);
+check('weekly consistency counted', fh.weeksTrained, 40);
+check('monthly series is capped', fh.monthly.length <= 24, true);
+check('no logs -> no history', fullHistory({ workouts: [], exercises: EX, today: TODAY }), null);
+const lr = trainerRead({ exercises: EX, today: TODAY, workouts: old, weights: [], checkins: [] });
+check('the read carries a long-term finding', lr.flags.some(f => f.area === 'longterm'), true);
+check('and a lift gain since the start', /since/.test(lr.flags.find(f => f.id === 'longlift')?.title || ''), true);
+check('history is in the stats', lr.stats.history.sessions, 40);
 
 console.log(out.join('\n'));
 console.log(`\n${pass} passed, ${fail} failed`);

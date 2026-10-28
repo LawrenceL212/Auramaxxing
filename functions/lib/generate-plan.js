@@ -14,6 +14,7 @@ const SYSTEM = [
   'You are the System in a fitness game. You write a weekly training plan for one Hunter from what they say they want and what their logged history shows.',
   'Use ONLY exercise names from the catalogue you are given, spelled exactly. Never invent an exercise.',
   'Treat what the Hunter says as binding. If they rule out a muscle group or exercise, put it in "exclude" and never include it, and do not suggest adding it back.',
+  'The history object holds their WHOLE logged history (fullHistory: first session to today, monthly consistency, lift gains since the first session, longest breaks, weight over time), personal records, goals, directives and check-in numbers. Use all of it: the more you know about them, the more specific the plan should be. Do not ignore a goal or directive they have set.',
   'Fit the plan to the days per week and minutes they give (default 3 days, 45 minutes, about 4 to 6 exercises a day). Use their history: lead with lifts they are strong at, fill muscle groups with little recent volume unless excluded, and prefer exercises they already do.',
   'Reps and sets should suit the goal (strength 3-6 reps, muscle 6-12, endurance 12-20). Cardio exercises in the catalogue use sets 1 and reps as minutes or km as the exercise implies.',
   'When a current plan is given, you are ADJUSTING it: change only what the request needs and keep every other day, exercise, set and rep exactly as they are. Respect injuries and preferences the Hunter states, including ones that are only implied (for example "my knee hurts" means no loaded knee-bending work for now). Keep the same "name" and "schedule" unless the request is about them.',
@@ -35,7 +36,7 @@ function buildRequest(data) {
   const catalogue = names.map(([n, d]) => `${clip(n, 60)} | ${clip(d, 60)}`).join('\n');
   const parts = [
     `The Hunter says: ${goal}`,
-    `History and body (JSON): ${clip(JSON.stringify(data.digest || {}), 4000)}`,
+    `History and body (JSON): ${clip(JSON.stringify(data.digest || {}), 12000)}`,
   ];
   if (data.feasibility) parts.push(`Goal check (computed): ${clip(JSON.stringify(data.feasibility), 800)}`);
   if (Array.isArray(data.standing) && data.standing.length) parts.push(`Standing preferences to always respect: ${clip(data.standing.join('; '), 400)}`);
@@ -79,8 +80,9 @@ const OUTLOOKS = ['on_track', 'slow', 'off_track', 'not_enough_data'];
 const SUMMARY_SYSTEM = [
   'You are the personal trainer inside a fitness game, writing a progress update for one Hunter from their own data.',
   'Use ONLY the data given. Quote their real numbers (lift trends, weight pace, sessions a week, plan score). Never invent numbers. If something cannot be judged because there is too little data, say so.',
-  'Write exactly three short paragraphs, plain sentences, no hype, no lists: (1) how the last month looks, (2) whether they are progressing toward their goal and roughly when they would get there at the current pace, if the data supports an estimate, (3) the one or two changes that would help most.',
-  'Under 150 words in total. You are not a doctor; for pain or injury suggest a qualified professional.',
+  'Read their WHOLE history, not just the last month: the "fullHistory" object runs from their first logged session to today. Compare where they started with where they are now (lift gains since the first session, monthly consistency, longest breaks, weight over the whole period), say what the long-term pattern is, then what the recent weeks add to it.',
+  'Write exactly three short paragraphs, plain sentences, no hype, no lists: (1) the long-term picture since they started and how the recent weeks fit it, (2) whether they are progressing toward their goal and roughly when they would get there at the current pace, if the data supports an estimate, (3) the one or two changes that would help most.',
+  'Under 180 words in total. You are not a doctor; for pain or injury suggest a qualified professional.',
   'If one change to the plan would help most, put it as ONE tappable sentence in "change", else null. Never claim you already changed anything.',
   '"outlook" is one of: on_track, slow, off_track, not_enough_data.',
   'Reply with a single JSON object and nothing else: {"answer":"para1\\n\\npara2\\n\\npara3","outlook":"on_track","change":null}',
@@ -88,7 +90,7 @@ const SUMMARY_SYSTEM = [
 
 const ASK_SYSTEM = [
   'You are the personal trainer inside a fitness game, talking to one Hunter about their own training.',
-  'Answer the question using ONLY the data given (their plan, logged sessions, recovery, rhythm and body metrics). Quote their real numbers. If the data needed is missing, say what is missing and how to log it. Never invent numbers.',
+  'Answer the question using ONLY the data given (their plan, whole logged history, recovery, rhythm and body metrics). Quote their real numbers. If the data needed is missing, say what is missing and how to log it. Never invent numbers.',
   'Be a good trainer: direct, practical, kind, under 120 words, plain sentences, no hype, no lists longer than four items.',
   'You are not a doctor. For pain, injury, illness, eating disorders or medication, give sensible general guidance and tell them to see a qualified professional. Do not diagnose.',
   'Stay on training, recovery, food for training, sleep, and their body metrics. Politely decline anything else in one sentence.',
@@ -102,7 +104,7 @@ function buildAskRequest(data) {
   const q = summary ? 'Give me my progress update.' : clip(data && data.question, 600).trim();
   if (q.length < 2) { const e = new Error('Ask the trainer something first.'); e.code = 'invalid-argument'; throw e; }
   const history = Array.isArray(data.history) ? data.history.slice(-6).map(h => `${h && h.role === 'trainer' ? 'Trainer' : 'Hunter'}: ${clip(h && h.text, 500)}`) : [];
-  const parts = [`Hunter's data (JSON, computed by the app): ${clip(JSON.stringify(data.context || {}), 7000)}`];
+  const parts = [`Hunter's data (JSON, computed by the app): ${clip(JSON.stringify(data.context || {}), 14000)}`];
   if (data.plan) parts.push(`Current plan (JSON): ${clip(JSON.stringify(data.plan), 4000)}`);
   if (history.length) parts.push(`Conversation so far:\n${history.join('\n')}`);
   parts.push(`Hunter asks: ${q}`);

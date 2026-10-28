@@ -4668,7 +4668,7 @@ import { weekStrip, weekProgress, latestDate, agoLabel, estimateMinutes, totalSe
   lastSet, lastTimeLabel, upNext, leftLabel } from "./hunt-view.js";
 import { penaltyView } from "./penalty-view.js";
 import { scorePlan, diffPlans } from "./plan-metrics.js";
-import { trainerRead, localSummary } from "./trainer-insights.js";
+import { trainerRead, localSummary, fullHistory } from "./trainer-insights.js";
 import { skinfoldBodyFat, feasibility, feasibilityText, historyDigest, catalogue, excludedFromText, validatePlan, planGroups } from "./plan-gen.js";
 import { setInputKind, setInputHeaders, storedSet, storedSetSecs, partsToSecs, secsToParts,
          formatSetTime, isTimeKind, LOAD_TYPES, loadLabel, offersLoadChoice, defaultLoad,
@@ -9812,6 +9812,20 @@ function gpTrainerRead() {
     weights: myWeights, checkins: myCheckins, prs: myPRs || {}, today: todayStr(), targetKg: bw ? Number(bw.target) : null,
   });
 }
+/* Everything the app knows about the Hunter that a trainer would want, for every request to the trainer. */
+function gpEverything() {
+  const lastC = myCheckins[myCheckins.length - 1] || null;
+  const prs = Object.entries(myPRs || {}).filter(([, p]) => p && p.e1rm).sort((a, b) => b[1].e1rm - a[1].e1rm).slice(0, 15).map(([name, p]) => ({ name, e1rmKg: Math.round(p.e1rm), date: p.date || null }));
+  return {
+    fullHistory: fullHistory({ workouts: myWorkouts.filter(w => w.uid === currentUser?.uid), exercises: EXERCISES_ALL, weights: myWeights, checkins: myCheckins, today: todayStr() }),
+    personalRecords: prs,
+    goals: (profile?.personalGoals || []).slice(0, 8).map(g => ({ type: g.type, exercise: g.exercise || null, target: g.target ?? null, name: g.name || null })),
+    directives: (profile?.directives || []).slice(0, 8).map(d => ({ metric: d.metric, target: d.target ?? null, startValue: d.startValue ?? null })),
+    weeklyGoalSessions: profile?.weeklyGoal || null,
+    latestCheckin: lastC ? { date: lastC.date, weightKg: lastC.weight || null, waistCm: lastC.waist || null, bodyFatPct: lastC.bodyFatPct ? Math.round(lastC.bodyFatPct * 10) / 10 : null } : null,
+    checkinCount: myCheckins.length, weighInCount: myWeights.length,
+  };
+}
 function gpTrainerContext() {
   const tr = gpTrainerRead();
   const b = gpBody();
@@ -9824,6 +9838,7 @@ function gpTrainerContext() {
     planScore: score ? { score: score.score, grade: score.grade, measures: score.metrics.map(m => ({ name: m.label, value: m.value, status: m.status, fix: m.fix || null })) } : null,
     history: historyDigest({ workouts: myWorkouts.filter(w => w.uid === currentUser?.uid), exercises: EXERCISES_ALL, today: todayStr(), weightKg: b.weightKg, heightCm: b.heightCm, gender: b.gender, bfPct: b.bfPct }),
     standingPreferences: gpStanding(),
+    ...gpEverything(),
   };
 }
 function gpSumKey() { return 'aura_goalplan_summary_' + (currentUser?.uid || ''); }
@@ -9839,10 +9854,15 @@ function gpSummaryHtml() {
   if (!sm) return `<div class="gp-sum"><button type="button" class="gp-go gp-sum-go" id="gp-sum-btn">Get my progress update</button><div class="gp-dim">A short written read of how you are doing, whether you are progressing, and what to change next.</div></div>`;
   const [label, tone] = GP_OUTLOOK[sm.outlook] || GP_OUTLOOK.not_enough_data;
   return `<div class="gp-sum"><div class="gp-sum-head"><span class="gp-chip gp-t-${tone}">${escapeHtml(label)}</span><span class="gp-dim">${escapeHtml(sm.date || '')}${sm.local ? ' · computed' : ''}</span></div>
+    ${sm.basis ? `<div class="gp-dim gp-basis">Based on ${sm.basis.sessions} sessions since ${escapeHtml(sm.basis.since)}${sm.basis.weighIns ? `, ${sm.basis.weighIns} weigh-ins` : ''}.</div>` : ''}
     ${String(sm.answer).split(/\n\n+/).map(p => `<p class="gp-sum-p">${escapeHtml(p)}</p>`).join('')}
     ${sm.change ? `<button type="button" class="gp-find-ask" data-ask="${escapeHtml(sm.change)}">Change my plan: ${escapeHtml(sm.change)} →</button>` : ''}
     ${sm.local ? '<div class="gp-dim">The written update was not available, so this is a summary computed from your numbers.</div>' : ''}
     <button type="button" class="gp-link" id="gp-sum-btn">Refresh update</button></div>`;
+}
+function gpBasis() {
+  const h = gpEverything().fullHistory;
+  return h ? { sessions: h.sessions, since: h.since, weighIns: myWeights.length + myCheckins.length } : null;
 }
 async function gpSummarise() {
   if (GP.sumBusy) return;
@@ -9854,12 +9874,12 @@ async function gpSummarise() {
     const { getFunctions, httpsCallable } = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-functions.js");
     const call = httpsCallable(getFunctions(app, 'us-central1'), 'askTrainer');
     const res = (await call({ summary: true, context: gpTrainerContext(), plan: myProgram?.days?.length ? gpPlanForAi(myProgram) : undefined })).data;
-    out = { answer: res.answer, outlook: res.outlook, change: res.change || null, date: today };
+    out = { answer: res.answer, outlook: res.outlook, change: res.change || null, date: today, basis: gpBasis() };
   } catch (e) {
     console.warn('Progress update failed:', e);
     let score = null;
     if (myProgram?.days?.length) { try { score = gpPlanScore(myProgram); } catch (_) { /* optional */ } }
-    out = { ...localSummary(gpTrainerRead(), score), date: today, local: true };
+    out = { ...localSummary(gpTrainerRead(), score), date: today, local: true, basis: gpBasis() };
   }
   GP.summary = out;
   try { localStorage.setItem(gpSumKey(), JSON.stringify(out)); } catch (_) { /* private mode */ }
@@ -9904,7 +9924,7 @@ async function gpAsk(text) {
   if (m) m.scrollTo(0, m.scrollHeight);
 }
 function gpReadHtml(tr) {
-  const AREA = { rhythm: 'Rhythm', recovery: 'Recovery', performance: 'Performance', body: 'Body' };
+  const AREA = { rhythm: 'Rhythm', recovery: 'Recovery', performance: 'Performance', body: 'Body', longterm: 'Since you started' };
   const one = f => `<div class="gp-find gp-f-${f.tone}"><span class="gp-dot"></span><div><div class="gp-find-title">${escapeHtml(f.title)}</div><div class="gp-find-detail">${escapeHtml(f.detail)}</div>${f.ask ? `<button type="button" class="gp-find-ask" data-ask="${escapeHtml(f.ask)}">Ask your trainer →</button>` : ''}</div></div>`;
   const top = tr.flags.slice(0, 3), rest = tr.flags.slice(3);
   const ready = tr.readiness.length ? `<details class="gp-fold"><summary>Muscle readiness</summary><div class="gp-ready">${tr.readiness.map(r => `<span class="gp-rd gp-rd-${r.state}">${escapeHtml(r.group)} · ${r.days === 0 ? 'today' : r.days + 'd'}</span>`).join('')}</div><div class="gp-dim">Days since each group was last trained hard.</div></details>` : '';
@@ -10119,6 +10139,7 @@ async function gpRun(revision) {
       workouts: myWorkouts.filter(w => w.uid === currentUser?.uid), exercises: EXERCISES_ALL, today,
       weightKg: b.weightKg, heightCm: b.heightCm, gender: b.gender, bfPct: gpCaliperBf() ?? b.bfPct,
     });
+    Object.assign(digest, gpEverything());
     const { getFunctions, httpsCallable } = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-functions.js");
     const call = httpsCallable(getFunctions(app, 'us-central1'), 'generatePlan');
     const standing = gpStanding();

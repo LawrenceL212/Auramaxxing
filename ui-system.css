@@ -410,3 +410,4 @@
 .gp-t-good{color:var(--growing,#4fc38a)}.gp-t-ok{color:var(--brass,#c9a24a)}.gp-t-low{color:var(--excess,#e05a5a)}
 .gp-sum-p{font-size:15px;line-height:1.65;margin:0 0 12px}
 .gp-link{min-height:44px;background:none;border:0;padding:0;color:var(--text-dim,#a9a6bd);font-size:13px;text-decoration:underline}
+.gp-basis{margin:-4px 0 10px}

@@ -182,6 +182,18 @@ export function trainerRead(ctx) {
     if (d >= 14) { const ch = r1(b.waist - a.waist); stats.waistChangeCm = ch; if (Math.abs(ch) >= 1) flag({ id: 'waist', area: 'body', tone: ch < 0 ? 'good' : 'watch', title: `Waist ${ch < 0 ? 'down' : 'up'} ${Math.abs(ch)} cm`, detail: `Over ${plural(d, 'day')}.` }); }
   }
 
+  // ── long term ───────────────────────────────────────────────────────────
+  const hist = fullHistory({ workouts, exercises, weights: ctx.weights, checkins: ctx.checkins, today });
+  stats.history = hist ? { since: hist.since, sessions: hist.sessions } : null;
+  if (hist && hist.daysSince >= 56) {
+    const top = [...hist.lifts].sort((x, y) => y.gainKg - x.gainKg)[0];
+    if (top && top.gainKg >= 5 && top.gainPct >= 5) flag({ id: 'longlift', area: 'longterm', tone: 'good', title: `${top.name} up ${top.gainKg} kg since ${top.since}`, detail: `Estimated 1RM from ${top.firstE1rm} kg to ${top.currentE1rm || top.bestE1rm} kg (${top.gainPct > 0 ? '+' : ''}${top.gainPct}%) over ${Math.round(hist.daysSince / 30)} months.` });
+    const slid = hist.lifts.filter(l => l.currentE1rm && l.currentE1rm < l.bestE1rm * 0.9 && l.sessions >= 8);
+    if (slid.length) flag({ id: 'longslide', area: 'longterm', tone: 'watch', title: `${slid[0].name} is ${slid[0].bestE1rm - slid[0].currentE1rm} kg below your best`, detail: `Best was ${slid[0].bestE1rm} kg on ${slid[0].bestDate}. Often a sign of a long break or an overdue lighter week.` });
+    const consistency = Math.round(hist.weeksTrained / hist.weeksSinceStart * 100);
+    flag({ id: 'longconsistency', area: 'longterm', tone: consistency >= 60 ? 'good' : 'watch', title: `You trained in ${consistency}% of weeks since you started`, detail: `${hist.sessions} sessions over ${hist.weeksSinceStart} weeks. Longest run: ${hist.longestRunOfWeeks} weeks in a row${hist.longestBreaks[0] ? `; longest break ${hist.longestBreaks[0].days} days` : ''}.` });
+  }
+
   const rank = { act: 0, watch: 1, good: 2 };
   flags.sort((a, b) => rank[a.tone] - rank[b.tone]);
   const acts = flags.filter(f => f.tone === 'act'), watch = flags.filter(f => f.tone === 'watch');
@@ -189,6 +201,82 @@ export function trainerRead(ctx) {
   const headline = !flags.length ? 'Log a few sessions and the trainer will start reading them.'
     : acts.length ? acts[0].title : watch.length ? watch[0].title : 'On track. Nothing needs changing.';
   return { headline, tone, flags, readiness, stats };
+}
+
+
+/* ── the whole history ───────────────────────────────────────────────────── */
+
+const monthOf = d => d.slice(0, 7);
+function lastMonths(today, n) {
+  const out = []; const t = new Date(today + 'T12:00:00'); t.setDate(1);
+  for (let i = n - 1; i >= 0; i--) { const d = new Date(t); d.setMonth(d.getMonth() - i); out.push(d.toISOString().slice(0, 7)); }
+  return out;
+}
+
+/**
+ * Everything the Hunter has logged, boiled down: when they started, how the
+ * months went, how each main lift has moved since the first session, the
+ * longest breaks, and the weight over the whole period. Compact on purpose,
+ * since it is also sent to the trainer.
+ */
+export function fullHistory(ctx) {
+  const { exercises, today } = ctx;
+  const workouts = (ctx.workouts || []).filter(w => w && w.date && w.date <= today).sort((a, b) => a.date.localeCompare(b.date));
+  if (!workouts.length) return null;
+  const dates = [...new Set(workouts.map(w => w.date))];
+  const first = dates[0];
+  const spanDays = Math.max(1, day(first, today));
+  const months = lastMonths(today, Math.min(36, Math.max(1, Math.ceil(spanDays / 30.4))));
+  const perMonth = {}, setsMonth = {};
+  for (const w of workouts) { const m = monthOf(w.date); setsMonth[m] = (setsMonth[m] || 0) + setCount(w); }
+  for (const d of dates) { const m = monthOf(d); perMonth[m] = (perMonth[m] || 0) + 1; }
+  const monthly = months.map(m => ({ month: m, sessions: perMonth[m] || 0, sets: setsMonth[m] || 0 }));
+  const bestMonth = monthly.reduce((b, m) => (m.sessions > b.sessions ? m : b), monthly[0]);
+
+  // lifts: first, best and current estimated 1RM, plus a monthly best series
+  const byLift = {};
+  for (const w of workouts) for (const e of w.exercises || []) {
+    const def = exercises[e.name];
+    if (!def || isRunDef(def)) continue;
+    const top = Math.max(0, ...(e.sets || []).filter(st => Number(st.weight) > 0 && Number(st.reps) > 0).map(st => Number(st.weight) * (1 + Number(st.reps) / 30)));
+    const L = byLift[e.name] || (byLift[e.name] = { name: e.name, sessions: 0, first: null, firstDate: null, best: 0, bestDate: null, months: {}, recent: [] });
+    L.sessions++;
+    if (top) {
+      if (L.first == null) { L.first = top; L.firstDate = w.date; }
+      if (top > L.best) { L.best = top; L.bestDate = w.date; }
+      const m = monthOf(w.date); L.months[m] = Math.max(L.months[m] || 0, top);
+      if (day(w.date, today) < 28) L.recent.push(top);
+    }
+  }
+  const lifts = Object.values(byLift).filter(L => L.sessions >= 3 && L.first != null).sort((a, b) => b.sessions - a.sessions).slice(0, 10).map(L => {
+    const current = L.recent.length ? Math.max(...L.recent) : null;
+    return { name: L.name, sessions: L.sessions, since: L.firstDate, firstE1rm: Math.round(L.first), bestE1rm: Math.round(L.best), bestDate: L.bestDate,
+      currentE1rm: current ? Math.round(current) : null, gainKg: Math.round((current || L.best) - L.first), gainPct: Math.round(((current || L.best) / L.first - 1) * 100),
+      monthlyBest: months.slice(-18).map(m => (L.months[m] ? Math.round(L.months[m]) : null)) };
+  });
+
+  // breaks and consistency
+  const gaps = dates.slice(1).map((d, i) => ({ from: dates[i], to: d, days: day(dates[i], d) })).filter(g => g.days >= 14).sort((a, b) => b.days - a.days).slice(0, 4);
+  const weeks = new Set(dates.map(d => Math.floor(day('2000-01-03', d) / 7)));
+  let longestWeeks = 0, run = 0, prev = null;
+  for (const w of [...weeks].sort((a, b) => a - b)) { run = prev != null && w === prev + 1 ? run + 1 : 1; longestWeeks = Math.max(longestWeeks, run); prev = w; }
+  const totalWeeks = Math.max(1, Math.ceil(spanDays / 7));
+
+  // body weight over the whole period, by month
+  const pts = [...(ctx.weights || []).map(w => ({ date: w.date, kg: Number(w.weight) })), ...(ctx.checkins || []).filter(c => c.weight).map(c => ({ date: c.date, kg: Number(c.weight) }))]
+    .filter(p => p.date && p.kg > 0).sort((a, b) => a.date.localeCompare(b.date));
+  const wm = {};
+  for (const p of pts) (wm[monthOf(p.date)] = wm[monthOf(p.date)] || []).push(p.kg);
+  const weightMonthly = months.slice(-24).map(m => (wm[m] ? { month: m, kg: r1(avg(wm[m])) } : null)).filter(Boolean);
+  const body = pts.length ? { firstDate: pts[0].date, firstKg: pts[0].kg, nowKg: pts[pts.length - 1].kg, minKg: Math.min(...pts.map(p => p.kg)), maxKg: Math.max(...pts.map(p => p.kg)), changeKg: r1(pts[pts.length - 1].kg - pts[0].kg), monthly: weightMonthly } : null;
+  const cks = (ctx.checkins || []).filter(c => Number(c.waist) > 0).sort((a, b) => a.date.localeCompare(b.date));
+  const waist = cks.length >= 2 ? { firstDate: cks[0].date, firstCm: cks[0].waist, nowCm: cks[cks.length - 1].waist, changeCm: r1(cks[cks.length - 1].waist - cks[0].waist) } : null;
+
+  return {
+    since: first, daysSince: spanDays, sessions: dates.length, sets: workouts.reduce((t, w) => t + setCount(w), 0),
+    sessionsPerWeekOverall: r1(dates.length / (spanDays / 7)), weeksTrained: weeks.size, weeksSinceStart: totalWeeks, longestRunOfWeeks: longestWeeks,
+    bestMonth: { month: bestMonth.month, sessions: bestMonth.sessions }, monthly: monthly.slice(-24), lifts, longestBreaks: gaps, body, waist,
+  };
 }
 
 /**
@@ -209,6 +297,10 @@ export function localSummary(tr, score) {
   if (bad.length >= 2) outlook = 'off_track';
   else if (bad.length === 1 && outlook === 'on_track') outlook = 'slow';
   const p2 = outlook === 'on_track' ? 'At this pace you are progressing.' : outlook === 'slow' ? 'Progress is slower than it could be.' : 'Several signs say the current approach is not working.';
+  const h = tr.stats && tr.stats.history;
+  if (h) p1.unshift(`Since ${h.since} you have logged ${h.sessions} sessions.`);
+  const longLift = tr.flags.find(f => f.id === 'longlift');
+  if (longLift) p1.push(longLift.title + '.');
   const next = [...bad, ...watch].slice(0, 2).map(f => f.title + '.');
   return { answer: [p1.join(' '), p2, next.length ? 'Look at: ' + next.join(' ') : 'Nothing needs changing right now.'].join('\n\n'), outlook, change: (bad[0] || watch[0] || {}).ask || null };
 }
