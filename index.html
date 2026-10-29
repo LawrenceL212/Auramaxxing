@@ -4212,6 +4212,33 @@
   .ci-save{width:100%;margin-top:14px;}
   .ci-msg{margin-top:8px;font-size:13px;text-align:center;}
   .ci-empty{font-size:14px;color:var(--text-faint);}
+  .wp-head{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-bottom:6px;}
+  .wp-state{font-family:var(--font-display);font-weight:700;font-size:14px;letter-spacing:.03em;text-transform:uppercase;}
+  .wp-pct{font-family:var(--font-display);font-weight:800;font-size:24px;color:#fff;}
+  .wp-pct{white-space:nowrap;flex:none;}
+  .wp-pct small{font-family:var(--font-mono);font-weight:400;font-size:10px;color:var(--text-faint);margin-left:4px;}
+  .wp{margin-bottom:24px;}
+  .wp-chart{margin-top:12px;padding:8px 8px 6px;background:rgba(10,13,24,.6);border:1px solid rgba(91,168,255,.12);}
+  .wp-chart svg{display:block;height:130px;}
+  .wp-legend{display:flex;gap:14px;font-size:11px;color:var(--text-faint);margin-top:4px;}
+  .wp-legend i{display:inline-block;width:14px;height:0;border-top:2px solid var(--violet);vertical-align:middle;margin-right:5px;}
+  .wp-legend i.g{border-top:2px dotted var(--legendary);}
+  .ci-v small{font-family:var(--font-mono);font-size:11px;font-weight:400;color:var(--text-faint);margin-left:3px;}
+  .ci-verdict{font-size:15px;line-height:1.35;color:var(--text-dim);margin-top:6px;}
+  .ci-deltas{margin-bottom:12px;}
+  .ci-tiles + .ci-section,.ci-pri + .ci-section{margin-top:22px;}
+  .ci-delta{display:grid;grid-template-columns:1fr auto 92px;gap:10px;align-items:baseline;padding:10px 0;border-top:1px solid rgba(91,168,255,.1);}
+  .ci-delta-k{font-size:15px;font-weight:600;color:var(--text);}
+  .ci-delta-v{font-family:var(--font-display);font-weight:700;font-size:16px;color:#fff;}
+  .ci-delta-v small{font-family:var(--font-mono);font-size:11px;font-weight:400;color:var(--text-faint);margin-left:2px;}
+  .ci-delta-d{font-family:var(--font-mono);font-size:13px;text-align:right;white-space:nowrap;}
+  .ci-plan-item{padding:12px 14px;margin-bottom:10px;background:linear-gradient(180deg,rgba(18,26,48,.8),rgba(10,13,24,.9));border:1px solid rgba(91,168,255,.2);
+    clip-path:polygon(8px 0,100% 0,100% calc(100% - 8px),calc(100% - 8px) 100%,0 100%,0 8px);}
+  .ci-plan-t{font-family:var(--font-display);font-weight:700;font-size:14px;letter-spacing:.03em;color:#fff;}
+  .ci-plan-r{font-size:14px;line-height:1.4;color:var(--text-faint);margin-top:4px;}
+  .ci-plan-a{display:flex;gap:10px;align-items:center;margin-top:10px;}
+  .ci-plan-a .ui-btn-outline{min-height:40px;flex:1;}
+  .ci-skip{min-height:40px;padding:0 14px;background:none;border:0;color:var(--text-faint);font-family:var(--font-body);font-weight:700;font-size:14px;cursor:pointer;}
 </style>
 </head>
 <body>
@@ -4771,7 +4798,8 @@ import { detectReEntry, reEntryPlan, directiveProgress, formatMeasure, DIRECTIVE
 import { analyseHabit, sampleCurve, describeReturns,
          HABIT_TARGET_DAYS, MISS_GRACE } from "./habit.js";
 import { muscleDevelopment, bodyBuild, bodyFrame } from "./physique.js";
-import { bodyMetrics, measurementWarnings, physiquePriorities, physiqueFocus, measureHint, measureStep, tapeIconSvg, bodyScanSvg, navyBodyFat as navyBodyFatPct, EXPLAIN as CHECKIN_EXPLAIN, GOLDEN_RATIO } from "./body-metrics.js";
+import { weeklyChange, pathStatus, pathSvg, parseGoal as parseWeightGoal } from "./weight-path.js";
+import { bodyMetrics, measurementWarnings, physiquePriorities, physiqueFocus, measureHint, measureStep, tapeIconSvg, bodyScanSvg, checkinProgress, navyBodyFat as navyBodyFatPct, EXPLAIN as CHECKIN_EXPLAIN, GOLDEN_RATIO } from "./body-metrics.js";
 import { optimisePlan, applySuggestion, activeDismissals, GOALS, GOAL_LABELS, MUSCLE_GROUPS } from "./optimiser.js";
 import { volumeRows, exerciseInsight, dayStats, suggestionsByDay } from "./plan-insights.js";
 import {
@@ -16501,6 +16529,7 @@ window.saveCheckin = async () => {
     createdAt: serverTimestamp(),
   };
 
+  const prevCheckin = myCheckins[myCheckins.length - 1] || null;
   try {
     msgEl.style.color = '#8D98A8';
     msgEl.textContent = 'Saving...';
@@ -16528,12 +16557,8 @@ window.saveCheckin = async () => {
     try { renderHuntTiles(); } catch (_) {}
     try { renderPlanOptimiser(); } catch (_) {}
 
-    document.getElementById('checkin-modal-overlay')?.remove();
-
-    showToast(`✓ Check-in saved · ${bodyFatPct ? bodyFatPct + '% BF · ' : ''}${weight}kg`, 'success');
-    SFX.rankUp && SFX.rankUp();
-
     // Award small XP for check-in
+    let xpGained = 0;
     if (!profile.lastCheckinXpDate || profile.lastCheckinXpDate !== today) {
       const newXP = Math.round(((profile.hunterXP || 0) + 15) * 10) / 10;
       await updateDoc(doc(db, 'users', currentUser.uid), {
@@ -16542,6 +16567,16 @@ window.saveCheckin = async () => {
         lastCheckinXpDate: today,
       });
       profile.hunterXP = newXP;
+      xpGained = 15;
+    }
+
+    document.getElementById('checkin-modal-overlay')?.remove();
+    SFX.rankUp && SFX.rankUp();
+    try {
+      showCheckinResults(prevCheckin, { ...checkinData, height }, xpGained);
+    } catch (e) {
+      console.warn('Check-in results failed:', e);
+      showToast(`✓ Check-in saved · ${bodyFatPct ? bodyFatPct + '% BF · ' : ''}${weight}kg`, 'success');
     }
 
   } catch(e) {
@@ -16549,6 +16584,171 @@ window.saveCheckin = async () => {
     msgEl.textContent = 'Error: ' + e.message;
   }
 };
+
+/** The screen after saving a check-in: what moved, what to do, and the plan changes the optimiser wants. */
+function showCheckinResults(prev, saved, xpGained) {
+  document.getElementById('checkin-results-overlay')?.remove();
+  const gender = profile?.bodyType || 'male';
+  const input = { ...saved, height: saved.height ?? profile?.heightCm };
+  const prog = checkinProgress(gender, prev ? { ...prev, height: input.height } : null, input);
+  if (!prog) return;
+  const m = bodyMetrics(gender, input);
+  const pri = physiquePriorities(gender, input).slice(0, 3);
+  const today = todayStr();
+
+  let plan = null;
+  if (myProgram && myProgram.days?.length) {
+    try { plan = optimisePlan(planOptCtx(myProgram, today)); } catch (e) { console.warn('Plan optimiser failed:', e); }
+  }
+  const weightPath = weightPathHtml();
+  const focus = new Set(physiqueFocus(gender, input));
+  const suggestions = plan ? plan.suggestions.slice(0, 4) : [];
+
+  const ARROW = { better: ['▲', 'var(--growing)'], worse: ['▼', 'var(--excess)'], flat: ['•', 'var(--text-faint)'], neutral: ['◆', 'var(--brass)'] };
+  const fmt = (r) => `${r.diff > 0 ? '+' : ''}${r.key === 'vTaper' ? r.diff.toFixed(2) : r.diff}`;
+  const rows = prog.rows.map(r => {
+    const [glyph, color] = ARROW[r.status];
+    return `<div class="ci-delta">
+      <span class="ci-delta-k">${r.label}</span>
+      <span class="ci-delta-v">${r.curr}<small>${r.unit}</small></span>
+      <span class="ci-delta-d" style="color:${color};">${r.status === 'flat' ? 'no change' : `${glyph} ${fmt(r)}`}</span>
+    </div>`;
+  }).join('');
+  const headColor = prog.first ? 'var(--ui-gold)' : prog.better > prog.worse ? 'var(--growing)' : prog.worse > prog.better ? 'var(--excess)' : 'var(--brass)';
+
+  const planItems = suggestions.map((s, i) => `
+    <div class="ci-plan-item">
+      ${s.goal ? `<div class="plan-opt-for">FOR · ${escapeHtml(s.goal)}</div>` : ''}
+      <div class="ci-plan-t">${escapeHtml(s.title)}</div>
+      <div class="ci-plan-r">${escapeHtml(s.reason)}</div>
+      <div class="ci-plan-a">
+        ${s.change ? `<button type="button" class="ui-btn-outline ci-apply" data-i="${i}">Apply</button>` : ''}
+        <button type="button" class="ci-skip" data-i="${i}">${s.change ? 'Skip' : 'Got it'}</button>
+      </div>
+    </div>`).join('');
+  const planBody = !plan
+    ? '<div class="ci-empty">No training plan yet. Build one on the Hunt screen and the optimiser will tune it to these numbers.</div>'
+    : planItems || '<div class="ci-empty">Your plan already fits these numbers. No changes needed.</div>';
+
+  const overlay = document.createElement('div');
+  overlay.id = 'checkin-results-overlay';
+  overlay.className = 'ci-overlay';
+  overlay.innerHTML = `
+    <div class="ui-window gold ci-win">
+      <div class="ci-scroll">
+        <div class="ci-hero">
+          <div class="ci-hero-top">
+            <div class="ui-banner gold">◈ Check-in saved</div>
+            <button class="ci-close" aria-label="Close" data-close>✕</button>
+          </div>
+          <div class="ci-hero-body">
+            <div>${bodyScanSvg(input, 84, ['neck', 'shoulders', 'chest', 'waist', ...(gender === 'female' ? ['hip'] : []), 'armLeft', 'armRight'])}</div>
+            <div class="ci-hero-stats">
+              <div class="ci-hero-k">${prog.first ? 'First scan' : `Since ${prev.date}`}</div>
+              <div class="ci-title" style="color:${headColor};text-shadow:0 0 16px ${headColor};">${prog.headline}</div>
+              <div class="ci-verdict">${prog.verdict}</div>
+              ${xpGained ? `<div class="ci-hero-chips"><span class="ui-chip gold">+${xpGained} XP</span></div>` : ''}
+            </div>
+          </div>
+        </div>
+
+        ${rows ? `<div class="ui-banner ci-section">◈ What changed</div><div class="ci-deltas">${rows}</div>` : ''}
+        ${m.vTaper ? `<div class="ci-golden" style="margin-bottom:20px;">
+          <div class="ci-golden-row"><span>GOLDEN RATIO 1.618</span><span style="color:var(--ui-gold);">${m.vTaper.ofGolden}%</span></div>
+          <div class="ci-bar"><i style="width:${Math.max(3, Math.min(100, m.vTaper.ofGolden))}%;"></i></div>
+          ${m.vTaper.ratio >= GOLDEN_RATIO ? '' : `<div class="ci-next">Next <b>${m.vTaper.next}</b> → ${m.vTaper.shouldersForNext} cm shoulders</div>`}
+        </div>` : ''}
+
+        ${weightPath ? `<div class="ui-banner ci-section">◈ Your weight path</div>${weightPath}` : ''}
+
+        ${pri.length ? `<div class="ui-banner gold ci-section">◈ What to do</div>
+          ${pri.map((p, i) => `<div class="ci-pri${i ? '' : ' top'}">
+            <div class="ui-crest sm"><span>${i + 1}</span></div>
+            <div style="flex:1;min-width:0;">
+              <div class="ci-pri-t">${p.title}</div>
+              ${p.target ? `<div class="ci-pri-goal">${p.target}</div>` : ''}
+              <div class="ci-pri-why">${p.why}</div>
+              <details class="ci-more"><summary>How</summary><ul>${p.how.map(h => `<li>${h}</li>`).join('')}</ul>${p.more ? `<div class="ci-pri-why">${p.more}</div>` : ''}</details>
+            </div>
+          </div>`).join('')}` : ''}
+
+        <div class="ui-banner ci-section" style="margin-top:6px;">◈ Your plan</div>
+        ${plan && focus.size ? `<div class="ci-sub">Tuned for ${[...focus].join(', ')} from this check-in.</div>` : ''}
+        <div id="ci-plan-list">${planBody}</div>
+
+        <button class="ui-btn-primary ci-save" data-close>Continue</button>
+      </div>
+    </div>`;
+  getOverlayHost().appendChild(overlay);
+
+  overlay.querySelectorAll('[data-close]').forEach(b => b.addEventListener('click', () => overlay.remove()));
+  overlay.querySelector('.wp-set')?.addEventListener('click', () => { overlay.remove(); openDirectiveEditor(null); });
+  overlay.querySelectorAll('.ci-skip').forEach(btn => btn.addEventListener('click', () => {
+    const s = suggestions[Number(btn.dataset.i)];
+    if (s) { const rec = readPlanOptDismissed(); rec[s.id] = today; writePlanOptDismissed(rec); }
+    btn.closest('.ci-plan-item')?.remove();
+    try { renderPlanOptimiser(); } catch (_) {}
+  }));
+  overlay.querySelectorAll('.ci-apply').forEach(btn => btn.addEventListener('click', async () => {
+    const s = suggestions[Number(btn.dataset.i)];
+    const next = s && applySuggestion(myProgram, s, today);
+    if (!next) { showToast('Your plan changed since this was suggested.', 'info'); btn.closest('.ci-plan-item')?.remove(); return; }
+    btn.disabled = true;
+    const before = myProgram;
+    myProgram = next;
+    try {
+      await setDoc(doc(db, 'programs', currentUser.uid), myProgram);
+      btn.closest('.ci-plan-item').innerHTML = `<div class="ci-plan-t" style="color:var(--growing);">✓ Applied</div><div class="ci-plan-r">${escapeHtml(s.title)}</div>`;
+      showToast(`Plan updated: ${s.title}`, 'success');
+    } catch (e) {
+      console.error('Applying plan suggestion failed:', e);
+      myProgram = before;
+      btn.disabled = false;
+      showToast('Could not update the plan. Try again.', 'error');
+    }
+    try { renderQuestFeed(); renderPlanOptimiser(); } catch (_) {}
+  }));
+}
+
+/** The weight goal as a path: where you should be today against where you are, finish date, weekly change. */
+function weightPathHtml() {
+  const today = todayStr();
+  const goal = parseWeightGoal(activeDirectives().find(d => d.metric === 'body_weight_kg' && Number(d.target) > 0));
+  const wk = weeklyChange(myWeights, today);
+  const st = goal ? pathStatus(myWeights, goal, today) : null;
+  if (!wk && !st) return '';
+  const date = (d) => new Date(d + 'T12:00:00').toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
+  const kg = (n) => Math.abs(n).toFixed(1);
+  const signed = (n) => `${n > 0 ? '+' : n < 0 ? '−' : ''}${kg(n)}`;
+  const tile = (k, v, s, color) => `<div class="ci-tile"><div class="ci-k">${k}</div><div class="ci-v">${v}</div>${s ? `<div class="ci-s" style="color:${color || 'var(--text-faint)'};">${s}</div>` : ''}</div>`;
+  const TRACK = { ahead: ['Ahead of your path', 'var(--growing)'], on: ['On your path', 'var(--growing)'], behind: ['Behind your path', 'var(--excess)'], reached: ['Goal reached', 'var(--ui-gold)'], unknown: ['Path set', 'var(--brass)'] };
+  const tiles = [];
+  let head = '';
+  if (st) {
+    const [label, color] = TRACK[st.track] || TRACK.unknown;
+    const gap = st.aheadKg !== null && st.track !== 'on' && st.track !== 'reached' ? `<small style="display:block;font-family:var(--font-mono);font-size:12px;font-weight:400;letter-spacing:0;text-transform:none;margin-top:3px;">${kg(st.aheadKg)} kg ${st.aheadKg > 0 ? 'ahead' : 'behind'}</small>` : '';
+    head = `<div class="wp-head"><div class="wp-state" style="color:${color};">${label.replace(' of your path', '')}${gap}</div><div class="wp-pct">${st.pct}%<small>of goal</small></div></div>
+      <div class="ci-bar"><i style="width:${Math.max(3, st.pct)}%;"></i></div>`;
+    if (st.expected !== null) tiles.push(tile('Target today', `${st.expected}<small>kg</small>`, `You: ${st.current} kg`, ''));
+    else tiles.push(tile('Now', `${st.current}<small>kg</small>`, `${kg(st.remaining)} kg to ${st.target}`, ''));
+    if (st.finishDate) {
+      const late = goal.targetDate ? daysBetween(goal.targetDate, st.finishDate) : null;
+      tiles.push(tile('Finish at this pace', date(st.finishDate), late === null ? '' : late > 3 ? `${late} days after your date` : late < -3 ? `${-late} days early` : 'Right on your date', late !== null && late > 3 ? 'var(--excess)' : 'var(--growing)'));
+    } else if (st.rate === null) tiles.push(tile('Finish at this pace', '—', 'A few more weigh-ins', ''));
+    else tiles.push(tile('Finish at this pace', '—', 'Not moving to goal yet', 'var(--excess)'));
+    if (st.neededPerWeek !== null && st.track !== 'reached') tiles.push(tile('Needed', `${signed(st.neededPerWeek)}<small>kg/wk</small>`, st.kcalPerDay ? `≈ ${st.kcalPerDay} kcal/day ${goal.dir < 0 ? 'deficit' : 'surplus'}` : '', ''));
+    tiles.push(tile(goal.dir < 0 ? 'Lowest so far' : 'Highest so far', `${st.best}<small>kg</small>`, `Start ${st.startKg} kg`, ''));
+  }
+  if (wk) tiles.push(tile('This week', `${signed(wk.diff)}<small>kg</small>`, `avg ${wk.thisAvg} vs ${wk.lastAvg}`, wk.diff === 0 ? '' : goal ? (Math.sign(wk.diff) === goal.dir ? 'var(--growing)' : 'var(--excess)') : ''));
+  const svg = goal ? pathSvg(myWeights, goal, { today }) : '';
+  const cta = goal ? '' : '<button type="button" class="ui-btn-outline wp-set" style="margin-top:10px;width:100%;">Set a goal weight to draw your path</button>';
+  return `<div class="wp">
+    ${head}
+    ${svg ? `<div class="wp-chart">${svg}<div class="wp-legend"><span><i class="g"></i>where you should be</span><span><i class="a"></i>7-day average</span></div></div>` : ''}
+    <div class="ci-tiles">${tiles.join('')}</div>
+    ${cta}
+  </div>`;
+}
 
 // ── END WEEKLY CHECK-IN ───────────────────────────────────────────────────────
 
@@ -20925,6 +21125,7 @@ function renderTrends() {
 
     <div class="card">
       <div class="card-title"><h3>◐ Weight</h3></div>
+      ${weightPathHtml()}
       ${weightLineChart(myWeights)}
       <div class="weight-input-row">
         <input type="number" step="0.1" id="weight-input" placeholder="Log today's weight (kg)" inputmode="decimal" />
@@ -21044,6 +21245,7 @@ function renderTrends() {
       requestAnimationFrame(update);
     }
   });
+  document.querySelector('#view-trends .wp-set')?.addEventListener('click', () => openDirectiveEditor(null));
   const wBtn = document.getElementById('weight-save-btn');
   if (wBtn) wBtn.addEventListener('click', async () => {
     const val = Number(document.getElementById('weight-input').value);

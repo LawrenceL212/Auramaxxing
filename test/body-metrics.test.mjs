@@ -5,7 +5,7 @@
 import {
   navyBodyFat, bodyFatCategory, bmi, bmiCategory, ffmi, waistToHeight,
   measurementWarnings, bodyMetrics, physiquePriorities, physiqueFocus,
-  measureHint, measureStep, tapeIconSvg, bodyScanSvg, EXPLAIN, GOLDEN_RATIO,
+  measureHint, measureStep, tapeIconSvg, bodyScanSvg, checkinProgress, EXPLAIN, GOLDEN_RATIO,
 } from '../body-metrics.js';
 
 let pass = 0, fail = 0;
@@ -96,6 +96,27 @@ check('all ratios met: maintain', golden.length === 1 && golden[0].id === 'maint
 check('nothing measured: no priorities', physiquePriorities('male', {}).length === 0);
 check('focus groups come from the top priorities', JSON.stringify(physiqueFocus('male', { ...screenshot, shoulders: 117 })) === JSON.stringify(['Shoulders', 'Back', 'Chest']), JSON.stringify(physiqueFocus('male', { ...screenshot, shoulders: 117 })));
 check('women get no male chest/arm proportion targets', !physiquePriorities('female', { waist: 70, hip: 98, chest: 85, armLeft: 26, armRight: 26 }).some(p => p.id === 'chest' || p.id === 'arms'));
+
+
+// ── progress between check-ins ─────────────────────────────────────────
+{
+  const base = { weight: 80, height: 180, waist: 86, neck: 39, shoulders: 120, chest: 104, armLeft: 36, armRight: 36 };
+  check('first check-in: baseline, no rows', checkinProgress('male', null, base).first === true);
+  const cut = checkinProgress('male', base, { ...base, weight: 78.5, waist: 83 });
+  check('waist down is better', cut.rows.find(r => r.key === 'waist').status === 'better' && cut.rows.find(r => r.key === 'waist').diff === -3);
+  check('weight is neutral, not good or bad', cut.rows.find(r => r.key === 'weight').status === 'neutral');
+  check('V-taper rises as the waist drops', cut.rows.find(r => r.key === 'vTaper').status === 'better');
+  const noise = checkinProgress('male', base, { ...base, weight: 80.1, waist: 86.2 });
+  check('inside tape error is flat', noise.rows.every(r => r.status === 'flat' || r.status === 'neutral' && r.key === 'weight' ? true : r.status === 'flat'), JSON.stringify(noise.rows));
+  check('flat week reads as steady', noise.headline === 'Holding steady', noise.headline);
+  const recomp = checkinProgress('male', base, { ...base, weight: 80, waist: 82, chest: 106, armLeft: 37, armRight: 37 });
+  check('lean up and fat down is recomposing', recomp.headline === 'Recomposing', recomp.headline + JSON.stringify(recomp.rows.map(r => [r.key, r.status])));
+  const slip = checkinProgress('male', base, { ...base, waist: 90, shoulders: 118 });
+  check('wider waist and narrower shoulders slip', slip.worse >= 2 && slip.headline !== 'Moving the right way', slip.headline);
+  check('a metric missing from one side gives no row', !checkinProgress('male', { weight: 80 }, base).rows.some(r => r.key === 'waist'));
+  const wide = checkinProgress('male', { ...base, shoulders: 52 }, base);
+  check('a shoulder width is never compared', !wide.rows.some(r => r.key === 'shoulders'));
+}
 
 // ── copy and icons ─────────────────────────────────────────────────────
 check('every full step says around', ['neck', 'shoulders', 'chest', 'waist', 'hip', 'armLeft'].every(f => /around/.test(measureStep(f, 'male'))));

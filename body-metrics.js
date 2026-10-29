@@ -437,3 +437,66 @@ export function bodyScanSvg(measured = {}, size = 96, fields = ['neck', 'shoulde
     `<g fill="url(#ciScanBody)" stroke="rgba(120,185,255,.7)" stroke-width=".5">${FIGURE}</g>` +
     rings.map(r => r.front).join('') + '</svg>';
 }
+
+// Smallest change that is more than tape and scale noise, per metric.
+const NOISE = { weight: 0.3, bodyFat: 0.8, waist: 0.5, shoulders: 0.5, chest: 0.5, arms: 0.5, vTaper: 0.02, leanKg: 0.8, fatKg: 0.8 };
+// Which way is progress: 1 = up is good, -1 = down is good, 0 = neither (depends on the goal).
+const DIRECTION = { weight: 0, bodyFat: -1, waist: -1, shoulders: 1, chest: 1, arms: 1, vTaper: 1, leanKg: 1, fatKg: -1 };
+const DELTA_ROWS = [
+  ['weight', 'Weight', 'kg'], ['bodyFat', 'Body fat', '%'], ['leanKg', 'Lean mass', 'kg'], ['fatKg', 'Fat mass', 'kg'],
+  ['waist', 'Waist', 'cm'], ['shoulders', 'Shoulders', 'cm'], ['chest', 'Chest', 'cm'], ['arms', 'Arms', 'cm'], ['vTaper', 'V-taper', '×'],
+];
+
+function deltaValues(sex, raw) {
+  const m = bodyMetrics(sex, raw);
+  const c = cleanMeasurements(raw);
+  const arms = c.armLeft || c.armRight ? round1(((c.armLeft || c.armRight) + (c.armRight || c.armLeft)) / 2) : null;
+  return {
+    weight: c.weight, bodyFat: m.bodyFat, leanKg: m.leanKg, fatKg: m.fatKg, waist: c.waist,
+    shoulders: c.shoulders && c.shoulders >= RANGES.shoulders[0] ? c.shoulders : null,
+    chest: c.chest && c.chest >= RANGES.chest[0] ? c.chest : null,
+    arms, vTaper: m.vTaper ? m.vTaper.ratio : null,
+  };
+}
+
+/**
+ * What changed between two check-ins, for the screen shown after saving.
+ * Rows only for metrics both check-ins have. Each row: { key, label, unit,
+ * prev, curr, diff, status: 'better' | 'worse' | 'flat' | 'neutral' }.
+ * Changes inside tape/scale noise are 'flat'. Also a headline and a one-line verdict.
+ */
+export function checkinProgress(sex, prev, curr) {
+  if (!curr) return null;
+  const now = deltaValues(sex, curr);
+  if (!prev) return { first: true, rows: [], better: 0, worse: 0, headline: 'Baseline set', verdict: 'Your first scan is saved. Next week the changes show here.' };
+  const before = deltaValues(sex, prev);
+  const rows = [];
+  for (const [key, label, unit] of DELTA_ROWS) {
+    if (now[key] == null || before[key] == null) continue;
+    const decimals = key === 'vTaper' ? 2 : 1;
+    const diff = Math.round((now[key] - before[key]) * 10 ** decimals) / 10 ** decimals;
+    const flat = Math.abs(now[key] - before[key]) < NOISE[key];
+    const status = flat ? 'flat' : DIRECTION[key] === 0 ? 'neutral' : (diff * DIRECTION[key] > 0 ? 'better' : 'worse');
+    rows.push({ key, label, unit, prev: before[key], curr: now[key], diff, status });
+  }
+  const better = rows.filter(r => r.status === 'better').length;
+  const worse = rows.filter(r => r.status === 'worse').length;
+  const by = Object.fromEntries(rows.map(r => [r.key, r]));
+  let headline, verdict;
+  if (by.leanKg && by.fatKg && by.leanKg.status === 'better' && by.fatKg.status === 'better') {
+    headline = 'Recomposing'; verdict = 'Lean mass up and fat down at once: the best case.';
+  } else if (by.leanKg && by.leanKg.status === 'better' && by.fatKg && by.fatKg.status !== 'better') {
+    headline = 'Building'; verdict = 'Lean mass is up. Watch the waist so the gain stays lean.';
+  } else if (by.fatKg && by.fatKg.status === 'better' && !(by.leanKg && by.leanKg.status === 'worse')) {
+    headline = 'Cutting clean'; verdict = 'Fat is down and lean mass held.';
+  } else if (by.leanKg && by.leanKg.status === 'worse') {
+    headline = 'Losing muscle'; verdict = 'Lean mass is down. Eat more protein and keep the lifts heavy.';
+  } else if (better > worse) {
+    headline = 'Moving the right way'; verdict = `${better} of ${better + worse} changes are progress.`;
+  } else if (worse > better) {
+    headline = 'Slipping'; verdict = `${worse} of ${better + worse} changes went the wrong way. One week is noise; two is a trend.`;
+  } else {
+    headline = 'Holding steady'; verdict = 'Nothing moved beyond tape error. Normal week to week; judge it over a month.';
+  }
+  return { first: false, rows, better, worse, headline, verdict };
+}
