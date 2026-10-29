@@ -429,6 +429,10 @@ function volumeRules(ctx, touched) {
     if (v > g.mrv) gaps.push({ group, kind: 'over', size: v - g.mrv });
     const target = volumeTarget(goal, group, focus);
     if (target != null && v < target) gaps.push({ group, kind: 'under', size: target - v, target });
+    // session feedback (session-feedback.js): two sessions in a row said add or reduce
+    const nudge = (ctx.volumeNudge || {})[group];
+    if (nudge === 1 && v < g.mrv && !gaps.some(x => x.group === group)) gaps.push({ group, kind: 'under', size: 1, target: Math.floor(v) + 1, feedback: true });
+    if (nudge === -1 && v > g.mev && !gaps.some(x => x.group === group)) gaps.push({ group, kind: 'over', size: 1, feedback: true });
   }
   gaps.sort((a, b) => b.size - a.size || a.group.localeCompare(b.group));
 
@@ -448,7 +452,9 @@ function volumeRules(ctx, touched) {
         id: `volume-down:${group}:${c.name}:${c.sets - 1}`,
         type: 'volume',
         title: `${c.name}: ${c.sets} → ${c.sets - 1} sets`,
-        reason: `${group} gets about ${Math.round(v)} sets a week, past the ${MUSCLE_GROUPS[group].mrv} most people can recover from. One fewer set here keeps the work you can actually grow from.`,
+        reason: gap.feedback
+          ? `${(ctx.volumeNudgeWhy || {})[group] || `Your session feedback says ${group.toLowerCase()} is too much.`} One fewer set of ${c.name} (${group} is at about ${Math.round(v)} sets a week) lets you recover.`
+          : `${group} gets about ${Math.round(v)} sets a week, past the ${MUSCLE_GROUPS[group].mrv} most people can recover from. One fewer set here keeps the work you can actually grow from.`,
         change: { op: 'sets', dayIndex: c.dayIndex, exIndex: c.exIndex, name: c.name, from: c.sets, to: c.sets - 1 },
         priority: 2,
       });
@@ -462,7 +468,9 @@ function volumeRules(ctx, touched) {
         id: `volume-up:${group}:${c.name}:${c.sets + 1}`,
         type: 'volume',
         title: `${c.name}: ${c.sets} → ${c.sets + 1} sets`,
-        reason: focus.has(group)
+        reason: gap.feedback
+          ? `${(ctx.volumeNudgeWhy || {})[group] || `Your session feedback says ${group.toLowerCase()} can take more.`} One more set of ${c.name} (${group} is at about ${Math.round(v)} sets a week) uses that room.`
+          : focus.has(group)
           ? `${group} gets about ${Math.round(v)} sets a week; ${why(group)}, so it wants at least ${gap.target}. ${c.name} trains it most directly.`
           : `${group} gets about ${Math.round(v)} sets a week; ${why(group)} at least ${gap.target}. ${c.name} trains it most directly.`,
         change: { op: 'sets', dayIndex: c.dayIndex, exIndex: c.exIndex, name: c.name, from: c.sets, to: c.sets + 1 },
@@ -818,6 +826,8 @@ function scheduleRules(ctx) {
  *   personalGoals?: profile.personalGoals,
  *   weeklyGoal?:   profile.weeklyGoal,
  *   dismissed?:    ids to leave out,
+ *   volumeNudge?:  { Group: 1 | -1 } from session feedback (session-feedback.js): add or take away one set,
+ *   volumeNudgeWhy?: { Group: sentence } the reason shown with it,
  *   physiqueFocus?: MUSCLE_GROUPS names the body check-in puts first
  *                   (body-metrics.js physiqueFocus); they get the growth dose,
  * }

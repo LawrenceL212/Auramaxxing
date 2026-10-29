@@ -14,7 +14,12 @@
    - Skin-fold body fat: Jackson & Pollock 3-site (Br J Nutr 1978; Jackson, Pollock
      & Ward, Med Sci Sports Exerc 1980) converted with the Siri equation (1961),
      validated for ages 18-61. Usually closer than the tape formula when the
-     same person pinches the same sites the same way.
+     same person pinches the same sites the same way. The 7-site version (chest,
+     midaxillary, triceps, subscapular, abdomen, suprailiac, thigh; same papers)
+     fits a little tighter and also shows where the fat sits.
+   - Limb muscle: corrected girth = limb circumference - pi x skin fold, and the
+     arm muscle area from it with the bone correction (Heymsfield et al. 1982,
+     Am J Clin Nutr; Frisancho 1981). A tracking measure, not a rating.
    - Body fat categories: American Council on Exercise (ACE).
    - BMI: WHO adult cut-offs (18.5 / 25 / 30).
    - Waist-to-height: Ashwell et al. 2012 (Obesity Reviews) and NICE 2022
@@ -40,6 +45,7 @@ export const RANGES = {
   waist:     [45, 200],
   hip:       [60, 200],
   arm:       [18, 65],
+  thigh:     [30, 100],
 };
 
 const num = (v) => { const n = Number(v); return Number.isFinite(n) && n > 0 ? n : null; };
@@ -53,7 +59,7 @@ export function cleanMeasurements(m = {}) {
   return {
     weight: num(m.weight), height: num(m.height), neck: num(m.neck),
     shoulders: num(m.shoulders), chest: num(m.chest), waist: num(m.waist),
-    hip: num(m.hip), armLeft: num(m.armLeft), armRight: num(m.armRight),
+    hip: num(m.hip), armLeft: num(m.armLeft), armRight: num(m.armRight), thigh: num(m.thigh),
   };
 }
 
@@ -83,7 +89,13 @@ export const SKINFOLD_SITES = {
   male:   ['chest', 'abdomen', 'thigh'],
   female: ['triceps', 'suprailiac', 'thigh'],
 };
-export const SKINFOLD_NAMES = { chest: 'Chest', abdomen: 'Abdomen', thigh: 'Thigh', triceps: 'Triceps', suprailiac: 'Suprailiac' };
+export const SKINFOLD_NAMES = { chest: 'Chest', abdomen: 'Abdomen', thigh: 'Thigh', triceps: 'Triceps', suprailiac: 'Suprailiac', midaxillary: 'Side of ribs', subscapular: 'Back' };
+/** The 7-site set, and the four a Hunter adds to the sex's three for it. */
+export const SKINFOLD_SITES_7 = ['chest', 'midaxillary', 'triceps', 'subscapular', 'abdomen', 'suprailiac', 'thigh'];
+export const SKINFOLD_EXTRA = {
+  male:   ['midaxillary', 'triceps', 'subscapular', 'suprailiac'],
+  female: ['chest', 'midaxillary', 'subscapular', 'abdomen'],
+};
 export const SKINFOLD_RANGE = [2, 60];
 export const JP_AGES = [18, 61];
 const SKINFOLD_STEPS = {
@@ -92,10 +104,13 @@ const SKINFOLD_STEPS = {
   thigh:      'Vertical fold on the front of the thigh, halfway between hip crease and kneecap',
   triceps:    'Vertical fold on the back of the upper arm, halfway between shoulder tip and elbow',
   suprailiac: 'Diagonal fold just above the hip bone, along its natural line',
+  midaxillary: 'Vertical fold on the side of the ribs, level with the bottom of the breastbone',
+  subscapular: 'Diagonal fold just below the tip of the shoulder blade',
 };
 const SKINFOLD_HINTS = {
   chest: 'Halfway nipple to armpit', abdomen: '2 cm beside the navel', thigh: 'Midway hip to knee',
   triceps: 'Back of arm, midway', suprailiac: 'Just above the hip bone',
+  midaxillary: 'Side, level with breastbone tip', subscapular: 'Below the shoulder blade',
 };
 export function skinfoldHint(site) { return SKINFOLD_HINTS[site] || ''; }
 export function skinfoldStep(site) { return SKINFOLD_STEPS[site] || ''; }
@@ -126,6 +141,101 @@ export function jacksonPollock3(sex, folds, age) {
   const bf = 495 / bd - 450;
   if (!Number.isFinite(bf) || bf < 2 || bf > 50) return null;
   return round1(bf);
+}
+
+/** Fold readings for all 7 sites; a missing site is null. */
+export function cleanSkinfolds7(folds = {}) {
+  const out = {};
+  for (const site of SKINFOLD_SITES_7) out[site] = num(folds && folds[site]);
+  return out;
+}
+
+/**
+ * Jackson-Pollock 7-site body fat %, or null unless all seven folds are in range and
+ * the age is 18-61. Same Siri conversion as the 3-site.
+ */
+export function jacksonPollock7(sex, folds, age) {
+  sex = sexOf(sex);
+  const f = cleanSkinfolds7(folds);
+  const a = num(age);
+  if (!a || a < JP_AGES[0] || a > JP_AGES[1]) return null;
+  if (SKINFOLD_SITES_7.some(k => f[k] == null || !inRange(f[k], SKINFOLD_RANGE))) return null;
+  const S = SKINFOLD_SITES_7.reduce((t, k) => t + f[k], 0);
+  const bd = sex === 'female'
+    ? 1.097 - 0.00046971 * S + 0.00000056 * S * S - 0.00012828 * a
+    : 1.112 - 0.00043499 * S + 0.00000055 * S * S - 0.00028826 * a;
+  const bf = 495 / bd - 450;
+  if (!Number.isFinite(bf) || bf < 2 || bf > 50) return null;
+  return round1(bf);
+}
+
+export const TAPE_OFFSET_MAX = 8;
+
+/**
+ * How far the tape formula read from the calipers on a full scan (caliper minus tape, in points), or null
+ * when that scan had no caliper reading or the gap is implausible (over 8 points: a bad pinch or tape).
+ */
+export function calibrationOffset(sex, raw = {}) {
+  const caliper = jacksonPollock7(sex, raw.skinfolds, raw.age) ?? jacksonPollock3(sex, raw.skinfolds, raw.age);
+  const tape = navyBodyFat(sex, cleanMeasurements(raw));
+  if (caliper == null || tape == null) return null;
+  const gap = round1(caliper - tape);
+  return Math.abs(gap) <= TAPE_OFFSET_MAX ? gap : null;
+}
+
+const TRUNK_SITES = ['chest', 'midaxillary', 'subscapular', 'abdomen', 'suprailiac'];
+const LIMB_SITES = ['triceps', 'thigh'];
+// Rule-of-thumb bands for mean trunk fold / mean limb fold. Women normally carry relatively more on the
+// limbs, so their bands sit lower. A guide to where fat sits, not a clinical threshold.
+const DISTRIBUTION_BANDS = {
+  male:   [[1.2, 'Even', 'Fat is spread evenly between trunk and limbs.'], [1.6, 'Trunk-leaning', 'More fat sits on the trunk than the limbs. Waist and diet matter most.'], [Infinity, 'Central', 'Most fat sits on the trunk. This is the pattern that carries the most health risk, and the waist is where it comes off first.']],
+  female: [[0.9, 'Lower-body leaning', 'More fat sits on the hips and thighs than the trunk, which is the usual female pattern.'], [1.3, 'Even', 'Fat is spread evenly between trunk and limbs.'], [Infinity, 'Central', 'More fat sits on the trunk than usual. Waist and diet matter most.']],
+};
+
+/**
+ * Where the fat sits, from all seven folds: trunk against limb mean, the largest folds, and a
+ * plain-words label. Null unless all seven are in range.
+ */
+export function fatDistribution(sex, folds) {
+  sex = sexOf(sex);
+  const f = cleanSkinfolds7(folds);
+  if (SKINFOLD_SITES_7.some(k => f[k] == null || !inRange(f[k], SKINFOLD_RANGE))) return null;
+  const mean = (list) => list.reduce((t, k) => t + f[k], 0) / list.length;
+  const trunk = mean(TRUNK_SITES), limb = mean(LIMB_SITES);
+  const ratio = round2(trunk / limb);
+  const band = DISTRIBUTION_BANDS[sex].find(([max]) => ratio < max);
+  const sites = SKINFOLD_SITES_7.map(k => ({ site: k, name: SKINFOLD_NAMES[k], mm: f[k] })).sort((a, b) => b.mm - a.mm);
+  return { ratio, trunkMm: round1(trunk), limbMm: round1(limb), label: band[1], text: band[2], sites, top: sites.slice(0, 2) };
+}
+
+/**
+ * Limb muscle from the tape and the fold on that limb. Corrected girth = circumference - pi x fold
+ * (the fat layer on both sides of the limb comes off). Arm muscle area follows Heymsfield 1982
+ * (bone correction 10 cm2 men, 6.5 women). Arm needs the triceps fold; thigh needs the thigh
+ * fold and a mid-thigh circumference. The fold is taken on one side, so it is applied to both arms.
+ * Null parts when the inputs are missing.
+ */
+export function limbMuscle(sex, raw = {}) {
+  sex = sexOf(sex);
+  const c = cleanMeasurements(raw);
+  const f = cleanSkinfolds7(raw.skinfolds);
+  const cm = (mm) => mm / 10;
+  const out = { arm: null, thigh: null };
+  if (f.triceps != null && inRange(f.triceps, SKINFOLD_RANGE) && (c.armLeft || c.armRight)) {
+    const corr = (g) => g ? round1(g - Math.PI * cm(f.triceps)) : null;
+    const left = corr(c.armLeft), right = corr(c.armRight);
+    const have = [left, right].filter(v => v != null);
+    const avg = round1(have.reduce((t, v) => t + v, 0) / have.length);
+    const raw1 = [c.armLeft, c.armRight].filter(Boolean);
+    const rawAvg = raw1.reduce((t, v) => t + v, 0) / raw1.length;
+    const areaCm2 = round1(Math.max(0, avg * avg / (4 * Math.PI) - (sex === 'female' ? 6.5 : 10)));
+    out.arm = { left, right, avgCm: avg, areaCm2, share: round2(avg / rawAvg), foldMm: f.triceps };
+  }
+  if (f.thigh != null && inRange(f.thigh, SKINFOLD_RANGE) && c.thigh && inRange(c.thigh, RANGES.thigh)) {
+    const corr = round1(c.thigh - Math.PI * cm(f.thigh));
+    out.thigh = { cm: corr, areaCm2: round1(corr * corr / (4 * Math.PI)), share: round2(corr / c.thigh), foldMm: f.thigh };
+  }
+  return out.arm || out.thigh ? out : null;
 }
 
 const BF_BANDS = {
@@ -206,6 +316,13 @@ export function measurementWarnings(m = {}) {
   for (const k of entered) {
     if (!inRange(sf[k], SKINFOLD_RANGE)) w[`sf_${k}`] = `A fold is ${SKINFOLD_RANGE[0]}–${SKINFOLD_RANGE[1]} mm. Typo, or cm?`;
   }
+  const sf7 = cleanSkinfolds7(m.skinfolds);
+  const extraIn = SKINFOLD_EXTRA[sex].filter(k => sf7[k] != null);
+  for (const k of extraIn) {
+    if (!inRange(sf7[k], SKINFOLD_RANGE)) w[`sf_${k}`] = `A fold is ${SKINFOLD_RANGE[0]}–${SKINFOLD_RANGE[1]} mm. Typo, or cm?`;
+  }
+  if (extraIn.length && extraIn.length < SKINFOLD_EXTRA[sex].length) w.sf7_missing = `Fill all ${SKINFOLD_EXTRA[sex].length} extra sites for the 7-site reading, or leave them empty.`;
+  if (c.thigh != null && !inRange(c.thigh, RANGES.thigh)) w.thigh = `A thigh is ${RANGES.thigh[0]}–${RANGES.thigh[1]} cm around. Typo, or a width?`;
   const age = num(m.age);
   if (entered.length && age != null && (age < JP_AGES[0] || age > JP_AGES[1])) w.age = `The caliper formula is for ages ${JP_AGES[0]}–${JP_AGES[1]}.`;
   else if (age != null && (age < 10 || age > 100)) w.age = 'Check the age.';
@@ -231,10 +348,18 @@ export function bodyMetrics(sex, raw = {}) {
   sex = sexOf(sex);
   const c = cleanMeasurements(raw);
   const navy = navyBodyFat(sex, c);
-  const caliper = jacksonPollock3(sex, raw.skinfolds, raw.age);
-  // calipers win when all three folds and the age are in; the tape formula is the fallback
-  const bf = caliper != null ? caliper : navy;
-  const bodyFatSource = caliper != null ? 'calipers' : navy != null ? 'tape' : null;
+  const caliper3 = jacksonPollock3(sex, raw.skinfolds, raw.age);
+  const caliper7 = jacksonPollock7(sex, raw.skinfolds, raw.age);
+  // the 7-site reading wins, then the 3-site, then the tape formula; sources are kept apart so a
+  // progress row never compares across methods
+  const caliper = caliper7 != null ? caliper7 : caliper3;
+  // between caliper scans the tape formula is nudged by how far it read from the calipers last time
+  // (raw.tapeOffset, see calibrationOffset): a weekly tape check-in then stays on the caliper scale
+  const rawOff = Number(raw.tapeOffset);
+  const offset = raw.tapeOffset != null && Number.isFinite(rawOff) && Math.abs(rawOff) <= TAPE_OFFSET_MAX ? rawOff : null;
+  const calibrated = caliper == null && navy != null && offset != null ? round1(Math.min(50, Math.max(3, navy + offset))) : null;
+  const bf = caliper != null ? caliper : calibrated != null ? calibrated : navy;
+  const bodyFatSource = caliper7 != null ? 'calipers7' : caliper3 != null ? 'calipers' : calibrated != null ? 'tapeCal' : navy != null ? 'tape' : null;
   const fatKg = bf != null && c.weight ? round1(c.weight * bf / 100) : null;
   const leanKg = bf != null && c.weight ? round1(c.weight - c.weight * bf / 100) : null;
   const bmiV = bmi(c.weight, c.height);
@@ -290,6 +415,8 @@ export function bodyMetrics(sex, raw = {}) {
     waistToHeight: whtr, waistToHeightCategory: waistToHeightCategory(whtr),
     waistToHip: whr,
     vTaper, chestWaist, arms,
+    distribution: fatDistribution(sex, raw.skinfolds),
+    limbs: limbMuscle(sex, raw),
     missing: {
       height: !c.height,
       hip: sex === 'female' && !c.hip,
@@ -508,12 +635,12 @@ export function bodyScanSvg(measured = {}, size = 96, fields = ['neck', 'shoulde
 }
 
 // Smallest change that is more than tape and scale noise, per metric.
-const NOISE = { weight: 0.3, bodyFat: 0.8, waist: 0.5, shoulders: 0.5, chest: 0.5, arms: 0.5, vTaper: 0.02, leanKg: 0.8, fatKg: 0.8 };
+const NOISE = { armMuscle: 0.5, thighMuscle: 0.6, weight: 0.3, bodyFat: 0.8, waist: 0.5, shoulders: 0.5, chest: 0.5, arms: 0.5, vTaper: 0.02, leanKg: 0.8, fatKg: 0.8 };
 // Which way is progress: 1 = up is good, -1 = down is good, 0 = neither (depends on the goal).
-const DIRECTION = { weight: 0, bodyFat: -1, waist: -1, shoulders: 1, chest: 1, arms: 1, vTaper: 1, leanKg: 1, fatKg: -1 };
+const DIRECTION = { armMuscle: 1, thighMuscle: 1, weight: 0, bodyFat: -1, waist: -1, shoulders: 1, chest: 1, arms: 1, vTaper: 1, leanKg: 1, fatKg: -1 };
 const DELTA_ROWS = [
   ['weight', 'Weight', 'kg'], ['bodyFat', 'Body fat', '%'], ['leanKg', 'Lean mass', 'kg'], ['fatKg', 'Fat mass', 'kg'],
-  ['waist', 'Waist', 'cm'], ['shoulders', 'Shoulders', 'cm'], ['chest', 'Chest', 'cm'], ['arms', 'Arms', 'cm'], ['vTaper', 'V-taper', '×'],
+  ['waist', 'Waist', 'cm'], ['shoulders', 'Shoulders', 'cm'], ['chest', 'Chest', 'cm'], ['arms', 'Arms', 'cm'], ['armMuscle', 'Arm muscle', 'cm'], ['thighMuscle', 'Thigh muscle', 'cm'], ['vTaper', 'V-taper', '×'],
 ];
 
 function deltaValues(sex, raw) {
@@ -525,6 +652,7 @@ function deltaValues(sex, raw) {
     shoulders: c.shoulders && c.shoulders >= RANGES.shoulders[0] ? c.shoulders : null,
     chest: c.chest && c.chest >= RANGES.chest[0] ? c.chest : null,
     arms, vTaper: m.vTaper ? m.vTaper.ratio : null, source: m.bodyFatSource,
+    armMuscle: m.limbs && m.limbs.arm ? m.limbs.arm.avgCm : null, thighMuscle: m.limbs && m.limbs.thigh ? m.limbs.thigh.cm : null,
   };
 }
 

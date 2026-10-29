@@ -4289,6 +4289,40 @@
   .hunt-tiles .pc-btn .ui-tile-s{font-size:13px;}
   .ci-sf-sum{font-family:var(--font-mono);font-size:12px;color:var(--text-faint);margin:-8px 0 14px;}
   .ci-bfsrc{font-family:var(--font-mono);font-size:11px;color:var(--text-faint);margin-top:2px;}
+  .fs{margin-bottom:8px;}
+  .fs-top{display:flex;align-items:center;gap:14px;margin-bottom:10px;}
+  .fs-label{font-family:var(--font-display);font-weight:800;font-size:22px;letter-spacing:.05em;text-transform:uppercase;}
+  .fs-sub{font-family:var(--font-mono);font-size:11px;color:var(--text-faint);margin-top:2px;}
+  .fs-part{padding:9px 0;border-top:1px solid rgba(91,168,255,.08);}
+  .fs-part-h{display:flex;justify-content:space-between;font-size:15px;font-weight:600;color:var(--text);}
+  .fs-part-n{font-family:var(--font-display);color:var(--ui-gold);}
+  .fs-part .ci-bar{margin-top:6px;height:5px;}
+  .fs-part-d{font-size:13px;color:var(--text-faint);margin-top:5px;line-height:1.35;}
+  .fs-next{font-size:15px;line-height:1.4;color:var(--text);margin-top:10px;padding:10px 12px;border-left:3px solid var(--ui-gold);background:rgba(255,214,107,.06);}
+  .fs-miss{font-size:13px;color:var(--text-faint);margin-top:8px;}
+  .ci-sfwrap>summary{font-family:var(--font-display);font-weight:700;letter-spacing:.08em;text-transform:uppercase;font-size:12px;color:var(--ui-gold);min-height:44px;display:flex;align-items:center;}
+  .ci-sfwrap{margin-bottom:22px;}
+  .rh-dots{display:flex;justify-content:space-between;gap:6px;margin:6px 0 4px;}
+  .rh-dot{flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;font-family:var(--font-mono);font-size:11px;color:var(--text-faint);}
+  .rh-dot i{width:100%;max-width:38px;aspect-ratio:1;border-radius:50%;border:2px solid rgba(91,168,255,.3);background:rgba(14,20,38,.9);}
+  .rh-dot.done i{border-color:var(--ui-gold);background:var(--ui-gold-grad);box-shadow:0 0 12px rgba(255,214,107,.45);}
+  .rh-dot.today span{color:var(--ui-gold);font-weight:700;}
+  .rh-big{font-family:var(--font-display);font-weight:800;font-size:44px;color:#fff;text-align:center;letter-spacing:.02em;}
+  .rh-big small{font-family:var(--font-mono);font-size:14px;color:var(--text-faint);margin-left:6px;}
+  .rh-step{display:flex;align-items:center;justify-content:center;gap:16px;margin:10px 0 16px;}
+  .rh-step button{width:56px;height:56px;font-size:28px;color:var(--ui-gold);background:rgba(14,20,38,.9);border:1px solid rgba(255,214,107,.4);cursor:pointer;}
+  .rh-row{display:flex;justify-content:space-between;align-items:center;gap:10px;width:100%;text-align:left;padding:12px 14px;min-height:56px;cursor:pointer;color:var(--text);background:rgba(14,20,38,.9);border:1px solid rgba(91,168,255,.22);margin-bottom:8px;}
+  .rh-row b{font-family:var(--font-display);font-size:14px;letter-spacing:.05em;text-transform:uppercase;}
+  .rh-row span{font-size:13px;color:var(--text-faint);}
+  .rh-row.due{border-color:rgba(255,214,107,.5);}
+  .rh-row.due em{font-style:normal;font-family:var(--font-mono);font-size:11px;color:var(--ui-gold);}
+  .rh-row.ok em{font-style:normal;font-family:var(--font-mono);font-size:11px;color:var(--growing);}
+  .rh-note{font-size:14px;line-height:1.4;color:var(--text-faint);margin-top:8px;}
+  .sf-ask{font-size:15px;color:var(--text-dim);margin:2px 0 8px;}
+  .sf-opts{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:6px;}
+  .sf-opt{min-height:48px;font-family:var(--font-display);font-weight:700;font-size:13px;letter-spacing:.04em;text-transform:uppercase;color:var(--text-dim);cursor:pointer;background:rgba(14,20,38,.9);border:1px solid rgba(91,168,255,.25);}
+  .sf-opt.on{color:#1a0f00;background:var(--ui-gold-grad);border-color:var(--ui-gold);}
+  #sf-save:disabled{opacity:.4;}
 </style>
 </head>
 <body>
@@ -4851,8 +4885,12 @@ import { muscleDevelopment, bodyBuild, bodyFrame } from "./physique.js";
 import { weeklyChange, pathStatus, pathSvg, parseGoal as parseWeightGoal } from "./weight-path.js";
 import { solveGoal, presetsFor, DEFAULT_PRESET, targetRows, goalProgress, goalPriorities, goalFocus, weightGoalFromPlan, verdictLine } from "./physique-goal.js";
 import { progressCheck } from "./progress-check.js";
-import { bodyMetrics, measurementWarnings, physiquePriorities, physiqueFocus, measureHint, measureStep, tapeIconSvg, bodyScanSvg, checkinProgress, SKINFOLD_SITES, SKINFOLD_NAMES, skinfoldHint, skinfoldStep, navyBodyFat as navyBodyFatPct, EXPLAIN as CHECKIN_EXPLAIN, GOLDEN_RATIO } from "./body-metrics.js";
-import { optimisePlan, applySuggestion, activeDismissals, GOALS, GOAL_LABELS, MUSCLE_GROUPS } from "./optimiser.js";
+import { fitnessScore } from "./fitness-score.js";
+import { rhythmState, weighInReward } from "./rhythm.js";
+import { bodyMetrics, measurementWarnings, physiquePriorities, physiqueFocus, measureHint, measureStep, calibrationOffset, tapeIconSvg, bodyScanSvg, checkinProgress, SKINFOLD_SITES, SKINFOLD_EXTRA, SKINFOLD_NAMES, skinfoldHint, skinfoldStep, navyBodyFat as navyBodyFatPct, EXPLAIN as CHECKIN_EXPLAIN, GOLDEN_RATIO } from "./body-metrics.js";
+import { optimisePlan, applySuggestion, activeDismissals, GOALS, GOAL_LABELS, MUSCLE_GROUPS, groupCredit } from "./optimiser.js";
+import { QUESTIONS as FB_QUESTIONS, classify as classifyFeedback, volumeNudges, pendingFeedback, staleFeedbackDates } from "./session-feedback.js";
+import { blockState, blockWeeks } from "./mesocycle.js";
 import { volumeRows, exerciseInsight, dayStats, suggestionsByDay } from "./plan-insights.js";
 import {
   getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword,
@@ -9376,14 +9414,18 @@ function renderHuntTiles() {
   let tips = 0;
   try { if (myProgram && myProgram.days && myProgram.days.length) tips = optimisePlan(planOptCtx(myProgram, todayStr())).suggestions.length; } catch (_) {}
   const open = !document.getElementById('hunt-more')?.hidden;
+  let pendingFb = null;
+  try { pendingFb = pendingFeedbackDate(); } catch (_) {}
   host.innerHTML = `
     <button class="ui-tile violet" id="hunt-ap-tile" aria-label="${ap} Aura Points. Tap to invest"><span class="ui-tile-v">${ap.toLocaleString()} AP</span><span class="ui-tile-s">to invest</span></button>
     <button class="ui-tile" id="hunt-weight-tile" aria-label="Weigh in. Last ${agoLabel(lastW, todayStr())}"><span class="ui-tile-v">Weigh in</span><span class="ui-tile-s">${lastW ? agoLabel(lastW, todayStr()) : 'not logged'}</span></button>
     <button class="ui-tile ui-dot-host" id="hunt-more-tile" aria-expanded="${open}" aria-controls="hunt-more"><span class="ui-tile-v">More</span><span class="ui-tile-s">plan · goals <span class="hm-chev">${HI.chev.replace('width="18" height="18"', 'width="12" height="12"')}</span></span>${tips ? '<span class="ui-dot gold" title="Plan tips waiting"></span>' : ''}</button>
+    ${pendingFb ? `<button class="ui-tile pc-btn" id="hunt-feedback-tile" aria-label="Rate your last session"><span class="ui-tile-v">Rate last session</span><span class="ui-tile-s">4 taps</span></button>` : ''}
     <button class="ui-tile pc-btn" id="hunt-progress-tile" aria-label="Progress check"><span class="ui-tile-v">Progress check</span><span class="ui-tile-s">how am I doing?</span></button>`;
+  document.getElementById('hunt-feedback-tile')?.addEventListener('click', () => window.openSessionFeedback(pendingFb));
   document.getElementById('hunt-progress-tile')?.addEventListener('click', () => window.openProgressCheck());
   document.getElementById('hunt-ap-tile')?.addEventListener('click', openApInvestPicker);
-  document.getElementById('hunt-weight-tile')?.addEventListener('click', () => window.openCheckinModal());
+  document.getElementById('hunt-weight-tile')?.addEventListener('click', () => window.openCheckinHub());
   document.getElementById('hunt-more-tile')?.addEventListener('click', () => setHuntMore(document.getElementById('hunt-more').hidden, true));
 }
 
@@ -10782,8 +10824,15 @@ const PE_STATUS = {
 };
 const PE_VOL_COLOR = { none: 'var(--text-faint)', low: 'var(--excess)', ok: 'var(--text-dim)', good: 'var(--growing)', high: 'var(--excess)' };
 
+/** Session feedback entries (profile.feedback, one map entry per rated session date) as a list. */
+function feedbackEntries() {
+  return Object.entries(profile?.feedback || {}).map(([date, f]) => ({ date, ...f }));
+}
+
 function planOptCtx(program, today) {
+  const fb = volumeNudges({ entries: feedbackEntries(), today });
   return {
+    volumeNudge: fb.nudges, volumeNudgeWhy: fb.why,
     program,
     exercises: EXERCISES_ALL,
     workouts: myWorkouts.filter(w => w.uid === currentUser?.uid),
@@ -16314,7 +16363,8 @@ async function loadCheckins() {
 
 
 
-window.openCheckinModal = () => {
+window.openCheckinModal = (modeArg) => {
+  const mode = typeof modeArg === 'string' ? modeArg : 'weekly';
   const existing = document.getElementById('checkin-modal-overlay');
   if (existing) existing.remove();
 
@@ -16322,6 +16372,9 @@ window.openCheckinModal = () => {
   const lastC = myCheckins[myCheckins.length - 1];
   const tapeFields = ['waist', 'neck', ...(gender === 'female' ? ['hip'] : []), 'shoulders', 'chest', 'armLeft'];
   const sfSites = SKINFOLD_SITES[gender === 'female' ? 'female' : 'male'];
+  const sfExtra = SKINFOLD_EXTRA[gender === 'female' ? 'female' : 'male'];
+  const lastSf = (s) => [...myCheckins].reverse().find(c => c.skinfolds && c.skinfolds[s])?.skinfolds[s];
+  const lastWith = (k) => [...myCheckins].reverse().find(c => c[k])?.[k];
   const tapeNames = { waist: 'Waist', neck: 'Neck', hip: 'Hips', shoulders: 'Shoulders', chest: 'Chest', armLeft: 'Arms' };
 
   const overlay = document.createElement('div');
@@ -16334,8 +16387,8 @@ window.openCheckinModal = () => {
         <div class="ci-hero">
           <div class="ci-hero-top">
             <div>
-              <div class="ui-banner gold">◈ Weekly check-in</div>
-              <div class="ci-title">Body Measurements</div>
+              <div class="ui-banner gold">${mode === 'full' ? '◈ Full scan' : '◈ Weekly check-in'}</div>
+              <div class="ci-title">${mode === 'full' ? 'Full Body Scan' : 'Body Measurements'}</div>
             </div>
             <button class="ci-close" aria-label="Close" onclick="document.getElementById('checkin-modal-overlay').remove()">✕</button>
           </div>
@@ -16379,21 +16432,31 @@ window.openCheckinModal = () => {
           ${checkinField('Chest', 'ci-chest', 'cm around', lastC?.chest, '95', measureHint('chest', gender), 'chest')}
           ${checkinField('Left Arm', 'ci-armLeft', 'cm around', lastC?.armLeft, '33', measureHint('armLeft', gender), 'armLeft')}
           ${checkinField('Right Arm', 'ci-armRight', 'cm around', lastC?.armRight, '33', measureHint('armRight', gender), 'armRight')}
+          ${mode === 'full' ? checkinField('Thigh', 'ci-thigh', 'cm around', lastWith('thigh'), '56', 'Mid-thigh, standing', 'thigh') : ''}
         </div>
 
-        <div class="ui-banner ci-section">◈ Skin folds · mm <span style="text-transform:none;letter-spacing:0;color:var(--text-faint);">optional</span></div>
-        <div class="ci-sub">Calipers give a closer body fat than the tape. Fill all three and the age.</div>
+        <details class="ci-more ci-sfwrap"${mode === 'full' ? ' open' : ''}>
+        <summary>${mode === 'full' ? 'Skin folds · mm' : 'Skin folds · mm · monthly, optional'}</summary>
+        <div class="ci-sub">Calipers give a closer body fat than the tape. Fill the three sites and the age; add the four extra sites for a fat map and limb muscle.</div>
         <details class="ci-more">
           <summary>How to pinch</summary>
           <div class="ci-steps">
-            ${sfSites.map(s => `<div class="ci-step"><span><b>${SKINFOLD_NAMES[s]}</b> · ${skinfoldStep(s)}</span></div>`).join('')}
+            ${[...sfSites, ...sfExtra].map(s => `<div class="ci-step"><span><b>${SKINFOLD_NAMES[s]}</b> · ${skinfoldStep(s)}</span></div>`).join('')}
             <div class="ci-step" style="color:var(--text-faint);">Pinch skin and fat only, on the right side. Read within 2 seconds. Take it twice and use the average.</div>
           </div>
         </details>
         <div class="ci-grid" style="margin-bottom:24px;">
-          ${sfSites.map(s => checkinField(SKINFOLD_NAMES[s], 'ci-sf-' + s, 'mm', lastC?.skinfolds?.[s], '12', skinfoldHint(s))).join('')}
-          ${checkinField('Age', 'ci-age', 'years', lastC?.age, '30', 'For the caliper formula (18–61)')}
+          ${sfSites.map(s => checkinField(SKINFOLD_NAMES[s], 'ci-sf-' + s, 'mm', '', lastSf(s) || '12', skinfoldHint(s))).join('')}
+          ${checkinField('Age', 'ci-age', 'years', lastWith('age'), '30', 'For the caliper formula (18–61)')}
         </div>
+        <details class="ci-more">
+          <summary>${mode === 'full' ? 'Add 4 more sites' : '4 more sites'} · fat map + limb muscle</summary>
+          <div class="ci-grid" style="margin-bottom:6px;">
+            ${sfExtra.map(s => checkinField(SKINFOLD_NAMES[s], 'ci-sf-' + s, 'mm', '', lastSf(s) || '12', skinfoldHint(s))).join('')}
+          </div>
+        </details>
+        <div style="height:18px;"></div>
+        </details>
 
         <div class="ui-banner ci-section">◈ Live estimates</div>
         <div id="ci-live" style="margin-bottom:24px;"></div>
@@ -16425,7 +16488,7 @@ window.openCheckinModal = () => {
   getOverlayHost().appendChild(overlay);
 
   // Live estimation
-  const liveFields = ['ci-weight','ci-height','ci-waist','ci-neck','ci-hip','ci-shoulders','ci-chest','ci-armLeft','ci-armRight','ci-age', ...sfSites.map(s => 'ci-sf-' + s)];
+  const liveFields = ['ci-weight','ci-height','ci-waist','ci-neck','ci-hip','ci-shoulders','ci-chest','ci-armLeft','ci-armRight','ci-thigh','ci-age', ...[...sfSites, ...sfExtra].map(s => 'ci-sf-' + s)];
   liveFields.forEach(id => {
     const el = document.getElementById(id);
     if (el) el.addEventListener('input', updateCheckinLive);
@@ -16451,7 +16514,7 @@ function readCheckinInputs() {
   const sf = {};
   for (const s of Object.keys(SKINFOLD_NAMES)) { const x = v('ci-sf-' + s); if (x) sf[s] = x; }
   return {
-    skinfolds: sf, age: v('ci-age'),
+    skinfolds: sf, age: v('ci-age'), thigh: v('ci-thigh'), tapeOffset: bodyFatCalibration(),
     weight: v('ci-weight'), height: v('ci-height'), waist: v('ci-waist'), neck: v('ci-neck'), hip: v('ci-hip'),
     shoulders: v('ci-shoulders'), chest: v('ci-chest'), armLeft: v('ci-armLeft'), armRight: v('ci-armRight'),
   };
@@ -16470,11 +16533,11 @@ function updateCheckinLive() {
 
   // measurement sanity: a width where a circumference belongs, a typo, inches
   const warnings = measurementWarnings({ ...input, sex: gender });
-  ['weight','height','waist','neck','hip','shoulders','chest','armLeft','armRight','age'].forEach(k => {
+  ['weight','height','waist','neck','hip','shoulders','chest','armLeft','armRight','thigh','age'].forEach(k => {
     const el = document.getElementById(`ci-${k}-warn`);
     if (el) el.textContent = warnings[k] ? `⚠ ${warnings[k]}` : '';
   });
-  SKINFOLD_SITES[gender === 'female' ? 'female' : 'male'].forEach(s => {
+  [...SKINFOLD_SITES[gender === 'female' ? 'female' : 'male'], ...SKINFOLD_EXTRA[gender === 'female' ? 'female' : 'male']].forEach(s => {
     const el = document.getElementById(`ci-sf-${s}-warn`);
     if (el) el.textContent = warnings['sf_' + s] ? `⚠ ${warnings['sf_' + s]}` : '';
   });
@@ -16492,8 +16555,8 @@ function updateCheckinLive() {
   const hero = [];
   if (m.bodyFat != null) {
     hero.push(`<div class="ci-tile big gold"><div class="ci-k">Body fat</div><div class="ci-v">${m.bodyFat}<small style="font-size:16px;">%</small></div>
-      <div class="ci-s" style="color:${bfColor[m.bodyFatCategory]};">${m.bodyFatCategory} <span style="color:var(--text-faint);font-weight:500;">· ±${m.bodyFatSource === 'calipers' ? '3' : '3–4'}</span></div>
-      <div class="ci-bfsrc">${m.bodyFatSource === 'calipers' ? 'Calipers' : 'Tape'}${m.bodyFatSource === 'calipers' && m.bodyFatTape != null ? ` · tape says ${m.bodyFatTape}%` : ''}</div></div>`);
+      <div class="ci-s" style="color:${bfColor[m.bodyFatCategory]};">${m.bodyFatCategory} <span style="color:var(--text-faint);font-weight:500;">· ±${m.bodyFatSource === 'tape' ? '3–4' : '3'}</span></div>
+      <div class="ci-bfsrc">${m.bodyFatSource === 'calipers7' ? '7-site calipers' : m.bodyFatSource === 'calipers' ? '3-site calipers' : 'Tape'}${m.bodyFatSource !== 'tape' && m.bodyFatTape != null ? ` · tape says ${m.bodyFatTape}%` : ''}</div></div>`);
   } else if (input.waist && input.neck) {
     hero.push(`<div class="ci-tile big"><div class="ci-k">Body fat</div><div class="ci-v">—</div>
       <div class="ci-s" style="color:${WARN};">${m.missing.height ? 'Add height' : m.missing.hip ? 'Add hips' : 'Check neck / waist'}</div></div>`);
@@ -16526,6 +16589,9 @@ function updateCheckinLive() {
   }
   if (m.bmi != null) small.push(tile('BMI', m.bmi, `${m.bmiCategory}*`, m.bmiCategory === 'Healthy range' ? GOOD : WARN));
   if (m.ffmi != null) small.push(tile('FFMI', m.ffmi, m.ffmiCategory, /muscular|Elite/i.test(m.ffmiCategory) ? GOOD : OK));
+  if (m.limbs && m.limbs.arm) small.push(tile('Arm muscle', `${m.limbs.arm.avgCm} cm`, `${Math.round(m.limbs.arm.share * 100)}% of the girth`, m.limbs.arm.share >= 0.85 ? GOOD : OK));
+  if (m.limbs && m.limbs.thigh) small.push(tile('Thigh muscle', `${m.limbs.thigh.cm} cm`, `${Math.round(m.limbs.thigh.share * 100)}% of the girth`, m.limbs.thigh.share >= 0.85 ? GOOD : OK));
+  if (m.distribution) small.push(tile('Fat sits', m.distribution.label, `most on ${m.distribution.top.map(s => s.name.toLowerCase()).join(' + ')}`, m.distribution.label === 'Central' ? WARN : GOOD));
   if (m.arms && m.arms.diffCm != null) small.push(tile('Arms L / R', m.arms.diffCm ? `${m.arms.diffCm} cm` : 'Even', m.arms.asymmetric ? `${m.arms.weakSide === 'left' ? 'Left' : 'Right'} smaller` : 'Balanced', m.arms.asymmetric ? WARN : GOOD));
   if (input.weight) {
     const last = myCheckins[myCheckins.length - 1];
@@ -16596,7 +16662,8 @@ window.saveCheckin = async () => {
   // shoulder width (not a circumference) gives no V-taper
   const folds = readCheckinInputs().skinfolds;
   const age = parseFloat(document.getElementById('ci-age')?.value) || null;
-  const metrics = bodyMetrics(gender, { weight, height, waist, neck, hip, shoulders, chest, armLeft, armRight, skinfolds: folds, age });
+  const thigh = parseFloat(document.getElementById('ci-thigh')?.value) || null;
+  const metrics = bodyMetrics(gender, { weight, height, waist, neck, hip, shoulders, chest, armLeft, armRight, thigh, skinfolds: folds, age, tapeOffset: bodyFatCalibration() });
   const bodyFatPct = metrics.bodyFat ?? navyBodyFatPct(gender, { waist, neck, hip, height });
   const vtaperRatio = metrics.vTaper ? metrics.vTaper.ratio : null;
   const today = todayStr();
@@ -16609,6 +16676,7 @@ window.saveCheckin = async () => {
     // optional calipers (body-metrics.js jacksonPollock3): additive check-in fields
     ...(Object.keys(folds).length ? { skinfolds: folds } : {}),
     ...(age ? { age } : {}),
+    ...(thigh ? { thigh } : {}),
     bodyFatSource: metrics.bodyFatSource || 'tape',
     ...(notes ? { notes } : {}),
     bodyFatPct,
@@ -16672,12 +16740,29 @@ window.saveCheckin = async () => {
   }
 };
 
+
+/** Where the fat sits and how much muscle each limb carries, when the folds for it were taken. */
+function compositionHtml(m) {
+  if (!m || (!m.distribution && !m.limbs)) return '';
+  const tile = (k, v, s, c) => `<div class="ci-tile"><div class="ci-k">${k}</div><div class="ci-v" style="font-size:20px;">${v}</div>${s ? `<div class="ci-s" style="color:${c || 'var(--text-faint)'};">${s}</div>` : ''}</div>`;
+  const tiles = [];
+  const d = m.distribution;
+  if (d) tiles.push(tile('Fat sits', d.label, `most on ${d.top.map(s => s.name.toLowerCase()).join(' + ')}`, d.label === 'Central' ? '#FFB454' : 'var(--growing)'));
+  if (m.limbs?.arm) tiles.push(tile('Arm muscle', `${m.limbs.arm.avgCm} cm`, `${m.limbs.arm.areaCm2} cm² · ${Math.round(m.limbs.arm.share * 100)}% of girth`, 'var(--growing)'));
+  if (m.limbs?.thigh) tiles.push(tile('Thigh muscle', `${m.limbs.thigh.cm} cm`, `${m.limbs.thigh.areaCm2} cm² · ${Math.round(m.limbs.thigh.share * 100)}% of girth`, 'var(--growing)'));
+  return `<div class="ui-banner ci-section">◈ Composition</div>
+    <div class="ci-tiles">${tiles.join('')}</div>
+    ${d ? `<div class="ci-foot">${d.text} Trunk ${d.trunkMm} mm vs limbs ${d.limbMm} mm (rule of thumb).</div>` : ''}
+    ${m.limbs ? '<div class="ci-foot">Muscle girth is the limb minus the fat on it. Watch it rise week to week; the arm that grew from fat shows no gain here.</div>' : ''}
+    <div style="height:14px;"></div>`;
+}
+
 /** The screen after saving a check-in: what moved, what to do, and the plan changes the optimiser wants. */
 function showCheckinResults(prev, saved, xpGained) {
   document.getElementById('checkin-results-overlay')?.remove();
   const gender = profile?.bodyType || 'male';
-  const input = { ...saved, height: saved.height ?? profile?.heightCm };
-  const prog = checkinProgress(gender, prev ? { ...prev, height: input.height } : null, input);
+  const input = { ...saved, height: saved.height ?? profile?.heightCm, tapeOffset: bodyFatCalibration() };
+  const prog = checkinProgress(gender, prev ? withCal(prev) : null, input);
   if (!prog) return;
   const m = bodyMetrics(gender, input);
   const today = todayStr();
@@ -16747,6 +16832,9 @@ function showCheckinResults(prev, saved, xpGained) {
           ${m.vTaper.ratio >= GOLDEN_RATIO ? '' : `<div class="ci-next">Next <b>${m.vTaper.next}</b> → ${m.vTaper.shouldersForNext} cm shoulders</div>`}
         </div>` : ''}
 
+        ${compositionHtml(m)}
+        <div class="ui-banner ci-section">◈ Fitness level</div>
+        ${fitnessCardHtml()}
         <div class="ui-banner gold ci-section">◈ Your physique goal</div>
         ${physiquePlanHtml()}
 
@@ -16881,8 +16969,21 @@ function physiqueTrainingMonths() {
 /** The latest check-in as plain measurements, with the profile height. */
 function latestMeasures() {
   const last = myCheckins[myCheckins.length - 1];
-  return last ? { ...last, height: profile?.heightCm } : null;
+  return last ? withCal(last) : null;
 }
+
+/**
+ * How far the tape formula read from the calipers on the latest full scan (under 90 days old), so a weekly
+ * tape check-in stays on the caliper scale. Null without a usable caliper scan.
+ */
+function bodyFatCalibration() {
+  const sex = profile?.bodyType || 'male';
+  const scan = [...myCheckins].reverse().find(c => c.skinfolds && Object.keys(c.skinfolds).length >= 3);
+  if (!scan || !scan.date || daysBetween(scan.date, todayStr()) > 90) return null;
+  try { return calibrationOffset(sex, { ...scan, height: scan.height ?? profile?.heightCm }); } catch (_) { return null; }
+}
+/** A check-in document with the profile height and the caliper calibration added, as body-metrics.js reads it. */
+function withCal(c) { return { ...c, height: c.height ?? profile?.heightCm, tapeOffset: bodyFatCalibration() }; }
 
 /** The solved plan for the stored goal, or null when no goal is set. May be { error }. */
 function currentPhysiquePlan() {
@@ -17041,6 +17142,210 @@ window.openPhysiqueGoalSheet = () => {
   render();
 };
 
+
+
+// ── SESSION FEEDBACK ──────────────────────────────────────────────────────
+// session-feedback.js (pure): four taps after a session; two sessions in a row pointing the same way
+// become one plan-optimiser suggestion. Stored as profile.feedback[date] (additive map on users/{uid},
+// pruned to 60 days); the workouts themselves are never rewritten.
+
+/** Muscle groups a session trained, from its exercises (a set of that exercise counts at least half). */
+function sessionGroups(date) {
+  const groups = new Set();
+  (myWorkouts || []).filter(w => w.uid === currentUser?.uid && w.date === date).forEach(w => (w.exercises || []).forEach(ex => {
+    for (const [g, c] of Object.entries(groupCredit(EXERCISES_ALL[ex.name] || {}))) if (c >= 0.5) groups.add(g);
+  }));
+  return [...groups];
+}
+
+function pendingFeedbackDate() {
+  if (!currentUser || !profile) return null;
+  return pendingFeedback({
+    workoutDates: (myWorkouts || []).filter(w => w.uid === currentUser.uid && w.date).map(w => w.date),
+    feedbackDates: Object.keys(profile.feedback || {}), today: todayStr(),
+  });
+}
+
+window.openSessionFeedback = (date) => {
+  document.getElementById('session-feedback-overlay')?.remove();
+  date = date || pendingFeedbackDate();
+  if (!date) return;
+  const groups = sessionGroups(date);
+  const picked = {};
+  const overlay = document.createElement('div');
+  overlay.id = 'session-feedback-overlay';
+  overlay.className = 'ci-overlay';
+  overlay.innerHTML = `
+    <div class="ui-window gold ci-win"><div class="ci-scroll">
+      <div class="ci-hero" style="padding-bottom:14px;"><div class="ci-hero-top"><div><div class="ui-banner gold">◈ How did it go?</div><div class="ci-title">${groups.length ? groups.slice(0, 3).join(' · ') : 'Last session'}</div></div><button class="ci-close" aria-label="Close" data-close>✕</button></div>
+        <div class="ci-sub" style="margin:8px 0 0;">Four taps. Two sessions in a row pointing the same way, and the plan suggests a set more or less.</div></div>
+      ${FB_QUESTIONS.map(q => `<div class="ui-banner ci-section" style="margin-top:18px;">◈ ${q.title}</div><div class="sf-ask">${q.ask}</div>
+        <div class="sf-opts" data-q="${q.key}">${q.options.map((o, i) => `<button type="button" class="sf-opt" data-v="${i + 1}">${o}</button>`).join('')}</div>`).join('')}
+      <button class="ui-btn-primary ci-save" id="sf-save" disabled>◈ Save</button>
+      <button class="ci-skip" data-close style="width:100%;margin-top:6px;">Skip</button>
+      <div id="sf-msg" class="ci-msg"></div>
+    </div></div>`;
+  getOverlayHost().appendChild(overlay);
+  overlay.querySelectorAll('[data-close]').forEach(b => b.addEventListener('click', () => overlay.remove()));
+  const save = document.getElementById('sf-save');
+  overlay.querySelectorAll('.sf-opts').forEach(row => row.querySelectorAll('.sf-opt').forEach(b => b.addEventListener('click', () => {
+    picked[row.dataset.q] = Number(b.dataset.v);
+    row.querySelectorAll('.sf-opt').forEach(x => x.classList.toggle('on', x === b));
+    save.disabled = FB_QUESTIONS.some(q => !picked[q.key]);
+  })));
+  save.addEventListener('click', async () => {
+    const msg = document.getElementById('sf-msg');
+    save.disabled = true;
+    try {
+      const fields = { ['feedback.' + date]: { ...picked, groups } };
+      for (const d of staleFeedbackDates(profile.feedback, todayStr())) fields['feedback.' + d] = deleteField();
+      await writeUserFields(fields);
+      overlay.remove();
+      for (const d of staleFeedbackDates(profile.feedback, todayStr())) delete profile.feedback[d];
+      try { renderHuntTiles(); renderPlanOptimiser(); } catch (_) {}
+      const verdict = classifyFeedback(picked);
+      showToast(verdict === 'add' ? 'Logged. Two like this in a row and the plan adds a set.' : verdict === 'reduce' ? 'Logged. Two like this in a row and the plan takes a set away.' : 'Logged. Volume looks right.', 'success');
+    } catch (e) { save.disabled = false; msg.style.color = '#FF4D67'; msg.textContent = 'Could not save: ' + (e?.message || e); }
+  });
+};
+
+/** The training block card for the Progress check: week dots, this week's reps in reserve, and a start button. */
+function blockCardHtml() {
+  const st = blockState(profile?.block, todayStr());
+  if (!st) return `<div class="fs"><div class="fs-next" style="margin-top:0;">Train in 6-week blocks: five weeks that build, closer to failure each week, then a deload.</div>
+    <button type="button" class="ui-btn-outline" id="block-start" style="width:100%;margin-top:10px;">Start a block today</button></div>`;
+  return `<div class="fs">
+    <div class="fs-top"><div><div class="fs-label" style="color:${st.phase === 'deload' ? 'var(--growing)' : 'var(--ui-gold)'};">${st.label}</div>
+      <div class="fs-sub">Block ${st.blockNo} · target RIR ${st.targetRir}${st.phase === 'deload' ? '+' : ''} · ${st.daysLeftInWeek} day${st.daysLeftInWeek === 1 ? '' : 's'} left this week</div></div></div>
+    <div class="rh-dots">${blockWeeks(st).map(w => `<div class="rh-dot${w.done ? ' done' : ''}${w.current ? ' today' : ''}"><i${w.deload && !w.done ? ' style="border-style:dashed;"' : ''}></i><span>${w.deload ? 'D' : w.week}</span></div>`).join('')}</div>
+    <div class="fs-next">${st.guidance}</div></div>`;
+}
+
+// ── FITNESS LEVEL ─────────────────────────────────────────────────────────
+// fitness-score.js (pure): strength tiers, consistency and body in one 0-100 guide. Presentation only.
+function fitnessCtx() {
+  const today = todayStr();
+  const bw = latestBodyweightKg();
+  const gender = profile?.gender || 'male';
+  const lifts = Object.entries(myPRs || {}).filter(([, p]) => p && p.e1rm).map(([name, p]) => ({ name, tier: getStrengthTier(name, p.e1rm, bw, gender) })).filter(l => l.tier);
+  const sessionDates = (myWorkouts || []).filter(w => w.uid === currentUser?.uid && w.date).map(w => w.date);
+  const last = myCheckins[myCheckins.length - 1];
+  let body = null;
+  if (last) { try { body = bodyMetrics(profile?.bodyType || 'male', withCal(last)); } catch (_) {} }
+  return { today, lifts, sessionDates, weeklyGoal: profile?.weeklyGoal || 3, streak: computeStreak(currentUser.uid), body };
+}
+
+/** The fitness level card: a ring, the label, the three parts as bars, and the one next step. */
+function fitnessCardHtml() {
+  const f = fitnessScore(fitnessCtx());
+  if (!f) return '';
+  const color = f.score >= 65 ? 'var(--growing)' : f.score >= 45 ? 'var(--brass)' : 'var(--text-dim)';
+  const MISSING = { strength: 'log a main lift with weight', body: 'do a check-in', consistency: '' };
+  return `<div class="fs">
+    <div class="fs-top">
+      <span class="ui-ring">${uiRing({ size: 64, r: 28, stroke: 5, frac: f.score / 100, id: 'fsRg' })}<span class="ui-ring-label">${f.score}</span></span>
+      <div><div class="fs-label" style="color:${color};">${f.label}</div><div class="fs-sub">Fitness level out of 100</div></div>
+    </div>
+    ${f.parts.map(p => `<div class="fs-part">
+      <div class="fs-part-h"><span>${p.label}</span><span class="fs-part-n">${p.score}</span></div>
+      <div class="ci-bar"><i style="width:${Math.max(3, p.score)}%;"></i></div>
+      <div class="fs-part-d">${escapeHtml(p.detail)}</div>
+    </div>`).join('')}
+    <div class="fs-next">${escapeHtml(f.next.text)}</div>
+    ${f.missing.filter(k => MISSING[k]).length ? `<div class="fs-miss">Not counted yet: ${f.missing.filter(k => MISSING[k]).map(k => `${k} (${MISSING[k]})`).join(', ')}.</div>` : ''}
+    <div style="height:14px;"></div>
+  </div>`;
+}
+
+
+// ── CHECK-IN RHYTHM ───────────────────────────────────────────────────────
+// rhythm.js (pure): weigh daily (10 sec), tape weekly, full scan every 4 weeks, always leading with the
+// smallest ask that is due. A weigh-in is the same bodyweight write the check-in and Codex use; no new fields.
+function rhythmCtx() {
+  return {
+    today: todayStr(),
+    weightDates: (myWeights || []).map(w => w.date),
+    tapeDates: myCheckins.map(c => c.date),
+    fullDates: myCheckins.filter(c => c.skinfolds && Object.keys(c.skinfolds).length >= 3).map(c => c.date),
+  };
+}
+
+function rhythmDotsHtml(week) {
+  const today = todayStr();
+  return `<div class="rh-dots">${week.map(d => `<div class="rh-dot${d.done ? ' done' : ''}${d.date === today ? ' today' : ''}"><i></i><span>${'SMTWTFS'[new Date(d.date + 'T12:00:00').getDay()]}</span></div>`).join('')}</div>`;
+}
+
+window.openCheckinHub = (view = 'home', reward = null) => {
+  document.getElementById('checkin-hub-overlay')?.remove();
+  const st = rhythmState(rhythmCtx());
+  const lastKg = myWeights.length ? Number(myWeights[myWeights.length - 1].weight) : (profile?.bodyweightKg || 70);
+  const overlay = document.createElement('div');
+  overlay.id = 'checkin-hub-overlay';
+  overlay.className = 'ci-overlay';
+  const close = '<button class="ci-close" aria-label="Close" data-close>✕</button>';
+  const startTier = (k) => { overlay.remove(); if (k === 'weigh') window.openCheckinHub('weigh'); else window.openCheckinModal(k === 'full' ? 'full' : 'weekly'); };
+  const dueText = (t) => t.daysSince === null ? 'never' : !t.due ? (t.daysSince === 0 ? 'done today' : `done ${t.daysSince}d ago`) : t.overdue > 0 ? `${t.overdue}d overdue` : 'due today';
+  let body = '';
+  if (view === 'weigh') {
+    body = `
+      <div class="ci-hero" style="padding-bottom:14px;"><div class="ci-hero-top"><div><div class="ui-banner gold">◈ Weigh in</div><div class="ci-title">10 seconds</div></div>${close}</div>
+        <div class="ci-sub" style="margin:8px 0 0;">Same time each day, ideally after waking. One reading is noisy; the 7-day average is the truth.</div></div>
+      <div class="rh-big" id="rh-val">${lastKg.toFixed(1)}<small>kg</small></div>
+      <div class="rh-step"><button type="button" data-step="-0.1" aria-label="Down 0.1 kg">−</button><button type="button" data-step="0.1" aria-label="Up 0.1 kg">+</button></div>
+      <button class="ui-btn-primary ci-save" id="rh-save">◈ Log weight</button>
+      <div id="rh-msg" class="ci-msg"></div>`;
+  } else if (view === 'done' && reward) {
+    const next = st.primary;
+    body = `
+      <div class="ci-hero" style="padding-bottom:14px;"><div class="ci-hero-top"><div><div class="ui-banner gold">◈ Weigh-in saved</div><div class="ci-title" style="color:var(--ui-gold);text-shadow:0 0 16px var(--ui-gold);">${escapeHtml(reward.headline)}</div></div>${close}</div>
+        <div class="ci-verdict" style="margin-top:8px;">${escapeHtml(reward.line)}</div>
+        ${reward.note ? `<div class="rh-note">${escapeHtml(reward.note)}</div>` : ''}</div>
+      <div class="ui-banner ci-section">◈ This week · ${st.weighCount}/7</div>
+      ${rhythmDotsHtml(st.week)}
+      ${weightPathHtml()}
+      ${next ? `<div class="ui-banner gold ci-section" style="margin-top:20px;">◈ When you're ready</div>
+        <button type="button" class="rh-row due" data-tier="${next.key}"><div><b>${next.title}</b><br><span>${next.what} · ${next.time}</span></div><em>${dueText(next)}</em></button>` : '<div class="rh-note" style="margin-top:14px;">That is everything for today. See you tomorrow.</div>'}
+      <button class="ci-skip" data-close style="width:100%;margin-top:6px;">Done</button>`;
+  } else {
+    body = `
+      <div class="ci-hero" style="padding-bottom:14px;"><div class="ci-hero-top"><div><div class="ui-banner gold">◈ Check-in</div><div class="ci-title">Today's check</div></div>${close}</div>
+        <div class="ci-verdict" style="margin-top:8px;">${escapeHtml(st.nudge)}</div></div>
+      <div class="ui-banner ci-section">◈ This week · ${st.weighCount}/7${st.streak >= 2 ? ` · ${st.streak} day run` : ''}</div>
+      ${rhythmDotsHtml(st.week)}
+      <div class="ui-banner gold ci-section" style="margin-top:20px;">◈ Pick one</div>
+      ${st.tiers.map(t => `<button type="button" class="rh-row ${t.due ? 'due' : 'ok'}" data-tier="${t.key}"><div><b>${t.title}</b><br><span>${t.what} · ${t.time}</span></div><em>${dueText(t)}</em></button>`).join('')}
+      <div class="rh-note">Weigh in every day; the tape and the calipers change slowly, so they ask for less. A bigger check-in also counts as the smaller ones.</div>`;
+  }
+  overlay.innerHTML = `<div class="ui-window gold ci-win"><div class="ci-scroll">${body}</div></div>`;
+  getOverlayHost().appendChild(overlay);
+  overlay.querySelectorAll('[data-close]').forEach(b => b.addEventListener('click', () => overlay.remove()));
+  overlay.querySelectorAll('[data-tier]').forEach(b => b.addEventListener('click', () => startTier(b.dataset.tier)));
+  if (view === 'weigh') {
+    let kg = Math.round(lastKg * 10) / 10;
+    const val = document.getElementById('rh-val');
+    const paint = () => { val.innerHTML = `${kg.toFixed(1)}<small>kg</small>`; };
+    overlay.querySelectorAll('[data-step]').forEach(b => b.addEventListener('click', () => { kg = Math.round((kg + Number(b.dataset.step)) * 10) / 10; paint(); }));
+    document.getElementById('rh-save').addEventListener('click', async (e) => {
+      const msg = document.getElementById('rh-msg');
+      if (!(kg >= 30 && kg <= 300)) { msg.style.color = '#FF4D67'; msg.textContent = 'Weight should be between 30 and 300 kg.'; return; }
+      e.target.disabled = true;
+      const today = todayStr();
+      try {
+        const existing = myWeights.find(w => w.date === today && w.uid === currentUser.uid);
+        if (existing && existing.id) await setDoc(doc(db, 'bodyweight', existing.id), { uid: currentUser.uid, date: today, weight: kg, createdAt: serverTimestamp() });
+        else await addDoc(collection(db, 'bodyweight'), { uid: currentUser.uid, date: today, weight: kg, createdAt: serverTimestamp() });
+        await writeUserFields({ bodyweightKg: kg });
+        profile.bodyweightKg = kg;
+        myWeights = [...myWeights.filter(w => w.date !== today), { ...(existing || {}), uid: currentUser.uid, date: today, weight: kg }].sort((a, b) => a.date.localeCompare(b.date));
+        try { renderHuntTiles(); } catch (_) {}
+        const after = rhythmState(rhythmCtx());
+        const r = weighInReward({ weights: myWeights, today, kg, streak: after.streak, weighCount: after.weighCount });
+        window.openCheckinHub('done', r);
+      } catch (err) { e.target.disabled = false; msg.style.color = '#FF4D67'; msg.textContent = 'Could not save: ' + (err?.message || err); }
+    });
+  }
+};
+
 // ── PROGRESS CHECK ────────────────────────────────────────────────────────
 // progress-check.js (pure) turns what the app already knows into a fast, honest summary.
 // Presentation only: reads state, writes nothing.
@@ -17052,7 +17357,7 @@ function progressCheckCtx() {
   const prDates = Object.values(myPRs || {}).map(p => p && p.date).filter(Boolean);
   const [prev, last] = [myCheckins[myCheckins.length - 2], myCheckins[myCheckins.length - 1]];
   let cp = null;
-  if (prev && last) { try { cp = checkinProgress(gender, { ...prev, height: profile?.heightCm }, { ...last, height: profile?.heightCm }); } catch (_) {} }
+  if (prev && last) { try { cp = checkinProgress(gender, withCal(prev), withCal(last)); } catch (_) {} }
   let physique = null;
   const plan = profile?.physiqueGoal ? currentPhysiquePlan() : null;
   if (plan && !plan.error) {
@@ -17101,6 +17406,10 @@ window.openProgressCheck = () => {
         <div class="ci-tiles">${res.wins.map(w => `<div class="ci-tile">
           <div class="ci-k">${w.label}</div><div class="ci-v pc-v"${w.value.length > 7 ? ' style="font-size:16px;line-height:1.25;"' : ''}>${escapeHtml(w.value)}</div>
           ${w.sub ? `<div class="ci-s" style="color:${KIND[w.kind]};">${escapeHtml(w.sub)}</div>` : ''}</div>`).join('')}</div>
+        <div class="ui-banner ci-section" style="margin-top:22px;">◈ Training block</div>
+        ${blockCardHtml()}
+        <div class="ui-banner ci-section" style="margin-top:22px;">◈ Fitness level</div>
+        ${fitnessCardHtml()}
         <div class="ui-banner gold ci-section" style="margin-top:22px;">◈ Next</div>
         <div class="pc-next">${escapeHtml(res.next.text)}</div>
         ${label ? `<button class="ui-btn-primary ci-save" id="pc-act">${label}</button>` : ''}
@@ -17109,9 +17418,15 @@ window.openProgressCheck = () => {
     </div>`;
   getOverlayHost().appendChild(overlay);
   overlay.querySelectorAll('[data-close]').forEach(b => b.addEventListener('click', () => overlay.remove()));
+  document.getElementById('block-start')?.addEventListener('click', async () => {
+    try {
+      await writeUserFields({ block: { start: todayStr() } });
+      overlay.remove(); window.openProgressCheck();
+    } catch (e) { showToast('Could not start the block: ' + (e?.message || e), 'error'); }
+  });
   document.getElementById('pc-act')?.addEventListener('click', () => {
     overlay.remove();
-    if (res.next.action === 'checkin') window.openCheckinModal();
+    if (res.next.action === 'checkin') window.openCheckinHub();
     else if (res.next.action === 'goal') window.openPhysiqueGoalSheet();
   });
 };

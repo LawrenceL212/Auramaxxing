@@ -29,7 +29,7 @@
    Tested by node test/physique-goal.test.mjs
    ========================================================================= */
 
-import { navyBodyFat, jacksonPollock3, cleanMeasurements, ffmi, RANGES } from './body-metrics.js';
+import { navyBodyFat, jacksonPollock3, jacksonPollock7, cleanMeasurements, ffmi, RANGES } from './body-metrics.js';
 import { shiftDay } from './streak.js';
 import { daysBetween } from './hunt-view.js';
 
@@ -119,8 +119,10 @@ export function solveGoal(ctx) {
   if (navyNow === null) return { error: 'measurements', message: 'Body fat could not be worked out from these measurements.' };
   // calipers (Jackson-Pollock) win when all three folds and the age are in. The waist a body fat
   // needs still comes from the tape formula, shifted by how far the two methods differ today.
-  const caliperNow = jacksonPollock3(sex, ctx.measurements && ctx.measurements.skinfolds, ctx.measurements && ctx.measurements.age);
-  const bfNow = caliperNow !== null ? caliperNow : navyNow;
+  const sk = ctx.measurements && ctx.measurements.skinfolds, age = ctx.measurements && ctx.measurements.age;
+  const caliperNow = jacksonPollock7(sex, sk, age) ?? jacksonPollock3(sex, sk, age);
+  const offsetNow = ctx.measurements && Number.isFinite(Number(ctx.measurements.tapeOffset)) && Math.abs(ctx.measurements.tapeOffset) <= 8 ? Number(ctx.measurements.tapeOffset) : null;
+  const bfNow = caliperNow !== null ? caliperNow : offsetNow !== null ? Math.min(50, Math.max(3, navyNow + offsetNow)) : navyNow;
   const methodGap = navyNow - bfNow;
 
   const experience = experienceFrom(ctx.trainingMonths);
@@ -213,7 +215,7 @@ export function solveGoal(ctx) {
   if (rel('arms') > 0.02) { focus.push('Biceps'); focus.push('Triceps'); }
 
   return {
-    sex, preset: ctx.preset, bodyFatSource: caliperNow !== null ? 'calipers' : 'tape', label: p.label, blurb: p.blurb, today, deadline: ctx.deadline, experience,
+    sex, preset: ctx.preset, bodyFatSource: caliperNow !== null ? 'calipers' : offsetNow !== null ? 'tapeCal' : 'tape', label: p.label, blurb: p.blurb, today, deadline: ctx.deadline, experience,
     now: { weight: r1(c.weight), bodyFat: bfNow, leanKg: r1(leanNow), fatKg: r1(fatNow), waist: c.waist, shoulders: usable('shoulders') ? c.shoulders : null, chest: usable('chest') ? c.chest : null, arms: arm },
     target: { weight: weightT, bodyFat: r1(bfTarget), leanKg: r1(leanT), fatKg: r1(fatT), waist: target.waist, shoulders: target.shoulders ?? null, chest: target.chest ?? null, arms: target.arms ?? null },
     leanGainKg: r1(leanGain), fatToLoseKg: r1(fatToLose),

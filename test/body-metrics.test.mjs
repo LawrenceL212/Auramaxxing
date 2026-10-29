@@ -5,7 +5,7 @@
 import {
   navyBodyFat, bodyFatCategory, bmi, bmiCategory, ffmi, waistToHeight,
   measurementWarnings, bodyMetrics, physiquePriorities, physiqueFocus,
-  measureHint, measureStep, tapeIconSvg, bodyScanSvg, checkinProgress, jacksonPollock3, cleanSkinfolds, skinfoldStep, skinfoldHint, SKINFOLD_SITES, EXPLAIN, GOLDEN_RATIO,
+  measureHint, measureStep, tapeIconSvg, bodyScanSvg, checkinProgress, jacksonPollock3, jacksonPollock7, calibrationOffset, fatDistribution, limbMuscle, SKINFOLD_SITES_7, SKINFOLD_EXTRA, cleanSkinfolds, skinfoldStep, skinfoldHint, SKINFOLD_SITES, EXPLAIN, GOLDEN_RATIO,
 } from '../body-metrics.js';
 
 let pass = 0, fail = 0;
@@ -151,6 +151,56 @@ check('women get no male chest/arm proportion targets', !physiquePriorities('fem
   const calPrev = { ...base, age: 30, skinfolds: { chest: 10, abdomen: 18, thigh: 12 } };
   check('same method: body fat compared', checkinProgress('male', calPrev, calCurr).rows.some(r => r.key === 'bodyFat'));
 }
+
+
+// ── 7-site calipers, where fat sits, limb muscle ───────────────────────
+const f7 = { chest: 10, midaxillary: 10, triceps: 12, subscapular: 14, abdomen: 20, suprailiac: 15, thigh: 19 }; // sums to 100
+check('JP7 male S=100 age 30 matches the published equation', near(jacksonPollock7('male', f7, 30), 14.63, 0.06), String(jacksonPollock7('male', f7, 30)));
+const f7w = { chest: 12, midaxillary: 14, triceps: 20, subscapular: 18, abdomen: 22, suprailiac: 16, thigh: 18 }; // sums to 120
+check('JP7 female S=120 age 30 matches the published equation', near(jacksonPollock7('female', f7w, 30), 23.75, 0.06), String(jacksonPollock7('female', f7w, 30)));
+check('JP7 needs all seven folds', jacksonPollock7('male', { ...f7, thigh: null }, 30) === null);
+check('JP7 outside the age range gives nothing', jacksonPollock7('male', f7, 17) === null && jacksonPollock7('male', f7, 62) === null);
+check('JP7 rejects an out-of-range fold', jacksonPollock7('male', { ...f7, chest: 1 }, 30) === null);
+check('7 sites listed, 4 extra per sex', SKINFOLD_SITES_7.length === 7 && SKINFOLD_EXTRA.male.length === 4 && SKINFOLD_EXTRA.female.length === 4);
+const m7 = bodyMetrics('male', { weight: 77, height: 175, waist: 88, neck: 38, skinfolds: f7, age: 30 });
+check('7 folds win over 3 and the tape, source says so', m7.bodyFatSource === 'calipers7' && near(m7.bodyFat, jacksonPollock7('male', f7, 30), 0.001) && m7.bodyFatTape != null);
+const m3 = bodyMetrics('male', { weight: 77, height: 175, waist: 88, neck: 38, skinfolds: { chest: 10, abdomen: 20, thigh: 19 }, age: 30 });
+check('3 core folds still give the 3-site reading', m3.bodyFatSource === 'calipers' && m3.distribution === null);
+check('calipers7 and calipers are never compared in progress rows', !checkinProgress('male', { weight: 77, height: 175, waist: 88, neck: 38, skinfolds: { chest: 10, abdomen: 20, thigh: 19 }, age: 30 }, { weight: 76, height: 175, waist: 87, neck: 38, skinfolds: f7, age: 30 }).rows.some(r => r.key === 'bodyFat'));
+const d = fatDistribution('male', f7);
+check('distribution: trunk mean over limb mean', d && near(d.trunkMm, 13.8, 0.05) && near(d.limbMm, 15.5, 0.05) && near(d.ratio, 0.89, 0.01), JSON.stringify(d && [d.trunkMm, d.limbMm, d.ratio]));
+check('distribution: even label, biggest sites listed', d.label === 'Even' && d.top[0].site === 'abdomen' && d.top[1].site === 'thigh');
+check('distribution: central trunk for a man', fatDistribution('male', { ...f7, abdomen: 45, subscapular: 30, suprailiac: 35, chest: 20, midaxillary: 25, triceps: 12, thigh: 14 }).label === 'Central');
+check('distribution: women bands sit lower', fatDistribution('female', { chest: 8, midaxillary: 8, triceps: 25, subscapular: 12, abdomen: 14, suprailiac: 12, thigh: 30 }).label === 'Lower-body leaning');
+check('distribution needs all seven', fatDistribution('male', { chest: 10, abdomen: 20, thigh: 19 }) === null);
+// limb muscle: corrected girth = girth - pi x fold(cm); arm area = girth^2/4pi - 10 (men)
+const lm = limbMuscle('male', { armLeft: 34, armRight: 35, thigh: 58, skinfolds: f7 });
+check('corrected arm girth subtracts pi x triceps fold', lm.arm && near(lm.arm.right, 35 - Math.PI * 1.2, 0.06) && near(lm.arm.left, 34 - Math.PI * 1.2, 0.06));
+check('arm muscle area uses the Heymsfield bone correction', near(lm.arm.areaCm2, lm.arm.avgCm ** 2 / (4 * Math.PI) - 10, 0.15), String(lm.arm.areaCm2));
+check('female bone correction is 6.5', near(limbMuscle('female', { armLeft: 30, skinfolds: { triceps: 15 } }).arm.areaCm2, (30 - Math.PI * 1.5) ** 2 / (4 * Math.PI) - 6.5, 0.15));
+check('corrected thigh uses the thigh fold', lm.thigh && near(lm.thigh.cm, 58 - Math.PI * 1.9, 0.06));
+check('muscle share is the corrected over raw girth', lm.arm.share > 0.8 && lm.arm.share < 1 && lm.thigh.share < 1);
+check('arm needs the triceps fold, thigh needs the thigh circumference', limbMuscle('male', { armLeft: 34, skinfolds: { chest: 10 } }) === null && limbMuscle('male', { thigh: 58, skinfolds: { thigh: 19 } }).thigh && !limbMuscle('male', { armLeft: 34, skinfolds: { triceps: 12 } }).thigh);
+const grow = checkinProgress('male', { weight: 77, height: 175, waist: 88, neck: 38, armLeft: 34, armRight: 34, skinfolds: { triceps: 12 }, age: 30 }, { weight: 77.4, height: 175, waist: 88, neck: 38, armLeft: 35, armRight: 35, skinfolds: { triceps: 16 }, age: 30 });
+check('an arm that grew from fat shows no muscle gain', grow.rows.find(r => r.key === 'arms').status === 'better' && grow.rows.find(r => r.key === 'armMuscle').status === 'flat', JSON.stringify(grow.rows.map(r => [r.key, r.status])));
+check('warnings: extra site range, partial extras, thigh circumference', (() => { const w = measurementWarnings({ sex: 'male', skinfolds: { midaxillary: 120 }, thigh: 20 }); return w.sf_midaxillary && w.sf7_missing && w.thigh; })());
+
+// ── tape calibrated by the last caliper scan ───────────────────────────
+const fullScan = { weight: 77, height: 175, waist: 88, neck: 38, skinfolds: f7, age: 30 };
+const off = calibrationOffset('male', fullScan);
+check('offset is caliper minus tape', near(off, bodyMetrics('male', fullScan).bodyFatCalipers - navyBodyFat('male', { waist: 88, neck: 38, height: 175 }), 0.06), String(off));
+check('no calipers, no offset', calibrationOffset('male', { weight: 77, height: 175, waist: 88, neck: 38 }) === null);
+check('an implausible gap (over 8 points) is not used', calibrationOffset('male', { ...fullScan, skinfolds: { ...f7, chest: 58, abdomen: 58, thigh: 58, midaxillary: 58, triceps: 58, subscapular: 58, suprailiac: 58 } }) === null);
+const weekly = bodyMetrics('male', { weight: 76.5, height: 175, waist: 87, neck: 38, tapeOffset: off });
+check('weekly tape plus the offset reads on the caliper scale', weekly.bodyFatSource === 'tapeCal' && near(weekly.bodyFat, weekly.bodyFatTape + off, 0.06), JSON.stringify([weekly.bodyFat, weekly.bodyFatTape, off]));
+check('calipers in the same check-in win over the offset', bodyMetrics('male', { ...fullScan, tapeOffset: 3 }).bodyFatSource === 'calipers7');
+check('no offset keeps the plain tape reading', bodyMetrics('male', { weight: 76.5, height: 175, waist: 87, neck: 38 }).bodyFatSource === 'tape');
+check('two calibrated weeks compare body fat, calibrated against caliper does not', (() => {
+  const a = { weight: 77, height: 175, waist: 88, neck: 38, tapeOffset: off }, b = { weight: 76, height: 175, waist: 86.5, neck: 38, tapeOffset: off };
+  const same = checkinProgress('male', a, b).rows.some(r => r.key === 'bodyFat');
+  const mixed = checkinProgress('male', a, { ...fullScan, waist: 86.5 }).rows.some(r => r.key === 'bodyFat');
+  return same && !mixed;
+})());
 
 // ── copy and icons ─────────────────────────────────────────────────────
 check('every full step says around', ['neck', 'shoulders', 'chest', 'waist', 'hip', 'armLeft'].every(f => /around/.test(measureStep(f, 'male'))));

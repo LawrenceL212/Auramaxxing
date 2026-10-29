@@ -187,6 +187,20 @@ check('no plan: nothing', run({ program: null }).suggestions, []);
   check('a focus suggestion ranks ahead of ordinary volume', s && s.priority, 3);
 }
 
+{
+  // session feedback: two sessions in a row said add or reduce
+  const base = run({ program: balanced, goal: 'general' }).suggestions.filter(s => s.id.includes(':Shoulders'));
+  check('no feedback: shoulders left alone', base.length, 0);
+  const up = run({ program: balanced, goal: 'general', volumeNudge: { Shoulders: 1 }, volumeNudgeWhy: { Shoulders: 'Your last two shoulders sessions felt easy.' } }).suggestions.find(x => x.id.startsWith('volume-up:Shoulders'));
+  check('feedback add: one more shoulder set, from the matching exercise', up && up.change.to === up.change.from + 1 && up.change.op === 'sets', true);
+  check('feedback add: the reason is the feedback, not a volume target', up && /felt easy/.test(up.reason) && /One more set/.test(up.reason), true);
+  const down = run({ program: balanced, goal: 'general', volumeNudge: { Chest: -1 }, volumeNudgeWhy: { Chest: 'Your last two chest sessions left you very sore.' } }).suggestions.find(x => x.id.startsWith('volume-down:Chest'));
+  check('feedback reduce: one set off a chest exercise', down && down.change.to === down.change.from - 1, true);
+  check('feedback reduce: the reason is the feedback', down && /very sore/.test(down.reason), true);
+  const none = run({ program: balanced, goal: 'general', volumeNudge: { Chest: 1 } }).suggestions.find(x => x.id.startsWith('volume-up:Chest'));
+  check('feedback add with no stated reason still gets a plain one', !none || /session feedback/.test(none.reason), true);
+}
+
 // ── personal goals ───────────────────────────────────────────────────────
 {
   const p = plan([day('Legs', [{ name: 'Squat', sets: 3, reps: 5 }])]);
