@@ -5,7 +5,7 @@
 import {
   navyBodyFat, bodyFatCategory, bmi, bmiCategory, ffmi, waistToHeight,
   measurementWarnings, bodyMetrics, physiquePriorities, physiqueFocus,
-  measureHint, measureStep, tapeIconSvg, EXPLAIN, GOLDEN_RATIO,
+  measureHint, measureStep, tapeIconSvg, bodyScanSvg, EXPLAIN, GOLDEN_RATIO,
 } from '../body-metrics.js';
 
 let pass = 0, fail = 0;
@@ -102,7 +102,8 @@ check('every full step says around', ['neck', 'shoulders', 'chest', 'waist', 'hi
 check('field hints stay short', ['neck', 'shoulders', 'chest', 'waist', 'hip', 'armLeft', 'height', 'weight'].every(f => measureHint(f, 'male').length <= 26));
 check('priorities: how is a short list', physiquePriorities('male', { ...screenshot, shoulders: 117 }).every(p => Array.isArray(p.how) && p.how.every(h => h.length <= 60)));
 check('female waist is the narrowest point (Navy protocol)', /narrowest/i.test(measureHint('waist', 'female')) && /navel/.test(measureHint('waist', 'male')) && /narrowest/.test(measureStep('waist', 'female')));
-check('tape icon draws a ring for each tape field', ['neck', 'shoulders', 'chest', 'waist', 'hip', 'armLeft', 'armRight'].every(f => /<ellipse/.test(tapeIconSvg(f))));
+check('tape icon draws a front and back arc for each tape field', ['neck', 'shoulders', 'chest', 'waist', 'hip', 'armLeft', 'armRight'].every(f => (tapeIconSvg(f).match(/ A/g) || []).length === 2));
+check('body scan: measured rings bright, others dim', (bodyScanSvg({ waist: true }).match(/#FFD66B/g) || []).length === 2 && /rgba\(255,214,107,\.35\)/.test(bodyScanSvg({ waist: true })));
 check('no tape icon for weight', tapeIconSvg('weight') === '');
 check('every explained stat has text', EXPLAIN.every(e => e.title && e.text.length > 40));
 

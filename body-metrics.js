@@ -393,27 +393,47 @@ export function measureHint(field, sex) { return pick(MEASURE_HINTS, field, sex)
 /** The full instruction. */
 export function measureStep(field, sex) { return pick(MEASURE_STEPS, field, sex); }
 
-// Where the tape ring sits on the little figure, by field: [y, half-width].
-const RING = { neck: [9, 3.2], shoulders: [15, 10], chest: [19, 8], waist: [28, 6.5], hip: [34, 8] };
+// Where the tape ring sits on the little figure, by field: [cx, y, half-width].
+// The Hunter's left arm sits on the figure's right, as in a mirror.
+const RING = {
+  neck: [16, 9, 3.2], shoulders: [16, 15, 10], chest: [16, 19, 8], waist: [16, 28, 6.5], hip: [16, 34, 8],
+  armLeft: [24.6, 17, 2.6], armRight: [7.4, 17, 2.6],
+};
+const FIGURE = '<circle cx="16" cy="4.5" r="3" /><path d="M13.6 8h4.8v2.4l5.6 2.1 3 9.4-2.2.7-2.4-6.6v8.6l1 2.6 0 0-.4 8.4h-15l-.4-8.4 1-2.6v-8.6l-2.4 6.6-2.2-.7 3-9.4 5.6-2.1z" />';
+// A tape ring in two halves: the back arc behind the body, the front arc over it.
+function ringHalves(field, bright) {
+  const [cx, y, rx] = RING[field];
+  const ry = Math.max(1, rx * (field.startsWith('arm') ? 0.42 : 0.22)).toFixed(1);
+  const back = `<path d="M${cx - rx} ${y} A${rx} ${ry} 0 0 1 ${cx + rx} ${y}" />`;
+  const front = `<path d="M${cx - rx} ${y} A${rx} ${ry} 0 0 0 ${cx + rx} ${y}" />`;
+  const col = bright ? '#FFD66B' : 'rgba(255,214,107,.35)';
+  return {
+    back: `<g fill="none" stroke="${col}" stroke-opacity=".45" stroke-width="1" stroke-dasharray="1.2 1">${back}</g>`,
+    front: `<g fill="none" stroke="${col}" stroke-width="1.4" stroke-linecap="round">${front}</g>`,
+  };
+}
 /**
  * A small figure with the tape drawn as a ring around the measured spot, so
- * the field reads "around", not "across". Arms ring the upper arm on their side.
+ * the field reads "around", not "across".
  */
 export function tapeIconSvg(field, size = 26) {
-  const arm = field === 'armLeft' || field === 'armRight';
-  const ring = RING[field];
-  if (!ring && !arm) return '';
-  const body = '<circle cx="16" cy="4.5" r="3" /><path d="M13.6 8h4.8v2.4l5.6 2.1 3 9.4-2.2.7-2.4-6.6v8.6l1 2.6 0 0-.4 8.4h-15l-.4-8.4 1-2.6v-8.6l-2.4 6.6-2.2-.7 3-9.4 5.6-2.1z" />';
-  let tape;
-  if (arm) {
-    // the Hunter's left arm sits on the figure's right, as in a mirror
-    const cx = field === 'armLeft' ? 24.6 : 7.4;
-    tape = `<ellipse cx="${cx}" cy="17" rx="2.6" ry="1.1" />`;
-  } else {
-    const [y, rx] = ring;
-    tape = `<ellipse cx="16" cy="${y}" rx="${rx}" ry="${Math.max(1, rx * 0.22).toFixed(1)}" />`;
-  }
+  if (!RING[field]) return '';
+  const r = ringHalves(field, true);
   return `<svg viewBox="0 0 32 40" width="${size}" height="${Math.round(size * 1.25)}" aria-hidden="true" style="flex-shrink:0;">` +
-    `<g fill="rgba(91,168,255,.16)" stroke="rgba(91,168,255,.4)" stroke-width=".6">${body}</g>` +
-    `<g fill="none" stroke="#FFD66B" stroke-width="1.4" stroke-dasharray="1.6 1">${tape}</g></svg>`;
+    r.back + `<g fill="rgba(91,168,255,.16)" stroke="rgba(91,168,255,.45)" stroke-width=".6">${FIGURE}</g>` + r.front + '</svg>';
+}
+/**
+ * The hero figure: every tape spot ringed, bright where a value is entered.
+ * measured: { neck: true, waist: true, ... }
+ */
+export function bodyScanSvg(measured = {}, size = 96, fields = ['neck', 'shoulders', 'chest', 'waist', 'armLeft', 'armRight']) {
+  const rings = fields.filter(f => RING[f]).map(f => ringHalves(f, !!measured[f]));
+  return `<svg viewBox="-2 -2 36 44" width="${size}" height="${Math.round(size * 44 / 36)}" aria-hidden="true" style="flex-shrink:0;overflow:visible;">` +
+    '<defs><radialGradient id="ciScanGlow" cx="50%" cy="45%" r="55%"><stop offset="0" stop-color="rgba(91,168,255,.28)"/><stop offset="1" stop-color="rgba(91,168,255,0)"/></radialGradient>' +
+    '<linearGradient id="ciScanBody" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="rgba(91,168,255,.32)"/><stop offset="1" stop-color="rgba(91,168,255,.08)"/></linearGradient></defs>' +
+    '<ellipse cx="16" cy="20" rx="17" ry="21" fill="url(#ciScanGlow)" />' +
+    '<ellipse cx="16" cy="41" rx="9" ry="1.2" fill="rgba(91,168,255,.18)" />' +
+    rings.map(r => r.back).join('') +
+    `<g fill="url(#ciScanBody)" stroke="rgba(120,185,255,.7)" stroke-width=".5">${FIGURE}</g>` +
+    rings.map(r => r.front).join('') + '</svg>';
 }
