@@ -4284,6 +4284,23 @@
   .pc-head{font-size:30px;}
   .pc-v{font-size:22px;}
   .pc-next{font-size:16px;line-height:1.45;color:var(--text);margin:2px 0 4px;}
+  /* ── Suggestion box (suggestions.js) ── */
+  .sg-text{width:100%;min-height:140px;resize:vertical;box-sizing:border-box;padding:12px;background:rgba(8,14,28,.7);border:1px solid rgba(91,168,255,.28);border-radius:var(--radius-sm);
+    color:var(--text);font-family:var(--font-body);font-size:16px;line-height:1.45;}
+  .sg-text:focus{outline:none;border-color:var(--ui-gold);}
+  .sg-count{font-family:var(--font-mono);font-size:11px;color:var(--text-faint);text-align:right;margin-top:4px;}
+  .sg-err{font-size:14px;color:var(--excess);min-height:18px;margin-top:4px;}
+  .sg-item{padding:12px 0;border-top:1px solid rgba(91,168,255,.1);}
+  .sg-meta{display:flex;justify-content:space-between;gap:8px;font-family:var(--font-mono);font-size:11px;letter-spacing:.06em;color:var(--text-faint);}
+  .sg-meta b{color:var(--ui-gold);font-weight:700;}
+  .sg-body{font-size:15px;line-height:1.45;color:var(--text);margin-top:6px;white-space:pre-wrap;overflow-wrap:anywhere;}
+  .sg-status{font-family:var(--font-mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;}
+  .sg-status.new{color:var(--ui-gold);} .sg-status.sent{color:#5BA8FF;} .sg-status.done{color:var(--growing);} .sg-status.dismissed{color:var(--text-faint);}
+  .sg-acts{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;}
+  .sg-acts button{min-height:40px;flex:1 1 auto;font-size:13px;}
+  .sg-acts .ui-btn-primary{flex:1 1 100%;}
+  .sg-empty{font-size:15px;color:var(--text-faint);padding:12px 0;}
+  .sg-filter{display:flex;gap:6px;margin-bottom:6px;flex-wrap:wrap;}
   .hunt-tiles .pc-btn{grid-column:1 / -1;flex-direction:row;justify-content:center;align-items:center;gap:10px;min-height:48px;border-color:rgba(255,214,107,.5);}
   .hunt-tiles .pc-btn .ui-tile-v{color:var(--ui-gold);font-size:14px;letter-spacing:.08em;text-transform:uppercase;}
   .hunt-tiles .pc-btn .ui-tile-s{font-size:13px;}
@@ -4859,6 +4876,20 @@
 
 <!-- Three.js via CDN, matching how Firebase is already loaded. An import map
      must be declared before any module script that resolves against it. -->
+<script>
+/* Bug-report error trail (suggestions.js): keeps the last errors the page hits so a
+   Hunter's bug report can carry them. Runs before everything else; stores nothing. */
+(function () {
+  var trail = window.__auraErrors = [];
+  function keep(msg, src, stack) {
+    try { trail.push({ t: new Date().toISOString(), msg: String(msg || '').slice(0, 400), src: String(src || '').slice(0, 200), stack: String(stack || '').slice(0, 1200) });
+          if (trail.length > 20) trail.shift(); } catch (_) {}
+  }
+  window.addEventListener('error', function (e) { if (e && e.message) keep(e.message, (e.filename || '') + (e.lineno ? ':' + e.lineno + ':' + (e.colno || 0) : ''), e.error && e.error.stack); });
+  window.addEventListener('unhandledrejection', function (e) { var r = e && e.reason; keep('Unhandled: ' + (r && (r.message || r)), '', r && r.stack); });
+  window.__auraKeepError = keep;
+})();
+</script>
 <script type="importmap">
 {
   "imports": {
@@ -4906,6 +4937,8 @@ import { optimisePlan, applySuggestion, activeDismissals, GOALS, GOAL_LABELS, MU
 import { QUESTIONS as FB_QUESTIONS, classify as classifyFeedback, volumeNudges, pendingFeedback, staleFeedbackDates } from "./session-feedback.js";
 import { blockState, blockWeeks } from "./mesocycle.js";
 import { volumeRows, exerciseInsight, dayStats, suggestionsByDay } from "./plan-insights.js";
+import { cleanSuggestion, suggestionDoc, canSend as canSendSuggestion, sortSuggestions, countNew as countNewSuggestions,
+         claudePrompt, claudeUrl, toMillis as suggestionMillis, bugContext, contextLines, STATUS_LABELS as SUGGESTION_STATUS, SUGGESTION_MAX, DAILY_LIMIT as SUGGESTION_DAILY } from "./suggestions.js";
 import {
   getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword,
   onAuthStateChanged, signOut, updateProfile
@@ -5364,6 +5397,7 @@ function showToast(msg, type = 'info') {
   const t = document.createElement('div');
   t.className = `toast ${type}`;
   t.textContent = msg;
+  if (type === 'error') { try { window.__auraKeepError?.('Shown to Hunter: ' + msg, 'toast'); } catch (_) {} }
   document.body.appendChild(t);
   setTimeout(() => t.remove(), 3100);
 }
@@ -5908,6 +5942,10 @@ function openSettingsModal() {
       '<button type="button" class="weekday-chip tabdots-chip ' + (!tabDotsOn()?'on':'') + '" data-val="off" style="flex:1;">Off</button>' +
     '</div><div style="font-size:11px;color:var(--text-dim);margin-top:4px;">A gold dot on a tab means something there is waiting for you, such as AP to invest. Tap the tab to see what.</div></div>' +
     '<div class="field" id="rem-box"></div>' +
+    '<div style="display:flex;gap:8px;margin-top:10px;">' +
+      '<button type="button" id="settings-suggest" style="flex:1;padding:11px 6px;background:rgba(255,214,107,0.07);border:1px solid rgba(255,214,107,0.32);border-radius:var(--radius-sm);color:var(--ui-gold);font-family:var(--font-mono);font-size:11px;letter-spacing:.1em;cursor:pointer;touch-action:manipulation;">\ud83d\udca1 SUGGEST IDEA</button>' +
+      '<button type="button" id="settings-bug" style="flex:1;padding:11px 6px;background:rgba(255,77,103,0.06);border:1px solid rgba(255,77,103,0.3);border-radius:var(--radius-sm);color:#FF8A9B;font-family:var(--font-mono);font-size:11px;letter-spacing:.1em;cursor:pointer;touch-action:manipulation;">\ud83d\udc1e REPORT BUG</button>' +
+    '</div>' +
     '<button type="button" id="settings-replay-intro" style="width:100%;margin-top:10px;padding:11px;background:rgba(91,168,255,0.07);border:1px solid rgba(91,168,255,0.28);border-radius:var(--radius-sm);color:var(--text);font-family:var(--font-mono);font-size:11px;letter-spacing:.14em;cursor:pointer;touch-action:manipulation;">\u25b6 REPLAY SYSTEM OPENING</button>' +
     '<div style="display:flex;gap:8px;margin-top:8px;">' +
       '<button class="btn" id="cancel-settings" style="flex:1;font-size:13px;">Close</button>' +
@@ -5918,6 +5956,7 @@ function openSettingsModal() {
       '<div style="margin-top:12px;padding-top:12px;border-top:1px solid rgba(255,77,103,0.08);">' +
       '<div style="font-family:var(--font-mono);font-size:8px;letter-spacing:.2em;color:var(--excess);margin-bottom:8px;">\u25c8 ADMIN</div>' +
       '<div style="display:flex;flex-direction:column;gap:6px;">' +
+        '<button class="btn" id="admin-suggestions" style="color:var(--ui-gold);border-color:var(--ui-gold);font-size:12px;">\ud83d\udca1 Suggestions inbox</button>' +
         '<button class="btn" id="admin-open-tester" style="color:var(--brass);border-color:var(--brass);font-size:12px;">\ud83e\uddea Run System Tests</button>' +
         '<button class="btn" id="admin-open-users" style="font-size:12px;">\ud83d\udc65 View All Users</button>' +
         '<button class="btn" id="admin-fix-streaks" style="font-size:12px;color:var(--excess);border-color:var(--excess);">\ud83d\udd27 Fix Missing Streaks</button>' +
@@ -5975,6 +6014,15 @@ function openSettingsModal() {
   overlay.querySelectorAll('.sys-fn-btn[data-view]').forEach(btn => {
     btn.addEventListener('click', () => { overlay.remove(); unlockBodyScroll(); switchView(btn.dataset.view); });
   });
+  overlay.querySelector('#settings-suggest')?.addEventListener('click', () => { overlay.remove(); unlockBodyScroll(); window.openSuggestionBox(); });
+  overlay.querySelector('#settings-bug')?.addEventListener('click', () => { overlay.remove(); unlockBodyScroll(); window.openSuggestionBox('bug'); });
+  overlay.querySelector('#admin-suggestions')?.addEventListener('click', () => { overlay.remove(); unlockBodyScroll(); window.openSuggestionsInbox(); });
+  if (overlay.querySelector('#admin-suggestions')) {
+    import('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js')
+      .then(({ collection, query, where, getDocs }) => getDocs(query(collection(db, 'suggestions'), where('status', '==', 'new'))))
+      .then(snap => { const b = overlay.querySelector('#admin-suggestions'); if (b && snap.size) b.textContent = `\ud83d\udca1 Suggestions inbox · ${snap.size} new`; })
+      .catch(() => {});
+  }
   overlay.querySelector('#admin-open-tester')?.addEventListener('click', () => { overlay.remove(); openAdminTester(); });
   overlay.querySelector('#admin-open-users')?.addEventListener('click', () => { overlay.remove(); openAdminUserPanel(); });
   overlay.querySelector('#admin-fix-streaks')?.addEventListener('click', () => { overlay.remove(); fixMissingStreaks(); });
@@ -17789,6 +17837,230 @@ window.openProgressCheck = () => {
 };
 
 // ── END WEEKLY CHECK-IN ───────────────────────────────────────────────────────
+
+// ── SUGGESTION BOX + BUG REPORTS (suggestions.js) ─────────────────────────────
+/* Any Hunter sends an idea or a bug report from Settings (or from the
+   "Something went wrong" pill after an uncaught error). One document per
+   report in `suggestions`; nothing else reads it. The admin uid reads them
+   all in the inbox and hands one to Claude as a ready-made prompt. */
+const SUGGEST_ADMIN_UID = 'eUtGPwQBcCSO0x3xS3ZGYFGXNIT2';   // same uid the admin tools above check
+const FS_URL = 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+
+/** What the app can tell about where the Hunter is, gathered before the sheet opens. */
+function gatherBugContext() {
+  let sheet = '';
+  try {
+    const open = [...document.querySelectorAll('.modal-overlay:not(.hidden), .ci-overlay')].filter(o => o.id !== 'suggest-overlay');
+    const top = open[open.length - 1];
+    if (top) sheet = (top.querySelector('.ui-banner, h3, .ci-title')?.textContent || top.id || 'sheet').trim().replace(/\s+/g, ' ');
+  } catch (_) {}
+  const standalone = (() => { try { return matchMedia('(display-mode: standalone)').matches || navigator.standalone === true; } catch (_) { return false; } })();
+  return bugContext({
+    screen: document.querySelector('section.view.active')?.id?.replace(/^view-/, '') || '',
+    sheet,
+    url: location.origin + location.pathname + location.hash,
+    userAgent: navigator.userAgent,
+    viewport: `${window.innerWidth}x${window.innerHeight} @${window.devicePixelRatio || 1}x`,
+    installed: standalone,
+    online: navigator.onLine,
+    timezone: (() => { try { return Intl.DateTimeFormat().resolvedOptions().timeZone; } catch (_) { return ''; } })(),
+    language: navigator.language,
+    version: document.lastModified,
+    level: Number(profile?.hunterLevel) || null,
+    reportedAt: new Date().toISOString(),
+    errors: window.__auraErrors || [],
+  });
+}
+
+async function loadMySuggestions() {
+  const { collection, query, where, getDocs } = await import(FS_URL);
+  const snap = await getDocs(query(collection(db, 'suggestions'), where('uid', '==', currentUser.uid)));
+  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+}
+
+const sgDate = s => { const ms = suggestionMillis(s.createdAt); return ms ? new Date(ms).toLocaleDateString(undefined, { day: 'numeric', month: 'short' }) : 'just now'; };
+const sgKind = s => s.kind === 'bug' ? '🐞 Bug' : '💡 Idea';
+
+window.openSuggestionBox = (kind = 'idea', ctxIn = null) => {
+  if (!currentUser) return;
+  document.getElementById('suggest-overlay')?.remove();
+  const ctx = ctxIn || gatherBugContext();
+  let mine = [];
+  const overlay = document.createElement('div');
+  overlay.id = 'suggest-overlay';
+  overlay.className = 'ci-overlay';
+  overlay.innerHTML = `
+    <div class="ui-window gold ci-win">
+      <div class="ci-scroll">
+        <div class="ci-hero" style="padding-bottom:14px;"><div class="ci-hero-top"><div>
+          <div class="ui-banner gold">◈ Tell the developer</div>
+          <div class="ci-title" id="sg-title"></div></div>
+          <button class="ci-close" aria-label="Close" data-close>✕</button></div>
+        </div>
+        <div class="sg-filter" role="tablist">
+          <button type="button" class="weekday-chip sg-kind" data-kind="idea" style="flex:1;">💡 Idea</button>
+          <button type="button" class="weekday-chip sg-kind" data-kind="bug" style="flex:1;">🐞 Bug</button>
+        </div>
+        <div class="pc-next" id="sg-hint" style="font-size:15px;color:var(--text-dim);margin:8px 0;"></div>
+        <textarea class="sg-text" id="sg-text" maxlength="${SUGGESTION_MAX}"></textarea>
+        <div class="sg-count" id="sg-count">0 / ${SUGGESTION_MAX}</div>
+        <details id="sg-details" style="margin-top:6px;"><summary style="cursor:pointer;font-size:14px;color:var(--text-dim);min-height:32px;">What gets attached</summary>
+          <pre style="white-space:pre-wrap;overflow-wrap:anywhere;font-family:var(--font-mono);font-size:11px;color:var(--text-faint);margin:6px 0 0;">${escapeHtml(contextLines(ctx).join('\n'))}</pre></details>
+        <div class="sg-err" id="sg-err"></div>
+        <button class="ui-btn-primary ci-save" id="sg-send">Send</button>
+        <button class="ci-skip" data-close style="width:100%;margin-top:6px;">Close</button>
+        <div class="ui-banner ci-section" style="margin-top:22px;">◈ What you've sent</div>
+        <div id="sg-mine"><div class="sg-empty">Loading…</div></div>
+      </div>
+    </div>`;
+  getOverlayHost().appendChild(overlay);
+  const $ = sel => overlay.querySelector(sel);
+  const text = $('#sg-text');
+  const setKind = k => {
+    kind = k === 'bug' ? 'bug' : 'idea';
+    overlay.querySelectorAll('.sg-kind').forEach(c => c.classList.toggle('on', c.dataset.kind === kind));
+    $('#sg-title').textContent = kind === 'bug' ? 'Report a bug' : 'Suggest an idea';
+    $('#sg-hint').textContent = kind === 'bug'
+      ? 'What went wrong, and what were you doing? The screen, your device and any errors the app caught are attached for you.'
+      : 'What would make Auramaxxing better for you? Anything goes.';
+    text.placeholder = kind === 'bug' ? 'e.g. I tapped Save after my workout and nothing happened' : 'e.g. Let me reorder exercises while I log';
+    $('#sg-details').hidden = kind !== 'bug';
+    $('#sg-err').textContent = '';
+  };
+  const renderMine = () => {
+    const host = $('#sg-mine');
+    if (!mine.length) { host.innerHTML = '<div class="sg-empty">Nothing yet. Your ideas and reports show here with what happened to them.</div>'; return; }
+    host.innerHTML = [...mine].sort((a, b) => suggestionMillis(b.createdAt) - suggestionMillis(a.createdAt)).slice(0, 10).map(s => `
+      <div class="sg-item"><div class="sg-meta"><span>${sgKind(s)} · ${sgDate(s)}</span><span class="sg-status ${escapeHtml(s.status || 'new')}">${escapeHtml(SUGGESTION_STATUS[s.status] || SUGGESTION_STATUS.new)}</span></div>
+      <div class="sg-body">${escapeHtml(s.text)}</div></div>`).join('');
+  };
+  setKind(kind);
+  overlay.querySelectorAll('.sg-kind').forEach(c => c.addEventListener('click', () => setKind(c.dataset.kind)));
+  text.addEventListener('input', () => { $('#sg-count').textContent = `${text.value.length} / ${SUGGESTION_MAX}`; $('#sg-err').textContent = ''; });
+  overlay.querySelectorAll('[data-close]').forEach(b => b.addEventListener('click', () => overlay.remove()));
+  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+  loadMySuggestions().then(list => { mine = list; renderMine(); })
+    .catch(() => { $('#sg-mine').innerHTML = '<div class="sg-empty">Could not load what you sent before.</div>'; });
+  $('#sg-send').addEventListener('click', async () => {
+    const c = cleanSuggestion(text.value);
+    if (!c.ok) { $('#sg-err').textContent = c.error; return; }
+    if (!canSendSuggestion(mine, Date.now())) { $('#sg-err').textContent = `That's ${SUGGESTION_DAILY} today. Thank you! Send more tomorrow.`; return; }
+    const btn = $('#sg-send');
+    btn.disabled = true; btn.textContent = 'Sending…';
+    try {
+      const { collection, addDoc, serverTimestamp } = await import(FS_URL);
+      const data = suggestionDoc({ uid: currentUser.uid, name: profile?.displayName || currentUser.displayName, text: c.text, kind, context: kind === 'bug' ? ctx : null });
+      const ref = await addDoc(collection(db, 'suggestions'), { ...data, createdAt: serverTimestamp() });
+      mine.push({ id: ref.id, ...data, createdAt: Date.now() });
+      text.value = ''; $('#sg-count').textContent = `0 / ${SUGGESTION_MAX}`;
+      renderMine();
+      showToast(kind === 'bug' ? '🐞 Bug report sent. Thank you!' : '💡 Idea sent. Thank you!', 'success');
+    } catch (e) {
+      $('#sg-err').textContent = 'Could not send: ' + (e?.message || e);
+    } finally { btn.disabled = false; btn.textContent = 'Send'; }
+  });
+};
+
+/** Admin inbox: every idea and bug report, newest new ones first, each one can go straight to Claude. */
+window.openSuggestionsInbox = async () => {
+  if (currentUser?.uid !== SUGGEST_ADMIN_UID) return;
+  document.getElementById('suggest-inbox')?.remove();
+  let all = [], filter = 'new';
+  const overlay = document.createElement('div');
+  overlay.id = 'suggest-inbox';
+  overlay.className = 'ci-overlay';
+  overlay.innerHTML = `
+    <div class="ui-window gold ci-win">
+      <div class="ci-scroll">
+        <div class="ci-hero" style="padding-bottom:14px;"><div class="ci-hero-top"><div>
+          <div class="ui-banner gold">◈ Developer · Inbox</div>
+          <div class="ci-title" id="sgi-title">Suggestions</div></div>
+          <button class="ci-close" aria-label="Close" data-close>✕</button></div>
+        </div>
+        <div class="sg-filter" id="sgi-filter">
+          ${[['new', 'New'], ['bug', 'Bugs'], ['idea', 'Ideas'], ['all', 'All']].map(([k, l]) => `<button type="button" class="weekday-chip" data-f="${k}" style="flex:1;">${l}</button>`).join('')}
+        </div>
+        <div id="sgi-list"><div class="sg-empty">Loading…</div></div>
+        <button class="ci-skip" data-close style="width:100%;margin-top:10px;">Close</button>
+      </div>
+    </div>`;
+  getOverlayHost().appendChild(overlay);
+  const $ = sel => overlay.querySelector(sel);
+  overlay.querySelectorAll('[data-close]').forEach(b => b.addEventListener('click', () => overlay.remove()));
+  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+  const setStatus = async (s, status) => {
+    const { doc, updateDoc, serverTimestamp } = await import(FS_URL);
+    await updateDoc(doc(db, 'suggestions', s.id), { status, statusAt: serverTimestamp() });
+    s.status = status;
+  };
+  const render = () => {
+    const nNew = countNewSuggestions(all);
+    $('#sgi-title').textContent = nNew ? `${nNew} new` : 'All caught up';
+    overlay.querySelectorAll('#sgi-filter .weekday-chip').forEach(c => c.classList.toggle('on', c.dataset.f === filter));
+    const shown = sortSuggestions(all).filter(s => filter === 'all' || (filter === 'new' ? (s.status || 'new') === 'new' : (s.kind || 'idea') === filter));
+    if (!shown.length) { $('#sgi-list').innerHTML = '<div class="sg-empty">Nothing here.</div>'; return; }
+    $('#sgi-list').innerHTML = shown.map(s => `
+      <div class="sg-item" data-id="${escapeHtml(s.id)}">
+        <div class="sg-meta"><span><b>${sgKind(s)}</b> · ${escapeHtml(s.name || 'Hunter')} · ${sgDate(s)}</span><span class="sg-status ${escapeHtml(s.status || 'new')}">${escapeHtml(s.status || 'new')}</span></div>
+        <div class="sg-body">${escapeHtml(s.text)}</div>
+        ${s.kind === 'bug' ? `<details style="margin-top:6px;"><summary style="cursor:pointer;font-size:14px;color:var(--text-dim);min-height:32px;">Details the app recorded${(s.context?.errors || []).length ? ` · ${(s.context.errors).length} error${s.context.errors.length > 1 ? 's' : ''}` : ''}</summary>
+          <pre style="white-space:pre-wrap;overflow-wrap:anywhere;font-family:var(--font-mono);font-size:11px;color:var(--text-faint);margin:6px 0 0;">${escapeHtml(contextLines(s.context).join('\n'))}</pre></details>` : ''}
+        <div class="sg-acts">
+          <button class="ui-btn-primary" data-act="claude">Send to Claude</button>
+          <button class="ui-btn-outline" data-act="copy">Copy prompt</button>
+          ${s.status !== 'done' ? '<button class="ui-btn-outline" data-act="done">Done</button>' : ''}
+          ${s.status !== 'dismissed' ? '<button class="ui-btn-outline" data-act="dismissed">Not planned</button>' : ''}
+          ${s.status && s.status !== 'new' ? '<button class="ui-btn-outline" data-act="new">Reopen</button>' : ''}
+        </div>
+      </div>`).join('');
+    overlay.querySelectorAll('.sg-item').forEach(el => {
+      const s = all.find(x => x.id === el.dataset.id);
+      el.querySelectorAll('[data-act]').forEach(b => b.addEventListener('click', async () => {
+        const act = b.dataset.act;
+        try {
+          if (act === 'claude' || act === 'copy') {
+            const prompt = claudePrompt(s);
+            navigator.clipboard?.writeText(prompt).catch(() => {});
+            if (act === 'claude') { window.open(claudeUrl(prompt), '_blank', 'noopener'); if ((s.status || 'new') === 'new') await setStatus(s, 'sent'); }
+            else showToast('Prompt copied. Paste it into Claude.', 'success');
+          } else await setStatus(s, act);
+          render();
+        } catch (e) { showToast('Could not update: ' + (e?.message || e), 'error'); }
+      }));
+    });
+  };
+  overlay.querySelectorAll('#sgi-filter .weekday-chip').forEach(c => c.addEventListener('click', () => { filter = c.dataset.f; render(); }));
+  try {
+    const { collection, getDocs } = await import(FS_URL);
+    const snap = await getDocs(collection(db, 'suggestions'));
+    all = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    if (!countNewSuggestions(all)) filter = 'all';
+    render();
+  } catch (e) {
+    $('#sgi-list').innerHTML = `<div class="sg-empty">Could not load suggestions: ${escapeHtml(e?.message || String(e))}</div>`;
+  }
+};
+
+/* After an uncaught error, offer a one-tap bug report (once per session, signed in only). */
+let _bugPillShown = false;
+function offerBugReport(msg) {
+  if (_bugPillShown || !currentUser) return;
+  if (!msg || /^Script error\.?$/i.test(msg) || /ResizeObserver/i.test(msg)) return;
+  _bugPillShown = true;
+  const ctx = gatherBugContext();
+  const pill = document.createElement('div');
+  pill.className = 'workout-pill';
+  pill.id = 'bug-pill';
+  pill.style.cssText = 'z-index:900;bottom:calc(140px + env(safe-area-inset-bottom));';
+  pill.innerHTML = '<span class="workout-pill-label" style="white-space:nowrap;">Something went wrong</span><button class="workout-pill-btn" id="bug-pill-go" style="white-space:nowrap;">Report it</button><button class="workout-pill-btn" id="bug-pill-x" aria-label="Dismiss" style="padding:0 10px;">✕</button>';
+  document.body.appendChild(pill);
+  const t = setTimeout(() => pill.remove(), 12000);
+  pill.querySelector('#bug-pill-x').addEventListener('click', () => { clearTimeout(t); pill.remove(); });
+  pill.querySelector('#bug-pill-go').addEventListener('click', () => { clearTimeout(t); pill.remove(); window.openSuggestionBox('bug', ctx); });
+}
+window.addEventListener('error', e => { if (e && e.message) offerBugReport(e.message); });
+window.addEventListener('unhandledrejection', e => { const r = e && e.reason; offerBugReport(r && (r.message || String(r))); });
+
 
 // Master function: runs all checks in order on login
 async function runSystemChecks() {
