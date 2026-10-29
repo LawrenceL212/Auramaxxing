@@ -10255,7 +10255,7 @@ async function coachChatSend(text) {
   coachChatSave();
   paintCoachChatLog(true);
   try {
-    const res = await callCoach('chat', '', null, { messages: c.msgs.slice(-12).map(m => ({ role: m.role, content: m.content })) });
+    const res = await callCoach('chat', '', null, { messages: c.msgs.slice(-12).map(m => ({ role: m.role, content: m.role === 'assistant' && m.days && !m.applied ? `${m.content}\n[Plan I proposed, not applied yet: ${m.days.map(d => `${d.name}: ${d.exercises.map(e => `${e.name} ${e.sets}x${e.reps}`).join(', ')}`).join(' | ')}]` : m.content })) });
     c.msgs.push({ role: 'assistant', content: res.reply, days: res.days || null, goal: res.goal || null, suggestions: res.suggestions || [] });
   } catch (err) { c.error = coachErrorText(err); }
   c.busy = false;
@@ -17647,7 +17647,13 @@ window.openCheckinHub = (view = 'home', reward = null) => {
 
 /** Names the coach may use: every resistance exercise the app knows (no timed or run moves). */
 function coachExercises() {
-  return Object.entries(EXERCISES_ALL).filter(([, d]) => d && !d.timed && !isRunDef(d)).map(([n]) => n).slice(0, 400);
+  return Object.entries(EXERCISES_ALL).filter(([, d]) => d && !isCardioTimed(d)).map(([n]) => n).slice(0, 400);
+}
+/** Timed holds (front lever, L-sit...): reps are seconds. Minutes-based timed work and runs stay out of the coach's list. */
+const isCoachHold = (d) => !!(d && d.timed && d.timedUnit !== 'mins' && !isRunDef(d));
+const isCardioTimed = (d) => !!(d.timed ? !isCoachHold(d) : isRunDef(d));
+function coachHolds() {
+  return Object.entries(EXERCISES_ALL).filter(([, d]) => isCoachHold(d)).map(([n]) => n).slice(0, 150);
 }
 
 /** The Hunter's data as the coach sees it. */
@@ -17686,6 +17692,7 @@ function coachInput(mode, request, image, extra = {}) {
     feedback: feedbackEntries().sort((a, b) => b.date.localeCompare(a.date)).slice(0, 6),
     block: st ? { week: st.week, phase: st.phase, targetRir: st.targetRir } : null,
     exercises: coachExercises(),
+    holds: coachHolds(),
   };
 }
 

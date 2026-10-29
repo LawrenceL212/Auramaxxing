@@ -100,7 +100,7 @@ check('turns alternate, start and end with the Hunter, and are bounded', (() => 
   const t = sanitizeTurns([{ role: 'assistant', content: 'old' }, { role: 'user', content: 'a' }, { role: 'user', content: 'b' }, { role: 'assistant', content: 'c' }, { role: 'user', content: 'd' }, { role: 'assistant', content: 'dangling' }]);
   return t.length === 3 && t[0].role === 'user' && t[0].content === 'a\nb' && t[2].content === 'd';
 })());
-check('turns are cut to the last 12 messages and 800 characters each', (() => { const t = sanitizeTurns(Array.from({ length: 40 }, (_, i) => ({ role: i % 2 ? 'assistant' : 'user', content: 'x'.repeat(2000) + i }))); return t.length <= MAX_TURNS && t.every(m => m.content.length <= 800); })());
+check('turns are cut to the last 12 messages and a bounded length each', (() => { const t = sanitizeTurns(Array.from({ length: 40 }, (_, i) => ({ role: i % 2 ? 'assistant' : 'user', content: 'x'.repeat(4000) + i }))); return t.length <= MAX_TURNS && t.every(m => m.content.length <= (m.role === 'user' ? 800 : 2500)); })());
 check('no usable turns gives an empty list', sanitizeTurns(null).length === 0 && sanitizeTurns([{ role: 'assistant', content: 'hi' }]).length === 0);
 check('a chat reply is trimmed, unknown exercises dropped, suggestions bounded', (() => { const r = sanitizeChat(chatGood, { exercises: EX }); return r.days.length === 1 && r.days[0].exercises.length === 1 && r.goal === 'muscle' && r.suggestions.length === 3 && r.suggestions[1].length === 40; })());
 check('a goal without a plan is dropped; an empty reply is unusable', sanitizeChat({ reply: 'hi', days: null, goal: 'strength', suggestions: [] }, { exercises: EX }).goal === null && sanitizeChat({ reply: '  ', days: null, goal: null, suggestions: [] }, { exercises: EX }) === null);
@@ -114,6 +114,14 @@ err = null;
 try { await designChat({ client: fake({ stop_reason: 'refusal', parsed_output: null }), input: { sex: 'male', exercises: EX, messages: [{ role: 'user', content: 'x' }] } }); } catch (e) { err = e; }
 check('a chat refusal is reported plainly', err && err.code === 'refused');
 check('chat has its own, larger daily limit', CHAT_LIMIT === 40 && CHAT_LIMIT > DAILY_LIMIT && !nextUsage({ date: '2026-10-29', count: DAILY_LIMIT }, '2026-10-29').allowed && nextUsage({ date: '2026-10-29', count: DAILY_LIMIT }, '2026-10-29', CHAT_LIMIT).allowed);
+
+
+// holds (timed skills): reps are seconds
+const HOLD_EX = [...EX, 'Tuck Front Lever', 'L-Sit'];
+check('a hold keeps seconds up to 90; ordinary moves still cap at 30 reps', (() => { const d = sanitizeDays([{ name: 'Skills', exercises: [{ name: 'Tuck Front Lever', sets: 4, reps: 120 }, { name: 'L-Sit', sets: 3, reps: 1 }, { name: 'Squat', sets: 3, reps: 99 }] }], new Set(HOLD_EX), new Set(['Tuck Front Lever', 'L-Sit']))[0].exercises; return d[0].reps === 90 && d[1].reps === 3 && d[2].reps === 30; })());
+check('without holds listed, a hold is treated like any move', sanitizeDays([{ name: 'S', exercises: [{ name: 'Tuck Front Lever', sets: 3, reps: 40 }] }], new Set(HOLD_EX))[0].exercises[0].reps === 30);
+check('holds reach the model and survive a chat reply', (() => { const f = buildFacts({ sex: 'male', exercises: HOLD_EX, holds: ['Tuck Front Lever', 'L-Sit'] }); const r = sanitizeChat({ reply: 'Added.', days: [{ name: 'Skills', exercises: [{ name: 'Tuck Front Lever', sets: 4, reps: 20 }] }], goal: 'strength', suggestions: [] }, { exercises: HOLD_EX, holds: ['Tuck Front Lever'] }); return f.holdExercises.length === 2 && r.days[0].exercises[0].reps === 20; })());
+check('the prompts explain holds, why-questions and "add it back" edits', /holdExercises/.test(SYSTEM) && /WHY something is or is not/.test(CHAT_SYSTEM) && /add it back/.test(CHAT_SYSTEM) && /holdExercises/.test(CHAT_SYSTEM) && /not applied yet/.test(CHAT_SYSTEM));
 
 check('daily limit: first call of the day is allowed and counted', (() => { const r = nextUsage(null, '2026-10-29'); return r.allowed && r.usage.count === 1; })());
 check('daily limit: counts up within a day, stops at the limit', (() => { let u = null; for (let i = 0; i < DAILY_LIMIT; i++) u = nextUsage(u && u.usage, '2026-10-29'); return u.allowed && u.usage.count === DAILY_LIMIT && !nextUsage(u.usage, '2026-10-29').allowed; })());

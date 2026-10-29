@@ -66,6 +66,7 @@ Targets
 Plan
 - Build days from the exercise list given, using the exact names only. Fit the sessions per week they can actually do. Put the focus groups first in each session and give them enough sets to grow (about 10-20 hard sets a week for a focus group, 8-12 for others, fewer if they are a beginner). Use rep ranges that fit the goal. Sets 2-5, reps within 3-20.
 - In "review" mode, keep what works. Return "days" as null if the current plan is fine, otherwise the full adjusted plan. Say what you changed and why in "coach".
+- "holdExercises" are the timed holds in exerciseList (front lever, planche, L-sit, handstand work and so on): for those, "reps" means seconds per hold (5-60), not repetitions. Use them when the Hunter wants skills; never leave out a skill they asked for.
 - Respect their recovery: if their feedback shows heavy soreness or missed work, do not add volume.
 
 Coaching text
@@ -166,14 +167,16 @@ function sanitizeLook(look, sex) {
 }
 
 /** The plan days with only known exercises, sane sets and reps and bounded size, or null. */
-function sanitizeDays(days, allowed) {
+function sanitizeDays(days, allowed, holds = new Set()) {
   if (!Array.isArray(days)) return null;
   const out = [];
   for (const d of days.slice(0, 6)) {
     const exercises = [];
     for (const e of (d.exercises || []).slice(0, 10)) {
       if (!allowed.has(e.name) || exercises.some(x => x.name === e.name)) continue;
-      exercises.push({ name: e.name, sets: Math.round(clamp(num(e.sets) ?? 3, 1, 6)), reps: Math.round(clamp(num(e.reps) ?? 8, 1, 30)) });
+      exercises.push(holds.has(e.name)
+        ? { name: e.name, sets: Math.round(clamp(num(e.sets) ?? 3, 1, 6)), reps: Math.round(clamp(num(e.reps) ?? 10, 3, 90)) } // a hold: reps are seconds
+        : { name: e.name, sets: Math.round(clamp(num(e.sets) ?? 3, 1, 6)), reps: Math.round(clamp(num(e.reps) ?? 8, 1, 30)) });
     }
     if (exercises.length) out.push({ name: str(d.name, 30) || `Day ${out.length + 1}`, exercises });
   }
@@ -181,7 +184,7 @@ function sanitizeDays(days, allowed) {
 }
 
 /** What the client gets back: validated, clamped, nothing the Hunter did not see. */
-function sanitizePlan(raw, { sex, exercises }) {
+function sanitizePlan(raw, { sex, exercises, holds }) {
   const allowed = new Set(exercises || []);
   const coach = raw.coach || {};
   const list = (a, n, max) => (Array.isArray(a) ? a.slice(0, n).map(s => str(s, max)).filter(Boolean) : []);
@@ -190,7 +193,7 @@ function sanitizePlan(raw, { sex, exercises }) {
     focus: (raw.focus || []).filter(g => GROUPS.includes(g)).slice(0, 4),
     goal: GOALS.includes(raw.goal) ? raw.goal : 'general',
     sessionsPerWeek: Math.round(clamp(num(raw.sessionsPerWeek) ?? 3, 2, 6)),
-    days: sanitizeDays(raw.days, allowed),
+    days: sanitizeDays(raw.days, allowed, new Set(holds || [])),
     coach: {
       headline: str(coach.headline, 90),
       summary: str(coach.summary, 700),
@@ -225,6 +228,7 @@ function buildFacts(input) {
     feedback: Array.isArray(input.feedback) ? input.feedback.slice(0, 10) : [],
     block: input.block || null,
     exerciseList: Array.isArray(input.exercises) ? input.exercises.slice(0, 400) : [],
+    holdExercises: Array.isArray(input.holds) ? input.holds.slice(0, 150).map(h => str(h, 80)).filter(Boolean) : [],
   };
 }
 
@@ -262,7 +266,7 @@ async function designPlan({ client, input }) {
     e.code = 'unparseable';
     throw e;
   }
-  return sanitizePlan(response.parsed_output, { sex: input.sex, exercises: input.exercises });
+  return sanitizePlan(response.parsed_output, { sex: input.sex, exercises: input.exercises, holds: input.holds });
 }
 
 /* ── chat ─────────────────────────────────────────────────────────────── */
@@ -279,7 +283,9 @@ const CHAT_SYSTEM = `You are the coach inside Auramaxxing, chatting with one Hun
 
 - Answer what they asked. Ask one short question at a time only when you truly need the answer to help.
 - Respect their goals ("goals" in the data). If they say something that changes the goal, tell them to use "Change my goals" so it is saved; do not pretend it is saved.
-- You may change their plan. Only when they ask for a change, or a change clearly follows from what they said (sore, missing equipment, a new target), return the FULL adjusted plan in "days" using exact exercise names from exerciseList (sets 2-5, reps 3-20, at most 6 sessions), keep what works, and say in "reply" what changed and why. Otherwise "days" is null. Nothing is applied until they tap.
+- If they ask WHY something is or is not in their plan ("why no front lever holds?"), look at currentPlan, their goals, the answers they gave in intake, and the exerciseList, and give the real reason in plain words: not in the list, not asked for, no room for the volume, recovery, a limit they told you about, or simply that you did not include it. Never invent a reason and never blame the app for what was your own choice. If they were not asked about it or it is a skill they want, say so and offer to add it. If the exercise is not in exerciseList at all, say so and offer the closest exercise that is.
+- If they then ask to change it ("add it back", "I don't like X, drop it", "swap Y for Z"), do it: return the full adjusted plan. Start from the plan you proposed last in this conversation if it was not applied yet (its summary is in the conversation), otherwise from currentPlan.
+- You may change their plan. Only when they ask for a change, or a change clearly follows from what they said (sore, missing equipment, a new target), return the FULL adjusted plan in "days" using exact exercise names from exerciseList (sets 2-5, reps 3-20, or seconds 5-60 for holdExercises, at most 6 sessions), keep what works, and say in "reply" what changed and why. Otherwise "days" is null. Nothing is applied until they tap.
 - Set "goal" (strength, muscle, endurance, general) only when you return days; otherwise null.
 - "suggestions" are 0 to 3 short things they might tap next (under 40 characters each), such as follow-up questions. Empty is fine.
 - Respect recovery: if their feedback shows heavy soreness or missed work, do not add volume. No medical advice, no diets below maintenance minus 500 kcal. Never promise a result. Never identify anyone.`;
@@ -290,7 +296,7 @@ function sanitizeTurns(messages) {
   const out = [];
   for (const m of messages.slice(-MAX_TURNS)) {
     const role = m && m.role === 'assistant' ? 'assistant' : 'user';
-    const content = str(m && m.content, 800);
+    const content = str(m && m.content, role === 'assistant' ? 2500 : 800); // a coach turn can carry the plan it proposed
     if (!content) continue;
     if (out.length && out[out.length - 1].role === role) out[out.length - 1].content += '\n' + content;
     else out.push({ role, content });
@@ -300,10 +306,10 @@ function sanitizeTurns(messages) {
   return out;
 }
 
-function sanitizeChat(raw, { exercises }) {
+function sanitizeChat(raw, { exercises, holds }) {
   const reply = str(raw.reply, 1500);
   if (!reply) return null;
-  const days = sanitizeDays(raw.days, new Set(exercises || []));
+  const days = sanitizeDays(raw.days, new Set(exercises || []), new Set(holds || []));
   return {
     reply,
     days,
@@ -334,7 +340,7 @@ async function designChat({ client, input }) {
     e.code = 'refused';
     throw e;
   }
-  const out = response.parsed_output ? sanitizeChat(response.parsed_output, { exercises: input.exercises }) : null;
+  const out = response.parsed_output ? sanitizeChat(response.parsed_output, { exercises: input.exercises, holds: input.holds }) : null;
   if (!out) {
     const e = new Error('The coach answered in a form the app could not read. Try again.');
     e.code = 'unparseable';
