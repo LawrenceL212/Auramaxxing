@@ -113,6 +113,14 @@ consistency) and tunes the plan toward the ones that are stalled, behind or miss
 tapped, through the same `programs/{uid}` write as the plan editor; the plan stores the picked
 `goal` and stamps a changed exercise `optimisedAt`. Pure, so `node test/optimiser.test.mjs` tests it.
 
+[body-metrics.js](body-metrics.js) is the maths behind the weekly check-in (`openCheckinModal`): every tape
+field is a circumference (measured around the body), and it gives US Navy body fat (female needs hips,
+no height means no estimate), fat/lean mass, BMI, FFMI, waist-to-height, V-taper (shoulders ÷ waist) against
+the 1.618 golden ratio, chest ÷ waist, arm balance, warnings for a width typed as a circumference, and ranked
+physique priorities. The plan optimiser takes the priorities' muscle groups as `physiqueFocus` (latest
+check-in under 8 weeks old) and gives them the growth dose. Stored check-in fields are unchanged. Pure, so
+`node test/body-metrics.test.mjs` tests it. Presentation only.
+
 [ui-system.css](ui-system.css) is the shared "System window" look (`.ui-window`, `.ui-banner`, `.ui-btn-primary`, `.ui-chip`, `.ui-tile`, `.ui-row`, `.ui-crest`, ...), linked from `index.html`; every rule is scoped to a `.ui-*` class, so it restyles nothing that does not opt in. [ui-art.js](ui-art.js) gives painted-art slots (`uiArt(name)`, files go in `art/ui/`, code stand-ins until then) and the sigil/ring/equipment-icon SVG generators. [hunt-view.js](hunt-view.js) (week strip, last-time label, up-next) and [quick-quest.js](quick-quest.js) (the fixed bodyweight Quick 15 circuit, logged as an ordinary workout) are pure, tested in `test/hunt-view.test.mjs`, `test/quick-quest.test.mjs`, `test/ui-art.test.mjs`. Presentation only.
 
 [flow-view.js](flow-view.js) is the pure side of the flow screens (Enter Gate before the logger, the logger header's muscle figure, Gate Complete reward tiles, Rank Up, the after-hunt next step, bottom-nav dots), tested in `test/flow-view.test.mjs`. Reward tiles show only real XP / AP / streak (the game has no gold); a nav dot shows only for AP that can actually be invested (Rank) or soldiers waiting to deploy (World). Presentation only: every button reuses its existing handler.

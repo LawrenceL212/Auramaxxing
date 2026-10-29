@@ -176,6 +176,17 @@ check('no plan: nothing', run({ program: null }).suggestions, []);
   check('endurance plan of runs: no muscle volume pushed', run({ program: p, goal: 'endurance' }).suggestions.filter(s => s.type === 'add' || s.type === 'volume'), []);
 }
 
+{
+  // the body check-in's priorities: a focus group gets the growth dose under any goal
+  const plain = run({ program: balanced, goal: 'general' }).suggestions.filter(s => s.id.includes(':Shoulders'));
+  check('general goal, no focus: shoulders left alone', plain.length, 0);
+  const r = run({ program: balanced, goal: 'general', physiqueFocus: ['Shoulders'] });
+  const s = r.suggestions.find(x => x.id.startsWith('volume-up:Shoulders') || x.id.startsWith('add:Shoulders'));
+  check('physique focus on shoulders: more shoulder sets', !!s, true);
+  check('the reason names the body check-in', s && /body check-in/.test(s.reason), true);
+  check('a focus suggestion ranks ahead of ordinary volume', s && s.priority, 3);
+}
+
 // ── personal goals ───────────────────────────────────────────────────────
 {
   const p = plan([day('Legs', [{ name: 'Squat', sets: 3, reps: 5 }])]);

@@ -1,0 +1,381 @@
+/* Body metrics: what a tape-measure check-in tells the Hunter.
+
+   Pure: takes the measurements (all circumferences, in cm, measured AROUND the
+   body) plus height, weight and sex, and returns the estimates, what they mean,
+   and which physique priorities follow from them. The check-in modal and the
+   Codex card render this; the plan optimiser reads the priorities' muscle
+   groups. Nothing here writes data, and none of it feeds XP or progression.
+   Tested by  node test/body-metrics.test.mjs
+
+   Sources
+   - Body fat: US Navy circumference method, Hodgdon & Beckett 1984 (Naval
+     Health Research Center reports 84-11 / 84-29), metric form as in DoD
+     Instruction 1308.3. About ±3-4 points against DEXA for most adults.
+   - Body fat categories: American Council on Exercise (ACE).
+   - BMI: WHO adult cut-offs (18.5 / 25 / 30).
+   - Waist-to-height: Ashwell et al. 2012 (Obesity Reviews) and NICE 2022
+     (NG246): keep the waist under half the height; 0.6 and over is high risk.
+   - Waist-to-hip: WHO 2008 expert consultation (risk at 0.90 men, 0.85 women).
+   - FFMI: Kouri et al. 1995 (Clin J Sport Med), height-normalised to 1.8 m.
+   - Shoulder-to-waist 1.618: the golden ratio ("Adonis index"), an aesthetic
+     ideal rather than a health measure. Chest-to-waist 1.4 and flexed arm at
+     36% of chest follow John McCallum's classic proportion guidelines. */
+
+export const GOLDEN_RATIO = 1.618;
+export const CHEST_WAIST_IDEAL = 1.4;
+export const ARM_CHEST_IDEAL = 0.36;
+
+// Plausible circumferences (cm) for an adult. Outside these the value is
+// probably a typo, a width, or inches.
+export const RANGES = {
+  weight:    [30, 300],
+  height:    [120, 230],
+  neck:      [24, 65],
+  shoulders: [75, 180],
+  chest:     [60, 180],
+  waist:     [45, 200],
+  hip:       [60, 200],
+  arm:       [18, 65],
+};
+
+const num = (v) => { const n = Number(v); return Number.isFinite(n) && n > 0 ? n : null; };
+const round1 = (n) => Math.round(n * 10) / 10;
+const round2 = (n) => Math.round(n * 100) / 100;
+const inRange = (v, [lo, hi]) => v >= lo && v <= hi;
+const sexOf = (s) => (s === 'female' ? 'female' : 'male');
+
+/** Measurements cleaned to positive numbers or null. */
+export function cleanMeasurements(m = {}) {
+  return {
+    weight: num(m.weight), height: num(m.height), neck: num(m.neck),
+    shoulders: num(m.shoulders), chest: num(m.chest), waist: num(m.waist),
+    hip: num(m.hip), armLeft: num(m.armLeft), armRight: num(m.armRight),
+  };
+}
+
+/**
+ * US Navy body fat %, or null when it cannot be worked out honestly.
+ * Men: waist at the navel, neck, height. Women: waist at the narrowest point,
+ * hips, neck, height (the female equation needs the hips; using the male one
+ * instead would be wrong by several points).
+ */
+export function navyBodyFat(sex, { waist, neck, hip, height } = {}) {
+  waist = num(waist); neck = num(neck); hip = num(hip); height = num(height);
+  if (!waist || !neck || !height || !inRange(height, RANGES.height)) return null;
+  let bf;
+  if (sexOf(sex) === 'female') {
+    if (!hip || waist + hip - neck <= 0) return null;
+    bf = 495 / (1.29579 - 0.35004 * Math.log10(waist + hip - neck) + 0.22100 * Math.log10(height)) - 450;
+  } else {
+    if (waist - neck <= 0) return null;
+    bf = 495 / (1.0324 - 0.19077 * Math.log10(waist - neck) + 0.15456 * Math.log10(height)) - 450;
+  }
+  if (!Number.isFinite(bf) || bf < 2 || bf > 60) return null;
+  return round1(bf);
+}
+
+const BF_BANDS = {
+  male:   [[6, 'Essential'], [14, 'Athletic'], [18, 'Fit'], [25, 'Average'], [Infinity, 'High']],
+  female: [[14, 'Essential'], [21, 'Athletic'], [25, 'Fit'], [32, 'Average'], [Infinity, 'High']],
+};
+/** ACE body fat category. */
+export function bodyFatCategory(sex, pct) {
+  if (pct == null) return null;
+  return BF_BANDS[sexOf(sex)].find(([hi]) => pct < hi)[1];
+}
+
+export function bmi(weight, height) {
+  weight = num(weight); height = num(height);
+  if (!weight || !height || !inRange(height, RANGES.height) || !inRange(weight, RANGES.weight)) return null;
+  return round1(weight / (height / 100) ** 2);
+}
+export function bmiCategory(v) {
+  if (v == null) return null;
+  return v < 18.5 ? 'Underweight' : v < 25 ? 'Healthy range' : v < 30 ? 'Overweight' : 'Obese';
+}
+
+/** Fat-free mass index (kg/m²), height-normalised to 1.8 m (Kouri 1995). */
+export function ffmi(leanKg, height) {
+  leanKg = num(leanKg); height = num(height);
+  if (!leanKg || !height) return null;
+  const h = height / 100;
+  return round1(leanKg / (h * h) + 6.1 * (1.8 - h));
+}
+const FFMI_BANDS = {
+  male:   [[18, 'Below average'], [20, 'Average'], [22, 'Above average'], [23.5, 'Muscular'], [25.5, 'Very muscular'], [Infinity, 'Elite']],
+  female: [[14.5, 'Below average'], [16.5, 'Average'], [18, 'Above average'], [19.5, 'Muscular'], [21.5, 'Very muscular'], [Infinity, 'Elite']],
+};
+export function ffmiCategory(sex, v) {
+  if (v == null) return null;
+  return FFMI_BANDS[sexOf(sex)].find(([hi]) => v < hi)[1];
+}
+
+export function waistToHeight(waist, height) {
+  waist = num(waist); height = num(height);
+  return waist && height ? round2(waist / height) : null;
+}
+export function waistToHeightCategory(v) {
+  if (v == null) return null;
+  return v < 0.4 ? 'Very slim' : v < 0.5 ? 'Healthy' : v < 0.6 ? 'Raised risk' : 'High risk';
+}
+
+/**
+ * Warnings for values that look wrong, keyed by field. The common one: a
+ * shoulder or chest WIDTH (tape across the front) typed where the
+ * circumference (tape all the way around) belongs.
+ */
+export function measurementWarnings(m = {}) {
+  const c = cleanMeasurements(m);
+  const w = {};
+  const offRange = (key, range, label, unit = 'cm') => {
+    if (c[key] != null && !inRange(c[key], range)) w[key] = `${c[key]} ${unit} is outside the usual ${range[0]}–${range[1]} ${unit} for ${label}. Check the number and that it is in ${unit}.`;
+  };
+  if (c.shoulders != null && c.shoulders < RANGES.shoulders[0]) {
+    w.shoulders = `${c.shoulders} cm looks like the width across your shoulders. Wrap the tape all the way around both shoulders at the widest part of the deltoids.`;
+  } else if (c.shoulders != null && c.waist != null && c.shoulders < c.waist) {
+    w.shoulders = 'Shoulders are almost always bigger around than the waist. Check the tape went around both arms and your back, not just across the front.';
+  } else offRange('shoulders', RANGES.shoulders, 'shoulders');
+  if (c.chest != null && c.chest < RANGES.chest[0]) {
+    w.chest = `${c.chest} cm looks like a width. Wrap the tape around your back and under the armpits.`;
+  } else offRange('chest', RANGES.chest, 'the chest');
+  if (c.neck != null && c.waist != null && c.neck >= c.waist) w.neck = 'The neck should be smaller around than the waist; body fat can’t be worked out from these.';
+  else offRange('neck', RANGES.neck, 'the neck');
+  offRange('waist', RANGES.waist, 'the waist');
+  offRange('hip', RANGES.hip, 'the hips');
+  for (const k of ['armLeft', 'armRight']) offRange(k, RANGES.arm, 'a flexed arm');
+  if (c.height != null && !inRange(c.height, RANGES.height)) w.height = `Height should be ${RANGES.height[0]}–${RANGES.height[1]} cm.`;
+  offRange('weight', RANGES.weight, 'bodyweight', 'kg');
+  return w;
+}
+
+/** The next 0.1 step up from a ratio, capped at the ideal: a target reachable in a block of training. */
+export function nextStep(ratio, ideal) {
+  return Math.min(ideal, Math.floor(ratio * 10 + 1e-9) / 10 + 0.1);
+}
+
+/** A shoulder or chest value that is a width, not a circumference, gives no ratio. */
+function usable(c, key) {
+  return c[key] != null && c[key] >= RANGES[key][0];
+}
+
+/**
+ * Every estimate the check-in can give. Fields are null when the inputs for
+ * them are missing or unusable.
+ */
+export function bodyMetrics(sex, raw = {}) {
+  sex = sexOf(sex);
+  const c = cleanMeasurements(raw);
+  const bf = navyBodyFat(sex, c);
+  const fatKg = bf != null && c.weight ? round1(c.weight * bf / 100) : null;
+  const leanKg = bf != null && c.weight ? round1(c.weight - c.weight * bf / 100) : null;
+  const bmiV = bmi(c.weight, c.height);
+  const ffmiV = ffmi(leanKg, c.height);
+  const whtr = waistToHeight(c.waist, c.height);
+  const whr = c.waist && c.hip ? round2(c.waist / c.hip) : null;
+
+  let vTaper = null;
+  if (usable(c, 'shoulders') && c.waist) {
+    const ratio = round2(c.shoulders / c.waist);
+    vTaper = {
+      ratio,
+      ofGolden: Math.round(ratio / GOLDEN_RATIO * 100),
+      shouldersFor: round1(c.waist * GOLDEN_RATIO),
+      waistFor: round1(c.shoulders / GOLDEN_RATIO),
+      gapShouldersCm: Math.max(0, round1(c.waist * GOLDEN_RATIO - c.shoulders)),
+      gapWaistCm: Math.max(0, round1(c.waist - c.shoulders / GOLDEN_RATIO)),
+      next: Math.round(nextStep(ratio, GOLDEN_RATIO) * 1000) / 1000,
+      shouldersForNext: round1(c.waist * nextStep(ratio, GOLDEN_RATIO)),
+      label: ratio >= GOLDEN_RATIO ? 'Golden' : ratio >= 1.5 ? 'Strong V' : ratio >= 1.4 ? 'Building' : ratio >= 1.2 ? 'Mild taper' : 'Straight',
+    };
+  }
+  let chestWaist = null;
+  if (usable(c, 'chest') && c.waist) {
+    const ratio = round2(c.chest / c.waist);
+    chestWaist = {
+      ratio, ideal: CHEST_WAIST_IDEAL, chestFor: round1(c.waist * CHEST_WAIST_IDEAL), gapCm: Math.max(0, round1(c.waist * CHEST_WAIST_IDEAL - c.chest)),
+      next: Math.round(nextStep(ratio, CHEST_WAIST_IDEAL) * 1000) / 1000, chestForNext: round1(c.waist * nextStep(ratio, CHEST_WAIST_IDEAL)),
+    };
+  }
+  let arms = null;
+  if (c.armLeft || c.armRight) {
+    const big = Math.max(c.armLeft || 0, c.armRight || 0);
+    const both = c.armLeft && c.armRight;
+    const diffCm = both ? round1(Math.abs(c.armLeft - c.armRight)) : null;
+    const diffPct = both ? Math.round(Math.abs(c.armLeft - c.armRight) / big * 1000) / 10 : null;
+    arms = {
+      bigger: big,
+      diffCm, diffPct,
+      weakSide: both && c.armLeft !== c.armRight ? (c.armLeft < c.armRight ? 'left' : 'right') : null,
+      // about a centimetre and 3% is past normal tape error and dominance
+      asymmetric: both && diffCm >= 1 && diffPct >= 3,
+      toChest: usable(c, 'chest') ? round2(big / c.chest) : null,
+      armFor: usable(c, 'chest') ? round1(c.chest * ARM_CHEST_IDEAL) : null,
+    };
+  }
+
+  return {
+    sex,
+    bodyFat: bf, bodyFatCategory: bodyFatCategory(sex, bf), fatKg, leanKg,
+    bmi: bmiV, bmiCategory: bmiCategory(bmiV),
+    ffmi: ffmiV, ffmiCategory: ffmiCategory(sex, ffmiV),
+    waistToHeight: whtr, waistToHeightCategory: waistToHeightCategory(whtr),
+    waistToHip: whr,
+    vTaper, chestWaist, arms,
+    missing: {
+      height: !c.height,
+      hip: sex === 'female' && !c.hip,
+    },
+  };
+}
+
+/**
+ * Physique priorities, most important first:
+ * { id, title, why, how, target, focus: [optimiser MUSCLE_GROUPS names] }.
+ */
+export function physiquePriorities(sex, raw = {}) {
+  sex = sexOf(sex);
+  const m = bodyMetrics(sex, raw);
+  const c = cleanMeasurements(raw);
+  const out = [];
+
+  const highFat = m.bodyFat != null && m.bodyFat >= (sex === 'female' ? 32 : 22);
+  const highWaist = m.waistToHeight != null && m.waistToHeight >= 0.5;
+  if (highFat || highWaist) {
+    const healthyWaist = c.height ? round1(c.height * 0.5 - 0.1) : null;
+    const goldenWaist = m.vTaper ? m.vTaper.waistFor : null;
+    const target = [healthyWaist, goldenWaist].filter(Boolean);
+    const goal = target.length ? Math.max(...target) : null;
+    out.push({
+      id: 'waist',
+      title: 'Bring your waist down',
+      why: [
+        highWaist ? `Waist is ${Math.round(m.waistToHeight * 100)}% of your height; under 50% is the healthy line.` : null,
+        highFat ? `Body fat ${m.bodyFat}% (${m.bodyFatCategory.toLowerCase()}).` : null,
+        'A smaller waist also raises every taper ratio at once.',
+      ].filter(Boolean).join(' '),
+      how: 'Eat about 300–500 kcal under maintenance with plenty of protein (about 1.6–2.2 g per kg), keep lifting heavy so the loss is fat, and aim for 0.5–1% of bodyweight a week.',
+      target: goal && c.waist && goal < c.waist ? `Waist ${goal} cm (now ${c.waist})` : null,
+      focus: [],
+    });
+  }
+
+  if (m.vTaper && m.vTaper.ratio < GOLDEN_RATIO) {
+    out.push({
+      id: 'shoulders',
+      title: 'Widen your shoulders',
+      why: `Shoulder-to-waist is ${m.vTaper.ratio}, ${m.vTaper.ofGolden}% of the 1.618 golden ratio.`,
+      how: 'Side delts and lats make the V: lateral raises, overhead press, pull-ups and rows, about 12–20 hard sets a week for shoulders and back.',
+      target: `Next: ${m.vTaper.next} at ${m.vTaper.shouldersForNext} cm shoulders (+${round1(m.vTaper.shouldersForNext - c.shoulders)}). Golden: ${m.vTaper.shouldersFor} cm, or waist ${m.vTaper.waistFor} cm`,
+      focus: ['Shoulders', 'Back'],
+    });
+  }
+
+  if (m.chestWaist && sex === 'male' && m.chestWaist.ratio < CHEST_WAIST_IDEAL) {
+    out.push({
+      id: 'chest',
+      title: 'Build your chest and back',
+      why: `Chest-to-waist is ${m.chestWaist.ratio}; ${CHEST_WAIST_IDEAL} is the classic target. The tape around the chest also takes in the lats.`,
+      how: 'Presses (incline included) and rows or pull-downs, 10–20 sets a week each.',
+      target: `Next: ${m.chestWaist.next} at ${m.chestWaist.chestForNext} cm chest (+${round1(m.chestWaist.chestForNext - c.chest)}). Classic ${CHEST_WAIST_IDEAL}: ${m.chestWaist.chestFor} cm`,
+      focus: ['Chest', 'Back'],
+    });
+  }
+
+  if (m.arms && m.arms.asymmetric) {
+    const weak = m.arms.weakSide;
+    out.push({
+      id: 'arm-balance',
+      title: `Even out your arms (${weak} is smaller)`,
+      why: `Your arms differ by ${m.arms.diffCm} cm (${m.arms.diffPct}%). Past about 1 cm and 3% it is more than tape error.`,
+      how: `Add one-arm curls and extensions, start each set with the ${weak} arm and stop the other at the same reps.`,
+      target: `${weak === 'left' ? 'Left' : 'Right'} arm up to ${m.arms.bigger} cm`,
+      focus: ['Biceps', 'Triceps'],
+    });
+  }
+
+  if (m.arms && m.arms.toChest != null && sex === 'male' && m.arms.toChest < ARM_CHEST_IDEAL - 0.02) {
+    out.push({
+      id: 'arms',
+      title: 'Bring your arms up',
+      why: `Flexed arm is ${Math.round(m.arms.toChest * 100)}% of your chest; about ${Math.round(ARM_CHEST_IDEAL * 100)}% looks balanced.`,
+      how: 'Direct curls and triceps work, 8–14 sets a week each, on top of presses and rows.',
+      target: `Arms ${m.arms.armFor} cm`,
+      focus: ['Biceps', 'Triceps'],
+    });
+  }
+
+  if (!out.length && (m.vTaper || m.bodyFat != null)) {
+    out.push({
+      id: 'maintain',
+      title: 'Hold the proportions, add size evenly',
+      why: 'Your ratios are at or past their targets.',
+      how: 'Keep training every muscle group and let the waist stay where it is while the rest grows.',
+      target: null,
+      focus: [],
+    });
+  }
+  return out;
+}
+
+/** Optimiser muscle groups to give extra weekly sets, from the top priorities. */
+export function physiqueFocus(sex, raw, max = 2) {
+  const groups = [];
+  for (const p of physiquePriorities(sex, raw).slice(0, max + 1)) {
+    for (const g of p.focus) if (!groups.includes(g)) groups.push(g);
+  }
+  return groups.slice(0, 3);
+}
+
+/** What each stat means, why it matters and where it comes from. */
+export const EXPLAIN = [
+  { key: 'bodyFat', title: 'Body fat %', text: 'The share of your weight that is fat, from the US Navy tape formula (neck, waist, height; hips too for women). Expect about ±3–4 points against a DEXA scan, but measured the same way each week the trend is reliable.' },
+  { key: 'lean', title: 'Fat and lean mass', text: 'Your weight split into fat and everything else (muscle, bone, water). Lean mass going up while fat holds is a successful bulk; fat going down while lean holds is a successful cut.' },
+  { key: 'vTaper', title: 'V-taper (shoulders ÷ waist)', text: 'Both measured around the body. 1.618, the golden ratio, is the classic aesthetic ideal; most untrained men sit near 1.3. It rises from wider delts and lats and from a smaller waist.' },
+  { key: 'chestWaist', title: 'Chest ÷ waist', text: 'How much bigger your upper body is than your middle. About 1.4 is a strong, balanced look; the chest tape also takes in your back.' },
+  { key: 'whtr', title: 'Waist ÷ height', text: 'The simplest health signal here: keep your waist under half your height. It tracks heart and metabolic risk better than BMI.' },
+  { key: 'bmi', title: 'BMI', text: 'Weight ÷ height². Fine for populations, poor for lifters: it cannot tell muscle from fat, so muscular people read “overweight”. Read it next to body fat, never alone.' },
+  { key: 'ffmi', title: 'FFMI', text: 'Lean mass for your height, like BMI with the fat taken out. Men average about 19–20 and women about 15–16; 22–23 is muscular for a man, and past 25 is rare without drugs.' },
+  { key: 'arms', title: 'Arm balance', text: 'Left against right, flexed. Up to about 1 cm is normal; more means one side is doing less of the work.' },
+];
+
+const MEASURE_HINTS = {
+  height:    'Barefoot, back against a wall',
+  weight:    'Morning, after the toilet, before food',
+  neck:      'Tape around, just below the Adam’s apple',
+  shoulders: 'Tape around both shoulders at the widest part of the delts, arms down',
+  chest:     'Tape around at nipple line, under the armpits, after breathing out',
+  waistMale: 'Tape around at the navel, relaxed, after breathing out',
+  waistFemale: 'Tape around the narrowest part, relaxed, after breathing out',
+  hip:       'Tape around the widest part of the glutes, feet together',
+  arm:       'Tape around the biceps peak, arm flexed',
+};
+export function measureHint(field, sex) {
+  if (field === 'waist') return sexOf(sex) === 'female' ? MEASURE_HINTS.waistFemale : MEASURE_HINTS.waistMale;
+  if (field === 'armLeft' || field === 'armRight') return MEASURE_HINTS.arm;
+  return MEASURE_HINTS[field] || '';
+}
+
+// Where the tape ring sits on the little figure, by field: [y, half-width].
+const RING = { neck: [9, 3.2], shoulders: [15, 10], chest: [19, 8], waist: [28, 6.5], hip: [34, 8] };
+/**
+ * A small figure with the tape drawn as a ring around the measured spot, so
+ * the field reads "around", not "across". Arms ring the upper arm on their side.
+ */
+export function tapeIconSvg(field, size = 26) {
+  const arm = field === 'armLeft' || field === 'armRight';
+  const ring = RING[field];
+  if (!ring && !arm) return '';
+  const body = '<circle cx="16" cy="4.5" r="3" /><path d="M13.6 8h4.8v2.4l5.6 2.1 3 9.4-2.2.7-2.4-6.6v8.6l1 2.6 0 0-.4 8.4h-15l-.4-8.4 1-2.6v-8.6l-2.4 6.6-2.2-.7 3-9.4 5.6-2.1z" />';
+  let tape;
+  if (arm) {
+    // the Hunter's left arm sits on the figure's right, as in a mirror
+    const cx = field === 'armLeft' ? 24.6 : 7.4;
+    tape = `<ellipse cx="${cx}" cy="17" rx="2.6" ry="1.1" />`;
+  } else {
+    const [y, rx] = ring;
+    tape = `<ellipse cx="16" cy="${y}" rx="${rx}" ry="${Math.max(1, rx * 0.22).toFixed(1)}" />`;
+  }
+  return `<svg viewBox="0 0 32 40" width="${size}" height="${Math.round(size * 1.25)}" aria-hidden="true" style="flex-shrink:0;">` +
+    `<g fill="rgba(91,168,255,.16)" stroke="rgba(91,168,255,.4)" stroke-width=".6">${body}</g>` +
+    `<g fill="none" stroke="#FFD66B" stroke-width="1.4" stroke-dasharray="1.6 1">${tape}</g></svg>`;
+}

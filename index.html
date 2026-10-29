@@ -4677,6 +4677,7 @@ import { detectReEntry, reEntryPlan, directiveProgress, formatMeasure, DIRECTIVE
 import { analyseHabit, sampleCurve, describeReturns,
          HABIT_TARGET_DAYS, MISS_GRACE } from "./habit.js";
 import { muscleDevelopment, bodyBuild, bodyFrame } from "./physique.js";
+import { bodyMetrics, measurementWarnings, physiquePriorities, physiqueFocus, measureHint, tapeIconSvg, navyBodyFat as navyBodyFatPct, EXPLAIN as CHECKIN_EXPLAIN, GOLDEN_RATIO } from "./body-metrics.js";
 import { optimisePlan, applySuggestion, activeDismissals, GOALS, GOAL_LABELS, MUSCLE_GROUPS } from "./optimiser.js";
 import { volumeRows, exerciseInsight, dayStats, suggestionsByDay } from "./plan-insights.js";
 import {
@@ -10618,7 +10619,14 @@ function planOptCtx(program, today) {
     bodyweightKg: latestBodyweightKg(),
     weeklyGoal: profile?.weeklyGoal || 3,
     dismissed: activeDismissals(readPlanOptDismissed(), today),
+    physiqueFocus: checkinPhysiqueFocus(today),
   };
+}
+/** Muscle groups the latest body check-in puts first (body-metrics.js), if it is under 8 weeks old. */
+function checkinPhysiqueFocus(today) {
+  const last = myCheckins[myCheckins.length - 1];
+  if (!last || !last.date || daysBetween(last.date, today) > 56) return [];
+  try { return physiqueFocus(profile?.bodyType || 'male', { ...last, height: profile?.heightCm }); } catch (_) { return []; }
 }
 function peAgo(date, today) {
   const d = Math.round((new Date(today + 'T12:00:00') - new Date(date + 'T12:00:00')) / 86400000);
@@ -16131,8 +16139,8 @@ window.openCheckinModal = () => {
   if (existing) existing.remove();
 
   const gender = profile?.bodyType || 'male';
-  const height = profile?.heightCm || 166;
   const lastC = myCheckins[myCheckins.length - 1];
+  const tapeNote = 'rgba(255,214,107,.9)';
 
   const overlay = document.createElement('div');
   overlay.id = 'checkin-modal-overlay';
@@ -16140,7 +16148,7 @@ window.openCheckinModal = () => {
 
   overlay.innerHTML = `
     <div style="background:rgba(22,27,37,.98);border:1px solid rgba(91,168,255,.15);border-radius:14px;padding:24px;width:100%;max-width:440px;max-height:90vh;overflow-y:auto;font-family:var(--font-mono);">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
         <div>
           <div style="font-size:9px;letter-spacing:.25em;color:rgba(91,168,255,0.78);margin-bottom:4px;">◈ WEEKLY CHECK-IN</div>
           <div style="font-size:16px;font-weight:700;color:#F2F5FA;">Body Measurements</div>
@@ -16150,24 +16158,50 @@ window.openCheckinModal = () => {
 
       ${lastC ? `<div style="background:rgba(91,168,255,.05);border:1px solid rgba(91,168,255,.1);border-radius:8px;padding:10px 14px;margin-bottom:16px;font-size:11px;color:rgba(242,245,250,0.78);">
         Last check-in: <strong style="color:#F2F5FA;">${lastC.date}</strong> &nbsp;·&nbsp;
-        ${lastC.weight}kg &nbsp;·&nbsp; ${lastC.bodyFatPct?.toFixed(1)}% BF &nbsp;·&nbsp; Waist ${lastC.waist}cm
+        ${lastC.weight}kg${lastC.bodyFatPct ? ` &nbsp;·&nbsp; ${Number(lastC.bodyFatPct).toFixed(1)}% BF` : ''}${lastC.waist ? ` &nbsp;·&nbsp; Waist ${lastC.waist}cm` : ''}
       </div>` : ''}
 
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:18px;">
         ${checkinField('Weight', 'ci-weight', 'kg', lastC?.weight, '75.0', 'Your current bodyweight')}
-        ${checkinField('Waist', 'ci-waist', 'cm', lastC?.waist, '90', 'At navel, relaxed')}
-        ${checkinField('Neck', 'ci-neck', 'cm', lastC?.neck, '38', 'At narrowest point')}
-        ${gender === 'female' ? checkinField('Hips', 'ci-hip', 'cm', lastC?.hip, '95', 'At widest point') : ''}
-        ${checkinField('Shoulders', 'ci-shoulders', 'cm', lastC?.shoulders, '110', 'At widest point')}
-        ${checkinField('Chest', 'ci-chest', 'cm', lastC?.chest, '95', 'At nipple line')}
-        ${checkinField('Left Arm', 'ci-armLeft', 'cm', lastC?.armLeft, '33', 'Flexed, peak')}
-        ${checkinField('Right Arm', 'ci-armRight', 'cm', lastC?.armRight, '33', 'Flexed, peak')}
+        ${checkinField('Height', 'ci-height', 'cm', profile?.heightCm, '175', measureHint('height', gender))}
       </div>
 
-      <div style="background:rgba(91,168,255,.04);border:1px solid rgba(91,168,255,.08);border-radius:8px;padding:12px;margin-bottom:16px;">
-        <div style="font-size:9px;letter-spacing:.15em;color:rgba(91,168,255,0.78);margin-bottom:8px;">LIVE ESTIMATES</div>
-        <div id="ci-live" style="font-size:12px;color:rgba(242,245,250,0.78);line-height:2;"></div>
+      <div style="display:flex;gap:10px;align-items:center;background:rgba(255,214,107,.06);border:1px solid rgba(255,214,107,.22);border-radius:8px;padding:10px 12px;margin-bottom:14px;">
+        ${tapeIconSvg('waist', 30)}
+        <div style="font-size:11px;line-height:1.5;color:rgba(242,245,250,.86);">
+          <div style="font-size:9px;letter-spacing:.18em;color:${tapeNote};margin-bottom:2px;">TAPE MEASUREMENTS · CIRCUMFERENCE</div>
+          Wrap the tape <strong style="color:#F2F5FA;">all the way around</strong> the body, level and snug, not across the front. Same time, same spot, every week.
+        </div>
       </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
+        ${checkinField('Waist', 'ci-waist', 'cm around', lastC?.waist, '90', measureHint('waist', gender), 'waist')}
+        ${checkinField('Neck', 'ci-neck', 'cm around', lastC?.neck, '38', measureHint('neck', gender), 'neck')}
+        ${gender === 'female' ? checkinField('Hips', 'ci-hip', 'cm around', lastC?.hip, '95', measureHint('hip', gender), 'hip') : ''}
+        ${checkinField('Shoulders', 'ci-shoulders', 'cm around', lastC?.shoulders, '115', measureHint('shoulders', gender), 'shoulders')}
+        ${checkinField('Chest', 'ci-chest', 'cm around', lastC?.chest, '95', measureHint('chest', gender), 'chest')}
+        ${checkinField('Left Arm', 'ci-armLeft', 'cm around', lastC?.armLeft, '33', measureHint('armLeft', gender), 'armLeft')}
+        ${checkinField('Right Arm', 'ci-armRight', 'cm around', lastC?.armRight, '33', measureHint('armRight', gender), 'armRight')}
+      </div>
+
+      <div style="background:rgba(91,168,255,.04);border:1px solid rgba(91,168,255,.08);border-radius:8px;padding:12px;margin-bottom:12px;">
+        <div style="font-size:9px;letter-spacing:.15em;color:rgba(91,168,255,0.78);margin-bottom:8px;">LIVE ESTIMATES</div>
+        <div id="ci-live" style="font-size:12px;color:rgba(242,245,250,0.78);line-height:1.5;"></div>
+      </div>
+
+      <div style="background:rgba(91,168,255,.04);border:1px solid rgba(91,168,255,.08);border-radius:8px;padding:12px;margin-bottom:12px;">
+        <div style="font-size:9px;letter-spacing:.15em;color:rgba(91,168,255,0.78);margin-bottom:8px;">PHYSIQUE PRIORITIES</div>
+        <div id="ci-priorities" style="font-size:12px;color:rgba(242,245,250,0.78);line-height:1.5;"></div>
+      </div>
+
+      <details style="background:rgba(91,168,255,.03);border:1px solid rgba(91,168,255,.08);border-radius:8px;padding:10px 12px;margin-bottom:16px;">
+        <summary style="font-size:9px;letter-spacing:.15em;color:rgba(91,168,255,0.78);cursor:pointer;">WHAT THIS TELLS YOU</summary>
+        <div style="font-size:11px;line-height:1.55;color:rgba(242,245,250,.8);margin-top:10px;">
+          <p style="margin:0 0 10px;">The scale says how much you weigh; the tape says what changed. Logged the same way each week, these numbers show whether you are adding muscle or fat and which part of your build to train next. Watch the trend, not one reading.</p>
+          ${CHECKIN_EXPLAIN.map(e => `<div style="margin-bottom:8px;"><strong style="color:#F2F5FA;">${e.title}</strong><br>${e.text}</div>`).join('')}
+          <div style="font-size:10px;color:rgba(242,245,250,.55);margin-top:8px;">Sources: US Navy method (Hodgdon &amp; Beckett 1984), ACE body fat bands, WHO BMI and waist-to-hip cut-offs, NICE 2022 waist-to-height, Kouri 1995 FFMI. Ratios are aesthetic guides, not medical advice.</div>
+        </div>
+      </details>
 
       <div style="margin-bottom:12px;">
         <div style="font-size:10px;color:rgba(242,245,250,0.78);margin-bottom:6px;">Notes (optional)</div>
@@ -16182,73 +16216,140 @@ window.openCheckinModal = () => {
   getOverlayHost().appendChild(overlay);
 
   // Live estimation
-  const liveFields = ['ci-weight','ci-waist','ci-neck','ci-shoulders','ci-armLeft','ci-armRight'];
+  const liveFields = ['ci-weight','ci-height','ci-waist','ci-neck','ci-hip','ci-shoulders','ci-chest','ci-armLeft','ci-armRight'];
   liveFields.forEach(id => {
     const el = document.getElementById(id);
     if (el) el.addEventListener('input', updateCheckinLive);
   });
-  if (gender === 'female') {
-    const hip = document.getElementById('ci-hip');
-    if (hip) hip.addEventListener('input', updateCheckinLive);
-  }
+  updateCheckinLive();
 };
 
-function checkinField(label, id, unit, lastVal, placeholder, hint) {
+function checkinField(label, id, unit, lastVal, placeholder, hint, tape) {
   return `<div>
-    <div style="font-size:9px;letter-spacing:.12em;color:rgba(91,168,255,0.78);margin-bottom:4px;">${label.toUpperCase()} (${unit})</div>
-    <input type="number" id="${id}" step="0.1" placeholder="${placeholder}"
+    <div style="font-size:9px;letter-spacing:.12em;color:rgba(91,168,255,0.78);margin-bottom:4px;">${label.toUpperCase()} <span style="letter-spacing:.04em;color:${tape ? 'rgba(255,214,107,.85)' : 'inherit'};">(${unit})</span></div>
+    <input type="number" inputmode="decimal" id="${id}" step="0.1" placeholder="${placeholder}"
       value="${lastVal || ''}"
       style="width:100%;background:rgba(255,255,255,.04);border:1px solid rgba(91,168,255,.15);border-radius:6px;color:#F2F5FA;padding:8px 10px;font-family:var(--font-mono);font-size:16px;font-weight:700;" />
-    <div style="font-size:9px;color:rgba(242,245,250,0.78);margin-top:2px;">${hint}</div>
+    <div style="display:flex;gap:6px;align-items:flex-start;margin-top:4px;">
+      ${tape ? tapeIconSvg(tape, 20) : ''}
+      <div style="font-size:9px;line-height:1.4;color:rgba(242,245,250,0.78);">${hint}</div>
+    </div>
+    <div id="${id}-warn" style="font-size:9px;line-height:1.4;color:#FFB454;margin-top:3px;"></div>
   </div>`;
+}
+
+/** The check-in inputs as numbers, keyed like body-metrics.js expects. */
+function readCheckinInputs() {
+  const v = (id) => parseFloat(document.getElementById(id)?.value) || null;
+  return {
+    weight: v('ci-weight'), height: v('ci-height'), waist: v('ci-waist'), neck: v('ci-neck'), hip: v('ci-hip'),
+    shoulders: v('ci-shoulders'), chest: v('ci-chest'), armLeft: v('ci-armLeft'), armRight: v('ci-armRight'),
+  };
 }
 
 function updateCheckinLive() {
   const gender = profile?.bodyType || 'male';
-  const height = profile?.heightCm || 166;
-  const weight = parseFloat(document.getElementById('ci-weight')?.value) || 0;
-  const waist  = parseFloat(document.getElementById('ci-waist')?.value)  || 0;
-  const neck   = parseFloat(document.getElementById('ci-neck')?.value)   || 0;
-  const shoulders = parseFloat(document.getElementById('ci-shoulders')?.value) || 0;
-  const hip    = parseFloat(document.getElementById('ci-hip')?.value)    || 0;
   const liveEl = document.getElementById('ci-live');
   if (!liveEl) return;
+  const input = readCheckinInputs();
+  const m = bodyMetrics(gender, input);
 
+  // measurement sanity: a width where a circumference belongs, a typo, inches
+  const warnings = measurementWarnings(input);
+  ['weight','height','waist','neck','hip','shoulders','chest','armLeft','armRight'].forEach(k => {
+    const el = document.getElementById(`ci-${k}-warn`);
+    if (el) el.textContent = warnings[k] ? `⚠ ${warnings[k]}` : '';
+  });
+
+  const strong = (txt, color) => `<strong style="color:${color};">${txt}</strong>`;
+  const sub = (txt) => `<div style="font-size:10px;color:rgba(242,245,250,.55);margin-top:1px;">${txt}</div>`;
+  const row = (label, value, note) => `<div style="padding:6px 0;border-bottom:1px solid rgba(91,168,255,.06);">
+      <div style="display:flex;justify-content:space-between;gap:8px;"><span>${label}</span><span style="text-align:right;">${value}</span></div>${note ? sub(note) : ''}</div>`;
+  const bar = (pct, color) => `<div style="height:4px;border-radius:2px;background:rgba(255,255,255,.07);margin-top:5px;overflow:hidden;"><div style="height:100%;width:${Math.max(3, Math.min(100, pct))}%;background:${color};"></div></div>`;
   let lines = [];
 
-  if (waist > 0 && neck > 0 && waist > neck) {
-    try {
-      const bf = navyBodyFat(gender, waist, neck, height, hip || null);
-      if (bf > 0 && bf < 60) {
-        const fatMass = weight > 0 ? (weight * bf / 100).toFixed(1) : '—';
-        const leanMass = weight > 0 ? (weight * (1 - bf/100)).toFixed(1) : '—';
-        lines.push(`Body fat: <strong style="color:#FFD66B;">${bf.toFixed(1)}%</strong> &nbsp;·&nbsp; Fat: ${fatMass}kg &nbsp;·&nbsp; Lean: ${leanMass}kg`);
-      }
-    } catch(e) {}
+  if (m.bodyFat != null) {
+    lines.push(row('Body fat', `${strong(m.bodyFat + '%', '#FFD66B')} · ${m.bodyFatCategory}`, 'US Navy tape method, about ±3–4 points'));
+    if (m.fatKg != null) lines.push(row('Fat / lean mass', `${m.fatKg} kg / ${strong(m.leanKg + ' kg', '#F2F5FA')}`));
+  } else if (input.waist && input.neck) {
+    const need = m.missing.height ? 'Add your height to estimate body fat.' : m.missing.hip ? 'Add your hips: the women’s formula needs them.' : 'Body fat can’t be worked out from these numbers; check the neck and waist.';
+    lines.push(row('Body fat', '—', need));
   }
 
-  if (shoulders > 0 && waist > 0) {
-    const ratio = (shoulders / waist).toFixed(2);
-    const quality = ratio >= 1.45 ? '🔥 V-taper excellent' : ratio >= 1.35 ? '✓ V-taper good' : ratio >= 1.25 ? '→ V-taper building' : '↑ Prioritise width';
-    lines.push(`V-taper ratio: <strong style="color:#5BA8FF;">${ratio}×</strong> &nbsp;·&nbsp; ${quality}`);
+  if (m.vTaper) {
+    const v = m.vTaper;
+    const note = v.ratio >= GOLDEN_RATIO ? 'At or past the 1.618 golden ratio'
+      : `Next step ${v.next} at ${v.shouldersForNext} cm shoulders. Golden 1.618 at ${v.shouldersFor} cm shoulders or ${v.waistFor} cm waist`;
+    lines.push(`<div style="padding:6px 0;border-bottom:1px solid rgba(91,168,255,.06);">
+      <div style="display:flex;justify-content:space-between;gap:8px;"><span>V-taper</span><span>${strong(v.ratio + '×', '#5BA8FF')} · ${v.label}</span></div>
+      ${bar(v.ofGolden, '#5BA8FF')}${sub(`Shoulders ÷ waist, ${v.ofGolden}% of golden. ${note}`)}</div>`);
+  } else if (input.shoulders && input.waist) {
+    lines.push(row('V-taper', '—', 'Measure the shoulders around the body to see this.'));
   }
 
-  if (weight > 0) {
+  if (m.chestWaist) {
+    const c = m.chestWaist;
+    lines.push(row('Chest ÷ waist', strong(c.ratio + '×', '#5BA8FF'), gender === 'female' ? 'Upper body against the middle' : c.gapCm > 0 ? `Next step ${c.next} at ${c.chestForNext} cm chest. Classic ${c.ideal} at ${c.chestFor} cm` : `At or past the ${c.ideal} classic target`));
+  }
+  if (m.waistToHeight != null) {
+    const col = m.waistToHeight < 0.5 ? '#4ecd78' : m.waistToHeight < 0.6 ? '#FFB454' : '#FF4D67';
+    lines.push(row('Waist ÷ height', `${strong(m.waistToHeight, col)} · ${m.waistToHeightCategory}`, 'Keep the waist under half your height'));
+  }
+  if (m.waistToHip != null) {
+    lines.push(row('Waist ÷ hips', strong(m.waistToHip, '#F2F5FA'), `Health risk rises past ${gender === 'female' ? '0.85' : '0.90'} (WHO)`));
+  }
+  if (m.bmi != null) {
+    lines.push(row('BMI', `${strong(m.bmi, '#F2F5FA')} · ${m.bmiCategory}`, 'Can’t tell muscle from fat; read it next to body fat'));
+  }
+  if (m.ffmi != null) {
+    lines.push(row('FFMI', `${strong(m.ffmi, '#F2F5FA')} · ${m.ffmiCategory}`, 'Lean mass for your height'));
+  }
+  if (m.arms && m.arms.diffCm != null) {
+    const a = m.arms;
+    lines.push(row('Arms left / right', a.asymmetric ? strong(`${a.diffCm} cm apart`, '#FFB454') : strong(a.diffCm ? `${a.diffCm} cm apart` : 'Even', '#4ecd78'),
+      a.asymmetric ? `${a.weakSide === 'left' ? 'Left' : 'Right'} arm is ${a.diffPct}% smaller` : 'Within normal tape error'));
+  }
+
+  if (input.weight) {
     const last = myCheckins[myCheckins.length - 1];
     if (last?.weight) {
-      const diff = (weight - last.weight).toFixed(1);
+      const diff = (input.weight - last.weight).toFixed(1);
       const sign = diff > 0 ? '+' : '';
-      lines.push(`vs last week: <strong style="color:${diff < 0 ? '#4ecd78' : diff > 0 ? '#FF4D67' : '#8D98A8'};">${sign}${diff}kg</strong>`);
+      lines.push(row('vs last check-in', `<strong style="color:${diff < 0 ? '#4ecd78' : diff > 0 ? '#FF4D67' : '#8D98A8'};">${sign}${diff}kg</strong>`));
     }
   }
 
-  liveEl.innerHTML = lines.length ? lines.join('<br>') : '<span style="color:rgba(242,245,250,0.78);">Fill in measurements to see estimates</span>';
+  liveEl.innerHTML = lines.length ? lines.join('') : '<span style="color:rgba(242,245,250,0.78);">Fill in measurements to see estimates</span>';
+
+  const prEl = document.getElementById('ci-priorities');
+  if (prEl) {
+    const pr = physiquePriorities(gender, input).slice(0, 3);
+    const focus = physiqueFocus(gender, input);
+    prEl.innerHTML = pr.length ? pr.map((p, i) => `
+      <div style="display:flex;gap:10px;padding:8px 0;${i ? 'border-top:1px solid rgba(91,168,255,.06);' : ''}">
+        <div style="flex-shrink:0;width:20px;height:20px;border-radius:50%;border:1px solid rgba(255,214,107,.5);color:#FFD66B;font-size:10px;display:flex;align-items:center;justify-content:center;">${i + 1}</div>
+        <div>
+          <div style="color:#F2F5FA;font-weight:700;">${p.title}</div>
+          ${p.target ? `<div style="font-size:11px;color:#FFD66B;margin-top:1px;">${p.target}</div>` : ''}
+          <div style="font-size:11px;margin-top:3px;">${p.why}</div>
+          <div style="font-size:11px;margin-top:3px;color:rgba(242,245,250,.6);">${p.how}</div>
+        </div>
+      </div>`).join('') + (focus.length ? `<div style="font-size:10px;color:rgba(91,168,255,.85);margin-top:6px;">Plan suggestions on the Hunt screen will add sets for ${focus.join(', ')} once you save.</div>` : '')
+      : '<span>Add waist, shoulders, chest and arms to see what to train first.</span>';
+  }
 }
 
 window.saveCheckin = async () => {
   const msgEl = document.getElementById('ci-msg');
   const gender = profile?.bodyType || 'male';
-  const height = profile?.heightCm || 166;
+  // height: the check-in field (pre-filled from Settings); no silent default, a guess skews body fat
+  const heightIn = parseFloat(document.getElementById('ci-height')?.value) || null;
+  if (heightIn !== null && !(heightIn >= 120 && heightIn <= 230)) {
+    msgEl.style.color = '#FF4D67';
+    msgEl.textContent = 'Height should be between 120 and 230 cm.';
+    return;
+  }
+  const height = heightIn ?? profile?.heightCm ?? null;
 
   const weight    = parseFloat(document.getElementById('ci-weight')?.value) || null;
   const waist     = parseFloat(document.getElementById('ci-waist')?.value)  || null;
@@ -16266,15 +16367,11 @@ window.saveCheckin = async () => {
     return;
   }
 
-  let bodyFatPct = null;
-  if (waist > neck) {
-    try {
-      const bf = navyBodyFat(gender, waist, neck, height, hip);
-      if (bf > 0 && bf < 60) bodyFatPct = Math.round(bf * 10) / 10;
-    } catch(e) {}
-  }
-
-  const vtaperRatio = shoulders ? Math.round((shoulders / waist) * 100) / 100 : null;
+  // body-metrics.js: female needs hips, no height means no estimate, and a
+  // shoulder width (not a circumference) gives no V-taper
+  const metrics = bodyMetrics(gender, { weight, height, waist, neck, hip, shoulders, chest, armLeft, armRight });
+  const bodyFatPct = navyBodyFatPct(gender, { waist, neck, hip, height });
+  const vtaperRatio = metrics.vTaper ? metrics.vTaper.ratio : null;
   const today = todayStr();
 
   const checkinData = {
@@ -16295,6 +16392,9 @@ window.saveCheckin = async () => {
     // Save to checkins collection
     await addDoc(collection(db, 'checkins'), checkinData);
 
+    // Height typed here is the same profile field Settings writes
+    if (heightIn !== null && heightIn !== profile.heightCm) await writeUserFields({ heightCm: Math.round(heightIn * 10) / 10 });
+
     // Also update bodyweight collection (existing system)
     const wtQuery = query(collection(db, 'bodyweight'), where('uid','==',currentUser.uid), where('date','==',today));
     const wtSnap = await getDocs(wtQuery);
@@ -16310,6 +16410,7 @@ window.saveCheckin = async () => {
     await loadCheckins();
     myWeights = [...myWeights.filter(w => w.date !== today), { date: today, weight }].sort((a,b) => a.date.localeCompare(b.date));
     try { renderHuntTiles(); } catch (_) {}
+    try { renderPlanOptimiser(); } catch (_) {}
 
     document.getElementById('checkin-modal-overlay')?.remove();
 
@@ -20767,9 +20868,23 @@ function renderTrends() {
             ${c.waist ? `<span>W:${c.waist}</span>` : ''}
             ${c.vtaperRatio ? `<span>VT:${c.vtaperRatio}×</span>` : ''}
           </div>`).join('');
+        const sexC = profile?.bodyType || 'male';
+        const mC = bodyMetrics(sexC, { ...last, height: profile?.heightCm });
+        const prC = physiquePriorities(sexC, { ...last, height: profile?.heightCm }).slice(0, 3);
+        const goldenHtml = mC.vTaper ? `
+          <div style="margin-top:10px;font-size:10px;color:var(--text-faint);">V-taper ${mC.vTaper.ratio}× · ${mC.vTaper.ofGolden}% of the 1.618 golden ratio</div>
+          <div style="height:4px;border-radius:2px;background:rgba(255,255,255,.07);margin-top:4px;overflow:hidden;"><div style="height:100%;width:${Math.max(3, Math.min(100, mC.vTaper.ofGolden))}%;background:#5BA8FF;"></div></div>` : '';
+        const prHtml = prC.length ? `
+          <div style="margin-top:12px;font-size:9px;letter-spacing:.1em;color:rgba(91,168,255,0.78);margin-bottom:4px;">PHYSIQUE PRIORITIES</div>
+          ${prC.map((p, i) => `<div style="display:flex;gap:8px;padding:4px 0;font-size:11px;border-bottom:1px solid rgba(91,168,255,.04);">
+            <span style="color:#FFD66B;font-family:var(--font-mono);">${i + 1}</span>
+            <span style="color:var(--text);">${p.title}${p.target ? `<span style="display:block;font-size:10px;color:var(--text-faint);">${p.target}</span>` : ''}</span>
+          </div>`).join('')}` : '';
         return `
-          <div style="font-size:9px;letter-spacing:.1em;color:rgba(91,168,255,0.78);margin-bottom:8px;">LATEST · ${last.date}</div>
+          <div style="font-size:9px;letter-spacing:.1em;color:rgba(91,168,255,0.78);margin-bottom:8px;">LATEST · ${last.date} <span style="color:var(--text-faint);letter-spacing:.04em;">· tape measured around</span></div>
           ${rowHtml}
+          ${goldenHtml}
+          ${prHtml}
           <div style="margin-top:12px;font-size:9px;letter-spacing:.1em;color:rgba(91,168,255,0.78);margin-bottom:6px;">HISTORY</div>
           ${history}
         `;
