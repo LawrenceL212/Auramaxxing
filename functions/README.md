@@ -202,3 +202,14 @@ match /duels/{duelId} {
    either opens the app and sees the result modal
 4. AP moved once, `activeDuelId` cleared on both, wins/losses once
 5. The other account opens the app and gets the stored result, no second transfer
+
+## designPlan — the AI coach
+
+Calls Claude (`claude-opus-5-5`, Anthropic SDK, structured output) to design a look and plan, or review how a Hunter is doing. See `lib/design-plan.js`.
+
+```
+firebase functions:secrets:set ANTHROPIC_API_KEY     # once, paste the key
+npm run deploy:coach                                 # firebase deploy --only functions:designPlan
+```
+
+Needs the Blaze plan (secrets and outbound calls). Callers must be signed in; 10 calls a Hunter a day, counted in `users/{uid}.aiCoach` by the Admin SDK. Nothing it returns is applied by the function.

@@ -3,7 +3,7 @@
 
 import {
   PRESETS, presetsFor, experienceFrom, waistForBodyFat, solveGoal, targetRows, expectedOn, goalProgress,
-  goalPriorities, goalFocus, weightGoalFromPlan, verdictLine, FAT_LOSS_PCT_PER_WEEK, FFMI_CEILING,
+  goalPriorities, goalFocus, customLook, weightGoalFromPlan, verdictLine, FAT_LOSS_PCT_PER_WEEK, FFMI_CEILING,
 } from '../physique-goal.js';
 import { navyBodyFat } from '../body-metrics.js';
 import { parseGoal, expectedAt, pathStatus, pathSvg } from '../weight-path.js';
@@ -111,6 +111,18 @@ check('errors give no priorities or focus', goalPriorities({ error: 'x' }).lengt
   check('target waist shifts by the gap between methods, not the reading itself', cal.target.waist > tape.target.waist, `${cal.target.waist} vs ${tape.target.waist}`);
   check('calipers without an age fall back to the tape formula', solve({ measurements: { ...M, skinfolds: folds } }).bodyFatSource === 'tape');
 }
+
+// ── a look the coach designed (custom) ──────────────────────────────────
+const arms = { label: 'Bigger arms', blurb: 'Arms in proportion', armChest: 0.37, focus: ['Biceps', 'Triceps'] };
+const armsPlan = solve({ preset: 'custom', custom: arms });
+check('custom look: arms-only goal solves', !armsPlan.error && armsPlan.label === 'Bigger arms', JSON.stringify(armsPlan.error || armsPlan.label));
+check('custom look: only the arm target moves, body fat and waist stay put', armsPlan.target.arms > armsPlan.now.arms && armsPlan.target.waist === armsPlan.now.waist && armsPlan.target.bodyFat === armsPlan.now.bodyFat && armsPlan.target.shoulders === null && armsPlan.target.chest === null, JSON.stringify([armsPlan.now, armsPlan.target]));
+check('custom look: its own focus leads the training focus', armsPlan.needs.focus[0] === 'Biceps' && armsPlan.needs.focus[1] === 'Triceps' && goalFocus(armsPlan)[0] === 'Biceps');
+check('custom look: out-of-range numbers are clamped', (() => { const l = customLook('male', { label: 'x', armChest: 0.9, bodyFat: 1, vTaper: 5 }); return l.armChest === 0.4 && l.bodyFat === 6 && l.vTaper === 1.75; })());
+check('custom look: unknown muscle groups are dropped', customLook('male', { label: 'x', armChest: 0.35, focus: ['Biceps', 'Wings'] }).focus.join() === 'Biceps');
+check('custom look: asking for nothing is the same as no look', customLook('male', { label: 'x' }) === null && solve({ preset: 'custom', custom: { label: 'x' } }).error === 'preset' && solve({ preset: 'custom' }).error === 'preset');
+check('custom look: a full look (shape and fat) works like a preset', (() => { const r = solve({ preset: 'custom', custom: { label: 'Nightwing', bodyFat: 9, vTaper: 1.5, chestWaist: 1.3, armChest: 0.36, focus: ['Shoulders'] } }); return !r.error && r.target.bodyFat === 9 && r.target.shoulders > r.now.shoulders && r.weeks.needed > 0; })());
+check('custom look: an impossible one is flagged, not hidden', solve({ preset: 'custom', custom: { label: 'Huge', bodyFat: 6, vTaper: 1.75, chestWaist: 1.5, armChest: 0.4 } }).verdict === 'unrealistic');
 
 console.log(results.join('\n'));
 console.log(`\n${pass} passed, ${fail} failed`);
