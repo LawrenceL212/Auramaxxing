@@ -1635,6 +1635,18 @@
   }
 
   /* ── PLAN OPTIMISER — suggested plan changes under the quest carousel ── */
+  #hunt-goal{position:relative;z-index:1;padding:0 3px;} /* above the gate backdrop, which runs past the hero */
+  .hunt-goal{display:flex;flex-direction:column;gap:6px;border:1px solid var(--ui-gold,#FFB454);border-radius:12px;background:var(--card);padding:12px 14px;}
+  .hunt-goal.empty{border-style:dashed;}
+  .hg-main{display:flex;flex-direction:column;gap:5px;text-align:left;background:none;border:0;color:inherit;font:inherit;padding:0;cursor:pointer;width:100%;}
+  .hg-top{display:flex;justify-content:space-between;align-items:center;}
+  .hg-eyebrow{font-size:11px;letter-spacing:.2em;color:var(--ui-gold,#FFB454);}
+  .hg-look{font-size:18px;font-weight:700;color:var(--text);}
+  .hg-bar{height:6px;border-radius:3px;background:rgba(255,255,255,.08);overflow:hidden;display:block;}
+  .hg-bar i{display:block;height:100%;background:linear-gradient(90deg,#FF8E3C,#FFD166);}
+  .hg-sub,.hg-coach{font-size:13px;color:var(--text-dim);}
+  .hg-coach{color:var(--text);}
+  .hg-ask{align-self:flex-start;background:none;border:0;color:var(--blue,#5BA8FF);font:inherit;font-size:13px;padding:2px 0;cursor:pointer;}
   .plan-opt{margin:18px 0 6px;border:1px solid var(--border);border-radius:10px;background:var(--card);padding:12px 14px;}
   .plan-opt-head{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;background:none;border:0;padding:0;color:inherit;cursor:pointer;text-align:left;}
   .plan-opt-eyebrow{font-family:var(--font-mono);font-size:10px;letter-spacing:.2em;color:var(--brass);}
@@ -4404,6 +4416,7 @@
            the card lives in the More panel, opened by the More tile: nothing was removed. ── -->
       <div id="hunt-top"></div>
       <div class="hunt-hero" id="hunt-hero"></div>
+      <div id="hunt-goal" class="hunt-block"></div>
       <div id="program-card-wrap" class="hunt-block"></div>
       <div class="hunt-tiles hunt-block" id="hunt-tiles"></div>
 
@@ -9514,9 +9527,43 @@ function renderHuntDmg() {
   host.innerHTML = `<div class="ui-window ui-window-pad" style="padding-bottom:0;"><div class="ui-row"><span class="ui-glyph" style="--tint:var(--legendary)">${HI.bolt}</span><span class="ui-row-name">Dungeon damage</span><span class="ui-row-k" title="Estimated from your last-time sets">~${dmg.toLocaleString()}</span></div></div>`;
 }
 
+/** The physique goal, on the Hunt screen itself: the look, how far along, the date, and what the coach was told.
+    Tap opens the goal sheet (look, date, coach). Reads state, writes nothing. */
+function renderHuntGoal() {
+  const host = document.getElementById('hunt-goal');
+  if (!host) return;
+  if (!currentUser || !profile || editingProgram) { host.innerHTML = ''; return; }
+  const g = profile.physiqueGoal;
+  const coach = profile.coachProfile?.goals || [];
+  const coachLine = coach.length ? `<div class="hg-coach">Coach: ${escapeHtml(coach[0])}${coach.length > 1 ? ` +${coach.length - 1}` : ''}</div>` : '';
+  const coachBtn = '<button type="button" class="hg-ask" id="hg-ask">Ask the coach</button>';
+  if (!g || !g.preset || !g.deadline) {
+    host.innerHTML = `<div class="hunt-goal empty"><button type="button" class="hg-main" id="hg-open">
+        <span class="hg-eyebrow">◈ MY GOAL</span><span class="hg-look">${coach.length ? 'Set the look and a date' : 'Set your physique goal'}</span>
+        <span class="hg-sub">Pick a look and a date and the app plans the rest, and re-plans at every check-in.</span>${coachLine}</button>${coachBtn}</div>`;
+  } else {
+    const sex = profile.bodyType || 'male';
+    const look = g.preset === 'custom' ? (g.custom?.label || 'Custom look') : (presetsFor(sex)[g.preset]?.label || 'My look');
+    const weeks = Math.max(0, Math.ceil(daysBetween(todayStr(), g.deadline) / 7));
+    const dateTxt = new Date(g.deadline + 'T00:00:00').toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
+    let plan = null, prog = null;
+    try { plan = currentPhysiquePlan(); if (plan && !plan.error) prog = goalProgress({ ...g, start: g.start || {} }, plan, todayStr()); } catch (_) {}
+    const [vLabel, vColor] = plan && !plan.error ? (PG_VERDICT[plan.verdict] || PG_VERDICT.on_schedule) : ['', ''];
+    const pct = prog ? prog.overall : null;
+    host.innerHTML = `<div class="hunt-goal"><button type="button" class="hg-main" id="hg-open">
+        <span class="hg-top"><span class="hg-eyebrow">◈ MY GOAL</span>${vLabel ? `<span class="ui-chip" style="color:${vColor};background:rgba(255,255,255,.05);">${vLabel}</span>` : ''}</span>
+        <span class="hg-look">${escapeHtml(look)}</span>
+        ${pct != null ? `<span class="hg-bar"><i style="width:${pct}%"></i></span>` : ''}
+        <span class="hg-sub">${pct != null ? `${pct}% there · ` : ''}${weeks} week${weeks === 1 ? '' : 's'} left · by ${dateTxt}${plan && plan.error ? ' · do a check-in to start tracking' : ''}</span>${coachLine}</button>${coachBtn}</div>`;
+  }
+  host.querySelector('#hg-open')?.addEventListener('click', () => window.openPhysiqueGoalSheet());
+  host.querySelector('#hg-ask')?.addEventListener('click', () => window.openCoachReview());
+}
+
 function renderHuntChrome() {
   try { renderHuntTop(); } catch (e) { console.warn('Hunt top failed:', e); }
   try { renderHuntHero(); } catch (e) { console.warn('Hunt hero failed:', e); }
+  try { renderHuntGoal(); } catch (e) { console.warn('Hunt goal failed:', e); }
   try { renderHuntTiles(); } catch (e) { console.warn('Hunt tiles failed:', e); }
   try { renderHuntNext(); } catch (e) { console.warn('Hunt next failed:', e); }
   try { renderHuntDmg(); } catch (e) { console.warn('Hunt dmg failed:', e); }
@@ -9996,7 +10043,7 @@ function writePlanOptDismissed(record) {
   try { localStorage.setItem(planOptDismissKey(), JSON.stringify(record)); } catch (_) { /* private mode */ }
 }
 function planOptIsOpen() {
-  try { return localStorage.getItem(PLAN_OPT_OPEN_KEY) !== 'closed'; } catch (_) { return true; }
+  try { return localStorage.getItem(PLAN_OPT_OPEN_KEY) === 'open'; } catch (_) { return false; } // folded until the Hunter opens it: the goal card above it is the main thing
 }
 
 function renderPlanOptimiser() {
@@ -17144,7 +17191,7 @@ window.openPhysiqueGoalSheet = () => {
       await writeUserFields({ physiqueGoal: deleteField() });
       delete profile.physiqueGoal;
       overlay.remove();
-      try { renderPlanOptimiser(); } catch (_) {}
+      try { renderPlanOptimiser(); renderHuntGoal(); } catch (_) {}
       showToast('Physique goal removed.', 'info');
     } catch (e) { document.getElementById('pg-msg').textContent = 'Could not remove: ' + (e?.message || e); }
   });
@@ -17168,7 +17215,7 @@ window.openPhysiqueGoalSheet = () => {
       await writeUserFields({ physiqueGoal: goal });
       profile.physiqueGoal = goal;
       overlay.remove();
-      try { renderPlanOptimiser(); } catch (_) {}
+      try { renderPlanOptimiser(); renderHuntGoal(); } catch (_) {}
       showToast('Physique goal set. It re-works itself at every check-in.', 'success');
       // refresh whatever screen shows the goal
       if (typeof renderTrends === 'function' && document.getElementById('view-trends')?.classList.contains('active')) renderTrends();
@@ -17667,6 +17714,7 @@ window.openCoachIntake = (onDone, opts = {}) => {
         profile.coachProfile = coachProfile;
         overlay.remove();
         showToast('The coach has your goals.', 'success');
+        try { renderHuntGoal(); } catch (_) {}
         if (onDone) onDone(); else window.openCoachPlan();
       } catch (er) { e.target.disabled = false; const m = document.getElementById('ci2-msg'); m.style.color = '#FF4D67'; m.textContent = 'Could not save: ' + (er?.message || er); }
     });
