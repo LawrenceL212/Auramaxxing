@@ -115,7 +115,7 @@ exports.resolveGateDuel = functions.https.onCall(async (data, context) => {
    ═══════════════════════════════════════════════════════════════════════════ */
 const { defineSecret } = require('firebase-functions/params');
 const ANTHROPIC_API_KEY = defineSecret('ANTHROPIC_API_KEY');
-const { designPlan: runCoach, designIntake: runIntake, nextUsage } = require('./lib/design-plan');
+const { designPlan: runCoach, designIntake: runIntake, designChat: runChat, nextUsage, CHAT_LIMIT } = require('./lib/design-plan');
 
 exports.designPlan = functions.runWith({ secrets: [ANTHROPIC_API_KEY], timeoutSeconds: 180, memory: '512MB', maxInstances: 5 }).https.onCall(async (data, context) => {
   if (!context.auth) throw new functions.https.HttpsError('unauthenticated', 'Sign in to use the coach.');
@@ -123,14 +123,16 @@ exports.designPlan = functions.runWith({ secrets: [ANTHROPIC_API_KEY], timeoutSe
   const input = data && typeof data === 'object' ? data : {};
   if (!Array.isArray(input.exercises) || !input.exercises.length) throw new functions.https.HttpsError('invalid-argument', 'No exercise list.');
   if (input.mode === 'intake' && !(input.intake && (String(input.intake.text || '').trim() || input.image))) throw new functions.https.HttpsError('invalid-argument', 'Say what you want to achieve.');
-  if (input.mode !== 'review' && input.mode !== 'intake' && !String(input.request || '').trim() && !input.image) throw new functions.https.HttpsError('invalid-argument', 'Describe the look you want, or add a photo.');
+  if (input.mode === 'chat' && !(Array.isArray(input.messages) && input.messages.length)) throw new functions.https.HttpsError('invalid-argument', 'Say something to the coach first.');
+  if (input.mode !== 'review' && input.mode !== 'intake' && input.mode !== 'chat' && !String(input.request || '').trim() && !input.image) throw new functions.https.HttpsError('invalid-argument', 'Describe the look you want, or add a photo.');
 
   const today = new Date().toISOString().slice(0, 10);
   const ref = db.collection('users').doc(uid);
+  const usageField = input.mode === 'chat' ? 'aiChat' : 'aiCoach';
   const allowed = await db.runTransaction(async (tx) => {
     const snap = await tx.get(ref);
-    const r = nextUsage(snap.exists ? snap.get('aiCoach') : null, today);
-    if (r.allowed) tx.set(ref, { aiCoach: r.usage }, { merge: true });
+    const r = nextUsage(snap.exists ? snap.get(usageField) : null, today, input.mode === 'chat' ? CHAT_LIMIT : undefined);
+    if (r.allowed) tx.set(ref, { [usageField]: r.usage }, { merge: true });
     return r.allowed;
   });
   if (!allowed) throw new functions.https.HttpsError('resource-exhausted', 'That is the coach limit for today. Try again tomorrow.');
@@ -138,7 +140,7 @@ exports.designPlan = functions.runWith({ secrets: [ANTHROPIC_API_KEY], timeoutSe
   const Anthropic = require('@anthropic-ai/sdk');
   const client = new Anthropic({ apiKey: ANTHROPIC_API_KEY.value() });
   try {
-    return await (input.mode === 'intake' ? runIntake : runCoach)({ client, input });
+    return await (input.mode === 'chat' ? runChat : input.mode === 'intake' ? runIntake : runCoach)({ client, input });
   } catch (e) {
     if (e && (e.code === 'refused' || e.code === 'unparseable')) throw new functions.https.HttpsError('failed-precondition', e.message);
     console.error('designPlan failed', e && e.status, e && e.message);

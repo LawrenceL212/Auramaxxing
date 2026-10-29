@@ -66,6 +66,7 @@ Targets
 Plan
 - Build days from the exercise list given, using the exact names only. Fit the sessions per week they can actually do. Put the focus groups first in each session and give them enough sets to grow (about 10-20 hard sets a week for a focus group, 8-12 for others, fewer if they are a beginner). Use rep ranges that fit the goal. Sets 2-5, reps within 3-20.
 - In "review" mode, keep what works. Return "days" as null if the current plan is fine, otherwise the full adjusted plan. Say what you changed and why in "coach".
+- "holdExercises" are the timed holds in exerciseList (front lever, planche, L-sit, handstand work and so on): for those, "reps" means seconds per hold (5-60), not repetitions. Use them when the Hunter wants skills; never leave out a skill they asked for.
 - Respect their recovery: if their feedback shows heavy soreness or missed work, do not add volume.
 
 Coaching text
@@ -93,6 +94,7 @@ Decide whether you understand the goal well enough to design a plan that fits th
 - Training history: how long they have trained, what programmes they have followed, what worked and what stalled or made them quit.
 - Body and limits: injuries, pain, movements to avoid, anything a doctor told them.
 - Fuel and recovery: how they eat now (protein, rough calories, meal habits, diet rules), sleep hours, stress, job activity.
+- Preferences: exercises or styles they love or hate (machines, free weights, bodyweight), and skills they want to learn: calisthenics skills (pull-ups, muscle-up, handstand, planche, front lever, pistol squat, L-sit), running, swimming or a sport. Ask whether they want skill work in the plan at all, and which skills.
 - Consistency: what usually gets in the way, so the plan fits their real week.
 - If something that would change the plan is missing or vague, ask. Ask at most 5 questions in a round, only ones whose answer would change the plan, short and plain, each with 2 to 5 tap-able "options" (short answers; the Hunter can also type their own). Give every question a short id like "timeline" or "injuries". Put the most important questions first, and do not repeat one already answered.
 - A vague goal like "look good" or "get fit" is not ready: ask what that means to them. Even a clear goal ("bigger arms, 12 weeks") is not ready until you know the training, history, limits and fuel/recovery points above, unless their data already covers them.
@@ -165,14 +167,16 @@ function sanitizeLook(look, sex) {
 }
 
 /** The plan days with only known exercises, sane sets and reps and bounded size, or null. */
-function sanitizeDays(days, allowed) {
+function sanitizeDays(days, allowed, holds = new Set()) {
   if (!Array.isArray(days)) return null;
   const out = [];
   for (const d of days.slice(0, 6)) {
     const exercises = [];
     for (const e of (d.exercises || []).slice(0, 10)) {
       if (!allowed.has(e.name) || exercises.some(x => x.name === e.name)) continue;
-      exercises.push({ name: e.name, sets: Math.round(clamp(num(e.sets) ?? 3, 1, 6)), reps: Math.round(clamp(num(e.reps) ?? 8, 1, 30)) });
+      exercises.push(holds.has(e.name)
+        ? { name: e.name, sets: Math.round(clamp(num(e.sets) ?? 3, 1, 6)), reps: Math.round(clamp(num(e.reps) ?? 10, 3, 90)) } // a hold: reps are seconds
+        : { name: e.name, sets: Math.round(clamp(num(e.sets) ?? 3, 1, 6)), reps: Math.round(clamp(num(e.reps) ?? 8, 1, 30)) });
     }
     if (exercises.length) out.push({ name: str(d.name, 30) || `Day ${out.length + 1}`, exercises });
   }
@@ -180,7 +184,7 @@ function sanitizeDays(days, allowed) {
 }
 
 /** What the client gets back: validated, clamped, nothing the Hunter did not see. */
-function sanitizePlan(raw, { sex, exercises }) {
+function sanitizePlan(raw, { sex, exercises, holds }) {
   const allowed = new Set(exercises || []);
   const coach = raw.coach || {};
   const list = (a, n, max) => (Array.isArray(a) ? a.slice(0, n).map(s => str(s, max)).filter(Boolean) : []);
@@ -189,7 +193,7 @@ function sanitizePlan(raw, { sex, exercises }) {
     focus: (raw.focus || []).filter(g => GROUPS.includes(g)).slice(0, 4),
     goal: GOALS.includes(raw.goal) ? raw.goal : 'general',
     sessionsPerWeek: Math.round(clamp(num(raw.sessionsPerWeek) ?? 3, 2, 6)),
-    days: sanitizeDays(raw.days, allowed),
+    days: sanitizeDays(raw.days, allowed, new Set(holds || [])),
     coach: {
       headline: str(coach.headline, 90),
       summary: str(coach.summary, 700),
@@ -206,9 +210,9 @@ const IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 const MAX_IMAGE_CHARS = 2_500_000;
 
 /** The user turn: the Hunter's facts as JSON, plus an optional reference image. */
-function buildContent(input) {
-  const facts = {
-    mode: input.mode === 'review' ? 'review' : input.mode === 'intake' ? 'intake' : 'design',
+function buildFacts(input) {
+  return {
+    mode: ['review', 'intake', 'chat'].includes(input.mode) ? input.mode : 'design',
     request: str(input.request, 600) || null,
     goals: sanitizeGoals(input.goals),
     intake: sanitizeIntakeState(input.intake),
@@ -224,7 +228,12 @@ function buildContent(input) {
     feedback: Array.isArray(input.feedback) ? input.feedback.slice(0, 10) : [],
     block: input.block || null,
     exerciseList: Array.isArray(input.exercises) ? input.exercises.slice(0, 400) : [],
+    holdExercises: Array.isArray(input.holds) ? input.holds.slice(0, 150).map(h => str(h, 80)).filter(Boolean) : [],
   };
+}
+
+function buildContent(input) {
+  const facts = buildFacts(input);
   const content = [];
   const img = input.image;
   if (img && IMAGE_TYPES.includes(img.mediaType) && typeof img.data === 'string' && img.data.length <= MAX_IMAGE_CHARS) {
@@ -257,7 +266,87 @@ async function designPlan({ client, input }) {
     e.code = 'unparseable';
     throw e;
   }
-  return sanitizePlan(response.parsed_output, { sex: input.sex, exercises: input.exercises });
+  return sanitizePlan(response.parsed_output, { sex: input.sex, exercises: input.exercises, holds: input.holds });
+}
+
+/* ── chat ─────────────────────────────────────────────────────────────── */
+const CHAT_LIMIT = 40;
+const MAX_TURNS = 12;
+const ChatSchema = z.object({
+  reply: z.string(),
+  days: z.array(DaySchema).nullable(),
+  goal: z.enum(GOALS).nullable(),
+  suggestions: z.array(z.string()),
+});
+
+const CHAT_SYSTEM = `You are the coach inside Auramaxxing, chatting with one Hunter about their training. You can see their own data and the goals they confirmed, below. Talk like a good coach texting: direct, warm, specific, short (under 120 words unless they ask for detail). Use their real numbers.
+
+- Answer what they asked. Ask one short question at a time only when you truly need the answer to help.
+- Respect their goals ("goals" in the data). If they say something that changes the goal, tell them to use "Change my goals" so it is saved; do not pretend it is saved.
+- If they ask WHY something is or is not in their plan ("why no front lever holds?"), look at currentPlan, their goals, the answers they gave in intake, and the exerciseList, and give the real reason in plain words: not in the list, not asked for, no room for the volume, recovery, a limit they told you about, or simply that you did not include it. Never invent a reason and never blame the app for what was your own choice. If they were not asked about it or it is a skill they want, say so and offer to add it. If the exercise is not in exerciseList at all, say so and offer the closest exercise that is.
+- If they then ask to change it ("add it back", "I don't like X, drop it", "swap Y for Z"), do it: return the full adjusted plan. Start from the plan you proposed last in this conversation if it was not applied yet (its summary is in the conversation), otherwise from currentPlan.
+- You may change their plan. Only when they ask for a change, or a change clearly follows from what they said (sore, missing equipment, a new target), return the FULL adjusted plan in "days" using exact exercise names from exerciseList (sets 2-5, reps 3-20, or seconds 5-60 for holdExercises, at most 6 sessions), keep what works, and say in "reply" what changed and why. Otherwise "days" is null. Nothing is applied until they tap.
+- Set "goal" (strength, muscle, endurance, general) only when you return days; otherwise null.
+- "suggestions" are 0 to 3 short things they might tap next (under 40 characters each), such as follow-up questions. Empty is fine.
+- Respect recovery: if their feedback shows heavy soreness or missed work, do not add volume. No medical advice, no diets below maintenance minus 500 kcal. Never promise a result. Never identify anyone.`;
+
+/** The conversation as alternating turns that start and end with the Hunter, bounded. */
+function sanitizeTurns(messages) {
+  if (!Array.isArray(messages)) return [];
+  const out = [];
+  for (const m of messages.slice(-MAX_TURNS)) {
+    const role = m && m.role === 'assistant' ? 'assistant' : 'user';
+    const content = str(m && m.content, role === 'assistant' ? 2500 : 800); // a coach turn can carry the plan it proposed
+    if (!content) continue;
+    if (out.length && out[out.length - 1].role === role) out[out.length - 1].content += '\n' + content;
+    else out.push({ role, content });
+  }
+  while (out.length && out[0].role !== 'user') out.shift();
+  while (out.length && out[out.length - 1].role !== 'user') out.pop();
+  return out;
+}
+
+function sanitizeChat(raw, { exercises, holds }) {
+  const reply = str(raw.reply, 1500);
+  if (!reply) return null;
+  const days = sanitizeDays(raw.days, new Set(exercises || []), new Set(holds || []));
+  return {
+    reply,
+    days,
+    goal: days && GOALS.includes(raw.goal) ? raw.goal : null,
+    suggestions: (raw.suggestions || []).slice(0, 3).map(x => str(x, 40)).filter(Boolean),
+  };
+}
+
+/** One chat turn: the coach's reply and, only when it changes the plan, the full adjusted plan. */
+async function designChat({ client, input }) {
+  const { zodOutputFormat } = require('@anthropic-ai/sdk/helpers/zod');
+  const turns = sanitizeTurns(input.messages);
+  if (!turns.length) {
+    const e = new Error('Say something to the coach first.');
+    e.code = 'unparseable';
+    throw e;
+  }
+  const facts = buildFacts({ ...input, mode: 'chat' });
+  const response = await client.messages.parse({
+    model: MODEL,
+    max_tokens: 8000,
+    output_config: { effort: 'low', format: zodOutputFormat(ChatSchema) },
+    system: `${CHAT_SYSTEM}\n\nThe Hunter's data:\n${JSON.stringify(facts)}`,
+    messages: turns,
+  });
+  if (response.stop_reason === 'refusal') {
+    const e = new Error('The coach could not help with that. Try asking differently.');
+    e.code = 'refused';
+    throw e;
+  }
+  const out = response.parsed_output ? sanitizeChat(response.parsed_output, { exercises: input.exercises, holds: input.holds }) : null;
+  if (!out) {
+    const e = new Error('The coach answered in a form the app could not read. Try again.');
+    e.code = 'unparseable';
+    throw e;
+  }
+  return out;
 }
 
 /** One round of goal intake: questions to ask, or the confirmed understanding. */
@@ -285,7 +374,7 @@ async function designIntake({ client, input }) {
   return out;
 }
 
-module.exports = { MODEL, GROUPS, GOALS, PlanSchema, SYSTEM, sanitizeLook, sanitizeDays, sanitizePlan, buildContent, designPlan, MAX_IMAGE_CHARS, IntakeSchema, INTAKE_SYSTEM, MAX_ROUNDS, sanitizeIntake, sanitizeIntakeState, sanitizeGoals, designIntake };
+module.exports = { MODEL, GROUPS, GOALS, PlanSchema, SYSTEM, sanitizeLook, sanitizeDays, sanitizePlan, buildContent, designPlan, MAX_IMAGE_CHARS, IntakeSchema, INTAKE_SYSTEM, MAX_ROUNDS, sanitizeIntake, sanitizeIntakeState, sanitizeGoals, designIntake, buildFacts, ChatSchema, CHAT_SYSTEM, CHAT_LIMIT, MAX_TURNS, sanitizeTurns, sanitizeChat, designChat };
 
 /** Daily limit per Hunter: the usage record to store and whether one more call is allowed. */
 const DAILY_LIMIT = 10;

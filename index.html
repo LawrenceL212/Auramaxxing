@@ -1635,6 +1635,33 @@
   }
 
   /* ── PLAN OPTIMISER — suggested plan changes under the quest carousel ── */
+  #hunt-goal{position:relative;z-index:1;padding:0 3px;} /* above the gate backdrop, which runs past the hero */
+  .hunt-goal{display:flex;flex-direction:column;gap:6px;border:1px solid var(--ui-gold,#FFB454);border-radius:12px;background:var(--card);padding:12px 14px;}
+  .hunt-goal.empty{border-style:dashed;}
+  .hg-main{display:flex;flex-direction:column;gap:5px;text-align:left;background:none;border:0;color:inherit;font:inherit;padding:0;cursor:pointer;width:100%;}
+  .hg-top{display:flex;justify-content:space-between;align-items:center;}
+  .hg-eyebrow{font-size:11px;letter-spacing:.2em;color:var(--ui-gold,#FFB454);}
+  .hg-look{font-size:18px;font-weight:700;color:var(--text);}
+  .hg-bar{height:6px;border-radius:3px;background:rgba(255,255,255,.08);overflow:hidden;display:block;}
+  .hg-bar i{display:block;height:100%;background:linear-gradient(90deg,#FF8E3C,#FFD166);}
+  .hg-sub,.hg-coach{font-size:13px;color:var(--text-dim);}
+  .hg-coach{color:var(--text);}
+  .hg-ask{align-self:flex-start;background:none;border:0;color:var(--blue,#5BA8FF);font:inherit;font-size:13px;padding:2px 0;cursor:pointer;}
+  .cchat{margin:18px 0 6px;border:1px solid var(--ui-gold,#FFB454);border-radius:12px;background:var(--card);padding:12px 14px;}
+  .cc-head{display:flex;justify-content:space-between;align-items:center;}
+  .cc-link{background:none;border:0;color:var(--text-dim);font:inherit;font-size:12px;padding:4px 6px;cursor:pointer;}
+  .cc-goal-line{font-size:13px;color:var(--text-dim);margin:6px 0 8px;}
+  .cc-log{max-height:340px;overflow-y:auto;display:flex;flex-direction:column;gap:8px;padding:2px 0;}
+  .cc-m{max-width:88%;padding:9px 12px;border-radius:12px;font-size:14px;line-height:1.45;white-space:pre-wrap;}
+  .cc-m.me{align-self:flex-end;background:rgba(255,180,84,.16);border:1px solid rgba(255,180,84,.35);}
+  .cc-m.coach{align-self:flex-start;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);}
+  .cc-typing{color:var(--text-dim);}
+  .cc-plan{margin-top:8px;white-space:normal;}
+  .cc-apply{width:100%;margin-top:8px;}
+  .cc-chips{display:flex;flex-wrap:wrap;gap:6px;}
+  .cc-in{display:flex;gap:8px;margin-top:10px;}
+  .cc-in input{flex:1;min-width:0;box-sizing:border-box;padding:10px 12px;border-radius:10px;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.04);color:var(--text);font:inherit;font-size:14px;}
+  .cc-in button{padding:10px 16px;}
   .plan-opt{margin:18px 0 6px;border:1px solid var(--border);border-radius:10px;background:var(--card);padding:12px 14px;}
   .plan-opt-head{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;background:none;border:0;padding:0;color:inherit;cursor:pointer;text-align:left;}
   .plan-opt-eyebrow{font-family:var(--font-mono);font-size:10px;letter-spacing:.2em;color:var(--brass);}
@@ -4446,15 +4473,17 @@
            the card lives in the More panel, opened by the More tile: nothing was removed. ── -->
       <div id="hunt-top"></div>
       <div class="hunt-hero" id="hunt-hero"></div>
+      <div id="hunt-goal" class="hunt-block"></div>
       <div id="program-card-wrap" class="hunt-block"></div>
       <div class="hunt-tiles hunt-block" id="hunt-tiles"></div>
 
       <div id="hunt-more" hidden>
         <div class="hunt-more-body">
+          <div id="coach-chat"></div>
           <div id="hunt-plan-head"></div>
           <div id="hunt-next"></div>
           <div id="hunt-dmg"></div>
-          <div id="plan-optimiser"></div>
+          <!-- The plan optimiser card used to sit here (renderPlanOptimiser, optimiser.js): the AI coach replaced it. The code is kept; with no host element it renders nothing. -->
           <div id="program-editor-wrap"></div>
           <div id="directives-strip"></div>
           <div id="objectives-strip"></div>
@@ -9220,7 +9249,8 @@ document.getElementById('workout-time').value = nowTimeStr();
 function renderQuestFeed() {
   const wrap = document.getElementById('program-card-wrap');
   const editorWrap = document.getElementById('program-editor-wrap');
-  const clearHunt = () => ['hunt-plan-head', 'hunt-next', 'plan-optimiser'].forEach(id => { const e = document.getElementById(id); if (e) e.innerHTML = ''; });
+  const clearHunt = () => ['hunt-plan-head', 'hunt-next', 'coach-chat', 'plan-optimiser'].forEach(id => { const e = document.getElementById(id); if (e) e.innerHTML = ''; });
+  if (!editingProgram) { try { renderCoachChat(); } catch (_) {} }
   if (editingProgram) {
     wrap.innerHTML = '';
     clearHunt();
@@ -9605,9 +9635,43 @@ function renderHuntDmg() {
   host.innerHTML = `<div class="ui-window ui-window-pad" style="padding-bottom:0;"><div class="ui-row"><span class="ui-glyph" style="--tint:var(--legendary)">${HI.bolt}</span><span class="ui-row-name">Dungeon damage</span><span class="ui-row-k" title="Estimated from your last-time sets">~${dmg.toLocaleString()}</span></div></div>`;
 }
 
+/** The physique goal, on the Hunt screen itself: the look, how far along, the date, and what the coach was told.
+    Tap opens the goal sheet (look, date, coach). Reads state, writes nothing. */
+function renderHuntGoal() {
+  const host = document.getElementById('hunt-goal');
+  if (!host) return;
+  if (!currentUser || !profile || editingProgram) { host.innerHTML = ''; return; }
+  const g = profile.physiqueGoal;
+  const coach = profile.coachProfile?.goals || [];
+  const coachLine = coach.length ? `<div class="hg-coach">Coach: ${escapeHtml(coach[0])}${coach.length > 1 ? ` +${coach.length - 1}` : ''}</div>` : '';
+  const coachBtn = '<button type="button" class="hg-ask" id="hg-ask">Message the coach</button>';
+  if (!g || !g.preset || !g.deadline) {
+    host.innerHTML = `<div class="hunt-goal empty"><button type="button" class="hg-main" id="hg-open">
+        <span class="hg-eyebrow">◈ MY GOAL</span><span class="hg-look">${coach.length ? 'Set the look and a date' : 'Set your physique goal'}</span>
+        <span class="hg-sub">Pick a look and a date and the app plans the rest, and re-plans at every check-in.</span>${coachLine}</button>${coachBtn}</div>`;
+  } else {
+    const sex = profile.bodyType || 'male';
+    const look = g.preset === 'custom' ? (g.custom?.label || 'Custom look') : (presetsFor(sex)[g.preset]?.label || 'My look');
+    const weeks = Math.max(0, Math.ceil(daysBetween(todayStr(), g.deadline) / 7));
+    const dateTxt = new Date(g.deadline + 'T00:00:00').toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
+    let plan = null, prog = null;
+    try { plan = currentPhysiquePlan(); if (plan && !plan.error) prog = goalProgress({ ...g, start: g.start || {} }, plan, todayStr()); } catch (_) {}
+    const [vLabel, vColor] = plan && !plan.error ? (PG_VERDICT[plan.verdict] || PG_VERDICT.on_schedule) : ['', ''];
+    const pct = prog ? prog.overall : null;
+    host.innerHTML = `<div class="hunt-goal"><button type="button" class="hg-main" id="hg-open">
+        <span class="hg-top"><span class="hg-eyebrow">◈ MY GOAL</span>${vLabel ? `<span class="ui-chip" style="color:${vColor};background:rgba(255,255,255,.05);">${vLabel}</span>` : ''}</span>
+        <span class="hg-look">${escapeHtml(look)}</span>
+        ${pct != null ? `<span class="hg-bar"><i style="width:${pct}%"></i></span>` : ''}
+        <span class="hg-sub">${pct != null ? `${pct}% there · ` : ''}${weeks} week${weeks === 1 ? '' : 's'} left · by ${dateTxt}${plan && plan.error ? ' · do a check-in to start tracking' : ''}</span>${coachLine}</button>${coachBtn}</div>`;
+  }
+  host.querySelector('#hg-open')?.addEventListener('click', () => window.openPhysiqueGoalSheet());
+  host.querySelector('#hg-ask')?.addEventListener('click', () => window.openCoachChatNow());
+}
+
 function renderHuntChrome() {
   try { renderHuntTop(); } catch (e) { console.warn('Hunt top failed:', e); }
   try { renderHuntHero(); } catch (e) { console.warn('Hunt hero failed:', e); }
+  try { renderHuntGoal(); } catch (e) { console.warn('Hunt goal failed:', e); }
   try { renderHuntTiles(); } catch (e) { console.warn('Hunt tiles failed:', e); }
   try { renderHuntNext(); } catch (e) { console.warn('Hunt next failed:', e); }
   try { renderHuntDmg(); } catch (e) { console.warn('Hunt dmg failed:', e); }
@@ -10087,7 +10151,7 @@ function writePlanOptDismissed(record) {
   try { localStorage.setItem(planOptDismissKey(), JSON.stringify(record)); } catch (_) { /* private mode */ }
 }
 function planOptIsOpen() {
-  try { return localStorage.getItem(PLAN_OPT_OPEN_KEY) !== 'closed'; } catch (_) { return true; }
+  try { return localStorage.getItem(PLAN_OPT_OPEN_KEY) === 'open'; } catch (_) { return false; } // folded until the Hunter opens it: the goal card above it is the main thing
 }
 
 function renderPlanOptimiser() {
@@ -10188,6 +10252,128 @@ function renderPlanOptimiser() {
     }
     renderQuestFeed();
   }));
+}
+
+
+/* =========================================================================
+   COACH CHAT
+   The coach (designPlan, mode "chat") in the Hunt "more" area, above the plan optimiser (whose
+   suggestions stay one tap away, collapsed). The conversation is kept in this browser only
+   (localStorage, last 20 messages): nothing new is stored in Firestore for it. A reply can carry a full
+   adjusted plan; nothing changes until the Hunter taps, and replacing a plan takes a second tap.
+   ========================================================================= */
+let coachChat = null;
+const coachChatKey = () => 'aura_coach_chat_' + (currentUser?.uid || '');
+function coachChatLoad() {
+  if (coachChat) return coachChat;
+  let msgs = [];
+  try { const v = JSON.parse(localStorage.getItem(coachChatKey()) || '[]'); if (Array.isArray(v)) msgs = v.filter(m => m && (m.role === 'user' || m.role === 'assistant') && typeof m.content === 'string'); } catch (_) {}
+  coachChat = { msgs, busy: false, error: '' };
+  return coachChat;
+}
+function coachChatSave() {
+  try { localStorage.setItem(coachChatKey(), JSON.stringify(coachChat.msgs.slice(-20))); } catch (_) { /* private mode */ }
+}
+
+function coachChatLogHtml() {
+  const c = coachChatLoad();
+  const last = c.msgs[c.msgs.length - 1];
+  const bubbles = c.msgs.map((m, i) => {
+    const plan = m.days ? `<div class="cc-plan">${m.days.map(d => `<div class="co-day"><b>${escapeHtml(d.name)}</b><span>${d.exercises.map(e => `${escapeHtml(e.name)} ${e.sets}×${e.reps}`).join(' · ')}</span></div>`).join('')}
+      <button type="button" class="ui-btn-outline cc-apply" data-i="${i}" ${m.applied ? 'disabled' : ''}>${m.applied ? '✓ Plan applied' : myProgram?.days?.length ? 'Replace my plan' : 'Use this plan'}</button></div>` : '';
+    return `<div class="cc-m ${m.role === 'user' ? 'me' : 'coach'}">${escapeHtml(m.content)}${plan}</div>`;
+  }).join('');
+  const chips = last && last.role === 'assistant' && last.suggestions?.length ? last.suggestions
+    : !c.msgs.length ? ['How am I doing?', 'Make my plan harder', "I'm really sore"] : [];
+  return `${bubbles}${c.busy ? '<div class="cc-m coach cc-typing">Thinking…</div>' : ''}${c.error ? `<div class="ci-msg" style="color:#FF4D67;">${escapeHtml(c.error)}</div>` : ''}
+    ${chips.length && !c.busy ? `<div class="cc-chips">${chips.map(t => `<button type="button" class="ui-chip dim" data-chip="${escapeHtml(t)}">${escapeHtml(t)}</button>`).join('')}</div>` : ''}`;
+}
+
+async function coachChatSend(text) {
+  const c = coachChatLoad();
+  text = String(text || '').trim().slice(0, 800);
+  if (!text || c.busy) return;
+  c.msgs.push({ role: 'user', content: text });
+  c.busy = true; c.error = '';
+  coachChatSave();
+  paintCoachChatLog(true);
+  try {
+    const res = await callCoach('chat', '', null, { messages: c.msgs.slice(-12).map(m => ({ role: m.role, content: m.role === 'assistant' && m.days && !m.applied ? `${m.content}\n[Plan I proposed, not applied yet: ${m.days.map(d => `${d.name}: ${d.exercises.map(e => `${e.name} ${e.sets}x${e.reps}`).join(', ')}`).join(' | ')}]` : m.content })) });
+    c.msgs.push({ role: 'assistant', content: res.reply, days: res.days || null, goal: res.goal || null, suggestions: res.suggestions || [] });
+  } catch (err) { c.error = coachErrorText(err); }
+  c.busy = false;
+  coachChatSave();
+  paintCoachChatLog(true);
+}
+
+function paintCoachChatLog(scroll) {
+  const log = document.getElementById('cc-log');
+  if (!log) return;
+  log.innerHTML = coachChatLogHtml();
+  if (scroll) {
+    const bubbles = log.querySelectorAll('.cc-m');
+    const lastEl = bubbles[bubbles.length - 1];
+    // a fresh reply is read from its top; otherwise follow the end of the conversation
+    log.scrollTop = lastEl && lastEl.classList.contains('coach') && !lastEl.classList.contains('cc-typing') ? lastEl.offsetTop - log.offsetTop - 4 : log.scrollHeight;
+  }
+  const inp = document.getElementById('cc-input');
+  if (inp) inp.disabled = coachChatLoad().busy;
+  log.querySelectorAll('[data-chip]').forEach(b => b.addEventListener('click', () => coachChatSend(b.dataset.chip)));
+  log.querySelectorAll('.cc-apply').forEach(b => b.addEventListener('click', async () => {
+    const m = coachChatLoad().msgs[Number(b.dataset.i)];
+    if (!m?.days || m.applied) return;
+    if (myProgram?.days?.length && b.dataset.sure !== '1') { b.dataset.sure = '1'; b.textContent = 'Tap again to replace'; return; }
+    b.disabled = true;
+    const before = myProgram;
+    try {
+      myProgram = programFromCoach({ goal: m.goal || myProgram?.goal || 'general', days: m.days });
+      await setDoc(doc(db, 'programs', currentUser.uid), myProgram);
+      m.applied = true; coachChatSave();
+      try { renderQuestFeed(); renderPlanOptimiser(); } catch (_) {}
+      showToast('Plan updated from the coach.', 'success');
+      paintCoachChatLog(false);
+    } catch (e) {
+      myProgram = before; b.disabled = false; b.dataset.sure = ''; b.textContent = 'Use this plan';
+      coachChatLoad().error = 'Could not save the plan: ' + (e?.message || e);
+      paintCoachChatLog(false);
+    }
+  }));
+}
+
+/** Open the More panel at the coach chat and put the cursor in the message box. */
+window.openCoachChatNow = () => {
+  if (document.getElementById('hunt-more')?.hidden) { try { setHuntMore(true); } catch (_) {} }
+  renderCoachChat(false);
+  const host = document.getElementById('coach-chat');
+  if (host) host.scrollIntoView({ block: 'start', behavior: 'smooth' });
+  setTimeout(() => document.getElementById('cc-input')?.focus({ preventScroll: true }), 300);
+};
+
+function renderCoachChat(force) {
+  const host = document.getElementById('coach-chat');
+  if (!host || !currentUser || !profile) return;
+  if (!force && host.querySelector('.cchat')) return;
+  const hasGoals = !!profile.coachProfile?.goals?.length;
+  host.innerHTML = `<div class="cchat">
+    <div class="cc-head"><span class="plan-opt-eyebrow">◈ COACH</span>
+      <span class="cc-tools">${hasGoals ? '<button type="button" class="cc-link" id="cc-goals">My goals</button>' : ''}<button type="button" class="cc-link" id="cc-clear">Clear</button></span></div>
+    ${hasGoals ? `<div class="cc-goal-line">${escapeHtml(profile.coachProfile.goals[0])}${profile.coachProfile.goals.length > 1 ? ` +${profile.coachProfile.goals.length - 1}` : ''}</div>
+      <div class="cc-log" id="cc-log"></div>
+      <form class="cc-in" id="cc-form"><input type="text" id="cc-input" maxlength="800" placeholder="Ask your coach anything…" autocomplete="off" /><button type="submit" class="ui-btn-primary" id="cc-send">Send</button></form>
+      <div class="ci-foot">Written by an AI from your own data. It can be wrong.</div>`
+    : `<div class="cc-goal-line">Tell your coach what you want to achieve and it will build and adjust your plan around it.</div>
+      <button type="button" class="ui-btn-primary" id="cc-start" style="width:100%;margin-top:8px;">Tell the coach my goal</button>`}
+  </div>`;
+  document.getElementById('cc-start')?.addEventListener('click', () => window.openCoachIntake(() => renderCoachChat(true)));
+  document.getElementById('cc-goals')?.addEventListener('click', () => window.openCoachIntake(() => renderCoachChat(true), { reset: true }));
+  document.getElementById('cc-clear')?.addEventListener('click', () => { coachChatLoad().msgs = []; coachChat.error = ''; coachChatSave(); renderCoachChat(true); });
+  document.getElementById('cc-form')?.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const inp = document.getElementById('cc-input');
+    const v = inp.value; inp.value = '';
+    coachChatSend(v);
+  });
+  if (hasGoals) paintCoachChatLog(true);
 }
 
 /* =========================================================================
@@ -17432,7 +17618,7 @@ window.openPhysiqueGoalSheet = () => {
       await writeUserFields({ physiqueGoal: deleteField() });
       delete profile.physiqueGoal;
       overlay.remove();
-      try { renderPlanOptimiser(); } catch (_) {}
+      try { renderPlanOptimiser(); renderHuntGoal(); } catch (_) {}
       showToast('Physique goal removed.', 'info');
     } catch (e) { document.getElementById('pg-msg').textContent = 'Could not remove: ' + (e?.message || e); }
   });
@@ -17456,7 +17642,7 @@ window.openPhysiqueGoalSheet = () => {
       await writeUserFields({ physiqueGoal: goal });
       profile.physiqueGoal = goal;
       overlay.remove();
-      try { renderPlanOptimiser(); } catch (_) {}
+      try { renderPlanOptimiser(); renderHuntGoal(); } catch (_) {}
       showToast('Physique goal set. It re-works itself at every check-in.', 'success');
       // refresh whatever screen shows the goal
       if (typeof renderTrends === 'function' && document.getElementById('view-trends')?.classList.contains('active')) renderTrends();
@@ -17701,7 +17887,13 @@ window.openCheckinHub = (view = 'home', reward = null) => {
 
 /** Names the coach may use: every resistance exercise the app knows (no timed or run moves). */
 function coachExercises() {
-  return Object.entries(EXERCISES_ALL).filter(([, d]) => d && !d.timed && !isRunDef(d)).map(([n]) => n).slice(0, 400);
+  return Object.entries(EXERCISES_ALL).filter(([, d]) => d && !isCardioTimed(d)).map(([n]) => n).slice(0, 400);
+}
+/** Timed holds (front lever, L-sit...): reps are seconds. Minutes-based timed work and runs stay out of the coach's list. */
+const isCoachHold = (d) => !!(d && d.timed && d.timedUnit !== 'mins' && !isRunDef(d));
+const isCardioTimed = (d) => !!(d.timed ? !isCoachHold(d) : isRunDef(d));
+function coachHolds() {
+  return Object.entries(EXERCISES_ALL).filter(([, d]) => isCoachHold(d)).map(([n]) => n).slice(0, 150);
 }
 
 /** The Hunter's data as the coach sees it. */
@@ -17740,6 +17932,7 @@ function coachInput(mode, request, image, extra = {}) {
     feedback: feedbackEntries().sort((a, b) => b.date.localeCompare(a.date)).slice(0, 6),
     block: st ? { week: st.week, phase: st.phase, targetRir: st.targetRir } : null,
     exercises: coachExercises(),
+    holds: coachHolds(),
   };
 }
 
@@ -17799,14 +17992,15 @@ function programFromCoach(res) {
   const kept = {};
   (old.days || []).forEach(d => (d.exercises || []).forEach(e => { kept[e.name] = e; }));
   const SCHEDULES = { 1: ['Mon'], 2: ['Mon', 'Thu'], 3: ['Mon', 'Wed', 'Fri'], 4: ['Mon', 'Tue', 'Thu', 'Fri'], 5: ['Mon', 'Tue', 'Wed', 'Fri', 'Sat'], 6: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] };
+  // same number of sessions as the old plan: it is an edit, so keep the Hunter's own training days and each day's settings
+  const sameShape = !!(old.days && old.days.length === res.days.length && old.schedule);
+  const days = res.days.map((d, i) => ({ ...(sameShape ? old.days[i] : {}), name: d.name, exercises: d.exercises.map(e => ({ ...(kept[e.name] || {}), name: e.name, sets: e.sets, reps: e.reps })) }));
   return {
     ...old,
     name: old.name || 'Coach plan',
     goal: res.goal,
-    scheduleMode: 'rotation',
-    schedule: SCHEDULES[Math.min(6, res.days.length)] || SCHEDULES[3],
-    currentDayIndex: 0,
-    days: res.days.map(d => ({ name: d.name, exercises: d.exercises.map(e => ({ ...(kept[e.name] || {}), name: e.name, sets: e.sets, reps: e.reps })) })),
+    ...(sameShape ? {} : { scheduleMode: 'rotation', schedule: SCHEDULES[Math.min(6, res.days.length)] || SCHEDULES[3], currentDayIndex: 0 }),
+    days,
   };
 }
 
@@ -17955,6 +18149,7 @@ window.openCoachIntake = (onDone, opts = {}) => {
         profile.coachProfile = coachProfile;
         overlay.remove();
         showToast('The coach has your goals.', 'success');
+        try { renderHuntGoal(); } catch (_) {}
         if (onDone) onDone(); else window.openCoachPlan();
       } catch (er) { e.target.disabled = false; const m = document.getElementById('ci2-msg'); m.style.color = '#FF4D67'; m.textContent = 'Could not save: ' + (er?.message || er); }
     });
