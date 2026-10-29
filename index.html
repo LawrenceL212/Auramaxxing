@@ -3238,6 +3238,31 @@
   }
   .rest-timer-display.done{color:var(--growing);animation:restPulse 1s ease-in-out 3;}
   @keyframes restPulse{0%,100%{opacity:1;}50%{opacity:0.35;}}
+  /* Rest countdown controls and hold timer (set-timer.js) */
+  .rest-timer-ctrl{display:flex;gap:6px;width:100%;align-items:center;}
+  .rest-timer-ctrl .rest-timer-stop{flex:0 0 auto;padding:0 2px 0 4px;}
+  .rest-ctrl-btn{flex:1 1 0;min-height:36px;background:var(--card);border:1px solid var(--border);color:var(--text-dim);border-radius:8px;font-family:var(--font-mono);font-size:12px;letter-spacing:.04em;cursor:pointer;touch-action:manipulation;}
+  .rest-ctrl-btn:active{border-color:var(--brass);color:var(--brass);}
+  .rest-ctrl-btn.on{border-color:var(--brass);color:var(--brass);background:var(--brass-dim);}
+  .rest-ctrl-skip{color:rgba(91,168,255,0.9);border-color:rgba(91,168,255,0.3);}
+  .rest-timer-track{width:100%;height:3px;border-radius:2px;background:rgba(91,168,255,0.08);overflow:hidden;}
+  .rest-timer-fill{height:100%;width:100%;background:linear-gradient(90deg,var(--brass),#FFD66B);box-shadow:0 0 6px rgba(255,214,107,0.4);transition:width .25s linear;}
+  .rest-timer-display.paused{opacity:.5;}
+  .hold-go{
+    position:relative;overflow:hidden;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;
+    height:44px;min-width:0;border-radius:8px;border:1px solid rgba(91,168,255,0.3);background:rgba(91,168,255,0.08);
+    color:#61a5ff;font-family:var(--font-mono);font-size:12px;letter-spacing:.08em;cursor:pointer;touch-action:manipulation;
+  }
+  .hold-go .hold-go-main{position:relative;z-index:1;font-size:13px;font-weight:700;}
+  .hold-go .hold-go-sub{position:relative;z-index:1;font-size:9px;opacity:.75;letter-spacing:.1em;}
+  .hold-go .hold-go-fill{position:absolute;inset:0 auto 0 0;width:0;background:rgba(91,168,255,0.18);transition:width .25s linear;}
+  .hold-go.running{border-color:var(--brass);color:var(--brass);background:var(--brass-dim);box-shadow:0 0 10px rgba(255,214,107,0.18);}
+  .hold-go.running .hold-go-fill{background:rgba(255,214,107,0.16);}
+  .hold-go.ready{border-color:var(--brass);color:var(--brass);animation:restPulse .5s ease-in-out infinite;}
+  .hold-go.beat{border-color:var(--growing);color:var(--growing);}
+  .hold-go.beat .hold-go-fill{background:rgba(111,255,176,0.14);}
+  .set-row.hold-live{background:rgba(255,214,107,0.05);}
+  .set-row.up-next{box-shadow:inset 2px 0 0 rgba(91,168,255,0.6);}
   .rest-timer-stop{background:none;border:none;color:var(--excess);font-size:11.5px;cursor:pointer;text-decoration:underline;}
 
   /* ── ACTIVE OBJECTIVES STRIP ── */
@@ -4579,7 +4604,14 @@
     <button type="button" class="rest-preset-btn" data-secs="120">120s</button>
   </div>
   <div class="rest-timer-display" id="rest-timer-display">—</div>
-  <button type="button" class="rest-timer-stop hidden" id="rest-timer-stop">Stop</button>
+  <div class="rest-timer-ctrl hidden" id="rest-timer-ctrl">
+    <button type="button" class="rest-ctrl-btn" id="rest-timer-less" aria-label="15 seconds less rest">−15s</button>
+    <button type="button" class="rest-ctrl-btn" id="rest-timer-pause">Pause</button>
+    <button type="button" class="rest-ctrl-btn" id="rest-timer-more" aria-label="15 seconds more rest">+15s</button>
+    <button type="button" class="rest-ctrl-btn rest-ctrl-skip" id="rest-timer-skip">Skip ›</button>
+    <button type="button" class="rest-timer-stop hidden" id="rest-timer-stop">Stop</button>
+  </div>
+  <div class="rest-timer-track hidden" id="rest-timer-track"><div class="rest-timer-fill" id="rest-timer-fill"></div></div>
     </div>
     <div id="rest-next-preview" class="rest-next-preview" style="display:none;padding:6px 20px;background:rgba(91,168,255,0.04);border-bottom:1px solid rgba(91,168,255,0.06);font-family:var(--font-mono);font-size:10px;color:rgba(91,168,255,0.78);letter-spacing:.06em;"></div>
     <div class="workout-modal-body">
@@ -4671,6 +4703,7 @@ import { setInputKind, setInputHeaders, storedSet, storedSetSecs, partsToSecs, s
          setLoad, loggedLoad, withLoad, BAND_LEVELS, DEFAULT_BAND, bandLabel, loggedBand,
          setBand, loadText, loadOptions, isBandLoad } from "./set-inputs.js";
 import { feltEasier, EASIER_LABEL } from "./set-compare.js";
+import { restSecsFor, adjustRest, formatClock, nextOpenSet, holdProgress, heldSecs, REST_STEP, HOLD_LEAD_IN } from "./set-timer.js";
 import { detectReEntry, reEntryPlan, directiveProgress, formatMeasure, DIRECTIVE_METRICS,
          countdown, formatCountdown, timeElapsedFraction, buildDirectivesICS,
          buildWidgetConfig } from "./goals.js";
@@ -5963,6 +5996,16 @@ const SFX = {
   restTap() {
     this._tone(440, 'triangle', 0.04, 0.06, 0);
     this.vibrate([6]);
+  },
+
+  // Hold timer: get-ready count and start
+  holdTick() {
+    this._tone(660, 'square', 0.03, 0.05, 0);
+    this.vibrate([10]);
+  },
+  holdGo() {
+    this._tone(880, 'sine', 0.09, 0.18, 0);
+    this.vibrate([40]);
   },
 
   // Rest timer done — three gentle chimes
@@ -10296,6 +10339,7 @@ function closeWorkoutModal(discard = false) {
   document.getElementById('workout-pill').classList.add('hidden');
   unlockBodyScroll();
   stopRestTimer();
+  stopHold(false);
   if (discard) {
     // reset logger state fully
     activeDayIndex = null;
@@ -10519,37 +10563,63 @@ document.getElementById('save-run-btn')?.addEventListener('click', async () => {
   btn.disabled = false; btn.textContent = 'Save Run';
 });
 
-/* ---- rest timer ---- */
+/* ---- rest timer ----
+   Counts down from an end time, so a locked phone or a throttled tab still
+   finishes on time. Started by a preset tap, or on its own when a set is done
+   (autoRestAfter). Pause, ±15s and Skip show while it runs; ±15s on an
+   automatic rest is remembered as that exercise's rest (set-timer.js). */
 let restTimerInterval = null;
-function startRestTimer(totalSeconds) {
+let restEndAt = 0, restPausedLeft = null, restTotal = 0;
+let restCtx = null;           // { exName, next: set row } for an automatic rest
+function restLeft() { return restPausedLeft != null ? restPausedLeft : Math.max(0, Math.ceil((restEndAt - Date.now()) / 1000)); }
+function renderRestTimer() {
+  const display = document.getElementById('rest-timer-display');
+  const fill = document.getElementById('rest-timer-fill');
+  const left = restLeft();
+  if (display) { display.textContent = formatClock(left); display.classList.toggle('paused', restPausedLeft != null); }
+  if (fill) fill.style.width = (restTotal > 0 ? Math.min(100, left / restTotal * 100) : 0).toFixed(1) + '%';
+}
+function startRestTimer(totalSeconds, ctx = null) {
   stopRestTimer();
-  let remaining = totalSeconds;
+  restCtx = ctx;
+  restTotal = totalSeconds;
+  restEndAt = Date.now() + totalSeconds * 1000;
+  restPausedLeft = null;
   const display = document.getElementById('rest-timer-display');
   const stopBtn = document.getElementById('rest-timer-stop');
   display.classList.remove('done');
   stopBtn.classList.remove('hidden');
+  document.getElementById('rest-timer-ctrl')?.classList.remove('hidden');
+  document.getElementById('rest-timer-track')?.classList.remove('hidden');
+  const pauseBtn = document.getElementById('rest-timer-pause');
+  if (pauseBtn) { pauseBtn.textContent = 'Pause'; pauseBtn.classList.remove('on'); }
   // ── Wire next exercise preview ──
   try {
     const rows = document.getElementById('exercise-rows');
     if (rows) {
       const allRows = [...rows.querySelectorAll('.exercise-row')];
-      // Find the first incomplete exercise row
-      const nextRow = allRows.find(r => {
+      // The set this rest leads into, else the first incomplete exercise row
+      const nextRow = ctx?.next?.closest('.exercise-row') || allRows.find(r => {
         const sets = [...r.querySelectorAll('.set-row')];
         return sets.some(s => !s.classList.contains('complete'));
       });
       const previewEl = document.getElementById('rest-next-preview');
       if (previewEl && nextRow) {
         const name = nextRow.dataset.exName || '';
-        const incompleteSets = [...nextRow.querySelectorAll('.set-row')].filter(s => !s.classList.contains('complete'));
-        const nextSet = nextRow.querySelectorAll('.set-row').length - incompleteSets.length + 1;
-        const totalSets = nextRow.querySelectorAll('.set-row').length;
-        const prevWeight = incompleteSets[0]?.dataset.prevWeight;
-        const prevReps = incompleteSets[0]?.dataset.prevReps;
+        const allSets = [...nextRow.querySelectorAll('.set-row')];
+        const incompleteSets = allSets.filter(s => !s.classList.contains('complete'));
+        // An automatic rest knows its next set; otherwise the first open one
+        const target = ctx?.next && allSets.includes(ctx.next) ? ctx.next : incompleteSets[0];
+        const nextSet = target ? allSets.indexOf(target) + 1 : allSets.length - incompleteSets.length + 1;
+        const totalSets = allSets.length;
+        const prevWeight = target?.dataset.prevWeight;
+        const prevReps = target?.dataset.prevReps;
         const weightHint = prevWeight > 0 ? ` · ${prevWeight}kg` : '';
-        const repsHint = prevReps > 0 ? ` × ${prevReps}` : '';
+        const isHold = ctx?.next?.dataset.kind === 'hold';
+        const repsHint = prevReps > 0 ? (isHold ? ` · ${formatClock(prevReps)}` : ` × ${prevReps}`) : '';
+        const autoHint = isHold ? ' · TIMER STARTS ITSELF' : '';
         previewEl.innerHTML = name
-          ? `<span style="letter-spacing:.06em;">${name.toUpperCase()}</span><span style="opacity:.5;margin-left:6px;">SET ${nextSet} / ${totalSets}${weightHint}${repsHint}</span>`
+          ? `<span style="letter-spacing:.06em;">NEXT · ${escapeHtml(name.toUpperCase())}</span><span style="opacity:.5;margin-left:6px;">SET ${nextSet} / ${totalSets}${weightHint}${repsHint}${autoHint}</span>`
           : '';
         previewEl.style.display = name ? 'block' : 'none';
       } else if (previewEl) {
@@ -10557,34 +10627,195 @@ function startRestTimer(totalSeconds) {
       }
     }
   } catch(e) {}
-  const render = () => {
-    const m = Math.floor(remaining / 60), s = remaining % 60;
-    display.textContent = `${m}:${String(s).padStart(2,'0')}`;
-  };
-  render();
+  document.querySelectorAll('.set-row.up-next').forEach(r => r.classList.remove('up-next'));
+  ctx?.next?.classList.add('up-next');
+  renderRestTimer();
   restTimerInterval = setInterval(() => {
-    remaining--;
-    if (remaining <= 0) {
-      clearInterval(restTimerInterval);
-      restTimerInterval = null;
-      display.textContent = "Rest's up!";
-      display.classList.add('done');
-      stopBtn.classList.add('hidden');
-      SFX.restDone();
-      return;
+    if (restPausedLeft != null) return;
+    if (restLeft() <= 0) { finishRest(); return; }
+    renderRestTimer();
+  }, 250);
+}
+/* Rest over, by the clock or by Skip: chime, bring the next set into view,
+   and start its hold timer when it is a hold. */
+function finishRest(skipped = false) {
+  const ctx = restCtx;
+  clearInterval(restTimerInterval);
+  restTimerInterval = null;
+  restCtx = null;
+  const display = document.getElementById('rest-timer-display');
+  display.textContent = "Rest's up!";
+  display.classList.remove('paused');
+  display.classList.add('done');
+  document.getElementById('rest-timer-stop')?.classList.add('hidden');
+  document.getElementById('rest-timer-ctrl')?.classList.add('hidden');
+  document.getElementById('rest-timer-track')?.classList.add('hidden');
+  if (!skipped) SFX.restDone();
+  const next = ctx?.next;
+  if (next && next.isConnected && !next.classList.contains('complete')) {
+    try { next.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (e) {}
+    if (next.dataset.kind === 'hold' && !document.getElementById('workout-modal-overlay')?.classList.contains('hidden')) {
+      startHold(next, HOLD_LEAD_IN);
     }
-    render();
-  }, 1000);
+  }
 }
 function stopRestTimer() {
   if (restTimerInterval) { clearInterval(restTimerInterval); restTimerInterval = null; }
+  restCtx = null; restPausedLeft = null;
   const display = document.getElementById('rest-timer-display');
-  if (display) { display.textContent = '—'; display.classList.remove('done'); }
+  if (display) { display.textContent = '—'; display.classList.remove('done', 'paused'); }
   const stopBtn = document.getElementById('rest-timer-stop');
   if (stopBtn) stopBtn.classList.add('hidden');
+  document.getElementById('rest-timer-ctrl')?.classList.add('hidden');
+  document.getElementById('rest-timer-track')?.classList.add('hidden');
+  document.querySelectorAll('.set-row.up-next').forEach(r => r.classList.remove('up-next'));
+}
+function toggleRestPause() {
+  if (!restTimerInterval) return;
+  const btn = document.getElementById('rest-timer-pause');
+  if (restPausedLeft == null) {
+    restPausedLeft = restLeft();
+    if (btn) { btn.textContent = 'Resume'; btn.classList.add('on'); }
+  } else {
+    restEndAt = Date.now() + restPausedLeft * 1000;
+    restPausedLeft = null;
+    if (btn) { btn.textContent = 'Pause'; btn.classList.remove('on'); }
+  }
+  renderRestTimer();
+}
+function nudgeRest(delta) {
+  if (!restTimerInterval) return;
+  const left = Math.max(1, restLeft() + delta);
+  if (restPausedLeft != null) restPausedLeft = left; else restEndAt = Date.now() + left * 1000;
+  restTotal = Math.max(restTotal + delta, left);
+  // An automatic rest remembers the change as this exercise's rest
+  if (restCtx?.exName) saveRestPref(restCtx.exName, adjustRest(restCtx.secs, delta));
+  if (restCtx) restCtx.secs = adjustRest(restCtx.secs, delta);
+  renderRestTimer();
+}
+/* Rest per exercise: the Hunter's own choice on this device, else the
+   exercise's rest for the plan's goal (set-timer.js). */
+function restPrefKey(name) { return 'aura_rest_' + name; }
+function savedRestPref(name) { try { return Number(localStorage.getItem(restPrefKey(name))) || 0; } catch (e) { return 0; } }
+function saveRestPref(name, secs) { try { localStorage.setItem(restPrefKey(name), String(secs)); } catch (e) {} }
+function restFor(name) { return restSecsFor(EXERCISES_ALL[name], { goal: myProgram?.goal, saved: savedRestPref(name) }); }
+/* A set just got done: count down this exercise's rest toward the next open
+   set. Only for a session logged live (today), only once per set, and not
+   after the last set. */
+function autoRestAfter(setRow) {
+  if (!setRow || setRow.dataset.rested) return;
+  setRow.dataset.rested = '1';
+  const dateEl = document.getElementById('workout-date');
+  if (dateEl?.value && dateEl.value !== todayStr()) return;
+  const exRows = [...document.querySelectorAll('#exercise-rows .exercise-row')].filter(r => r.dataset.exName);
+  const exRow = setRow.closest('.exercise-row');
+  const from = exRows.indexOf(exRow);
+  if (from < 0) return;
+  const setsOf = r => [...r.querySelectorAll('.set-row')];
+  const at = nextOpenSet(exRows.map(r => ({ sets: setsOf(r).map(s => s.classList.contains('complete') || s === setRow) })), from);
+  if (!at) { stopRestTimer(); return; }
+  const secs = restFor(exRow.dataset.exName);
+  startRestTimer(secs, { exName: exRow.dataset.exName, secs, next: setsOf(exRows[at.row])[at.set] });
+}
+
+/* ---- hold timer ----
+   Inside each hold set: tap to start, tap to stop, and the seconds land in
+   the set's own input, exactly as if typed. After a rest it starts on its
+   own with a short get-ready count. One hold runs at a time. */
+let holdState = null;   // { setRow, startAt, leadEnd, interval }
+function holdTarget(setRow) { return Number(setRow.dataset.prevReps) || 0; }
+function renderHold() {
+  if (!holdState) return;
+  const { setRow, startAt, leadEnd } = holdState;
+  const btn = setRow.querySelector('.hold-go');
+  if (!btn) return;
+  const main = btn.querySelector('.hold-go-main'), sub = btn.querySelector('.hold-go-sub'), fill = btn.querySelector('.hold-go-fill');
+  const now = Date.now();
+  if (now < leadEnd) {
+    btn.classList.add('ready'); btn.classList.remove('running', 'beat');
+    main.textContent = String(Math.ceil((leadEnd - now) / 1000));
+    sub.textContent = 'GET READY';
+    fill.style.width = '0%';
+    return;
+  }
+  if (!startAt) {
+    holdState.startAt = leadEnd || now;
+    SFX.holdGo();
+    if (navigator.vibrate) navigator.vibrate([40]);
+  }
+  const elapsed = (now - holdState.startAt) / 1000;
+  const target = holdTarget(setRow);
+  const p = holdProgress(elapsed, target);
+  btn.classList.remove('ready'); btn.classList.add('running');
+  btn.classList.toggle('beat', p.beat);
+  main.textContent = '■ ' + formatClock(elapsed);
+  sub.textContent = target > 0 ? (p.beat ? 'PAST LAST ✓' : `LAST ${formatClock(target)}`) : 'TAP TO STOP';
+  fill.style.width = (target > 0 ? p.pct * 100 : 0).toFixed(1) + '%';
+  const input = setRow.querySelector('.set-reps');
+  if (input) input.value = Math.floor(elapsed);
+}
+function startHold(setRow, leadIn = 0) {
+  if (!setRow?.isConnected) return;
+  if (holdState) stopHold(holdState.setRow === setRow ? false : true);
+  stopRestTimer();
+  const leadEnd = leadIn > 0 ? Date.now() + leadIn * 1000 : 0;
+  holdState = { setRow, startAt: leadIn > 0 ? 0 : Date.now(), leadEnd, interval: null, lastLead: leadIn,
+                before: setRow.querySelector('.set-reps')?.value ?? '' };
+  setRow.classList.add('hold-live');
+  if (!leadIn) SFX.holdGo(); else SFX.holdTick();
+  holdState.interval = setInterval(() => {
+    if (!holdState) return;
+    if (!holdState.setRow.isConnected) { stopHold(false); return; }
+    const now = Date.now();
+    if (holdState.leadEnd && now < holdState.leadEnd) {
+      const n = Math.ceil((holdState.leadEnd - now) / 1000);
+      if (n !== holdState.lastLead) { holdState.lastLead = n; SFX.holdTick(); }
+    }
+    renderHold();
+  }, 200);
+  renderHold();
+}
+/* Stop the running hold. keep=true writes the held seconds into the set
+   (stopped during the get-ready count, nothing is written). */
+function stopHold(keep = true) {
+  if (!holdState) return;
+  const { setRow, startAt, interval, before } = holdState;
+  clearInterval(interval);
+  holdState = null;
+  setRow.classList.remove('hold-live');
+  const btn = setRow.querySelector('.hold-go');
+  if (btn) {
+    btn.classList.remove('running', 'ready', 'beat');
+    btn.querySelector('.hold-go-main').textContent = '▶ HOLD';
+    btn.querySelector('.hold-go-sub').textContent = 'START TIMER';
+    btn.querySelector('.hold-go-fill').style.width = '0%';
+  }
+  const input = setRow.querySelector('.set-reps');
+  if (!input) return;
+  if (keep && startAt) {
+    const secs = heldSecs(startAt, Date.now());
+    input.value = secs || '';
+    if (secs > 0) {
+      input.dataset.confirmed = '1';
+      input.dispatchEvent(new Event('input'));
+      SFX.pop();
+      // The hold is the set: rest starts now, while RPE is picked
+      autoRestAfter(setRow);
+    }
+  } else {
+    input.value = before;   // cancelled: the set keeps what it had
+  }
+}
+function toggleHold(setRow) {
+  if (holdState && holdState.setRow === setRow) { stopHold(true); return; }
+  startHold(setRow, 0);
 }
 document.querySelectorAll('.rest-preset-btn').forEach(btn => btn.addEventListener('click', () => { SFX.restTap(); startRestTimer(Number(btn.dataset.secs)); }));
 document.getElementById('rest-timer-stop')?.addEventListener('click', stopRestTimer);
+document.getElementById('rest-timer-pause')?.addEventListener('click', () => { SFX.restTap(); toggleRestPause(); });
+document.getElementById('rest-timer-less')?.addEventListener('click', () => { SFX.restTap(); nudgeRest(-REST_STEP); });
+document.getElementById('rest-timer-more')?.addEventListener('click', () => { SFX.restTap(); nudgeRest(REST_STEP); });
+document.getElementById('rest-timer-skip')?.addEventListener('click', () => { SFX.restTap(); if (restTimerInterval) finishRest(true); });
 
 /* =========================================================================
    PLAN EDITOR
@@ -11500,7 +11731,9 @@ function addExerciseRow(presetName, targetSets, targetReps, prefillSets) {
       case 'duration':
         return timeField('hm', 0, 'span-2');
       case 'hold':
-        return stepper('set-reps', '', 0, 5, 'Seconds', 'span-2');
+        // Seconds, plus the built-in hold timer that fills them (set-timer.js)
+        return stepper('set-reps', '', 0, 5, 'Seconds')
+             + `<button type="button" class="hold-go" aria-label="Start hold timer"><span class="hold-go-fill"></span><span class="hold-go-main">▶ HOLD</span><span class="hold-go-sub">START TIMER</span></button>`;
       case 'reps':
         return stepper('set-reps', prefillReps || '', 0, 1, 'Reps', 'span-2');
       case 'load_reps':
@@ -11560,7 +11793,9 @@ function addExerciseRow(presetName, targetSets, targetReps, prefillSets) {
       const sr = setsList.lastElementChild;
       const chip = k.rir != null && sr.querySelector(`.rir-chip[data-rir="${k.rir}"]`);
       if (chip) chip.classList.add('selected');
+      sr.dataset.rested = '1';   // rebuilt, not newly finished
       checkComplete(sr);
+      if (!sr.classList.contains('complete')) delete sr.dataset.rested;
     });
     refreshTags();
     refreshCompleteButton();
@@ -11753,6 +11988,8 @@ function addExerciseRow(presetName, targetSets, targetReps, prefillSets) {
     }
     if (isNowComplete && !wasComplete) {
       SFX.setComplete();
+      // Count down this exercise's rest to the next set (set-timer.js)
+      setTimeout(() => autoRestAfter(setRow), 0);
       // #9: Physical set completion feedback — pulse the row
       const isPR = setRow.classList.contains('set-pr');
       setRow.classList.remove('just-completed','is-pr');
@@ -11892,11 +12129,14 @@ function addExerciseRow(presetName, targetSets, targetReps, prefillSets) {
       checkComplete(setRow);
     }));
     wireChips(setRow);
+    setRow.querySelector('.hold-go')?.addEventListener('click', () => toggleHold(setRow));
     setRow.querySelector('.set-remove').addEventListener('click', () => { SFX.pop(); setRow.remove(); [...setsList.children].forEach((r,i) => r.querySelector('.set-idx').textContent = i+1); refreshCompleteButton(); });
     setsList.appendChild(setRow);
     tableHead.classList.remove('hidden');
     // immediately check if prefilled values make this set complete
     if (prefillReps) checkComplete(setRow);
+    // A set that arrives already done was not just finished: no rest for it
+    if (setRow.classList.contains('complete')) setRow.dataset.rested = '1';
   }
   /* Which intensity scale this exercise logs on. Mirrors the save path's own
      usesRPE predicate exactly, so the control the Hunter sees can never
