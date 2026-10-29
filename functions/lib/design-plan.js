@@ -73,6 +73,73 @@ Coaching text
 
 Return only the JSON object the schema describes.`;
 
+/* ── goal intake ──────────────────────────────────────────────────────── */
+const MAX_ROUNDS = 4;
+const QuestionSchema = z.object({ id: z.string(), question: z.string(), options: z.array(z.string()) });
+const IntakeSchema = z.object({
+  ready: z.boolean(),
+  summary: z.string(),
+  goals: z.array(z.string()),
+  assumptions: z.array(z.string()),
+  questions: z.array(QuestionSchema),
+});
+
+const INTAKE_SYSTEM = `You are the coach inside Auramaxxing, a training app. Before you plan anything you must understand what this Hunter actually wants. You are given what they have said so far (their own words, plus any questions you asked and their answers) and their own data.
+
+Decide whether you understand the goal well enough to design a plan that fits this person, and say so in "ready". Be thorough: a plan built on guesses fails, so cover everything below that their data does not already answer. Never ask what the data says.
+- The outcome: what they want (look, strength, size of a body part, fat loss, a lift, endurance, or a mix), which matters most, and what "done" looks like to them.
+- Timing: how soon, and whether there is a fixed date or event.
+- Training they can really do: sessions a week, how long a session, where (gym, home, what equipment).
+- Training history: how long they have trained, what programmes they have followed, what worked and what stalled or made them quit.
+- Body and limits: injuries, pain, movements to avoid, anything a doctor told them.
+- Fuel and recovery: how they eat now (protein, rough calories, meal habits, diet rules), sleep hours, stress, job activity.
+- Consistency: what usually gets in the way, so the plan fits their real week.
+- If something that would change the plan is missing or vague, ask. Ask at most 5 questions in a round, only ones whose answer would change the plan, short and plain, each with 2 to 5 tap-able "options" (short answers; the Hunter can also type their own). Give every question a short id like "timeline" or "injuries". Put the most important questions first, and do not repeat one already answered.
+- A vague goal like "look good" or "get fit" is not ready: ask what that means to them. Even a clear goal ("bigger arms, 12 weeks") is not ready until you know the training, history, limits and fuel/recovery points above, unless their data already covers them.
+- If this is round ${MAX_ROUNDS} or later, set ready to true and list in "assumptions" every gap you filled with a reasonable default.
+- When ready: "summary" is two to three sentences restating the goal in their terms (no hype), "goals" is one to four short goal statements, most important first, "questions" is empty.
+- When not ready: "summary" is one short sentence on what you understood so far, "goals" is empty, "questions" has your questions.
+- Describe only the physique in a reference photo. Never identify anyone in it. No medical advice.
+
+Return only the JSON object the schema describes.`;
+
+function sanitizeGoals(g) {
+  if (!g || typeof g !== 'object') return null;
+  const list = Array.isArray(g.goals) ? g.goals.slice(0, 4).map(x => str(x, 160)).filter(Boolean) : [];
+  if (!list.length) return null;
+  return { summary: str(g.summary, 500), goals: list, answers: sanitizeAnswers(g.answers) };
+}
+
+function sanitizeAnswers(a) {
+  if (!Array.isArray(a)) return [];
+  return a.slice(0, 12).map(x => ({ q: str(x && x.q, 200), a: str(x && x.a, 300) })).filter(x => x.q && x.a);
+}
+
+function sanitizeIntakeState(i) {
+  if (!i || typeof i !== 'object') return null;
+  return { text: str(i.text, 800), answers: sanitizeAnswers(i.answers), round: Math.round(clamp(num(i.round) ?? 1, 1, 9)) };
+}
+
+/** What the client gets back from an intake round: either questions or a confirmed understanding. */
+function sanitizeIntake(raw, round) {
+  const ready = !!raw.ready || round >= MAX_ROUNDS;
+  const questions = ready ? [] : (raw.questions || []).slice(0, 5).map((q, n) => ({
+    id: str(q.id, 30) || `q${n + 1}`,
+    question: str(q.question, 200),
+    options: (q.options || []).slice(0, 5).map(o => str(o, 60)).filter(Boolean),
+  })).filter(q => q.question);
+  const goals = (raw.goals || []).slice(0, 4).map(g => str(g, 160)).filter(Boolean);
+  // not ready but nothing to ask, or ready with no goals: treat as unusable so the client can retry
+  if ((!ready && !questions.length) || (ready && !goals.length)) return null;
+  return {
+    ready,
+    summary: str(raw.summary, 500),
+    goals: ready ? goals : [],
+    assumptions: ready ? (raw.assumptions || []).slice(0, 4).map(a => str(a, 160)).filter(Boolean) : [],
+    questions,
+  };
+}
+
 /* ── clamping ─────────────────────────────────────────────────────────── */
 const clamp = (n, lo, hi) => Math.max(lo, Math.min(hi, n));
 const num = (v) => (typeof v === 'number' && Number.isFinite(v) ? v : null);
@@ -141,8 +208,10 @@ const MAX_IMAGE_CHARS = 2_500_000;
 /** The user turn: the Hunter's facts as JSON, plus an optional reference image. */
 function buildContent(input) {
   const facts = {
-    mode: input.mode === 'review' ? 'review' : 'design',
+    mode: input.mode === 'review' ? 'review' : input.mode === 'intake' ? 'intake' : 'design',
     request: str(input.request, 600) || null,
+    goals: sanitizeGoals(input.goals),
+    intake: sanitizeIntakeState(input.intake),
     sex: input.sex === 'female' ? 'female' : 'male',
     age: num(input.age), heightCm: num(input.heightCm), weightKg: num(input.weightKg),
     latest: input.latest || null,
@@ -191,7 +260,32 @@ async function designPlan({ client, input }) {
   return sanitizePlan(response.parsed_output, { sex: input.sex, exercises: input.exercises });
 }
 
-module.exports = { MODEL, GROUPS, GOALS, PlanSchema, SYSTEM, sanitizeLook, sanitizeDays, sanitizePlan, buildContent, designPlan, MAX_IMAGE_CHARS };
+/** One round of goal intake: questions to ask, or the confirmed understanding. */
+async function designIntake({ client, input }) {
+  const { zodOutputFormat } = require('@anthropic-ai/sdk/helpers/zod');
+  const state = sanitizeIntakeState(input.intake);
+  const response = await client.messages.parse({
+    model: MODEL,
+    max_tokens: 4000,
+    output_config: { effort: 'low', format: zodOutputFormat(IntakeSchema) },
+    system: INTAKE_SYSTEM,
+    messages: [{ role: 'user', content: buildContent({ ...input, mode: 'intake' }) }],
+  });
+  if (response.stop_reason === 'refusal') {
+    const e = new Error('The coach could not help with that request. Try describing the goal differently.');
+    e.code = 'refused';
+    throw e;
+  }
+  const out = response.parsed_output ? sanitizeIntake(response.parsed_output, state ? state.round : 1) : null;
+  if (!out) {
+    const e = new Error('The coach answered in a form the app could not read. Try again.');
+    e.code = 'unparseable';
+    throw e;
+  }
+  return out;
+}
+
+module.exports = { MODEL, GROUPS, GOALS, PlanSchema, SYSTEM, sanitizeLook, sanitizeDays, sanitizePlan, buildContent, designPlan, MAX_IMAGE_CHARS, IntakeSchema, INTAKE_SYSTEM, MAX_ROUNDS, sanitizeIntake, sanitizeIntakeState, sanitizeGoals, designIntake };
 
 /** Daily limit per Hunter: the usage record to store and whether one more call is allowed. */
 const DAILY_LIMIT = 10;

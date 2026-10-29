@@ -4328,6 +4328,8 @@
   #pg-ask{width:100%;min-height:76px;margin-top:6px;}
   .co-head{font-family:var(--font-display);font-weight:800;font-size:19px;letter-spacing:.04em;text-transform:uppercase;color:var(--ui-gold);margin:12px 0 6px;}
   .co-sum{font-size:16px;line-height:1.5;color:var(--text);}
+  .co-goals{margin:12px 0;padding:10px 12px;border:1px solid var(--ui-line,rgba(255,255,255,.12));border-radius:12px;}
+  .ci2-own{box-sizing:border-box;padding:10px 12px;border-radius:10px;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.04);color:var(--text);font:inherit;font-size:14px;}
   .co-cav{font-size:14px;line-height:1.45;color:#FFB454;margin-top:10px;padding:10px 12px;border-left:3px solid #FFB454;background:rgba(255,180,84,.06);}
   .co-list{margin:0;padding-left:0;list-style:none;}
   .co-list li{font-size:15px;line-height:1.4;color:var(--text-dim);padding:6px 0 6px 14px;border-left:3px solid var(--co);margin-bottom:4px;}
@@ -17088,6 +17090,7 @@ window.openPhysiqueGoalSheet = () => {
         <div class="ui-banner ci-section" style="margin-top:22px;">◈ Or ask the coach</div>
         <div class="ci-sub">Say what you want: "bigger arms", "a wide back and abs", a character, or add a photo of the look. The coach designs the target and a plan from your data.</div>
         <div id="pg-custom"></div>
+        ${coachGoalsHtml()}
         <textarea id="pg-ask" class="ci-notes" maxlength="600" placeholder="I want…"></textarea>
         <div class="pg-ask-row">
           <label class="ui-btn-outline pg-photo" for="pg-photo">Add photo<input type="file" id="pg-photo" accept="image/*" hidden /></label>
@@ -17178,8 +17181,10 @@ window.openPhysiqueGoalSheet = () => {
     if (!f) { photo = null; name.textContent = ''; return; }
     try { photo = await coachImageFromFile(f); name.textContent = `Reference photo added: ${f.name}`; } catch (err) { photo = null; name.textContent = 'Could not read that photo.'; }
   });
+  wireCoachGoals(overlay, () => window.openPhysiqueGoalSheet());
   document.getElementById('pg-design').addEventListener('click', async (e) => {
-    const ask = document.getElementById('pg-ask').value.trim();
+    if (!profile?.coachProfile?.goals?.length) return window.openCoachIntake(() => window.openPhysiqueGoalSheet());
+    const ask = document.getElementById('pg-ask').value.trim() || (photo ? '' : profile.coachProfile.summary);
     const box = document.getElementById('pg-coach');
     if (!ask && !photo) { box.innerHTML = '<div class="ci-msg" style="color:#FF4D67;">Say what you want, or add a photo.</div>'; return; }
     e.target.disabled = true;
@@ -17412,7 +17417,7 @@ function coachExercises() {
 }
 
 /** The Hunter's data as the coach sees it. */
-function coachInput(mode, request, image) {
+function coachInput(mode, request, image, extra = {}) {
   const today = todayStr();
   const sex = profile?.bodyType || 'male';
   const last = myCheckins[myCheckins.length - 1];
@@ -17434,7 +17439,8 @@ function coachInput(mode, request, image) {
   const plan = g ? currentPhysiquePlan() : null;
   const st = blockState(profile?.block, today);
   return {
-    mode, request, image,
+    mode, request, image, ...extra,
+    goals: profile?.coachProfile || null,
     sex, age: last?.age || null, heightCm: profile?.heightCm || null, weightKg: bw,
     latest,
     weightTrend: { weeklyChange: wk, recent: (myWeights || []).slice(-10).map(w => ({ date: w.date, kg: w.weight })) },
@@ -17449,10 +17455,10 @@ function coachInput(mode, request, image) {
   };
 }
 
-async function callCoach(mode, request, image) {
+async function callCoach(mode, request, image, extra) {
   const { getFunctions, httpsCallable } = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-functions.js');
   const call = httpsCallable(getFunctions(app), 'designPlan');
-  const res = await call(coachInput(mode, request, image));
+  const res = await call(coachInput(mode, request, image, extra));
   return res.data;
 }
 
@@ -17538,20 +17544,156 @@ function wireCoachResult(box, res, { onLook } = {}) {
 
 /** "How am I doing": the coach reviews the data against the goal and plan. */
 window.openCoachReview = async () => {
+  if (!profile?.coachProfile?.goals?.length) return window.openCoachIntake(() => window.openCoachReview());
   document.getElementById('coach-review-overlay')?.remove();
   const overlay = document.createElement('div');
   overlay.id = 'coach-review-overlay';
   overlay.className = 'ci-overlay';
   overlay.innerHTML = `<div class="ui-window gold ci-win"><div class="ci-scroll">
     <div class="ci-hero" style="padding-bottom:14px;"><div class="ci-hero-top"><div><div class="ui-banner gold">◈ Coach</div><div class="ci-title">How you're doing</div></div><button class="ci-close" aria-label="Close" data-close>✕</button></div></div>
+    ${coachGoalsHtml()}
     <div id="co-body"><div class="ci-empty">The coach is reading your data…</div></div>
     <button class="ci-skip" data-close style="width:100%;margin-top:6px;">Close</button>
   </div></div>`;
   getOverlayHost().appendChild(overlay);
   overlay.querySelectorAll('[data-close]').forEach(b => b.addEventListener('click', () => overlay.remove()));
+  wireCoachGoals(overlay, () => { overlay.remove(); window.openCoachReview(); });
   const body = document.getElementById('co-body');
   try {
     const res = await callCoach('review', '', null);
+    body.innerHTML = coachResultHtml(res, {});
+    wireCoachResult(body, res, {});
+  } catch (err) { body.innerHTML = `<div class="ci-msg" style="color:#FF4D67;">${escapeHtml(coachErrorText(err))}</div>`; }
+};
+
+
+// ── COACH GOAL INTAKE ─────────────────────────────────────────────────────
+// Before the coach plans anything it has to understand the goal. The Hunter says what they want in their own
+// words (and optionally adds a reference photo); the coach asks short questions until it is sure, up to three
+// rounds, then states the goals back. Only on "Yes, that's it" is profile.coachProfile saved (an additive field
+// on users/{uid}: summary, goals, assumptions, answers, updated). Every later coach call reads it.
+
+/** The saved goals as a small card with a button to change them (empty when none are saved). */
+function coachGoalsHtml() {
+  const c = profile?.coachProfile;
+  if (!c?.goals?.length) return '';
+  return `<div class="co-goals"><div class="pg-sub">My goals</div><ul class="co-list" style="--co:var(--ui-gold);">${c.goals.map(g => `<li>${escapeHtml(g)}</li>`).join('')}</ul><button type="button" class="ci-skip" data-co-goals style="width:100%;">Change my goals</button></div>`;
+}
+function wireCoachGoals(root, after) {
+  root.querySelector('[data-co-goals]')?.addEventListener('click', () => window.openCoachIntake(after, { reset: true }));
+}
+
+window.openCoachIntake = (onDone, opts = {}) => {
+  document.getElementById('coach-intake-overlay')?.remove();
+  const state = { text: '', answers: [], round: 1, photo: null };
+  const overlay = document.createElement('div');
+  overlay.id = 'coach-intake-overlay';
+  overlay.className = 'ci-overlay';
+  overlay.innerHTML = `<div class="ui-window gold ci-win"><div class="ci-scroll">
+    <div class="ci-hero" style="padding-bottom:14px;"><div class="ci-hero-top"><div><div class="ui-banner gold">◈ Coach</div><div class="ci-title">What do you want to achieve?</div></div><button class="ci-close" aria-label="Close" data-close>✕</button></div>
+      <div class="ci-sub" style="margin:8px 0 0;">Tell the coach in your own words. It asks a few questions until it understands, then builds and adjusts your plan around it.</div></div>
+    <div id="ci2-body"></div>
+  </div></div>`;
+  getOverlayHost().appendChild(overlay);
+  overlay.querySelectorAll('[data-close]').forEach(b => b.addEventListener('click', () => overlay.remove()));
+  const body = document.getElementById('ci2-body');
+  const err = (e) => `<div class="ci-msg" style="color:#FF4D67;">${escapeHtml(coachErrorText(e))}</div>`;
+  const ask = async () => {
+    body.innerHTML = '<div class="ci-empty">The coach is thinking…</div>';
+    try {
+      const res = await callCoach('intake', '', state.photo, { intake: { text: state.text, answers: state.answers, round: state.round } });
+      res.ready ? paintReady(res) : paintQuestions(res);
+    } catch (e) { body.innerHTML = err(e) + '<button type="button" class="ui-btn-outline" id="ci2-retry" style="width:100%;margin-top:8px;">Try again</button>'; document.getElementById('ci2-retry').addEventListener('click', ask); }
+  };
+  const paintStart = () => {
+    const prev = profile?.coachProfile;
+    body.innerHTML = `
+      <textarea id="ci2-text" class="ci-notes" maxlength="800" placeholder="e.g. bigger arms and a flatter stomach, or I want to look like…">${opts.reset && prev?.text ? escapeHtml(prev.text) : ''}</textarea>
+      <div class="pg-ask-row">
+        <label class="ui-btn-outline pg-photo" for="ci2-photo">Add photo<input type="file" id="ci2-photo" accept="image/*" hidden /></label>
+        <button type="button" class="ui-btn-primary" id="ci2-go">Continue</button>
+      </div>
+      <div id="ci2-photo-name" class="ci-hint"></div><div id="ci2-msg" class="ci-msg"></div>`;
+    document.getElementById('ci2-photo').addEventListener('change', async (e) => {
+      const f = e.target.files && e.target.files[0], n = document.getElementById('ci2-photo-name');
+      if (!f) { state.photo = null; n.textContent = ''; return; }
+      try { state.photo = await coachImageFromFile(f); n.textContent = `Reference photo added: ${f.name}`; } catch (_) { state.photo = null; n.textContent = 'Could not read that photo.'; }
+    });
+    document.getElementById('ci2-go').addEventListener('click', () => {
+      state.text = document.getElementById('ci2-text').value.trim();
+      if (!state.text && !state.photo) { document.getElementById('ci2-msg').style.color = '#FF4D67'; document.getElementById('ci2-msg').textContent = 'Say what you want, or add a photo.'; return; }
+      ask();
+    });
+  };
+  const paintQuestions = (res) => {
+    const picked = {};
+    body.innerHTML = `<div class="co-sum">${escapeHtml(res.summary)}</div>
+      ${res.questions.map(q => `<div class="ui-banner ci-section" style="margin-top:16px;">◈ ${escapeHtml(q.question)}</div>
+        <div class="sf-opts" data-q="${escapeHtml(q.id)}">${q.options.map(o => `<button type="button" class="sf-opt" data-v="${escapeHtml(o)}">${escapeHtml(o)}</button>`).join('')}</div>
+        <input type="text" class="ci2-own" data-q="${escapeHtml(q.id)}" maxlength="200" placeholder="Or type your own" style="width:100%;margin-top:6px;" />`).join('')}
+      <button class="ui-btn-primary ci-save" id="ci2-next" disabled>Continue</button><div id="ci2-msg" class="ci-msg"></div>`;
+    const next = document.getElementById('ci2-next');
+    const refresh = () => { next.disabled = res.questions.some(q => !picked[q.id]); };
+    body.querySelectorAll('.sf-opts').forEach(row => row.querySelectorAll('.sf-opt').forEach(b => b.addEventListener('click', () => {
+      picked[row.dataset.q] = b.dataset.v;
+      row.querySelectorAll('.sf-opt').forEach(x => x.classList.toggle('on', x === b));
+      const own = body.querySelector(`.ci2-own[data-q="${row.dataset.q}"]`); if (own) own.value = '';
+      refresh();
+    })));
+    body.querySelectorAll('.ci2-own').forEach(inp => inp.addEventListener('input', () => {
+      const v = inp.value.trim();
+      body.querySelectorAll(`.sf-opts[data-q="${inp.dataset.q}"] .sf-opt`).forEach(x => x.classList.remove('on'));
+      if (v) picked[inp.dataset.q] = v; else delete picked[inp.dataset.q];
+      refresh();
+    }));
+    next.addEventListener('click', () => {
+      res.questions.forEach(q => state.answers.push({ q: q.question, a: picked[q.id] }));
+      state.round += 1;
+      ask();
+    });
+  };
+  const paintReady = (res) => {
+    body.innerHTML = `<div class="pg-sub">Here is what I understood</div><div class="co-sum">${escapeHtml(res.summary)}</div>
+      <ul class="co-list" style="--co:var(--ui-gold);">${res.goals.map(g => `<li>${escapeHtml(g)}</li>`).join('')}</ul>
+      ${res.assumptions.length ? `<div class="pg-sub">I filled in</div><ul class="co-list" style="--co:#FFB454;">${res.assumptions.map(a => `<li>${escapeHtml(a)}</li>`).join('')}</ul>` : ''}
+      <button class="ui-btn-primary ci-save" id="ci2-yes">Yes, that's it</button>
+      <button class="ci-skip" id="ci2-no" style="width:100%;margin-top:6px;">Not quite, start again</button><div id="ci2-msg" class="ci-msg"></div>`;
+    document.getElementById('ci2-no').addEventListener('click', () => { state.answers = []; state.round = 1; paintStart(); });
+    document.getElementById('ci2-yes').addEventListener('click', async (e) => {
+      e.target.disabled = true;
+      const coachProfile = { summary: res.summary, goals: res.goals, assumptions: res.assumptions, answers: state.answers.slice(0, 12), text: state.text.slice(0, 800), updated: todayStr() };
+      try {
+        await writeUserFields({ coachProfile });
+        profile.coachProfile = coachProfile;
+        overlay.remove();
+        showToast('The coach has your goals.', 'success');
+        if (onDone) onDone(); else window.openCoachPlan();
+      } catch (er) { e.target.disabled = false; const m = document.getElementById('ci2-msg'); m.style.color = '#FF4D67'; m.textContent = 'Could not save: ' + (er?.message || er); }
+    });
+  };
+  paintStart();
+};
+
+/** After intake with nowhere else to go: the coach builds a plan from the saved goals. */
+window.openCoachPlan = async () => {
+  document.getElementById('coach-review-overlay')?.remove();
+  const overlay = document.createElement('div');
+  overlay.id = 'coach-review-overlay';
+  overlay.className = 'ci-overlay';
+  overlay.innerHTML = `<div class="ui-window gold ci-win"><div class="ci-scroll">
+    <div class="ci-hero" style="padding-bottom:14px;"><div class="ci-hero-top"><div><div class="ui-banner gold">◈ Coach</div><div class="ci-title">Your plan</div></div><button class="ci-close" aria-label="Close" data-close>✕</button></div></div>
+    ${coachGoalsHtml()}
+    <div id="co-body"><div class="ci-empty">The coach is building your plan from your data…</div></div>
+    <button class="ui-btn-outline" id="co-look" style="width:100%;margin-top:10px;">Set my physique goal and date</button>
+    <button class="ci-skip" data-close style="width:100%;margin-top:6px;">Close</button>
+  </div></div>`;
+  getOverlayHost().appendChild(overlay);
+  overlay.querySelectorAll('[data-close]').forEach(b => b.addEventListener('click', () => overlay.remove()));
+  wireCoachGoals(overlay, () => { overlay.remove(); window.openCoachPlan(); });
+  document.getElementById('co-look').addEventListener('click', () => { overlay.remove(); window.openPhysiqueGoalSheet(); });
+  const body = document.getElementById('co-body');
+  try {
+    const res = await callCoach('design', profile.coachProfile.summary, null);
     body.innerHTML = coachResultHtml(res, {});
     wireCoachResult(body, res, {});
   } catch (err) { body.innerHTML = `<div class="ci-msg" style="color:#FF4D67;">${escapeHtml(coachErrorText(err))}</div>`; }
