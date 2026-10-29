@@ -62,6 +62,32 @@ const sexOf = (s) => (s === 'female' ? 'female' : 'male');
 export function presetsFor(sex) { return PRESETS[sexOf(sex)]; }
 export const DEFAULT_PRESET = 'lean';
 
+const CUSTOM_RANGES = {
+  male:   { bodyFat: [6, 25], vTaper: [1.1, 1.75], chestWaist: [1.0, 1.5], armChest: [0.28, 0.4], waistHip: [0.6, 0.9] },
+  female: { bodyFat: [12, 35], vTaper: [1.1, 1.5], chestWaist: [1.0, 1.4], armChest: [0.26, 0.38], waistHip: [0.6, 0.9] },
+};
+const GROUPS = ['Chest', 'Back', 'Shoulders', 'Quads', 'Hamstrings', 'Biceps', 'Triceps', 'Core', 'Calves'];
+
+/**
+ * A look the Hunter asked the coach for ("bigger arms", a character, a photo): target proportions where
+ * it asks for them, clamped to the same ranges the coach is held to, plus the muscle groups it wants
+ * extra volume for. Null when it asks for nothing usable. Any proportion left out has no target.
+ */
+export function customLook(sex, raw) {
+  if (!raw || typeof raw !== 'object') return null;
+  const r = CUSTOM_RANGES[sexOf(sex)];
+  const out = { label: String(raw.label || 'Custom look').slice(0, 40), blurb: String(raw.blurb || '').slice(0, 100), custom: true };
+  let any = false;
+  for (const k of Object.keys(r)) {
+    const v = Number(raw[k]);
+    if (raw[k] == null || !Number.isFinite(v)) continue;
+    out[k] = Math.min(r[k][1], Math.max(r[k][0], v));
+    any = true;
+  }
+  out.focus = Array.isArray(raw.focus) ? raw.focus.filter(g => GROUPS.includes(g)).slice(0, 4) : [];
+  return any ? out : null;
+}
+
 /** Training age from the months of logged training. */
 export function experienceFrom(months) {
   const m = Number(months);
@@ -108,7 +134,7 @@ function weeksToGrow(multiple, monthlyPct, cutWeeks) {
  */
 export function solveGoal(ctx) {
   const sex = sexOf(ctx && ctx.sex);
-  const p = (PRESETS[sex] || {})[ctx && ctx.preset];
+  const p = ctx && ctx.preset === 'custom' ? customLook(sex, ctx.custom) : (PRESETS[sex] || {})[ctx && ctx.preset];
   if (!p) return { error: 'preset', message: 'Pick a look.' };
   const today = ctx.today;
   if (!ctx.deadline || !/^\d{4}-\d{2}-\d{2}$/.test(ctx.deadline)) return { error: 'deadline', message: 'Pick a deadline.' };
@@ -132,7 +158,7 @@ export function solveGoal(ctx) {
   const arm = c.armLeft || c.armRight ? Math.max(c.armLeft || 0, c.armRight || 0) : null;
 
   // body fat first: it sets the waist
-  const bfTarget = Math.min(bfNow, p.bodyFat);
+  const bfTarget = p.bodyFat != null ? Math.min(bfNow, p.bodyFat) : bfNow;
   let waistT = waistForBodyFat(sex, bfTarget + methodGap, { neck: c.neck, hip: c.hip, height: c.height, maxWaist: c.waist }) ?? c.waist;
   if (p.waistHip && c.hip) waistT = Math.min(waistT, r1(c.hip * p.waistHip));
   waistT = Math.min(waistT, c.waist);
@@ -215,7 +241,7 @@ export function solveGoal(ctx) {
   if (rel('arms') > 0.02) { focus.push('Biceps'); focus.push('Triceps'); }
 
   return {
-    sex, preset: ctx.preset, bodyFatSource: caliperNow !== null ? 'calipers' : offsetNow !== null ? 'tapeCal' : 'tape', label: p.label, blurb: p.blurb, today, deadline: ctx.deadline, experience,
+    sex, preset: ctx.preset, customFocus: p.focus || [], bodyFatSource: caliperNow !== null ? 'calipers' : offsetNow !== null ? 'tapeCal' : 'tape', label: p.label, blurb: p.blurb, today, deadline: ctx.deadline, experience,
     now: { weight: r1(c.weight), bodyFat: bfNow, leanKg: r1(leanNow), fatKg: r1(fatNow), waist: c.waist, shoulders: usable('shoulders') ? c.shoulders : null, chest: usable('chest') ? c.chest : null, arms: arm },
     target: { weight: weightT, bodyFat: r1(bfTarget), leanKg: r1(leanT), fatKg: r1(fatT), waist: target.waist, shoulders: target.shoulders ?? null, chest: target.chest ?? null, arms: target.arms ?? null },
     leanGainKg: r1(leanGain), fatToLoseKg: r1(fatToLose),
@@ -224,7 +250,7 @@ export function solveGoal(ctx) {
     needs: {
       proteinG: [Math.round(c.weight * 1.6), Math.round(c.weight * 2.2)],
       sessionsPerWeek: Math.max(3, Math.min(5, Number(ctx.sessionsPerWeek) || 3)),
-      focus: [...new Set(focus)],
+      focus: [...new Set([...(p.focus || []), ...focus])],
       ffmiTarget: ffmiT,
     },
   };
@@ -308,7 +334,7 @@ export function goalPriorities(plan) {
 /** Muscle groups the goal wants extra sets for, biggest remaining gap first. */
 export function goalFocus(plan, max = 3) {
   const rows = goalPriorities(plan).filter(p => p.focus.length).sort((a, b) => b.weight - a.weight);
-  const groups = [];
+  const groups = [...((plan && plan.customFocus) || [])]; // a custom look names its own first
   for (const p of rows) for (const g of p.focus) if (!groups.includes(g)) groups.push(g);
   return groups.slice(0, max);
 }

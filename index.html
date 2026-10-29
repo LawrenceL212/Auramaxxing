@@ -4323,6 +4323,18 @@
   .sf-opt{min-height:48px;font-family:var(--font-display);font-weight:700;font-size:13px;letter-spacing:.04em;text-transform:uppercase;color:var(--text-dim);cursor:pointer;background:rgba(14,20,38,.9);border:1px solid rgba(91,168,255,.25);}
   .sf-opt.on{color:#1a0f00;background:var(--ui-gold-grad);border-color:var(--ui-gold);}
   #sf-save:disabled{opacity:.4;}
+  .pg-ask-row{display:grid;grid-template-columns:1fr 1.4fr;gap:8px;margin-top:8px;}
+  .pg-photo{display:flex;align-items:center;justify-content:center;min-height:48px;cursor:pointer;text-align:center;}
+  #pg-ask{width:100%;min-height:76px;margin-top:6px;}
+  .co-head{font-family:var(--font-display);font-weight:800;font-size:19px;letter-spacing:.04em;text-transform:uppercase;color:var(--ui-gold);margin:12px 0 6px;}
+  .co-sum{font-size:16px;line-height:1.5;color:var(--text);}
+  .co-cav{font-size:14px;line-height:1.45;color:#FFB454;margin-top:10px;padding:10px 12px;border-left:3px solid #FFB454;background:rgba(255,180,84,.06);}
+  .co-list{margin:0;padding-left:0;list-style:none;}
+  .co-list li{font-size:15px;line-height:1.4;color:var(--text-dim);padding:6px 0 6px 14px;border-left:3px solid var(--co);margin-bottom:4px;}
+  .co-day{padding:9px 0;border-top:1px solid rgba(91,168,255,.08);}
+  .co-day b{display:block;font-family:var(--font-display);font-size:13px;letter-spacing:.06em;text-transform:uppercase;color:var(--text);}
+  .co-day span{font-size:13px;line-height:1.5;color:var(--text-faint);}
+  .co-act{display:grid;gap:8px;margin-top:14px;}
 </style>
 </head>
 <body>
@@ -4874,7 +4886,7 @@ import { penaltyView } from "./penalty-view.js";
 import { setInputKind, setInputHeaders, storedSet, storedSetSecs, partsToSecs, secsToParts,
          formatSetTime, isTimeKind, LOAD_TYPES, loadLabel, offersLoadChoice, defaultLoad,
          setLoad, loggedLoad, withLoad, BAND_LEVELS, DEFAULT_BAND, bandLabel, loggedBand,
-         setBand, loadText, loadOptions, isBandLoad } from "./set-inputs.js";
+         setBand, loadText, loadOptions, isBandLoad, isRunDef } from "./set-inputs.js";
 import { feltEasier, EASIER_LABEL } from "./set-compare.js";
 import { detectReEntry, reEntryPlan, directiveProgress, formatMeasure, DIRECTIVE_METRICS,
          countdown, formatCountdown, timeElapsedFraction, buildDirectivesICS,
@@ -4883,7 +4895,7 @@ import { analyseHabit, sampleCurve, describeReturns,
          HABIT_TARGET_DAYS, MISS_GRACE } from "./habit.js";
 import { muscleDevelopment, bodyBuild, bodyFrame } from "./physique.js";
 import { weeklyChange, pathStatus, pathSvg, parseGoal as parseWeightGoal } from "./weight-path.js";
-import { solveGoal, presetsFor, DEFAULT_PRESET, targetRows, goalProgress, goalPriorities, goalFocus, weightGoalFromPlan, verdictLine } from "./physique-goal.js";
+import { solveGoal, customLook, presetsFor, DEFAULT_PRESET, targetRows, goalProgress, goalPriorities, goalFocus, weightGoalFromPlan, verdictLine } from "./physique-goal.js";
 import { progressCheck } from "./progress-check.js";
 import { fitnessScore } from "./fitness-score.js";
 import { rhythmState, weighInReward } from "./rhythm.js";
@@ -16991,7 +17003,7 @@ function currentPhysiquePlan() {
   if (!g || !g.preset || !g.deadline) return null;
   const m = latestMeasures();
   if (!m) return { error: 'measurements', message: 'Do a check-in so the plan can start from your measurements.' };
-  return solveGoal({ sex: profile?.bodyType || 'male', preset: g.preset, deadline: g.deadline, today: todayStr(), measurements: m, trainingMonths: physiqueTrainingMonths(), sessionsPerWeek: profile?.weeklyGoal });
+  return solveGoal({ sex: profile?.bodyType || 'male', preset: g.preset, custom: g.custom, deadline: g.deadline, today: todayStr(), measurements: m, trainingMonths: physiqueTrainingMonths(), sessionsPerWeek: profile?.weeklyGoal });
 }
 
 const PG_VERDICT = {
@@ -17052,6 +17064,7 @@ window.openPhysiqueGoalSheet = () => {
   const g = profile?.physiqueGoal;
   const today = todayStr();
   let preset = g?.preset && presets[g.preset] ? g.preset : DEFAULT_PRESET;
+  let custom = g?.preset === 'custom' && customLook(sex, g.custom) ? g.custom : null; // a look the coach designed
   const defaultDeadline = shiftDay(today, 7 * 16);
   const minDate = shiftDay(today, 14);
   const overlay = document.createElement('div');
@@ -17068,10 +17081,20 @@ window.openPhysiqueGoalSheet = () => {
           <div class="ci-sub" style="margin:8px 0 0;">Pick the look and a date. The app works out what it takes, and re-works it at every check-in.</div>
         </div>
         <div class="ui-banner ci-section">◈ The look</div>
-        <div class="pg-presets">${Object.entries(presets).map(([k, p]) => `<button type="button" class="pg-preset${k === preset ? ' on' : ''}" data-preset="${k}"><b>${p.label}</b><span>${p.blurb}</span></button>`).join('')}</div>
+        <div class="pg-presets">${Object.entries(presets).map(([k, p]) => `<button type="button" class="pg-preset${k === preset && !custom ? ' on' : ''}" data-preset="${k}"><b>${p.label}</b><span>${p.blurb}</span></button>`).join('')}</div>
         <div class="ui-banner ci-section" style="margin-top:20px;">◈ Deadline</div>
         <div class="pg-dates">${[[12, '12 wk'], [16, '16 wk'], [26, '6 mo'], [52, '1 yr']].map(([w, l]) => `<button type="button" class="ui-chip dim" data-weeks="${w}">${l}</button>`).join('')}</div>
         <div class="ci-in" style="margin-top:10px;"><input type="date" id="pg-deadline" min="${minDate}" value="${g?.deadline && g.deadline >= minDate ? g.deadline : defaultDeadline}" style="padding-right:12px;" /></div>
+        <div class="ui-banner ci-section" style="margin-top:22px;">◈ Or ask the coach</div>
+        <div class="ci-sub">Say what you want: "bigger arms", "a wide back and abs", a character, or add a photo of the look. The coach designs the target and a plan from your data.</div>
+        <div id="pg-custom"></div>
+        <textarea id="pg-ask" class="ci-notes" maxlength="600" placeholder="I want…"></textarea>
+        <div class="pg-ask-row">
+          <label class="ui-btn-outline pg-photo" for="pg-photo">Add photo<input type="file" id="pg-photo" accept="image/*" hidden /></label>
+          <button type="button" class="ui-btn-primary" id="pg-design">Design with coach</button>
+        </div>
+        <div id="pg-photo-name" class="ci-hint"></div>
+        <div id="pg-coach"></div>
         <div class="ui-banner gold ci-section" style="margin-top:22px;">◈ What it takes</div>
         <div id="pg-preview"></div>
         <button class="ui-btn-primary ci-save" id="pg-save">${g ? 'Update goal' : 'Set goal'}</button>
@@ -17082,11 +17105,18 @@ window.openPhysiqueGoalSheet = () => {
   getOverlayHost().appendChild(overlay);
   const input = () => document.getElementById('pg-deadline').value;
   const draft = () => ({ ...(profile?.physiqueGoal || {}), preset, deadline: input() });
+  const solveCtx = (deadline, m) => ({ sex, preset: custom ? 'custom' : preset, custom, deadline, today, measurements: m, trainingMonths: physiqueTrainingMonths(), sessionsPerWeek: profile?.weeklyGoal });
+  const paintCustom = () => {
+    const box = document.getElementById('pg-custom');
+    const c = custom && customLook(sex, custom);
+    box.innerHTML = c ? `<div class="pg-preset on" style="margin-bottom:10px;"><b>${escapeHtml(c.label)}</b><span>${escapeHtml(c.blurb || 'Designed by the coach')}</span></div>` : '';
+    overlay.querySelectorAll('.pg-preset[data-preset]').forEach(x => x.classList.toggle('on', !c && x.dataset.preset === preset));
+  };
   const render = () => {
     const m = latestMeasures();
     const box = document.getElementById('pg-preview');
     if (!m) { box.innerHTML = '<div class="ci-empty">Do a weekly check-in first so the plan can start from your measurements.</div>'; return; }
-    const plan = solveGoal({ sex, preset, deadline: input(), today, measurements: m, trainingMonths: physiqueTrainingMonths(), sessionsPerWeek: profile?.weeklyGoal });
+    const plan = solveGoal(solveCtx(input(), m));
     if (plan.error) { box.innerHTML = `<div class="ci-empty">${escapeHtml(plan.message)}</div>`; return; }
     const [vLabel, vColor] = PG_VERDICT[plan.verdict] || PG_VERDICT.on_schedule;
     const rows = targetRows(plan).map(r => `<div class="pg-prev-row"><span>${r.label}</span><span>${r.now} <i>→</i> <b>${r.target}</b> ${r.unit}</span></div>`).join('');
@@ -17100,7 +17130,8 @@ window.openPhysiqueGoalSheet = () => {
   overlay.querySelectorAll('[data-close]').forEach(b => b.addEventListener('click', () => overlay.remove()));
   overlay.querySelectorAll('.pg-preset').forEach(b => b.addEventListener('click', () => {
     preset = b.dataset.preset;
-    overlay.querySelectorAll('.pg-preset').forEach(x => x.classList.toggle('on', x === b));
+    custom = null;
+    paintCustom();
     render();
   }));
   overlay.querySelectorAll('[data-weeks]').forEach(b => b.addEventListener('click', () => { document.getElementById('pg-deadline').value = shiftDay(today, Number(b.dataset.weeks) * 7); render(); }));
@@ -17120,12 +17151,13 @@ window.openPhysiqueGoalSheet = () => {
     const d = draft();
     if (!m) { msg.style.color = '#FF4D67'; msg.textContent = 'Do a weekly check-in first.'; return; }
     if (!d.deadline || d.deadline < minDate) { msg.style.color = '#FF4D67'; msg.textContent = 'Pick a deadline at least two weeks away.'; return; }
-    const plan = solveGoal({ sex, preset, deadline: d.deadline, today, measurements: m, trainingMonths: physiqueTrainingMonths(), sessionsPerWeek: profile?.weeklyGoal });
+    const plan = solveGoal(solveCtx(d.deadline, m));
     if (plan.error) { msg.style.color = '#FF4D67'; msg.textContent = plan.message; return; }
     // keep the original start when only the look or date changes
     const keepStart = g?.start && g?.startDate;
     const goal = {
-      preset, deadline: d.deadline,
+      ...(custom ? { preset: 'custom', custom: (({ custom: _flag, ...clean }) => clean)(customLook(sex, custom)) } : { preset }),
+      deadline: d.deadline,
       startDate: keepStart ? g.startDate : today,
       start: keepStart ? g.start : { waist: plan.now.waist, shoulders: plan.now.shoulders, chest: plan.now.chest, arms: plan.now.arms, bodyFat: plan.now.bodyFat, weight: plan.now.weight },
     };
@@ -17139,6 +17171,27 @@ window.openPhysiqueGoalSheet = () => {
       if (typeof renderTrends === 'function' && document.getElementById('view-trends')?.classList.contains('active')) renderTrends();
     } catch (e) { msg.style.color = '#FF4D67'; msg.textContent = 'Could not save: ' + (e?.message || e); }
   });
+  let photo = null;
+  document.getElementById('pg-photo').addEventListener('change', async (e) => {
+    const f = e.target.files && e.target.files[0];
+    const name = document.getElementById('pg-photo-name');
+    if (!f) { photo = null; name.textContent = ''; return; }
+    try { photo = await coachImageFromFile(f); name.textContent = `Reference photo added: ${f.name}`; } catch (err) { photo = null; name.textContent = 'Could not read that photo.'; }
+  });
+  document.getElementById('pg-design').addEventListener('click', async (e) => {
+    const ask = document.getElementById('pg-ask').value.trim();
+    const box = document.getElementById('pg-coach');
+    if (!ask && !photo) { box.innerHTML = '<div class="ci-msg" style="color:#FF4D67;">Say what you want, or add a photo.</div>'; return; }
+    e.target.disabled = true;
+    box.innerHTML = '<div class="ci-empty">The coach is reading your data…</div>';
+    try {
+      const res = await callCoach('design', ask, photo);
+      box.innerHTML = coachResultHtml(res, { look: true });
+      wireCoachResult(box, res, { onLook: () => { custom = { ...res.look, focus: res.focus }; paintCustom(); render(); document.getElementById('pg-preview').scrollIntoView({ block: 'start', behavior: 'smooth' }); } });
+    } catch (err) { box.innerHTML = `<div class="ci-msg" style="color:#FF4D67;">${escapeHtml(coachErrorText(err))}</div>`; }
+    e.target.disabled = false;
+  });
+  paintCustom();
   render();
 };
 
@@ -17346,6 +17399,164 @@ window.openCheckinHub = (view = 'home', reward = null) => {
   }
 };
 
+
+// ── AI COACH ──────────────────────────────────────────────────────────────
+// functions/lib/design-plan.js (Cloud Function `designPlan`, Claude): from the Hunter's own data it designs a look
+// and a plan ("design") or says how they are doing and what to change ("review"). The app's maths still plans the
+// timeline from the targets, and nothing is applied until the Hunter taps. The photo, if any, is a reference
+// for the look, resized on the device and sent only with that request.
+
+/** Names the coach may use: every resistance exercise the app knows (no timed or run moves). */
+function coachExercises() {
+  return Object.entries(EXERCISES_ALL).filter(([, d]) => d && !d.timed && !isRunDef(d)).map(([n]) => n).slice(0, 400);
+}
+
+/** The Hunter's data as the coach sees it. */
+function coachInput(mode, request, image) {
+  const today = todayStr();
+  const sex = profile?.bodyType || 'male';
+  const last = myCheckins[myCheckins.length - 1];
+  let latest = null;
+  if (last) {
+    try {
+      const m = bodyMetrics(sex, withCal(last));
+      latest = { date: last.date, weight: last.weight, waist: last.waist, neck: last.neck, shoulders: last.shoulders, chest: last.chest, armLeft: last.armLeft, armRight: last.armRight, thigh: last.thigh, hip: last.hip,
+        bodyFat: m.bodyFat, bodyFatSource: m.bodyFatSource, leanKg: m.leanKg, ffmi: m.ffmi, vTaper: m.vTaper?.ratio, waistToHeight: m.waistToHeight,
+        fatDistribution: m.distribution ? { label: m.distribution.label, top: m.distribution.top.map(s => s.name) } : null,
+        limbMuscle: m.limbs ? { armCm: m.limbs.arm?.avgCm, thighCm: m.limbs.thigh?.cm } : null };
+    } catch (_) {}
+  }
+  const wk = weeklyChange(myWeights, today);
+  const bw = latestBodyweightKg();
+  const lifts = Object.entries(myPRs || {}).filter(([, p]) => p && p.e1rm).map(([name, p]) => ({ name, e1rm: Math.round(p.e1rm), tier: getStrengthTier(name, p.e1rm, bw, profile?.gender || 'male') })).sort((a, b) => b.e1rm - a.e1rm).slice(0, 12);
+  const dates = (myWorkouts || []).filter(w => w.uid === currentUser?.uid && w.date).map(w => w.date);
+  const g = profile?.physiqueGoal;
+  const plan = g ? currentPhysiquePlan() : null;
+  const st = blockState(profile?.block, today);
+  return {
+    mode, request, image,
+    sex, age: last?.age || null, heightCm: profile?.heightCm || null, weightKg: bw,
+    latest,
+    weightTrend: { weeklyChange: wk, recent: (myWeights || []).slice(-10).map(w => ({ date: w.date, kg: w.weight })) },
+    trainingMonths: physiqueTrainingMonths(), sessionsPerWeek: profile?.weeklyGoal || 3,
+    sessionsLast28Days: new Set(dates.filter(d => daysBetween(d, today) <= 27 && d <= today)).size,
+    lifts,
+    currentGoal: g ? { look: g.preset === 'custom' ? g.custom?.label : presetsFor(sex)[g.preset]?.label, deadline: g.deadline, verdict: plan && !plan.error ? plan.verdict : null, weeksNeeded: plan && !plan.error ? plan.weeks.needed : null } : null,
+    currentPlan: myProgram?.days?.length ? myProgram.days.map(d => ({ name: d.name, exercises: (d.exercises || []).map(e => ({ name: e.name, sets: e.sets, reps: e.reps })) })) : null,
+    feedback: feedbackEntries().sort((a, b) => b.date.localeCompare(a.date)).slice(0, 6),
+    block: st ? { week: st.week, phase: st.phase, targetRir: st.targetRir } : null,
+    exercises: coachExercises(),
+  };
+}
+
+async function callCoach(mode, request, image) {
+  const { getFunctions, httpsCallable } = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-functions.js');
+  const call = httpsCallable(getFunctions(app), 'designPlan');
+  const res = await call(coachInput(mode, request, image));
+  return res.data;
+}
+
+function coachErrorText(err) {
+  const code = String(err?.code || '');
+  if (/unauthenticated/.test(code)) return 'Sign in again to use the coach.';
+  if (/resource-exhausted|failed-precondition/.test(code)) return err.message;
+  if (/not-found|unavailable|internal/.test(code)) return 'The coach is not available yet or is busy. Try again in a minute.';
+  return err?.message || 'The coach could not answer.';
+}
+
+/** A photo as a JPEG up to 1024 px on its long side, base64, for the coach. */
+async function coachImageFromFile(file) {
+  const url = URL.createObjectURL(file);
+  try {
+    const img = await new Promise((ok, no) => { const i = new Image(); i.onload = () => ok(i); i.onerror = no; i.src = url; });
+    const s = Math.min(1, 1024 / Math.max(img.width, img.height));
+    const c = document.createElement('canvas');
+    c.width = Math.round(img.width * s); c.height = Math.round(img.height * s);
+    c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+    return { mediaType: 'image/jpeg', data: c.toDataURL('image/jpeg', 0.82).split(',')[1] };
+  } finally { URL.revokeObjectURL(url); }
+}
+
+/** What the coach said: headline, summary, wins, concerns, next steps, and the plan it proposes. */
+function coachResultHtml(res, opts = {}) {
+  const li = (a, color) => a.length ? `<ul class="co-list" style="--co:${color};">${a.map(x => `<li>${escapeHtml(x)}</li>`).join('')}</ul>` : '';
+  const days = res.days ? `<div class="pg-sub">Proposed plan · ${res.days.length} session${res.days.length === 1 ? '' : 's'} a week</div>
+    ${res.days.map(d => `<div class="co-day"><b>${escapeHtml(d.name)}</b><span>${d.exercises.map(e => `${escapeHtml(e.name)} ${e.sets}×${e.reps}`).join(' · ')}</span></div>`).join('')}` : '';
+  return `<div class="co">
+    <div class="co-head">${escapeHtml(res.coach.headline || 'Coach')}</div>
+    <div class="co-sum">${escapeHtml(res.coach.summary)}</div>
+    ${res.caveat ? `<div class="co-cav">${escapeHtml(res.caveat)}</div>` : ''}
+    ${res.coach.wins.length ? `<div class="pg-sub">Going well</div>${li(res.coach.wins, 'var(--growing)')}` : ''}
+    ${res.coach.concerns.length ? `<div class="pg-sub">Watch</div>${li(res.coach.concerns, '#FFB454')}` : ''}
+    ${res.coach.nextSteps.length ? `<div class="pg-sub">This week</div>${li(res.coach.nextSteps, 'var(--ui-gold)')}` : ''}
+    ${days}
+    <div class="co-act">
+      ${opts.look && res.look ? '<button type="button" class="ui-btn-primary" data-co="look">Use this look</button>' : ''}
+      ${res.days ? `<button type="button" class="ui-btn-outline" data-co="plan">${myProgram?.days?.length ? 'Replace my plan' : 'Use this plan'}</button>` : ''}
+    </div>
+    <div class="ci-msg" data-co-msg></div>
+    <div class="ci-foot">Written by an AI from your own data. It can be wrong: check it makes sense for you.</div>
+  </div>`;
+}
+
+/** The program the coach proposed, in the plan's own shape, keeping what the old plan stored per exercise. */
+function programFromCoach(res) {
+  const old = myProgram || {};
+  const kept = {};
+  (old.days || []).forEach(d => (d.exercises || []).forEach(e => { kept[e.name] = e; }));
+  const SCHEDULES = { 1: ['Mon'], 2: ['Mon', 'Thu'], 3: ['Mon', 'Wed', 'Fri'], 4: ['Mon', 'Tue', 'Thu', 'Fri'], 5: ['Mon', 'Tue', 'Wed', 'Fri', 'Sat'], 6: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] };
+  return {
+    ...old,
+    name: old.name || 'Coach plan',
+    goal: res.goal,
+    scheduleMode: 'rotation',
+    schedule: SCHEDULES[Math.min(6, res.days.length)] || SCHEDULES[3],
+    currentDayIndex: 0,
+    days: res.days.map(d => ({ name: d.name, exercises: d.exercises.map(e => ({ ...(kept[e.name] || {}), name: e.name, sets: e.sets, reps: e.reps })) })),
+  };
+}
+
+function wireCoachResult(box, res, { onLook } = {}) {
+  const msg = box.querySelector('[data-co-msg]');
+  box.querySelector('[data-co="look"]')?.addEventListener('click', () => { onLook && onLook(); if (msg) { msg.style.color = 'var(--growing)'; msg.textContent = 'Look added below. Check it, pick a date, and save the goal.'; } });
+  box.querySelector('[data-co="plan"]')?.addEventListener('click', async (e) => {
+    if (myProgram?.days?.length && e.target.dataset.sure !== '1') { e.target.dataset.sure = '1'; e.target.textContent = 'Tap again to replace'; return; }
+    e.target.disabled = true;
+    const before = myProgram;
+    try {
+      myProgram = programFromCoach(res);
+      await setDoc(doc(db, 'programs', currentUser.uid), myProgram);
+      try { renderQuestFeed(); renderPlanOptimiser(); } catch (_) {}
+      e.target.textContent = '✓ Plan applied';
+      showToast('Plan updated from the coach.', 'success');
+    } catch (err) {
+      myProgram = before; e.target.disabled = false; e.target.dataset.sure = ''; e.target.textContent = 'Use this plan';
+      if (msg) { msg.style.color = '#FF4D67'; msg.textContent = 'Could not save the plan: ' + (err?.message || err); }
+    }
+  });
+}
+
+/** "How am I doing": the coach reviews the data against the goal and plan. */
+window.openCoachReview = async () => {
+  document.getElementById('coach-review-overlay')?.remove();
+  const overlay = document.createElement('div');
+  overlay.id = 'coach-review-overlay';
+  overlay.className = 'ci-overlay';
+  overlay.innerHTML = `<div class="ui-window gold ci-win"><div class="ci-scroll">
+    <div class="ci-hero" style="padding-bottom:14px;"><div class="ci-hero-top"><div><div class="ui-banner gold">◈ Coach</div><div class="ci-title">How you're doing</div></div><button class="ci-close" aria-label="Close" data-close>✕</button></div></div>
+    <div id="co-body"><div class="ci-empty">The coach is reading your data…</div></div>
+    <button class="ci-skip" data-close style="width:100%;margin-top:6px;">Close</button>
+  </div></div>`;
+  getOverlayHost().appendChild(overlay);
+  overlay.querySelectorAll('[data-close]').forEach(b => b.addEventListener('click', () => overlay.remove()));
+  const body = document.getElementById('co-body');
+  try {
+    const res = await callCoach('review', '', null);
+    body.innerHTML = coachResultHtml(res, {});
+    wireCoachResult(body, res, {});
+  } catch (err) { body.innerHTML = `<div class="ci-msg" style="color:#FF4D67;">${escapeHtml(coachErrorText(err))}</div>`; }
+};
+
 // ── PROGRESS CHECK ────────────────────────────────────────────────────────
 // progress-check.js (pure) turns what the app already knows into a fast, honest summary.
 // Presentation only: reads state, writes nothing.
@@ -17410,6 +17621,9 @@ window.openProgressCheck = () => {
         ${blockCardHtml()}
         <div class="ui-banner ci-section" style="margin-top:22px;">◈ Fitness level</div>
         ${fitnessCardHtml()}
+        <div class="ui-banner ci-section" style="margin-top:22px;">◈ Coach</div>
+        <div class="pc-next">Ask the coach to read all your data, say how you're doing and what to change.</div>
+        <button type="button" class="ui-btn-outline" id="pc-coach" style="width:100%;margin-top:8px;">Ask the coach</button>
         <div class="ui-banner gold ci-section" style="margin-top:22px;">◈ Next</div>
         <div class="pc-next">${escapeHtml(res.next.text)}</div>
         ${label ? `<button class="ui-btn-primary ci-save" id="pc-act">${label}</button>` : ''}
@@ -17418,6 +17632,7 @@ window.openProgressCheck = () => {
     </div>`;
   getOverlayHost().appendChild(overlay);
   overlay.querySelectorAll('[data-close]').forEach(b => b.addEventListener('click', () => overlay.remove()));
+  document.getElementById('pc-coach')?.addEventListener('click', () => { overlay.remove(); window.openCoachReview(); });
   document.getElementById('block-start')?.addEventListener('click', async () => {
     try {
       await writeUserFields({ block: { start: todayStr() } });
