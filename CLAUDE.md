@@ -139,6 +139,8 @@ The AI coach (`designPlan` Cloud Function, [functions/lib/design-plan.js](functi
 
 [flow-view.js](flow-view.js) is the pure side of the flow screens (Enter Gate before the logger, the logger header's muscle figure, Gate Complete reward tiles, Rank Up, the after-hunt next step, bottom-nav dots), tested in `test/flow-view.test.mjs`. Reward tiles show only real XP / AP / streak (the game has no gold); a nav dot shows only for AP that can actually be invested (Rank) or soldiers waiting to deploy (World). Presentation only: every button reuses its existing handler.
 
+[suggestions.js](suggestions.js) is the suggestion box and bug reporter: any Hunter sends an idea or a bug from Settings (and a "Something went wrong · Report it" pill appears once per session after an uncaught error). A bug report carries `context` built by `bugContext()` (screen, open sheet, device, viewport, installed or browser, time zone, page version date, level and the last errors kept by the small error-trail `<script>` before the import map; error toasts are kept too). Stored in a new `suggestions` collection (`uid, name, text, status, kind, context?, createdAt`; the admin adds `statusAt`). The admin uid reads them in the Suggestions inbox (Settings → Admin), and "Send to Claude" copies a ready-made prompt (`claudePrompt`) and opens claude.ai with it. Rules are in the project's firestore-draft. Pure, so `node test/suggestions.test.mjs` tests it. Writes nothing else.
+
 Lazy-loaded: [classes.js](classes.js) via `await import('./classes.js')` in the class system section (6 root archetypes, 63 paths, 250+ class names) — kept out of the initial load deliberately.
 
 [countries_embedded.js](countries_embedded.js) (1.4 MB `COUNTRIES_GEO`) is imported **only** by [shadow-world.html](shadow-world.html), never by `index.html`.
@@ -175,7 +177,7 @@ wire further screens the same way, through the existing AuraGL runtime. Presenta
 
 ### Firestore collections
 
-Eight in use: `users/{uid}`, `workouts/{autoId}`, `programs/{uid}`, `customExercises/{autoId}`, `bodyweight/{autoId}`, `prs/{...}`, `apEvents/{...}`, `checkins/{...}`.
+Nine in use: `users/{uid}`, `workouts/{autoId}`, `programs/{uid}`, `customExercises/{autoId}`, `bodyweight/{autoId}`, `prs/{...}`, `apEvents/{...}`, `checkins/{...}`, `suggestions/{autoId}` (ideas and bug reports, nothing reads them for gameplay).
 
 ⚠️ [SETUP.md](SETUP.md) is **stale** — it documents only five collections and omits `prs`, `apEvents`, and `checkins`, and its security-rules block covers only the five it knows about. Trust the code over SETUP.md; treat SETUP.md as first-time setup instructions, not a current data-model reference.
 
