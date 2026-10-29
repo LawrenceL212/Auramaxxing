@@ -74,7 +74,7 @@ Coaching text
 Return only the JSON object the schema describes.`;
 
 /* ── goal intake ──────────────────────────────────────────────────────── */
-const MAX_ROUNDS = 3;
+const MAX_ROUNDS = 4;
 const QuestionSchema = z.object({ id: z.string(), question: z.string(), options: z.array(z.string()) });
 const IntakeSchema = z.object({
   ready: z.boolean(),
@@ -86,10 +86,16 @@ const IntakeSchema = z.object({
 
 const INTAKE_SYSTEM = `You are the coach inside Auramaxxing, a training app. Before you plan anything you must understand what this Hunter actually wants. You are given what they have said so far (their own words, plus any questions you asked and their answers) and their own data.
 
-Decide whether you understand the goal well enough to design a plan, and say so in "ready".
-- Ready means you know: the outcome they want (look, strength, size of a body part, fat loss, a lift, endurance, or a mix and which matters most), roughly how soon they want it, how many sessions a week they can really do, and anything that limits them (injury, equipment, time). Their data already answers many of these (sessions, weight, measurements, lifts); never ask what the data says.
-- If something that would change the plan is missing or vague, ask. Ask at most 4 questions in a round, only ones whose answer would change the plan, short and plain, each with 2 to 5 tap-able "options" (short answers; the Hunter can also type their own). Give every question a short id like "timeline" or "injuries".
-- A vague goal like "look good" or "get fit" is not ready: ask what that means to them. A clear one ("bigger arms, 12 weeks, 4 days a week, full gym") is ready at once.
+Decide whether you understand the goal well enough to design a plan that fits this person, and say so in "ready". Be thorough: a plan built on guesses fails, so cover everything below that their data does not already answer. Never ask what the data says.
+- The outcome: what they want (look, strength, size of a body part, fat loss, a lift, endurance, or a mix), which matters most, and what "done" looks like to them.
+- Timing: how soon, and whether there is a fixed date or event.
+- Training they can really do: sessions a week, how long a session, where (gym, home, what equipment).
+- Training history: how long they have trained, what programmes they have followed, what worked and what stalled or made them quit.
+- Body and limits: injuries, pain, movements to avoid, anything a doctor told them.
+- Fuel and recovery: how they eat now (protein, rough calories, meal habits, diet rules), sleep hours, stress, job activity.
+- Consistency: what usually gets in the way, so the plan fits their real week.
+- If something that would change the plan is missing or vague, ask. Ask at most 5 questions in a round, only ones whose answer would change the plan, short and plain, each with 2 to 5 tap-able "options" (short answers; the Hunter can also type their own). Give every question a short id like "timeline" or "injuries". Put the most important questions first, and do not repeat one already answered.
+- A vague goal like "look good" or "get fit" is not ready: ask what that means to them. Even a clear goal ("bigger arms, 12 weeks") is not ready until you know the training, history, limits and fuel/recovery points above, unless their data already covers them.
 - If this is round ${MAX_ROUNDS} or later, set ready to true and list in "assumptions" every gap you filled with a reasonable default.
 - When ready: "summary" is two to three sentences restating the goal in their terms (no hype), "goals" is one to four short goal statements, most important first, "questions" is empty.
 - When not ready: "summary" is one short sentence on what you understood so far, "goals" is empty, "questions" has your questions.
@@ -117,7 +123,7 @@ function sanitizeIntakeState(i) {
 /** What the client gets back from an intake round: either questions or a confirmed understanding. */
 function sanitizeIntake(raw, round) {
   const ready = !!raw.ready || round >= MAX_ROUNDS;
-  const questions = ready ? [] : (raw.questions || []).slice(0, 4).map((q, n) => ({
+  const questions = ready ? [] : (raw.questions || []).slice(0, 5).map((q, n) => ({
     id: str(q.id, 30) || `q${n + 1}`,
     question: str(q.question, 200),
     options: (q.options || []).slice(0, 5).map(o => str(o, 60)).filter(Boolean),

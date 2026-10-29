@@ -69,11 +69,12 @@ check('an unreadable answer is reported plainly', err && err.code === 'unparseab
 // goal intake
 const ask = { ready: false, summary: 'You want bigger arms.', goals: [], assumptions: [], questions: [
   { id: 'timeline', question: 'By when?', options: ['12 weeks', '6 months', 'No date'] },
-  { id: 'injuries', question: 'Any injuries?', options: [] }, { id: 'a', question: 'q3', options: ['x'] }, { id: 'b', question: 'q4', options: ['x'] }, { id: 'c', question: 'q5', options: ['x'] }] };
+  { id: 'injuries', question: 'Any injuries?', options: [] }, { id: 'a', question: 'q3', options: ['x'] }, { id: 'b', question: 'q4', options: ['x'] }, { id: 'c', question: 'q5', options: ['x'] }, { id: 'd', question: 'q6', options: ['x'] }] };
 const done = { ready: true, summary: 'Bigger arms in 12 weeks, 4 days a week.', goals: ['Bigger arms', 'Stay lean'], assumptions: ['Full gym'], questions: [] };
 check('the intake schema accepts both answers', IntakeSchema.safeParse(ask).success && IntakeSchema.safeParse(done).success);
-check('the intake prompt asks only what the data does not answer and never identifies a person', /never ask what the data says/.test(INTAKE_SYSTEM) && /Never identify anyone/.test(INTAKE_SYSTEM));
-check('a not-ready round keeps at most 4 questions and no goals', (() => { const r = sanitizeIntake(ask, 1); return !r.ready && r.questions.length === 4 && r.goals.length === 0; })());
+check('the intake prompt covers training history, fuel and recovery, and limits', /Training history/.test(INTAKE_SYSTEM) && /Fuel and recovery/.test(INTAKE_SYSTEM) && /Body and limits/.test(INTAKE_SYSTEM) && MAX_ROUNDS === 4);
+check('the intake prompt asks only what the data does not answer and never identifies a person', /never ask what the data says/i.test(INTAKE_SYSTEM) && /Never identify anyone/.test(INTAKE_SYSTEM));
+check('a not-ready round keeps at most 5 questions and no goals', (() => { const r = sanitizeIntake(ask, 1); return !r.ready && r.questions.length === 5 && r.goals.length === 0; })());
 check('a ready round has goals and no questions', (() => { const r = sanitizeIntake(done, 1); return r.ready && r.goals.length === 2 && r.questions.length === 0 && r.assumptions[0] === 'Full gym'; })());
 check('round 3 is forced ready; with no goals it is unusable', sanitizeIntake({ ...ask, goals: ['Bigger arms'] }, MAX_ROUNDS).ready === true && sanitizeIntake(ask, MAX_ROUNDS) === null);
 check('not ready with nothing to ask is unusable', sanitizeIntake({ ...ask, questions: [] }, 1) === null);
@@ -82,7 +83,7 @@ check('stored goals are bounded; none stored gives null', sanitizeGoals({ summar
 check('intake mode and the stored goals go to the model; design/review still work', (() => { const f = JSON.parse(buildContent({ sex: 'male', mode: 'intake', intake: { text: 'abs', round: 2, answers: [] }, goals: { summary: 's', goals: ['g'] } })[0].text.split('My data:\n')[1]); return f.mode === 'intake' && f.intake.round === 2 && f.goals.goals[0] === 'g'; })());
 check('design mode carries the stored goals', JSON.parse(buildContent({ sex: 'male', goals: { summary: 's', goals: ['g'] } })[0].text.split('My data:\n')[1]).goals.goals[0] === 'g');
 const iout = await designIntake({ client: fake({ stop_reason: 'end_turn', parsed_output: ask }), input: { sex: 'male', intake: { text: 'bigger arms', round: 1, answers: [] } } });
-check('the intake call uses low effort, its own prompt and returns questions', seen.output_config.effort === 'low' && seen.system === INTAKE_SYSTEM && !iout.ready && iout.questions.length === 4);
+check('the intake call uses low effort, its own prompt and returns questions', seen.output_config.effort === 'low' && seen.system === INTAKE_SYSTEM && !iout.ready && iout.questions.length === 5);
 err = null;
 try { await designIntake({ client: fake({ stop_reason: 'refusal', parsed_output: null }), input: { sex: 'male', intake: { text: 'x', round: 1 } } }); } catch (e) { err = e; }
 check('an intake refusal is reported plainly', err && err.code === 'refused');
