@@ -11,6 +11,10 @@
    - Body fat: US Navy circumference method, Hodgdon & Beckett 1984 (Naval
      Health Research Center reports 84-11 / 84-29), metric form as in DoD
      Instruction 1308.3. About ±3-4 points against DEXA for most adults.
+   - Skin-fold body fat: Jackson & Pollock 3-site (Br J Nutr 1978; Jackson, Pollock
+     & Ward, Med Sci Sports Exerc 1980) converted with the Siri equation (1961),
+     validated for ages 18-61. Usually closer than the tape formula when the
+     same person pinches the same sites the same way.
    - Body fat categories: American Council on Exercise (ACE).
    - BMI: WHO adult cut-offs (18.5 / 25 / 30).
    - Waist-to-height: Ashwell et al. 2012 (Obesity Reviews) and NICE 2022
@@ -71,6 +75,56 @@ export function navyBodyFat(sex, { waist, neck, hip, height } = {}) {
     bf = 495 / (1.0324 - 0.19077 * Math.log10(waist - neck) + 0.15456 * Math.log10(height)) - 450;
   }
   if (!Number.isFinite(bf) || bf < 2 || bf > 60) return null;
+  return round1(bf);
+}
+
+// ── skin-fold calipers ──────────────────────────────────────────────────
+export const SKINFOLD_SITES = {
+  male:   ['chest', 'abdomen', 'thigh'],
+  female: ['triceps', 'suprailiac', 'thigh'],
+};
+export const SKINFOLD_NAMES = { chest: 'Chest', abdomen: 'Abdomen', thigh: 'Thigh', triceps: 'Triceps', suprailiac: 'Suprailiac' };
+export const SKINFOLD_RANGE = [2, 60];
+export const JP_AGES = [18, 61];
+const SKINFOLD_STEPS = {
+  chest:      'Diagonal fold halfway between the nipple and the front of the armpit',
+  abdomen:    'Vertical fold 2 cm to the side of the navel',
+  thigh:      'Vertical fold on the front of the thigh, halfway between hip crease and kneecap',
+  triceps:    'Vertical fold on the back of the upper arm, halfway between shoulder tip and elbow',
+  suprailiac: 'Diagonal fold just above the hip bone, along its natural line',
+};
+const SKINFOLD_HINTS = {
+  chest: 'Halfway nipple to armpit', abdomen: '2 cm beside the navel', thigh: 'Midway hip to knee',
+  triceps: 'Back of arm, midway', suprailiac: 'Just above the hip bone',
+};
+export function skinfoldHint(site) { return SKINFOLD_HINTS[site] || ''; }
+export function skinfoldStep(site) { return SKINFOLD_STEPS[site] || ''; }
+
+/** Fold readings cleaned to positive numbers for this sex's sites; a missing site is null. */
+export function cleanSkinfolds(sex, folds = {}) {
+  const out = {};
+  for (const site of SKINFOLD_SITES[sexOf(sex)]) out[site] = num(folds && folds[site]);
+  return out;
+}
+
+/**
+ * Jackson-Pollock 3-site body fat %, or null when a site is missing or out of
+ * range, or the age is outside 18-61 (the formula was not fitted there).
+ * Men: chest, abdomen, thigh. Women: triceps, suprailiac, thigh. mm.
+ */
+export function jacksonPollock3(sex, folds, age) {
+  sex = sexOf(sex);
+  const f = cleanSkinfolds(sex, folds);
+  const a = num(age);
+  if (!a || a < JP_AGES[0] || a > JP_AGES[1]) return null;
+  const sites = SKINFOLD_SITES[sex];
+  if (sites.some(k => f[k] == null || !inRange(f[k], SKINFOLD_RANGE))) return null;
+  const S = sites.reduce((t, k) => t + f[k], 0);
+  const bd = sex === 'female'
+    ? 1.0994921 - 0.0009929 * S + 0.0000023 * S * S - 0.0001392 * a
+    : 1.10938 - 0.0008267 * S + 0.0000016 * S * S - 0.0002574 * a;
+  const bf = 495 / bd - 450;
+  if (!Number.isFinite(bf) || bf < 2 || bf > 50) return null;
   return round1(bf);
 }
 
@@ -145,6 +199,17 @@ export function measurementWarnings(m = {}) {
   for (const k of ['armLeft', 'armRight']) offRange(k, RANGES.arm, 'a flexed arm');
   if (c.height != null && !inRange(c.height, RANGES.height)) w.height = `Use ${RANGES.height[0]}–${RANGES.height[1]} cm.`;
   offRange('weight', RANGES.weight, 'bodyweight', 'kg');
+  // skin folds: all three sites or none; a fold is a few mm to a few cm
+  const sex = sexOf(m.sex);
+  const sf = cleanSkinfolds(sex, m.skinfolds);
+  const entered = SKINFOLD_SITES[sex].filter(k => sf[k] != null);
+  for (const k of entered) {
+    if (!inRange(sf[k], SKINFOLD_RANGE)) w[`sf_${k}`] = `A fold is ${SKINFOLD_RANGE[0]}–${SKINFOLD_RANGE[1]} mm. Typo, or cm?`;
+  }
+  const age = num(m.age);
+  if (entered.length && age != null && (age < JP_AGES[0] || age > JP_AGES[1])) w.age = `The caliper formula is for ages ${JP_AGES[0]}–${JP_AGES[1]}.`;
+  else if (age != null && (age < 10 || age > 100)) w.age = 'Check the age.';
+  if (entered.length && entered.length < SKINFOLD_SITES[sex].length) w.sf_missing = `Enter all ${SKINFOLD_SITES[sex].length} folds for a caliper reading.`;
   return w;
 }
 
@@ -165,7 +230,11 @@ function usable(c, key) {
 export function bodyMetrics(sex, raw = {}) {
   sex = sexOf(sex);
   const c = cleanMeasurements(raw);
-  const bf = navyBodyFat(sex, c);
+  const navy = navyBodyFat(sex, c);
+  const caliper = jacksonPollock3(sex, raw.skinfolds, raw.age);
+  // calipers win when all three folds and the age are in; the tape formula is the fallback
+  const bf = caliper != null ? caliper : navy;
+  const bodyFatSource = caliper != null ? 'calipers' : navy != null ? 'tape' : null;
   const fatKg = bf != null && c.weight ? round1(c.weight * bf / 100) : null;
   const leanKg = bf != null && c.weight ? round1(c.weight - c.weight * bf / 100) : null;
   const bmiV = bmi(c.weight, c.height);
@@ -215,7 +284,7 @@ export function bodyMetrics(sex, raw = {}) {
 
   return {
     sex,
-    bodyFat: bf, bodyFatCategory: bodyFatCategory(sex, bf), fatKg, leanKg,
+    bodyFat: bf, bodyFatSource, bodyFatTape: navy, bodyFatCalipers: caliper, bodyFatCategory: bodyFatCategory(sex, bf), fatKg, leanKg,
     bmi: bmiV, bmiCategory: bmiCategory(bmiV),
     ffmi: ffmiV, ffmiCategory: ffmiCategory(sex, ffmiV),
     waistToHeight: whtr, waistToHeightCategory: waistToHeightCategory(whtr),
@@ -350,7 +419,7 @@ export function physiqueFocus(sex, raw, max = 2) {
 
 /** What each stat means, why it matters and where it comes from. */
 export const EXPLAIN = [
-  { key: 'bodyFat', title: 'Body fat %', good: 'Men 10–18 · women 18–28', text: 'Share of your weight that is fat (US Navy tape formula). About ±3–4 points against DEXA; the weekly trend is what counts.' },
+  { key: 'bodyFat', title: 'Body fat %', good: 'Men 10–18 · women 18–28', text: 'Share of your weight that is fat. From calipers (Jackson-Pollock, 3 sites) when you enter them, else the US Navy tape formula. Each is about ±3–4 points against DEXA; keep to one method and the weekly trend is what counts.' },
   { key: 'lean', title: 'Fat / lean mass', good: 'Lean up, fat flat or down', text: 'Your weight split into fat and everything else (muscle, bone, water). Shows whether a bulk or cut is working.' },
   { key: 'vTaper', title: 'V-taper', good: '1.618 golden ratio', text: 'Shoulders ÷ waist, both measured around. Untrained men sit near 1.3. Wider delts and lats or a smaller waist raise it.' },
   { key: 'chestWaist', title: 'Chest ÷ waist', good: 'About 1.4', text: 'Upper body against your middle. The chest tape also takes in your back.' },
@@ -455,7 +524,7 @@ function deltaValues(sex, raw) {
     weight: c.weight, bodyFat: m.bodyFat, leanKg: m.leanKg, fatKg: m.fatKg, waist: c.waist,
     shoulders: c.shoulders && c.shoulders >= RANGES.shoulders[0] ? c.shoulders : null,
     chest: c.chest && c.chest >= RANGES.chest[0] ? c.chest : null,
-    arms, vTaper: m.vTaper ? m.vTaper.ratio : null,
+    arms, vTaper: m.vTaper ? m.vTaper.ratio : null, source: m.bodyFatSource,
   };
 }
 
@@ -471,8 +540,11 @@ export function checkinProgress(sex, prev, curr) {
   if (!prev) return { first: true, rows: [], better: 0, worse: 0, headline: 'Baseline set', verdict: 'Your first scan is saved. Next week the changes show here.' };
   const before = deltaValues(sex, prev);
   const rows = [];
+  // calipers and the tape formula read a few points apart: never compare across methods
+  const sameMethod = now.source === before.source;
   for (const [key, label, unit] of DELTA_ROWS) {
     if (now[key] == null || before[key] == null) continue;
+    if (!sameMethod && (key === 'bodyFat' || key === 'leanKg' || key === 'fatKg')) continue;
     const decimals = key === 'vTaper' ? 2 : 1;
     const diff = Math.round((now[key] - before[key]) * 10 ** decimals) / 10 ** decimals;
     const flat = Math.abs(now[key] - before[key]) < NOISE[key];

@@ -86,6 +86,14 @@ export function weeklyChange(weights, today) {
 /** A usable goal from a directive, or null: needs a target and a start. */
 export function parseGoal(d) {
   if (!d) return null;
+  // a goal that already carries a path (cut, then build) is passed through
+  if (Array.isArray(d.waypoints) && d.waypoints.length >= 2) {
+    const w = d.waypoints.filter(x => x && /^\d{4}-\d{2}-\d{2}$/.test(String(x.date)) && Number(x.kg) >= MIN_KG && Number(x.kg) <= MAX_KG)
+      .map(x => ({ date: x.date, kg: Number(x.kg) })).sort((a, b) => a.date.localeCompare(b.date));
+    if (w.length < 2) return null;
+    const first = w[0], last = w[w.length - 1];
+    return { target: last.kg, startKg: first.kg, startDate: first.date, targetDate: last.date, dir: Math.sign(last.kg - first.kg), waypoints: w };
+  }
   const target = Number(d.target), startKg = Number(d.startValue);
   const startDate = d.since || d.createdAt || null;
   if (!(target >= MIN_KG && target <= MAX_KG) || !(startKg >= MIN_KG && startKg <= MAX_KG) || !startDate) return null;
@@ -96,6 +104,17 @@ export function parseGoal(d) {
 /** The weight the straight line expects on `date` (clamped between start and goal), or null with no goal date. */
 export function expectedAt(goal, date) {
   if (!goal || !goal.targetDate) return null;
+  if (goal.waypoints) {
+    const w = goal.waypoints;
+    if (date <= w[0].date) return r1(w[0].kg);
+    if (date >= w[w.length - 1].date) return r1(w[w.length - 1].kg);
+    for (let i = 1; i < w.length; i++) {
+      if (date <= w[i].date) {
+        const span = Math.max(1, daysBetween(w[i - 1].date, w[i].date));
+        return r1(w[i - 1].kg + (w[i].kg - w[i - 1].kg) * (daysBetween(w[i - 1].date, date) / span));
+      }
+    }
+  }
   const span = daysBetween(goal.startDate, goal.targetDate);
   if (span <= 0) return goal.target;
   const t = Math.min(1, Math.max(0, daysBetween(goal.startDate, date) / span));
@@ -113,7 +132,9 @@ export function pathStatus(weights, goal, today) {
   const last = list[list.length - 1];
   const current = r1(averageAt(list, last.date));
   const span = goal.startKg - goal.target;
-  const done = goal.dir < 0 ? current <= goal.target + 0.05 : goal.dir > 0 ? current >= goal.target - 0.05 : true;
+  const done = goal.waypoints
+    ? today >= shiftDay(goal.targetDate, -7) && Math.abs(current - goal.target) <= 0.5
+    : goal.dir < 0 ? current <= goal.target + 0.05 : goal.dir > 0 ? current >= goal.target - 0.05 : true;
   const pct = span === 0 || done ? 100 : Math.round(Math.max(0, Math.min(100, ((goal.startKg - current) / span) * 100)));
   const out = {
     target: goal.target, startKg: goal.startKg, current, latest: last.weight, latestDate: last.date,
@@ -126,14 +147,22 @@ export function pathStatus(weights, goal, today) {
   if (goal.targetDate) {
     out.daysLeft = daysBetween(today, goal.targetDate);
     out.expected = expectedAt(goal, last.date);
-    out.aheadKg = r1((goal.dir < 0 ? 1 : -1) * (out.expected - current));
+    // ahead means lighter while the path is falling and heavier while it is rising
+    const slope = goal.waypoints ? Math.sign(expectedAt(goal, shiftDay(last.date, 14)) - out.expected) || goal.dir : goal.dir;
+    out.slope = slope;
+    out.aheadKg = r1(slope < 0 ? out.expected - current : current - out.expected);
     out.track = out.aheadKg > ON_PATH_KG ? 'ahead' : out.aheadKg < -ON_PATH_KG ? 'behind' : 'on';
-    if (out.daysLeft > 0) {
+    if (goal.waypoints && out.daysLeft > 0) {
+      out.neededPerWeek = r2((expectedAt(goal, shiftDay(last.date, 28)) - out.expected) / 4);
+      out.kcalPerDay = Math.round(Math.abs(out.neededPerWeek) * KCAL_PER_KG / 7 / 10) * 10;
+    } else if (out.daysLeft > 0) {
       out.neededPerWeek = r2((goal.target - current) / (out.daysLeft / 7));
       out.kcalPerDay = Math.round(Math.abs(out.neededPerWeek) * KCAL_PER_KG / 7 / 10) * 10;
     }
   }
-  if (out.rate !== null && Math.abs(out.rate) >= 0.05 && Math.sign(out.rate) === goal.dir) {
+  if (goal.waypoints) {
+    // the path bends, so a straight finish projection would mislead: ahead/behind is the judge
+  } else if (out.rate !== null && Math.abs(out.rate) >= 0.05 && Math.sign(out.rate) === goal.dir) {
     const weeks = Math.abs(goal.target - current) / Math.abs(out.rate);
     out.finishDays = Math.ceil(weeks * 7);
     out.finishDate = shiftDay(last.date, out.finishDays);
@@ -166,7 +195,7 @@ export function pathSvg(weights, goal, { today, width = 320, height = 130 } = {}
   const x0 = goal.startDate < pts[0].date ? goal.startDate : pts[0].date;
   const xEnd = goal.targetDate && goal.targetDate > pts[pts.length - 1].date ? goal.targetDate : pts[pts.length - 1].date;
   const spanDays = Math.max(1, daysBetween(x0, xEnd));
-  const vals = pts.flatMap(p => [p.weight, p.avg]).concat([goal.target, goal.startKg]);
+  const vals = pts.flatMap(p => [p.weight, p.avg]).concat([goal.target, goal.startKg], (goal.waypoints || []).map(w => w.kg));
   let lo = Math.min(...vals), hi = Math.max(...vals);
   if (hi - lo < 1) { lo -= 0.5; hi += 0.5; }
   const X = (d) => (P.l + (daysBetween(x0, d) / spanDays) * gW).toFixed(1);
@@ -174,7 +203,9 @@ export function pathSvg(weights, goal, { today, width = 320, height = 130 } = {}
   const dots = pts.map(p => `<circle cx="${X(p.date)}" cy="${Y(p.weight)}" r="2.4" fill="var(--text-faint)" opacity=".7"/>`).join('');
   const line = pts.map(p => `${X(p.date)},${Y(p.avg)}`).join(' ');
   const last = pts[pts.length - 1];
-  const glide = goal.targetDate
+  const glide = goal.waypoints
+    ? `<polyline points="${goal.waypoints.map(w => `${X(w.date)},${Y(w.kg)}`).join(' ')}" fill="none" stroke="var(--legendary)" stroke-width="1.5" stroke-dasharray="2 4" stroke-linecap="round" stroke-linejoin="round"/>`
+    : goal.targetDate
     ? `<line x1="${X(goal.startDate)}" y1="${Y(goal.startKg)}" x2="${X(goal.targetDate)}" y2="${Y(goal.target)}" stroke="var(--legendary)" stroke-width="1.5" stroke-dasharray="2 4" stroke-linecap="round"/>`
     : `<line x1="${P.l}" x2="${width - P.r}" y1="${Y(goal.target)}" y2="${Y(goal.target)}" stroke="var(--legendary)" stroke-width="1" stroke-dasharray="4 4" opacity=".8"/>`;
   const flag = goal.targetDate ? `<circle cx="${X(goal.targetDate)}" cy="${Y(goal.target)}" r="4" fill="none" stroke="var(--legendary)" stroke-width="1.5"/>` : '';

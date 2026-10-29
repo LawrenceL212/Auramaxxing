@@ -4239,6 +4239,56 @@
   .ci-plan-a{display:flex;gap:10px;align-items:center;margin-top:10px;}
   .ci-plan-a .ui-btn-outline{min-height:40px;flex:1;}
   .ci-skip{min-height:40px;padding:0 14px;background:none;border:0;color:var(--text-faint);font-family:var(--font-body);font-weight:700;font-size:14px;cursor:pointer;}
+  .pg{margin-bottom:24px;}
+  .pg-head{display:flex;justify-content:space-between;align-items:center;gap:10px;}
+  .pg-look{font-family:var(--font-display);font-weight:800;font-size:18px;letter-spacing:.04em;text-transform:uppercase;color:#fff;}
+  .pg-by{font-family:var(--font-mono);font-size:11px;color:var(--text-faint);margin-top:2px;}
+  .pg-verdict{font-size:15px;line-height:1.4;color:var(--text-dim);margin:10px 0 4px;}
+  .pg-sub{font-family:var(--font-mono);font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--text-faint);margin:16px 0 8px;}
+  .pg-row{padding:8px 0;border-top:1px solid rgba(91,168,255,.08);}
+  .pg-row-h{display:flex;justify-content:space-between;align-items:baseline;gap:8px;}
+  .pg-row-k{font-size:15px;font-weight:600;color:var(--text);}
+  .pg-row-v{font-family:var(--font-display);font-weight:600;font-size:14px;color:var(--text-dim);}
+  .pg-row-v i{font-style:normal;color:var(--text-faint);margin:0 5px;}
+  .pg-row-v b{color:var(--ui-gold);font-weight:700;}
+  .pg-row-v small{font-family:var(--font-mono);font-size:10px;color:var(--text-faint);margin-left:3px;}
+  .pg-row .ci-bar{margin-top:6px;height:5px;}
+  .pg-row-s{font-family:var(--font-mono);font-size:11px;margin-top:4px;}
+  .pg-phase{display:grid;grid-template-columns:auto 1fr;gap:2px 10px;padding:9px 0;border-top:1px solid rgba(91,168,255,.08);}
+  .pg-phase-n{grid-row:span 2;align-self:center;font-family:var(--font-display);font-weight:800;font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:#1a0f00;background:var(--ui-gold-grad);padding:4px 9px;
+    clip-path:polygon(5px 0,100% 0,100% calc(100% - 5px),calc(100% - 5px) 100%,0 100%,0 5px);}
+  .pg-phase-d{font-size:14px;color:var(--text);}
+  .pg-phase-k{font-family:var(--font-mono);font-size:12px;color:var(--text-faint);}
+  .pg-foot{font-size:13px;line-height:1.45;color:var(--text-faint);margin-top:10px;}
+  .pg-foot b{color:var(--text);}
+  .pg-change{width:100%;margin-top:14px;}
+  .pg-cta{display:flex;flex-direction:column;gap:3px;width:100%;text-align:left;padding:14px 16px;cursor:pointer;color:var(--text);
+    background:linear-gradient(180deg,rgba(60,46,16,.38),rgba(12,14,24,.92));border:1px solid rgba(255,214,107,.5);
+    clip-path:polygon(10px 0,100% 0,100% calc(100% - 10px),calc(100% - 10px) 100%,0 100%,0 10px);}
+  .pg-cta-t{font-family:var(--font-display);font-weight:700;font-size:14px;letter-spacing:.06em;text-transform:uppercase;color:var(--ui-gold);}
+  .pg-cta-s{font-size:14px;line-height:1.35;color:var(--text-dim);}
+  .pg-presets{display:grid;gap:8px;}
+  .pg-preset{display:flex;flex-direction:column;gap:2px;text-align:left;padding:12px 14px;min-height:56px;cursor:pointer;color:var(--text);
+    background:rgba(14,20,38,.9);border:1px solid rgba(91,168,255,.22);
+    clip-path:polygon(8px 0,100% 0,100% calc(100% - 8px),calc(100% - 8px) 100%,0 100%,0 8px);}
+  .pg-preset b{font-family:var(--font-display);font-weight:700;font-size:14px;letter-spacing:.05em;text-transform:uppercase;}
+  .pg-preset span{font-size:14px;color:var(--text-faint);}
+  .pg-preset.on{border-color:var(--ui-gold);background:linear-gradient(180deg,rgba(60,46,16,.4),rgba(12,14,24,.92));box-shadow:inset 0 0 22px rgba(255,214,107,.1);}
+  .pg-preset.on b{color:var(--ui-gold);}
+  .pg-dates{display:flex;gap:8px;flex-wrap:wrap;}
+  .pg-dates .ui-chip{cursor:pointer;border:0;min-height:36px;padding:0 14px;font-size:14px;}
+  .ci-in input[type=date]{color-scheme:dark;}
+  .pg-prev-row{display:flex;justify-content:space-between;gap:10px;padding:8px 0;border-top:1px solid rgba(91,168,255,.08);font-size:15px;color:var(--text-dim);}
+  .pg-prev-row b{color:var(--ui-gold);font-family:var(--font-display);}
+  .pg-prev-row i{font-style:normal;color:var(--text-faint);}
+  .pc-head{font-size:30px;}
+  .pc-v{font-size:22px;}
+  .pc-next{font-size:16px;line-height:1.45;color:var(--text);margin:2px 0 4px;}
+  .hunt-tiles .pc-btn{grid-column:1 / -1;flex-direction:row;justify-content:center;align-items:center;gap:10px;min-height:48px;border-color:rgba(255,214,107,.5);}
+  .hunt-tiles .pc-btn .ui-tile-v{color:var(--ui-gold);font-size:14px;letter-spacing:.08em;text-transform:uppercase;}
+  .hunt-tiles .pc-btn .ui-tile-s{font-size:13px;}
+  .ci-sf-sum{font-family:var(--font-mono);font-size:12px;color:var(--text-faint);margin:-8px 0 14px;}
+  .ci-bfsrc{font-family:var(--font-mono);font-size:11px;color:var(--text-faint);margin-top:2px;}
 </style>
 </head>
 <body>
@@ -4799,7 +4849,9 @@ import { analyseHabit, sampleCurve, describeReturns,
          HABIT_TARGET_DAYS, MISS_GRACE } from "./habit.js";
 import { muscleDevelopment, bodyBuild, bodyFrame } from "./physique.js";
 import { weeklyChange, pathStatus, pathSvg, parseGoal as parseWeightGoal } from "./weight-path.js";
-import { bodyMetrics, measurementWarnings, physiquePriorities, physiqueFocus, measureHint, measureStep, tapeIconSvg, bodyScanSvg, checkinProgress, navyBodyFat as navyBodyFatPct, EXPLAIN as CHECKIN_EXPLAIN, GOLDEN_RATIO } from "./body-metrics.js";
+import { solveGoal, presetsFor, DEFAULT_PRESET, targetRows, goalProgress, goalPriorities, goalFocus, weightGoalFromPlan, verdictLine } from "./physique-goal.js";
+import { progressCheck } from "./progress-check.js";
+import { bodyMetrics, measurementWarnings, physiquePriorities, physiqueFocus, measureHint, measureStep, tapeIconSvg, bodyScanSvg, checkinProgress, SKINFOLD_SITES, SKINFOLD_NAMES, skinfoldHint, skinfoldStep, navyBodyFat as navyBodyFatPct, EXPLAIN as CHECKIN_EXPLAIN, GOLDEN_RATIO } from "./body-metrics.js";
 import { optimisePlan, applySuggestion, activeDismissals, GOALS, GOAL_LABELS, MUSCLE_GROUPS } from "./optimiser.js";
 import { volumeRows, exerciseInsight, dayStats, suggestionsByDay } from "./plan-insights.js";
 import {
@@ -9327,7 +9379,9 @@ function renderHuntTiles() {
   host.innerHTML = `
     <button class="ui-tile violet" id="hunt-ap-tile" aria-label="${ap} Aura Points. Tap to invest"><span class="ui-tile-v">${ap.toLocaleString()} AP</span><span class="ui-tile-s">to invest</span></button>
     <button class="ui-tile" id="hunt-weight-tile" aria-label="Weigh in. Last ${agoLabel(lastW, todayStr())}"><span class="ui-tile-v">Weigh in</span><span class="ui-tile-s">${lastW ? agoLabel(lastW, todayStr()) : 'not logged'}</span></button>
-    <button class="ui-tile ui-dot-host" id="hunt-more-tile" aria-expanded="${open}" aria-controls="hunt-more"><span class="ui-tile-v">More</span><span class="ui-tile-s">plan · goals <span class="hm-chev">${HI.chev.replace('width="18" height="18"', 'width="12" height="12"')}</span></span>${tips ? '<span class="ui-dot gold" title="Plan tips waiting"></span>' : ''}</button>`;
+    <button class="ui-tile ui-dot-host" id="hunt-more-tile" aria-expanded="${open}" aria-controls="hunt-more"><span class="ui-tile-v">More</span><span class="ui-tile-s">plan · goals <span class="hm-chev">${HI.chev.replace('width="18" height="18"', 'width="12" height="12"')}</span></span>${tips ? '<span class="ui-dot gold" title="Plan tips waiting"></span>' : ''}</button>
+    <button class="ui-tile pc-btn" id="hunt-progress-tile" aria-label="Progress check"><span class="ui-tile-v">Progress check</span><span class="ui-tile-s">how am I doing?</span></button>`;
+  document.getElementById('hunt-progress-tile')?.addEventListener('click', () => window.openProgressCheck());
   document.getElementById('hunt-ap-tile')?.addEventListener('click', openApInvestPicker);
   document.getElementById('hunt-weight-tile')?.addEventListener('click', () => window.openCheckinModal());
   document.getElementById('hunt-more-tile')?.addEventListener('click', () => setHuntMore(document.getElementById('hunt-more').hidden, true));
@@ -10747,6 +10801,10 @@ function planOptCtx(program, today) {
 /** Muscle groups the latest body check-in puts first (body-metrics.js), if it is under 8 weeks old. */
 function checkinPhysiqueFocus(today) {
   const last = myCheckins[myCheckins.length - 1];
+  // a physique goal (physique-goal.js) names the groups its remaining gaps need
+  if (profile?.physiqueGoal) {
+    try { const plan = currentPhysiquePlan(); if (plan && !plan.error) { const f = goalFocus(plan); if (f.length) return f; } } catch (_) {}
+  }
   if (!last || !last.date || daysBetween(last.date, today) > 56) return [];
   try { return physiqueFocus(profile?.bodyType || 'male', { ...last, height: profile?.heightCm }); } catch (_) { return []; }
 }
@@ -16263,6 +16321,7 @@ window.openCheckinModal = () => {
   const gender = profile?.bodyType || 'male';
   const lastC = myCheckins[myCheckins.length - 1];
   const tapeFields = ['waist', 'neck', ...(gender === 'female' ? ['hip'] : []), 'shoulders', 'chest', 'armLeft'];
+  const sfSites = SKINFOLD_SITES[gender === 'female' ? 'female' : 'male'];
   const tapeNames = { waist: 'Waist', neck: 'Neck', hip: 'Hips', shoulders: 'Shoulders', chest: 'Chest', armLeft: 'Arms' };
 
   const overlay = document.createElement('div');
@@ -16322,6 +16381,20 @@ window.openCheckinModal = () => {
           ${checkinField('Right Arm', 'ci-armRight', 'cm around', lastC?.armRight, '33', measureHint('armRight', gender), 'armRight')}
         </div>
 
+        <div class="ui-banner ci-section">◈ Skin folds · mm <span style="text-transform:none;letter-spacing:0;color:var(--text-faint);">optional</span></div>
+        <div class="ci-sub">Calipers give a closer body fat than the tape. Fill all three and the age.</div>
+        <details class="ci-more">
+          <summary>How to pinch</summary>
+          <div class="ci-steps">
+            ${sfSites.map(s => `<div class="ci-step"><span><b>${SKINFOLD_NAMES[s]}</b> · ${skinfoldStep(s)}</span></div>`).join('')}
+            <div class="ci-step" style="color:var(--text-faint);">Pinch skin and fat only, on the right side. Read within 2 seconds. Take it twice and use the average.</div>
+          </div>
+        </details>
+        <div class="ci-grid" style="margin-bottom:24px;">
+          ${sfSites.map(s => checkinField(SKINFOLD_NAMES[s], 'ci-sf-' + s, 'mm', lastC?.skinfolds?.[s], '12', skinfoldHint(s))).join('')}
+          ${checkinField('Age', 'ci-age', 'years', lastC?.age, '30', 'For the caliper formula (18–61)')}
+        </div>
+
         <div class="ui-banner ci-section">◈ Live estimates</div>
         <div id="ci-live" style="margin-bottom:24px;"></div>
 
@@ -16352,7 +16425,7 @@ window.openCheckinModal = () => {
   getOverlayHost().appendChild(overlay);
 
   // Live estimation
-  const liveFields = ['ci-weight','ci-height','ci-waist','ci-neck','ci-hip','ci-shoulders','ci-chest','ci-armLeft','ci-armRight'];
+  const liveFields = ['ci-weight','ci-height','ci-waist','ci-neck','ci-hip','ci-shoulders','ci-chest','ci-armLeft','ci-armRight','ci-age', ...sfSites.map(s => 'ci-sf-' + s)];
   liveFields.forEach(id => {
     const el = document.getElementById(id);
     if (el) el.addEventListener('input', updateCheckinLive);
@@ -16375,7 +16448,10 @@ function checkinField(label, id, unit, lastVal, placeholder, hint, tape) {
 /** The check-in inputs as numbers, keyed like body-metrics.js expects. */
 function readCheckinInputs() {
   const v = (id) => parseFloat(document.getElementById(id)?.value) || null;
+  const sf = {};
+  for (const s of Object.keys(SKINFOLD_NAMES)) { const x = v('ci-sf-' + s); if (x) sf[s] = x; }
   return {
+    skinfolds: sf, age: v('ci-age'),
     weight: v('ci-weight'), height: v('ci-height'), waist: v('ci-waist'), neck: v('ci-neck'), hip: v('ci-hip'),
     shoulders: v('ci-shoulders'), chest: v('ci-chest'), armLeft: v('ci-armLeft'), armRight: v('ci-armRight'),
   };
@@ -16393,10 +16469,14 @@ function updateCheckinLive() {
   if (scan) scan.innerHTML = bodyScanSvg(input, 84, ['neck', 'shoulders', 'chest', 'waist', ...(gender === 'female' ? ['hip'] : []), 'armLeft', 'armRight']);
 
   // measurement sanity: a width where a circumference belongs, a typo, inches
-  const warnings = measurementWarnings(input);
-  ['weight','height','waist','neck','hip','shoulders','chest','armLeft','armRight'].forEach(k => {
+  const warnings = measurementWarnings({ ...input, sex: gender });
+  ['weight','height','waist','neck','hip','shoulders','chest','armLeft','armRight','age'].forEach(k => {
     const el = document.getElementById(`ci-${k}-warn`);
     if (el) el.textContent = warnings[k] ? `⚠ ${warnings[k]}` : '';
+  });
+  SKINFOLD_SITES[gender === 'female' ? 'female' : 'male'].forEach(s => {
+    const el = document.getElementById(`ci-sf-${s}-warn`);
+    if (el) el.textContent = warnings['sf_' + s] ? `⚠ ${warnings['sf_' + s]}` : '';
   });
 
   const GOOD = 'var(--growing)', OK = 'var(--brass)', WARN = '#FFB454', BAD = 'var(--excess)';
@@ -16412,7 +16492,8 @@ function updateCheckinLive() {
   const hero = [];
   if (m.bodyFat != null) {
     hero.push(`<div class="ci-tile big gold"><div class="ci-k">Body fat</div><div class="ci-v">${m.bodyFat}<small style="font-size:16px;">%</small></div>
-      <div class="ci-s" style="color:${bfColor[m.bodyFatCategory]};">${m.bodyFatCategory} <span style="color:var(--text-faint);font-weight:500;">· ±3–4</span></div></div>`);
+      <div class="ci-s" style="color:${bfColor[m.bodyFatCategory]};">${m.bodyFatCategory} <span style="color:var(--text-faint);font-weight:500;">· ±${m.bodyFatSource === 'calipers' ? '3' : '3–4'}</span></div>
+      <div class="ci-bfsrc">${m.bodyFatSource === 'calipers' ? 'Calipers' : 'Tape'}${m.bodyFatSource === 'calipers' && m.bodyFatTape != null ? ` · tape says ${m.bodyFatTape}%` : ''}</div></div>`);
   } else if (input.waist && input.neck) {
     hero.push(`<div class="ci-tile big"><div class="ci-k">Body fat</div><div class="ci-v">—</div>
       <div class="ci-s" style="color:${WARN};">${m.missing.height ? 'Add height' : m.missing.hip ? 'Add hips' : 'Check neck / waist'}</div></div>`);
@@ -16513,8 +16594,10 @@ window.saveCheckin = async () => {
 
   // body-metrics.js: female needs hips, no height means no estimate, and a
   // shoulder width (not a circumference) gives no V-taper
-  const metrics = bodyMetrics(gender, { weight, height, waist, neck, hip, shoulders, chest, armLeft, armRight });
-  const bodyFatPct = navyBodyFatPct(gender, { waist, neck, hip, height });
+  const folds = readCheckinInputs().skinfolds;
+  const age = parseFloat(document.getElementById('ci-age')?.value) || null;
+  const metrics = bodyMetrics(gender, { weight, height, waist, neck, hip, shoulders, chest, armLeft, armRight, skinfolds: folds, age });
+  const bodyFatPct = metrics.bodyFat ?? navyBodyFatPct(gender, { waist, neck, hip, height });
   const vtaperRatio = metrics.vTaper ? metrics.vTaper.ratio : null;
   const today = todayStr();
 
@@ -16523,6 +16606,10 @@ window.saveCheckin = async () => {
     date: today,
     weight, waist, neck, shoulders, chest, armLeft, armRight,
     ...(hip ? { hip } : {}),
+    // optional calipers (body-metrics.js jacksonPollock3): additive check-in fields
+    ...(Object.keys(folds).length ? { skinfolds: folds } : {}),
+    ...(age ? { age } : {}),
+    bodyFatSource: metrics.bodyFatSource || 'tape',
     ...(notes ? { notes } : {}),
     bodyFatPct,
     vtaperRatio,
@@ -16593,15 +16680,16 @@ function showCheckinResults(prev, saved, xpGained) {
   const prog = checkinProgress(gender, prev ? { ...prev, height: input.height } : null, input);
   if (!prog) return;
   const m = bodyMetrics(gender, input);
-  const pri = physiquePriorities(gender, input).slice(0, 3);
   const today = todayStr();
+  const goalPlan = profile?.physiqueGoal ? currentPhysiquePlan() : null;
+  const pri = (goalPlan && !goalPlan.error && goalPriorities(goalPlan).length ? goalPriorities(goalPlan) : physiquePriorities(gender, input)).slice(0, 3);
 
   let plan = null;
   if (myProgram && myProgram.days?.length) {
     try { plan = optimisePlan(planOptCtx(myProgram, today)); } catch (e) { console.warn('Plan optimiser failed:', e); }
   }
   const weightPath = weightPathHtml();
-  const focus = new Set(physiqueFocus(gender, input));
+  const focus = new Set(goalPlan && !goalPlan.error && goalFocus(goalPlan).length ? goalFocus(goalPlan) : physiqueFocus(gender, input));
   const suggestions = plan ? plan.suggestions.slice(0, 4) : [];
 
   const ARROW = { better: ['▲', 'var(--growing)'], worse: ['▼', 'var(--excess)'], flat: ['•', 'var(--text-faint)'], neutral: ['◆', 'var(--brass)'] };
@@ -16659,6 +16747,9 @@ function showCheckinResults(prev, saved, xpGained) {
           ${m.vTaper.ratio >= GOLDEN_RATIO ? '' : `<div class="ci-next">Next <b>${m.vTaper.next}</b> → ${m.vTaper.shouldersForNext} cm shoulders</div>`}
         </div>` : ''}
 
+        <div class="ui-banner gold ci-section">◈ Your physique goal</div>
+        ${physiquePlanHtml()}
+
         ${weightPath ? `<div class="ui-banner ci-section">◈ Your weight path</div>${weightPath}` : ''}
 
         ${pri.length ? `<div class="ui-banner gold ci-section">◈ What to do</div>
@@ -16682,7 +16773,8 @@ function showCheckinResults(prev, saved, xpGained) {
   getOverlayHost().appendChild(overlay);
 
   overlay.querySelectorAll('[data-close]').forEach(b => b.addEventListener('click', () => overlay.remove()));
-  overlay.querySelector('.wp-set')?.addEventListener('click', () => { overlay.remove(); openDirectiveEditor(null); });
+  overlay.querySelector('.wp-set')?.addEventListener('click', () => { overlay.remove(); window.openPhysiqueGoalSheet(); });
+  overlay.querySelectorAll('[data-pg-open]').forEach(b => b.addEventListener('click', () => { overlay.remove(); window.openPhysiqueGoalSheet(); }));
   overlay.querySelectorAll('.ci-skip').forEach(btn => btn.addEventListener('click', () => {
     const s = suggestions[Number(btn.dataset.i)];
     if (s) { const rec = readPlanOptDismissed(); rec[s.id] = today; writePlanOptDismissed(rec); }
@@ -16710,10 +16802,30 @@ function showCheckinResults(prev, saved, xpGained) {
   }));
 }
 
+/**
+ * The weight path to draw: the physique goal's cut-then-build path when one is set (from the
+ * weight and date it was set at, then the re-solved phases), else the Bodyweight directive.
+ */
+function weightPathGoal() {
+  const g = profile?.physiqueGoal;
+  if (g) {
+    try {
+      const plan = currentPhysiquePlan();
+      const wg = plan && !plan.error ? weightGoalFromPlan(plan) : null;
+      if (wg) {
+        const wps = wg.waypoints.slice();
+        if (g.start?.weight && g.startDate && g.startDate < wps[0].date) wps.unshift({ date: g.startDate, kg: g.start.weight });
+        return parseWeightGoal({ waypoints: wps });
+      }
+    } catch (_) {}
+  }
+  return parseWeightGoal(activeDirectives().find(d => d.metric === 'body_weight_kg' && Number(d.target) > 0));
+}
+
 /** The weight goal as a path: where you should be today against where you are, finish date, weekly change. */
 function weightPathHtml() {
   const today = todayStr();
-  const goal = parseWeightGoal(activeDirectives().find(d => d.metric === 'body_weight_kg' && Number(d.target) > 0));
+  const goal = weightPathGoal();
   const wk = weeklyChange(myWeights, today);
   const st = goal ? pathStatus(myWeights, goal, today) : null;
   if (!wk && !st) return '';
@@ -16727,21 +16839,25 @@ function weightPathHtml() {
   if (st) {
     const [label, color] = TRACK[st.track] || TRACK.unknown;
     const gap = st.aheadKg !== null && st.track !== 'on' && st.track !== 'reached' ? `<small style="display:block;font-family:var(--font-mono);font-size:12px;font-weight:400;letter-spacing:0;text-transform:none;margin-top:3px;">${kg(st.aheadKg)} kg ${st.aheadKg > 0 ? 'ahead' : 'behind'}</small>` : '';
-    head = `<div class="wp-head"><div class="wp-state" style="color:${color};">${label.replace(' of your path', '')}${gap}</div><div class="wp-pct">${st.pct}%<small>of goal</small></div></div>
-      <div class="ci-bar"><i style="width:${Math.max(3, st.pct)}%;"></i></div>`;
+    // a cut-then-build path has no single direction, so no percent: progress shows on the goal card
+    head = `<div class="wp-head"><div class="wp-state" style="color:${color};">${label.replace(' of your path', '')}${gap}</div>${goal.waypoints ? '' : `<div class="wp-pct">${st.pct}%<small>of goal</small></div>`}</div>
+      ${goal.waypoints ? '' : `<div class="ci-bar"><i style="width:${Math.max(3, st.pct)}%;"></i></div>`}`;
     if (st.expected !== null) tiles.push(tile('Target today', `${st.expected}<small>kg</small>`, `You: ${st.current} kg`, ''));
     else tiles.push(tile('Now', `${st.current}<small>kg</small>`, `${kg(st.remaining)} kg to ${st.target}`, ''));
-    if (st.finishDate) {
+    if (goal.waypoints) {
+      tiles.push(tile('Plan ends', date(goal.targetDate), `${kg(goal.target - st.current)} kg to go`, ''));
+    } else if (st.finishDate) {
       const late = goal.targetDate ? daysBetween(goal.targetDate, st.finishDate) : null;
       tiles.push(tile('Finish at this pace', date(st.finishDate), late === null ? '' : late > 3 ? `${late} days after your date` : late < -3 ? `${-late} days early` : 'Right on your date', late !== null && late > 3 ? 'var(--excess)' : 'var(--growing)'));
     } else if (st.rate === null) tiles.push(tile('Finish at this pace', '—', 'A few more weigh-ins', ''));
     else tiles.push(tile('Finish at this pace', '—', 'Not moving to goal yet', 'var(--excess)'));
-    if (st.neededPerWeek !== null && st.track !== 'reached') tiles.push(tile('Needed', `${signed(st.neededPerWeek)}<small>kg/wk</small>`, st.kcalPerDay ? `≈ ${st.kcalPerDay} kcal/day ${goal.dir < 0 ? 'deficit' : 'surplus'}` : '', ''));
-    tiles.push(tile(goal.dir < 0 ? 'Lowest so far' : 'Highest so far', `${st.best}<small>kg</small>`, `Start ${st.startKg} kg`, ''));
+    if (!goal.waypoints && st.neededPerWeek !== null && st.track !== 'reached') tiles.push(tile('Needed', `${signed(st.neededPerWeek)}<small>kg/wk</small>`, st.kcalPerDay ? `≈ ${st.kcalPerDay} kcal/day ${goal.dir < 0 ? 'deficit' : 'surplus'}` : '', ''));
+    if (goal.waypoints) tiles.push(tile('Started', `${st.startKg}<small>kg</small>`, date(goal.startDate), ''));
+    else tiles.push(tile(goal.dir < 0 ? 'Lowest so far' : 'Highest so far', `${st.best}<small>kg</small>`, `Start ${st.startKg} kg`, ''));
   }
-  if (wk) tiles.push(tile('This week', `${signed(wk.diff)}<small>kg</small>`, `avg ${wk.thisAvg} vs ${wk.lastAvg}`, wk.diff === 0 ? '' : goal ? (Math.sign(wk.diff) === goal.dir ? 'var(--growing)' : 'var(--excess)') : ''));
+  if (wk) tiles.push(tile('This week', `${signed(wk.diff)}<small>kg</small>`, `avg ${wk.thisAvg} vs ${wk.lastAvg}`, wk.diff === 0 ? '' : goal && !goal.waypoints ? (Math.sign(wk.diff) === goal.dir ? 'var(--growing)' : 'var(--excess)') : ''));
   const svg = goal ? pathSvg(myWeights, goal, { today }) : '';
-  const cta = goal ? '' : '<button type="button" class="ui-btn-outline wp-set" style="margin-top:10px;width:100%;">Set a goal weight to draw your path</button>';
+  const cta = goal ? '' : '<button type="button" class="ui-btn-outline wp-set" style="margin-top:10px;width:100%;">Set a physique goal to draw your path</button>';
   return `<div class="wp">
     ${head}
     ${svg ? `<div class="wp-chart">${svg}<div class="wp-legend"><span><i class="g"></i>where you should be</span><span><i class="a"></i>7-day average</span></div></div>` : ''}
@@ -16749,6 +16865,256 @@ function weightPathHtml() {
     ${cta}
   </div>`;
 }
+
+
+// ── PHYSIQUE GOAL ─────────────────────────────────────────────────────────
+// profile.physiqueGoal = { preset, deadline, startDate, start: { waist, shoulders, chest, arms, bodyFat, weight } }
+// (physique-goal.js, pure). The Hunter picks a look and a date; the plan is re-solved from the
+// latest check-in every time it is shown, so it adjusts as the body does.
+
+/** Months of logged training for the signed-in Hunter, for the training-age rates. */
+function physiqueTrainingMonths() {
+  const mine = (myWorkouts || []).filter(w => w.uid === currentUser?.uid && w.date).map(w => w.date).sort();
+  return mine.length ? daysBetween(mine[0], todayStr()) / 30.4 : 0;
+}
+
+/** The latest check-in as plain measurements, with the profile height. */
+function latestMeasures() {
+  const last = myCheckins[myCheckins.length - 1];
+  return last ? { ...last, height: profile?.heightCm } : null;
+}
+
+/** The solved plan for the stored goal, or null when no goal is set. May be { error }. */
+function currentPhysiquePlan() {
+  const g = profile?.physiqueGoal;
+  if (!g || !g.preset || !g.deadline) return null;
+  const m = latestMeasures();
+  if (!m) return { error: 'measurements', message: 'Do a check-in so the plan can start from your measurements.' };
+  return solveGoal({ sex: profile?.bodyType || 'male', preset: g.preset, deadline: g.deadline, today: todayStr(), measurements: m, trainingMonths: physiqueTrainingMonths(), sessionsPerWeek: profile?.weeklyGoal });
+}
+
+const PG_VERDICT = {
+  there: ['At this look', 'var(--ui-gold)'], comfortable: ['Comfortable', 'var(--growing)'], on_schedule: ['On schedule', 'var(--growing)'],
+  tight: ['Tight', '#FFB454'], unrealistic: ['Not realistic by then', 'var(--excess)'], past: ['Date passed', 'var(--excess)'],
+};
+
+/** The physique plan card: verdict, targets with progress, phases, what to eat and train. */
+function physiquePlanHtml() {
+  const g = profile?.physiqueGoal;
+  const plan = currentPhysiquePlan();
+  const cta = (title, sub) => `<button type="button" class="pg-cta" data-pg-open>
+      <span class="pg-cta-t">${title}</span><span class="pg-cta-s">${sub}</span></button>`;
+  if (!plan) return `<div class="pg">${cta('Set a physique goal', 'Pick a look and a date. The app works out what it takes and adjusts as you go.')}</div>`;
+  if (plan.error) return `<div class="pg"><div class="ci-empty">${escapeHtml(plan.message)}</div>${cta('Change goal', 'Pick a look and a date')}</div>`;
+  const date = (d) => new Date(d + 'T12:00:00').toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
+  const [vLabel, vColor] = PG_VERDICT[plan.verdict] || PG_VERDICT.on_schedule;
+  const prog = goalProgress({ ...g, start: g.start || {} }, plan, todayStr());
+  const rows = targetRows(plan);
+  const rowHtml = rows.map(r => {
+    const pr = prog?.rows.find(x => x.key === r.key);
+    const color = pr ? ({ ahead: 'var(--growing)', on: 'var(--growing)', behind: 'var(--excess)', unknown: 'var(--text-faint)' }[pr.status]) : 'var(--text-faint)';
+    return `<div class="pg-row">
+      <div class="pg-row-h"><span class="pg-row-k">${r.label}</span><span class="pg-row-v">${r.now}<i>→</i><b>${r.target}</b><small>${r.unit}</small></span></div>
+      <div class="ci-bar"><i style="width:${Math.max(3, pr ? pr.pct : 0)}%;"></i></div>
+      ${pr && pr.status !== 'unknown' ? `<div class="pg-row-s" style="color:${color};">${pr.pct}% · ${pr.status === 'on' ? 'on pace' : pr.status}</div>` : ''}
+    </div>`;
+  }).join('');
+  const phaseHtml = plan.phases.map(p => `<div class="pg-phase">
+      <span class="pg-phase-n">${p.name}</span>
+      <span class="pg-phase-d">${p.weeks} wk${p.weeks === 1 ? '' : 's'} · ${date(p.from)} → ${date(p.to)}</span>
+      <span class="pg-phase-k">${p.kgPerWeek === 0 ? 'maintenance' : `${p.kgPerWeek > 0 ? '+' : '−'}${Math.abs(p.kgPerWeek).toFixed(1)} kg/wk · ≈${Math.abs(p.kcalPerDay)} kcal/day ${p.kcalPerDay < 0 ? 'deficit' : 'surplus'}`}</span>
+    </div>`).join('');
+  return `<div class="pg">
+    <div class="pg-head">
+      <div><div class="pg-look">${plan.label}</div><div class="pg-by">by ${date(plan.deadline)}${prog ? ` · ${prog.overall}% there` : ''}</div></div>
+      <span class="ui-chip" style="color:${vColor};background:rgba(255,255,255,.05);">${vLabel}</span>
+    </div>
+    <div class="pg-verdict">${escapeHtml(verdictLine(plan))}</div>
+    ${rowHtml ? `<div class="pg-sub">Your targets</div>${rowHtml}` : ''}
+    <div class="pg-sub">The plan</div>
+    ${phaseHtml}
+    <div class="ci-tiles" style="margin-top:12px;">
+      <div class="ci-tile"><div class="ci-k">Goal weight</div><div class="ci-v">${plan.target.weight}<small>kg</small></div><div class="ci-s" style="color:var(--text-faint);">${plan.target.bodyFat}% fat · ${plan.target.leanKg} kg lean</div></div>
+      <div class="ci-tile"><div class="ci-k">Protein</div><div class="ci-v">${plan.needs.proteinG[0]}–${plan.needs.proteinG[1]}<small>g/day</small></div><div class="ci-s" style="color:var(--text-faint);">${plan.needs.sessionsPerWeek} sessions a week</div></div>
+    </div>
+    ${plan.needs.focus.length ? `<div class="pg-foot">Training focus: <b>${plan.needs.focus.join(', ')}</b>. Plan suggestions add sets there a little at a time.</div>` : ''}
+    <div class="pg-foot" style="margin-top:6px;">Estimates from standard fat-loss and muscle-gain rates for ${plan.experience} lifters. Re-worked at every check-in.</div>
+    <button type="button" class="ui-btn-outline pg-change" data-pg-open>Change goal</button>
+  </div>`;
+}
+
+/** Sheet to pick the look and the deadline, with the plan shown live. */
+window.openPhysiqueGoalSheet = () => {
+  document.getElementById('physique-goal-overlay')?.remove();
+  const sex = profile?.bodyType || 'male';
+  const presets = presetsFor(sex);
+  const g = profile?.physiqueGoal;
+  const today = todayStr();
+  let preset = g?.preset && presets[g.preset] ? g.preset : DEFAULT_PRESET;
+  const defaultDeadline = shiftDay(today, 7 * 16);
+  const minDate = shiftDay(today, 14);
+  const overlay = document.createElement('div');
+  overlay.id = 'physique-goal-overlay';
+  overlay.className = 'ci-overlay';
+  overlay.innerHTML = `
+    <div class="ui-window gold ci-win">
+      <div class="ci-scroll">
+        <div class="ci-hero" style="padding-bottom:14px;">
+          <div class="ci-hero-top">
+            <div><div class="ui-banner gold">◈ Physique goal</div><div class="ci-title">Build my look</div></div>
+            <button class="ci-close" aria-label="Close" data-close>✕</button>
+          </div>
+          <div class="ci-sub" style="margin:8px 0 0;">Pick the look and a date. The app works out what it takes, and re-works it at every check-in.</div>
+        </div>
+        <div class="ui-banner ci-section">◈ The look</div>
+        <div class="pg-presets">${Object.entries(presets).map(([k, p]) => `<button type="button" class="pg-preset${k === preset ? ' on' : ''}" data-preset="${k}"><b>${p.label}</b><span>${p.blurb}</span></button>`).join('')}</div>
+        <div class="ui-banner ci-section" style="margin-top:20px;">◈ Deadline</div>
+        <div class="pg-dates">${[[12, '12 wk'], [16, '16 wk'], [26, '6 mo'], [52, '1 yr']].map(([w, l]) => `<button type="button" class="ui-chip dim" data-weeks="${w}">${l}</button>`).join('')}</div>
+        <div class="ci-in" style="margin-top:10px;"><input type="date" id="pg-deadline" min="${minDate}" value="${g?.deadline && g.deadline >= minDate ? g.deadline : defaultDeadline}" style="padding-right:12px;" /></div>
+        <div class="ui-banner gold ci-section" style="margin-top:22px;">◈ What it takes</div>
+        <div id="pg-preview"></div>
+        <button class="ui-btn-primary ci-save" id="pg-save">${g ? 'Update goal' : 'Set goal'}</button>
+        ${g ? '<button type="button" class="ci-skip" id="pg-clear" style="width:100%;margin-top:6px;">Remove goal</button>' : ''}
+        <div id="pg-msg" class="ci-msg"></div>
+      </div>
+    </div>`;
+  getOverlayHost().appendChild(overlay);
+  const input = () => document.getElementById('pg-deadline').value;
+  const draft = () => ({ ...(profile?.physiqueGoal || {}), preset, deadline: input() });
+  const render = () => {
+    const m = latestMeasures();
+    const box = document.getElementById('pg-preview');
+    if (!m) { box.innerHTML = '<div class="ci-empty">Do a weekly check-in first so the plan can start from your measurements.</div>'; return; }
+    const plan = solveGoal({ sex, preset, deadline: input(), today, measurements: m, trainingMonths: physiqueTrainingMonths(), sessionsPerWeek: profile?.weeklyGoal });
+    if (plan.error) { box.innerHTML = `<div class="ci-empty">${escapeHtml(plan.message)}</div>`; return; }
+    const [vLabel, vColor] = PG_VERDICT[plan.verdict] || PG_VERDICT.on_schedule;
+    const rows = targetRows(plan).map(r => `<div class="pg-prev-row"><span>${r.label}</span><span>${r.now} <i>→</i> <b>${r.target}</b> ${r.unit}</span></div>`).join('');
+    box.innerHTML = `
+      <div class="pg-head"><div class="pg-look" style="font-size:15px;">${plan.weeks.needed} weeks of work</div><span class="ui-chip" style="color:${vColor};background:rgba(255,255,255,.05);">${vLabel}</span></div>
+      <div class="pg-verdict">${escapeHtml(verdictLine(plan))}</div>
+      ${rows}
+      <div class="pg-prev-row"><span>Goal weight</span><span><b>${plan.target.weight}</b> kg · ${plan.target.bodyFat}% fat</span></div>
+      ${plan.phases.map(p => `<div class="pg-prev-row"><span>${p.name}</span><span>${p.weeks} wk · ${p.kgPerWeek === 0 ? 'maintenance' : `${p.kgPerWeek > 0 ? '+' : '−'}${Math.abs(p.kgPerWeek).toFixed(1)} kg/wk`}</span></div>`).join('')}`;
+  };
+  overlay.querySelectorAll('[data-close]').forEach(b => b.addEventListener('click', () => overlay.remove()));
+  overlay.querySelectorAll('.pg-preset').forEach(b => b.addEventListener('click', () => {
+    preset = b.dataset.preset;
+    overlay.querySelectorAll('.pg-preset').forEach(x => x.classList.toggle('on', x === b));
+    render();
+  }));
+  overlay.querySelectorAll('[data-weeks]').forEach(b => b.addEventListener('click', () => { document.getElementById('pg-deadline').value = shiftDay(today, Number(b.dataset.weeks) * 7); render(); }));
+  document.getElementById('pg-deadline').addEventListener('input', render);
+  document.getElementById('pg-clear')?.addEventListener('click', async () => {
+    try {
+      await writeUserFields({ physiqueGoal: deleteField() });
+      delete profile.physiqueGoal;
+      overlay.remove();
+      try { renderPlanOptimiser(); } catch (_) {}
+      showToast('Physique goal removed.', 'info');
+    } catch (e) { document.getElementById('pg-msg').textContent = 'Could not remove: ' + (e?.message || e); }
+  });
+  document.getElementById('pg-save').addEventListener('click', async () => {
+    const msg = document.getElementById('pg-msg');
+    const m = latestMeasures();
+    const d = draft();
+    if (!m) { msg.style.color = '#FF4D67'; msg.textContent = 'Do a weekly check-in first.'; return; }
+    if (!d.deadline || d.deadline < minDate) { msg.style.color = '#FF4D67'; msg.textContent = 'Pick a deadline at least two weeks away.'; return; }
+    const plan = solveGoal({ sex, preset, deadline: d.deadline, today, measurements: m, trainingMonths: physiqueTrainingMonths(), sessionsPerWeek: profile?.weeklyGoal });
+    if (plan.error) { msg.style.color = '#FF4D67'; msg.textContent = plan.message; return; }
+    // keep the original start when only the look or date changes
+    const keepStart = g?.start && g?.startDate;
+    const goal = {
+      preset, deadline: d.deadline,
+      startDate: keepStart ? g.startDate : today,
+      start: keepStart ? g.start : { waist: plan.now.waist, shoulders: plan.now.shoulders, chest: plan.now.chest, arms: plan.now.arms, bodyFat: plan.now.bodyFat, weight: plan.now.weight },
+    };
+    try {
+      await writeUserFields({ physiqueGoal: goal });
+      profile.physiqueGoal = goal;
+      overlay.remove();
+      try { renderPlanOptimiser(); } catch (_) {}
+      showToast('Physique goal set. It re-works itself at every check-in.', 'success');
+      // refresh whatever screen shows the goal
+      if (typeof renderTrends === 'function' && document.getElementById('view-trends')?.classList.contains('active')) renderTrends();
+    } catch (e) { msg.style.color = '#FF4D67'; msg.textContent = 'Could not save: ' + (e?.message || e); }
+  });
+  render();
+};
+
+// ── PROGRESS CHECK ────────────────────────────────────────────────────────
+// progress-check.js (pure) turns what the app already knows into a fast, honest summary.
+// Presentation only: reads state, writes nothing.
+function progressCheckCtx() {
+  const today = todayStr();
+  const gender = profile?.bodyType || 'male';
+  const mine = (myWorkouts || []).filter(w => w.uid === currentUser?.uid && w.date);
+  const sessionDates = mine.map(w => w.date);
+  const prDates = Object.values(myPRs || {}).map(p => p && p.date).filter(Boolean);
+  const [prev, last] = [myCheckins[myCheckins.length - 2], myCheckins[myCheckins.length - 1]];
+  let cp = null;
+  if (prev && last) { try { cp = checkinProgress(gender, { ...prev, height: profile?.heightCm }, { ...last, height: profile?.heightCm }); } catch (_) {} }
+  let physique = null;
+  const plan = profile?.physiqueGoal ? currentPhysiquePlan() : null;
+  if (plan && !plan.error) {
+    const prog = goalProgress({ ...profile.physiqueGoal, start: profile.physiqueGoal.start || {} }, plan, today);
+    if (prog) physique = { label: plan.label, overall: prog.overall, track: prog.track };
+  }
+  let wPath = null;
+  try {
+    const goal = weightPathGoal();
+    const st = goal ? pathStatus(myWeights, goal, today) : null;
+    if (st) wPath = { track: st.track, pct: st.pct };
+  } catch (_) {}
+  let plannedToday = false;
+  try { plannedToday = huntTodayState().today.state === 'pending'; } catch (_) {}
+  return {
+    today, streak: computeStreak(currentUser.uid), weeklyGoal: profile?.weeklyGoal || 3, sessionDates, prDates,
+    level: profile?.hunterLevel || 1, rank: huntRankInfo().rank, lastCheckinDate: last?.date || null,
+    checkinProgress: cp && !cp.first ? cp : null, physique, weightPath: wPath,
+    plannedToday, trainedToday: sessionDates.includes(today),
+  };
+}
+
+window.openProgressCheck = () => {
+  document.getElementById('progress-check-overlay')?.remove();
+  const res = progressCheck(progressCheckCtx());
+  if (!res) return;
+  const TONE = { fire: 'var(--ui-gold)', strong: 'var(--growing)', steady: 'var(--brass)', restart: 'var(--excess)' };
+  const KIND = { win: 'var(--growing)', warn: '#FFB454', info: 'var(--text-faint)' };
+  const color = TONE[res.tone];
+  const overlay = document.createElement('div');
+  overlay.id = 'progress-check-overlay';
+  overlay.className = 'ci-overlay';
+  const label = { train: 'Back to the hunt', checkin: 'Do my check-in', goal: 'Set my physique goal' }[res.next.action] || '';
+  overlay.innerHTML = `
+    <div class="ui-window gold ci-win">
+      <div class="ci-scroll">
+        <div class="ci-hero" style="padding-bottom:16px;">
+          <div class="ci-hero-top">
+            <div class="ui-banner gold">◈ Progress check</div>
+            <button class="ci-close" aria-label="Close" data-close>✕</button>
+          </div>
+          <div class="ci-title pc-head" style="color:${color};text-shadow:0 0 18px ${color};">${res.headline}</div>
+          <div class="ci-verdict" style="margin-top:6px;">${escapeHtml(res.line)}</div>
+        </div>
+        <div class="ui-banner ci-section">◈ How you're doing</div>
+        <div class="ci-tiles">${res.wins.map(w => `<div class="ci-tile">
+          <div class="ci-k">${w.label}</div><div class="ci-v pc-v"${w.value.length > 7 ? ' style="font-size:16px;line-height:1.25;"' : ''}>${escapeHtml(w.value)}</div>
+          ${w.sub ? `<div class="ci-s" style="color:${KIND[w.kind]};">${escapeHtml(w.sub)}</div>` : ''}</div>`).join('')}</div>
+        <div class="ui-banner gold ci-section" style="margin-top:22px;">◈ Next</div>
+        <div class="pc-next">${escapeHtml(res.next.text)}</div>
+        ${label ? `<button class="ui-btn-primary ci-save" id="pc-act">${label}</button>` : ''}
+        <button class="ci-skip" data-close style="width:100%;margin-top:6px;">Close</button>
+      </div>
+    </div>`;
+  getOverlayHost().appendChild(overlay);
+  overlay.querySelectorAll('[data-close]').forEach(b => b.addEventListener('click', () => overlay.remove()));
+  document.getElementById('pc-act')?.addEventListener('click', () => {
+    overlay.remove();
+    if (res.next.action === 'checkin') window.openCheckinModal();
+    else if (res.next.action === 'goal') window.openPhysiqueGoalSheet();
+  });
+};
 
 // ── END WEEKLY CHECK-IN ───────────────────────────────────────────────────────
 
@@ -21125,6 +21491,7 @@ function renderTrends() {
 
     <div class="card">
       <div class="card-title"><h3>◐ Weight</h3></div>
+      ${physiquePlanHtml()}
       ${weightPathHtml()}
       ${weightLineChart(myWeights)}
       <div class="weight-input-row">
@@ -21245,7 +21612,8 @@ function renderTrends() {
       requestAnimationFrame(update);
     }
   });
-  document.querySelector('#view-trends .wp-set')?.addEventListener('click', () => openDirectiveEditor(null));
+  document.querySelector('#view-trends .wp-set')?.addEventListener('click', () => window.openPhysiqueGoalSheet());
+  document.querySelectorAll('#view-trends [data-pg-open]').forEach(b => b.addEventListener('click', () => window.openPhysiqueGoalSheet()));
   const wBtn = document.getElementById('weight-save-btn');
   if (wBtn) wBtn.addEventListener('click', async () => {
     const val = Number(document.getElementById('weight-input').value);

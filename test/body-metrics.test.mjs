@@ -5,7 +5,7 @@
 import {
   navyBodyFat, bodyFatCategory, bmi, bmiCategory, ffmi, waistToHeight,
   measurementWarnings, bodyMetrics, physiquePriorities, physiqueFocus,
-  measureHint, measureStep, tapeIconSvg, bodyScanSvg, checkinProgress, EXPLAIN, GOLDEN_RATIO,
+  measureHint, measureStep, tapeIconSvg, bodyScanSvg, checkinProgress, jacksonPollock3, cleanSkinfolds, skinfoldStep, skinfoldHint, SKINFOLD_SITES, EXPLAIN, GOLDEN_RATIO,
 } from '../body-metrics.js';
 
 let pass = 0, fail = 0;
@@ -116,6 +116,40 @@ check('women get no male chest/arm proportion targets', !physiquePriorities('fem
   check('a metric missing from one side gives no row', !checkinProgress('male', { weight: 80 }, base).rows.some(r => r.key === 'waist'));
   const wide = checkinProgress('male', { ...base, shoulders: 52 }, base);
   check('a shoulder width is never compared', !wide.rows.some(r => r.key === 'shoulders'));
+}
+
+// ── skin-fold calipers ─────────────────────────────────────────────────
+{
+  const base = { weight: 80, height: 180, waist: 86, neck: 39, shoulders: 120, chest: 104, armLeft: 36, armRight: 36 };
+  check('men pinch chest, abdomen, thigh; women triceps, suprailiac, thigh', SKINFOLD_SITES.male.join() === 'chest,abdomen,thigh' && SKINFOLD_SITES.female.join() === 'triceps,suprailiac,thigh');
+  // sum 60 mm, age 30 (men): BD 1.057816 -> 17.9%
+  check('Jackson-Pollock men, 60 mm at 30 = 17.9%', jacksonPollock3('male', { chest: 15, abdomen: 25, thigh: 20 }, 30) === 17.9, String(jacksonPollock3('male', { chest: 15, abdomen: 25, thigh: 20 }, 30)));
+  // sum 70 mm, age 30 (women): BD 1.037083 -> 27.3%
+  check('Jackson-Pollock women, 70 mm at 30 = 27.3%', jacksonPollock3('female', { triceps: 20, suprailiac: 25, thigh: 25 }, 30) === 27.3, String(jacksonPollock3('female', { triceps: 20, suprailiac: 25, thigh: 25 }, 30)));
+  check('thicker folds read fatter', jacksonPollock3('male', { chest: 20, abdomen: 30, thigh: 25 }, 30) > jacksonPollock3('male', { chest: 10, abdomen: 15, thigh: 12 }, 30));
+  check('older at the same folds reads fatter', jacksonPollock3('male', { chest: 15, abdomen: 25, thigh: 20 }, 50) > jacksonPollock3('male', { chest: 15, abdomen: 25, thigh: 20 }, 25));
+  check('a missing site gives no reading', jacksonPollock3('male', { chest: 15, abdomen: 25 }, 30) === null);
+  check('age outside 18-61 gives no reading', jacksonPollock3('male', { chest: 15, abdomen: 25, thigh: 20 }, 16) === null && jacksonPollock3('male', { chest: 15, abdomen: 25, thigh: 20 }, 70) === null);
+  check('a fold in cm (not mm) gives no reading', jacksonPollock3('male', { chest: 1.5, abdomen: 2.5, thigh: 2 }, 30) === null);
+  check('women’s sites are not read from the men’s', jacksonPollock3('female', { chest: 15, abdomen: 25, thigh: 20 }, 30) === null);
+  check('clean skinfolds keeps only this sex’s sites', Object.keys(cleanSkinfolds('female', { chest: 10, triceps: 12 })).join() === 'triceps,suprailiac,thigh');
+  const withCal = bodyMetrics('male', { ...base, age: 30, skinfolds: { chest: 8, abdomen: 14, thigh: 10 } });
+  check('calipers win when entered', withCal.bodyFatSource === 'calipers' && withCal.bodyFat === withCal.bodyFatCalipers && withCal.bodyFatTape !== null, JSON.stringify([withCal.bodyFatSource, withCal.bodyFat, withCal.bodyFatTape]));
+  check('fat and lean mass follow the caliper reading', Math.abs(withCal.fatKg - 80 * withCal.bodyFat / 100) < 0.1);
+  const noAge = bodyMetrics('male', { ...base, skinfolds: { chest: 8, abdomen: 14, thigh: 10 } });
+  check('no age: back to the tape formula', noAge.bodyFatSource === 'tape' && noAge.bodyFatCalipers === null);
+  check('no folds: tape source', bodyMetrics('male', base).bodyFatSource === 'tape');
+  const w = measurementWarnings({ sex: 'male', age: 70, skinfolds: { chest: 1.5, abdomen: 20 } });
+  check('warns on a cm fold, a missing site and an age outside the formula', !!w.sf_chest && !!w.sf_missing && !!w.age, JSON.stringify(w));
+  check('no warnings when folds are blank', !('sf_missing' in measurementWarnings({ sex: 'male', age: 30 })));
+  check('pinch steps and hints exist for every site', ['chest', 'abdomen', 'thigh', 'triceps', 'suprailiac'].every(k => skinfoldStep(k).length > 20 && skinfoldHint(k).length <= 26));
+  // progress never compares across methods
+  const tapePrev = { ...base };
+  const calCurr = { ...base, waist: 83, age: 30, skinfolds: { chest: 8, abdomen: 14, thigh: 10 } };
+  const cross = checkinProgress('male', tapePrev, calCurr);
+  check('no body-fat rows across methods', !cross.rows.some(r => ['bodyFat', 'leanKg', 'fatKg'].includes(r.key)) && cross.rows.some(r => r.key === 'waist'), JSON.stringify(cross.rows.map(r => r.key)));
+  const calPrev = { ...base, age: 30, skinfolds: { chest: 10, abdomen: 18, thigh: 12 } };
+  check('same method: body fat compared', checkinProgress('male', calPrev, calCurr).rows.some(r => r.key === 'bodyFat'));
 }
 
 // ── copy and icons ─────────────────────────────────────────────────────
