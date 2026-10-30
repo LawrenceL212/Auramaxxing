@@ -3,18 +3,23 @@
   "description": "Auramaxxing Cloud Functions: Gate Duel settlement (not deployed) and push reminders",
   "private": true,
   "main": "index.js",
-  "engines": { "node": "22" },
+  "engines": {
+    "node": "22"
+  },
   "scripts": {
     "gen": "node generate-exercise-scale.mjs",
-    "lint": "node --check index.js && node --check send-reminders.js && node --check lib/scoring.js && node --check lib/rewards.js && node --check lib/settle-duel.js && node --check lib/exercise-scale.js && node --check lib/generate-plan.js",
+    "lint": "node --check index.js && node --check send-reminders.js && node --check lib/scoring.js && node --check lib/rewards.js && node --check lib/settle-duel.js && node --check lib/exercise-scale.js && node --check lib/generate-plan.js && node --check lib/design-plan.js",
     "serve": "firebase emulators:start --only functions",
     "deploy": "firebase deploy --only functions:resolveGateDuel",
     "deploy:plan": "firebase deploy --only functions:generatePlan,functions:askTrainer",
+    "deploy:coach": "firebase deploy --only functions:designPlan",
     "deploy:reminders": "firebase deploy --only functions:sendReminders",
     "sync-reminders": "sh scripts/sync-reminders.sh"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^1.3.0",
     "firebase-admin": "^12.1.0",
-    "firebase-functions": "^4.9.0"
+    "firebase-functions": "^4.9.0",
+    "zod": "^4.6.7"
   }
 }
