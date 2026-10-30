@@ -4450,6 +4450,13 @@
   .rh-row.ok em{font-style:normal;font-family:var(--font-mono);font-size:11px;color:var(--growing);}
   .rh-note{font-size:14px;line-height:1.4;color:var(--text-faint);margin-top:8px;}
   .sf-ask{font-size:15px;color:var(--text-dim);margin:2px 0 8px;}
+  .hunt-mode-seg{border-color:rgba(91,168,255,.3);}
+  .hunt-mode-seg .ui-seg-btn{font-size:13px;}
+  .hunt-mode-redo{display:block;margin:6px auto 0;min-height:36px;padding:0 12px;background:none;border:0;color:var(--text-faint);font-family:var(--font-body);font-weight:700;font-size:13px;cursor:pointer;}
+  .hp-party{display:block;width:100%;min-height:48px;margin-bottom:6px;padding:10px 12px;text-align:left;cursor:pointer;background:rgba(14,20,38,.9);border:1px solid rgba(255,214,107,.4);color:var(--text);font-family:var(--font-body);font-size:15px;}
+  .hp-party span{display:block;margin-top:3px;font-size:13px;color:var(--text-faint);line-height:1.4;}
+  .hp-party.is-picked{border-color:var(--ui-gold);background:rgba(255,214,107,.12);}
+  .hp-kit .sf-opt{font-size:12px;}
   .sf-opts{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:6px;}
   .sf-opt{min-height:48px;font-family:var(--font-display);font-weight:700;font-size:13px;letter-spacing:.04em;text-transform:uppercase;color:var(--text-dim);cursor:pointer;background:rgba(14,20,38,.9);border:1px solid rgba(91,168,255,.25);}
   .sf-opt.on{color:#1a0f00;background:var(--ui-gold-grad);border-color:var(--ui-gold);}
@@ -4535,6 +4542,7 @@
            the card lives in the More panel, opened by the More tile: nothing was removed. ── -->
       <div id="hunt-top"></div>
       <div class="hunt-hero" id="hunt-hero"></div>
+      <div id="hunt-mode" class="hunt-block"></div>
       <div id="hunt-goal" class="hunt-block"></div>
       <div id="program-card-wrap" class="hunt-block"></div>
       <div class="hunt-tiles hunt-block" id="hunt-tiles"></div>
@@ -5033,6 +5041,7 @@ import { computeStreakFrom, STREAK_RULES_START, shiftDay } from "./streak.js";
 import { newestApEvents, isMissingIndexError, LEDGER_LIMIT } from "./ap-ledger.js";
 import { backfillDateProblem, earliestBackfillDate, isDuplicateSession, laterDate } from "./backfill.js";
 import { defaultPlanDay, planDayOptions, shouldAdvanceRotation, dayCreditedToExtra, isTaggedToDay } from "./plan-day.js";
+import { splitProgramDoc, programDocFor, switchPlans, plansByMode, streakScheduleOf, streakScheduleOfDoc, workoutInMode, homeEquipmentNotes, kitFromNotes, homeExerciseNames, kitLabel, HOME_KIT } from "./plan-modes.js";
 import { uiArt, uiArtHtml, uiArtHydrate, uiSigil, uiRing, uiIcon, equipmentKind, muscleTint } from "./ui-art.js";
 import { huntFxHtml, startHuntFx } from "./hunt-fx.js";
 import { sessionMuscleArt, rewardTiles, investableAp, nextAfterHunt, tabDots, tabDotBanner } from "./flow-view.js";
@@ -5629,6 +5638,10 @@ document.addEventListener('click', e => {
 let allUsers = [], myWorkouts = [], allWorkouts = [], myWeights = [], myPRs = {};
 // myPRs: { "Bench Press": { e1rm: 120.5, date: "2026-08-01", xpTier: "Intermediate" }, ... }
 let myProgram = null;       // { name, schedule:['Mon',...], days:[{name,tag,exercises:[{name,sets,reps}],lastDate}], currentDayIndex }
+// Home and gym plans (plan-modes.js): myProgram is the plan in use; the other one waits in altPlan.
+let planMode = 'gym';       // 'gym' | 'home'
+let altPlan = null;         // the plan not in use, same shape as myProgram
+let planModeStored = false; // true once the Hunter has used a second plan; until then the doc is written as before
 let customExercises = [];   // from Firestore
 let activeDayIndex = null;  // which program day is being logged right now
 let editingProgram = false;
@@ -5651,6 +5664,10 @@ function nowTimeStr() { const d = new Date(); return String(d.getHours()).padSta
 function daysAgo(n) { const d = new Date(); d.setDate(d.getDate() - n); return d; }
 const WEEKDAYS = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
 function todayWeekday() { return WEEKDAYS[(new Date().getDay() + 6) % 7]; }
+/** The programs/{uid} doc for plan `p` in use, with the other plan kept aside (see plan-modes.js). */
+function programDoc(p) { return programDocFor(p, planMode, altPlan, planModeStored); }
+/** Workouts that can tick a day of the plan in use: extras, and sessions logged for this plan. */
+function planModeWorkouts() { return myWorkouts.filter(w => w.programDayIndex === null || w.programDayIndex === undefined || workoutInMode(w, planMode)); }
 function migrateProgram(prog) {
   if (!prog) return prog;
   if (!prog.schedule) prog.schedule = [...WEEKDAYS]; // legacy programs: train every day, unchanged behavior
@@ -5665,6 +5682,7 @@ function setsLoggedToday(name, dayIndex) {
   return todayWorkouts
     .filter(w => {
       if (w.programDayIndex !== undefined && w.programDayIndex !== null) {
+        if (!workoutInMode(w, planMode)) return false; // a session for the other plan (home/gym)
         return dayIndex === undefined || dayIndex === null || Number(w.programDayIndex) === Number(dayIndex);
       }
       if (dayIndex === undefined || dayIndex === null || !myProgram) return true;
@@ -9184,7 +9202,7 @@ async function loadAllData() {
       const snap = await getDoc(doc(db, 'programs', u.uid));
       if (snap.exists()) {
         const prog = snap.data();
-        u.schedule = prog.schedule || [];
+        u.schedule = streakScheduleOfDoc(prog); // the gym plan's days, whichever plan they picked today
         u.scheduleMode = prog.scheduleMode || 'rotation';
       }
     } catch(e) {}
@@ -9200,7 +9218,10 @@ async function loadAllData() {
   rebuildExercisesAll();
 
   const progSnap = await getDoc(doc(db, 'programs', currentUser.uid));
-  myProgram = migrateProgram(progSnap.exists() ? progSnap.data() : null);
+  const progState = splitProgramDoc(progSnap.exists() ? progSnap.data() : null);
+  planMode = progState.mode; planModeStored = progState.stored;
+  altPlan = migrateProgram(progState.alt);
+  myProgram = migrateProgram(progState.active);
   // Sync the quest carousel to the actual current day on every fresh data load (app open,
   // login, refresh). Without this, questCarouselIndex just keeps its stale in-memory default
   // (0 / Day 1) on cold load because renderQuestFeed() below only auto-jumps for fixed-mode
@@ -9318,11 +9339,219 @@ function exerciseOptionsHtml(selected) {
 document.getElementById('workout-date').value = todayStr();
 document.getElementById('workout-time').value = nowTimeStr();
 
+/* =========================================================================
+   HOME AND GYM PLANS
+   Two plans, picked on the day from the Hunt screen. The plan in use is
+   myProgram, as always; the other waits in altPlan and both are saved in the
+   same programs/{uid} doc (plan-modes.js). Switching only swaps them: each
+   keeps its own rotation and days, and the streak keeps the gym plan's rest days.
+   ========================================================================= */
+/** Tags a session for the plan in use, only once the Hunter has a second plan. */
+function planModeTag(dayIdx) { return planModeStored && dayIdx !== null && dayIdx !== undefined ? { planMode } : {}; }
+
+/** Carousel on the day the plan in use is waiting on (same as a fresh load). */
+function syncQuestCarousel() {
+  questCarouselIndex = 0;
+  if (!myProgram?.days?.length) return;
+  if (myProgram.scheduleMode === 'fixed') {
+    const i = myProgram.days.findIndex(d => (d.assignedDays || []).includes(todayWeekday()));
+    questCarouselIndex = i >= 0 ? i : 0;
+  } else questCarouselIndex = (myProgram.currentDayIndex || 0) % myProgram.days.length;
+}
+
+window.setPlanMode = async (to) => {
+  if (to === planMode || !currentUser) return;
+  const before = { mode: planMode, active: myProgram, alt: altPlan, stored: planModeStored };
+  const next = switchPlans({ mode: planMode, active: myProgram, alt: altPlan }, to);
+  planMode = next.mode; myProgram = next.active; altPlan = next.alt; planModeStored = true;
+  syncQuestCarousel();
+  renderQuestFeed();
+  try {
+    await setDoc(doc(db, 'programs', currentUser.uid), programDoc(myProgram));
+  } catch (err) {
+    planMode = before.mode; myProgram = before.active; altPlan = before.alt; planModeStored = before.stored;
+    syncQuestCarousel(); renderQuestFeed();
+    showToast('Could not switch plans: ' + (err?.message || err), 'error');
+  }
+};
+
+/** The Gym | Home switch above today's card. Hidden until the Hunter has a plan. */
+function renderPlanModeBar() {
+  const el = document.getElementById('hunt-mode');
+  if (!el) return;
+  if (editingProgram || (!myProgram?.days?.length && !altPlan?.days?.length)) { el.innerHTML = ''; return; }
+  const btn = (m, label) => `<button type="button" class="ui-seg-btn${planMode === m ? ' on' : ''}" data-plan-mode="${m}" aria-pressed="${planMode === m}">${label}</button>`;
+  const homeHasPlan = planMode === 'home' && myProgram?.days?.length;
+  const gym = plansByMode({ mode: planMode, active: myProgram, alt: altPlan }).gym;
+  el.innerHTML = `<div class="ui-seg hunt-mode-seg" role="group" aria-label="Which plan today">${btn('gym', '🏋 Gym')}${btn('home', '🏠 Home')}</div>
+    ${homeHasPlan && gym?.days?.length ? '<button type="button" class="hunt-mode-redo" id="home-plan-redo">✦ Remake from my gym plan</button>' : ''}`;
+  el.querySelectorAll('[data-plan-mode]').forEach(b => b.addEventListener('click', () => { SFX?.swipe?.(); window.setPlanMode(b.dataset.planMode); }));
+  document.getElementById('home-plan-redo')?.addEventListener('click', () => window.openHomePlanCoach());
+}
+
+/** Home picked but no home plan yet: make one from the gym plan with the coach, copy it, or build one. */
+function homeEmptyHtml() {
+  const gym = altPlan?.days?.length ? altPlan : null;
+  return `<div class="ui-window" style="padding:24px 18px;text-align:center;">
+    <div class="ui-banner" style="justify-content:center;margin-bottom:14px;">◈ Home plan</div>
+    <div style="font-family:var(--font-display);font-size:22px;font-weight:900;color:var(--text-dim);letter-spacing:.06em;margin-bottom:8px;">NO HOME PLAN YET</div>
+    <p style="font-size:13px;color:var(--text-faint);margin:0 0 18px;line-height:1.6;">${gym ? 'The coach can turn your gym plan into one you can do at home, with the equipment you have there.' : 'Make a plan for the days you train at home.'}</p>
+    <div style="display:flex;flex-direction:column;gap:8px;">
+      ${gym ? '<button type="button" class="ui-btn-primary" id="home-plan-coach" style="min-height:48px;">✦ Make a home version of my gym plan</button>' : ''}
+      <button type="button" class="ui-btn-outline" id="build-program-btn" style="min-height:44px;">+ Create plan</button>
+      ${gym ? '<button type="button" class="ci-skip" id="home-plan-copy">Copy my gym plan as it is</button>' : '<button type="button" class="ci-skip" id="gp-empty-open">✦ Build with the System</button>'}
+    </div>
+  </div>`;
+}
+
+function wireHomeEmpty() {
+  document.getElementById('home-plan-coach')?.addEventListener('click', () => window.openHomePlanCoach());
+  document.getElementById('home-plan-copy')?.addEventListener('click', async (e) => {
+    if (!altPlan?.days?.length) return;
+    e.target.disabled = true;
+    const copy = JSON.parse(JSON.stringify(altPlan));
+    copy.name = 'Home plan'; copy.currentDayIndex = copy.currentDayIndex || 0;
+    (copy.days || []).forEach(d => { delete d.lastDate; });
+    myProgram = copy; planModeStored = true;
+    try { await setDoc(doc(db, 'programs', currentUser.uid), programDoc(myProgram)); syncQuestCarousel(); renderQuestFeed(); showToast('Home plan made. Edit it to fit home.', 'success'); }
+    catch (err) { myProgram = null; e.target.disabled = false; showToast('Could not save: ' + (err?.message || err), 'error'); }
+  });
+}
+
+/** What this Hunter, or a party member they train with, already told the coach about home equipment. */
+function knownHomeEquipment() {
+  const own = homeEquipmentNotes({ coachProfile: profile?.coachProfile, chat: coachChat?.msgs || loadCoachChatSafe() });
+  const saved = profile?.homeEquipment;
+  const party = [];
+  if (!own.length && !saved) {
+    (allUsers || []).filter(u => u.uid !== currentUser?.uid && u.coachProfile).forEach(u => {
+      const n = homeEquipmentNotes({ coachProfile: u.coachProfile });
+      if (n.some(x => /\b(home|house|garage|apartment|flat|room)\b/i.test(x))) party.push({ name: u.displayName || 'A party member', notes: n.filter(x => /\b(home|house|garage|apartment|flat|room)\b/i.test(x)).slice(0, 3) });
+    });
+  }
+  return { own, saved, party: party.slice(0, 3) };
+}
+function loadCoachChatSafe() {
+  try { const v = JSON.parse(localStorage.getItem(coachChatKey()) || '[]'); return Array.isArray(v) ? v : []; } catch (_) { return []; }
+}
+
+/**
+ * "Make a home version of my gym plan": the coach rebuilds the gym plan for home with the
+ * kit the Hunter has. It uses what they already told the coach and asks only when nothing is known.
+ * Nothing is saved until "Use this home plan".
+ */
+window.openHomePlanCoach = () => {
+  const gym = plansByMode({ mode: planMode, active: myProgram, alt: altPlan }).gym;
+  if (!gym?.days?.length) { showToast('Make your gym plan first.', 'info'); return; }
+  const known = knownHomeEquipment();
+  let kit = known.saved?.kit?.length ? known.saved.kit.slice() : kitFromNotes(known.own);
+  let note = known.saved?.note || '';
+  let notes = known.own.slice();
+  document.getElementById('home-plan-overlay')?.remove();
+  const overlay = document.createElement('div');
+  overlay.id = 'home-plan-overlay';
+  overlay.className = 'ci-overlay';
+  const found = known.saved || known.own.length;
+  overlay.innerHTML = `<div class="ui-window gold ci-win"><div class="ci-scroll">
+    <div class="ci-hero" style="padding-bottom:14px;"><div class="ci-hero-top"><div><div class="ui-banner gold">◈ Coach</div><div class="ci-title">Home version</div></div><button class="ci-close" aria-label="Close" data-close>✕</button></div>
+      <div class="ci-sub" style="margin:8px 0 0;">Same days, same goal and muscles as ${escapeHtml(gym.name || 'your gym plan')}, with exercises you can do at home.</div></div>
+    <div id="hp-body"></div>
+    <button class="ci-skip" data-close style="width:100%;margin-top:6px;">Close</button>
+  </div></div>`;
+  getOverlayHost().appendChild(overlay);
+  overlay.querySelectorAll('[data-close]').forEach(b => b.addEventListener('click', () => overlay.remove()));
+  const body = overlay.querySelector('#hp-body');
+
+  const kitHtml = () => `<div class="sf-opts hp-kit">${HOME_KIT.map(k => `<button type="button" class="sf-opt${kit.includes(k.id) ? ' on' : ''}" data-kit="${k.id}">${escapeHtml(k.label)}</button>`).join('')}</div>`;
+  const askStep = () => {
+    body.innerHTML = `
+      ${found ? `<div class="ui-banner ci-section">◈ What you told the coach</div>
+        <ul class="co-list" style="--co:var(--ui-gold);">${(notes.length ? notes : [kitLabel(kit) + (note ? '. ' + note : '')]).map(n => `<li>${escapeHtml(n)}</li>`).join('')}</ul>
+        <div class="ci-sub" style="margin:8px 0 10px;">Ticked below from that. Change anything that is wrong.</div>`
+      : known.party.length ? `<div class="ui-banner ci-section">◈ Same home as someone?</div>
+        ${known.party.map((p, i) => `<button type="button" class="hp-party" data-party="${i}"><b>Same as ${escapeHtml(p.name)}</b><span>${escapeHtml(p.notes.map(n => n.replace(/^[^?]*\?\s*/, '')).join(' '))}</span></button>`).join('')}
+        <div class="ui-banner ci-section" style="margin-top:14px;">◈ Or tick what you have at home</div>`
+      : `<div class="ui-banner ci-section">◈ What do you have at home?</div>`}
+      ${kitHtml()}
+      <input type="text" id="hp-note" maxlength="200" placeholder="Anything else (e.g. dumbbells up to 20 kg)" value="${escapeHtml(note)}" style="width:100%;margin-top:6px;" />
+      <button type="button" class="ui-btn-primary ci-save" id="hp-go" style="width:100%;margin-top:14px;">✦ Build my home plan</button>
+      <div class="ci-msg" id="hp-msg"></div>`;
+    body.querySelectorAll('[data-kit]').forEach(b => b.addEventListener('click', () => {
+      const id = b.dataset.kit;
+      kit = kit.includes(id) ? kit.filter(x => x !== id) : [...kit, id];
+      if (id === 'bodyweight' && kit.includes('bodyweight')) kit = ['bodyweight'];
+      else if (id !== 'bodyweight') kit = kit.filter(x => x !== 'bodyweight');
+      body.querySelectorAll('[data-kit]').forEach(x => x.classList.toggle('on', kit.includes(x.dataset.kit)));
+    }));
+    body.querySelectorAll('[data-party]').forEach(b => b.addEventListener('click', () => {
+      const p = known.party[Number(b.dataset.party)];
+      notes = p.notes.slice(); kit = kitFromNotes(p.notes);
+      body.querySelectorAll('[data-kit]').forEach(x => x.classList.toggle('on', kit.includes(x.dataset.kit)));
+      body.querySelectorAll('[data-party]').forEach(x => x.classList.toggle('is-picked', x === b));
+    }));
+    body.querySelector('#hp-go').addEventListener('click', build);
+  };
+
+  const build = async () => {
+    note = (body.querySelector('#hp-note')?.value || '').trim();
+    if (!kit.length && !note) kit = ['bodyweight'];
+    const homeEquipment = { kit, note: note.slice(0, 200), updated: todayStr() };
+    // remembered so the next home plan does not ask again (additive users field)
+    try { await writeUserFields({ homeEquipment }); profile.homeEquipment = homeEquipment; } catch (_) {}
+    body.innerHTML = '<div class="ci-empty">The coach is building your home plan…</div>';
+    try {
+      const res = await callCoach('home', `Make the home version of my gym plan. At home I have: ${kitLabel(kit)}${note ? '. ' + note : ''}.`, null, {
+        planMode: 'home',
+        homeEquipment: { kit: kitLabel(kit), note, toldCoach: notes.slice(0, 6) },
+        gymPlan: gym.days.map(d => ({ name: d.name, exercises: (d.exercises || []).map(e => ({ name: e.name, sets: e.sets, reps: e.reps })) })),
+        currentPlan: gym.days.map(d => ({ name: d.name, exercises: (d.exercises || []).map(e => ({ name: e.name, sets: e.sets, reps: e.reps })) })),
+        exercises: coachExercises(homeExerciseNames(EXERCISES_ALL, kit)),
+      });
+      if (!res.days) throw new Error('The coach did not return a plan. Try again.');
+      showResult(res);
+    } catch (err) {
+      body.innerHTML = `<div class="ci-msg" style="color:#FF4D67;">${escapeHtml(coachErrorText(err))}</div><button type="button" class="ui-btn-outline" id="hp-retry" style="width:100%;margin-top:8px;">Back</button>`;
+      body.querySelector('#hp-retry').addEventListener('click', askStep);
+    }
+  };
+
+  const showResult = (res) => {
+    body.innerHTML = coachResultHtml(res, {}).replace(/data-co="plan">[^<]*</, 'data-co="home">Use this home plan<');
+    const b = body.querySelector('[data-co="home"]');
+    const msg = body.querySelector('[data-co-msg]');
+    b?.addEventListener('click', async () => {
+      const homeNow = plansByMode({ mode: planMode, active: myProgram, alt: altPlan }).home;
+      if (homeNow?.days?.length && b.dataset.sure !== '1') { b.dataset.sure = '1'; b.textContent = 'Tap again to replace your home plan'; return; }
+      b.disabled = true;
+      const before = { mode: planMode, active: myProgram, alt: altPlan, stored: planModeStored };
+      try {
+        // same days and rotation as the gym plan, so today's session lines up whichever you pick
+        const base = homeNow?.days?.length === res.days.length ? homeNow : { ...gym, days: gym.days.map(d => { const { lastDate, ...rest } = d; return rest; }) };
+        const plan = { ...programFromCoach(res, base), name: 'Home plan' };
+        if (planMode !== 'home') { const s = switchPlans({ mode: planMode, active: myProgram, alt: altPlan }, 'home'); planMode = s.mode; altPlan = s.alt; }
+        myProgram = plan; planModeStored = true;
+        await setDoc(doc(db, 'programs', currentUser.uid), programDoc(myProgram));
+        syncQuestCarousel(); renderQuestFeed();
+        b.textContent = '✓ Home plan ready';
+        showToast('Home plan saved. Switch between Gym and Home on the Hunt screen.', 'success');
+        setTimeout(() => overlay.remove(), 900);
+      } catch (err) {
+        planMode = before.mode; myProgram = before.active; altPlan = before.alt; planModeStored = before.stored;
+        b.disabled = false; b.dataset.sure = ''; b.textContent = 'Use this home plan';
+        if (msg) { msg.style.color = '#FF4D67'; msg.textContent = 'Could not save the plan: ' + (err?.message || err); }
+      }
+    });
+  };
+
+  askStep();
+};
+
 function renderQuestFeed() {
   const wrap = document.getElementById('program-card-wrap');
   const editorWrap = document.getElementById('program-editor-wrap');
   const clearHunt = () => ['hunt-plan-head', 'hunt-next', 'goal-plan-entry', 'coach-chat', 'plan-optimiser'].forEach(id => { const e = document.getElementById(id); if (e) e.innerHTML = ''; });
   if (!editingProgram) { try { renderCoachChat(); } catch (_) {} }
+  renderPlanModeBar();
   if (editingProgram) {
     wrap.innerHTML = '';
     clearHunt();
@@ -9334,6 +9563,15 @@ function renderQuestFeed() {
   editorWrap.innerHTML = '';
   if (_huntEditOpened) { _huntEditOpened = false; setHuntMore(false); }
 
+  if ((!myProgram || !myProgram.days || !myProgram.days.length) && planMode === 'home') {
+    wrap.innerHTML = homeEmptyHtml();
+    document.getElementById('build-program-btn')?.addEventListener('click', () => { editingProgram = true; renderQuestFeed(); });
+    document.getElementById('gp-empty-open')?.addEventListener('click', openGoalPlan);
+    wireHomeEmpty();
+    clearHunt();
+    renderHuntChrome();
+    return;
+  }
   if (!myProgram || !myProgram.days || !myProgram.days.length) {
     wrap.innerHTML = `
       <div class="ui-window" style="padding:28px 20px;text-align:center;">
@@ -9408,7 +9646,7 @@ function renderQuestFeed() {
     document.getElementById('logger-title')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   });
   document.getElementById('new-program-btn')?.addEventListener('click', () => {
-    if (!window.confirm('Start a new plan?\n\nYour current plan will be replaced.')) return;
+    if (!window.confirm(`Start a new plan?\n\nYour current ${planModeStored ? planMode + ' ' : ''}plan will be replaced.`)) return;
     peSnap = myProgram ? JSON.stringify(myProgram) : undefined; myProgram = null; editingProgram = true; renderQuestFeed();
   });
   wireQuestCard(wrap.querySelector('.quest-card'), questCarouselIndex);
@@ -9461,7 +9699,7 @@ function huntDayStats(idx) {
   let matched = null;
   if (isFixed) {
     const weekStart = todayStr(startOfWeek(new Date()));
-    matched = myWorkouts.find(w => w.uid === currentUser.uid && w.date >= weekStart && isTaggedToDay(w, idx)) || null;
+    matched = planModeWorkouts().find(w => w.uid === currentUser.uid && w.date >= weekStart && isTaggedToDay(w, idx)) || null;
   }
   const setsFor = name => (isFixed && matched)
     ? (matched.exercises || []).filter(e => e.name === name).reduce((sum, e) => sum + (e.sets || []).filter(s => s.reps > 0).length, 0)
@@ -9895,7 +10133,7 @@ function isQuestComplete(idx) {
 
   if (myProgram.scheduleMode === 'fixed') {
     const weekStart = todayStr(startOfWeek(new Date()));
-    return myWorkouts.some(w =>
+    return planModeWorkouts().some(w =>
       w.uid === currentUser.uid &&
       w.date >= weekStart &&
       isTaggedToDay(w, idx)
@@ -10633,7 +10871,7 @@ async function gpAccept(el) {
   if (prev?.days) next.days = next.days.map(d => { const old = prev.days.find(o => o.name === d.name); return old?.lastDate ? { ...d, lastDate: old.lastDate } : d; });
   if (prev?.goal) next.goal = prev.goal; else delete next.goal;
   try {
-    await setDoc(doc(db, 'programs', currentUser.uid), next);
+    await setDoc(doc(db, 'programs', currentUser.uid), programDoc(next));
     myProgram = next;
     GP.backup = prev;
     GP.busy = false; GP.result = null; GP.raw = null;
@@ -10660,7 +10898,7 @@ function gpUndoBanner() {
     b.remove();
     if (!prev || !currentUser) return;
     try {
-      await setDoc(doc(db, 'programs', currentUser.uid), prev);
+      await setDoc(doc(db, 'programs', currentUser.uid), programDoc(prev));
       myProgram = prev; GP.backup = null;
       showToast('Your old plan is back.', 'success');
       renderQuestFeed();
@@ -10753,7 +10991,7 @@ function renderPlanOptimiser() {
     myProgram.goal = goal;
     renderPlanOptimiser();
     try {
-      await setDoc(doc(db, 'programs', currentUser.uid), myProgram);
+      await setDoc(doc(db, 'programs', currentUser.uid), programDoc(myProgram));
     } catch (e) {
       console.error('Saving plan goal failed:', e);
       if (prev === undefined) delete myProgram.goal; else myProgram.goal = prev;
@@ -10777,7 +11015,7 @@ function renderPlanOptimiser() {
     const prev = myProgram;
     myProgram = next;
     try {
-      await setDoc(doc(db, 'programs', currentUser.uid), myProgram);
+      await setDoc(doc(db, 'programs', currentUser.uid), programDoc(myProgram));
       showToast(`Plan updated: ${s.title}`, 'success');
     } catch (e) {
       console.error('Applying plan suggestion failed:', e);
@@ -10861,7 +11099,7 @@ function paintCoachChatLog(scroll) {
     const before = myProgram;
     try {
       myProgram = programFromCoach({ goal: m.goal || myProgram?.goal || 'general', days: m.days });
-      await setDoc(doc(db, 'programs', currentUser.uid), myProgram);
+      await setDoc(doc(db, 'programs', currentUser.uid), programDoc(myProgram));
       m.applied = true; coachChatSave();
       try { renderQuestFeed(); renderPlanOptimiser(); } catch (_) {}
       showToast('Plan updated from the coach.', 'success');
@@ -11138,7 +11376,7 @@ function refreshPlanDayPicker() {
   if (planPickDate === date) return;
   const first = planPickDate === null;
   planPickDate = date;
-  const ctx = { program: myProgram, date, today, workouts: myWorkouts, uid: currentUser.uid };
+  const ctx = { program: myProgram, date, today, workouts: planModeWorkouts(), uid: currentUser.uid };
   planPickIdx = (first && activeDayIndex !== null && activeDayIndex < myProgram.days.length)
     ? activeDayIndex : defaultPlanDay(ctx);
   const opts = planDayOptions(ctx);
@@ -12656,7 +12894,7 @@ async function saveProgram() {
   myProgram.name = document.getElementById('prog-name-input').value.trim() || 'My Plan';
   myProgram.currentDayIndex = myProgram.currentDayIndex || 0;
   if (!myProgram.schedule.length) myProgram.schedule = [...WEEKDAYS];
-  await setDoc(doc(db, 'programs', currentUser.uid), myProgram);
+  await setDoc(doc(db, 'programs', currentUser.uid), programDoc(myProgram));
   peSnap = undefined;
   editingProgram = false;
   renderQuestFeed();
@@ -13416,7 +13654,7 @@ document.getElementById('save-workout-btn')?.addEventListener('click', async () 
        but a later step did not". */
     savedWorkoutRef = await addDoc(collection(db, 'workouts'), {
       uid: currentUser.uid, displayName: profile.displayName, date, time, exercises,
-      programDayIndex: savedDayIdx, createdAt: serverTimestamp(),
+      programDayIndex: savedDayIdx, createdAt: serverTimestamp(), ...planModeTag(savedDayIdx),
       ...(runSummaryFromLogger ? { isRun: true, runSummary: runSummaryFromLogger } : {}),
     });
     // A past session must not move lastWorkoutDate (or a day's lastDate) backwards.
@@ -13434,7 +13672,7 @@ document.getElementById('save-workout-btn')?.addEventListener('click', async () 
         myProgram.currentDayIndex = (savedDayIdx + 1) % myProgram.days.length;
       }
       questCarouselIndex = myProgram.currentDayIndex;
-      await setDoc(doc(db, 'programs', currentUser.uid), myProgram);
+      await setDoc(doc(db, 'programs', currentUser.uid), programDoc(myProgram));
       document.getElementById('logger-title').textContent = 'HUNT ACTIVE';
       document.getElementById('logger-exercise-hero')?.removeAttribute('data-exercise');
     }
@@ -13529,7 +13767,7 @@ document.getElementById('save-workout-btn')?.addEventListener('click', async () 
       console.error('Workout save failed, holding it locally:', err);
       const held = holdUnsentWorkout({
         uid: currentUser.uid, displayName: profile.displayName, date, time, exercises,
-        programDayIndex: savedDayIdx,
+        programDayIndex: savedDayIdx, ...planModeTag(savedDayIdx),
         ...(runSummaryFromLogger ? { isRun: true, runSummary: runSummaryFromLogger } : {}),
       }, err);
       showToast(held
@@ -14264,9 +14502,9 @@ function computeStreak(uid) {
   const record = (isMe && profile) ? profile : (allUsers.find(u => u.uid === uid) || {});
   // The current user's schedule lives on myProgram; other Hunters' schedules are
   // copied onto their allUsers entry when the party's programmes load.
-  const schedule = (isMe && myProgram?.schedule?.length)
-    ? myProgram.schedule
-    : (record.schedule || []);
+  // With a home and a gym plan, rest days are always the gym plan's, so picking home never moves the streak.
+  const mine = isMe ? streakScheduleOf({ mode: planMode, active: myProgram, alt: altPlan }) : [];
+  const schedule = mine.length ? mine : (record.schedule || []);
 
   return computeStreakFrom({
     today: todayStr(),
@@ -18007,7 +18245,7 @@ function showCheckinResults(prev, saved, xpGained) {
     const before = myProgram;
     myProgram = next;
     try {
-      await setDoc(doc(db, 'programs', currentUser.uid), myProgram);
+      await setDoc(doc(db, 'programs', currentUser.uid), programDoc(myProgram));
       btn.closest('.ci-plan-item').innerHTML = `<div class="ci-plan-t" style="color:var(--growing);">✓ Applied</div><div class="ci-plan-r">${escapeHtml(s.title)}</div>`;
       showToast(`Plan updated: ${s.title}`, 'success');
     } catch (e) {
@@ -18545,8 +18783,9 @@ window.openCheckinHub = (view = 'home', reward = null) => {
 // for the look, resized on the device and sent only with that request.
 
 /** Names the coach may use: every resistance exercise the app knows (no timed or run moves). */
-function coachExercises() {
-  return Object.entries(EXERCISES_ALL).filter(([, d]) => d && !isCardioTimed(d)).map(([n]) => n).slice(0, 400);
+function coachExercises(only) {
+  const pick = only ? new Set(only) : null; // a home plan: only what the Hunter's home kit allows
+  return Object.entries(EXERCISES_ALL).filter(([n, d]) => d && !isCardioTimed(d) && (!pick || pick.has(n))).map(([n]) => n).slice(0, 400);
 }
 /** Timed holds (front lever, L-sit...): reps are seconds. Minutes-based timed work and runs stay out of the coach's list. */
 const isCoachHold = (d) => !!(d && d.timed && d.timedUnit !== 'mins' && !isRunDef(d));
@@ -18578,7 +18817,7 @@ function coachInput(mode, request, image, extra = {}) {
   const plan = g ? currentPhysiquePlan() : null;
   const st = blockState(profile?.block, today);
   return {
-    mode, request, image, ...extra,
+    mode, request, image,
     goals: profile?.coachProfile || null,
     sex, age: last?.age || null, heightCm: profile?.heightCm || null, weightKg: bw,
     latest,
@@ -18590,8 +18829,13 @@ function coachInput(mode, request, image, extra = {}) {
     currentPlan: myProgram?.days?.length ? myProgram.days.map(d => ({ name: d.name, exercises: (d.exercises || []).map(e => ({ name: e.name, sets: e.sets, reps: e.reps })) })) : null,
     feedback: feedbackEntries().sort((a, b) => b.date.localeCompare(a.date)).slice(0, 6),
     block: st ? { week: st.week, phase: st.phase, targetRir: st.targetRir } : null,
-    exercises: coachExercises(),
+    exercises: coachExercises(planMode === 'home' && profile?.homeEquipment?.kit ? homeExerciseNames(EXERCISES_ALL, profile.homeEquipment.kit) : null),
     holds: coachHolds(),
+    // which plan this is (home or gym), what the Hunter has at home, and the other plan for reference
+    planMode,
+    homeEquipment: profile?.homeEquipment ? { kit: kitLabel(profile.homeEquipment.kit), note: profile.homeEquipment.note || '' } : null,
+    otherPlan: altPlan?.days?.length ? { mode: planMode === 'home' ? 'gym' : 'home', days: altPlan.days.map(d => ({ name: d.name, exercises: (d.exercises || []).map(e => ({ name: e.name, sets: e.sets, reps: e.reps })) })) } : null,
+    ...extra,
   };
 }
 
@@ -18646,8 +18890,8 @@ function coachResultHtml(res, opts = {}) {
 }
 
 /** The program the coach proposed, in the plan's own shape, keeping what the old plan stored per exercise. */
-function programFromCoach(res) {
-  const old = myProgram || {};
+function programFromCoach(res, base = myProgram) {
+  const old = base || {};
   const kept = {};
   (old.days || []).forEach(d => (d.exercises || []).forEach(e => { kept[e.name] = e; }));
   const SCHEDULES = { 1: ['Mon'], 2: ['Mon', 'Thu'], 3: ['Mon', 'Wed', 'Fri'], 4: ['Mon', 'Tue', 'Thu', 'Fri'], 5: ['Mon', 'Tue', 'Wed', 'Fri', 'Sat'], 6: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] };
@@ -18672,7 +18916,7 @@ function wireCoachResult(box, res, { onLook } = {}) {
     const before = myProgram;
     try {
       myProgram = programFromCoach(res);
-      await setDoc(doc(db, 'programs', currentUser.uid), myProgram);
+      await setDoc(doc(db, 'programs', currentUser.uid), programDoc(myProgram));
       try { renderQuestFeed(); renderPlanOptimiser(); } catch (_) {}
       e.target.textContent = '✓ Plan applied';
       showToast('Plan updated from the coach.', 'success');

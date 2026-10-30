@@ -65,6 +65,8 @@ Targets
 
 Plan
 - Build days from the exercise list given, using the exact names only. Fit the sessions per week they can actually do. Put the focus groups first in each session and give them enough sets to grow (about 10-20 hard sets a week for a focus group, 8-12 for others, fewer if they are a beginner). Use rep ranges that fit the goal. Sets 2-5, reps within 3-20.
+- "planMode" says which of the Hunter's two plans this is: "gym" or "home" (they pick one on the day). For a home plan use only exercises that fit what they have at home ("homeEquipment", and whatever they told you in their goals and answers); with nothing known, bodyweight only. Never put a barbell, cable or machine move in a home plan unless they said they have it. "otherPlan" is their other plan, for reference only.
+- In "home" mode, build the home version of their gym plan ("gymPlan"): the same number of sessions, the same goal and focus, and each session working the same muscles as the gym session it stands in for, with every exercise swapped for the closest one in exerciseList they can do with their home equipment (a pull-up bar, dumbbells, bands, a bench and so on, as they said). Keep a gym exercise only if it needs nothing they lack. Use higher reps or slower tempo where the load is lighter. Always return "days", in the same order as gymPlan. Say in "coach" what you swapped and why, and anything the home version cannot cover.
 - In "review" mode, keep what works. Return "days" as null if the current plan is fine, otherwise the full adjusted plan. Say what you changed and why in "coach".
 - "holdExercises" are the timed holds in exerciseList (front lever, planche, L-sit, handstand work and so on): for those, "reps" means seconds per hold (5-60), not repetitions. Use them when the Hunter wants skills; never leave out a skill they asked for.
 - Respect their recovery: if their feedback shows heavy soreness or missed work, do not add volume.
@@ -205,6 +207,14 @@ function sanitizePlan(raw, { sex, exercises, holds }) {
   };
 }
 
+/** What the Hunter has at home, as short text, or null. */
+function sanitizeHomeEquipment(h) {
+  if (!h || typeof h !== 'object') return null;
+  const told = Array.isArray(h.toldCoach) ? h.toldCoach.slice(0, 6).map(x => str(x, 240)).filter(Boolean) : [];
+  const out = { kit: str(h.kit, 200), note: str(h.note, 200), toldCoach: told };
+  return out.kit || out.note || told.length ? out : null;
+}
+
 /* ── the request ──────────────────────────────────────────────────────── */
 const IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 const MAX_IMAGE_CHARS = 2_500_000;
@@ -212,7 +222,11 @@ const MAX_IMAGE_CHARS = 2_500_000;
 /** The user turn: the Hunter's facts as JSON, plus an optional reference image. */
 function buildFacts(input) {
   return {
-    mode: ['review', 'intake', 'chat'].includes(input.mode) ? input.mode : 'design',
+    mode: ['review', 'intake', 'chat', 'home'].includes(input.mode) ? input.mode : 'design',
+    planMode: input.planMode === 'home' ? 'home' : 'gym',
+    homeEquipment: sanitizeHomeEquipment(input.homeEquipment),
+    gymPlan: Array.isArray(input.gymPlan) ? input.gymPlan.slice(0, 7) : null,
+    otherPlan: input.otherPlan && Array.isArray(input.otherPlan.days) ? { mode: input.otherPlan.mode === 'home' ? 'home' : 'gym', days: input.otherPlan.days.slice(0, 7) } : null,
     request: str(input.request, 600) || null,
     goals: sanitizeGoals(input.goals),
     intake: sanitizeIntakeState(input.intake),
@@ -374,7 +388,7 @@ async function designIntake({ client, input }) {
   return out;
 }
 
-module.exports = { MODEL, GROUPS, GOALS, PlanSchema, SYSTEM, sanitizeLook, sanitizeDays, sanitizePlan, buildContent, designPlan, MAX_IMAGE_CHARS, IntakeSchema, INTAKE_SYSTEM, MAX_ROUNDS, sanitizeIntake, sanitizeIntakeState, sanitizeGoals, designIntake, buildFacts, ChatSchema, CHAT_SYSTEM, CHAT_LIMIT, MAX_TURNS, sanitizeTurns, sanitizeChat, designChat };
+module.exports = { sanitizeHomeEquipment, MODEL, GROUPS, GOALS, PlanSchema, SYSTEM, sanitizeLook, sanitizeDays, sanitizePlan, buildContent, designPlan, MAX_IMAGE_CHARS, IntakeSchema, INTAKE_SYSTEM, MAX_ROUNDS, sanitizeIntake, sanitizeIntakeState, sanitizeGoals, designIntake, buildFacts, ChatSchema, CHAT_SYSTEM, CHAT_LIMIT, MAX_TURNS, sanitizeTurns, sanitizeChat, designChat };
 
 /** Daily limit per Hunter: the usage record to store and whether one more call is allowed. */
 const DAILY_LIMIT = 10;

@@ -54,7 +54,9 @@ async function runReminders({ db, messaging, deleteField, fieldPath, now = Date.
       ]);
       const workouts = wSnap.docs.map(d => d.data());
       const program = pSnap.exists ? pSnap.data() : null;
-      const schedule = (program && program.schedule) || [];
+      // With a home and a gym plan (plan-modes.js), rest days are always the gym plan's.
+      const gymPlan = program && program.mode === 'home' && program.alt ? program.alt : program;
+      const schedule = (gymPlan && gymPlan.schedule && gymPlan.schedule.length ? gymPlan.schedule : (program && program.schedule)) || [];
 
       const decision = decideReminder({
         now, prefs, workouts, schedule, program, uid,
