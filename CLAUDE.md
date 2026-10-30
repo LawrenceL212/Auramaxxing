@@ -113,6 +113,11 @@ consistency) and tunes the plan toward the ones that are stalled, behind or miss
 tapped, through the same `programs/{uid}` write as the plan editor; the plan stores the picked
 `goal` and stamps a changed exercise `optimisedAt`. Pure, so `node test/optimiser.test.mjs` tests it.
 
+[weigh-in.js](weigh-in.js) is the pure side of the weigh-in input in the check-in hub (`openCheckinHub('weigh')`:
+start value, −0.5/−0.1/+0.1/+0.5 steppers, a typed value, the change since the last weigh-in) and of the Codex Weight
+card's trend (`weightOnTrackHtml`: a dot per weigh-in, the 7-day average line, 7-day avg, 30-day change, kg per week).
+It also has a goal-pace helper (`goalPace`) that nothing uses yet; goal pace on screen is `weight-path.js`. Writes
+nothing. Pure, so `node test/weigh-in.test.mjs` tests it. Presentation only.
 [body-metrics.js](body-metrics.js) is the maths behind the weekly check-in (`openCheckinModal`): every tape
 field is a circumference (measured around the body), and it gives US Navy body fat (female needs hips,
 no height means no estimate), fat/lean mass, BMI, FFMI, waist-to-height, V-taper (shoulders ÷ waist) against
