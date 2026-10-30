@@ -161,6 +161,8 @@ Lazy-loaded: [classes.js](classes.js) via `await import('./classes.js')` in the 
 
 [countries_embedded.js](countries_embedded.js) (1.4 MB `COUNTRIES_GEO`) is imported **only** by [shadow-world.html](shadow-world.html), never by `index.html`.
 
+[world-players.js](world-players.js) builds the Shadow World roster (colour and Hunter name per uid) from the users collection; the original four keep their colours. `index.html` sends it to the map with the world data (`players`), so territories held by any Hunter draw as theirs. Pure, so `node test/world-players.test.mjs` tests it.
+
 Arsenal (`view-exercises`) and World (`view-world`) wear the same look. World is a portrait page with an
 Army / Dungeons / Raids switch (`setWorldPane`, `renderWorldDungeons`, `renderWorldRaids` in `index.html`); the
 Shadow World iframe and its message handlers are untouched, and "Full map" restores the old fullscreen map.
