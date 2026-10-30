@@ -282,6 +282,8 @@ const setP = p => {
 };
 
 // ── PLAYERS ──
+// The original four; the parent sends every Hunter's colour and name with the world data
+// (world-players.js), so territories held by anyone else draw as theirs, not as unclaimed.
 const PLAYERS = {
   'eUtGPwQBcCSO0x3xS3ZGYFGXNIT2': { hex:'#d4a017', r:212, g:160, b:23,  name:'Lawrence' },
   'd1W5vTx5aSTIwkR4CIwnO2xW7vf1': { hex:'#7c3aed', r:124, g:58,  b:237, name:'LuChing'  },
@@ -848,6 +850,7 @@ function loadFromParent() {
         LIVE_POOL = e.data.pool || {};
         CURRENT_UID = e.data.currentUid || null;
         EXPLORATION_UNLOCKS_AT = e.data.explorationUnlocksAt || null;
+        Object.assign(PLAYERS, e.data.players || {});
         resolve();
       }
       if (e.data?.type === 'focusContinent') {
@@ -1003,16 +1006,16 @@ function openPanel(c) {
   document.getElementById('pn').style.color = ownerP?.hex||'#61a5ff';
 
   document.getElementById('po').innerHTML = state&&ownerP
-    ? `<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${ownerP.hex};margin-right:6px;vertical-align:middle;"></span><strong style="color:${ownerP.hex};">${ownerP.name}</strong> controls this territory`
+    ? `<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${ownerP.hex};margin-right:6px;vertical-align:middle;"></span><strong style="color:${ownerP.hex};">${plEsc(ownerP.name)}</strong> controls this territory`
     : `<span style="color:rgba(61,165,255,0.4);">Unclaimed — deploy soldiers to take control</span>`;
 
   // Continent control bars
   const leaders = Object.entries(ownedByUid).sort((a,b)=>b[1]-a[1]);
   document.getElementById('cont-progress').innerHTML = `
     <div style="font-size:9px;color:${m.hex};letter-spacing:.1em;margin-bottom:8px;">${m.icon} CONTINENT CONTROL · ${m.bonus}</div>
-    ${dominated?`<div style="font-size:11px;color:${PLAYERS[dominated[0]]?.hex||'#fff'};font-weight:800;margin-bottom:8px;">★ ${PLAYERS[dominated[0]]?.name||'?'} DOMINATES ${m.name.toUpperCase()}</div>`:''}
+    ${dominated?`<div style="font-size:11px;color:${PLAYERS[dominated[0]]?.hex||'#fff'};font-weight:800;margin-bottom:8px;">★ ${plEsc(PLAYERS[dominated[0]]?.name||'?')} DOMINATES ${m.name.toUpperCase()}</div>`:''}
     ${leaders.map(([uid,n])=>{const pl=PLAYERS[uid];if(!pl)return'';const pct=Math.round(n/6*100);return`<div style="display:flex;align-items:center;gap:8px;margin-bottom:5px;">
-      <span style="color:${pl.hex};font-size:10px;min-width:65px;font-weight:700;">${pl.name}</span>
+      <span style="color:${pl.hex};font-size:10px;min-width:65px;font-weight:700;">${plEsc(pl.name)}</span>
       <div style="flex:1;height:5px;background:rgba(255,255,255,.06);border-radius:3px;overflow:hidden;">
         <div style="width:${pct}%;height:100%;background:${pl.hex};border-radius:3px;"></div>
       </div>
@@ -1076,7 +1079,7 @@ function openPanel(c) {
       </div>
       <div style="font-size:10px;color:rgba(91,168,255,.3);margin-top:6px;">${soldiers} stationed · withdraw to redeploy elsewhere</div>`;
   } else {
-    pa.innerHTML = `<button class="pb ba" onclick="declareWar('${c.id}','${state.ownerUid}')">⚔ Declare War on ${ownerP?.name||'?'}</button>`;
+    pa.innerHTML = `<button class="pb ba" onclick="declareWar('${c.id}','${state.ownerUid}')">⚔ Declare War on ${plEsc(ownerP?.name||'?')}</button>`;
   }
 
   const plRow = document.getElementById('planner-row');

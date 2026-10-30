@@ -5050,6 +5050,7 @@ import { QUICK_TITLE, QUICK_TYPES, buildQuickCircuit, quickLoggerRows, generateQ
 import { weekStrip, weekProgress, latestDate, agoLabel, estimateMinutes, totalSets, topMuscles, ringArc,
   lastSet, lastTimeLabel, upNext, leftLabel } from "./hunt-view.js";
 import { penaltyView } from "./penalty-view.js";
+import { worldPlayers } from "./world-players.js";
 import { scorePlan, diffPlans } from "./plan-metrics.js";
 import { trainerRead, localSummary, fullHistory } from "./trainer-insights.js";
 import { skinfoldBodyFat, feasibility, feasibilityText, historyDigest, catalogue, excludedFromText, validatePlan, planGroups } from "./plan-gen.js";
@@ -26623,12 +26624,7 @@ function renderWorldSidebar() {
   const listEl = document.getElementById('world-territories');
   if (!el) return;
 
-  const PLAYER_COLORS = {
-    'eUtGPwQBcCSO0x3xS3ZGYFGXNIT2': { hex:'#d4a017', name:'Lawrence' },
-    'd1W5vTx5aSTIwkR4CIwnO2xW7vf1': { hex:'#7c3aed', name:'LuChing'  },
-    'rzcznIkNRrSKVXl74LsTaRSdHOk2': { hex:'#0ea5e9', name:'Lucas'    },
-    'oFFi2hATYARhqcSZQlHwlsYBOge2': { hex:'#ff6b9d', name:'Mireyah'  },
-  };
+  const PLAYER_COLORS = worldPlayers(allUsers);
 
   const CONT_META = [
     { ckey:'northAmerica', armyKey:'iron',   name:'Iron Highlands',  icon:'🏋️', hex:'#e05555', stat:'Strength'   },
@@ -26680,8 +26676,8 @@ function renderWorldSidebar() {
     }).join('');
 
     const holderText = dominated
-      ? `<span style="color:${PLAYER_COLORS[dominated[0]]?.hex}">★ ${PLAYER_COLORS[dominated[0]]?.name}</span>`
-      : leaders.map(([uid,n]) => `<span style="color:${PLAYER_COLORS[uid]?.hex||'#fff'}">${PLAYER_COLORS[uid]?.name||'?'}×${n}</span>`).join(' ');
+      ? `<span style="color:${PLAYER_COLORS[dominated[0]]?.hex}">★ ${escapeHtml(PLAYER_COLORS[dominated[0]]?.name || '?')}</span>`
+      : leaders.map(([uid,n]) => `<span style="color:${PLAYER_COLORS[uid]?.hex||'#fff'}">${escapeHtml(PLAYER_COLORS[uid]?.name||'?')}×${n}</span>`).join(' ');
 
     return `<div class="ws-row" onclick="focusWorldContinent('${m.ckey}')">
       <div class="ws-name" style="color:${m.hex}">${m.icon} ${m.name}</div>
@@ -26888,14 +26884,19 @@ window.addEventListener('message', async (e) => {
         });
       });
 
-      // Read exploration lock from the shared 'config' doc
-      const cfgSnap = await getDoc(doc(db, 'config', 'shadowWorld'));
-      const explorationUnlocksAt = cfgSnap.exists() ? (cfgSnap.data().explorationUnlocksAt || null) : null;
+      // Read exploration lock from the shared 'config' doc. On its own: if the live rules
+      // refuse config, the Hunter must still get their pool and the map, not an empty world.
+      let explorationUnlocksAt = null;
+      try {
+        const cfgSnap = await getDoc(doc(db, 'config', 'shadowWorld'));
+        explorationUnlocksAt = cfgSnap.exists() ? (cfgSnap.data().explorationUnlocksAt || null) : null;
+      } catch (cfgErr) { console.warn('Shadow World config unreadable:', cfgErr); }
 
       iframe.contentWindow.postMessage({
         type: 'shadowWorldData',
         countries,
         pool,
+        players: worldPlayers(usersSnap.docs.map(d => ({ uid: d.id, displayName: d.data().displayName }))),
         currentUid: currentUser?.uid || null,
         explorationUnlocksAt,
       }, '*');
@@ -26922,9 +26923,12 @@ window.addEventListener('message', async (e) => {
         console.warn('Deploy: not enough pool soldiers'); ack(false); return;
       }
 
-      // Server-side exploration lock
-      const cfgSnap2 = await getDoc(doc(db, 'config', 'shadowWorld'));
-      const unlocksAt = cfgSnap2.exists() ? cfgSnap2.data().explorationUnlocksAt : null;
+      // Server-side exploration lock (an unreadable config reads as unlocked, as the map does)
+      let unlocksAt = null;
+      try {
+        const cfgSnap2 = await getDoc(doc(db, 'config', 'shadowWorld'));
+        unlocksAt = cfgSnap2.exists() ? cfgSnap2.data().explorationUnlocksAt : null;
+      } catch (cfgErr) { console.warn('Shadow World config unreadable:', cfgErr); }
       if (unlocksAt && new Date() < new Date(unlocksAt)) {
         showToast('Exploration is locked — wait for the countdown', 'error');
         ack(false);
@@ -27950,12 +27954,7 @@ function renderGuildFeed() {
   const today = todayStr();
   const yesterday = todayStr(new Date(Date.now()-86400000));
 
-  const PLAYER_COLORS = {
-    'eUtGPwQBcCSO0x3xS3ZGYFGXNIT2': '#d4a017',
-    'd1W5vTx5aSTIwkR4CIwnO2xW7vf1': '#7c3aed',
-    'rzcznIkNRrSKVXl74LsTaRSdHOk2': '#0ea5e9',
-    'oFFi2hATYARhqcSZQlHwlsYBOge2': '#ff6b9d',
-  };
+  const PLAYER_COLORS = Object.fromEntries(Object.entries(worldPlayers(allUsers)).map(([uid, p]) => [uid, p.hex]));
 
   el.innerHTML = `
     <div style="font-family:var(--font-mono);font-size:9px;color:rgba(91,168,255,0.78);letter-spacing:.15em;margin-bottom:8px;">◈ SYSTEM RECORD</div>
