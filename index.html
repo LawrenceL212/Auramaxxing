@@ -1332,6 +1332,8 @@
   .load-choice{display:flex;align-items:center;gap:8px;margin:0 0 10px;font-family:var(--font-mono);font-size:10.5px;letter-spacing:0.06em;color:var(--text-faint);text-transform:uppercase;}
   .load-choice select{flex:1;min-width:0;max-width:200px;background:rgba(255,255,255,0.02);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:7px 8px;font-size:16px;font-family:inherit;text-transform:none;letter-spacing:0;}
   .load-choice .band-select,.load-choice .edit-band{flex:0 0 auto;width:118px;padding-right:2px;}
+  .load-choice .bw-load-note{flex:0 0 auto;color:var(--text-dim);text-transform:none;letter-spacing:0;font-size:12px;}
+  .load-choice .bw-load-log{background:none;border:1px solid var(--border);border-radius:6px;color:var(--brass);padding:6px 8px;font:inherit;font-size:11px;cursor:pointer;}
   .day-title-row{display:flex;align-items:center;justify-content:space-between;margin:8px 0 10px;}
   .day-title{font-family:var(--font-display);font-size:19px;letter-spacing:0.02em;margin:0;}
   .day-complete-badge{font-size:10.5px;padding:4px 9px;border-radius:20px;background:rgba(139,92,255,0.15);color:var(--violet);border:1px solid var(--violet);white-space:nowrap;}
@@ -5088,7 +5090,8 @@ import { skinfoldBodyFat, feasibility, feasibilityText, historyDigest, catalogue
 import { setInputKind, setInputHeaders, storedSet, storedSetSecs, partsToSecs, secsToParts,
          formatSetTime, isTimeKind, LOAD_TYPES, loadLabel, offersLoadChoice, defaultLoad,
          setLoad, loggedLoad, withLoad, BAND_LEVELS, DEFAULT_BAND, bandLabel, loggedBand,
-         setBand, loadText, loadOptions, isBandLoad, isRunDef } from "./set-inputs.js";
+         setBand, loadText, loadOptions, isBandLoad, isRunDef,
+         bodyweightOn, bodyweightLoadKg } from "./set-inputs.js";
 import { feltEasier, EASIER_LABEL } from "./set-compare.js";
 import { STEPS, startWeight, stepWeight, parseWeight, weightStats, signedKg, trendSvg } from "./weigh-in.js";
 import { restSecsFor, adjustRest, formatClock, nextOpenSet, holdProgress, heldSecs, REST_STEP, HOLD_LEAD_IN } from "./set-timer.js";
@@ -5757,6 +5760,13 @@ function readSetRow(sr) {
     ? val('.set-reps')
     : partsToSecs({ h: val('.set-h'), m: val('.set-m'), s: val('.set-s') });
   return { kind, secs, reps: val('.set-reps'), weight: val('.set-weight'), km: val('.set-dist') };
+}
+/** The kg a Bodyweight set of this exercise counts on a date: its bodyweight share
+    of the weigh-in then (latest on or before it), else the profile weight; 0 when
+    neither is known (set-inputs.js). */
+function bodyweightLoadFor(name, date) {
+  const bw = bodyweightOn(myWeights, date || todayStr(), profile?.bodyweightKg);
+  return bodyweightLoadKg(EXERCISES_ALL[name], bw);
 }
 /** The load type this Hunter last logged an exercise with, or null (set-inputs.js). */
 function lastLoggedLoad(name) {
@@ -13094,7 +13104,7 @@ function addExerciseRow(presetName, targetSets, targetReps, prefillSets) {
     </div>
     <div class="muscle-tags"></div>
     <div class="party-rival hidden"></div>
-    <div class="load-choice hidden"><span>Load</span><select class="load-select" aria-label="Load type"></select><select class="band-select hidden" aria-label="Band strength">${BAND_LEVELS.map(b => `<option value="${b}">${bandLabel(b)}</option>`).join('')}</select></div>
+    <div class="load-choice hidden"><span>Load</span><select class="load-select" aria-label="Load type"></select><select class="band-select hidden" aria-label="Band strength">${BAND_LEVELS.map(b => `<option value="${b}">${bandLabel(b)}</option>`).join('')}</select><span class="bw-load-note hidden"></span></div>
     <div class="set-table-head hidden" id="set-table-head-${Date.now()}"><span>#</span><span class="reps-header">Reps</span><span class="weight-header">Weight (kg)</span><span></span></div>
     <div class="sets-list"></div>
     <button type="button" class="btn add-set-btn">+ Add set</button>
@@ -13167,6 +13177,20 @@ function addExerciseRow(presetName, targetSets, targetReps, prefillSets) {
       : allowed(lastLoggedLoad(row.dataset.exName)) ? lastLoggedLoad(row.dataset.exName) : defaultLoad(def);
     loadSelect.value = row.dataset.load;
     syncBandChoice(band);
+    syncBodyweightNote();
+  }
+  /* Bodyweight load counts the latest weigh-in: show the kg it stands for, or a
+     way to log a weight when none is known yet (the set then counts as 0 kg). */
+  row._syncBodyweightNote = () => syncBodyweightNote();
+  function syncBodyweightNote() {
+    const note = loadChoice.querySelector('.bw-load-note');
+    const on = row.dataset.load === 'bodyweight';
+    note.classList.toggle('hidden', !on);
+    if (!on) { note.innerHTML = ''; return; }
+    const kg = bodyweightLoadFor(row.dataset.exName, document.getElementById('workout-date')?.value);
+    note.innerHTML = kg > 0 ? `= ${kg} kg`
+      : `<button type="button" class="bw-load-log" aria-label="No weigh-in yet: log your weight">Log weight</button>`;
+    note.querySelector('.bw-load-log')?.addEventListener('click', () => window.openCheckinHub('weigh'));
   }
   /* Band strength shows only with Bands; starts on the band last used for this
      exercise, else Medium. */
@@ -13192,6 +13216,7 @@ function addExerciseRow(presetName, targetSets, targetReps, prefillSets) {
     }));
     row.dataset.load = loadSelect.value;
     syncBandChoice();
+    syncBodyweightNote();
     setsList.innerHTML = '';
     const num = v => (v === undefined || v === '' ? null : Number(v));
     kept.forEach(k => {
@@ -13303,7 +13328,11 @@ function addExerciseRow(presetName, targetSets, targetReps, prefillSets) {
       // Determine performance vs previous session
       const prevReps   = Number(setRow.dataset.prevReps)   || 0;
       const prevWeight = Number(setRow.dataset.prevWeight) || 0;
-      const weight     = Number(setRow.querySelector('.set-weight')?.value) || 0;
+      // A Bodyweight set has no kg input but counts the Hunter's weight, as the save does
+      const _exRow     = setRow.closest('.exercise-row');
+      const weight     = Number(setRow.querySelector('.set-weight')?.value)
+        || (_exRow?.dataset.load === 'bodyweight' && offersLoadChoice(EXERCISES_ALL[_exRow.dataset.exName])
+          ? bodyweightLoadFor(_exRow.dataset.exName, document.getElementById('workout-date')?.value) : 0);
       const selectedRir = setRow.querySelector('.rir-chip.selected');
       const rir         = selectedRir ? Number(selectedRir.dataset.rir) : null;
       const prevRir     = setRow.dataset.prevRir !== undefined && setRow.dataset.prevRir !== ''
@@ -13647,8 +13676,10 @@ function gatherExercises() {
     const isRunEx2  = !!(exDef.timed && exDef.intent === 'endurance');
     const usesRPE   = isTimedEx || isRunEx2;
     const load = offersLoadChoice(exDef) ? row.dataset.load : null;
+    const bwLoad = load === 'bodyweight'
+      ? bodyweightLoadFor(name, document.getElementById('workout-date')?.value) : 0;
     const sets = [...row.querySelectorAll('.set-row')].map(sr => {
-      const base = withLoad(setRowStored(sr), load, row.dataset.band);
+      const base = withLoad(setRowStored(sr), load, row.dataset.band, bwLoad);
       if (!base) return null;
       const selectedRir = sr.querySelector('.rir-chip.selected');
       const chipValue = selectedRir ? Number(selectedRir.dataset.rir) : null;
@@ -18972,6 +19003,8 @@ window.openCheckinHub = (view = 'home', reward = null) => {
         profile.bodyweightKg = kg;
         myWeights = [...myWeights.filter(w => w.date !== today), { ...(existing || {}), uid: currentUser.uid, date: today, weight: kg }].sort((a, b) => a.date.localeCompare(b.date));
         try { renderHuntTiles(); } catch (_) {}
+        // An open logger's Bodyweight sets now count this weight
+        document.querySelectorAll('.exercise-row').forEach(r => { try { r._syncBodyweightNote?.(); } catch (_) {} });
         const after = rhythmState(rhythmCtx());
         const r = weighInReward({ weights: myWeights, today, kg, streak: after.streak, weighCount: after.weighCount });
         window.openCheckinHub('done', r);
@@ -28933,7 +28966,7 @@ function openWorkoutDetail(workoutId) {
       });
       ex.sets = ex.sets.map(st => {
         const { load, band, ...rest } = st;
-        return withLoad(rest, sel.value, DEFAULT_BAND);
+        return withLoad(rest, sel.value, DEFAULT_BAND, bodyweightLoadFor(ex.name, w.date));
       });
       overlay.querySelector('#detail-content').innerHTML = buildEditView();
       wireEditHandlers();

@@ -100,8 +100,11 @@ reward treats them as if logged on that date. Pure, so `node test/backfill.test.
 [set-inputs.js](set-inputs.js) decides which inputs the logger shows for a set (kg + reps, reps,
 load + reps, seconds, h:mm, or h:mm:ss + km) from fields each exercise already has, and turns them into
 the same stored fields as before. Exercises with a kg input also get a Load picker (kg, Bands,
-Band assisted on bodyweight moves, Bodyweight, No weight, plus band strength); non-kg sets store
-weight 0 with optional `load`/`band` fields, so formulas read them like a set with no kg. Pure, so
+Band assisted on bodyweight moves, Bodyweight, No weight, plus band strength); band and no-weight sets store
+weight 0 with optional `load`/`band` fields, so formulas read them like a set with no kg. A Bodyweight set stores
+the exercise's `bwPercent` share (whole bodyweight without one) of the weigh-in on the session's date as its weight
+(`bodyweightOn`, `bodyweightLoadKg`; profile weight if no weigh-in, else 0 and a "Log weight" button), so XP,
+volume and PRs count it like kg; sets saved before this keep weight 0. Pure, so
 `node test/set-inputs.test.mjs` tests it.
 
 [optimiser.js](optimiser.js) suggests plan changes from the plan and the logged sessions: a set

@@ -29,6 +29,12 @@
    it would for a set logged with no kg. Either band load also takes a
    strength (Light to Extra heavy), stored as `band` on the set.
 
+   Bodyweight load: the set stores the bodyweight it moved as its weight, so
+   volume, XP and PRs count it like any kg set. That is the exercise's
+   bodyweight share (bwPercent) of the Hunter's weigh-in on the session's date
+   (the latest one on or before it), whole bodyweight when the exercise has no
+   share. With no weigh-in and no profile weight it stays 0, as before.
+
    Pure, so test/set-inputs.test.mjs exercises it without a browser.
    ========================================================================= */
 
@@ -126,24 +132,49 @@ export function loggedBand(sets) {
 }
 
 /** How a set's load reads in history: "Heavy band", "Light band assist",
-    "Bodyweight", "60kg". */
+    "Bodyweight", "Bodyweight (46.4kg)", "60kg". */
 export function loadText(set) {
   const s = set || {};
   const load = setLoad(s);
   if (load === 'kg') return s.weight ? s.weight + 'kg' : '—';
   if (load === 'bands') { const b = setBand(s); return b ? `${bandLabel(b)} band` : 'Bands'; }
   if (load === 'band_assist') { const b = setBand(s); return b ? `${bandLabel(b)} band assist` : 'Band assisted'; }
+  if (load === 'bodyweight' && num(s.weight) > 0) return `Bodyweight (${s.weight}kg)`;
   return loadLabel(load);
 }
 
 /** The stored set with its load tag (and band strength for band loads). kg is the
     default and is not written, so weighted sets keep exactly the shape they
-    always had. */
-export function withLoad(stored, load, band) {
+    always had. A Bodyweight set takes bwLoadKg (bodyweightLoadKg()) as its weight. */
+export function withLoad(stored, load, band, bwLoadKg) {
   if (!stored || !load || load === 'kg' || !LOAD_TYPES.includes(load)) return stored;
-  const out = { ...stored, weight: 0, load };
+  const out = { ...stored, weight: load === 'bodyweight' ? round1(num(bwLoadKg)) : 0, load };
   if (isBandLoad(load) && BAND_LEVELS.includes(band)) out.band = band;
   return out;
+}
+
+/* ── Bodyweight load ── */
+const round1 = n => Math.round(n * 10) / 10;
+
+/** The Hunter's bodyweight for a session date: the latest weigh-in on or before
+    it, else the earliest one after (a session from before the first weigh-in),
+    else fallbackKg (profile weight), else null. weights: [{date, weight}]. */
+export function bodyweightOn(weights, date, fallbackKg) {
+  const list = (weights || []).filter(w => w && w.date && num(w.weight) > 0)
+    .sort((a, b) => a.date.localeCompare(b.date));
+  const before = list.filter(w => !date || w.date <= date);
+  const hit = before.length ? before[before.length - 1] : list[0];
+  if (hit) return num(hit.weight);
+  return num(fallbackKg) || null;
+}
+
+/** The kg a Bodyweight set stands for: the exercise's bodyweight share
+    (bwPercent) of bwKg, or all of it when the exercise has none. 0 with no bwKg. */
+export function bodyweightLoadKg(def, bwKg) {
+  const bw = num(bwKg);
+  if (!bw) return 0;
+  const pct = Number((def || {}).bwPercent);
+  return round1(bw * (Number.isFinite(pct) && pct > 0 ? pct : 1));
 }
 
 /** True when the kind is entered as a time rather than a rep count. */
