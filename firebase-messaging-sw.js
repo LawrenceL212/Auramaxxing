@@ -39,14 +39,15 @@ try {
   // Offline or blocked CDN: the local test notification below still works.
 }
 
-/* Tapping the notification, or Begin Hunt / Quick 15 (Android buttons), focuses the open app and tells it
-   where to go, or opens the app at index.html?go=hunt|quick. Old-style FCM notification messages carry their
+/* Tapping the notification, or Begin Hunt / Quick 15 / Log weight (Android buttons), focuses the open app and tells it
+   where to go, or opens the app at index.html?go=hunt|quick|weigh. Old-style FCM notification messages carry their
    own link and are handled by the SDK. */
 self.addEventListener('notificationclick', (event) => {
   const data = event.notification && event.notification.data;
   if (data && data.FCM_MSG) return;
   event.notification.close();
-  const go = self.AuraNotify.goFor(event.action);
+  const type = data && data.type;
+  const go = self.AuraNotify.goFor(event.action, type);
   event.waitUntil((async () => {
     const all = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
     for (const c of all) {
@@ -56,6 +57,6 @@ self.addEventListener('notificationclick', (event) => {
         return;
       }
     }
-    return self.clients.openWindow(self.AuraNotify.targetUrl(event.action, self.registration.scope));
+    return self.clients.openWindow(self.AuraNotify.targetUrl(event.action, self.registration.scope, type));
   })());
 });

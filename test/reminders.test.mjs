@@ -1,6 +1,6 @@
 /* Tests for reminders.js.  Run:  node test/reminders.test.mjs  (plain script, exits non-zero on failure) */
 import fs from 'node:fs';
-import { pickIndex, planDayFor, COPY_MAX_TITLE, COPY_MAX_BODY, decideReminder, learnUsualMinutes, plannedSlotHour, localParts, isQuietHour, reminderCopy, MAX_PER_DAY } from '../reminders.js';
+import { pickIndex, planDayFor, COPY_MAX_TITLE, COPY_MAX_BODY, decideReminder, learnUsualMinutes, plannedSlotHour, localParts, isQuietHour, reminderCopy, MAX_PER_DAY, decideWeighIn, weighRun, WEIGHIN_HOUR } from '../reminders.js';
 import { shiftDay, weekdayOf } from '../streak.js';
 
 let pass = 0, fail = 0;
@@ -116,6 +116,22 @@ check('no program -> null', planDayFor(null, TODAY), null);
 const withProg = decideReminder({ now: at('UTC', TODAY, '18:00'), prefs: prefs(), workouts: streak5, schedule: ['Wed'], program: prog, uid: 'u1' });
 check('decideReminder passes the plan facts and streak into the planned copy', [withProg.type, /Push/.test(withProg.body), /5 exercises/.test(withProg.body), /streak is at \d/.test(withProg.body)], ['planned', true, true, true]);
 check('decision carries a per-day tag so a same-day reminder replaces', [withProg.tag, ev.tag], ['planned-' + TODAY, 'streak-' + TODAY]);
+
+// ── morning weigh-in
+const wd = (n) => shiftDay(TODAY, -n);
+const weigh = (hhmm, o = {}) => decideWeighIn({ now: at(o.tz || 'UTC', TODAY, hhmm), prefs: prefs({ tz: o.tz || 'UTC', ...o.prefs }), weightDates: o.dates ?? [wd(1), wd(2), wd(3)], freeze: o.freeze, uid: 'u1' });
+check('weigh-in goes out at 08:00', [WEIGHIN_HOUR, weigh('08:00').send, weigh('08:00').type, weigh('08:00').tag], [8, true, 'weighin', 'weighin-' + TODAY]);
+check('only in the 08:00 hour', [weigh('07:00').send, weigh('09:00').send], [false, false]);
+check('not when already weighed today', weigh('08:00', { dates: [TODAY] }).reason, 'weighed-today');
+check('on unless switched off', [weigh('08:00', { prefs: { weighin: undefined } }).send, weigh('08:00', { prefs: { weighin: false } }).reason], [true, 'switched-off']);
+check('reminders off means none', weigh('08:00', { prefs: { enabled: false } }).reason, 'disabled');
+check('not while a streak freeze is active', weigh('08:00', { freeze: { active: true } }).reason, 'frozen');
+check('local morning, not UTC', [weigh('08:00', { tz: 'Asia/Tokyo' }).send], [true]);
+check('run of mornings ends yesterday', [weighRun([wd(1), wd(2), wd(3), wd(5)], TODAY), weighRun([wd(2)], TODAY), weighRun([TODAY], TODAY)], [3, 0, 0]);
+const wc = weigh('08:00');
+check('weigh-in copy fits a lock screen and has no loss language', wc.title.length <= COPY_MAX_TITLE && wc.body.length <= COPY_MAX_BODY && !/lose|lost|break|fail|miss|don't|never/i.test(wc.title + ' ' + wc.body), true);
+check('weigh-in copy names the run of mornings', /3 mornings in a row/.test(weigh('08:00').body), true);
+check('every weigh-in message fits', [0, 1, 2, 3, 4, 5, 6, 7].every(n => { const c = reminderCopy('weighin', { run: 12, uid: 'x', date: shiftDay(TODAY, n) }); return c.title.length <= COPY_MAX_TITLE && c.body.length <= COPY_MAX_BODY; }), true);
 
 // ── the Cloud Function carries copies of the pure modules; they must not drift
 const lf = (s) => s.replace(/\r\n/g, '\n');

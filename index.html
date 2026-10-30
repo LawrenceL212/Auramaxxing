@@ -5955,7 +5955,7 @@ function renderRemindersBox(box) {
       '</div></div>';
   };
   let h = '<label>Reminders</label>' +
-    '<div style="font-size:11px;color:var(--text-dim);margin-bottom:8px;">Gentle nudges on this device: a note when a planned day is still open, and one evening heads-up when a streak is running. At most 2 a day, never between 22:00 and 07:00, and never once you have trained.</div>';
+    '<div style="font-size:11px;color:var(--text-dim);margin-bottom:8px;">Gentle nudges on this device: a note when a planned day is still open, and one evening heads-up when a streak is running (at most 2 a day, never once you have trained), plus a morning weigh-in note until you have weighed in. Never between 22:00 and 07:00.</div>';
   if (env.needsInstall) {
     h += '<div id="rem-ios" style="font-size:12px;color:var(--brass);padding:8px 10px;border:1px solid rgba(255,214,107,0.3);border-radius:var(--radius-sm);margin-bottom:8px;">On iPhone, reminders only work once Auramaxxing is on your Home Screen (iOS 16.4 or later). Tap Share, then Add to Home Screen, and open the app from there.</div>';
   }
@@ -5968,6 +5968,7 @@ function renderRemindersBox(box) {
     h += '<div style="font-size:12px;color:var(--growing);margin-bottom:2px;">On for this device.</div>' +
       row('planned', 'Planned-day nudge', 'If a planned day is still open around the time you usually train.') +
       row('evening', 'Evening streak heads-up', 'Around 20:00 when a streak of 2+ days is running and today is still open.') +
+      row('weighin', 'Morning weigh-in', 'Around 08:00, unless you have already weighed in today. Tapping it opens the weigh-in.') +
       '<div style="margin-top:10px;"><div style="font-size:13px;color:var(--text);">Usual training time</div>' +
       '<div style="font-size:11px;color:var(--text-dim);margin:2px 0 6px;">Left empty, it is learned from your last 6 weeks (17:00 until there is enough history).</div>' +
       '<div style="display:flex;gap:8px;"><input id="rem-usual" type="time" value="' + escapeHtml(prefs.usualTime || '') + '" style="max-width:130px;" /><button type="button" class="btn btn-sm" id="rem-usual-clear">Auto</button></div></div>' +
@@ -5986,7 +5987,7 @@ function renderRemindersBox(box) {
       try {
         const fields = { ['pushDevices.' + r.deviceId]: { token: r.token, platform: r.platform, createdAt: Date.now() } };
         if (profile?.pushPrefs) { fields['pushPrefs.enabled'] = true; fields['pushPrefs.tz'] = userTimezone(); }
-        else fields.pushPrefs = { enabled: true, planned: true, evening: true, usualTime: null, tz: userTimezone() };
+        else fields.pushPrefs = { enabled: true, planned: true, evening: true, weighin: true, usualTime: null, tz: userTimezone() };
         await writeUserFields(fields);
         renderRemindersBox(box);
         const st = box.querySelector('#rem-status'); if (st) st.textContent = 'Reminders are on.';
@@ -11361,14 +11362,14 @@ function readLinkedWorkout() {
 let pendingGo = null;
 try {
   const q = new URLSearchParams(location.search), g = q.get('go');
-  if (g === 'hunt' || g === 'quick') pendingGo = g;
+  if (g === 'hunt' || g === 'quick' || g === 'weigh') pendingGo = g;
   if (q.has('go')) { q.delete('go'); const rest = q.toString(); history.replaceState(null, '', location.pathname + (rest ? '?' + rest : '') + location.hash); }
 } catch (e) { /* keep going */ }
 function openDeepLink(go) {
   go = go || pendingGo; pendingGo = null;
-  if (go !== 'hunt' && go !== 'quick') return;
+  if (go !== 'hunt' && go !== 'quick' && go !== 'weigh') return;
   if (!currentUser) { pendingGo = go; return; }
-  try { switchView('quest'); if (go === 'quick') openQuickSheet(); } catch (e) { console.warn('Deep link skipped:', e); }
+  try { switchView('quest'); if (go === 'quick') openQuickSheet(); else if (go === 'weigh') window.openCheckinHub('weigh'); } catch (e) { console.warn('Deep link skipped:', e); }
 }
 try {
   navigator.serviceWorker?.addEventListener('message', (e) => { if (e.data && e.data.type === 'aura-go') openDeepLink(e.data.go); });

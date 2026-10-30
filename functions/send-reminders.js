@@ -1,7 +1,7 @@
 'use strict';
 /* sendReminders: the hourly job behind push reminders.
 
-   READ-ONLY on workouts and programmes. The only write it ever makes is
+   READ-ONLY on workouts, programmes and bodyweight. The only write it ever makes is
    removing a device token that FCM reports as dead (users/{uid}.pushDevices.<id>).
 
    Which reminder to send (if any) is decided by lib/reminders.mjs, a copy of the
@@ -31,7 +31,7 @@ const lib = async () => (_lib ||= await import('./lib/reminders.mjs'));
  * @param {number} [deps.now]
  */
 async function runReminders({ db, messaging, deleteField, fieldPath, now = Date.now() }) {
-  const { decideReminder, localParts, isQuietHour } = await lib();
+  const { decideReminder, decideWeighIn, localParts, isQuietHour, WEIGHIN_HOUR } = await lib();
   const stats = { users: 0, sent: 0, skipped: 0, pruned: 0, errors: 0 };
   const snap = await db.collection('users').where('pushPrefs.enabled', '==', true).get();
 
@@ -58,10 +58,16 @@ async function runReminders({ db, messaging, deleteField, fieldPath, now = Date.
       const gymPlan = program && program.mode === 'home' && program.alt ? program.alt : program;
       const schedule = (gymPlan && gymPlan.schedule && gymPlan.schedule.length ? gymPlan.schedule : (program && program.schedule)) || [];
 
-      const decision = decideReminder({
+      let decision = decideReminder({
         now, prefs, workouts, schedule, program, uid,
         freeze: user.streakFreeze || null, backfill: user.streakBackfill || [],
       });
+      // The morning weigh-in is its own note. Bodyweight is read only in its hour, and only
+      // when no training reminder already goes out in that hour.
+      if (!decision.send && t.hour === WEIGHIN_HOUR && prefs.weighin !== false) {
+        const bSnap = await db.collection('bodyweight').where('uid', '==', uid).select('date').get();
+        decision = decideWeighIn({ now, prefs, uid, freeze: user.streakFreeze || null, weightDates: bSnap.docs.map(d => d.data().date) });
+      }
       if (!decision.send) { stats.skipped++; continue; }
 
       const res = await messaging.sendEachForMulticast({

@@ -17,7 +17,7 @@ Code is merged-ready but **nothing works until you do steps 1-5**. Until the VAP
 Data: **one optional field pair on the signed-in user's own `users/{uid}` document**, written through `writeUserFields`:
 
 - `pushDevices.<deviceId>` = `{ token, platform, createdAt }`
-- `pushPrefs` = `{ enabled, planned, evening, usualTime, tz }`
+- `pushPrefs` = `{ enabled, planned, evening, weighin, usualTime, tz }` (`weighin` is the morning weigh-in note; missing means on)
 
 No rules change is needed: the existing `users/{userId}` rule already lets a user write their own document. The function uses the Admin SDK and is read-only apart from deleting dead tokens.
 
@@ -45,6 +45,8 @@ No rules change is needed: the existing `users/{userId}` rule already lets a use
 ## Rules the sender follows
 
 Max 2 a day; quiet hours 22:00-07:00 in the user's own timezone (`pushPrefs.tz`, refreshed on app open); never once the user trained today (local date); never on a rest day or while a streak freeze is on; no timezone stored means no message. Copy states facts and an easy next step, no guilt or loss wording. One tap off in Settings; it disables reminders and removes that device's token.
+
+The morning weigh-in note is separate from those rules: 08:00 local, only if no `bodyweight` entry exists for today, not while a streak freeze is on, and not in an hour where a training reminder already goes out. The sender reads `bodyweight` dates only in that hour. Tapping it (or its Log weight button) opens the weigh-in. It needs the function redeployed (`firebase deploy --only functions:sendReminders`).
 
 The sender has no memory (it writes nothing), so each reminder has exactly one hourly slot a day. Edge cases: a daylight-saving fall-back hour can repeat a slot once a year; a skipped or failed hourly run means that day's reminder is simply not sent.
 
