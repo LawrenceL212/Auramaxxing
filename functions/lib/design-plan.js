@@ -220,6 +220,18 @@ const IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 const MAX_IMAGE_CHARS = 2_500_000;
 
 /** The user turn: the Hunter's facts as JSON, plus an optional reference image. */
+/** The app's own computed read of the Hunter (trainer read, plan score, whole history): data only, size-capped. */
+function sanitizeTrainer(t) {
+  if (!t || typeof t !== 'object' || Array.isArray(t)) return null;
+  let o;
+  try { o = JSON.parse(JSON.stringify(t)); } catch (_) { return null; }
+  for (const k of ['history', 'fullHistory', 'read']) {
+    if (JSON.stringify(o).length <= 16000) break;
+    delete o[k];
+  }
+  return JSON.stringify(o).length <= 16000 ? o : null;
+}
+
 function buildFacts(input) {
   return {
     mode: ['review', 'intake', 'chat', 'home'].includes(input.mode) ? input.mode : 'design',
@@ -228,6 +240,7 @@ function buildFacts(input) {
     gymPlan: Array.isArray(input.gymPlan) ? input.gymPlan.slice(0, 7) : null,
     otherPlan: input.otherPlan && Array.isArray(input.otherPlan.days) ? { mode: input.otherPlan.mode === 'home' ? 'home' : 'gym', days: input.otherPlan.days.slice(0, 7) } : null,
     request: str(input.request, 600) || null,
+    trainer: input.mode === 'chat' ? sanitizeTrainer(input.trainer) : null,
     goals: sanitizeGoals(input.goals),
     intake: sanitizeIntakeState(input.intake),
     sex: input.sex === 'female' ? 'female' : 'male',
@@ -296,7 +309,7 @@ const ChatSchema = z.object({
 
 const CHAT_SYSTEM = `You are the coach inside Auramaxxing, chatting with one Hunter about their training. You can see their own data and the goals they confirmed, below. Talk like a good coach texting: direct, warm, specific, short (under 120 words unless they ask for detail). Use their real numbers.
 
-- Answer what they asked. Ask one short question at a time only when you truly need the answer to help.
+- "trainer" in the data is the app's own computed read of them: findings on rhythm, recovery, performance and body, a plan score out of 100 with its measures, and their whole logged history. Use it for how-am-I-doing and will-I-progress questions, quote its real numbers, and never invent others.\n- Answer what they asked. Ask one short question at a time only when you truly need the answer to help.
 - Respect their goals ("goals" in the data). If they say they want something different (a new target, a skill, dropping one, a new date), return the full updated list in "goals" (summary: one or two plain sentences; goals: one to four short statements, most important first, keeping the ones they did not change) and say in "reply" what you changed. Nothing is saved until they tap, so never say it is saved. Otherwise "goals" is null. A target look and date for tracking measurements is a separate setting they change from the goal card; point them there if they ask for that.
 - If they ask WHY something is or is not in their plan ("why no front lever holds?"), look at currentPlan, their goals, the answers they gave in intake, and the exerciseList, and give the real reason in plain words: not in the list, not asked for, no room for the volume, recovery, a limit they told you about, or simply that you did not include it. Never invent a reason and never blame the app for what was your own choice. If they were not asked about it or it is a skill they want, say so and offer to add it. If the exercise is not in exerciseList at all, say so and offer the closest exercise that is.
 - If they then ask to change it ("add it back", "I don't like X, drop it", "swap Y for Z"), do it: return the full adjusted plan. Start from the plan you proposed last in this conversation if it was not applied yet (its summary is in the conversation), otherwise from currentPlan.
@@ -391,7 +404,7 @@ async function designIntake({ client, input }) {
   return out;
 }
 
-module.exports = { sanitizeHomeEquipment, MODEL, GROUPS, GOALS, PlanSchema, SYSTEM, sanitizeLook, sanitizeDays, sanitizePlan, buildContent, designPlan, MAX_IMAGE_CHARS, IntakeSchema, INTAKE_SYSTEM, MAX_ROUNDS, sanitizeIntake, sanitizeIntakeState, sanitizeGoals, designIntake, buildFacts, ChatSchema, CHAT_SYSTEM, CHAT_LIMIT, MAX_TURNS, sanitizeTurns, sanitizeChat, designChat };
+module.exports = { sanitizeTrainer, sanitizeHomeEquipment, MODEL, GROUPS, GOALS, PlanSchema, SYSTEM, sanitizeLook, sanitizeDays, sanitizePlan, buildContent, designPlan, MAX_IMAGE_CHARS, IntakeSchema, INTAKE_SYSTEM, MAX_ROUNDS, sanitizeIntake, sanitizeIntakeState, sanitizeGoals, designIntake, buildFacts, ChatSchema, CHAT_SYSTEM, CHAT_LIMIT, MAX_TURNS, sanitizeTurns, sanitizeChat, designChat };
 
 /** Daily limit per Hunter: the usage record to store and whether one more call is allowed. */
 const DAILY_LIMIT = 10;

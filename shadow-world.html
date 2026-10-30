@@ -244,15 +244,16 @@ canvas { display:block; }
       </div>
       <button id="px" onclick="closePanel()">✕</button>
     </div>
-    <div id="po"></div>
-    <div id="cont-progress"></div>
-    <div id="ps"></div>
+    <!-- Deploy first: in the World page's short map window the bottom of this panel is off screen -->
     <div id="pool-info"></div>
     <div id="planner-row" style="display:none;margin-bottom:12px;"><button class="pb bd" id="open-planner" style="width:100%;min-height:48px;">⚑ DEPLOY PLANNER · SEE THE CONTINENT</button></div>
     <div id="deploy-row" style="display:none;">
       <input type="number" id="deploy-input" min="1" value="10" inputmode="numeric" />
       <button class="pb bd" id="deploy-btn" style="flex:none;padding:9px 16px;">⚑ Deploy</button>
     </div>
+    <div id="po"></div>
+    <div id="cont-progress"></div>
+    <div id="ps"></div>
     <div id="pa"></div>
   </div>
 </div>
@@ -282,6 +283,8 @@ const setP = p => {
 };
 
 // ── PLAYERS ──
+// The original four; the parent sends every Hunter's colour and name with the world data
+// (world-players.js), so territories held by anyone else draw as theirs, not as unclaimed.
 const PLAYERS = {
   'eUtGPwQBcCSO0x3xS3ZGYFGXNIT2': { hex:'#d4a017', r:212, g:160, b:23,  name:'Lawrence' },
   'd1W5vTx5aSTIwkR4CIwnO2xW7vf1': { hex:'#7c3aed', r:124, g:58,  b:237, name:'LuChing'  },
@@ -848,6 +851,7 @@ function loadFromParent() {
         LIVE_POOL = e.data.pool || {};
         CURRENT_UID = e.data.currentUid || null;
         EXPLORATION_UNLOCKS_AT = e.data.explorationUnlocksAt || null;
+        Object.assign(PLAYERS, e.data.players || {});
         resolve();
       }
       if (e.data?.type === 'focusContinent') {
@@ -950,15 +954,19 @@ resetView(); window.resetView=resetView;
 window.doZoom=d=>{const ns=Math.max(0.4,Math.min(6,sc+d));tx=innerWidth/2-(innerWidth/2-tx)*(ns/sc);ty=innerHeight/2-(innerHeight/2-ty)*(ns/sc);sc=ns;applyT();};
 
 const wrap=document.getElementById('map-area');
-wrap.addEventListener('wheel',e=>{e.preventDefault();const ns=Math.max(0.4,Math.min(6,sc+(e.deltaY<0?0.15:-0.15)));tx=e.clientX-(e.clientX-tx)*(ns/sc);ty=e.clientY-(e.clientY-ty)*(ns/sc);sc=ns;applyT();},{passive:false});
-let drag=false,ds={x:0,y:0},dt={x:0,y:0},moved=false;
-wrap.addEventListener('mousedown',e=>{drag=true;moved=false;ds={x:e.clientX,y:e.clientY};dt={x:tx,y:ty};wrap.classList.add('drag');});
-wrap.addEventListener('mousemove',e=>{if(drag){const dx=e.clientX-ds.x,dy=e.clientY-ds.y;if(Math.abs(dx)+Math.abs(dy)>4)moved=true;tx=dt.x+dx;ty=dt.y+dy;applyT();}updateTT(e.clientX,e.clientY);});
-wrap.addEventListener('mouseup',e=>{wrap.classList.remove('drag');if(!moved)onClick(e.clientX,e.clientY);drag=false;});
+// Pan, zoom and tap belong to the map only. The panel, planner and buttons sit inside #map-area too, and
+// these handlers used to swallow their touches (no scrolling the panel, no typing the amount, and a tap
+// on Deploy re-opened the territory under it, resetting the number to 10).
+const offMap = e => !!e.target.closest?.('#panel,#panel-backdrop,#planner,#zb,button,input,a,#conquest-lock-overlay');
+wrap.addEventListener('wheel',e=>{if(offMap(e))return;e.preventDefault();const ns=Math.max(0.4,Math.min(6,sc+(e.deltaY<0?0.15:-0.15)));tx=e.clientX-(e.clientX-tx)*(ns/sc);ty=e.clientY-(e.clientY-ty)*(ns/sc);sc=ns;applyT();},{passive:false});
+let drag=false,ds={x:0,y:0},dt={x:0,y:0},moved=false,pinch=false;
+wrap.addEventListener('mousedown',e=>{if(offMap(e))return;drag=true;moved=false;ds={x:e.clientX,y:e.clientY};dt={x:tx,y:ty};wrap.classList.add('drag');});
+wrap.addEventListener('mousemove',e=>{if(drag){const dx=e.clientX-ds.x,dy=e.clientY-ds.y;if(Math.abs(dx)+Math.abs(dy)>4)moved=true;tx=dt.x+dx;ty=dt.y+dy;applyT();}if(!offMap(e))updateTT(e.clientX,e.clientY);});
+wrap.addEventListener('mouseup',e=>{wrap.classList.remove('drag');if(drag&&!moved)onClick(e.clientX,e.clientY);drag=false;});
 let ld=0;
-wrap.addEventListener('touchstart',e=>{e.preventDefault();moved=false;if(e.touches.length===1){const t=e.touches[0];drag=true;ds={x:t.clientX,y:t.clientY};dt={x:tx,y:ty};}if(e.touches.length===2)ld=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);},{passive:false});
-wrap.addEventListener('touchmove',e=>{e.preventDefault();if(e.touches.length===1&&drag){const t=e.touches[0],dx=t.clientX-ds.x,dy=t.clientY-ds.y;if(Math.abs(dx)+Math.abs(dy)>4)moved=true;tx=dt.x+dx;ty=dt.y+dy;applyT();}if(e.touches.length===2){const d2=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);const ns=Math.max(0.4,Math.min(6,sc+(d2-ld)*0.005));const cx=(e.touches[0].clientX+e.touches[1].clientX)/2,cy=(e.touches[0].clientY+e.touches[1].clientY)/2;tx=cx-(cx-tx)*(ns/sc);ty=cy-(cy-ty)*(ns/sc);sc=ns;ld=d2;applyT();}},{passive:false});
-wrap.addEventListener('touchend',e=>{drag=false;if(!moved&&e.changedTouches.length===1)onClick(e.changedTouches[0].clientX,e.changedTouches[0].clientY);});
+wrap.addEventListener('touchstart',e=>{if(offMap(e))return;e.preventDefault();moved=false;if(e.touches.length===1){const t=e.touches[0];drag=true;ds={x:t.clientX,y:t.clientY};dt={x:tx,y:ty};}if(e.touches.length===2){pinch=true;ld=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);}},{passive:false});
+wrap.addEventListener('touchmove',e=>{if(!drag&&!pinch)return;e.preventDefault();if(e.touches.length===1&&drag){const t=e.touches[0],dx=t.clientX-ds.x,dy=t.clientY-ds.y;if(Math.abs(dx)+Math.abs(dy)>4)moved=true;tx=dt.x+dx;ty=dt.y+dy;applyT();}if(e.touches.length===2){const d2=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);const ns=Math.max(0.4,Math.min(6,sc+(d2-ld)*0.005));const cx=(e.touches[0].clientX+e.touches[1].clientX)/2,cy=(e.touches[0].clientY+e.touches[1].clientY)/2;tx=cx-(cx-tx)*(ns/sc);ty=cy-(cy-ty)*(ns/sc);sc=ns;ld=d2;applyT();}},{passive:false});
+wrap.addEventListener('touchend',e=>{const was=drag;drag=false;if(!e.touches.length)pinch=false;if(was&&!moved&&e.changedTouches.length===1)onClick(e.changedTouches[0].clientX,e.changedTouches[0].clientY);});
 
 function mapCoords(sx,sy){return[(sx-tx)/sc,(sy-ty)/sc];}
 function nearest(sx,sy){const[mx,my]=mapCoords(sx,sy);let best=null,bd=Infinity;GAME_COUNTRIES.forEach(c=>{const[cx,cy]=ll2px(c.lon,c.lat);const d=Math.hypot(mx-cx,my-cy);if(d<bd){bd=d;best=c;}});return bd<35/sc?best:null;}
@@ -1003,16 +1011,16 @@ function openPanel(c) {
   document.getElementById('pn').style.color = ownerP?.hex||'#61a5ff';
 
   document.getElementById('po').innerHTML = state&&ownerP
-    ? `<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${ownerP.hex};margin-right:6px;vertical-align:middle;"></span><strong style="color:${ownerP.hex};">${ownerP.name}</strong> controls this territory`
+    ? `<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${ownerP.hex};margin-right:6px;vertical-align:middle;"></span><strong style="color:${ownerP.hex};">${plEsc(ownerP.name)}</strong> controls this territory`
     : `<span style="color:rgba(61,165,255,0.4);">Unclaimed — deploy soldiers to take control</span>`;
 
   // Continent control bars
   const leaders = Object.entries(ownedByUid).sort((a,b)=>b[1]-a[1]);
   document.getElementById('cont-progress').innerHTML = `
     <div style="font-size:9px;color:${m.hex};letter-spacing:.1em;margin-bottom:8px;">${m.icon} CONTINENT CONTROL · ${m.bonus}</div>
-    ${dominated?`<div style="font-size:11px;color:${PLAYERS[dominated[0]]?.hex||'#fff'};font-weight:800;margin-bottom:8px;">★ ${PLAYERS[dominated[0]]?.name||'?'} DOMINATES ${m.name.toUpperCase()}</div>`:''}
+    ${dominated?`<div style="font-size:11px;color:${PLAYERS[dominated[0]]?.hex||'#fff'};font-weight:800;margin-bottom:8px;">★ ${plEsc(PLAYERS[dominated[0]]?.name||'?')} DOMINATES ${m.name.toUpperCase()}</div>`:''}
     ${leaders.map(([uid,n])=>{const pl=PLAYERS[uid];if(!pl)return'';const pct=Math.round(n/6*100);return`<div style="display:flex;align-items:center;gap:8px;margin-bottom:5px;">
-      <span style="color:${pl.hex};font-size:10px;min-width:65px;font-weight:700;">${pl.name}</span>
+      <span style="color:${pl.hex};font-size:10px;min-width:65px;font-weight:700;">${plEsc(pl.name)}</span>
       <div style="flex:1;height:5px;background:rgba(255,255,255,.06);border-radius:3px;overflow:hidden;">
         <div style="width:${pct}%;height:100%;background:${pl.hex};border-radius:3px;"></div>
       </div>
@@ -1076,7 +1084,7 @@ function openPanel(c) {
       </div>
       <div style="font-size:10px;color:rgba(91,168,255,.3);margin-top:6px;">${soldiers} stationed · withdraw to redeploy elsewhere</div>`;
   } else {
-    pa.innerHTML = `<button class="pb ba" onclick="declareWar('${c.id}','${state.ownerUid}')">⚔ Declare War on ${ownerP?.name||'?'}</button>`;
+    pa.innerHTML = `<button class="pb ba" onclick="declareWar('${c.id}','${state.ownerUid}')">⚔ Declare War on ${plEsc(ownerP?.name||'?')}</button>`;
   }
 
   const plRow = document.getElementById('planner-row');

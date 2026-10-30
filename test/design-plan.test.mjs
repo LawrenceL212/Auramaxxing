@@ -1,7 +1,7 @@
 /* Tests for the AI coach's request and clamping (no network).  Run:  node test/design-plan.test.mjs */
 import { createRequire } from 'node:module';
 const require = createRequire(import.meta.url);
-const { designPlan, sanitizeLook, sanitizeDays, sanitizePlan, buildContent, SYSTEM, MODEL, PlanSchema, MAX_IMAGE_CHARS, nextUsage, DAILY_LIMIT, IntakeSchema, INTAKE_SYSTEM, sanitizeIntake, sanitizeIntakeState, sanitizeGoals, designIntake, MAX_ROUNDS, buildFacts, ChatSchema, CHAT_SYSTEM, CHAT_LIMIT, MAX_TURNS, sanitizeTurns, sanitizeChat, designChat } = require('../functions/lib/design-plan.js');
+const { designPlan, sanitizeLook, sanitizeDays, sanitizePlan, buildContent, SYSTEM, MODEL, PlanSchema, MAX_IMAGE_CHARS, nextUsage, DAILY_LIMIT, IntakeSchema, INTAKE_SYSTEM, sanitizeIntake, sanitizeIntakeState, sanitizeGoals, designIntake, MAX_ROUNDS, buildFacts, ChatSchema, CHAT_SYSTEM, CHAT_LIMIT, MAX_TURNS, sanitizeTurns, sanitizeChat, designChat, sanitizeTrainer } = require('../functions/lib/design-plan.js');
 
 let pass = 0, fail = 0; const results = [];
 function check(name, ok, detail = '') { ok ? pass++ : fail++; results.push(`  ${ok ? 'ok  ' : 'FAIL'}  ${name}${ok ? '' : `\n          ${detail}`}`); }
@@ -140,6 +140,9 @@ check('a home plan is built for the goal, the gym plan is only context', /goal p
 check('daily limit: counts up within a day, stops at the limit', (() => { let u = null; for (let i = 0; i < DAILY_LIMIT; i++) u = nextUsage(u && u.usage, '2026-10-29'); return u.allowed && u.usage.count === DAILY_LIMIT && !nextUsage(u.usage, '2026-10-29').allowed; })());
 check('daily limit: a new day starts again', nextUsage({ date: '2026-10-28', count: 99 }, '2026-10-29').usage.count === 1);
 
+check('chat gets the app\'s computed trainer read, nothing in other modes', buildFacts({ mode: 'chat', trainer: { planScore: { score: 71 } } }).trainer.planScore.score === 71 && buildFacts({ mode: 'review', trainer: { a: 1 } }).trainer === null);
+check('trainer data is size-capped and junk is dropped', sanitizeTrainer('x') === null && sanitizeTrainer({ read: 'r'.repeat(20000), planScore: 1 }).planScore === 1 && sanitizeTrainer({ planScore: 'p'.repeat(20000) }) === null);
+check('the chat prompt tells the coach to use the trainer read', /"trainer" in the data/.test(CHAT_SYSTEM));
 console.log(results.join('\n'));
 console.log(`\n${pass} passed, ${fail} failed`);
 if (fail) process.exit(1);

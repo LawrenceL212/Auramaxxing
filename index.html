@@ -3864,6 +3864,14 @@
   #world-territories .ws-bar{height:6px;border-radius:0;}
   #world-territories .ws-owned{font-size:12px;margin-top:6px;}
   #world-territories .ws-row{min-height:48px;}
+  /* One-tap deploy on the World list */
+  .ws-deploy{margin-top:10px;display:flex;flex-direction:column;gap:8px;cursor:default;}
+  .ws-dep-amts{display:flex;gap:8px;flex-wrap:wrap;}
+  .ws-dep-amt{min-height:40px;min-width:56px;cursor:pointer;touch-action:manipulation;}
+  .ws-dep-amt.on{border-color:var(--brass);color:var(--brass);background:rgba(212,160,23,.12);}
+  .ws-dep-go{width:100%;min-height:52px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;touch-action:manipulation;}
+  .ws-dep-go small{font-family:var(--font-body);font-size:12px;font-weight:600;letter-spacing:0;text-transform:none;opacity:.85;}
+  .ws-dep-go:disabled{opacity:.45;cursor:not-allowed;}
   .world-note{margin:10px 0 0;font-size:12px;color:var(--text-faint);}
   .world-army-total{display:flex;gap:10px;margin-top:var(--space-4);}
   .world-army-total .ui-tile{flex:1;cursor:default;}
@@ -4338,6 +4346,28 @@
   .wp-legend{display:flex;gap:14px;font-size:11px;color:var(--text-faint);margin-top:4px;}
   .wp-legend i{display:inline-block;width:14px;height:0;border-top:2px solid var(--violet);vertical-align:middle;margin-right:5px;}
   .wp-legend i.g{border-top:2px dotted var(--legendary);}
+  /* ── Weekly weight goal (weight-rate.js) ── */
+  .wr{margin-bottom:24px;}
+  .wr-goal{font-family:var(--font-mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--ui-gold);margin-bottom:3px;}
+  .wr-gap{display:block;font-family:var(--font-mono);font-size:12px;font-weight:400;letter-spacing:0;text-transform:none;margin-top:3px;}
+  .wr-edit{min-height:40px;padding:0 6px;color:var(--brass);flex:none;}
+  .wr-set{margin:4px 0 20px;}
+  .wr-set em{font-style:normal;font-size:22px;color:var(--ui-gold);}
+  .wr-list{margin-top:14px;}
+  .wr-row{display:grid;grid-template-columns:62px 48px 1fr auto;gap:8px;align-items:baseline;padding:8px 0;border-top:1px solid rgba(91,168,255,.1);font-family:var(--font-mono);font-size:13px;color:var(--text);}
+  .wr-row.wr-h{border-top:0;padding-bottom:2px;font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--text-faint);}
+  .wr-d{font-family:var(--font-body);font-weight:700;font-size:13px;color:var(--text-dim);}
+  .wr-a small{color:var(--text-faint);font-size:11px;}
+  .wr-c{text-align:right;font-size:12px;font-weight:700;white-space:nowrap;}
+  .wr-preview{margin-top:4px;font-size:13px;}
+  .wr-preview:empty{display:none;}
+  .wr-opts{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+  .wr-opt{min-height:60px;padding:8px 10px;text-align:left;cursor:pointer;color:var(--text);background:rgba(14,20,38,.9);border:1px solid rgba(91,168,255,.22);}
+  .wr-opt b{display:block;font-family:var(--font-display);font-size:18px;}
+  .wr-opt span{display:block;font-size:12px;color:var(--text-faint);margin-top:2px;}
+  .wr-opt.on{border-color:var(--ui-gold);box-shadow:0 0 0 1px var(--ui-gold) inset,0 0 14px rgba(255,214,107,.25);}
+  .wr-other{display:flex;align-items:center;gap:8px;margin-top:12px;font-size:14px;color:var(--text-dim);}
+  .wr-other input{width:5.5ch;font-size:16px;padding:6px 8px;text-align:center;color:var(--text);background:rgba(10,14,26,.9);border:1px solid rgba(91,168,255,.25);border-radius:0;}
   .ci-v small{font-family:var(--font-mono);font-size:11px;font-weight:400;color:var(--text-faint);margin-left:3px;}
   .ci-verdict{font-size:15px;line-height:1.35;color:var(--text-dim);margin-top:6px;}
   .ci-deltas{margin-bottom:12px;}
@@ -4555,7 +4585,6 @@
           <div id="hunt-plan-head"></div>
           <div id="hunt-next"></div>
           <div id="hunt-dmg"></div>
-          <div id="goal-plan-entry"></div>
           <!-- The plan optimiser card used to sit here (renderPlanOptimiser, optimiser.js): the AI coach replaced it. The code is kept; with no host element it renders nothing. -->
           <div id="program-editor-wrap"></div>
           <div id="directives-strip"></div>
@@ -5051,6 +5080,8 @@ import { QUICK_TITLE, QUICK_TYPES, buildQuickCircuit, quickLoggerRows, generateQ
 import { weekStrip, weekProgress, latestDate, agoLabel, estimateMinutes, totalSets, topMuscles, ringArc,
   lastSet, lastTimeLabel, upNext, leftLabel } from "./hunt-view.js";
 import { penaltyView } from "./penalty-view.js";
+import { worldPlayers } from "./world-players.js";
+import { autoDeployPlan, describeDeploy } from "./deploy-plan.js";
 import { scorePlan, diffPlans } from "./plan-metrics.js";
 import { trainerRead, localSummary, fullHistory } from "./trainer-insights.js";
 import { skinfoldBodyFat, feasibility, feasibilityText, historyDigest, catalogue, excludedFromText, validatePlan, planGroups } from "./plan-gen.js";
@@ -5067,7 +5098,8 @@ import { detectReEntry, reEntryPlan, directiveProgress, formatMeasure, DIRECTIVE
 import { analyseHabit, sampleCurve, describeReturns,
          HABIT_TARGET_DAYS, MISS_GRACE } from "./habit.js";
 import { muscleDevelopment, bodyBuild, bodyFrame } from "./physique.js";
-import { weeklyChange, pathStatus, pathSvg, parseGoal as parseWeightGoal } from "./weight-path.js";
+import { weeklyChange, pathStatus, pathSvg, parseGoal as parseWeightGoal, KCAL_PER_KG } from "./weight-path.js";
+import { RATE_OPTIONS, MAX_LOSS, parseRateGoal, rateGoalField, safeLoss, rateExpected, rateTrack, rateLine, averageLine, signed, signedRate } from "./weight-rate.js";
 import { solveGoal, customLook, presetsFor, DEFAULT_PRESET, targetRows, goalProgress, goalPriorities, goalFocus, weightGoalFromPlan, verdictLine } from "./physique-goal.js";
 import { progressCheck } from "./progress-check.js";
 import { fitnessScore } from "./fitness-score.js";
@@ -10483,20 +10515,20 @@ function gpPlanScore(program, extra = {}) {
   });
 }
 function renderGoalPlanEntry() {
-  const host = document.getElementById('goal-plan-entry');
+  const host = document.getElementById('cc-trainer');
   if (!host) return;
   const has = !!myProgram?.days?.length;
   let sc = null, tr = null;
   try { tr = gpTrainerRead(); } catch (e) { console.warn('Trainer read failed:', e); }
   if (has) { try { sc = gpPlanScore(myProgram); } catch (e) { console.warn('Plan score failed:', e); } }
   const open = tr ? tr.flags.filter(f => f.tone !== 'good').length : 0;
-  const line = tr && tr.flags.length ? tr.headline : (has ? 'Your trainer is ready when you are.' : 'Tell your trainer your goal and it builds your first plan.');
+  const line = tr && tr.flags.length ? tr.headline : (has ? 'Your coach is ready when you are.' : 'Tell your coach your goal and it builds your first plan.');
   host.innerHTML = `
     <div class="gp-card gp-f-${tr ? tr.tone : 'none'}">
       <button type="button" class="gp-card-main" id="gp-read-open">
         ${sc ? gpRing(sc.score, 52) : '<span class="gp-card-icon">✦</span>'}
         <span class="gp-card-body">
-          <span class="gp-card-eyebrow">YOUR TRAINER</span>
+          <span class="gp-card-eyebrow">TRAINER READ</span>
           <span class="gp-card-line">${escapeHtml(line)}</span>
           ${open ? `<span class="gp-card-sub">${open} thing${open === 1 ? '' : 's'} to look at</span>` : ''}
         </span>
@@ -10507,7 +10539,7 @@ function renderGoalPlanEntry() {
       </div>
     </div>`;
   host.querySelector('#gp-open').addEventListener('click', () => openGoalPlan('new'));
-  host.querySelector('#gp-adjust-open').addEventListener('click', () => openGoalPlan('chat'));
+  host.querySelector('#gp-adjust-open').addEventListener('click', () => window.openCoachChatNow());
   host.querySelector('#gp-read-open').addEventListener('click', () => openGoalPlan(tr && tr.flags.length ? 'read' : has ? 'score' : 'new'));
 }
 function gpRing(score, size = 52) {
@@ -10559,7 +10591,7 @@ function gpLoadSummary() {
 const GP_OUTLOOK = { on_track: ['On track', 'good'], slow: ['Slower than it could be', 'ok'], off_track: ['Not working yet', 'low'], not_enough_data: ['Too early to say', 'none'] };
 function gpSummaryHtml() {
   const sm = gpLoadSummary();
-  if (GP.sumBusy) return '<div class="gp-sum"><div class="gp-dim">Your trainer is reading your last eight weeks…</div></div>';
+  if (GP.sumBusy) return '<div class="gp-sum"><div class="gp-dim">Your coach is reading your whole history…</div></div>';
   if (!sm) return `<div class="gp-sum"><button type="button" class="gp-go gp-sum-go" id="gp-sum-btn">Get my progress update</button><div class="gp-dim">A short written read of how you are doing, whether you are progressing, and what to change next.</div></div>`;
   const [label, tone] = GP_OUTLOOK[sm.outlook] || GP_OUTLOOK.not_enough_data;
   return `<div class="gp-sum"><div class="gp-sum-head"><span class="gp-chip gp-t-${tone}">${escapeHtml(label)}</span><span class="gp-dim">${escapeHtml(sm.date || '')}${sm.local ? ' · computed' : ''}</span></div>
@@ -10603,9 +10635,9 @@ function gpChatHtml() {
   return `<div class="gp-chat">
     ${msgs || `<div class="gp-dim">Ask anything about your training, recovery, food or body metrics. It answers from your own sessions and numbers, and offers a plan change when one would help.</div>
     <div class="gp-prompts">${GP_PROMPTS.map(t => `<button type="button" class="gp-prompt" data-q="${escapeHtml(t)}">${escapeHtml(t)}</button>`).join('')}</div>`}
-    ${GP.chatBusy ? '<div class="gp-msg gp-tr gp-typing">Your trainer is reading your data…</div>' : ''}
+    ${GP.chatBusy ? '<div class="gp-msg gp-tr gp-typing">Your coach is reading your data…</div>' : ''}
   </div>
-  <div class="gp-revise"><input id="gp-chat-in" class="gp-input" placeholder="Ask your trainer anything" maxlength="600" ${GP.chatBusy ? 'disabled' : ''}><button type="button" id="gp-chat-send" ${GP.chatBusy ? 'disabled' : ''}>Ask</button></div>
+  <div class="gp-revise"><input id="gp-chat-in" class="gp-input" placeholder="Ask your coach anything" maxlength="600" ${GP.chatBusy ? 'disabled' : ''}><button type="button" id="gp-chat-send" ${GP.chatBusy ? 'disabled' : ''}>Ask</button></div>
   <div class="gp-dim">General training guidance, not medical advice. For pain or injury see a qualified professional.</div>`;
 }
 async function gpAsk(text) {
@@ -10625,7 +10657,7 @@ async function gpAsk(text) {
   } catch (e) {
     console.warn('Ask trainer failed:', e);
     GP.chat.pop();
-    GP.error = (e && e.message && !/internal|functions\//.test(e.message)) ? e.message : 'The trainer could not answer just now. Try again in a minute.';
+    GP.error = (e && e.message && !/internal|functions\//.test(e.message)) ? e.message : 'The coach could not answer just now. Try again in a minute.';
   }
   GP.chatBusy = false;
   renderGoalPlan();
@@ -10731,9 +10763,9 @@ function renderGoalPlan() {
     <label class="gp-label" for="gp-goal">What should change?</label>
     <textarea id="gp-goal" class="gp-text" rows="3" maxlength="1200" placeholder="Any sentence. For example: my left knee hurts, only 30 minutes a session this week, more arms, swap barbell for dumbbells, I want to add a run on Sundays.">${escapeHtml(GP.goal)}</textarea>
     ${standing.length ? `<div class="gp-standing">Always respected: ${standing.map(s => `<span class="gp-tag">${escapeHtml(s)} <button type="button" class="gp-x" data-s="${escapeHtml(s)}" aria-label="Forget ${escapeHtml(s)}">×</button></span>`).join(' ')}</div>` : ''}
-    <button type="button" class="gp-go" id="gp-build" ${GP.busy ? 'disabled' : ''}>${GP.busy ? 'Your trainer is working…' : 'Adjust my plan'}</button>
+    <button type="button" class="gp-go" id="gp-build" ${GP.busy ? 'disabled' : ''}>${GP.busy ? 'Your coach is working…' : 'Adjust my plan'}</button>
     ${curScore ? `<div class="gp-sub">YOUR PLAN TODAY</div>${gpScoreHtml(curScore)}` : ''}`;
-  const scoreOnly = curScore ? `${gpScoreHtml(curScore)}<button type="button" class="gp-go" id="gp-to-adjust">Ask your trainer to fix it</button>` : '<div class="gp-dim">No plan yet.</div>';
+  const scoreOnly = curScore ? `${gpScoreHtml(curScore)}<button type="button" class="gp-go" id="gp-to-adjust">Ask the coach to fix it</button>` : '<div class="gp-dim">No plan yet.</div>';
   const input = chatMode ? gpChatHtml() : readMode ? gpReadHtml(gpTrainerRead()) : adjust ? adjustInput : scoreMode ? scoreOnly : `
     <label class="gp-label" for="gp-goal">What do you want?</label>
     <textarea id="gp-goal" class="gp-text" rows="4" maxlength="1200" placeholder="Say it your way: the look you want, a race, what you hate training, an injury, the days you have. For example: lean and defined by January, 3 days a week, no legs, I want to run a half marathon.">${escapeHtml(GP.goal)}</textarea>
@@ -10790,8 +10822,8 @@ function renderGoalPlan() {
       </div>`;
   }
   el.innerHTML = `<div class="hunter-modal-inner gp-inner">
-    <div class="hunter-modal-header"><div class="gp-title">${adjust ? 'Adjust your plan' : 'Your trainer'}</div><button type="button" class="gp-close" id="gp-close" aria-label="Close">✕</button></div>
-    ${r && r.program ? '' : `<div class="gp-tabs" role="tablist">${[['read', 'Read'], ['score', 'Plan'], ['chat', 'Ask'], ['new', 'Build']].map(([k, t]) => `<button type="button" role="tab" class="gp-tab ${GP.mode === k ? 'on' : ''}" data-mode="${k}" aria-selected="${GP.mode === k}">${t}</button>`).join('')}</div>`}
+    <div class="hunter-modal-header"><div class="gp-title">${adjust ? 'Adjust your plan' : 'Your coach'}</div><button type="button" class="gp-close" id="gp-close" aria-label="Close">✕</button></div>
+    ${r && r.program ? '' : `<div class="gp-tabs" role="tablist">${[['read', 'Read'], ['score', 'Plan'], ['new', 'Build']].map(([k, t]) => `<button type="button" role="tab" class="gp-tab ${GP.mode === k ? 'on' : ''}" data-mode="${k}" aria-selected="${GP.mode === k}">${t}</button>`).join('')}</div>`}
     ${GP.question ? `<div class="gp-ask"><b>The System asks</b><div>${escapeHtml(GP.question)}</div><div class="gp-dim">Add the answer to what you wrote, then build again.</div></div>` : ''}
     ${GP.error ? `<div class="gp-error" role="alert">${escapeHtml(GP.error)}</div>` : ''}
     ${r && r.program ? '' : input}
@@ -11088,7 +11120,7 @@ async function coachChatSend(text) {
   coachChatSave();
   paintCoachChatLog(true);
   try {
-    const res = await callCoach('chat', '', null, { messages: c.msgs.slice(-12).map(m => ({ role: m.role, content: m.role === 'assistant' && m.goals && !m.goalsSaved ? `${m.content}\n[Goals I proposed, not saved yet: ${m.goals.goals.join(' | ')}]` : m.role === 'assistant' && m.days && !m.applied ? `${m.content}\n[Plan I proposed, not applied yet: ${m.days.map(d => `${d.name}: ${d.exercises.map(e => `${e.name} ${e.sets}x${e.reps}`).join(', ')}`).join(' | ')}]` : m.content })) });
+    const res = await callCoach('chat', '', null, { trainer: (() => { try { return gpTrainerContext(); } catch (_) { return null; } })(), messages: c.msgs.slice(-12).map(m => ({ role: m.role, content: m.role === 'assistant' && m.goals && !m.goalsSaved ? `${m.content}\n[Goals I proposed, not saved yet: ${m.goals.goals.join(' | ')}]` : m.role === 'assistant' && m.days && !m.applied ? `${m.content}\n[Plan I proposed, not applied yet: ${m.days.map(d => `${d.name}: ${d.exercises.map(e => `${e.name} ${e.sets}x${e.reps}`).join(', ')}`).join(' | ')}]` : m.content })) });
     c.msgs.push({ role: 'assistant', content: res.reply, days: res.days || null, goal: res.goal || null, goals: res.goals || null, suggestions: res.suggestions || [] });
   } catch (err) { c.error = coachErrorText(err); }
   c.busy = false;
@@ -11166,6 +11198,7 @@ function renderCoachChat(force) {
   host.innerHTML = `<div class="cchat">
     <div class="cc-head"><span class="plan-opt-eyebrow">◈ COACH</span>
       <span class="cc-tools">${hasGoals ? '<button type="button" class="cc-link" id="cc-goals">My goals</button>' : ''}<button type="button" class="cc-link" id="cc-clear">Clear</button></span></div>
+    <div id="cc-trainer"></div>
     ${hasGoals ? `<div class="cc-goal-line">${escapeHtml(profile.coachProfile.goals[0])}${profile.coachProfile.goals.length > 1 ? ` +${profile.coachProfile.goals.length - 1}` : ''}</div>
       <div class="cc-log" id="cc-log"></div>
       <form class="cc-in" id="cc-form"><input type="text" id="cc-input" maxlength="800" placeholder="Ask your coach anything…" autocomplete="off" /><button type="submit" class="ui-btn-primary" id="cc-send">Send</button></form>
@@ -11182,6 +11215,7 @@ function renderCoachChat(force) {
     const v = inp.value; inp.value = '';
     coachChatSend(v);
   });
+  try { renderGoalPlanEntry(); } catch (e) { console.warn('Trainer strip failed:', e); }
   if (hasGoals) paintCoachChatLog(true);
 }
 
@@ -18360,6 +18394,131 @@ function weightPathHtml() {
 }
 
 
+// ── WEEKLY WEIGHT GOAL (weight-rate.js) ───────────────────────────────────
+// profile.weightRateGoal = { kgPerWeek, since } (additive, optional; kgPerWeek negative to lose). A line falls at
+// that rate from the 7-day average on the day it was set, and every weigh-in's 7-day average is held against it.
+// Presentation only: nothing here feeds XP or progression.
+
+/** The card: the goal, how the latest weigh-in sits on the line, the averages, and each recent weigh-in. */
+function weightRateHtml() {
+  const today = todayStr();
+  const t = rateTrack(myWeights, profile?.weightRateGoal, today);
+  if (!t) {
+    if (!myWeights.length) return '';
+    return `<div class="wr-slot"><button type="button" class="rh-row wr-set" data-wr-edit><div><b>Set a weekly goal</b><br><span>Pick how much to lose a week; every weigh-in is checked against it</span></div><em>›</em></button></div>`;
+  }
+  const date = (d) => new Date(d + 'T12:00:00').toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
+  const tile = (k, v, s, color) => `<div class="ci-tile"><div class="ci-k">${k}</div><div class="ci-v">${v}</div>${s ? `<div class="ci-s" style="color:${color || 'var(--text-faint)'};">${s}</div>` : ''}</div>`;
+  const STATE = { ahead: ['Ahead of pace', 'var(--growing)'], on: ['On pace', 'var(--growing)'], behind: ['Behind pace', 'var(--excess)'] };
+  const [label, color] = STATE[t.status];
+  const dir = Math.sign(t.kgPerWeek);
+  const good = (n) => n === null ? '' : Math.sign(n) === dir ? 'var(--growing)' : n === 0 ? '' : 'var(--excess)';
+  // the line from where it starts (or six weeks back) to two weeks ahead, against the 7-day average
+  const from = t.base.date > shiftDay(today, -41) ? t.base.date : shiftDay(today, -41);
+  const ahead = shiftDay(today, 14);
+  const lineGoal = parseWeightGoal({ waypoints: [
+    { date: from, kg: rateExpected(t, t.base, from) }, { date: ahead, kg: rateExpected(t, t.base, ahead) }] });
+  const svg = lineGoal ? pathSvg(myWeights.filter(w => w.date >= shiftDay(from, -6)), lineGoal, { today }) : '';
+  const tiles = [
+    tile('Line today', `${t.expected.toFixed(1)}<small>kg</small>`, `You ${t.current.toFixed(1)} kg · 7-day avg`, ''),
+    tile('Your average', t.avgPerWeek === null ? '—' : `${signedRate(t.avgPerWeek)}<small>kg/wk</small>`,
+      t.avgPerWeek === null ? 'Shows after a week' : `Since ${date(t.since)}`, t.avgPerWeek === null ? '' : good(t.avgPerWeek - t.kgPerWeek) || 'var(--growing)'),
+    t.week ? tile('This week', `${signed(t.week.diff)}<small>kg</small>`, `avg ${t.week.thisAvg.toFixed(1)} vs ${t.week.lastAvg.toFixed(1)}`, good(t.week.diff)) : '',
+    tile('Since start', `${signed(t.changed)}<small>kg</small>`, `from ${t.base.kg.toFixed(1)} · ${date(t.base.date)}`, good(t.changed)),
+  ].join('');
+  const CHIP = { ahead: 'var(--growing)', on: 'var(--growing)', behind: 'var(--excess)' };
+  const rows = t.entries.map(e => `<div class="wr-row">
+      <span class="wr-d">${e.date === today ? 'Today' : date(e.date)}</span>
+      <span class="wr-w">${e.weight.toFixed(1)}</span>
+      <span class="wr-a">${e.avg.toFixed(1)}<small> / ${e.expected.toFixed(1)}</small></span>
+      <span class="wr-c" style="color:${CHIP[e.status]};">${e.status === 'on' ? 'on pace' : `${Math.abs(e.ahead).toFixed(1)} ${e.status}`}</span>
+    </div>`).join('');
+  return `<div class="wr-slot"><div class="wr">
+    <div class="wp-head">
+      <div><div class="wr-goal">Goal ${signedRate(t.kgPerWeek)} kg a week</div><div class="wp-state" style="color:${color};">${label}${t.status === 'on' ? '' : `<small class="wr-gap">${Math.abs(t.ahead).toFixed(1)} kg ${t.status}</small>`}</div></div>
+      <button type="button" class="ci-skip wr-edit" data-wr-edit>Change</button>
+    </div>
+    <div class="ci-verdict">${escapeHtml(rateLine(t))}${averageLine(t) ? ` ${escapeHtml(averageLine(t))}` : ''}</div>
+    ${svg ? `<div class="wp-chart">${svg}<div class="wp-legend"><span><i class="g"></i>${signedRate(t.kgPerWeek)} kg a week</span><span><i class="a"></i>7-day average</span></div></div>` : ''}
+    <div class="ci-tiles">${tiles}</div>
+    ${rows ? `<div class="wr-list"><div class="wr-row wr-h"><span>Weigh-in</span><span>kg</span><span>avg / line</span><span></span></div>${rows}</div>` : ''}
+  </div></div>`;
+}
+
+/** What today's typed weight does to the line, for the weigh-in input. '' without a goal. */
+function weightRatePreview(kg) {
+  const today = todayStr();
+  if (!parseRateGoal(profile?.weightRateGoal)) return '';
+  const t = rateTrack([...myWeights.filter(w => w.date !== today), { date: today, weight: kg }], profile.weightRateGoal, today);
+  if (!t) return '';
+  const color = t.status === 'behind' ? 'var(--excess)' : 'var(--growing)';
+  return `7-day avg <b>${t.current.toFixed(1)}</b> · line <b>${t.expected.toFixed(1)}</b> · <b style="color:${color};">${t.status === 'on' ? 'on pace' : `${Math.abs(t.ahead).toFixed(1)} kg ${t.status}`}</b>`;
+}
+
+/** Pick the weekly goal: a few losses, or type one; Turn off clears it. A new pick starts a new line today. */
+window.openWeightRateSheet = () => {
+  document.getElementById('weight-rate-overlay')?.remove();
+  const today = todayStr();
+  const cur = parseRateGoal(profile?.weightRateGoal);
+  const kg = latestBodyweightKg() || Number(profile?.bodyweightKg) || null;
+  const safe = safeLoss(kg);
+  // start on the current goal, else the pace the weight path needs, else half a kilo
+  let pathNeed = null;
+  try { const g = weightPathGoal(); const st = g && pathStatus(myWeights, g, today); if (st?.neededPerWeek < 0) pathNeed = Math.round(-st.neededPerWeek * 20) / 20; } catch (_) {}
+  let pick = cur && cur.kgPerWeek < 0 ? -cur.kgPerWeek : pathNeed && pathNeed <= MAX_LOSS ? pathNeed : 0.5;
+  const NAMES = { 0.25: 'Gentle', 0.5: 'Steady', 0.75: 'Firm', 1: 'Fast' };
+  const overlay = document.createElement('div');
+  overlay.id = 'weight-rate-overlay';
+  overlay.className = 'ci-overlay';
+  overlay.innerHTML = `<div class="ui-window gold ci-win"><div class="ci-scroll">
+    <div class="ci-hero" style="padding-bottom:14px;"><div class="ci-hero-top"><div><div class="ui-banner gold">◈ Weekly goal</div><div class="ci-title">Lose per week</div></div><button class="ci-close" aria-label="Close" data-close>✕</button></div>
+      <div class="ci-sub" style="margin:8px 0 0;">An average, not a daily number. Each weigh-in's 7-day average is checked against a line falling at this rate from today.</div></div>
+    <div class="wr-opts">${RATE_OPTIONS.map(r => `<button type="button" class="wr-opt" data-r="${r}"><b>${r} kg</b><span>${NAMES[r] || ''}${safe && r > safe ? ' · over 1% for you' : ''}</span></button>`).join('')}</div>
+    <label class="wr-other">Other <input id="wr-val" type="text" inputmode="decimal" autocomplete="off" /> kg a week</label>
+    <div class="rh-note" id="wr-note"></div>
+    <button class="ui-btn-primary ci-save" id="wr-save">◈ Set goal</button>
+    ${cur ? '<button class="ci-skip" id="wr-off" style="width:100%;margin-top:6px;">Turn off</button>' : ''}
+    <div id="wr-msg" class="ci-msg"></div>
+  </div></div>`;
+  getOverlayHost().appendChild(overlay);
+  const val = document.getElementById('wr-val');
+  const note = document.getElementById('wr-note');
+  const paint = () => {
+    overlay.querySelectorAll('.wr-opt').forEach(b => b.classList.toggle('on', Number(b.dataset.r) === pick));
+    const parts = [];
+    if (kg) parts.push(`About ${Math.round(pick * KCAL_PER_KG / 7 / 10) * 10} kcal a day under maintenance.`);
+    if (safe) parts.push(pick > safe ? `Faster than 1% of your bodyweight a week (${safe} kg): expect to lose some muscle with it.` : `Under 1% of your bodyweight a week (${safe} kg), so muscle is kept.`);
+    if (pathNeed && pathNeed !== pick) parts.push(`Your weight goal's date needs about ${pathNeed} kg a week.`);
+    if (cur) parts.push(`Changing it starts a new line from today.`);
+    note.textContent = parts.join(' ');
+  };
+  paint();
+  overlay.querySelectorAll('.wr-opt').forEach(b => b.addEventListener('click', () => { pick = Number(b.dataset.r); val.value = ''; paint(); }));
+  val.addEventListener('input', () => { const v = Number(val.value.replace(',', '.')); if (v > 0 && v <= MAX_LOSS) { pick = Math.round(v * 100) / 100; paint(); } });
+  overlay.querySelectorAll('[data-close]').forEach(b => b.addEventListener('click', () => overlay.remove()));
+  const msg = document.getElementById('wr-msg');
+  const done = (text) => { overlay.remove(); refreshWeightRate(); showToast(text, 'success'); };
+  document.getElementById('wr-save').addEventListener('click', async (e) => {
+    const field = rateGoalField(-pick, today);
+    if (!field) { msg.style.color = '#FF4D67'; msg.textContent = `Pick between 0.1 and ${MAX_LOSS} kg a week.`; return; }
+    e.target.disabled = true;
+    try { await writeUserFields({ weightRateGoal: field }); done(`Goal set: lose ${pick} kg a week.`); }
+    catch (err) { e.target.disabled = false; msg.style.color = '#FF4D67'; msg.textContent = 'Could not save: ' + (err?.message || err); }
+  });
+  document.getElementById('wr-off')?.addEventListener('click', async (e) => {
+    e.target.disabled = true;
+    try { await writeUserFields({ weightRateGoal: deleteField() }); delete profile.weightRateGoal; done('Weekly goal turned off.'); }
+    catch (err) { e.target.disabled = false; msg.style.color = '#FF4D67'; msg.textContent = 'Could not save: ' + (err?.message || err); }
+  });
+};
+
+/** Redraw every weekly goal card on screen after the goal changes. */
+function refreshWeightRate() {
+  document.querySelectorAll('.wr-slot').forEach(el => { el.outerHTML = weightRateHtml() || '<div class="wr-slot"></div>'; });
+}
+document.addEventListener('click', (e) => { if (e.target.closest?.('[data-wr-edit]')) window.openWeightRateSheet(); });
+
+
 // ── PHYSIQUE GOAL ─────────────────────────────────────────────────────────
 // profile.physiqueGoal = { preset, deadline, startDate, start: { waist, shoulders, chest, arms, bodyFat, weight } }
 // (physique-goal.js, pure). The Hunter picks a look and a date; the plan is re-solved from the
@@ -18747,6 +18906,7 @@ window.openCheckinHub = (view = 'home', reward = null) => {
         <input id="rh-val" type="text" inputmode="decimal" autocomplete="off" aria-describedby="wi-vs" /><span class="wi-unit">kg</span></label>
       <div class="wi-steps">${STEPS.map(s => `<button type="button" class="wi-step" data-step="${s}" aria-label="${s > 0 ? 'Up' : 'Down'} ${Math.abs(s)} kg">${s > 0 ? '+' : '−'}${Math.abs(s)}</button>`).join('')}</div>
       <p class="wi-vs" id="wi-vs" aria-live="polite"></p>
+      <p class="wi-vs wr-preview" id="wr-preview"></p>
       <button class="ui-btn-primary ci-save" id="rh-save">◈ Log weight</button>
       <div id="rh-msg" class="ci-msg"></div>`;
   } else if (view === 'done' && reward) {
@@ -18757,6 +18917,7 @@ window.openCheckinHub = (view = 'home', reward = null) => {
         ${reward.note ? `<div class="rh-note">${escapeHtml(reward.note)}</div>` : ''}</div>
       <div class="ui-banner ci-section">◈ This week · ${st.weighCount}/7</div>
       ${rhythmDotsHtml(st.week)}
+      ${weightRateHtml() ? `<div class="ui-banner ci-section" style="margin-top:20px;">◈ Weekly goal</div>${weightRateHtml()}` : ''}
       ${weightPathHtml()}
       ${next ? `<div class="ui-banner gold ci-section" style="margin-top:20px;">◈ When you're ready</div>
         <button type="button" class="rh-row due" data-tier="${next.key}"><div><b>${next.title}</b><br><span>${next.what} · ${next.time}</span></div><em>${dueText(next)}</em></button>` : '<div class="rh-note" style="margin-top:14px;">That is everything for today. See you tomorrow.</div>'}
@@ -18787,10 +18948,12 @@ window.openCheckinHub = (view = 'home', reward = null) => {
       const d = Math.round((kg - Number(prev.weight)) * 10) / 10;
       vs.innerHTML = `Last: <b>${Number(prev.weight).toFixed(1)} kg</b> · ${agoLabel(prev.date, today0).toLowerCase()} · <b class="${d < 0 ? 'down' : d > 0 ? 'up' : ''}">${signedKg(d)}</b>`;
     };
-    const paint = () => { val.value = kg.toFixed(1); paintVs(); };
+    const rateEl = document.getElementById('wr-preview');
+    const paintRate = () => { rateEl.innerHTML = weightRatePreview(kg); };
+    const paint = () => { val.value = kg.toFixed(1); paintVs(); paintRate(); };
     paint();
     val.addEventListener('focus', () => val.select());
-    val.addEventListener('input', () => { const v = parseWeight(val.value); if (v !== null) { kg = v; paintVs(); } });
+    val.addEventListener('input', () => { const v = parseWeight(val.value); if (v !== null) { kg = v; paintVs(); paintRate(); } });
     val.addEventListener('blur', paint);
     val.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); document.getElementById('rh-save').click(); } });
     overlay.querySelectorAll('[data-step]').forEach(b => b.addEventListener('click', () => { kg = stepWeight(kg, Number(b.dataset.step)); paint(); }));
@@ -23823,6 +23986,7 @@ function renderTrends() {
     <div class="card">
       <div class="card-title"><h3>◐ Weight</h3></div>
       ${physiquePlanHtml()}
+      ${weightRateHtml()}
       ${weightPathHtml()}
       ${/* with a weight goal the path above is the chart; without one, the 7-day trend is */
         weightPathGoal() ? '' : myWeights.length > 1 ? weightOnTrackHtml() : weightLineChart(myWeights)}
@@ -26660,17 +26824,57 @@ window.toggleWorldSidebar = () => {
   }
 };
 
+/* gcId -> { ownerUid, soldiers } across every Hunter; the higher count wins a conflict, as on the map. */
+function worldCountriesOf(users) {
+  const countries = {};
+  (users || []).forEach(u => {
+    Object.entries(u.shadowArmy?.countries || {}).forEach(([gcId, data]) => {
+      if (!data?.ownerUid) return;
+      if (!countries[gcId] || (data.soldiers || 0) > countries[gcId].soldiers) {
+        countries[gcId] = { ownerUid: data.ownerUid, soldiers: data.soldiers || 0 };
+      }
+    });
+  });
+  return countries;
+}
+
+const WORLD_TERRITORY_IDS = ckey => ckey === 'antarctica' ? [] : [0, 1, 2, 3, 4, 5].map(i => ({
+  northAmerica: 'na', southAmerica: 'sa', europe: 'eu', africa: 'af', asia: 'as', australia: 'au',
+}[ckey] + '_' + i));
+let worldDeployPick = {};   // ckey -> 10 | 50 | 'all', the amount chip picked on the World list
+
+/* One-tap deploy from the World list: fresh ownership, then the same write as the map, one territory at a time. */
+window.worldDeployAmt = (ckey, v) => { worldDeployPick[ckey] = v === 'all' ? 'all' : Number(v); renderWorldSidebar(); };
+window.worldAutoDeploy = worldAutoDeploy;
+async function worldAutoDeploy(ckey, armyKey, amount, btn) {
+  if (!currentUser || !amount) return;
+  if (btn) { btn.disabled = true; btn.firstChild.textContent = 'Deploying… '; }
+  try {
+    const { collection, getDocs } = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js');
+    const snap = await getDocs(collection(db, 'users'));
+    const users = snap.docs.map(d => ({ uid: d.id, ...d.data() }));
+    const plan = autoDeployPlan({ ids: WORLD_TERRITORY_IDS(ckey), countries: worldCountriesOf(users), uid: currentUser.uid, amount });
+    let placed = 0, failed = 0;
+    for (const step of plan) {
+      const r = await deploySoldiers(step.gcId, armyKey, step.amount, ckey, { quiet: true });
+      if (r.ok) placed += step.amount; else { failed++; if (r.stop) break; }
+    }
+    if (placed) showToast(`⚑ ${placed.toLocaleString()} soldiers deployed`, 'success');
+    if (failed && !placed) showToast('Deploy failed. Pull down to refresh and try again.', 'error');
+  } catch (err) {
+    console.warn('World auto deploy failed:', err);
+    showToast('Deploy failed. Check your connection and try again.', 'error');
+  }
+  renderWorldSidebar();
+  try { const fr = document.querySelector('#view-world iframe'); if (fr?.contentWindow) sendShadowWorldData(fr); } catch (_) {}
+}
+
 function renderWorldSidebar() {
   const el = document.getElementById('world-sidebar-continents');
   const listEl = document.getElementById('world-territories');
   if (!el) return;
 
-  const PLAYER_COLORS = {
-    'eUtGPwQBcCSO0x3xS3ZGYFGXNIT2': { hex:'#d4a017', name:'Lawrence' },
-    'd1W5vTx5aSTIwkR4CIwnO2xW7vf1': { hex:'#7c3aed', name:'LuChing'  },
-    'rzcznIkNRrSKVXl74LsTaRSdHOk2': { hex:'#0ea5e9', name:'Lucas'    },
-    'oFFi2hATYARhqcSZQlHwlsYBOge2': { hex:'#ff6b9d', name:'Mireyah'  },
-  };
+  const PLAYER_COLORS = worldPlayers(allUsers);
 
   const CONT_META = [
     { ckey:'northAmerica', armyKey:'iron',   name:'Iron Highlands',  icon:'🏋️', hex:'#e05555', stat:'Strength'   },
@@ -26699,6 +26903,8 @@ function renderWorldSidebar() {
       if (data.ownerUid) countryOwners[gcId] = data.ownerUid;
     });
   });
+  const worldNow = worldCountriesOf(allUsers);
+  const deployBlocks = {};
 
   const myPool = profile?.shadowArmy?.pool || {};
 
@@ -26722,18 +26928,35 @@ function renderWorldSidebar() {
     }).join('');
 
     const holderText = dominated
-      ? `<span style="color:${PLAYER_COLORS[dominated[0]]?.hex}">★ ${PLAYER_COLORS[dominated[0]]?.name}</span>`
-      : leaders.map(([uid,n]) => `<span style="color:${PLAYER_COLORS[uid]?.hex||'#fff'}">${PLAYER_COLORS[uid]?.name||'?'}×${n}</span>`).join(' ');
+      ? `<span style="color:${PLAYER_COLORS[dominated[0]]?.hex}">★ ${escapeHtml(PLAYER_COLORS[dominated[0]]?.name || '?')}</span>`
+      : leaders.map(([uid,n]) => `<span style="color:${PLAYER_COLORS[uid]?.hex||'#fff'}">${escapeHtml(PLAYER_COLORS[uid]?.name||'?')}×${n}</span>`).join(' ');
 
-    return `<div class="ws-row" onclick="focusWorldContinent('${m.ckey}')">
+    /* One-tap deploy, on the World page list only: no map, no typing. */
+    if (pool > 0 && m.ckey !== 'antarctica' && currentUser) {
+      const pick = worldDeployPick[m.ckey] || 'all';
+      const amount = pick === 'all' ? pool : Math.min(pool, pick);
+      const plan = autoDeployPlan({ ids, countries: worldNow, uid: currentUser.uid, amount });
+      const what = plan.length ? describeDeploy(plan, worldNow, currentUser.uid) : 'no free or own territory here';
+      const chips = [10, 50, 'all'].filter(v => v === 'all' || v < pool)
+        .map(v => `<button type="button" class="ui-chip ws-dep-amt${pick === v ? ' on' : ''}" onclick="worldDeployAmt('${m.ckey}','${v}')" aria-pressed="${pick === v}">${v === 'all' ? `All ${pool.toLocaleString()}` : v}</button>`).join('');
+      deployBlocks[m.ckey] = `<div class="ws-deploy" onclick="event.stopPropagation()">
+        <div class="ws-dep-amts" role="group" aria-label="Soldiers to deploy">${chips}</div>
+        <button type="button" class="ui-btn-primary ws-dep-go" onclick="worldAutoDeploy('${m.ckey}','${m.armyKey}',${amount},this)" ${plan.length ? '' : 'disabled'}>
+          Deploy ${amount.toLocaleString()} ${m.armyKey}<small>${escapeHtml(what)}</small></button>
+      </div>`;
+    }
+
+    return `<div class="ws-row" data-ckey="${m.ckey}" onclick="focusWorldContinent('${m.ckey}')">
       <div class="ws-name" style="color:${m.hex}">${m.icon} ${m.name}</div>
       <div class="ws-pool">Pool: <strong>${pool||'—'}</strong>${pool?` <span style="color:rgba(91,168,255,0.78)">${m.armyKey}</span>`:`<span style="color:rgba(91,168,255,0.78)"> train ${m.stat}</span>`}</div>
       <div class="ws-bar">${segments||''}</div>
       <div class="ws-owned" style="color:rgba(91,168,255,0.78)">${holderText||'unclaimed'}${myHeld?` · <span style="color:#d4a017">you: ${myHeld}/6</span>`:''}</div>
-    </div>`;
+    <!--deploy:${m.ckey}--></div>`;
   }).join('');
   el.innerHTML = rowsHtml;           // the Armies sheet of the full map
-  if (listEl) listEl.innerHTML = rowsHtml;   // the territory list on the World page
+  if (listEl) {                      // the territory list on the World page, with one-tap deploy
+    listEl.innerHTML = rowsHtml.replace(/<!--deploy:(\w+)-->/g, (_, k) => deployBlocks[k] || '');
+  }
   try { renderWorldPanes(); } catch (e) { console.warn('World panes failed:', e); }
 }
 
@@ -26888,6 +27111,120 @@ window.focusWorldContinent = (ckey) => {
   }
 };
 
+/* One deploy write (map, planner and World list all use it). Returns { ok, stop } where stop means
+   no later deploy in a batch can succeed either (no soldiers left, locked). */
+async function deploySoldiers(gcId, armyKey, amount, ckey, { quiet = false } = {}) {
+  amount = Math.floor(Number(amount) || 0);
+  if (!currentUser || !gcId || !armyKey || amount <= 0) return { ok: false };
+  try {
+    const { doc, updateDoc, increment: fsInc, getDoc } = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js');
+    const userRef = doc(db, 'users', currentUser.uid);
+    const snap = await getDoc(userRef);
+    const dat = snap.data() || {};
+    const currentPool = dat.shadowArmy?.pool?.[armyKey] || 0;
+
+    if (amount > currentPool) {
+      console.warn('Deploy: not enough pool soldiers');
+      if (!quiet) showToast(`Only ${currentPool.toLocaleString()} ${armyKey} soldiers in reserve`, 'error');
+      return { ok: false, stop: true };
+    }
+
+    // Server-side exploration lock (an unreadable config reads as unlocked, as the map does)
+    let unlocksAt = null;
+    try {
+      const cfgSnap2 = await getDoc(doc(db, 'config', 'shadowWorld'));
+      unlocksAt = cfgSnap2.exists() ? cfgSnap2.data().explorationUnlocksAt : null;
+    } catch (cfgErr) { console.warn('Shadow World config unreadable:', cfgErr); }
+    if (unlocksAt && new Date() < new Date(unlocksAt)) {
+      showToast('Exploration is locked — wait for the countdown', 'error');
+      return { ok: false, stop: true };
+    }
+
+    // Server-side ownership guard — cannot deploy to enemy territory
+    const existingOwner = dat.shadowArmy?.countries?.[gcId]?.ownerUid;
+    if (existingOwner && existingOwner !== currentUser.uid) {
+      showToast('Cannot deploy to enemy territory — Declare War first', 'error');
+      return { ok: false };
+    }
+
+    await updateDoc(userRef, {
+      [`shadowArmy.pool.${armyKey}`]: Math.max(0, currentPool - amount),
+      [`shadowArmy.countries.${gcId}.soldiers`]: fsInc(amount),
+      [`shadowArmy.countries.${gcId}.ownerUid`]: currentUser.uid,
+      [`shadowArmy.countries.${gcId}.ckey`]: ckey,
+    });
+
+    // Update local profile
+    if (!profile.shadowArmy) profile.shadowArmy = {};
+    if (!profile.shadowArmy.pool) profile.shadowArmy.pool = {};
+    if (!profile.shadowArmy.countries) profile.shadowArmy.countries = {};
+    profile.shadowArmy.pool[armyKey] = Math.max(0, currentPool - amount);
+    profile.shadowArmy.countries[gcId] = {
+      soldiers: (profile.shadowArmy.countries[gcId]?.soldiers || 0) + amount,
+      ownerUid: currentUser.uid,
+      ckey,
+    };
+    allUsers = (allUsers || []).map(u => u.uid === currentUser.uid ? { ...u, shadowArmy: profile.shadowArmy } : u);
+
+    if (!quiet) showToast(`⚑ ${amount} soldiers deployed`, 'success');
+    return { ok: true };
+  } catch(err) {
+    console.warn('Deploy failed:', err);
+    if (!quiet) showToast('Deploy failed. Check your connection and try again.', 'error');
+    return { ok: false };
+  }
+}
+
+/* The world data the map draws: every territory, every Hunter's reserve and the roster. */
+async function sendShadowWorldData(iframe) {
+  try {
+    const { collection, getDocs } = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js');
+    const usersSnap = await getDocs(collection(db, 'users'));
+
+    // Build countries map: gcId -> { ownerUid, soldiers }
+    const countries = {};
+    // Build pool map: uid -> { iron, wild, court, swift, shadow, tide, gate }
+    const pool = {};
+
+    usersSnap.docs.forEach(d => {
+      const u = d.data();
+      const uid = d.id;
+      // Pool = undeployed soldiers per army key
+      const userPool = u.shadowArmy?.pool || {};
+      if (Object.keys(userPool).length) pool[uid] = userPool;
+
+      // Countries this user owns
+      const userCountries = u.shadowArmy?.countries || {};
+      Object.entries(userCountries).forEach(([gcId, data]) => {
+        // Higher soldier count wins on conflict (shouldn't happen but safety net)
+        if (!countries[gcId] || data.soldiers > countries[gcId].soldiers) {
+          countries[gcId] = { ownerUid: uid, soldiers: data.soldiers || 0 };
+        }
+      });
+    });
+
+    // Read exploration lock from the shared 'config' doc. On its own: if the live rules
+    // refuse config, the Hunter must still get their pool and the map, not an empty world.
+    let explorationUnlocksAt = null;
+    try {
+      const cfgSnap = await getDoc(doc(db, 'config', 'shadowWorld'));
+      explorationUnlocksAt = cfgSnap.exists() ? (cfgSnap.data().explorationUnlocksAt || null) : null;
+    } catch (cfgErr) { console.warn('Shadow World config unreadable:', cfgErr); }
+
+    iframe.contentWindow.postMessage({
+      type: 'shadowWorldData',
+      countries,
+      pool,
+      players: worldPlayers(usersSnap.docs.map(d => ({ uid: d.id, displayName: d.data().displayName }))),
+      currentUid: currentUser?.uid || null,
+      explorationUnlocksAt,
+    }, '*');
+  } catch(err) {
+    console.warn('Shadow World data build failed:', err);
+    iframe.contentWindow.postMessage({ type:'shadowWorldData', countries:{}, pool:{}, currentUid: currentUser?.uid }, '*');
+  }
+}
+
 // ── Handle Shadow World iframe requests ──
 window.addEventListener('message', async (e) => {
   // The world iframe announces when its listeners are live. Restate the active
@@ -26903,108 +27240,15 @@ window.addEventListener('message', async (e) => {
   if (!iframe) return;
 
   // ── Data request ──
-  if (e.data?.type === 'requestShadowWorldData') {
-    try {
-      const { collection, getDocs } = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js');
-      const usersSnap = await getDocs(collection(db, 'users'));
-
-      // Build countries map: gcId -> { ownerUid, soldiers }
-      const countries = {};
-      // Build pool map: uid -> { iron, wild, court, swift, shadow, tide, gate }
-      const pool = {};
-
-      usersSnap.docs.forEach(d => {
-        const u = d.data();
-        const uid = d.id;
-        // Pool = undeployed soldiers per army key
-        const userPool = u.shadowArmy?.pool || {};
-        if (Object.keys(userPool).length) pool[uid] = userPool;
-
-        // Countries this user owns
-        const userCountries = u.shadowArmy?.countries || {};
-        Object.entries(userCountries).forEach(([gcId, data]) => {
-          // Higher soldier count wins on conflict (shouldn't happen but safety net)
-          if (!countries[gcId] || data.soldiers > countries[gcId].soldiers) {
-            countries[gcId] = { ownerUid: uid, soldiers: data.soldiers || 0 };
-          }
-        });
-      });
-
-      // Read exploration lock from the shared 'config' doc
-      const cfgSnap = await getDoc(doc(db, 'config', 'shadowWorld'));
-      const explorationUnlocksAt = cfgSnap.exists() ? (cfgSnap.data().explorationUnlocksAt || null) : null;
-
-      iframe.contentWindow.postMessage({
-        type: 'shadowWorldData',
-        countries,
-        pool,
-        currentUid: currentUser?.uid || null,
-        explorationUnlocksAt,
-      }, '*');
-    } catch(err) {
-      console.warn('Shadow World data build failed:', err);
-      iframe.contentWindow.postMessage({ type:'shadowWorldData', countries:{}, pool:{}, currentUid: currentUser?.uid }, '*');
-    }
-  }
+  if (e.data?.type === 'requestShadowWorldData') { await sendShadowWorldData(iframe); }
 
   // ── Deploy soldiers to a country ──
   if (e.data?.type === 'deployToCountry') {
     const { gcId, armyKey, amount, ckey } = e.data;
     /* Tell the planner each deploy has finished (or failed), so it can send the next one after this write lands. */
-    const ack = ok => { try { e.source?.postMessage({ type: 'deployDone', gcId, ok }, '*'); } catch (_) {} };
-    if (!currentUser || !gcId || !armyKey || !amount) { ack(false); return; }
-    try {
-      const { doc, updateDoc, increment: fsInc, getDoc } = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js');
-      const userRef = doc(db, 'users', currentUser.uid);
-      const snap = await getDoc(userRef);
-      const dat = snap.data() || {};
-      const currentPool = dat.shadowArmy?.pool?.[armyKey] || 0;
-
-      if (amount > currentPool) {
-        console.warn('Deploy: not enough pool soldiers'); ack(false); return;
-      }
-
-      // Server-side exploration lock
-      const cfgSnap2 = await getDoc(doc(db, 'config', 'shadowWorld'));
-      const unlocksAt = cfgSnap2.exists() ? cfgSnap2.data().explorationUnlocksAt : null;
-      if (unlocksAt && new Date() < new Date(unlocksAt)) {
-        showToast('Exploration is locked — wait for the countdown', 'error');
-        ack(false);
-        return;
-      }
-
-      // Server-side ownership guard — cannot deploy to enemy territory
-      const existingOwner = dat.shadowArmy?.countries?.[gcId]?.ownerUid;
-      if (existingOwner && existingOwner !== currentUser.uid) {
-        showToast('Cannot deploy to enemy territory — Declare War first', 'error');
-        ack(false);
-        return;
-      }
-
-      await updateDoc(userRef, {
-        [`shadowArmy.pool.${armyKey}`]: Math.max(0, currentPool - amount),
-        [`shadowArmy.countries.${gcId}.soldiers`]: fsInc(amount),
-        [`shadowArmy.countries.${gcId}.ownerUid`]: currentUser.uid,
-        [`shadowArmy.countries.${gcId}.ckey`]: ckey,
-      });
-
-      // Update local profile
-      if (!profile.shadowArmy) profile.shadowArmy = {};
-      if (!profile.shadowArmy.pool) profile.shadowArmy.pool = {};
-      if (!profile.shadowArmy.countries) profile.shadowArmy.countries = {};
-      profile.shadowArmy.pool[armyKey] = Math.max(0, currentPool - amount);
-      profile.shadowArmy.countries[gcId] = {
-        soldiers: (profile.shadowArmy.countries[gcId]?.soldiers || 0) + amount,
-        ownerUid: currentUser.uid,
-        ckey,
-      };
-
-      showToast(`⚑ ${amount} soldiers deployed`, 'success');
-      ack(true);
-    } catch(err) {
-      console.warn('Deploy failed:', err);
-      ack(false);
-    }
+    const r = await deploySoldiers(gcId, armyKey, amount, ckey);
+    try { e.source?.postMessage({ type: 'deployDone', gcId, ok: r.ok }, '*'); } catch (_) {}
+    if (r.ok) try { renderWorldSidebar(); } catch (_) {}
   }
 
   // ── Withdraw soldiers from a country back to pool ──
@@ -27992,12 +28236,7 @@ function renderGuildFeed() {
   const today = todayStr();
   const yesterday = todayStr(new Date(Date.now()-86400000));
 
-  const PLAYER_COLORS = {
-    'eUtGPwQBcCSO0x3xS3ZGYFGXNIT2': '#d4a017',
-    'd1W5vTx5aSTIwkR4CIwnO2xW7vf1': '#7c3aed',
-    'rzcznIkNRrSKVXl74LsTaRSdHOk2': '#0ea5e9',
-    'oFFi2hATYARhqcSZQlHwlsYBOge2': '#ff6b9d',
-  };
+  const PLAYER_COLORS = Object.fromEntries(Object.entries(worldPlayers(allUsers)).map(([uid, p]) => [uid, p.hex]));
 
   el.innerHTML = `
     <div style="font-family:var(--font-mono);font-size:9px;color:rgba(91,168,255,0.78);letter-spacing:.15em;margin-bottom:8px;">◈ SYSTEM RECORD</div>
