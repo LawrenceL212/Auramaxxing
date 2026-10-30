@@ -100,3 +100,82 @@ exports.resolveGateDuel = functions.https.onCall(async (data, context) => {
     throw new functions.https.HttpsError('internal', 'Could not settle the duel.');
   }
 });
+
+/* Goal to plan: Claude writes a proposal; the app checks and previews it. The key is
+   a Firebase secret (firebase functions:secrets:set ANTHROPIC_API_KEY). Not saved anywhere. */
+const { onCall, HttpsError } = require('firebase-functions/v2/https');
+const { defineSecret } = require('firebase-functions/params');
+const { generatePlan: runGeneratePlan, askTrainer: runAskTrainer, makeThrottle } = require('./lib/generate-plan');
+const ANTHROPIC_API_KEY = defineSecret('ANTHROPIC_API_KEY');
+const planThrottle = makeThrottle(10);
+exports.generatePlan = onCall({ region: 'us-central1', secrets: [ANTHROPIC_API_KEY], timeoutSeconds: 120, memory: '256MiB', maxInstances: 5 }, async (request) => {
+  if (!request.auth) throw new HttpsError('unauthenticated', 'Sign in to build a plan.');
+  if (!planThrottle(request.auth.uid)) throw new HttpsError('resource-exhausted', 'That is enough plans for one hour. Try again later.');
+  try {
+    return await runGeneratePlan({ data: request.data, apiKey: ANTHROPIC_API_KEY.value(), fetchImpl: fetch });
+  } catch (e) {
+    if (e && e.code) throw new HttpsError(e.code, e.message);
+    functions.logger.error('generatePlan failed', e);
+    throw new HttpsError('internal', 'Could not build a plan.');
+  }
+});
+
+/* Ask your trainer: a question answered from the Hunter's own data. Read-only; the reply is text and an optional
+   one-sentence plan change that the Hunter has to tap and then accept. */
+const askThrottle = makeThrottle(40);
+exports.askTrainer = onCall({ region: 'us-central1', secrets: [ANTHROPIC_API_KEY], timeoutSeconds: 60, memory: '256MiB', maxInstances: 5 }, async (request) => {
+  if (!request.auth) throw new HttpsError('unauthenticated', 'Sign in to ask the trainer.');
+  if (!askThrottle(request.auth.uid)) throw new HttpsError('resource-exhausted', 'That is enough questions for one hour. Try again later.');
+  try {
+    return await runAskTrainer({ data: request.data, apiKey: ANTHROPIC_API_KEY.value(), fetchImpl: fetch });
+  } catch (e) {
+    if (e && e.code) throw new HttpsError(e.code, e.message);
+    functions.logger.error('askTrainer failed', e);
+    throw new HttpsError('internal', 'Could not reach the trainer.');
+  }
+});
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   designPlan — the AI coach (see lib/design-plan.js)
+   ═══════════════════════════════════════════════════════════════════════════
+   The Hunter asks for a look or a review; the client sends only their own data;
+   Claude proposes targets, a plan and coaching text. Nothing is applied here:
+   the client shows the proposal and the Hunter taps to apply it.
+
+   · Signed-in callers only, at most DAILY_LIMIT calls a Hunter a day (counted in
+     users/{uid}.aiCoach by the Admin SDK).
+   · The API key is a secret: firebase functions:secrets:set ANTHROPIC_API_KEY
+   · Deploy: firebase deploy --only functions:designPlan
+   ═══════════════════════════════════════════════════════════════════════════ */
+const { designPlan: runCoach, designIntake: runIntake, designChat: runChat, nextUsage, CHAT_LIMIT } = require('./lib/design-plan');
+
+exports.designPlan = functions.runWith({ secrets: [ANTHROPIC_API_KEY], timeoutSeconds: 180, memory: '512MB', maxInstances: 5 }).https.onCall(async (data, context) => {
+  if (!context.auth) throw new functions.https.HttpsError('unauthenticated', 'Sign in to use the coach.');
+  const uid = context.auth.uid;
+  const input = data && typeof data === 'object' ? data : {};
+  if (!Array.isArray(input.exercises) || !input.exercises.length) throw new functions.https.HttpsError('invalid-argument', 'No exercise list.');
+  if (input.mode === 'intake' && !(input.intake && (String(input.intake.text || '').trim() || input.image))) throw new functions.https.HttpsError('invalid-argument', 'Say what you want to achieve.');
+  if (input.mode === 'chat' && !(Array.isArray(input.messages) && input.messages.length)) throw new functions.https.HttpsError('invalid-argument', 'Say something to the coach first.');
+  if (input.mode !== 'review' && input.mode !== 'intake' && input.mode !== 'chat' && !String(input.request || '').trim() && !input.image) throw new functions.https.HttpsError('invalid-argument', 'Describe the look you want, or add a photo.');
+
+  const today = new Date().toISOString().slice(0, 10);
+  const ref = db.collection('users').doc(uid);
+  const usageField = input.mode === 'chat' ? 'aiChat' : 'aiCoach';
+  const allowed = await db.runTransaction(async (tx) => {
+    const snap = await tx.get(ref);
+    const r = nextUsage(snap.exists ? snap.get(usageField) : null, today, input.mode === 'chat' ? CHAT_LIMIT : undefined);
+    if (r.allowed) tx.set(ref, { [usageField]: r.usage }, { merge: true });
+    return r.allowed;
+  });
+  if (!allowed) throw new functions.https.HttpsError('resource-exhausted', 'That is the coach limit for today. Try again tomorrow.');
+
+  const Anthropic = require('@anthropic-ai/sdk');
+  const client = new Anthropic({ apiKey: ANTHROPIC_API_KEY.value() });
+  try {
+    return await (input.mode === 'chat' ? runChat : input.mode === 'intake' ? runIntake : runCoach)({ client, input });
+  } catch (e) {
+    if (e && (e.code === 'refused' || e.code === 'unparseable')) throw new functions.https.HttpsError('failed-precondition', e.message);
+    console.error('designPlan failed', e && e.status, e && e.message);
+    throw new functions.https.HttpsError('internal', 'The coach is unavailable right now. Try again in a minute.');
+  }
+});
