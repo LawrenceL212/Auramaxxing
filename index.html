@@ -3864,6 +3864,14 @@
   #world-territories .ws-bar{height:6px;border-radius:0;}
   #world-territories .ws-owned{font-size:12px;margin-top:6px;}
   #world-territories .ws-row{min-height:48px;}
+  /* One-tap deploy on the World list */
+  .ws-deploy{margin-top:10px;display:flex;flex-direction:column;gap:8px;cursor:default;}
+  .ws-dep-amts{display:flex;gap:8px;flex-wrap:wrap;}
+  .ws-dep-amt{min-height:40px;min-width:56px;cursor:pointer;touch-action:manipulation;}
+  .ws-dep-amt.on{border-color:var(--brass);color:var(--brass);background:rgba(212,160,23,.12);}
+  .ws-dep-go{width:100%;min-height:52px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;touch-action:manipulation;}
+  .ws-dep-go small{font-family:var(--font-body);font-size:12px;font-weight:600;letter-spacing:0;text-transform:none;opacity:.85;}
+  .ws-dep-go:disabled{opacity:.45;cursor:not-allowed;}
   .world-note{margin:10px 0 0;font-size:12px;color:var(--text-faint);}
   .world-army-total{display:flex;gap:10px;margin-top:var(--space-4);}
   .world-army-total .ui-tile{flex:1;cursor:default;}
@@ -5073,6 +5081,7 @@ import { weekStrip, weekProgress, latestDate, agoLabel, estimateMinutes, totalSe
   lastSet, lastTimeLabel, upNext, leftLabel } from "./hunt-view.js";
 import { penaltyView } from "./penalty-view.js";
 import { worldPlayers } from "./world-players.js";
+import { autoDeployPlan, describeDeploy } from "./deploy-plan.js";
 import { scorePlan, diffPlans } from "./plan-metrics.js";
 import { trainerRead, localSummary, fullHistory } from "./trainer-insights.js";
 import { skinfoldBodyFat, feasibility, feasibilityText, historyDigest, catalogue, excludedFromText, validatePlan, planGroups } from "./plan-gen.js";
@@ -26814,6 +26823,51 @@ window.toggleWorldSidebar = () => {
   }
 };
 
+/* gcId -> { ownerUid, soldiers } across every Hunter; the higher count wins a conflict, as on the map. */
+function worldCountriesOf(users) {
+  const countries = {};
+  (users || []).forEach(u => {
+    Object.entries(u.shadowArmy?.countries || {}).forEach(([gcId, data]) => {
+      if (!data?.ownerUid) return;
+      if (!countries[gcId] || (data.soldiers || 0) > countries[gcId].soldiers) {
+        countries[gcId] = { ownerUid: data.ownerUid, soldiers: data.soldiers || 0 };
+      }
+    });
+  });
+  return countries;
+}
+
+const WORLD_TERRITORY_IDS = ckey => ckey === 'antarctica' ? [] : [0, 1, 2, 3, 4, 5].map(i => ({
+  northAmerica: 'na', southAmerica: 'sa', europe: 'eu', africa: 'af', asia: 'as', australia: 'au',
+}[ckey] + '_' + i));
+let worldDeployPick = {};   // ckey -> 10 | 50 | 'all', the amount chip picked on the World list
+
+/* One-tap deploy from the World list: fresh ownership, then the same write as the map, one territory at a time. */
+window.worldDeployAmt = (ckey, v) => { worldDeployPick[ckey] = v === 'all' ? 'all' : Number(v); renderWorldSidebar(); };
+window.worldAutoDeploy = worldAutoDeploy;
+async function worldAutoDeploy(ckey, armyKey, amount, btn) {
+  if (!currentUser || !amount) return;
+  if (btn) { btn.disabled = true; btn.firstChild.textContent = 'Deploying… '; }
+  try {
+    const { collection, getDocs } = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js');
+    const snap = await getDocs(collection(db, 'users'));
+    const users = snap.docs.map(d => ({ uid: d.id, ...d.data() }));
+    const plan = autoDeployPlan({ ids: WORLD_TERRITORY_IDS(ckey), countries: worldCountriesOf(users), uid: currentUser.uid, amount });
+    let placed = 0, failed = 0;
+    for (const step of plan) {
+      const r = await deploySoldiers(step.gcId, armyKey, step.amount, ckey, { quiet: true });
+      if (r.ok) placed += step.amount; else { failed++; if (r.stop) break; }
+    }
+    if (placed) showToast(`⚑ ${placed.toLocaleString()} soldiers deployed`, 'success');
+    if (failed && !placed) showToast('Deploy failed. Pull down to refresh and try again.', 'error');
+  } catch (err) {
+    console.warn('World auto deploy failed:', err);
+    showToast('Deploy failed. Check your connection and try again.', 'error');
+  }
+  renderWorldSidebar();
+  try { const fr = document.querySelector('#view-world iframe'); if (fr?.contentWindow) sendShadowWorldData(fr); } catch (_) {}
+}
+
 function renderWorldSidebar() {
   const el = document.getElementById('world-sidebar-continents');
   const listEl = document.getElementById('world-territories');
@@ -26848,6 +26902,8 @@ function renderWorldSidebar() {
       if (data.ownerUid) countryOwners[gcId] = data.ownerUid;
     });
   });
+  const worldNow = worldCountriesOf(allUsers);
+  const deployBlocks = {};
 
   const myPool = profile?.shadowArmy?.pool || {};
 
@@ -26874,15 +26930,32 @@ function renderWorldSidebar() {
       ? `<span style="color:${PLAYER_COLORS[dominated[0]]?.hex}">★ ${escapeHtml(PLAYER_COLORS[dominated[0]]?.name || '?')}</span>`
       : leaders.map(([uid,n]) => `<span style="color:${PLAYER_COLORS[uid]?.hex||'#fff'}">${escapeHtml(PLAYER_COLORS[uid]?.name||'?')}×${n}</span>`).join(' ');
 
-    return `<div class="ws-row" onclick="focusWorldContinent('${m.ckey}')">
+    /* One-tap deploy, on the World page list only: no map, no typing. */
+    if (pool > 0 && m.ckey !== 'antarctica' && currentUser) {
+      const pick = worldDeployPick[m.ckey] || 'all';
+      const amount = pick === 'all' ? pool : Math.min(pool, pick);
+      const plan = autoDeployPlan({ ids, countries: worldNow, uid: currentUser.uid, amount });
+      const what = plan.length ? describeDeploy(plan, worldNow, currentUser.uid) : 'no free or own territory here';
+      const chips = [10, 50, 'all'].filter(v => v === 'all' || v < pool)
+        .map(v => `<button type="button" class="ui-chip ws-dep-amt${pick === v ? ' on' : ''}" onclick="worldDeployAmt('${m.ckey}','${v}')" aria-pressed="${pick === v}">${v === 'all' ? `All ${pool.toLocaleString()}` : v}</button>`).join('');
+      deployBlocks[m.ckey] = `<div class="ws-deploy" onclick="event.stopPropagation()">
+        <div class="ws-dep-amts" role="group" aria-label="Soldiers to deploy">${chips}</div>
+        <button type="button" class="ui-btn-primary ws-dep-go" onclick="worldAutoDeploy('${m.ckey}','${m.armyKey}',${amount},this)" ${plan.length ? '' : 'disabled'}>
+          Deploy ${amount.toLocaleString()} ${m.armyKey}<small>${escapeHtml(what)}</small></button>
+      </div>`;
+    }
+
+    return `<div class="ws-row" data-ckey="${m.ckey}" onclick="focusWorldContinent('${m.ckey}')">
       <div class="ws-name" style="color:${m.hex}">${m.icon} ${m.name}</div>
       <div class="ws-pool">Pool: <strong>${pool||'—'}</strong>${pool?` <span style="color:rgba(91,168,255,0.78)">${m.armyKey}</span>`:`<span style="color:rgba(91,168,255,0.78)"> train ${m.stat}</span>`}</div>
       <div class="ws-bar">${segments||''}</div>
       <div class="ws-owned" style="color:rgba(91,168,255,0.78)">${holderText||'unclaimed'}${myHeld?` · <span style="color:#d4a017">you: ${myHeld}/6</span>`:''}</div>
-    </div>`;
+    <!--deploy:${m.ckey}--></div>`;
   }).join('');
   el.innerHTML = rowsHtml;           // the Armies sheet of the full map
-  if (listEl) listEl.innerHTML = rowsHtml;   // the territory list on the World page
+  if (listEl) {                      // the territory list on the World page, with one-tap deploy
+    listEl.innerHTML = rowsHtml.replace(/<!--deploy:(\w+)-->/g, (_, k) => deployBlocks[k] || '');
+  }
   try { renderWorldPanes(); } catch (e) { console.warn('World panes failed:', e); }
 }
 
@@ -27037,6 +27110,120 @@ window.focusWorldContinent = (ckey) => {
   }
 };
 
+/* One deploy write (map, planner and World list all use it). Returns { ok, stop } where stop means
+   no later deploy in a batch can succeed either (no soldiers left, locked). */
+async function deploySoldiers(gcId, armyKey, amount, ckey, { quiet = false } = {}) {
+  amount = Math.floor(Number(amount) || 0);
+  if (!currentUser || !gcId || !armyKey || amount <= 0) return { ok: false };
+  try {
+    const { doc, updateDoc, increment: fsInc, getDoc } = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js');
+    const userRef = doc(db, 'users', currentUser.uid);
+    const snap = await getDoc(userRef);
+    const dat = snap.data() || {};
+    const currentPool = dat.shadowArmy?.pool?.[armyKey] || 0;
+
+    if (amount > currentPool) {
+      console.warn('Deploy: not enough pool soldiers');
+      if (!quiet) showToast(`Only ${currentPool.toLocaleString()} ${armyKey} soldiers in reserve`, 'error');
+      return { ok: false, stop: true };
+    }
+
+    // Server-side exploration lock (an unreadable config reads as unlocked, as the map does)
+    let unlocksAt = null;
+    try {
+      const cfgSnap2 = await getDoc(doc(db, 'config', 'shadowWorld'));
+      unlocksAt = cfgSnap2.exists() ? cfgSnap2.data().explorationUnlocksAt : null;
+    } catch (cfgErr) { console.warn('Shadow World config unreadable:', cfgErr); }
+    if (unlocksAt && new Date() < new Date(unlocksAt)) {
+      showToast('Exploration is locked — wait for the countdown', 'error');
+      return { ok: false, stop: true };
+    }
+
+    // Server-side ownership guard — cannot deploy to enemy territory
+    const existingOwner = dat.shadowArmy?.countries?.[gcId]?.ownerUid;
+    if (existingOwner && existingOwner !== currentUser.uid) {
+      showToast('Cannot deploy to enemy territory — Declare War first', 'error');
+      return { ok: false };
+    }
+
+    await updateDoc(userRef, {
+      [`shadowArmy.pool.${armyKey}`]: Math.max(0, currentPool - amount),
+      [`shadowArmy.countries.${gcId}.soldiers`]: fsInc(amount),
+      [`shadowArmy.countries.${gcId}.ownerUid`]: currentUser.uid,
+      [`shadowArmy.countries.${gcId}.ckey`]: ckey,
+    });
+
+    // Update local profile
+    if (!profile.shadowArmy) profile.shadowArmy = {};
+    if (!profile.shadowArmy.pool) profile.shadowArmy.pool = {};
+    if (!profile.shadowArmy.countries) profile.shadowArmy.countries = {};
+    profile.shadowArmy.pool[armyKey] = Math.max(0, currentPool - amount);
+    profile.shadowArmy.countries[gcId] = {
+      soldiers: (profile.shadowArmy.countries[gcId]?.soldiers || 0) + amount,
+      ownerUid: currentUser.uid,
+      ckey,
+    };
+    allUsers = (allUsers || []).map(u => u.uid === currentUser.uid ? { ...u, shadowArmy: profile.shadowArmy } : u);
+
+    if (!quiet) showToast(`⚑ ${amount} soldiers deployed`, 'success');
+    return { ok: true };
+  } catch(err) {
+    console.warn('Deploy failed:', err);
+    if (!quiet) showToast('Deploy failed. Check your connection and try again.', 'error');
+    return { ok: false };
+  }
+}
+
+/* The world data the map draws: every territory, every Hunter's reserve and the roster. */
+async function sendShadowWorldData(iframe) {
+  try {
+    const { collection, getDocs } = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js');
+    const usersSnap = await getDocs(collection(db, 'users'));
+
+    // Build countries map: gcId -> { ownerUid, soldiers }
+    const countries = {};
+    // Build pool map: uid -> { iron, wild, court, swift, shadow, tide, gate }
+    const pool = {};
+
+    usersSnap.docs.forEach(d => {
+      const u = d.data();
+      const uid = d.id;
+      // Pool = undeployed soldiers per army key
+      const userPool = u.shadowArmy?.pool || {};
+      if (Object.keys(userPool).length) pool[uid] = userPool;
+
+      // Countries this user owns
+      const userCountries = u.shadowArmy?.countries || {};
+      Object.entries(userCountries).forEach(([gcId, data]) => {
+        // Higher soldier count wins on conflict (shouldn't happen but safety net)
+        if (!countries[gcId] || data.soldiers > countries[gcId].soldiers) {
+          countries[gcId] = { ownerUid: uid, soldiers: data.soldiers || 0 };
+        }
+      });
+    });
+
+    // Read exploration lock from the shared 'config' doc. On its own: if the live rules
+    // refuse config, the Hunter must still get their pool and the map, not an empty world.
+    let explorationUnlocksAt = null;
+    try {
+      const cfgSnap = await getDoc(doc(db, 'config', 'shadowWorld'));
+      explorationUnlocksAt = cfgSnap.exists() ? (cfgSnap.data().explorationUnlocksAt || null) : null;
+    } catch (cfgErr) { console.warn('Shadow World config unreadable:', cfgErr); }
+
+    iframe.contentWindow.postMessage({
+      type: 'shadowWorldData',
+      countries,
+      pool,
+      players: worldPlayers(usersSnap.docs.map(d => ({ uid: d.id, displayName: d.data().displayName }))),
+      currentUid: currentUser?.uid || null,
+      explorationUnlocksAt,
+    }, '*');
+  } catch(err) {
+    console.warn('Shadow World data build failed:', err);
+    iframe.contentWindow.postMessage({ type:'shadowWorldData', countries:{}, pool:{}, currentUid: currentUser?.uid }, '*');
+  }
+}
+
 // ── Handle Shadow World iframe requests ──
 window.addEventListener('message', async (e) => {
   // The world iframe announces when its listeners are live. Restate the active
@@ -27052,116 +27239,15 @@ window.addEventListener('message', async (e) => {
   if (!iframe) return;
 
   // ── Data request ──
-  if (e.data?.type === 'requestShadowWorldData') {
-    try {
-      const { collection, getDocs } = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js');
-      const usersSnap = await getDocs(collection(db, 'users'));
-
-      // Build countries map: gcId -> { ownerUid, soldiers }
-      const countries = {};
-      // Build pool map: uid -> { iron, wild, court, swift, shadow, tide, gate }
-      const pool = {};
-
-      usersSnap.docs.forEach(d => {
-        const u = d.data();
-        const uid = d.id;
-        // Pool = undeployed soldiers per army key
-        const userPool = u.shadowArmy?.pool || {};
-        if (Object.keys(userPool).length) pool[uid] = userPool;
-
-        // Countries this user owns
-        const userCountries = u.shadowArmy?.countries || {};
-        Object.entries(userCountries).forEach(([gcId, data]) => {
-          // Higher soldier count wins on conflict (shouldn't happen but safety net)
-          if (!countries[gcId] || data.soldiers > countries[gcId].soldiers) {
-            countries[gcId] = { ownerUid: uid, soldiers: data.soldiers || 0 };
-          }
-        });
-      });
-
-      // Read exploration lock from the shared 'config' doc. On its own: if the live rules
-      // refuse config, the Hunter must still get their pool and the map, not an empty world.
-      let explorationUnlocksAt = null;
-      try {
-        const cfgSnap = await getDoc(doc(db, 'config', 'shadowWorld'));
-        explorationUnlocksAt = cfgSnap.exists() ? (cfgSnap.data().explorationUnlocksAt || null) : null;
-      } catch (cfgErr) { console.warn('Shadow World config unreadable:', cfgErr); }
-
-      iframe.contentWindow.postMessage({
-        type: 'shadowWorldData',
-        countries,
-        pool,
-        players: worldPlayers(usersSnap.docs.map(d => ({ uid: d.id, displayName: d.data().displayName }))),
-        currentUid: currentUser?.uid || null,
-        explorationUnlocksAt,
-      }, '*');
-    } catch(err) {
-      console.warn('Shadow World data build failed:', err);
-      iframe.contentWindow.postMessage({ type:'shadowWorldData', countries:{}, pool:{}, currentUid: currentUser?.uid }, '*');
-    }
-  }
+  if (e.data?.type === 'requestShadowWorldData') { await sendShadowWorldData(iframe); }
 
   // ── Deploy soldiers to a country ──
   if (e.data?.type === 'deployToCountry') {
     const { gcId, armyKey, amount, ckey } = e.data;
     /* Tell the planner each deploy has finished (or failed), so it can send the next one after this write lands. */
-    const ack = ok => { try { e.source?.postMessage({ type: 'deployDone', gcId, ok }, '*'); } catch (_) {} };
-    if (!currentUser || !gcId || !armyKey || !amount) { ack(false); return; }
-    try {
-      const { doc, updateDoc, increment: fsInc, getDoc } = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js');
-      const userRef = doc(db, 'users', currentUser.uid);
-      const snap = await getDoc(userRef);
-      const dat = snap.data() || {};
-      const currentPool = dat.shadowArmy?.pool?.[armyKey] || 0;
-
-      if (amount > currentPool) {
-        console.warn('Deploy: not enough pool soldiers'); ack(false); return;
-      }
-
-      // Server-side exploration lock (an unreadable config reads as unlocked, as the map does)
-      let unlocksAt = null;
-      try {
-        const cfgSnap2 = await getDoc(doc(db, 'config', 'shadowWorld'));
-        unlocksAt = cfgSnap2.exists() ? cfgSnap2.data().explorationUnlocksAt : null;
-      } catch (cfgErr) { console.warn('Shadow World config unreadable:', cfgErr); }
-      if (unlocksAt && new Date() < new Date(unlocksAt)) {
-        showToast('Exploration is locked — wait for the countdown', 'error');
-        ack(false);
-        return;
-      }
-
-      // Server-side ownership guard — cannot deploy to enemy territory
-      const existingOwner = dat.shadowArmy?.countries?.[gcId]?.ownerUid;
-      if (existingOwner && existingOwner !== currentUser.uid) {
-        showToast('Cannot deploy to enemy territory — Declare War first', 'error');
-        ack(false);
-        return;
-      }
-
-      await updateDoc(userRef, {
-        [`shadowArmy.pool.${armyKey}`]: Math.max(0, currentPool - amount),
-        [`shadowArmy.countries.${gcId}.soldiers`]: fsInc(amount),
-        [`shadowArmy.countries.${gcId}.ownerUid`]: currentUser.uid,
-        [`shadowArmy.countries.${gcId}.ckey`]: ckey,
-      });
-
-      // Update local profile
-      if (!profile.shadowArmy) profile.shadowArmy = {};
-      if (!profile.shadowArmy.pool) profile.shadowArmy.pool = {};
-      if (!profile.shadowArmy.countries) profile.shadowArmy.countries = {};
-      profile.shadowArmy.pool[armyKey] = Math.max(0, currentPool - amount);
-      profile.shadowArmy.countries[gcId] = {
-        soldiers: (profile.shadowArmy.countries[gcId]?.soldiers || 0) + amount,
-        ownerUid: currentUser.uid,
-        ckey,
-      };
-
-      showToast(`⚑ ${amount} soldiers deployed`, 'success');
-      ack(true);
-    } catch(err) {
-      console.warn('Deploy failed:', err);
-      ack(false);
-    }
+    const r = await deploySoldiers(gcId, armyKey, amount, ckey);
+    try { e.source?.postMessage({ type: 'deployDone', gcId, ok: r.ok }, '*'); } catch (_) {}
+    if (r.ok) try { renderWorldSidebar(); } catch (_) {}
   }
 
   // ── Withdraw soldiers from a country back to pool ──

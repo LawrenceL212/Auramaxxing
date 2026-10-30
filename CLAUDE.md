@@ -165,6 +165,8 @@ Lazy-loaded: [classes.js](classes.js) via `await import('./classes.js')` in the 
 
 [world-players.js](world-players.js) builds the Shadow World roster (colour and Hunter name per uid) from the users collection; the original four keep their colours. `index.html` sends it to the map with the world data (`players`), so territories held by any Hunter draw as theirs. Pure, so `node test/world-players.test.mjs` tests it.
 
+[deploy-plan.js](deploy-plan.js) is one-tap deploy on the World page's Territories list (no map needed): pick 10, 50 or All, and `autoDeployPlan` claims every free territory in that continent with one soldier, then tops up the Hunter's weakest; never a rival's. Every write goes through `deploySoldiers()` in `index.html`, the same path the map uses. The map's pan/zoom handlers ignore touches on its panel, planner and buttons (they used to swallow them), and the panel shows Deploy first. Pure, so `node test/deploy-plan.test.mjs` tests it.
+
 Arsenal (`view-exercises`) and World (`view-world`) wear the same look. World is a portrait page with an
 Army / Dungeons / Raids switch (`setWorldPane`, `renderWorldDungeons`, `renderWorldRaids` in `index.html`); the
 Shadow World iframe and its message handlers are untouched, and "Full map" restores the old fullscreen map.
