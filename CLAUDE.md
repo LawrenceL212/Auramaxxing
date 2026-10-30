@@ -119,6 +119,12 @@ tapped, through the same `programs/{uid}` write as the plan editor; the plan sto
 
 [trainer-insights.js](trainer-insights.js) is the "Trainer read": rhythm (gaps between sessions), recovery (muscle readiness, volume spikes, days in a row, deload signs), performance (lifts rising or stalled, PRs) and body metrics (weight trend, waist, weigh-in gaps, body and lifts read together), recomputed on every open from logs. Each finding can carry a sentence that opens "Ask your trainer". The `askTrainer` Cloud Function answers free questions from that computed context (text only, plus an optional one-sentence plan change the Hunter must tap and accept). `fullHistory()` boils the whole logged history (first session to today: monthly consistency, each main lift since its first session, longest breaks, weight and waist over time) into a compact object that goes to every trainer request, with personal records, goals and check-ins. Read-only; no progression values touched. `node test/trainer-insights.test.mjs`.
 
+
+[weigh-in.js](weigh-in.js) is the pure side of the weigh-in input in the check-in hub (`openCheckinHub('weigh')`:
+start value, −0.5/−0.1/+0.1/+0.5 steppers, a typed value, the change since the last weigh-in) and of the Codex Weight
+card's trend (`weightOnTrackHtml`: a dot per weigh-in, the 7-day average line, 7-day avg, 30-day change, kg per week).
+It also has a goal-pace helper (`goalPace`) that nothing uses yet; goal pace on screen is `weight-path.js`. Writes
+nothing. Pure, so `node test/weigh-in.test.mjs` tests it. Presentation only.
 [body-metrics.js](body-metrics.js) is the maths behind the weekly check-in (`openCheckinModal`): every tape
 field is a circumference (measured around the body), and it gives US Navy body fat (female needs hips,
 no height means no estimate), fat/lean mass, BMI, FFMI, waist-to-height, V-taper (shoulders ÷ waist) against

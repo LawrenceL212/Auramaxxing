@@ -4207,6 +4207,31 @@
   .flow-rankup-in .system-btn.ui-btn-primary{display:flex;align-self:stretch;width:auto;min-height:58px;padding:0 16px;border-radius:0;font-size:16px;letter-spacing:.12em;background:var(--ui-gold-grad);color:#1a0f00;box-shadow:0 0 30px rgba(255,214,107,.6);}
 
   nav.bottom-nav button .ui-dot{top:7px;right:calc(50% - 21px);width:9px;height:9px;pointer-events:none;box-shadow:0 0 0 2px rgba(5,6,10,.98),0 0 8px var(--ui-gold);}
+  /* ── Weigh-in input (check-in hub) and the Codex weight trend (weigh-in.js) ── */
+  .wi-big .sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;}
+  .wi-big{position:relative;display:flex;align-items:baseline;justify-content:center;gap:6px;margin:2px 0 12px;}
+  .wi-big input{width:5.2ch;background:none;border:0;border-bottom:1px solid rgba(255,214,107,.35);border-radius:0;padding:0;text-align:center;color:var(--text);font-family:var(--font-display);font-weight:800;font-size:clamp(52px,17vw,68px);line-height:1.05;letter-spacing:.02em;text-shadow:0 0 24px rgba(255,214,107,.25);}
+  .wi-big input:focus{outline:none;border-bottom-color:var(--ui-gold);}
+  .wi-unit{font-family:var(--font-display);font-weight:700;font-size:18px;color:var(--text-dim);}
+  .wi-steps{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;}
+  .wi-step{min-height:52px;background:rgba(91,168,255,.08);border:1px solid rgba(91,168,255,.35);color:var(--text);font-family:var(--font-display);font-weight:700;font-size:16px;cursor:pointer;touch-action:manipulation;clip-path:polygon(8px 0,100% 0,100% calc(100% - 8px),calc(100% - 8px) 100%,0 100%,0 8px);}
+  .wi-step:active{filter:brightness(1.3);background:rgba(91,168,255,.2);}
+  .wi-vs{margin:12px 0 0;text-align:center;font-size:14px;color:var(--text-dim);}
+  .wi-vs b{color:var(--text);font-weight:700;}
+  .wi-vs b.down{color:var(--growing);} .wi-vs b.up{color:var(--brass);}
+  .wi-chart{margin:0 0 10px;}
+  .wi-chart svg{display:block;height:120px;}
+  .wi-legend{display:flex;gap:14px;justify-content:center;margin-top:4px;font-size:11px;color:var(--text-faint);}
+  .wi-legend span{display:inline-flex;align-items:center;gap:5px;}
+  .wi-legend i{display:inline-block;}
+  .wi-legend .dot{width:6px;height:6px;border-radius:50%;background:var(--text-faint);}
+  .wi-legend .ln{width:14px;height:3px;border-radius:2px;background:var(--violet);}
+  .wi-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;}
+  .wi-stat{padding:9px 6px;text-align:center;background:rgba(15,19,27,.92);border:1px solid rgba(91,168,255,.18);clip-path:polygon(8px 0,100% 0,100% calc(100% - 8px),calc(100% - 8px) 100%,0 100%,0 8px);}
+  .wi-stat b{display:block;font-family:var(--font-display);font-size:17px;font-weight:700;color:var(--text);}
+  .wi-stat span{display:block;margin-top:2px;font-size:11px;color:var(--text-faint);}
+  .wi-week{margin:8px 0 0;font-size:12px;color:var(--text-faint);text-align:center;}
+  .wi-log-btn{width:100%;margin-top:12px;min-height:52px;font-size:14px;}
 
   /* ── BODY CHECK-IN (openCheckinModal) ─────────────────────────────────
      System-window look for the weekly tape check-in. Scoped to .ci-*. */
@@ -5024,6 +5049,7 @@ import { setInputKind, setInputHeaders, storedSet, storedSetSecs, partsToSecs, s
          setLoad, loggedLoad, withLoad, BAND_LEVELS, DEFAULT_BAND, bandLabel, loggedBand,
          setBand, loadText, loadOptions, isBandLoad, isRunDef } from "./set-inputs.js";
 import { feltEasier, EASIER_LABEL } from "./set-compare.js";
+import { STEPS, startWeight, stepWeight, parseWeight, weightStats, signedKg, trendSvg } from "./weigh-in.js";
 import { restSecsFor, adjustRest, formatClock, nextOpenSet, holdProgress, heldSecs, REST_STEP, HOLD_LEAD_IN } from "./set-timer.js";
 import { detectReEntry, reEntryPlan, directiveProgress, formatMeasure, DIRECTIVE_METRICS,
          countdown, formatCountdown, timeElapsedFraction, buildDirectivesICS,
@@ -17824,6 +17850,26 @@ window.saveCheckin = async () => {
   }
 };
 
+// ── WEIGHT TREND (weigh-in.js) ────────────────────────────────────────────────
+// The Codex Weight card's trend: a dot per weigh-in, the 7-day average line, and three
+// tiles (7-day avg, 30-day change, kg per week). Goal pace lives in weightPathHtml().
+
+function weightOnTrackHtml() {
+  const today = todayStr();
+  const st = weightStats(myWeights, today);
+  if (!st.latest) return '';
+  const tile = (v, s) => `<div class="wi-stat"><b>${v}</b><span>${s}</span></div>`;
+  const svg = trendSvg(myWeights, { today, days: 30 });
+  return `
+    ${svg ? `<div class="wi-chart">${svg}<div class="wi-legend"><span><i class="dot"></i>weigh-in</span><span><i class="ln"></i>7-day average</span></div></div>` : ''}
+    <div class="wi-stats">
+      ${tile(st.avg7.toFixed(1), '7-day avg')}
+      ${tile(st.change30 === null ? '—' : signedKg(st.change30), '30 days')}
+      ${tile(st.ratePerWeek === null ? '—' : signedKg(st.ratePerWeek), 'per week')}
+    </div>
+    <p class="wi-week">${st.thisWeek} weigh-in${st.thisWeek === 1 ? '' : 's'} this week${st.ratePerWeek === null ? ' · a few more and the weekly rate appears' : ''}</p>`;
+}
+
 
 /** Where the fat sits and how much muscle each limb carries, when the folds for it were taken. */
 function compositionHtml(m) {
@@ -18406,7 +18452,6 @@ function rhythmDotsHtml(week) {
 window.openCheckinHub = (view = 'home', reward = null) => {
   document.getElementById('checkin-hub-overlay')?.remove();
   const st = rhythmState(rhythmCtx());
-  const lastKg = myWeights.length ? Number(myWeights[myWeights.length - 1].weight) : (profile?.bodyweightKg || 70);
   const overlay = document.createElement('div');
   overlay.id = 'checkin-hub-overlay';
   overlay.className = 'ci-overlay';
@@ -18418,8 +18463,10 @@ window.openCheckinHub = (view = 'home', reward = null) => {
     body = `
       <div class="ci-hero" style="padding-bottom:14px;"><div class="ci-hero-top"><div><div class="ui-banner gold">◈ Weigh in</div><div class="ci-title">10 seconds</div></div>${close}</div>
         <div class="ci-sub" style="margin:8px 0 0;">Same time each day, ideally after waking. One reading is noisy; the 7-day average is the truth.</div></div>
-      <div class="rh-big" id="rh-val">${lastKg.toFixed(1)}<small>kg</small></div>
-      <div class="rh-step"><button type="button" data-step="-0.1" aria-label="Down 0.1 kg">−</button><button type="button" data-step="0.1" aria-label="Up 0.1 kg">+</button></div>
+      <label class="wi-big"><span class="sr-only">Weight in kg</span>
+        <input id="rh-val" type="text" inputmode="decimal" autocomplete="off" aria-describedby="wi-vs" /><span class="wi-unit">kg</span></label>
+      <div class="wi-steps">${STEPS.map(s => `<button type="button" class="wi-step" data-step="${s}" aria-label="${s > 0 ? 'Up' : 'Down'} ${Math.abs(s)} kg">${s > 0 ? '+' : '−'}${Math.abs(s)}</button>`).join('')}</div>
+      <p class="wi-vs" id="wi-vs" aria-live="polite"></p>
       <button class="ui-btn-primary ci-save" id="rh-save">◈ Log weight</button>
       <div id="rh-msg" class="ci-msg"></div>`;
   } else if (view === 'done' && reward) {
@@ -18449,12 +18496,28 @@ window.openCheckinHub = (view = 'home', reward = null) => {
   overlay.querySelectorAll('[data-close]').forEach(b => b.addEventListener('click', () => overlay.remove()));
   overlay.querySelectorAll('[data-tier]').forEach(b => b.addEventListener('click', () => startTier(b.dataset.tier)));
   if (view === 'weigh') {
-    let kg = Math.round(lastKg * 10) / 10;
+    // weigh-in.js: starts at today's entry or the last one; type it or step it; the line under it compares with the last weigh-in.
+    const today0 = todayStr();
+    let kg = startWeight(myWeights, today0, profile?.bodyweightKg);
+    const prev = [...myWeights].reverse().find(w => w.date < today0 && Number(w.weight) > 0);
     const val = document.getElementById('rh-val');
-    const paint = () => { val.innerHTML = `${kg.toFixed(1)}<small>kg</small>`; };
-    overlay.querySelectorAll('[data-step]').forEach(b => b.addEventListener('click', () => { kg = Math.round((kg + Number(b.dataset.step)) * 10) / 10; paint(); }));
+    const vs = document.getElementById('wi-vs');
+    const paintVs = () => {
+      if (!prev) { vs.textContent = 'First weigh-in. Every one after this builds your trend.'; return; }
+      const d = Math.round((kg - Number(prev.weight)) * 10) / 10;
+      vs.innerHTML = `Last: <b>${Number(prev.weight).toFixed(1)} kg</b> · ${agoLabel(prev.date, today0).toLowerCase()} · <b class="${d < 0 ? 'down' : d > 0 ? 'up' : ''}">${signedKg(d)}</b>`;
+    };
+    const paint = () => { val.value = kg.toFixed(1); paintVs(); };
+    paint();
+    val.addEventListener('focus', () => val.select());
+    val.addEventListener('input', () => { const v = parseWeight(val.value); if (v !== null) { kg = v; paintVs(); } });
+    val.addEventListener('blur', paint);
+    val.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); document.getElementById('rh-save').click(); } });
+    overlay.querySelectorAll('[data-step]').forEach(b => b.addEventListener('click', () => { kg = stepWeight(kg, Number(b.dataset.step)); paint(); }));
     document.getElementById('rh-save').addEventListener('click', async (e) => {
       const msg = document.getElementById('rh-msg');
+      const typed = parseWeight(val.value);
+      if (typed !== null) kg = typed;
       if (!(kg >= 30 && kg <= 300)) { msg.style.color = '#FF4D67'; msg.textContent = 'Weight should be between 30 and 300 kg.'; return; }
       e.target.disabled = true;
       const today = todayStr();
@@ -21484,7 +21547,7 @@ function showDebriefModal(exercises, apEarned, prs, done, soldiersEarned = {}, s
     setTimeout(() => {
       try {
         if (kind === 'ap') openApInvestPicker();
-        else if (kind === 'weigh') window.openCheckinModal();
+        else if (kind === 'weigh') window.openCheckinHub('weigh');
         else if (kind === 'codex') switchView('trends');
       } catch (e) { console.warn('Next step failed:', e); }
     }, 350);
@@ -23475,11 +23538,9 @@ function renderTrends() {
       <div class="card-title"><h3>◐ Weight</h3></div>
       ${physiquePlanHtml()}
       ${weightPathHtml()}
-      ${weightLineChart(myWeights)}
-      <div class="weight-input-row">
-        <input type="number" step="0.1" id="weight-input" placeholder="Log today's weight (kg)" inputmode="decimal" />
-        <button class="btn btn-sm" id="weight-save-btn">Save</button>
-      </div>
+      ${/* with a weight goal the path above is the chart; without one, the 7-day trend is */
+        weightPathGoal() ? '' : myWeights.length > 1 ? weightOnTrackHtml() : weightLineChart(myWeights)}
+      <button class="ui-btn-primary wi-log-btn" id="weight-log-btn">${myWeights.some(w => w.date === todayStr()) ? 'Update today\'s weight' : 'Log weight'}</button>
       <!-- Entry list with edit/delete -->
       <div id="weight-entries-list" style="margin-top:12px;">
         ${[...myWeights].reverse().map(e => `
@@ -23594,6 +23655,7 @@ function renderTrends() {
       requestAnimationFrame(update);
     }
   });
+  document.getElementById('weight-log-btn')?.addEventListener('click', () => window.openCheckinHub('weigh'));
   document.querySelector('#view-trends .wp-set')?.addEventListener('click', () => window.openPhysiqueGoalSheet());
   document.querySelectorAll('#view-trends [data-pg-open]').forEach(b => b.addEventListener('click', () => window.openPhysiqueGoalSheet()));
   const wBtn = document.getElementById('weight-save-btn');
