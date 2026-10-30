@@ -9384,7 +9384,7 @@ function renderPlanModeBar() {
   const homeHasPlan = planMode === 'home' && myProgram?.days?.length;
   const gym = plansByMode({ mode: planMode, active: myProgram, alt: altPlan }).gym;
   el.innerHTML = `<div class="ui-seg hunt-mode-seg" role="group" aria-label="Which plan today">${btn('gym', '🏋 Gym')}${btn('home', '🏠 Home')}</div>
-    ${homeHasPlan && gym?.days?.length ? '<button type="button" class="hunt-mode-redo" id="home-plan-redo">✦ Remake from my gym plan</button>' : ''}`;
+    ${homeHasPlan ? '<button type="button" class="hunt-mode-redo" id="home-plan-redo">✦ Rebuild my home plan with the coach</button>' : ''}`;
   el.querySelectorAll('[data-plan-mode]').forEach(b => b.addEventListener('click', () => { SFX?.swipe?.(); window.setPlanMode(b.dataset.planMode); }));
   document.getElementById('home-plan-redo')?.addEventListener('click', () => window.openHomePlanCoach());
 }
@@ -9395,9 +9395,9 @@ function homeEmptyHtml() {
   return `<div class="ui-window" style="padding:24px 18px;text-align:center;">
     <div class="ui-banner" style="justify-content:center;margin-bottom:14px;">◈ Home plan</div>
     <div style="font-family:var(--font-display);font-size:22px;font-weight:900;color:var(--text-dim);letter-spacing:.06em;margin-bottom:8px;">NO HOME PLAN YET</div>
-    <p style="font-size:13px;color:var(--text-faint);margin:0 0 18px;line-height:1.6;">${gym ? 'The coach can turn your gym plan into one you can do at home, with the equipment you have there.' : 'Make a plan for the days you train at home.'}</p>
+    <p style="font-size:13px;color:var(--text-faint);margin:0 0 18px;line-height:1.6;">The coach builds it for your goal physique, using only the equipment you have at home.</p>
     <div style="display:flex;flex-direction:column;gap:8px;">
-      ${gym ? '<button type="button" class="ui-btn-primary" id="home-plan-coach" style="min-height:48px;">✦ Make a home version of my gym plan</button>' : ''}
+      <button type="button" class="ui-btn-primary" id="home-plan-coach" style="min-height:48px;">✦ Build my home plan with the coach</button>
       <button type="button" class="ui-btn-outline" id="build-program-btn" style="min-height:44px;">+ Create plan</button>
       ${gym ? '<button type="button" class="ci-skip" id="home-plan-copy">Copy my gym plan as it is</button>' : '<button type="button" class="ci-skip" id="gp-empty-open">✦ Build with the System</button>'}
     </div>
@@ -9436,13 +9436,13 @@ function loadCoachChatSafe() {
 }
 
 /**
- * "Make a home version of my gym plan": the coach rebuilds the gym plan for home with the
- * kit the Hunter has. It uses what they already told the coach and asks only when nothing is known.
+ * "Build my home plan with the coach": the coach designs a plan for the Hunter's goal physique,
+ * limited only by the kit they have at home (the gym plan is context, not a template). It uses what they already told the coach and asks only when nothing is known.
  * Nothing is saved until "Use this home plan".
  */
 window.openHomePlanCoach = () => {
   const gym = plansByMode({ mode: planMode, active: myProgram, alt: altPlan }).gym;
-  if (!gym?.days?.length) { showToast('Make your gym plan first.', 'info'); return; }
+  if (!profile?.coachProfile?.goals?.length) return window.openCoachIntake(() => window.openHomePlanCoach());
   const known = knownHomeEquipment();
   let kit = known.saved?.kit?.length ? known.saved.kit.slice() : kitFromNotes(known.own);
   let note = known.saved?.note || '';
@@ -9453,8 +9453,8 @@ window.openHomePlanCoach = () => {
   overlay.className = 'ci-overlay';
   const found = known.saved || known.own.length;
   overlay.innerHTML = `<div class="ui-window gold ci-win"><div class="ci-scroll">
-    <div class="ci-hero" style="padding-bottom:14px;"><div class="ci-hero-top"><div><div class="ui-banner gold">◈ Coach</div><div class="ci-title">Home version</div></div><button class="ci-close" aria-label="Close" data-close>✕</button></div>
-      <div class="ci-sub" style="margin:8px 0 0;">Same days, same goal and muscles as ${escapeHtml(gym.name || 'your gym plan')}, with exercises you can do at home.</div></div>
+    <div class="ci-hero" style="padding-bottom:14px;"><div class="ci-hero-top"><div><div class="ui-banner gold">◈ Coach</div><div class="ci-title">Your home plan</div></div><button class="ci-close" aria-label="Close" data-close>✕</button></div>
+      <div class="ci-sub" style="margin:8px 0 0;">Built for your goal${profile.coachProfile.goals[0] ? ': ' + escapeHtml(profile.coachProfile.goals[0]) : ''}. Your home equipment only limits which exercises it can use.</div></div>
     <div id="hp-body"></div>
     <button class="ci-skip" data-close style="width:100%;margin-top:6px;">Close</button>
   </div></div>`;
@@ -9500,11 +9500,10 @@ window.openHomePlanCoach = () => {
     try { await writeUserFields({ homeEquipment }); profile.homeEquipment = homeEquipment; } catch (_) {}
     body.innerHTML = '<div class="ci-empty">The coach is building your home plan…</div>';
     try {
-      const res = await callCoach('home', `Make the home version of my gym plan. At home I have: ${kitLabel(kit)}${note ? '. ' + note : ''}.`, null, {
+      const res = await callCoach('home', `Build my home plan for my goal physique. At home I have: ${kitLabel(kit)}${note ? '. ' + note : ''}.`, null, {
         planMode: 'home',
         homeEquipment: { kit: kitLabel(kit), note, toldCoach: notes.slice(0, 6) },
-        gymPlan: gym.days.map(d => ({ name: d.name, exercises: (d.exercises || []).map(e => ({ name: e.name, sets: e.sets, reps: e.reps })) })),
-        currentPlan: gym.days.map(d => ({ name: d.name, exercises: (d.exercises || []).map(e => ({ name: e.name, sets: e.sets, reps: e.reps })) })),
+        gymPlan: gym?.days?.length ? gym.days.map(d => ({ name: d.name, exercises: (d.exercises || []).map(e => ({ name: e.name, sets: e.sets, reps: e.reps })) })) : null,
         exercises: coachExercises(homeExerciseNames(EXERCISES_ALL, kit)),
       });
       if (!res.days) throw new Error('The coach did not return a plan. Try again.');
@@ -9526,7 +9525,8 @@ window.openHomePlanCoach = () => {
       const before = { mode: planMode, active: myProgram, alt: altPlan, stored: planModeStored };
       try {
         // same days and rotation as the gym plan, so today's session lines up whichever you pick
-        const base = homeNow?.days?.length === res.days.length ? homeNow : { ...gym, days: gym.days.map(d => { const { lastDate, ...rest } = d; return rest; }) };
+        const base = homeNow?.days?.length === res.days.length ? homeNow
+          : gym?.days?.length === res.days.length ? { ...gym, days: gym.days.map(d => { const { lastDate, exercises, name, ...rest } = d; return rest; }) } : null;
         const plan = { ...programFromCoach(res, base), name: 'Home plan' };
         if (planMode !== 'home') { const s = switchPlans({ mode: planMode, active: myProgram, alt: altPlan }, 'home'); planMode = s.mode; altPlan = s.alt; }
         myProgram = plan; planModeStored = true;

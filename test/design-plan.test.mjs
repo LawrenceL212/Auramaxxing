@@ -128,6 +128,7 @@ check('daily limit: first call of the day is allowed and counted', (() => { cons
 check('home mode reaches the model with its kit and the gym plan', (() => { const f = buildFacts({ mode: 'home', planMode: 'home', exercises: EX, homeEquipment: { kit: 'Dumbbells, Pull-up bar', note: 'up to 20 kg', toldCoach: ['At home I have dumbbells.'] }, gymPlan: [{ name: 'Push', exercises: [] }] }); return f.mode === 'home' && f.planMode === 'home' && f.homeEquipment.kit === 'Dumbbells, Pull-up bar' && f.homeEquipment.toldCoach.length === 1 && f.gymPlan.length === 1; })());
 check('plan mode defaults to gym, no kit means null', (() => { const f = buildFacts({ exercises: EX, homeEquipment: {} }); return f.planMode === 'gym' && f.homeEquipment === null && f.otherPlan === null; })());
 check('the prompt tells the coach how to build a home plan', /"home" mode/.test(SYSTEM) && /planMode/.test(SYSTEM));
+check('a home plan is built for the goal, the gym plan is only context', /goal physique/.test(SYSTEM) && /do not copy or translate it/.test(SYSTEM));
 check('daily limit: counts up within a day, stops at the limit', (() => { let u = null; for (let i = 0; i < DAILY_LIMIT; i++) u = nextUsage(u && u.usage, '2026-10-29'); return u.allowed && u.usage.count === DAILY_LIMIT && !nextUsage(u.usage, '2026-10-29').allowed; })());
 check('daily limit: a new day starts again', nextUsage({ date: '2026-10-28', count: 99 }, '2026-10-29').usage.count === 1);
 
