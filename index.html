@@ -26664,7 +26664,9 @@ window.addEventListener('message', async (e) => {
   // ── Deploy soldiers to a country ──
   if (e.data?.type === 'deployToCountry') {
     const { gcId, armyKey, amount, ckey } = e.data;
-    if (!currentUser || !gcId || !armyKey || !amount) return;
+    /* Tell the planner each deploy has finished (or failed), so it can send the next one after this write lands. */
+    const ack = ok => { try { e.source?.postMessage({ type: 'deployDone', gcId, ok }, '*'); } catch (_) {} };
+    if (!currentUser || !gcId || !armyKey || !amount) { ack(false); return; }
     try {
       const { doc, updateDoc, increment: fsInc, getDoc } = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js');
       const userRef = doc(db, 'users', currentUser.uid);
@@ -26673,7 +26675,7 @@ window.addEventListener('message', async (e) => {
       const currentPool = dat.shadowArmy?.pool?.[armyKey] || 0;
 
       if (amount > currentPool) {
-        console.warn('Deploy: not enough pool soldiers'); return;
+        console.warn('Deploy: not enough pool soldiers'); ack(false); return;
       }
 
       // Server-side exploration lock
@@ -26681,6 +26683,7 @@ window.addEventListener('message', async (e) => {
       const unlocksAt = cfgSnap2.exists() ? cfgSnap2.data().explorationUnlocksAt : null;
       if (unlocksAt && new Date() < new Date(unlocksAt)) {
         showToast('Exploration is locked — wait for the countdown', 'error');
+        ack(false);
         return;
       }
 
@@ -26688,6 +26691,7 @@ window.addEventListener('message', async (e) => {
       const existingOwner = dat.shadowArmy?.countries?.[gcId]?.ownerUid;
       if (existingOwner && existingOwner !== currentUser.uid) {
         showToast('Cannot deploy to enemy territory — Declare War first', 'error');
+        ack(false);
         return;
       }
 
@@ -26710,8 +26714,10 @@ window.addEventListener('message', async (e) => {
       };
 
       showToast(`⚑ ${amount} soldiers deployed`, 'success');
+      ack(true);
     } catch(err) {
       console.warn('Deploy failed:', err);
+      ack(false);
     }
   }
 
