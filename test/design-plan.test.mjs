@@ -93,8 +93,8 @@ check('an unusable intake answer is reported plainly', err && err.code === 'unpa
 
 
 // chat
-const chatGood = { reply: 'Your elbows are sore, so I cut curls to 3 sets.', days: [{ name: 'Pull', exercises: [{ name: 'Barbell Curl', sets: 3, reps: 10 }, { name: 'Wizard Row', sets: 3, reps: 8 }] }], goal: 'muscle', suggestions: ['Make it 3 days', 'x'.repeat(80), 'a', 'b'] };
-check('the chat schema accepts a reply with and without a plan', ChatSchema.safeParse(chatGood).success && ChatSchema.safeParse({ reply: 'hi', days: null, goal: null, suggestions: [] }).success);
+const chatGood = { reply: 'Your elbows are sore, so I cut curls to 3 sets.', goals: null, days: [{ name: 'Pull', exercises: [{ name: 'Barbell Curl', sets: 3, reps: 10 }, { name: 'Wizard Row', sets: 3, reps: 8 }] }], goal: 'muscle', suggestions: ['Make it 3 days', 'x'.repeat(80), 'a', 'b'] };
+check('the chat schema accepts a reply with and without a plan', ChatSchema.safeParse(chatGood).success && ChatSchema.safeParse({ reply: 'hi', days: null, goal: null, goals: null, suggestions: [] }).success);
 check('the chat prompt keeps replies short, plans on request only, and never applies anything', /under 120 words/.test(CHAT_SYSTEM) && /Nothing is applied until they tap/.test(CHAT_SYSTEM) && /exact exercise names/.test(CHAT_SYSTEM));
 check('turns alternate, start and end with the Hunter, and are bounded', (() => {
   const t = sanitizeTurns([{ role: 'assistant', content: 'old' }, { role: 'user', content: 'a' }, { role: 'user', content: 'b' }, { role: 'assistant', content: 'c' }, { role: 'user', content: 'd' }, { role: 'assistant', content: 'dangling' }]);
@@ -103,7 +103,7 @@ check('turns alternate, start and end with the Hunter, and are bounded', (() => 
 check('turns are cut to the last 12 messages and a bounded length each', (() => { const t = sanitizeTurns(Array.from({ length: 40 }, (_, i) => ({ role: i % 2 ? 'assistant' : 'user', content: 'x'.repeat(4000) + i }))); return t.length <= MAX_TURNS && t.every(m => m.content.length <= (m.role === 'user' ? 800 : 2500)); })());
 check('no usable turns gives an empty list', sanitizeTurns(null).length === 0 && sanitizeTurns([{ role: 'assistant', content: 'hi' }]).length === 0);
 check('a chat reply is trimmed, unknown exercises dropped, suggestions bounded', (() => { const r = sanitizeChat(chatGood, { exercises: EX }); return r.days.length === 1 && r.days[0].exercises.length === 1 && r.goal === 'muscle' && r.suggestions.length === 3 && r.suggestions[1].length === 40; })());
-check('a goal without a plan is dropped; an empty reply is unusable', sanitizeChat({ reply: 'hi', days: null, goal: 'strength', suggestions: [] }, { exercises: EX }).goal === null && sanitizeChat({ reply: '  ', days: null, goal: null, suggestions: [] }, { exercises: EX }) === null);
+check('a goal without a plan is dropped; an empty reply is unusable', sanitizeChat({ reply: 'hi', days: null, goal: 'strength', goals: null, suggestions: [] }, { exercises: EX }).goal === null && sanitizeChat({ reply: '  ', days: null, goal: null, goals: null, suggestions: [] }, { exercises: EX }) === null);
 check('chat facts carry the goals and the exercise list', (() => { const f = buildFacts({ sex: 'male', exercises: EX, goals: { summary: 's', goals: ['g'] } }); return f.goals.goals[0] === 'g' && f.exerciseList.length === 4; })());
 const cout = await designChat({ client: fake({ stop_reason: 'end_turn', parsed_output: chatGood }), input: { sex: 'male', exercises: EX, messages: [{ role: 'user', content: 'my elbows hurt' }] } });
 check('the chat call sends the conversation, the data in the system prompt, low effort, and returns the clamped reply', seen.output_config.effort === 'low' && seen.messages.length === 1 && seen.messages[0].content === 'my elbows hurt' && seen.system.startsWith(CHAT_SYSTEM) && /"exerciseList"/.test(seen.system) && cout.days.length === 1);
@@ -122,6 +122,14 @@ check('a hold keeps seconds up to 90; ordinary moves still cap at 30 reps', (() 
 check('without holds listed, a hold is treated like any move', sanitizeDays([{ name: 'S', exercises: [{ name: 'Tuck Front Lever', sets: 3, reps: 40 }] }], new Set(HOLD_EX))[0].exercises[0].reps === 30);
 check('holds reach the model and survive a chat reply', (() => { const f = buildFacts({ sex: 'male', exercises: HOLD_EX, holds: ['Tuck Front Lever', 'L-Sit'] }); const r = sanitizeChat({ reply: 'Added.', days: [{ name: 'Skills', exercises: [{ name: 'Tuck Front Lever', sets: 4, reps: 20 }] }], goal: 'strength', suggestions: [] }, { exercises: HOLD_EX, holds: ['Tuck Front Lever'] }); return f.holdExercises.length === 2 && r.days[0].exercises[0].reps === 20; })());
 check('the prompts explain holds, why-questions and "add it back" edits', /holdExercises/.test(SYSTEM) && /WHY something is or is not/.test(CHAT_SYSTEM) && /add it back/.test(CHAT_SYSTEM) && /holdExercises/.test(CHAT_SYSTEM) && /not applied yet/.test(CHAT_SYSTEM));
+
+
+// goals from chat
+const goalChat = { reply: 'Added front lever to your goals.', days: null, goal: null, goals: { summary: 'Bigger arms and a front lever in 12 weeks.', goals: ['Bigger arms', 'Front lever', 'x'.repeat(300), 'd', 'e'] }, suggestions: [] };
+check('the chat schema accepts updated goals', ChatSchema.safeParse(goalChat).success);
+check('updated goals are bounded and trimmed (4 goals, 160 characters each)', (() => { const r = sanitizeChat(goalChat, { exercises: EX }); return r.goals.goals.length === 4 && r.goals.goals[2].length === 160 && r.goals.summary.startsWith('Bigger arms'); })());
+check('no goals, or only empty ones, gives null', sanitizeChat({ reply: 'hi', days: null, goal: null, goals: null, suggestions: [] }, { exercises: EX }).goals === null && sanitizeChat({ reply: 'hi', days: null, goal: null, goals: { summary: 's', goals: ['', '  '] }, suggestions: [] }, { exercises: EX }).goals === null);
+check('the chat prompt returns updated goals only on request and never says they are saved', /full updated list in "goals"/.test(CHAT_SYSTEM) && /never say it is saved/.test(CHAT_SYSTEM));
 
 check('daily limit: first call of the day is allowed and counted', (() => { const r = nextUsage(null, '2026-10-29'); return r.allowed && r.usage.count === 1; })());
 // home and gym plans

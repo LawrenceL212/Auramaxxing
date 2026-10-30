@@ -1648,6 +1648,7 @@
   .hg-bar i{display:block;height:100%;background:linear-gradient(90deg,#FF8E3C,#FFD166);}
   .hg-sub,.hg-coach{font-size:13px;color:var(--text-dim);}
   .hg-coach{color:var(--text);}
+  .hg-row{display:flex;flex-wrap:wrap;gap:4px 16px;}
   .hg-ask{align-self:flex-start;background:none;border:0;color:var(--blue,#5BA8FF);font:inherit;font-size:13px;padding:2px 0;cursor:pointer;}
   .cchat{margin:18px 0 6px;border:1px solid var(--ui-gold,#FFB454);border-radius:12px;background:var(--card);padding:12px 14px;}
   .cc-head{display:flex;justify-content:space-between;align-items:center;}
@@ -9959,9 +9960,20 @@ function renderHuntGoal() {
   const coachLine = coach.length ? `<div class="hg-coach">Coach: ${escapeHtml(coach[0])}${coach.length > 1 ? ` +${coach.length - 1}` : ''}</div>` : '';
   const coachBtn = '<button type="button" class="hg-ask" id="hg-ask">Message the coach</button>';
   if (!g || !g.preset || !g.deadline) {
-    host.innerHTML = `<div class="hunt-goal empty"><button type="button" class="hg-main" id="hg-open">
-        <span class="hg-eyebrow">◈ MY GOAL</span><span class="hg-look">${coach.length ? 'Set the look and a date' : 'Set your physique goal'}</span>
-        <span class="hg-sub">Pick a look and a date and the app plans the rest, and re-plans at every check-in.</span>${coachLine}</button>${coachBtn}</div>`;
+    if (coach.length) {
+      // the Hunter told the coach what they want: that is their goal. A look and date is an optional extra that adds measurement tracking.
+      const planLine = myProgram?.days?.length ? `Coach plan: ${escapeHtml(myProgram.name || 'My plan')} · ${myProgram.days.length} session${myProgram.days.length === 1 ? '' : 's'} a week` : 'No plan yet: ask the coach to build one';
+      host.innerHTML = `<div class="hunt-goal"><button type="button" class="hg-main" id="hg-open-coach">
+          <span class="hg-eyebrow">◈ MY GOAL</span><span class="hg-look">${escapeHtml(coach[0])}</span>
+          ${coach.slice(1, 3).map(c => `<span class="hg-coach">${escapeHtml(c)}</span>`).join('')}
+          <span class="hg-sub">${planLine}</span></button>
+          <div class="hg-row">${coachBtn}<button type="button" class="hg-ask" id="hg-track">Track it with a look and date</button></div></div>`;
+    } else {
+      host.innerHTML = `<div class="hunt-goal empty"><button type="button" class="hg-main" id="hg-open">
+          <span class="hg-eyebrow">◈ MY GOAL</span><span class="hg-look">Set your physique goal</span>
+          <span class="hg-sub">Tell the coach what you want, or pick a look and a date, and the app plans the rest.</span></button>
+          <div class="hg-row">${coachBtn.replace('Message the coach', 'Tell the coach')}<button type="button" class="hg-ask" id="hg-track">Pick a look and date</button></div></div>`;
+    }
   } else {
     const sex = profile.bodyType || 'male';
     const look = g.preset === 'custom' ? (g.custom?.label || 'Custom look') : (presetsFor(sex)[g.preset]?.label || 'My look');
@@ -9978,6 +9990,8 @@ function renderHuntGoal() {
         <span class="hg-sub">${pct != null ? `${pct}% there · ` : ''}${weeks} week${weeks === 1 ? '' : 's'} left · by ${dateTxt}${plan && plan.error ? ' · do a check-in to start tracking' : ''}</span>${coachLine}</button>${coachBtn}</div>`;
   }
   host.querySelector('#hg-open')?.addEventListener('click', () => window.openPhysiqueGoalSheet());
+  host.querySelector('#hg-track')?.addEventListener('click', () => window.openPhysiqueGoalSheet());
+  host.querySelector('#hg-open-coach')?.addEventListener('click', () => window.openCoachChatNow());
   host.querySelector('#hg-ask')?.addEventListener('click', () => window.openCoachChatNow());
 }
 
@@ -11053,7 +11067,10 @@ function coachChatLogHtml() {
   const bubbles = c.msgs.map((m, i) => {
     const plan = m.days ? `<div class="cc-plan">${m.days.map(d => `<div class="co-day"><b>${escapeHtml(d.name)}</b><span>${d.exercises.map(e => `${escapeHtml(e.name)} ${e.sets}×${e.reps}`).join(' · ')}</span></div>`).join('')}
       <button type="button" class="ui-btn-outline cc-apply" data-i="${i}" ${m.applied ? 'disabled' : ''}>${m.applied ? '✓ Plan applied' : myProgram?.days?.length ? 'Replace my plan' : 'Use this plan'}</button></div>` : '';
-    return `<div class="cc-m ${m.role === 'user' ? 'me' : 'coach'}">${escapeHtml(m.content)}${plan}</div>`;
+    const goals = m.goals ? `<div class="cc-plan"><div class="pg-sub">Goals the coach would save</div>
+      <ul class="co-list" style="--co:var(--ui-gold);">${m.goals.goals.map(g => `<li>${escapeHtml(g)}</li>`).join('')}</ul>
+      <button type="button" class="ui-btn-outline cc-savegoals" data-i="${i}" ${m.goalsSaved ? 'disabled' : ''}>${m.goalsSaved ? '✓ Goals saved' : 'Save these goals'}</button></div>` : '';
+    return `<div class="cc-m ${m.role === 'user' ? 'me' : 'coach'}">${escapeHtml(m.content)}${goals}${plan}</div>`;
   }).join('');
   const chips = last && last.role === 'assistant' && last.suggestions?.length ? last.suggestions
     : !c.msgs.length ? ['How am I doing?', 'Make my plan harder', "I'm really sore"] : [];
@@ -11070,8 +11087,8 @@ async function coachChatSend(text) {
   coachChatSave();
   paintCoachChatLog(true);
   try {
-    const res = await callCoach('chat', '', null, { messages: c.msgs.slice(-12).map(m => ({ role: m.role, content: m.role === 'assistant' && m.days && !m.applied ? `${m.content}\n[Plan I proposed, not applied yet: ${m.days.map(d => `${d.name}: ${d.exercises.map(e => `${e.name} ${e.sets}x${e.reps}`).join(', ')}`).join(' | ')}]` : m.content })) });
-    c.msgs.push({ role: 'assistant', content: res.reply, days: res.days || null, goal: res.goal || null, suggestions: res.suggestions || [] });
+    const res = await callCoach('chat', '', null, { messages: c.msgs.slice(-12).map(m => ({ role: m.role, content: m.role === 'assistant' && m.goals && !m.goalsSaved ? `${m.content}\n[Goals I proposed, not saved yet: ${m.goals.goals.join(' | ')}]` : m.role === 'assistant' && m.days && !m.applied ? `${m.content}\n[Plan I proposed, not applied yet: ${m.days.map(d => `${d.name}: ${d.exercises.map(e => `${e.name} ${e.sets}x${e.reps}`).join(', ')}`).join(' | ')}]` : m.content })) });
+    c.msgs.push({ role: 'assistant', content: res.reply, days: res.days || null, goal: res.goal || null, goals: res.goals || null, suggestions: res.suggestions || [] });
   } catch (err) { c.error = coachErrorText(err); }
   c.busy = false;
   coachChatSave();
@@ -11091,6 +11108,25 @@ function paintCoachChatLog(scroll) {
   const inp = document.getElementById('cc-input');
   if (inp) inp.disabled = coachChatLoad().busy;
   log.querySelectorAll('[data-chip]').forEach(b => b.addEventListener('click', () => coachChatSend(b.dataset.chip)));
+  log.querySelectorAll('.cc-savegoals').forEach(b => b.addEventListener('click', async () => {
+    const m = coachChatLoad().msgs[Number(b.dataset.i)];
+    if (!m?.goals || m.goalsSaved) return;
+    b.disabled = true;
+    // keeps the answers and assumptions from intake; only the goals and their summary change
+    const next = { ...(profile.coachProfile || {}), summary: m.goals.summary || profile.coachProfile?.summary || '', goals: m.goals.goals.slice(0, 4), updated: todayStr() };
+    try {
+      await writeUserFields({ coachProfile: next });
+      profile.coachProfile = next;
+      m.goalsSaved = true; coachChatSave();
+      try { renderHuntGoal(); } catch (_) {}
+      showToast('Goals saved. The coach will plan around them.', 'success');
+      renderCoachChat(true);
+    } catch (e) {
+      b.disabled = false;
+      coachChatLoad().error = 'Could not save the goals: ' + (e?.message || e);
+      paintCoachChatLog(false);
+    }
+  }));
   log.querySelectorAll('.cc-apply').forEach(b => b.addEventListener('click', async () => {
     const m = coachChatLoad().msgs[Number(b.dataset.i)];
     if (!m?.days || m.applied) return;
