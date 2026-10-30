@@ -1,0 +1,297 @@
+/* =========================================================================
+   UI SYSTEM — the shared "System window" look (Phase 1)
+
+   Loaded by index.html with <link rel="stylesheet" href="ui-system.css">.
+   Zero-build: plain CSS on the app's existing :root tokens (--void, --card,
+   --brass, --violet, --growing, --excess, --legendary, --font-*, --depth-*,
+   --glow-*, --space-*). Every rule is scoped to a .ui-* class: nothing here
+   restyles an element that does not opt in, so existing screens are untouched.
+
+   COMPONENTS
+   .ui-window         Dark blue System window with L-bracket corners and an
+                      angular clipped corner. .gold = gold edge and aura.
+                      Add .ui-window-pad for standard inner padding.
+   .ui-banner         Mono "◈ SECTION" banner with a fading rule. .gold, .red.
+   .ui-seg            Segmented switch (tabs inside a screen). Children are
+                      .ui-seg-btn; .on marks the active one.
+   .ui-btn-primary    Gold gradient call to action: glow, angular clip, a light
+                      sweep (animated, off under prefers-reduced-motion).
+   .ui-btn-blue       The blue/violet version of the same button.
+   .ui-btn-outline    Gold outline secondary button (e.g. New plan).
+   .ui-btn-square     54px square icon button (the "+" next to a main button).
+   .ui-quick          Green quick-action button (label + small sub line).
+   .ui-chip           Small status chip. Colours: .gold .green .violet .red .dim
+                      .blue (default). .ui-chip i is a dot that takes the colour.
+   .ui-ring           Progress ring wrapper; put the SVG from uiRing() (ui-art.js)
+                      and an optional .ui-ring-label inside.
+   .ui-crest          Rank diamond with the rank letter; colour via --rank
+                      (default gold). .sm = 38px, default 44px, .lg = 56px.
+   .ui-tile           Tappable stat tile: .ui-tile-v (value), .ui-tile-s (sub).
+                      .violet / .gold / .green give the edge a colour.
+   .ui-row            List row: .ui-row-icon (glyph box), .ui-row-name,
+                      .ui-row-sub, .ui-row-k (mono number, right aligned).
+   .ui-glyph          The 26px glyph box used by .ui-row-icon; colour via --tint.
+   .ui-dot            Red or gold notification dot. .red .gold. Position it by
+                      putting it inside a position:relative parent (.ui-dot-host).
+   .ui-art            Slot for painted art with a code stand-in (ui-art.js).
+   .ui-sigil          Broken-sigil + blade-rays emblem (SVG from uiSigil()),
+                      slowly rotating ring; .still turns the motion off.
+   .ui-screen-head    Sticky head for a tab: .ui-title plus a .ui-seg switch (Rank, Codex).
+   .ui-title          Orbitron screen title.
+   .ui-stack          Vertical stack with 16px gaps; .ui-gap-12 / .ui-gap-8.
+   .ui-hide-sm        Helper: hidden under 360px wide.
+
+   RULES OF THE LOOK
+   · 44px minimum targets, 11px minimum text, 16px gaps between blocks.
+   · One bright thing per screen: the gold button. Windows are blue unless the
+     content is the screen's focus, then .gold.
+   · Safe areas: pinned bars use env(safe-area-inset-bottom); see the Hunt bar.
+   · Motion: sweep, sigil rotation and glow pulse stop under reduced motion.
+   ========================================================================= */
+
+:root{
+  --ui-gold:        #FFD66B;
+  --ui-orange:      #FF8A3D;
+  --ui-gold-grad:   linear-gradient(90deg, #FF8A3D, #FFD66B);
+  --ui-blue-grad:   linear-gradient(90deg, #3D86FF, #5BA8FF 50%, #8A6BFF);
+  --ui-line:        rgba(91,168,255,.6);
+  --ui-line-gold:   rgba(255,214,107,.75);
+  --ui-cut:         10px;
+  --ui-window-bg:   linear-gradient(180deg, rgba(18,28,56,.82), rgba(10,13,24,.94));
+  --ui-window-glow: 0 0 34px rgba(91,168,255,.22), inset 0 0 40px rgba(91,168,255,.06);
+  --ui-window-glow-gold: 0 0 34px rgba(255,214,107,.18), inset 0 0 40px rgba(255,214,107,.04);
+}
+
+/* ── window ──────────────────────────────────────────────────────────── */
+.ui-window{
+  position:relative;
+  background:var(--ui-window-bg);
+  border:1px solid var(--ui-line);
+  box-shadow:var(--ui-window-glow);
+  border-radius:0;
+  color:var(--text);
+}
+.ui-window::before,.ui-window::after{
+  content:"";position:absolute;width:14px;height:14px;border:2px solid var(--brass);pointer-events:none;
+}
+.ui-window::before{left:-3px;top:-3px;border-right:0;border-bottom:0;}
+.ui-window::after{right:-3px;bottom:-3px;border-left:0;border-top:0;}
+.ui-window.gold{border-color:var(--ui-line-gold);box-shadow:var(--ui-window-glow-gold);}
+.ui-window.gold::before,.ui-window.gold::after{border-color:var(--ui-gold);}
+.ui-window-pad{padding:14px 16px 6px;}
+
+/* ── banner ──────────────────────────────────────────────────────────── */
+.ui-banner{
+  display:flex;align-items:center;gap:10px;
+  font-family:var(--font-mono);font-size:11px;letter-spacing:.24em;text-transform:uppercase;
+  color:var(--brass);
+}
+.ui-banner::after{content:"";flex:1;height:1px;background:linear-gradient(90deg,rgba(91,168,255,.35),transparent);}
+.ui-banner.gold{color:var(--ui-gold);}
+.ui-banner.gold::after{background:linear-gradient(90deg,rgba(255,214,107,.35),transparent);}
+.ui-banner.red{color:var(--excess);}
+.ui-banner .ui-banner-end{margin-left:auto;order:2;color:var(--text-faint);letter-spacing:.14em;}
+
+/* ── segmented switch ────────────────────────────────────────────────── */
+.ui-seg{display:flex;border:1px solid var(--border);background:rgba(10,13,24,.7);}
+.ui-seg-btn{
+  flex:1;min-height:44px;padding:0 8px;background:none;border:0;cursor:pointer;touch-action:manipulation;
+  font-family:var(--font-display);font-weight:700;font-size:11px;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--text-faint);
+}
+.ui-seg-btn.on{color:var(--text);background:rgba(91,168,255,.16);box-shadow:inset 0 -2px 0 var(--brass);}
+
+/* ── screen head (title + switch) ───────────────────────────────────── */
+.ui-screen-head{
+  position:sticky;top:calc(-1 * var(--fluid-pad,14px));z-index:20;
+  margin:calc(-1 * var(--fluid-pad,14px)) calc(-1 * var(--fluid-pad,14px)) 12px;
+  padding:8px var(--fluid-pad,14px) 8px;
+  background:linear-gradient(180deg,rgba(5,7,13,.97) 80%,rgba(5,7,13,.86));backdrop-filter:blur(8px);
+}
+.ui-title{margin:0 0 8px;font-family:var(--font-display);font-weight:800;font-size:22px;letter-spacing:.06em;text-transform:uppercase;line-height:1.1;color:var(--text);}
+
+/* ── buttons ─────────────────────────────────────────────────────────── */
+.ui-btn-primary,.ui-btn-blue{
+  position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center;gap:8px;
+  min-height:58px;padding:0 16px;border:0;cursor:pointer;touch-action:manipulation;
+  font-family:var(--font-display);font-weight:800;font-size:16px;letter-spacing:.12em;text-transform:uppercase;
+  clip-path:polygon(var(--ui-cut) 0,100% 0,100% calc(100% - var(--ui-cut)),calc(100% - var(--ui-cut)) 100%,0 100%,0 var(--ui-cut));
+  transition:transform var(--dur-snap) var(--ease-impact),filter var(--dur-fast);
+}
+.ui-btn-primary{background:var(--ui-gold-grad);color:#1a0f00;box-shadow:0 0 30px rgba(255,214,107,.6);}
+.ui-btn-blue{background:var(--ui-blue-grad);color:#fff;box-shadow:0 0 32px rgba(91,168,255,.65);}
+.ui-btn-primary:active,.ui-btn-blue:active{transform:scale(.98);filter:brightness(1.08);}
+.ui-btn-primary::after,.ui-btn-blue::after{
+  content:"";position:absolute;top:0;bottom:0;left:-30%;width:60px;pointer-events:none;
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,.35),transparent);transform:skewX(-20deg);
+  animation:uiSweep 4.2s var(--ease-ui) infinite;
+}
+@keyframes uiSweep{0%,55%{transform:translateX(-120%) skewX(-20deg);}100%{transform:translateX(620%) skewX(-20deg);}}
+.ui-btn-primary.is-done{background:rgba(139,92,255,.2);color:var(--text);box-shadow:var(--glow-violet);border:1px solid rgba(139,92,255,.55);}
+.ui-btn-primary.is-done::after{display:none;}
+.ui-btn-outline{
+  position:relative;display:flex;align-items:center;justify-content:center;gap:8px;
+  min-height:48px;padding:0 16px;cursor:pointer;touch-action:manipulation;
+  background:rgba(255,214,107,.08);color:var(--ui-gold);border:1.5px solid var(--ui-gold);border-radius:4px;
+  font-family:var(--font-display);font-weight:800;font-size:14px;letter-spacing:.12em;text-transform:uppercase;
+  box-shadow:0 0 14px rgba(255,214,107,.25);
+  transition:transform var(--dur-snap) var(--ease-impact),filter var(--dur-fast);
+}
+.ui-btn-outline:active{transform:scale(.98);filter:brightness(1.15);background:rgba(255,214,107,.16);}
+.ui-btn-square{
+  flex:none;width:54px;min-height:58px;display:grid;place-items:center;cursor:pointer;touch-action:manipulation;
+  background:rgba(15,19,27,.92);border:1px solid rgba(91,168,255,.4);color:var(--text);
+  clip-path:polygon(8px 0,100% 0,100% calc(100% - 8px),calc(100% - 8px) 100%,0 100%,0 8px);
+}
+.ui-btn-square[aria-expanded="true"]{color:var(--brass);border-color:var(--brass);}
+.ui-quick{
+  flex:none;width:96px;min-height:58px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;cursor:pointer;touch-action:manipulation;
+  border:1px solid rgba(111,255,176,.55);background:rgba(111,255,176,.08);color:var(--growing);
+  font-family:var(--font-body);font-weight:700;font-size:13px;letter-spacing:.06em;line-height:1.1;text-transform:uppercase;
+  box-shadow:0 0 14px rgba(111,255,176,.25);
+  clip-path:polygon(8px 0,100% 0,100% calc(100% - 8px),calc(100% - 8px) 100%,0 100%,0 8px);
+}
+.ui-quick small{font-size:11px;color:var(--text-dim);font-weight:600;letter-spacing:.04em;text-transform:none;}
+.ui-quick:active{filter:brightness(1.2);}
+
+/* ── chip ────────────────────────────────────────────────────────────── */
+.ui-chip{
+  display:inline-flex;align-items:center;gap:6px;min-height:24px;padding:2px 10px;border-radius:12px;
+  font-family:var(--font-body);font-size:12px;font-weight:700;letter-spacing:.03em;white-space:nowrap;
+  background:rgba(91,168,255,.12);color:var(--brass);
+}
+.ui-chip i{width:6px;height:6px;border-radius:50%;background:currentColor;display:block;flex:none;}
+.ui-chip.gold{background:rgba(255,214,107,.12);color:var(--ui-gold);}
+.ui-chip.green{background:rgba(111,255,176,.12);color:var(--growing);}
+.ui-chip.violet{background:rgba(161,127,255,.14);color:var(--violet);}
+.ui-chip.red{background:rgba(255,77,103,.12);color:var(--excess);}
+.ui-chip.dim{background:rgba(255,255,255,.05);color:var(--text-dim);}
+
+/* ── ring + crest + sigil ────────────────────────────────────────────── */
+.ui-ring{position:relative;display:inline-grid;place-items:center;}
+.ui-ring svg{display:block;}
+.ui-ring-label{position:absolute;left:50%;transform:translateX(-50%);font-family:var(--font-display);font-weight:700;font-size:12px;color:var(--ui-gold);white-space:nowrap;}
+.ui-crest{
+  --rank:var(--ui-gold);
+  width:44px;height:44px;display:grid;place-items:center;flex:none;
+  font-family:var(--font-display);font-weight:800;font-size:22px;color:var(--rank);
+  border:1.5px solid var(--rank);background:rgba(10,13,24,.75);transform:rotate(45deg);
+  box-shadow:0 0 18px var(--rank),inset 0 0 12px rgba(255,214,107,.12);
+}
+.ui-crest > span{transform:rotate(-45deg);display:block;line-height:1;}
+.ui-crest.sm{width:30px;height:30px;font-size:15px;}
+.ui-crest.lg{width:56px;height:56px;font-size:28px;}
+.ui-sigil{display:block;pointer-events:none;}
+.ui-sigil .ui-sigil-spin{transform-origin:50% 50%;animation:uiSigilSpin 90s linear infinite;}
+.ui-sigil.still .ui-sigil-spin{animation:none;}
+@keyframes uiSigilSpin{to{transform:rotate(360deg);}}
+
+/* ── tile ────────────────────────────────────────────────────────────── */
+.ui-tile{
+  position:relative;min-width:0;min-height:58px;padding:9px 12px;text-align:left;cursor:pointer;touch-action:manipulation;
+  display:flex;flex-direction:column;justify-content:center;gap:2px;
+  background:rgba(15,19,27,.92);border:1px solid rgba(91,168,255,.18);color:var(--text);font-family:var(--font-body);
+  clip-path:polygon(8px 0,100% 0,100% calc(100% - 8px),calc(100% - 8px) 100%,0 100%,0 8px);
+}
+.ui-tile:active{filter:brightness(1.2);}
+.ui-tile.violet{border-color:rgba(161,127,255,.45);}
+.ui-tile.gold{border-color:var(--ui-line-gold);}
+.ui-tile.green{border-color:rgba(111,255,176,.4);}
+.ui-tile-v{font-size:17px;font-weight:700;line-height:1.1;display:flex;align-items:center;gap:6px;white-space:nowrap;}
+.ui-tile.violet .ui-tile-v{color:var(--violet);}
+.ui-tile-s{font-size:11px;color:var(--text-faint);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+
+/* ── row ─────────────────────────────────────────────────────────────── */
+.ui-row{display:flex;align-items:center;gap:12px;min-height:48px;padding:9px 0;border-top:1px solid rgba(91,168,255,.12);}
+.ui-row:first-child{border-top:0;}
+.ui-glyph{
+  --tint:var(--brass);
+  flex:none;width:28px;height:28px;display:grid;place-items:center;
+  border:1px solid color-mix(in srgb,var(--tint) 55%,transparent);
+  background:color-mix(in srgb,var(--tint) 10%,transparent);color:var(--tint);
+}
+.ui-row-name{flex:1;min-width:0;font-size:17px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.ui-row-sub{display:block;font-size:11px;color:var(--text-faint);}
+.ui-row-k{flex:none;font-family:var(--font-mono);font-size:12px;color:var(--text-faint);white-space:nowrap;text-align:right;}
+
+/* ── dot ─────────────────────────────────────────────────────────────── */
+.ui-dot-host{position:relative;}
+.ui-dot{position:absolute;top:6px;right:6px;width:8px;height:8px;border-radius:50%;background:var(--excess);box-shadow:0 0 8px var(--excess);}
+.ui-dot.gold{background:var(--ui-gold);box-shadow:0 0 8px var(--ui-gold);}
+.ui-dot.inline{position:static;display:inline-block;}
+
+/* ── art slot (ui-art.js) ───────────────────────────────────────────── */
+.ui-art{display:block;overflow:hidden;}
+.ui-art > svg,.ui-art > img{display:block;width:100%;height:100%;}
+
+/* ── helpers ─────────────────────────────────────────────────────────── */
+.ui-stack{display:flex;flex-direction:column;gap:16px;}
+.ui-stack.ui-gap-12{gap:12px;}
+.ui-stack.ui-gap-8{gap:8px;}
+@media (max-width:359px){.ui-hide-sm{display:none !important;}}
+
+/* ── bottom sheet (Quick 15 picker) ──────────────────────────────────── */
+.ui-sheet-scrim{position:fixed;inset:0;z-index:350;display:flex;align-items:flex-end;justify-content:center;background:rgba(4,6,12,.72);animation:uiSheetFade var(--dur-fast,.18s) ease both;}
+.ui-sheet-scrim.hidden{display:none;}
+.ui-sheet{width:100%;max-width:640px;max-height:min(86vh,720px);display:flex;flex-direction:column;border-bottom:0;padding:14px 16px calc(16px + env(safe-area-inset-bottom,0px));animation:uiSheetUp .26s var(--ease-ui,ease-out) both;}
+.ui-sheet-grab{width:40px;height:4px;border-radius:2px;background:rgba(91,168,255,.35);margin:-4px auto 10px;flex:none;}
+.ui-sheet-head{display:flex;align-items:center;gap:10px;flex:none;min-height:44px;}
+.ui-sheet-head .ui-title{margin:0;flex:1;min-width:0;font-size:18px;}
+.ui-sheet-icon{flex:none;width:44px;height:44px;display:grid;place-items:center;background:none;border:1px solid transparent;color:var(--text-dim);cursor:pointer;touch-action:manipulation;}
+.ui-sheet-icon[hidden]{display:block;visibility:hidden;}
+.ui-sheet-icon:active{color:var(--text);}
+.ui-steps{display:flex;gap:6px;align-items:center;flex:none;margin:4px 0 12px;}
+.ui-steps i{flex:1;height:3px;background:rgba(91,168,255,.18);display:block;}
+.ui-steps i.on{background:var(--brass);box-shadow:0 0 8px rgba(91,168,255,.6);}
+.ui-sheet-q{margin:0 0 10px;font-family:var(--font-display);font-weight:700;font-size:13px;letter-spacing:.16em;text-transform:uppercase;color:var(--text-dim);}
+.ui-sheet-body{overflow-y:auto;overscroll-behavior:contain;min-height:0;}
+.ui-pick-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.ui-pick{
+  min-height:64px;padding:8px 12px;display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:2px;text-align:left;cursor:pointer;touch-action:manipulation;
+  background:rgba(91,168,255,.08);border:1px solid rgba(91,168,255,.35);color:var(--text);
+  font-family:var(--font-body);font-size:16px;font-weight:700;line-height:1.15;
+  clip-path:polygon(8px 0,100% 0,100% calc(100% - 8px),calc(100% - 8px) 100%,0 100%,0 8px);
+}
+.ui-pick small{font-size:12px;font-weight:500;color:var(--text-faint);}
+.ui-pick:active{filter:brightness(1.25);background:rgba(91,168,255,.18);}
+.ui-pick.wide{grid-column:1 / -1;}
+.ui-pick.gold{background:rgba(255,214,107,.1);border-color:rgba(255,214,107,.55);color:var(--ui-gold);}
+.ui-pick:focus-visible,.ui-sheet-icon:focus-visible{outline:2px solid var(--brass);outline-offset:2px;}
+.ui-sheet-meta{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 6px;}
+.ui-sheet-note{margin:8px 0 0;font-size:12px;color:var(--text-faint);}
+.ui-sheet-actions{display:flex;gap:10px;margin-top:14px;}
+.ui-sheet-actions .ui-btn-blue{flex:0 0 38%;}
+.ui-sheet-actions .ui-btn-primary{flex:1;}
+.ui-sheet-actions button:disabled{opacity:.45;pointer-events:none;}
+@keyframes uiSheetUp{from{transform:translateY(40px);opacity:0;}to{transform:none;opacity:1;}}
+@keyframes uiSheetFade{from{opacity:0;}to{opacity:1;}}
+@media (prefers-reduced-motion:reduce){.ui-sheet,.ui-sheet-scrim{animation:none;}}
+
+@media (prefers-reduced-motion:reduce){
+  .ui-btn-primary::after,.ui-btn-blue::after{animation:none;display:none;}
+  .ui-sigil .ui-sigil-spin{animation:none;}
+}
+
+/* ── hint bar: one line saying why a tab has a dot (tabDotBanner in flow-view.js) ── */
+.ui-hint{display:flex;align-items:center;gap:10px;margin:0 0 12px;padding:6px 6px 6px 12px;min-height:48px;
+  border:1px solid rgba(255,214,107,.34);border-radius:12px;background:rgba(255,214,107,.08);}
+.ui-hint-text{flex:1;min-width:0;font-size:15px;font-weight:600;color:var(--text);}
+.ui-hint-btn{flex:none;min-height:40px;padding:0 14px;border-radius:9px;border:1px solid var(--ui-gold);background:rgba(255,214,107,.14);
+  color:var(--ui-gold);font:inherit;font-family:var(--font-mono);font-size:12px;letter-spacing:.1em;text-transform:uppercase;cursor:pointer;touch-action:manipulation;}
+.ui-hint-x{flex:none;width:40px;height:40px;border:0;background:transparent;color:var(--text-faint);font-size:16px;cursor:pointer;touch-action:manipulation;}
+
+/* ── Penalty Zone notice (opt-in: .system-window.pz) ─────────────────────── */
+.system-window.pz{text-align:center;}
+.pz .system-title{color:var(--excess);margin-bottom:10px;}
+.pz-cause{font-size:15px;font-weight:600;color:var(--text);line-height:1.5;margin:0 0 14px;}
+.pz-cost{display:flex;flex-direction:column;align-items:center;gap:2px;margin:0 0 8px;padding:12px 8px;
+  border:1px solid rgba(255,77,103,.45);background:rgba(255,77,103,.08);border-radius:4px;}
+.pz-cost-num{font-family:var(--font-mono);font-weight:900;font-size:36px;line-height:1.1;color:var(--excess);text-shadow:0 0 18px rgba(255,77,103,.55);}
+.pz-cost-bal{font-family:var(--font-mono);font-size:13px;color:var(--text-dim);letter-spacing:.04em;}
+.pz-rule{font-size:12px;color:var(--text-faint);line-height:1.5;margin:0 0 16px;}
+.pz-row{display:flex;gap:10px;align-items:flex-start;text-align:left;font-size:13px;line-height:1.5;color:var(--text-dim);margin:0 0 10px;}
+.pz-mark{flex:none;width:20px;font-family:var(--font-mono);font-weight:800;}
+.pz-safe .pz-mark{color:var(--growing);}
+.pz-clear{color:var(--text);}
+.pz-clear .pz-mark{color:var(--ui-gold);}
+.pz .system-btn{margin-top:20px;}

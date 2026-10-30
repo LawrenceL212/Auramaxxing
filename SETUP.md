@@ -103,8 +103,8 @@ Two things that follow from that:
 The muscle taxonomy is now 21 regions instead of the original 12 (Upper/Middle/Lower Chest, Front/Lateral/Rear Shoulders, Traps, Lats, Upper/Lower Back, Biceps, Triceps, Forearms, Upper/Middle/Lower Abs, Obliques, Glutes, Hamstrings, Quads, Calves) — matching the shapes traced in `anatomy.svg`. If you add more custom exercises, target these exact names in the muscle picker.
 
 ## Data model
-Five collections now back the app:
-- `users/{uid}` — profile + `weeklyGoal` (used by the Streaks widget)
+Five collections back the original app (the code now uses eight, see CLAUDE.md):
+- `users/{uid}` — profile + `weeklyGoal` (used by the Streaks widget). Optional push-reminder fields, written only by that user on their own document (no rule change needed; see PUSH-SETUP.md): `pushDevices` (map of device id -> `{ token, platform, createdAt }`) and `pushPrefs` (`{ enabled, planned, evening, usualTime, tz }`)
 - `workouts/{autoId}` — one doc per logged session (`uid`, `date`, `time`, `exercises`)
 - `programs/{uid}` — one active split per user: `{ name, days: [{ name, tag, exercises, lastDate }], currentDayIndex }`
 - `customExercises/{autoId}` — exercises added from the Exercises tab, merged into everyone's move list
@@ -122,3 +122,20 @@ Five collections now back the app:
 - Supersets / rest timers inside the logger
 - Personal-record tracking per exercise
 - Comments or reactions on teammates' logged workouts
+
+## Gate Duels need a Cloud Function (one extra deploy)
+
+Duels settle through the `resolveGateDuel` callable, because settlement writes
+to both players' user documents. Until it is deployed only the admin can settle
+duels. Deploy just that function (Node 22):
+
+```bash
+cd functions && npm install && cd ..
+firebase deploy --only functions:resolveGateDuel --project auramaxxing-3d4bb
+```
+
+No Firestore rules change is required. An optional hardening block for `duels`
+(and why `--only firestore:rules` is not available from this repo) is in
+`functions/README.md`, step 2. There is no PUSH-SETUP file on this branch; the
+push-notification functions have their own notes on their branch.
+

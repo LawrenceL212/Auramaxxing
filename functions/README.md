@@ -2,10 +2,10 @@
 
 One function: **`resolveGateDuel`** — trusted settlement for Gate Duels.
 
-> **Status: written and formula-verified, NOT DEPLOYED.**
-> Deployment needs Firebase console/CLI access. Nothing in the app calls this
-> yet — see [Step 4](#4-switch-the-client-over) for the client change, which
-> must happen **after** deployment.
+> **Status: hardened and tested, NOT DEPLOYED.** Until it is deployed, only the
+> admin can settle duels (the app falls back to the old client path for the
+> admin only; other players see "will settle next time you open the app").
+> Deploy steps are [below](#deploying) - run them in order.
 
 ---
 
@@ -79,22 +79,98 @@ cd functions && npm run gen     # regenerates from ../exercises.js
 
 ---
 
+## Audit (what the function does and where it can be abused)
+
+**How a duel starts (client, Firestore `duels/{id}`):** the challenger
+`addDoc`s `{challengerId, defenderId, status:'pending', challengerStreak,
+defenderStreak, spec:null}` and sets `users/{me}.duels.activeDuelId`. The
+defender designs the fight (`spec`, `startDate=today`, `endDate=today+3|7d`,
+`status:'active'`) and sets their own `activeDuelId`. Scores are never
+submitted: both are derived from each hunter's logged `workouts` in the window.
+
+**How it settled before:** `resolveGateDuel()` in `index.html` ran on either
+player's next app open once `endDate < today`, writing the duel doc and both
+`users` docs. Rules only let a user write their own doc, so for everyone but
+the admin uid it failed (swallowed with `console.warn`) and the duel stayed
+`active` forever.
+
+**What `resolveGateDuel` writes (one transaction):**
+- `duels/{id}`: status `complete`, winnerId/loserId, both scores, apWager,
+  apLost, winnerStreak, winnerTotalWins, territoryResult, resolvedAt,
+  resolvedBy, resolvedByUid
+- winner `users/{uid}`: `auraPoints` +wager, `duels.wins`+1, `duels.streak`,
+  `activeDuelId:null`, trophyTier, duelTitle, xpBoostMult/Until (7d), trophy
+  weapon at 5/15/30/60/100 wins
+- loser `users/{uid}`: `auraPoints` -wager (floored at 0), `duels.losses`+1,
+  streak 0, activeDuelId null, lastLossDate, defeatedBy/Name/Domain/Until,
+  debuffPct, trophyTier 0, duel-trophy weapon removed
+- if fought over a country: both `shadowArmy.countries.{id}` soldiers (+ owner
+  on a challenger win)
+- two `apEvents` ledger rows (winner gain, loser loss)
+No XP is awarded; `xpBoost*` only sets a multiplier read elsewhere.
+
+**Defects found in the previous function, now fixed** (`lib/settle-duel.js`):
+
+| Finding | Fix |
+|---|---|
+| Streak (and so the AP wager, 10 to 500) was read from `challengerStreak`/`defenderStreak` on the duel doc, which a participant can edit under the documented rules | streak read from the winner's own `users` doc inside the transaction |
+| "Ended" check used the server's UTC date, so duels could settle hours before the window closed in the Americas | requires UTC-12 end of `endDate`; early call gets `failed-precondition` |
+| Participant-editable `endDate`/`startDate`/`spec`/target fields trusted blindly | terms validated: distinct ids, ISO dates, window 1-30 days, known metric, numeric limits, country id charset (it becomes a Firestore field path) |
+| Loser AP could go negative (`increment(-wager)`) | floored at 0 (`apLost` recorded); winner still gains the wager |
+| Back-dated sessions: backfill allows 30 days, so a session could be added to a finished window before anyone settled; sessions could also be pre-logged | only workouts whose server `createdAt` is inside the window count (docs without `createdAt` still count) |
+| Users/streaks/soldiers read outside the transaction, then written | duel + both users read inside the transaction; terms re-compared; status re-checked |
+| A second caller got an error if the duel was already settled | returns the stored result |
+| Loser's `inventory.weapon` was nulled and the winner's overwritten whatever it was | only duel trophies are removed/replaced; other weapons are untouched |
+| No AP ledger rows | `apEvents` rows written |
+| Any error became an opaque failure | `DuelError` to precise `HttpsError` codes; unexpected errors are logged and returned as `internal` |
+
+**Abuse paths, answered:** forge a result - no, nothing numeric comes from
+the request. Double-settle - no (status re-check in the transaction; tested
+with concurrent calls). Settle a duel you are not in - `permission-denied`
+(admin uid excepted). Make AP negative - no. Settle early - no.
+
+**Residual risks (not fixable in the function):**
+1. Workouts are client-written: a hunter can log fake sets. That is the game's
+   existing trust model ("training is the entry"), unchanged.
+2. Without rules hardening a participant can still edit `startDate`, `endDate`,
+   `spec` and `target*` on an active duel (it is how terms are set). The
+   function validates and bounds them but cannot know the original. Optional
+   fix: the stricter rules in [step 2](#2-firestore-rules-optional-hardening).
+3. Both hunters failing the terms: both score 0 or both forfeit, and the
+   **challenger wins** (`>=` tie-break, inherited from the client). Left alone
+   because it is a gameplay rule; flagged for a decision.
+4. `targetCountryId` is not checked against who actually owns the country.
+5. Deliberate change kept from before: each hunter's own bodyweight is used for
+   `minWeightPct`.
+
 ## Deploying
 
-### 1. Install
+Run these **in order, as separate steps**. Nothing here has been run.
+
+### 1. Deploy the function (required)
 
 ```bash
-cd functions
-npm install
-npm run lint          # syntax-checks every file
+cd functions && npm install && npm run lint && cd ..
+node test/resolve-gate-duel.test.mjs     # optional sanity check
+firebase deploy --only functions:resolveGateDuel --project auramaxxing-3d4bb
 ```
 
-### 2. Add the Firestore rules for `duels`
+`firebase.json` and `engines.node` are now Node 22 (Node 20 is retired
+2026-10-30). `firebase-functions` stays at ^4.9: the only other function
+(`sendReminders`) is not on this branch, so an upgrade could not be tested
+against it. The first deploy asks to enable the Cloud Build / Artifact Registry
+APIs if they are off. The app needs no change at deploy time.
 
-**ADD this block to the existing rules — do not replace the file.** The live
-ruleset contains collections not documented here (`prs`, `apEvents`,
-`checkins`, `config`, the admin catch-all); replacing it wholesale would drop
-them.
+### 2. Firestore rules (not needed for settlement; optional hardening)
+
+Settlement uses the Admin SDK and needs **no rules change**. The repo has no
+`firestore.rules` (and `firebase.json` has no `firestore` entry), so
+`--only firestore:rules` cannot deploy anything from here. If you want the
+hardening, paste this into the console rules (or add a `firestore.rules`
+file containing your **full** live rules plus this block, then run
+`firebase deploy --only firestore:rules --project auramaxxing-3d4bb`). **Merge
+into the existing rules; replacing the file drops `prs`, `apEvents`,
+`checkins`, `config`.**
 
 ```
 match /duels/{duelId} {
@@ -104,75 +180,36 @@ match /duels/{duelId} {
   allow create: if request.auth != null
     && request.resource.data.challengerId == request.auth.uid
     && request.resource.data.status == 'pending';
-  // participants may set terms and withdraw, but NEVER settle:
-  // 'complete' is written only by the Cloud Function, which bypasses rules.
+  // defender sets terms once (pending -> active); challenger may withdraw;
+  // 'complete' and any later edit of an active duel are server-only
   allow update: if request.auth != null
-    && (resource.data.challengerId == request.auth.uid
-     || resource.data.defenderId  == request.auth.uid)
-    && request.resource.data.status != 'complete';
+    && resource.data.status == 'pending'
+    && ((resource.data.defenderId == request.auth.uid
+         && request.resource.data.status == 'active'
+         && request.resource.data.diff(resource.data).affectedKeys()
+              .hasOnly(['status','startDate','endDate','spec']))
+     || (resource.data.challengerId == request.auth.uid
+         && request.resource.data.status == 'forfeited'));
   allow delete: if false;
 }
 ```
 
-### 3. Deploy
+### 3. Verify
 
-```bash
-firebase deploy --only functions:resolveGateDuel
+1. Two non-admin accounts; one challenges, the other sets terms
+2. Both log qualifying sets
+3. After the window closes everywhere (about noon UTC the day after `endDate`),
+   either opens the app and sees the result modal
+4. AP moved once, `activeDuelId` cleared on both, wins/losses once
+5. The other account opens the app and gets the stored result, no second transfer
+
+## designPlan — the AI coach
+
+Calls Claude (`claude-opus-5-5`, Anthropic SDK, structured output) to design a look and plan, or review how a Hunter is doing. See `lib/design-plan.js`.
+
+```
+firebase functions:secrets:set ANTHROPIC_API_KEY     # once, paste the key
+npm run deploy:coach                                 # firebase deploy --only functions:designPlan
 ```
 
-Test against the emulator first if you prefer: `npm run serve`.
-
-### 4. Switch the client over — ALREADY DONE
-
-`index.html` already routes settlement through `settleGateDuel()`, which calls
-the function first and falls back to the client path if it is **unreachable**
-(not deployed, offline, blocked). So the app behaves exactly as it does today
-until you deploy, and switches over on its own the moment you do — no client
-change is needed at deploy time.
-
-The fallback is deliberately narrow: it fires only when the function could not
-be REACHED. If the function ran and rejected — not a participant, already
-settled, not ended yet — that is an authoritative answer, and re-running the
-client path could pay AP twice. Those surface as errors instead.
-
-The client-side `resolveGateDuel()` is kept in place as that fallback. Remove
-it only once the function has settled real duels.
-
-<details><summary>What the wiring looks like</summary>
-
-Previously `checkPendingDuels()` called the client settlement directly:
-
-```js
-if (d.status === 'active' && d.endDate < todayStr()) {
-  await resolveGateDuel(activeDuelId, d);
-}
-```
-
-Replace that call with the callable, keeping the old path as a fallback so
-nothing regresses if the function is unreachable:
-
-```js
-if (d.status === 'active' && d.endDate < todayStr()) {
-  try {
-    const { getFunctions, httpsCallable } =
-      await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-functions.js');
-    await httpsCallable(getFunctions(), 'resolveGateDuel')({ duelId: activeDuelId });
-    await loadAllData();
-  } catch (err) {
-    console.error('Server settlement failed, falling back:', err);
-    await resolveGateDuel(activeDuelId, d);   // admin-only, but better than nothing
-  }
-}
-```
-
-</details>
-
-## Verifying after deploy
-
-1. Two non-admin accounts, one challenges the other
-2. Defender sets terms → both see the terms panel
-3. Both log qualifying sets
-4. After `endDate`, either opens the app → duel settles
-5. Check: AP moved once (not twice), `activeDuelId` cleared on **both**,
-   `duels.wins`/`losses` incremented once, winner's trophy granted at 5 wins
-6. Re-open on the other account → returns `alreadyResolved`, no second transfer
+Needs the Blaze plan (secrets and outbound calls). Callers must be signed in; 10 calls a Hunter a day, counted in `users/{uid}.aiCoach` by the Admin SDK. Nothing it returns is applied by the function.
