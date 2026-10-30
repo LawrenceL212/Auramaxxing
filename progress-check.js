@@ -87,7 +87,7 @@ export function progressCheck(ctx) {
   else if (!ctx.trainedToday && ctx.plannedToday) next = { text: 'Today is a training day. Get the session in.', action: 'train' };
   else if (checkinAge === null || checkinAge >= 7) next = { text: checkinAge === null ? 'Do your first body check-in to start tracking your physique.' : `Your last check-in was ${checkinAge} days ago. Do this week's.`, action: 'checkin' };
   else if (wk < goal) next = { text: `${goal - wk} more session${goal - wk === 1 ? '' : 's'} this week hits your goal.`, action: 'train' };
-  else if (!ph) next = { text: 'Set a physique goal and a deadline so the plan adjusts to you.', action: 'goal' };
+  else if (!ph && !ctx.coachGoals) next = { text: 'Set a physique goal and a deadline so the plan adjusts to you.', action: 'goal' };
   else next = { text: 'Week goal done. Rest well and hold the plan.', action: null };
 
   // the one line: the best true fact

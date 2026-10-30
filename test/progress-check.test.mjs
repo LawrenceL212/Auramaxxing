@@ -44,6 +44,7 @@ check('next step: first check-in when there is none', progressCheck({ ...base, s
 check('next step: sessions left this week', (() => { const r = progressCheck({ ...base, streak: 3, sessionDates: [day(0)], lastCheckinDate: day(-1) }); return r.next.action === 'train' && /2 more sessions/.test(r.next.text); })());
 check('next step: train today when planned and not done', progressCheck({ ...base, streak: 3, sessionDates: [day(-1)], plannedToday: true, trainedToday: false }).next.action === 'train');
 check('next step: set a goal when all is done and none is set', progressCheck({ ...base, streak: 5, sessionDates: [day(0), day(-1), day(-2)], lastCheckinDate: day(-1) }).next.action === 'goal');
+check('next step: no goal nag when the coach already has goals', progressCheck({ ...base, coachGoals: true, streak: 5, sessionDates: [day(0), day(-1), day(-2)], lastCheckinDate: day(-1) }).next.action === null);
 check('next step: nothing to push when everything is done', progressCheck({ ...base, streak: 5, sessionDates: [day(0), day(-1), day(-2)], lastCheckinDate: day(-1), physique: { label: 'X', overall: 50, track: 'on' } }).next.action === null);
 
 check('future sessions are ignored', progressCheck({ ...base, sessionDates: [day(2), day(3)] }).tone === 'restart');

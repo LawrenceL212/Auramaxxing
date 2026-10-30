@@ -18349,7 +18349,7 @@ function weightPathHtml() {
   }
   if (wk) tiles.push(tile('This week', `${signed(wk.diff)}<small>kg</small>`, `avg ${wk.thisAvg} vs ${wk.lastAvg}`, wk.diff === 0 ? '' : goal && !goal.waypoints ? (Math.sign(wk.diff) === goal.dir ? 'var(--growing)' : 'var(--excess)') : ''));
   const svg = goal ? pathSvg(myWeights, goal, { today }) : '';
-  const cta = goal ? '' : '<button type="button" class="ui-btn-outline wp-set" style="margin-top:10px;width:100%;">Set a physique goal to draw your path</button>';
+  const cta = goal ? '' : `<button type="button" class="ui-btn-outline wp-set" style="margin-top:10px;width:100%;">${profile?.coachProfile?.goals?.length ? 'Add a target weight and date to draw your path' : 'Set a physique goal to draw your path'}</button>`;
   return `<div class="wp">
     ${head}
     ${svg ? `<div class="wp-chart">${svg}<div class="wp-legend"><span><i class="g"></i>where you should be</span><span><i class="a"></i>7-day average</span></div></div>` : ''}
@@ -18409,7 +18409,12 @@ function physiquePlanHtml() {
   const plan = currentPhysiquePlan();
   const cta = (title, sub) => `<button type="button" class="pg-cta" data-pg-open>
       <span class="pg-cta-t">${title}</span><span class="pg-cta-s">${sub}</span></button>`;
-  if (!plan) return `<div class="pg">${cta('Set a physique goal', 'Pick a look and a date. The app works out what it takes and adjusts as you go.')}</div>`;
+  if (!plan) {
+    const cg = profile?.coachProfile?.goals || [];
+    // the Hunter already told the coach what they want: show that, and offer the look + date only as an optional extra
+    if (cg.length) return `<div class="pg"><div class="ci-sub" style="margin:0 0 8px;"><b>Your goal (from the coach):</b> ${escapeHtml(cg[0])}${cg.length > 1 ? ` +${cg.length - 1} more` : ''}</div>${cta('Track it with a look and date', 'Optional. Adds target measurements, a timeline and a verdict on top of your coach goal.')}</div>`;
+    return `<div class="pg">${cta('Set a physique goal', 'Tell the coach what you want, or pick a look and a date. The app works out what it takes and adjusts as you go.')}</div>`;
+  }
   if (plan.error) return `<div class="pg"><div class="ci-empty">${escapeHtml(plan.message)}</div>${cta('Change goal', 'Pick a look and a date')}</div>`;
   const date = (d) => new Date(d + 'T12:00:00').toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
   const [vLabel, vColor] = PG_VERDICT[plan.verdict] || PG_VERDICT.on_schedule;
@@ -19150,7 +19155,7 @@ function progressCheckCtx() {
   return {
     today, streak: computeStreak(currentUser.uid), weeklyGoal: profile?.weeklyGoal || 3, sessionDates, prDates,
     level: profile?.hunterLevel || 1, rank: huntRankInfo().rank, lastCheckinDate: last?.date || null,
-    checkinProgress: cp && !cp.first ? cp : null, physique, weightPath: wPath,
+    checkinProgress: cp && !cp.first ? cp : null, physique, weightPath: wPath, coachGoals: !!profile?.coachProfile?.goals?.length,
     plannedToday, trainedToday: sessionDates.includes(today),
   };
 }
