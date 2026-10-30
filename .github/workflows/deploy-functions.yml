@@ -1,0 +1,62 @@
+# Deploys the Cloud Functions (the AI coach and push reminders) when a change to
+# functions/ lands on main, so nobody has to run `npm run deploy:coach` or
+# `npm run deploy:reminders` by hand. The app itself (index.html and friends) is
+# not touched here.
+#
+# One-time setup: a repository secret named FIREBASE_TOKEN, made on your own
+# computer with `npx firebase-tools login:ci` (see PUSH-SETUP.md / functions/README.md).
+# The Anthropic key stays in Firebase Secret Manager; this workflow never sees it.
+name: Deploy functions
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'functions/**'
+      - 'firebase.json'
+  workflow_dispatch:
+    inputs:
+      only:
+        description: 'Functions to deploy (firebase --only value)'
+        required: false
+        default: 'functions:designPlan,functions:sendReminders'
+
+concurrency:
+  group: deploy-functions
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: functions/package-lock.json
+
+      - name: Install
+        working-directory: functions
+        run: npm ci
+
+      - name: Check
+        run: |
+          (cd functions && npm run lint)
+          node test/design-plan.test.mjs
+          node test/send-reminders.test.mjs
+          node test/reminders.test.mjs
+
+      - name: Deploy
+        env:
+          FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
+          FUNCTIONS_DISCOVERY_TIMEOUT: 60
+          ONLY: ${{ github.event.inputs.only || 'functions:designPlan,functions:sendReminders' }}
+        run: |
+          if [ -z "$FIREBASE_TOKEN" ]; then
+            echo "::error::Add the FIREBASE_TOKEN repository secret first (see the top of this file)."
+            exit 1
+          fi
+          npx --yes firebase-tools@13 deploy --only "$ONLY" --project auramaxxing-3d4bb --non-interactive
