@@ -7,6 +7,7 @@ import {
   setInputHeaders, SET_INPUT_KINDS,
   LOAD_TYPES, offersLoadChoice, defaultLoad, setLoad, loggedLoad, withLoad, loadLabel,
   BAND_LEVELS, bandLabel, setBand, loggedBand, loadText, loadOptions, isBandLoad,
+  bodyweightOn, bodyweightLoadKg,
 } from '../set-inputs.js';
 
 let pass = 0, fail = 0;
@@ -163,6 +164,25 @@ check('text: assisted', loadText({ reps: 6, load: 'band_assist', band: 'heavy' }
 check('text: assisted, no strength', loadText({ reps: 6, load: 'band_assist' }), 'Band assisted');
 check('last band from an assisted session', loggedBand([{ reps: 6, load: 'band_assist', band: 'light' }]), 'light');
 for (const b of BAND_LEVELS) check(`band label ${b}`, typeof bandLabel(b), 'string');
+
+/* Bodyweight load counts the Hunter's weigh-in */
+const W = [{ date: '2026-10-01', weight: 78 }, { date: '2026-10-20', weight: 77.3 }, { date: '2026-10-25', weight: 0 }];
+check('bodyweight: latest on or before the date', bodyweightOn(W, '2026-10-30'), 77.3);
+check('bodyweight: past session uses the weigh-in then', bodyweightOn(W, '2026-10-10'), 78);
+check('bodyweight: before any weigh-in uses the first', bodyweightOn(W, '2026-09-01'), 78);
+check('bodyweight: no weigh-in falls back to profile', bodyweightOn([], '2026-10-30', 80), 80);
+check('bodyweight: nothing known', bodyweightOn([], '2026-10-30'), null);
+check('bodyweight: unsorted input', bodyweightOn([W[1], W[0]], '2026-10-30'), 77.3);
+check('share of bodyweight', bodyweightLoadKg(BASE_EXERCISES['Inverted Row'], 77.3), 54.1);
+check('pull-up is all of it', bodyweightLoadKg(BASE_EXERCISES['Pull Up'], 77.3), 77.3);
+check('no share means whole body', bodyweightLoadKg(BASE_EXERCISES['Bench Press'], 77.3), 77.3);
+check('no bodyweight known gives 0', bodyweightLoadKg(BASE_EXERCISES['Pull Up'], null), 0);
+check('bodyweight set stores its load', withLoad({ reps: 5, weight: 0 }, 'bodyweight', null, 46.4), { reps: 5, weight: 46.4, load: 'bodyweight' });
+check('bodyweight set with no weight known stays 0', withLoad({ reps: 5, weight: 0 }, 'bodyweight'), { reps: 5, weight: 0, load: 'bodyweight' });
+check('other loads ignore bodyweight', withLoad({ reps: 5, weight: 0 }, 'bands', 'heavy', 46.4), { reps: 5, weight: 0, load: 'bands', band: 'heavy' });
+check('kg ignores bodyweight', withLoad({ reps: 5, weight: 60 }, 'kg', null, 46.4), { reps: 5, weight: 60 });
+check('text: bodyweight with kg', loadText({ reps: 5, weight: 46.4, load: 'bodyweight' }), 'Bodyweight (46.4kg)');
+check('old bodyweight set still reads', loadText({ reps: 5, weight: 0, load: 'bodyweight' }), 'Bodyweight');
 
 console.log(results.join('\n'));
 console.log(`\n${pass} passed, ${fail} failed`);
