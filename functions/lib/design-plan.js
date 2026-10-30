@@ -290,13 +290,14 @@ const ChatSchema = z.object({
   reply: z.string(),
   days: z.array(DaySchema).nullable(),
   goal: z.enum(GOALS).nullable(),
+  goals: z.object({ summary: z.string(), goals: z.array(z.string()) }).nullable(),
   suggestions: z.array(z.string()),
 });
 
 const CHAT_SYSTEM = `You are the coach inside Auramaxxing, chatting with one Hunter about their training. You can see their own data and the goals they confirmed, below. Talk like a good coach texting: direct, warm, specific, short (under 120 words unless they ask for detail). Use their real numbers.
 
 - Answer what they asked. Ask one short question at a time only when you truly need the answer to help.
-- Respect their goals ("goals" in the data). If they say something that changes the goal, tell them to use "Change my goals" so it is saved; do not pretend it is saved.
+- Respect their goals ("goals" in the data). If they say they want something different (a new target, a skill, dropping one, a new date), return the full updated list in "goals" (summary: one or two plain sentences; goals: one to four short statements, most important first, keeping the ones they did not change) and say in "reply" what you changed. Nothing is saved until they tap, so never say it is saved. Otherwise "goals" is null. A target look and date for tracking measurements is a separate setting they change from the goal card; point them there if they ask for that.
 - If they ask WHY something is or is not in their plan ("why no front lever holds?"), look at currentPlan, their goals, the answers they gave in intake, and the exerciseList, and give the real reason in plain words: not in the list, not asked for, no room for the volume, recovery, a limit they told you about, or simply that you did not include it. Never invent a reason and never blame the app for what was your own choice. If they were not asked about it or it is a skill they want, say so and offer to add it. If the exercise is not in exerciseList at all, say so and offer the closest exercise that is.
 - If they then ask to change it ("add it back", "I don't like X, drop it", "swap Y for Z"), do it: return the full adjusted plan. Start from the plan you proposed last in this conversation if it was not applied yet (its summary is in the conversation), otherwise from currentPlan.
 - You may change their plan. Only when they ask for a change, or a change clearly follows from what they said (sore, missing equipment, a new target), return the FULL adjusted plan in "days" using exact exercise names from exerciseList (sets 2-5, reps 3-20, or seconds 5-60 for holdExercises, at most 6 sessions), keep what works, and say in "reply" what changed and why. Otherwise "days" is null. Nothing is applied until they tap.
@@ -324,9 +325,11 @@ function sanitizeChat(raw, { exercises, holds }) {
   const reply = str(raw.reply, 1500);
   if (!reply) return null;
   const days = sanitizeDays(raw.days, new Set(exercises || []), new Set(holds || []));
+  const g = raw.goals && Array.isArray(raw.goals.goals) ? raw.goals.goals.slice(0, 4).map(x => str(x, 160)).filter(Boolean) : [];
   return {
     reply,
     days,
+    goals: g.length ? { summary: str(raw.goals.summary, 500), goals: g } : null,
     goal: days && GOALS.includes(raw.goal) ? raw.goal : null,
     suggestions: (raw.suggestions || []).slice(0, 3).map(x => str(x, 40)).filter(Boolean),
   };

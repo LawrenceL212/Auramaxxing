@@ -11067,7 +11067,10 @@ function coachChatLogHtml() {
   const bubbles = c.msgs.map((m, i) => {
     const plan = m.days ? `<div class="cc-plan">${m.days.map(d => `<div class="co-day"><b>${escapeHtml(d.name)}</b><span>${d.exercises.map(e => `${escapeHtml(e.name)} ${e.sets}×${e.reps}`).join(' · ')}</span></div>`).join('')}
       <button type="button" class="ui-btn-outline cc-apply" data-i="${i}" ${m.applied ? 'disabled' : ''}>${m.applied ? '✓ Plan applied' : myProgram?.days?.length ? 'Replace my plan' : 'Use this plan'}</button></div>` : '';
-    return `<div class="cc-m ${m.role === 'user' ? 'me' : 'coach'}">${escapeHtml(m.content)}${plan}</div>`;
+    const goals = m.goals ? `<div class="cc-plan"><div class="pg-sub">Goals the coach would save</div>
+      <ul class="co-list" style="--co:var(--ui-gold);">${m.goals.goals.map(g => `<li>${escapeHtml(g)}</li>`).join('')}</ul>
+      <button type="button" class="ui-btn-outline cc-savegoals" data-i="${i}" ${m.goalsSaved ? 'disabled' : ''}>${m.goalsSaved ? '✓ Goals saved' : 'Save these goals'}</button></div>` : '';
+    return `<div class="cc-m ${m.role === 'user' ? 'me' : 'coach'}">${escapeHtml(m.content)}${goals}${plan}</div>`;
   }).join('');
   const chips = last && last.role === 'assistant' && last.suggestions?.length ? last.suggestions
     : !c.msgs.length ? ['How am I doing?', 'Make my plan harder', "I'm really sore"] : [];
@@ -11084,8 +11087,8 @@ async function coachChatSend(text) {
   coachChatSave();
   paintCoachChatLog(true);
   try {
-    const res = await callCoach('chat', '', null, { messages: c.msgs.slice(-12).map(m => ({ role: m.role, content: m.role === 'assistant' && m.days && !m.applied ? `${m.content}\n[Plan I proposed, not applied yet: ${m.days.map(d => `${d.name}: ${d.exercises.map(e => `${e.name} ${e.sets}x${e.reps}`).join(', ')}`).join(' | ')}]` : m.content })) });
-    c.msgs.push({ role: 'assistant', content: res.reply, days: res.days || null, goal: res.goal || null, suggestions: res.suggestions || [] });
+    const res = await callCoach('chat', '', null, { messages: c.msgs.slice(-12).map(m => ({ role: m.role, content: m.role === 'assistant' && m.goals && !m.goalsSaved ? `${m.content}\n[Goals I proposed, not saved yet: ${m.goals.goals.join(' | ')}]` : m.role === 'assistant' && m.days && !m.applied ? `${m.content}\n[Plan I proposed, not applied yet: ${m.days.map(d => `${d.name}: ${d.exercises.map(e => `${e.name} ${e.sets}x${e.reps}`).join(', ')}`).join(' | ')}]` : m.content })) });
+    c.msgs.push({ role: 'assistant', content: res.reply, days: res.days || null, goal: res.goal || null, goals: res.goals || null, suggestions: res.suggestions || [] });
   } catch (err) { c.error = coachErrorText(err); }
   c.busy = false;
   coachChatSave();
@@ -11105,6 +11108,25 @@ function paintCoachChatLog(scroll) {
   const inp = document.getElementById('cc-input');
   if (inp) inp.disabled = coachChatLoad().busy;
   log.querySelectorAll('[data-chip]').forEach(b => b.addEventListener('click', () => coachChatSend(b.dataset.chip)));
+  log.querySelectorAll('.cc-savegoals').forEach(b => b.addEventListener('click', async () => {
+    const m = coachChatLoad().msgs[Number(b.dataset.i)];
+    if (!m?.goals || m.goalsSaved) return;
+    b.disabled = true;
+    // keeps the answers and assumptions from intake; only the goals and their summary change
+    const next = { ...(profile.coachProfile || {}), summary: m.goals.summary || profile.coachProfile?.summary || '', goals: m.goals.goals.slice(0, 4), updated: todayStr() };
+    try {
+      await writeUserFields({ coachProfile: next });
+      profile.coachProfile = next;
+      m.goalsSaved = true; coachChatSave();
+      try { renderHuntGoal(); } catch (_) {}
+      showToast('Goals saved. The coach will plan around them.', 'success');
+      renderCoachChat(true);
+    } catch (e) {
+      b.disabled = false;
+      coachChatLoad().error = 'Could not save the goals: ' + (e?.message || e);
+      paintCoachChatLog(false);
+    }
+  }));
   log.querySelectorAll('.cc-apply').forEach(b => b.addEventListener('click', async () => {
     const m = coachChatLoad().msgs[Number(b.dataset.i)];
     if (!m?.days || m.applied) return;
