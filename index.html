@@ -4546,6 +4546,7 @@
           <div id="hunt-plan-head"></div>
           <div id="hunt-next"></div>
           <div id="hunt-dmg"></div>
+          <div id="goal-plan-entry"></div>
           <!-- The plan optimiser card used to sit here (renderPlanOptimiser, optimiser.js): the AI coach replaced it. The code is kept; with no host element it renders nothing. -->
           <div id="program-editor-wrap"></div>
           <div id="directives-strip"></div>
@@ -5040,6 +5041,9 @@ import { QUICK_TITLE, QUICK_TYPES, buildQuickCircuit, quickLoggerRows, generateQ
 import { weekStrip, weekProgress, latestDate, agoLabel, estimateMinutes, totalSets, topMuscles, ringArc,
   lastSet, lastTimeLabel, upNext, leftLabel } from "./hunt-view.js";
 import { penaltyView } from "./penalty-view.js";
+import { scorePlan, diffPlans } from "./plan-metrics.js";
+import { trainerRead, localSummary, fullHistory } from "./trainer-insights.js";
+import { skinfoldBodyFat, feasibility, feasibilityText, historyDigest, catalogue, excludedFromText, validatePlan, planGroups } from "./plan-gen.js";
 import { setInputKind, setInputHeaders, storedSet, storedSetSecs, partsToSecs, secsToParts,
          formatSetTime, isTimeKind, LOAD_TYPES, loadLabel, offersLoadChoice, defaultLoad,
          setLoad, loggedLoad, withLoad, BAND_LEVELS, DEFAULT_BAND, bandLabel, loggedBand,
@@ -9317,7 +9321,7 @@ document.getElementById('workout-time').value = nowTimeStr();
 function renderQuestFeed() {
   const wrap = document.getElementById('program-card-wrap');
   const editorWrap = document.getElementById('program-editor-wrap');
-  const clearHunt = () => ['hunt-plan-head', 'hunt-next', 'coach-chat', 'plan-optimiser'].forEach(id => { const e = document.getElementById(id); if (e) e.innerHTML = ''; });
+  const clearHunt = () => ['hunt-plan-head', 'hunt-next', 'goal-plan-entry', 'coach-chat', 'plan-optimiser'].forEach(id => { const e = document.getElementById(id); if (e) e.innerHTML = ''; });
   if (!editingProgram) { try { renderCoachChat(); } catch (_) {} }
   if (editingProgram) {
     wrap.innerHTML = '';
@@ -9337,8 +9341,10 @@ function renderQuestFeed() {
         <div style="font-family:var(--font-display);font-size:24px;font-weight:900;color:var(--text-dim);letter-spacing:.06em;margin-bottom:8px;">NO HUNT ASSIGNED</div>
         <p style="font-size:13px;color:var(--text-faint);margin:0 0 24px;line-height:1.7;">The System is watching.<br>You have not yet defined your training.</p>
         <button class="btn btn-primary" id="build-program-btn" style="width:auto;padding:11px 20px;min-height:44px;">+ Create plan</button>
+        <button class="btn" id="gp-empty-open" style="width:auto;padding:11px 20px;min-height:44px;margin-left:8px;">✦ Build with the System</button>
       </div>`;
     document.getElementById('build-program-btn')?.addEventListener('click', () => { editingProgram = true; renderQuestFeed(); });
+    document.getElementById('gp-empty-open')?.addEventListener('click', openGoalPlan);
     clearHunt();
     renderHuntChrome();
     return;
@@ -9395,6 +9401,7 @@ function renderQuestFeed() {
     </div>
   `;
   renderPlanOptimiser();
+  renderGoalPlanEntry();
 
   document.getElementById('edit-program-btn')?.addEventListener('click', () => { editingProgram = true; renderQuestFeed(); });
   document.getElementById('rest-day-log-btn')?.addEventListener('click', () => {
@@ -10200,6 +10207,465 @@ function attachSwipeHandlers(el, onSwipeLeft, onSwipeRight) {
     if (Math.abs(dx) < 50 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
     if (dx < 0) onSwipeLeft(); else onSwipeRight();
   }, { passive: true });
+}
+
+/* =========================================================================
+   GOAL TO PLAN
+   The Hunter writes what they want; the generatePlan Cloud Function asks
+   Claude for a proposal; plan-gen.js checks it against the game's own
+   exercises and what the Hunter ruled out. The preview shows the plan with a
+   reason per exercise and a goal check. Nothing is saved until Accept, which
+   writes programs/{uid} exactly as the plan editor does, and keeps the old
+   plan for an Undo. Standing preferences ("never legs") stay on this device.
+   ========================================================================= */
+const GP = { summary: null, sumBusy: false, chat: [], chatBusy: false, mode: 'new', goal: '', nums: {}, busy: false, error: '', question: '', result: null, raw: null, understood: null, backup: null, open: false };
+function gpStandingKey() { return 'aura_goalplan_standing_' + (currentUser?.uid || ''); }
+function gpStanding() { try { return JSON.parse(localStorage.getItem(gpStandingKey()) || '[]') || []; } catch (_) { return []; } }
+function gpSetStanding(list) { try { localStorage.setItem(gpStandingKey(), JSON.stringify(list.slice(0, 8))); } catch (_) { /* private mode */ } }
+
+function gpPlanScore(program, extra = {}) {
+  return scorePlan({
+    program, exercises: EXERCISES_ALL, workouts: myWorkouts.filter(w => w.uid === currentUser?.uid), today: todayStr(),
+    goal: program.goal, prs: myPRs || {}, excluded: [...(extra.excluded || []), ...gpStanding().flatMap(s => excludedFromText(s))],
+  });
+}
+function renderGoalPlanEntry() {
+  const host = document.getElementById('goal-plan-entry');
+  if (!host) return;
+  const has = !!myProgram?.days?.length;
+  let sc = null, tr = null;
+  try { tr = gpTrainerRead(); } catch (e) { console.warn('Trainer read failed:', e); }
+  if (has) { try { sc = gpPlanScore(myProgram); } catch (e) { console.warn('Plan score failed:', e); } }
+  const open = tr ? tr.flags.filter(f => f.tone !== 'good').length : 0;
+  const line = tr && tr.flags.length ? tr.headline : (has ? 'Your trainer is ready when you are.' : 'Tell your trainer your goal and it builds your first plan.');
+  host.innerHTML = `
+    <div class="gp-card gp-f-${tr ? tr.tone : 'none'}">
+      <button type="button" class="gp-card-main" id="gp-read-open">
+        ${sc ? gpRing(sc.score, 52) : '<span class="gp-card-icon">✦</span>'}
+        <span class="gp-card-body">
+          <span class="gp-card-eyebrow">YOUR TRAINER</span>
+          <span class="gp-card-line">${escapeHtml(line)}</span>
+          ${open ? `<span class="gp-card-sub">${open} thing${open === 1 ? '' : 's'} to look at</span>` : ''}
+        </span>
+      </button>
+      <div class="gp-card-actions">
+        <button type="button" id="gp-adjust-open">Ask</button>
+        <button type="button" id="gp-open">${has ? 'New plan' : 'Build my plan'}</button>
+      </div>
+    </div>`;
+  host.querySelector('#gp-open').addEventListener('click', () => openGoalPlan('new'));
+  host.querySelector('#gp-adjust-open').addEventListener('click', () => openGoalPlan('chat'));
+  host.querySelector('#gp-read-open').addEventListener('click', () => openGoalPlan(tr && tr.flags.length ? 'read' : has ? 'score' : 'new'));
+}
+function gpRing(score, size = 52) {
+  const r = 20, c = 2 * Math.PI * r, tone = gpScoreTone(score);
+  return `<span class="gp-ring gp-${tone}" style="width:${size}px;height:${size}px"><svg viewBox="0 0 48 48" aria-hidden="true"><circle cx="24" cy="24" r="${r}" class="gp-ring-bg"/><circle cx="24" cy="24" r="${r}" class="gp-ring-fg" stroke-dasharray="${(c * score / 100).toFixed(1)} ${c.toFixed(1)}" transform="rotate(-90 24 24)"/></svg><b>${score}</b></span>`;
+}
+function gpTrainerRead() {
+  const bw = (profile?.directives || []).find(d => d && d.metric === 'body_weight_kg' && Number(d.target) > 0);
+  return trainerRead({
+    workouts: myWorkouts.filter(w => w.uid === currentUser?.uid), exercises: EXERCISES_ALL, program: myProgram,
+    weights: myWeights, checkins: myCheckins, prs: myPRs || {}, today: todayStr(), targetKg: bw ? Number(bw.target) : null,
+  });
+}
+/* Everything the app knows about the Hunter that a trainer would want, for every request to the trainer. */
+function gpEverything() {
+  const lastC = myCheckins[myCheckins.length - 1] || null;
+  const prs = Object.entries(myPRs || {}).filter(([, p]) => p && p.e1rm).sort((a, b) => b[1].e1rm - a[1].e1rm).slice(0, 15).map(([name, p]) => ({ name, e1rmKg: Math.round(p.e1rm), date: p.date || null }));
+  return {
+    fullHistory: fullHistory({ workouts: myWorkouts.filter(w => w.uid === currentUser?.uid), exercises: EXERCISES_ALL, weights: myWeights, checkins: myCheckins, today: todayStr() }),
+    personalRecords: prs,
+    goals: (profile?.personalGoals || []).slice(0, 8).map(g => ({ type: g.type, exercise: g.exercise || null, target: g.target ?? null, name: g.name || null })),
+    directives: (profile?.directives || []).slice(0, 8).map(d => ({ metric: d.metric, target: d.target ?? null, startValue: d.startValue ?? null })),
+    weeklyGoalSessions: profile?.weeklyGoal || null,
+    latestCheckin: lastC ? { date: lastC.date, weightKg: lastC.weight || null, waistCm: lastC.waist || null, bodyFatPct: lastC.bodyFatPct ? Math.round(lastC.bodyFatPct * 10) / 10 : null } : null,
+    checkinCount: myCheckins.length, weighInCount: myWeights.length,
+  };
+}
+function gpTrainerContext() {
+  const tr = gpTrainerRead();
+  const b = gpBody();
+  let score = null;
+  if (myProgram?.days?.length) { try { score = gpPlanScore(myProgram); } catch (_) { /* optional */ } }
+  return {
+    today: todayStr(), goal: myProgram?.goal || null,
+    body: { weightKg: b.weightKg, bodyFatPct: b.bfPct, heightCm: b.heightCm, gender: b.gender },
+    read: { headline: tr.headline, findings: tr.flags.map(f => ({ area: f.area, tone: f.tone, title: f.title, detail: f.detail })), stats: tr.stats, muscleDaysSinceHard: tr.readiness },
+    planScore: score ? { score: score.score, grade: score.grade, measures: score.metrics.map(m => ({ name: m.label, value: m.value, status: m.status, fix: m.fix || null })) } : null,
+    history: historyDigest({ workouts: myWorkouts.filter(w => w.uid === currentUser?.uid), exercises: EXERCISES_ALL, today: todayStr(), weightKg: b.weightKg, heightCm: b.heightCm, gender: b.gender, bfPct: b.bfPct }),
+    standingPreferences: gpStanding(),
+    ...gpEverything(),
+  };
+}
+function gpSumKey() { return 'aura_goalplan_summary_' + (currentUser?.uid || ''); }
+function gpLoadSummary() {
+  if (GP.summary) return GP.summary;
+  try { GP.summary = JSON.parse(localStorage.getItem(gpSumKey()) || 'null'); } catch (_) { GP.summary = null; }
+  return GP.summary;
+}
+const GP_OUTLOOK = { on_track: ['On track', 'good'], slow: ['Slower than it could be', 'ok'], off_track: ['Not working yet', 'low'], not_enough_data: ['Too early to say', 'none'] };
+function gpSummaryHtml() {
+  const sm = gpLoadSummary();
+  if (GP.sumBusy) return '<div class="gp-sum"><div class="gp-dim">Your trainer is reading your last eight weeks…</div></div>';
+  if (!sm) return `<div class="gp-sum"><button type="button" class="gp-go gp-sum-go" id="gp-sum-btn">Get my progress update</button><div class="gp-dim">A short written read of how you are doing, whether you are progressing, and what to change next.</div></div>`;
+  const [label, tone] = GP_OUTLOOK[sm.outlook] || GP_OUTLOOK.not_enough_data;
+  return `<div class="gp-sum"><div class="gp-sum-head"><span class="gp-chip gp-t-${tone}">${escapeHtml(label)}</span><span class="gp-dim">${escapeHtml(sm.date || '')}${sm.local ? ' · computed' : ''}</span></div>
+    ${sm.basis ? `<div class="gp-dim gp-basis">Based on ${sm.basis.sessions} sessions since ${escapeHtml(sm.basis.since)}${sm.basis.weighIns ? `, ${sm.basis.weighIns} weigh-ins` : ''}.</div>` : ''}
+    ${String(sm.answer).split(/\n\n+/).map(p => `<p class="gp-sum-p">${escapeHtml(p)}</p>`).join('')}
+    ${sm.change ? `<button type="button" class="gp-find-ask" data-ask="${escapeHtml(sm.change)}">Change my plan: ${escapeHtml(sm.change)} →</button>` : ''}
+    ${sm.local ? '<div class="gp-dim">The written update was not available, so this is a summary computed from your numbers.</div>' : ''}
+    <button type="button" class="gp-link" id="gp-sum-btn">Refresh update</button></div>`;
+}
+function gpBasis() {
+  const h = gpEverything().fullHistory;
+  return h ? { sessions: h.sessions, since: h.since, weighIns: myWeights.length + myCheckins.length } : null;
+}
+async function gpSummarise() {
+  if (GP.sumBusy) return;
+  GP.sumBusy = true; GP.error = '';
+  renderGoalPlan();
+  const today = todayStr();
+  let out;
+  try {
+    const { getFunctions, httpsCallable } = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-functions.js");
+    const call = httpsCallable(getFunctions(app, 'us-central1'), 'askTrainer');
+    const res = (await call({ summary: true, context: gpTrainerContext(), plan: myProgram?.days?.length ? gpPlanForAi(myProgram) : undefined })).data;
+    out = { answer: res.answer, outlook: res.outlook, change: res.change || null, date: today, basis: gpBasis() };
+  } catch (e) {
+    console.warn('Progress update failed:', e);
+    let score = null;
+    if (myProgram?.days?.length) { try { score = gpPlanScore(myProgram); } catch (_) { /* optional */ } }
+    out = { ...localSummary(gpTrainerRead(), score), date: today, local: true, basis: gpBasis() };
+  }
+  GP.summary = out;
+  try { localStorage.setItem(gpSumKey(), JSON.stringify(out)); } catch (_) { /* private mode */ }
+  GP.sumBusy = false;
+  renderGoalPlan();
+}
+const GP_PROMPTS = ['How am I doing?', 'Why have I stalled?', 'Am I overtraining?', 'What should I do next?', 'What should I eat?'];
+function gpChatHtml() {
+  const msgs = GP.chat.map((m, i) => m.role === 'hunter'
+    ? `<div class="gp-msg gp-me">${escapeHtml(m.text)}</div>`
+    : `<div class="gp-msg gp-tr">${escapeHtml(m.text).replace(/\n/g, '<br>')}${m.change ? `<button type="button" class="gp-find-ask" data-ask="${escapeHtml(m.change)}">Change my plan: ${escapeHtml(m.change)} →</button>` : ''}</div>`).join('');
+  return `<div class="gp-chat">
+    ${msgs || `<div class="gp-dim">Ask anything about your training, recovery, food or body metrics. It answers from your own sessions and numbers, and offers a plan change when one would help.</div>
+    <div class="gp-prompts">${GP_PROMPTS.map(t => `<button type="button" class="gp-prompt" data-q="${escapeHtml(t)}">${escapeHtml(t)}</button>`).join('')}</div>`}
+    ${GP.chatBusy ? '<div class="gp-msg gp-tr gp-typing">Your trainer is reading your data…</div>' : ''}
+  </div>
+  <div class="gp-revise"><input id="gp-chat-in" class="gp-input" placeholder="Ask your trainer anything" maxlength="600" ${GP.chatBusy ? 'disabled' : ''}><button type="button" id="gp-chat-send" ${GP.chatBusy ? 'disabled' : ''}>Ask</button></div>
+  <div class="gp-dim">General training guidance, not medical advice. For pain or injury see a qualified professional.</div>`;
+}
+async function gpAsk(text) {
+  const q = String(text || '').trim();
+  if (!q || GP.chatBusy) return;
+  GP.chat.push({ role: 'hunter', text: q });
+  GP.chatBusy = true; GP.error = '';
+  renderGoalPlan();
+  try {
+    const { getFunctions, httpsCallable } = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-functions.js");
+    const call = httpsCallable(getFunctions(app, 'us-central1'), 'askTrainer');
+    const res = (await call({
+      question: q, context: gpTrainerContext(), plan: myProgram?.days?.length ? gpPlanForAi(myProgram) : undefined,
+      history: GP.chat.slice(-7, -1).map(m => ({ role: m.role, text: m.text })),
+    })).data;
+    GP.chat.push({ role: 'trainer', text: res.answer, change: res.change || null });
+  } catch (e) {
+    console.warn('Ask trainer failed:', e);
+    GP.chat.pop();
+    GP.error = (e && e.message && !/internal|functions\//.test(e.message)) ? e.message : 'The trainer could not answer just now. Try again in a minute.';
+  }
+  GP.chatBusy = false;
+  renderGoalPlan();
+  const m = document.getElementById('goal-plan-modal');
+  if (m) m.scrollTo(0, m.scrollHeight);
+}
+function gpReadHtml(tr) {
+  const AREA = { rhythm: 'Rhythm', recovery: 'Recovery', performance: 'Performance', body: 'Body', longterm: 'Since you started' };
+  const one = f => `<div class="gp-find gp-f-${f.tone}"><span class="gp-dot"></span><div><div class="gp-find-title">${escapeHtml(f.title)}</div><div class="gp-find-detail">${escapeHtml(f.detail)}</div>${f.ask ? `<button type="button" class="gp-find-ask" data-ask="${escapeHtml(f.ask)}">Ask your trainer →</button>` : ''}</div></div>`;
+  const top = tr.flags.slice(0, 3), rest = tr.flags.slice(3);
+  const ready = tr.readiness.length ? `<details class="gp-fold"><summary>Muscle readiness</summary><div class="gp-ready">${tr.readiness.map(r => `<span class="gp-rd gp-rd-${r.state}">${escapeHtml(r.group)} · ${r.days === 0 ? 'today' : r.days + 'd'}</span>`).join('')}</div><div class="gp-dim">Days since each group was last trained hard.</div></details>` : '';
+  const need = tr.flags.filter(f => f.tone !== 'good').length;
+  return `${gpSummaryHtml()}<div class="gp-read-title">${tr.flags.length ? (need ? `${need} thing${need === 1 ? '' : 's'} to look at` : 'All on track') : escapeHtml(tr.headline)}</div>
+    <div class="gp-list">${top.map(one).join('')}</div>
+    ${rest.length ? `<details class="gp-fold"><summary>${rest.length} more</summary><div class="gp-list">${rest.map(f => `<div class="gp-area">${AREA[f.area]}</div>${one(f)}`).join('')}</div></details>` : ''}
+    ${ready}`;
+}
+function gpScoreTone(n) { return n >= 70 ? 'good' : n >= 55 ? 'ok' : 'low'; }
+function gpScoreHtml(sc, before) {
+  const rows = sc.metrics.map(m => `<details class="gp-metric gp-m-${m.status}"><summary><span class="gp-dot"></span><span class="gp-m-label">${escapeHtml(m.label)}</span><span class="gp-m-value">${escapeHtml(m.value)}</span></summary><div class="gp-m-body">${escapeHtml(m.detail)}${m.fix ? `<div class="gp-m-fix">${escapeHtml(m.fix)}</div>` : ''}${m.fromLogs ? '<div class="gp-dim">From your logged sessions.</div>' : ''}</div></details>`).join('');
+  return `<div class="gp-score">
+    <div class="gp-score-top">${gpRing(sc.score, 72)}<div><div class="gp-score-grade">${escapeHtml(sc.grade)}</div><div class="gp-dim">${before != null ? `Was ${before} before this change` : 'Plan score out of 100'}</div></div></div>
+    <div class="gp-list">${rows}</div>
+    <div class="gp-dim gp-foot">Computed from your plan and logs. A guide, not a verdict.</div>
+  </div>`;
+}
+
+async function openGoalPlan(mode = 'new') {
+  GP.open = true; GP.error = ''; GP.question = ''; GP.mode = mode; GP.result = null; GP.raw = null; GP.base = null;
+  if (mode === 'adjust') GP.goal = '';
+  if (mode !== 'chat') GP.chatBusy = false;
+  if (mode !== 'new' && myProgram) { GP.base = gpPlanForAi(myProgram); GP.raw = GP.base; }
+  if (!myCheckins.length) { try { await loadCheckins(); } catch (_) { /* optional */ } }
+  renderGoalPlan();
+}
+function gpSwitch(mode) {
+  if (mode === GP.mode) return;
+  GP.mode = mode; GP.error = ''; GP.question = ''; GP.result = null;
+  if (mode === 'score' || mode === 'adjust') { GP.base = myProgram ? gpPlanForAi(myProgram) : null; GP.raw = GP.base; }
+  renderGoalPlan();
+}
+function gpPlanForAi(p) {
+  return { name: p.name, schedule: p.schedule, days: (p.days || []).map(d => ({ name: d.name, exercises: (d.exercises || []).map(e => ({ name: e.name, sets: e.sets, reps: e.reps })) })) };
+}
+function closeGoalPlan() {
+  GP.open = false;
+  document.getElementById('goal-plan-modal')?.remove();
+}
+
+function gpBody() {
+  const lastC = myCheckins[myCheckins.length - 1] || {};
+  const w = latestBodyweightKg();
+  return {
+    weightKg: Number(GP.nums.weight) || w || null,
+    bfPct: Number(GP.nums.bf) || (lastC.bodyFatPct ? Math.round(lastC.bodyFatPct * 10) / 10 : null),
+    gender: profile?.bodyType || profile?.gender || 'male',
+    heightCm: profile?.heightCm || null,
+  };
+}
+function gpCaliperBf() {
+  const n = GP.nums;
+  return skinfoldBodyFat({ gender: gpBody().gender, age: n.age, sites: [n.s1, n.s2, n.s3] });
+}
+function gpGoalCheck() {
+  const n = GP.nums, b = gpBody();
+  const bf = gpCaliperBf() ?? b.bfPct;
+  const weeks = Number(n.weeks);
+  if (!weeks || !b.weightKg) return null;
+  let goal = null;
+  if (Number(n.targetBf)) goal = { kind: 'lose_fat', targetBfPct: Number(n.targetBf) };
+  else if (Number(n.targetKg)) goal = { kind: Number(n.targetKg) < b.weightKg ? 'lose_fat' : 'gain_muscle', targetWeightKg: Number(n.targetKg) };
+  return goal ? feasibility({ weightKg: b.weightKg, bfPct: bf, goal, weeks }) : null;
+}
+
+function gpLiveHtml() {
+  const caliper = gpCaliperBf();
+  const check = gpGoalCheck();
+  const checkHtml = check ? `<div class="gp-check gp-${check.verdict}">
+      <div class="gp-check-head">${check.verdict === 'realistic' ? 'REALISTIC' : check.verdict === 'tight' ? 'TIGHT' : 'TOO FAST'}</div>
+      <div>${escapeHtml(feasibilityText(check))}</div>
+      <div class="gp-dim">Guide: ${check.dailyKcal > 0 ? '+' : ''}${check.dailyKcal} kcal a day and ${check.proteinG[0]}–${check.proteinG[1]} g protein. An estimate, not medical advice.</div>
+    </div>` : '';
+  return `${caliper != null ? `<div class="gp-dim">Calipers say about ${caliper}% body fat (±3).</div>` : ''}${checkHtml}`;
+}
+
+function renderGoalPlan() {
+  document.getElementById('goal-plan-modal')?.remove();
+  if (!GP.open) return;
+  const el = document.createElement('div');
+  el.id = 'goal-plan-modal';
+  el.className = 'hunter-modal';
+  el.setAttribute('role', 'dialog');
+  el.setAttribute('aria-label', 'Build a plan');
+  const r = GP.result;
+  const b = gpBody();
+  const caliper = gpCaliperBf();
+  const standing = gpStanding();
+  const n = GP.nums;
+  const v = k => escapeHtml(n[k] ?? '');
+  const adjust = GP.mode === 'adjust', scoreMode = GP.mode === 'score', readMode = GP.mode === 'read', chatMode = GP.mode === 'chat';
+  const curScore = (adjust || scoreMode) && myProgram?.days?.length ? gpPlanScore(myProgram) : null;
+  const adjustInput = `
+    <label class="gp-label" for="gp-goal">What should change?</label>
+    <textarea id="gp-goal" class="gp-text" rows="3" maxlength="1200" placeholder="Any sentence. For example: my left knee hurts, only 30 minutes a session this week, more arms, swap barbell for dumbbells, I want to add a run on Sundays.">${escapeHtml(GP.goal)}</textarea>
+    ${standing.length ? `<div class="gp-standing">Always respected: ${standing.map(s => `<span class="gp-tag">${escapeHtml(s)} <button type="button" class="gp-x" data-s="${escapeHtml(s)}" aria-label="Forget ${escapeHtml(s)}">×</button></span>`).join(' ')}</div>` : ''}
+    <button type="button" class="gp-go" id="gp-build" ${GP.busy ? 'disabled' : ''}>${GP.busy ? 'Your trainer is working…' : 'Adjust my plan'}</button>
+    ${curScore ? `<div class="gp-sub">YOUR PLAN TODAY</div>${gpScoreHtml(curScore)}` : ''}`;
+  const scoreOnly = curScore ? `${gpScoreHtml(curScore)}<button type="button" class="gp-go" id="gp-to-adjust">Ask your trainer to fix it</button>` : '<div class="gp-dim">No plan yet.</div>';
+  const input = chatMode ? gpChatHtml() : readMode ? gpReadHtml(gpTrainerRead()) : adjust ? adjustInput : scoreMode ? scoreOnly : `
+    <label class="gp-label" for="gp-goal">What do you want?</label>
+    <textarea id="gp-goal" class="gp-text" rows="4" maxlength="1200" placeholder="Say it your way: the look you want, a race, what you hate training, an injury, the days you have. For example: lean and defined by January, 3 days a week, no legs, I want to run a half marathon.">${escapeHtml(GP.goal)}</textarea>
+    <details class="gp-more" ${(n.weeks || n.targetBf || n.targetKg || n.s1) ? 'open' : ''}>
+      <summary>Add numbers for a goal check (optional)</summary>
+      <div class="gp-grid">
+        <label>Weight kg<input id="gp-weight" inputmode="decimal" value="${v('weight')}" placeholder="${b.weightKg || ''}"></label>
+        <label>Body fat %<input id="gp-bf" inputmode="decimal" value="${v('bf')}" placeholder="${caliper ?? b.bfPct ?? ''}"></label>
+        <label>Target body fat %<input id="gp-tbf" inputmode="decimal" value="${v('targetBf')}"></label>
+        <label>or target kg<input id="gp-tkg" inputmode="decimal" value="${v('targetKg')}"></label>
+        <label>In how many weeks<input id="gp-weeks" inputmode="numeric" value="${v('weeks')}"></label>
+      </div>
+      <div class="gp-sub">CALIPERS · ${b.gender === 'female' ? 'triceps, suprailiac, thigh' : 'chest, abdomen, thigh'} (mm)</div>
+      <div class="gp-grid">
+        <label>Site 1<input id="gp-s1" inputmode="decimal" value="${v('s1')}"></label>
+        <label>Site 2<input id="gp-s2" inputmode="decimal" value="${v('s2')}"></label>
+        <label>Site 3<input id="gp-s3" inputmode="decimal" value="${v('s3')}"></label>
+        <label>Age<input id="gp-age" inputmode="numeric" value="${v('age')}"></label>
+      </div>
+      <div id="gp-live">${gpLiveHtml()}</div>
+    </details>
+    ${standing.length ? `<div class="gp-standing">Always respected: ${standing.map(s => `<span class="gp-tag">${escapeHtml(s)} <button type="button" class="gp-x" data-s="${escapeHtml(s)}" aria-label="Forget ${escapeHtml(s)}">×</button></span>`).join(' ')}</div>` : ''}
+    <button type="button" class="gp-go" id="gp-build" ${GP.busy ? 'disabled' : ''}>${GP.busy ? 'The System is planning…' : 'Build my plan'}</button>`;
+  let preview = '';
+  if (r && r.program) {
+    const prog = r.program;
+    const groups = planGroups(prog, EXERCISES_ALL);
+    const max = Math.max(1, ...Object.values(groups));
+    const newScore = gpPlanScore(prog, { excluded: r.excluded });
+    const before = adjust && myProgram?.days?.length ? gpPlanScore(myProgram, { excluded: r.excluded }) : null;
+    const diff = adjust ? diffPlans(myProgram, prog) : null;
+    const days = prog.days.map((d, di) => `
+      <div class="gp-day"><div class="gp-day-name">${escapeHtml(d.name)}</div>
+        ${d.exercises.map(e => `<div class="gp-ex"><div class="gp-ex-top"><b>${escapeHtml(e.name)}</b><span>${e.sets} × ${e.reps}</span></div>
+          ${r.whys[di + ':' + e.name] ? `<div class="gp-why">${escapeHtml(r.whys[di + ':' + e.name])}</div>` : ''}</div>`).join('')}
+      </div>`).join('');
+    preview = `
+      <div class="gp-preview">
+        <div class="gp-eyebrow">${adjust ? 'ADJUSTED PLAN' : 'YOUR PLAN'}</div>
+        <div class="gp-plan-name">${escapeHtml(prog.name)} · ${prog.days.length} day${prog.days.length === 1 ? '' : 's'}</div>
+        <div class="gp-dim">Trains ${prog.schedule.join(', ')}</div>
+        ${r.summary ? `<p class="gp-summary">${escapeHtml(r.summary)}</p>` : ''}
+        ${r.notes.map(t => `<div class="gp-note">${escapeHtml(t)}</div>`).join('')}
+        ${adjust && before ? `<div class="gp-diff"><div class="gp-sub">WHAT CHANGED</div>${[...diff.added.map(t => ['+', t]), ...diff.removed.map(t => ['−', t]), ...diff.changed.map(t => ['~', t])].map(([k, t]) => `<div class="gp-diff-row gp-d${k === '+' ? 'a' : k === '−' ? 'r' : 'c'}"><b>${k}</b> ${escapeHtml(t)}</div>`).join('') || '<div class="gp-dim">No exercise changes. Only the plan details moved.</div>'}</div>` : ''}
+        <div class="gp-sub">PLAN SCORE</div>
+        ${gpScoreHtml(newScore, before ? before.score : null)}
+        ${days}
+        <div class="gp-sub">WEEKLY SETS BY MUSCLE</div>
+        ${Object.entries(groups).sort((a, c) => c[1] - a[1]).map(([g, val]) => `<div class="gp-vol"><span>${g}</span><i style="width:${Math.round(val / max * 100)}%"></i><b>${val}</b></div>`).join('')}
+        ${r.excluded.length ? `<label class="gp-keep"><input type="checkbox" id="gp-keep" checked> Always leave out ${escapeHtml(r.excluded.join(', '))}</label>` : ''}
+        <div class="gp-revise"><input id="gp-rev" class="gp-input" placeholder="Change more: “swap squats, my knee hurts”, “add a run day”" maxlength="600"><button type="button" id="gp-revise-btn" ${GP.busy ? 'disabled' : ''}>Revise</button></div>
+        <div class="gp-actions"><button type="button" class="gp-go" id="gp-accept" ${GP.busy ? 'disabled' : ''}>Accept plan</button><button type="button" class="gp-ghost" id="gp-regen" ${GP.busy ? 'disabled' : ''}>Regenerate</button></div>
+        <div class="gp-dim">${adjust ? 'Accepting updates your current plan.' : 'Accepting replaces your current plan.'} You get an Undo.</div>
+      </div>`;
+  }
+  el.innerHTML = `<div class="hunter-modal-inner gp-inner">
+    <div class="hunter-modal-header"><div class="gp-title">${adjust ? 'Adjust your plan' : 'Your trainer'}</div><button type="button" class="gp-close" id="gp-close" aria-label="Close">✕</button></div>
+    ${r && r.program ? '' : `<div class="gp-tabs" role="tablist">${[['read', 'Read'], ['score', 'Plan'], ['chat', 'Ask'], ['new', 'Build']].map(([k, t]) => `<button type="button" role="tab" class="gp-tab ${GP.mode === k ? 'on' : ''}" data-mode="${k}" aria-selected="${GP.mode === k}">${t}</button>`).join('')}</div>`}
+    ${GP.question ? `<div class="gp-ask"><b>The System asks</b><div>${escapeHtml(GP.question)}</div><div class="gp-dim">Add the answer to what you wrote, then build again.</div></div>` : ''}
+    ${GP.error ? `<div class="gp-error" role="alert">${escapeHtml(GP.error)}</div>` : ''}
+    ${r && r.program ? '' : input}
+    ${r && r.program ? '' : ''}${preview}
+    ${r && r.program ? `<button type="button" class="gp-ghost" id="gp-edit">← Edit what I asked</button>` : ''}
+  </div>`;
+  document.body.appendChild(el);
+  gpWire(el);
+}
+
+function gpReadInputs(el) {
+  const g = id => el.querySelector(id)?.value ?? '';
+  if (el.querySelector('#gp-goal')) {
+    GP.goal = g('#gp-goal');
+    GP.nums = { weight: g('#gp-weight'), bf: g('#gp-bf'), targetBf: g('#gp-tbf'), targetKg: g('#gp-tkg'), weeks: g('#gp-weeks'), s1: g('#gp-s1'), s2: g('#gp-s2'), s3: g('#gp-s3'), age: g('#gp-age') };
+  }
+}
+function gpWire(el) {
+  el.querySelector('#gp-close').addEventListener('click', closeGoalPlan);
+  el.addEventListener('click', e => { if (e.target === el) closeGoalPlan(); });
+  // numbers feed the goal check live; only the card is patched so the keyboard stays up
+  el.querySelectorAll('.gp-grid input').forEach(inp => inp.addEventListener('input', () => { gpReadInputs(el); const live = el.querySelector('#gp-live'); if (live) live.innerHTML = gpLiveHtml(); }));
+  el.querySelectorAll('.gp-x').forEach(btn => btn.addEventListener('click', () => {
+    gpReadInputs(el);
+    gpSetStanding(gpStanding().filter(s => s !== btn.dataset.s));
+    renderGoalPlan();
+  }));
+  el.querySelector('#gp-build')?.addEventListener('click', () => { gpReadInputs(el); gpRun(null); });
+  el.querySelectorAll('.gp-tab').forEach(b => b.addEventListener('click', () => { gpReadInputs(el); gpSwitch(b.dataset.mode); }));
+  el.querySelector('#gp-sum-btn')?.addEventListener('click', gpSummarise);
+  el.querySelectorAll('.gp-prompt').forEach(b => b.addEventListener('click', () => gpAsk(b.dataset.q)));
+  el.querySelector('#gp-chat-send')?.addEventListener('click', () => gpAsk(el.querySelector('#gp-chat-in').value));
+  el.querySelector('#gp-chat-in')?.addEventListener('keydown', e => { if (e.key === 'Enter') gpAsk(e.target.value); });
+  el.querySelector('#gp-regen')?.addEventListener('click', () => gpRun(null));
+  el.querySelectorAll('.gp-find-ask').forEach(btn => btn.addEventListener('click', () => { GP.mode = 'adjust'; GP.goal = btn.dataset.ask; GP.base = myProgram ? gpPlanForAi(myProgram) : null; GP.raw = GP.base; renderGoalPlan(); }));
+  el.querySelector('#gp-to-adjust')?.addEventListener('click', () => { GP.mode = 'adjust'; GP.goal = ''; GP.base = myProgram ? gpPlanForAi(myProgram) : null; GP.raw = GP.base; renderGoalPlan(); });
+  el.querySelector('#gp-revise-btn')?.addEventListener('click', () => {
+    const text = el.querySelector('#gp-rev').value.trim();
+    if (text) gpRun(text);
+  });
+  el.querySelector('#gp-edit')?.addEventListener('click', () => { GP.result = null; renderGoalPlan(); });
+  el.querySelector('#gp-accept')?.addEventListener('click', () => gpAccept(el));
+}
+
+async function gpRun(revision) {
+  const goal = GP.goal.trim();
+  if (goal.length < 3) { GP.error = 'Tell the System what you want first.'; renderGoalPlan(); return; }
+  GP.busy = true; GP.error = ''; GP.question = '';
+  renderGoalPlan();
+  try {
+    const b = gpBody();
+    const today = todayStr();
+    const digest = historyDigest({
+      workouts: myWorkouts.filter(w => w.uid === currentUser?.uid), exercises: EXERCISES_ALL, today,
+      weightKg: b.weightKg, heightCm: b.heightCm, gender: b.gender, bfPct: gpCaliperBf() ?? b.bfPct,
+    });
+    Object.assign(digest, gpEverything());
+    const { getFunctions, httpsCallable } = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-functions.js");
+    const call = httpsCallable(getFunctions(app, 'us-central1'), 'generatePlan');
+    const standing = gpStanding();
+    const res = (await call({
+      goal, digest, catalogue: catalogue(EXERCISES_ALL), standing,
+      feasibility: GP.mode === 'new' ? (gpGoalCheck() || undefined) : undefined,
+      currentPlan: revision ? (GP.raw || undefined) : (GP.mode === 'adjust' ? GP.base : undefined),
+      revision: revision || (GP.mode === 'adjust' ? goal : undefined),
+    })).data;
+    if (res.question && !res.plan) { GP.question = res.question; GP.busy = false; renderGoalPlan(); return; }
+    GP.raw = res.plan;
+    const checked = validatePlan(res.plan, EXERCISES_ALL, { excludeGroups: [...(res.exclude || []), ...standing.flatMap(s => excludedFromText(s))], goalText: goal + ' ' + standing.join(' ') });
+    if (checked.error) throw new Error(checked.error);
+    GP.result = { ...checked, summary: checked.summary || res.plan?.summary || '' };
+    GP.understood = res.understood || null;
+  } catch (e) {
+    console.warn('Goal to plan failed:', e);
+    GP.error = (e && e.message && !/internal|functions\//.test(e.message)) ? e.message : 'The System could not build a plan just now. Try again in a minute.';
+  }
+  GP.busy = false;
+  renderGoalPlan();
+}
+
+async function gpAccept(el) {
+  const r = GP.result;
+  if (!r?.program || !currentUser) return;
+  if (el.querySelector('#gp-keep')?.checked && r.excluded.length) {
+    const ex = r.excluded, legs = ['Quads', 'Hamstrings', 'Calves'].every(g => ex.includes(g));
+    const names = legs ? ['legs', ...ex.filter(g => !['Quads', 'Hamstrings', 'Calves'].includes(g))] : ex;
+    gpSetStanding([...new Set([...gpStanding(), ...names.map(g => 'no ' + g.toLowerCase())])]);
+  }
+  GP.busy = true; renderGoalPlan();
+  const prev = myProgram ? JSON.parse(JSON.stringify(myProgram)) : null;
+  const next = { ...(prev || {}), ...r.program };
+  if (prev?.days) next.days = next.days.map(d => { const old = prev.days.find(o => o.name === d.name); return old?.lastDate ? { ...d, lastDate: old.lastDate } : d; });
+  if (prev?.goal) next.goal = prev.goal; else delete next.goal;
+  try {
+    await setDoc(doc(db, 'programs', currentUser.uid), next);
+    myProgram = next;
+    GP.backup = prev;
+    GP.busy = false; GP.result = null; GP.raw = null;
+    closeGoalPlan();
+    showToast('New plan saved. Tap Undo on the banner to go back.', 'success');
+    gpUndoBanner();
+    renderQuestFeed();
+  } catch (e) {
+    console.error('Saving generated plan failed:', e);
+    GP.busy = false; GP.error = 'Could not save the plan. Try again.';
+    renderGoalPlan();
+  }
+}
+function gpUndoBanner() {
+  document.getElementById('gp-undo')?.remove();
+  const b = document.createElement('div');
+  b.id = 'gp-undo';
+  b.className = 'gp-undo';
+  b.innerHTML = '<span>New plan saved.</span><button type="button" id="gp-undo-btn">Undo</button><button type="button" id="gp-undo-x" aria-label="Dismiss">✕</button>';
+  document.body.appendChild(b);
+  b.querySelector('#gp-undo-x').addEventListener('click', () => { GP.backup = null; b.remove(); });
+  b.querySelector('#gp-undo-btn').addEventListener('click', async () => {
+    const prev = GP.backup;
+    b.remove();
+    if (!prev || !currentUser) return;
+    try {
+      await setDoc(doc(db, 'programs', currentUser.uid), prev);
+      myProgram = prev; GP.backup = null;
+      showToast('Your old plan is back.', 'success');
+      renderQuestFeed();
+    } catch (e) { showToast('Could not restore the old plan.', 'error'); }
+  });
 }
 
 /* =========================================================================
