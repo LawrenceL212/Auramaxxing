@@ -5037,7 +5037,7 @@ import { optimisePlan, applySuggestion, activeDismissals, GOALS, GOAL_LABELS, MU
 import { QUESTIONS as FB_QUESTIONS, classify as classifyFeedback, volumeNudges, pendingFeedback, staleFeedbackDates } from "./session-feedback.js";
 import { blockState, blockWeeks } from "./mesocycle.js";
 import { volumeRows, exerciseInsight, dayStats, suggestionsByDay } from "./plan-insights.js";
-import { partyPulse, pulseSummary, agoLabel } from "./party-pulse.js";
+import { partyPulse, pulseSummary, agoLabel as partyAgo } from "./party-pulse.js";
 import { compareHunters, describeEdges, liftRival, rivalryMoments } from "./comparisons.js";
 import { cleanSuggestion, suggestionDoc, canSend as canSendSuggestion, sortSuggestions, countNew as countNewSuggestions,
          claudePrompt, claudeUrl, toMillis as suggestionMillis, bugContext, contextLines, STATUS_LABELS as SUGGESTION_STATUS, SUGGESTION_MAX, DAILY_LIMIT as SUGGESTION_DAILY } from "./suggestions.js";
@@ -11371,10 +11371,10 @@ function renderPartyStrip() {
   const slices = snap && total ? snap.hunters.filter(h => h.dmg > 0).sort((a, b) => b.dmg - a.dmg)
     .map(h => `<i style="flex:${h.dmg};background:${partyColor(h.uid)}" title="${escapeHtml(h.name)}: ${h.dmg}"></i>`).join('') : '';
   const people = rows.map(r => `
-    <button type="button" class="ps-p ${r.trainedToday ? 'done' : ''} ${partySel === r.uid ? 'sel' : ''}" data-uid="${r.uid}" ${r.isMe ? 'disabled' : ''} aria-label="${escapeHtml(r.name)}: ${r.trainedToday ? 'trained today' : 'last trained ' + agoLabel(r.daysAgo)}">
+    <button type="button" class="ps-p ${r.trainedToday ? 'done' : ''} ${partySel === r.uid ? 'sel' : ''}" data-uid="${r.uid}" ${r.isMe ? 'disabled' : ''} aria-label="${escapeHtml(r.name)}: ${r.trainedToday ? 'trained today' : 'last trained ' + partyAgo(r.daysAgo)}">
       <span class="ps-av" style="--c:${partyColor(r.uid)}">${escapeHtml(initials(r.name))}${r.trainedToday ? '<b>✓</b>' : ''}</span>
       <span class="ps-n">${r.isMe ? 'You' : escapeHtml(r.name.split(' ')[0])}</span>
-      <span class="ps-s">${r.trainedToday ? 'today' : agoLabel(r.daysAgo)}</span>
+      <span class="ps-s">${r.trainedToday ? 'today' : partyAgo(r.daysAgo)}</span>
     </button>`).join('');
   let panel = '';
   if (partySel) {
