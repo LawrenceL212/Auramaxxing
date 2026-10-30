@@ -213,3 +213,19 @@ npm run deploy:coach                                 # firebase deploy --only fu
 ```
 
 Needs the Blaze plan (secrets and outbound calls). Callers must be signed in; 10 calls a Hunter a day, counted in `users/{uid}.aiCoach` by the Admin SDK. Nothing it returns is applied by the function.
+
+## Automatic deploys
+
+`.github/workflows/deploy-functions.yml` deploys `designPlan` and `sendReminders` whenever a change to
+`functions/` merges into main (after the lint and the coach/reminder tests pass), so `npm run deploy:coach`
+and `npm run deploy:reminders` are no longer run by hand. Other functions can be deployed from the
+Actions tab ("Deploy functions" → Run workflow, with a different `only` value).
+
+One-time setup:
+
+1. On your computer: `npx firebase-tools login:ci`. Sign in with the Google account that owns the
+   Firebase project. It prints a long token.
+2. On GitHub: the repo → Settings → Secrets and variables → Actions → New repository secret.
+   Name `FIREBASE_TOKEN`, value the token. Never paste it anywhere else.
+
+The Anthropic key stays in Firebase Secret Manager; the workflow never sees it.
