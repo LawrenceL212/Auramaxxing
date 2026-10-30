@@ -231,8 +231,10 @@ export function plannedVolume(program, exercises) {
 
 /** The volume a goal aims each group at, or null when the goal does not ask
     for that group (endurance plans are not pushed toward muscle volume). */
-function volumeTarget(goal, group) {
+function volumeTarget(goal, group, focus) {
   const g = MUSCLE_GROUPS[group];
+  // a group the body check-in puts first gets the growth dose whatever the goal
+  if (focus && focus.has(group)) return g.mav;
   if (goal === 'muscle') return g.mav;
   if (goal === 'endurance') return null;
   return g.major ? g.mev : null; // strength and general: the big groups, at the minimum
@@ -418,13 +420,19 @@ function volumeRules(ctx, touched) {
   const out = [];
   const taken = new Set();
   const range = GOAL_REPS[goal];
+  const focus = new Set(ctx.physiqueFocus || []);
+  const why = (group) => focus.has(group) ? 'your body check-in puts it first' : `${GOAL_LABELS[goal].toLowerCase()} training wants`;
 
   const gaps = [];
   for (const [group, g] of Object.entries(MUSCLE_GROUPS)) {
     const v = volume[group];
     if (v > g.mrv) gaps.push({ group, kind: 'over', size: v - g.mrv });
-    const target = volumeTarget(goal, group);
+    const target = volumeTarget(goal, group, focus);
     if (target != null && v < target) gaps.push({ group, kind: 'under', size: target - v, target });
+    // session feedback (session-feedback.js): two sessions in a row said add or reduce
+    const nudge = (ctx.volumeNudge || {})[group];
+    if (nudge === 1 && v < g.mrv && !gaps.some(x => x.group === group)) gaps.push({ group, kind: 'under', size: 1, target: Math.floor(v) + 1, feedback: true });
+    if (nudge === -1 && v > g.mev && !gaps.some(x => x.group === group)) gaps.push({ group, kind: 'over', size: 1, feedback: true });
   }
   gaps.sort((a, b) => b.size - a.size || a.group.localeCompare(b.group));
 
@@ -444,7 +452,9 @@ function volumeRules(ctx, touched) {
         id: `volume-down:${group}:${c.name}:${c.sets - 1}`,
         type: 'volume',
         title: `${c.name}: ${c.sets} → ${c.sets - 1} sets`,
-        reason: `${group} gets about ${Math.round(v)} sets a week, past the ${MUSCLE_GROUPS[group].mrv} most people can recover from. One fewer set here keeps the work you can actually grow from.`,
+        reason: gap.feedback
+          ? `${(ctx.volumeNudgeWhy || {})[group] || `Your session feedback says ${group.toLowerCase()} is too much.`} One fewer set of ${c.name} (${group} is at about ${Math.round(v)} sets a week) lets you recover.`
+          : `${group} gets about ${Math.round(v)} sets a week, past the ${MUSCLE_GROUPS[group].mrv} most people can recover from. One fewer set here keeps the work you can actually grow from.`,
         change: { op: 'sets', dayIndex: c.dayIndex, exIndex: c.exIndex, name: c.name, from: c.sets, to: c.sets - 1 },
         priority: 2,
       });
@@ -458,9 +468,13 @@ function volumeRules(ctx, touched) {
         id: `volume-up:${group}:${c.name}:${c.sets + 1}`,
         type: 'volume',
         title: `${c.name}: ${c.sets} → ${c.sets + 1} sets`,
-        reason: `${group} gets about ${Math.round(v)} sets a week; ${GOAL_LABELS[goal].toLowerCase()} training wants at least ${gap.target}. ${c.name} trains it most directly.`,
+        reason: gap.feedback
+          ? `${(ctx.volumeNudgeWhy || {})[group] || `Your session feedback says ${group.toLowerCase()} can take more.`} One more set of ${c.name} (${group} is at about ${Math.round(v)} sets a week) uses that room.`
+          : focus.has(group)
+          ? `${group} gets about ${Math.round(v)} sets a week; ${why(group)}, so it wants at least ${gap.target}. ${c.name} trains it most directly.`
+          : `${group} gets about ${Math.round(v)} sets a week; ${why(group)} at least ${gap.target}. ${c.name} trains it most directly.`,
         change: { op: 'sets', dayIndex: c.dayIndex, exIndex: c.exIndex, name: c.name, from: c.sets, to: c.sets + 1 },
-        priority: 4,
+        priority: focus.has(group) ? 3 : 4,
       });
       continue;
     }
@@ -474,9 +488,9 @@ function volumeRules(ctx, touched) {
       id: `add:${group}:${name}`,
       type: 'add',
       title: `Add ${name} to ${dayName}`,
-      reason: `Nothing in your plan trains ${group.toLowerCase()}${v ? ' directly' : ''}. 3 sets of ${range.start} on ${dayName} starts covering it.`,
+      reason: `Nothing in your plan trains ${group.toLowerCase()}${v ? ' directly' : ''}${focus.has(group) ? ', and your body check-in puts it first' : ''}. 3 sets of ${range.start} on ${dayName} starts covering it.`,
       change: { op: 'add', dayIndex: di, exercise: { name, sets: 3, reps: range.start } },
-      priority: 4,
+      priority: focus.has(group) ? 3 : 4,
     });
   }
   return out;
@@ -812,6 +826,10 @@ function scheduleRules(ctx) {
  *   personalGoals?: profile.personalGoals,
  *   weeklyGoal?:   profile.weeklyGoal,
  *   dismissed?:    ids to leave out,
+ *   volumeNudge?:  { Group: 1 | -1 } from session feedback (session-feedback.js): add or take away one set,
+ *   volumeNudgeWhy?: { Group: sentence } the reason shown with it,
+ *   physiqueFocus?: MUSCLE_GROUPS names the body check-in puts first
+ *                   (body-metrics.js physiqueFocus); they get the growth dose,
  * }
  * @returns { goal, inferred, suggestions:[{id, type, title, reason, change, priority}] }
  */
