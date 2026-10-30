@@ -964,6 +964,8 @@
   #sys-open .vid{ position:absolute; inset:0; width:100%; height:100%; object-fit:cover; background:#000;
     opacity:0; transition:opacity 500ms var(--ease-cinema); }
   #sys-open .vid.on{ opacity:1; }
+  /* wide screens: the clips are portrait, so show them whole instead of a cropped slice */
+  @media (min-aspect-ratio: 9/10){ #sys-open .vid{ object-fit:contain; } }
   #sys-open .bossbar{ position:absolute; left:0; right:0; bottom:calc(15dvh + env(safe-area-inset-bottom,0px));
     text-align:center; opacity:0; pointer-events:none; padding:0 18px; }
   #sys-open .bossbar.on{ animation:bbIn 1100ms var(--ease-cinema) forwards; }
@@ -1635,6 +1637,33 @@
   }
 
   /* ── PLAN OPTIMISER — suggested plan changes under the quest carousel ── */
+  #hunt-goal{position:relative;z-index:1;padding:0 3px;} /* above the gate backdrop, which runs past the hero */
+  .hunt-goal{display:flex;flex-direction:column;gap:6px;border:1px solid var(--ui-gold,#FFB454);border-radius:12px;background:var(--card);padding:12px 14px;}
+  .hunt-goal.empty{border-style:dashed;}
+  .hg-main{display:flex;flex-direction:column;gap:5px;text-align:left;background:none;border:0;color:inherit;font:inherit;padding:0;cursor:pointer;width:100%;}
+  .hg-top{display:flex;justify-content:space-between;align-items:center;}
+  .hg-eyebrow{font-size:11px;letter-spacing:.2em;color:var(--ui-gold,#FFB454);}
+  .hg-look{font-size:18px;font-weight:700;color:var(--text);}
+  .hg-bar{height:6px;border-radius:3px;background:rgba(255,255,255,.08);overflow:hidden;display:block;}
+  .hg-bar i{display:block;height:100%;background:linear-gradient(90deg,#FF8E3C,#FFD166);}
+  .hg-sub,.hg-coach{font-size:13px;color:var(--text-dim);}
+  .hg-coach{color:var(--text);}
+  .hg-ask{align-self:flex-start;background:none;border:0;color:var(--blue,#5BA8FF);font:inherit;font-size:13px;padding:2px 0;cursor:pointer;}
+  .cchat{margin:18px 0 6px;border:1px solid var(--ui-gold,#FFB454);border-radius:12px;background:var(--card);padding:12px 14px;}
+  .cc-head{display:flex;justify-content:space-between;align-items:center;}
+  .cc-link{background:none;border:0;color:var(--text-dim);font:inherit;font-size:12px;padding:4px 6px;cursor:pointer;}
+  .cc-goal-line{font-size:13px;color:var(--text-dim);margin:6px 0 8px;}
+  .cc-log{max-height:340px;overflow-y:auto;display:flex;flex-direction:column;gap:8px;padding:2px 0;}
+  .cc-m{max-width:88%;padding:9px 12px;border-radius:12px;font-size:14px;line-height:1.45;white-space:pre-wrap;}
+  .cc-m.me{align-self:flex-end;background:rgba(255,180,84,.16);border:1px solid rgba(255,180,84,.35);}
+  .cc-m.coach{align-self:flex-start;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);}
+  .cc-typing{color:var(--text-dim);}
+  .cc-plan{margin-top:8px;white-space:normal;}
+  .cc-apply{width:100%;margin-top:8px;}
+  .cc-chips{display:flex;flex-wrap:wrap;gap:6px;}
+  .cc-in{display:flex;gap:8px;margin-top:10px;}
+  .cc-in input{flex:1;min-width:0;box-sizing:border-box;padding:10px 12px;border-radius:10px;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.04);color:var(--text);font:inherit;font-size:14px;}
+  .cc-in button{padding:10px 16px;}
   .plan-opt{margin:18px 0 6px;border:1px solid var(--border);border-radius:10px;background:var(--card);padding:12px 14px;}
   .plan-opt-head{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;background:none;border:0;padding:0;color:inherit;cursor:pointer;text-align:left;}
   .plan-opt-eyebrow{font-family:var(--font-mono);font-size:10px;letter-spacing:.2em;color:var(--brass);}
@@ -1920,6 +1949,36 @@
 
 
   /* program editor */
+  .cheer-btn{flex:none;align-self:flex-start;min-height:0;min-width:0;height:auto;width:auto;background:rgba(255,255,255,0.03);border:1px solid rgba(91,168,255,0.18);border-radius:12px;padding:2px 8px;font-size:12px;color:var(--text-dim);cursor:pointer;font-family:inherit;line-height:1.5;}
+  .cheer-btn.on{border-color:var(--brass);color:var(--brass);background:var(--brass-dim);cursor:default;}
+  /* party strip on the Hunt screen */
+  .ps-head{display:flex;flex-direction:column;gap:2px;margin-bottom:10px;}
+  .ps-eyebrow{font-family:var(--font-mono);font-size:10px;letter-spacing:.2em;color:var(--brass);}
+  .ps-sum{font-size:13px;color:var(--text);}
+  .ps-row{display:flex;gap:10px;overflow-x:auto;padding-bottom:2px;}
+  .ps-p{flex:none;display:flex;flex-direction:column;align-items:center;gap:2px;background:none;border:1px solid transparent;border-radius:12px;padding:6px 8px;color:var(--text);font-family:inherit;cursor:pointer;min-width:58px;}
+  .ps-p[disabled]{cursor:default;}
+  .ps-p.sel{border-color:var(--brass);background:var(--brass-dim);}
+  .ps-av{position:relative;width:40px;height:40px;border-radius:50%;display:grid;place-items:center;font-weight:800;font-size:13px;color:var(--text);border:2px solid var(--c);opacity:.55;background:rgba(0,0,0,.25);}
+  .ps-p.done .ps-av{opacity:1;box-shadow:0 0 12px -2px var(--c);}
+  .ps-av b{position:absolute;right:-4px;bottom:-4px;width:16px;height:16px;border-radius:50%;background:var(--growing);color:#04130c;font-size:10px;display:grid;place-items:center;}
+  .ps-n{font-size:12px;font-weight:700;}
+  .ps-s{font-size:10px;color:var(--text-faint);}
+  .ps-vs{margin-top:10px;border:1px solid rgba(91,168,255,0.2);border-radius:10px;padding:10px;background:rgba(0,0,0,.2);}
+  .ps-vs-h{font-family:var(--font-mono);font-size:10px;letter-spacing:.16em;color:var(--brass);margin-bottom:8px;}
+  .ps-cols{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  .ps-col-h{font-size:11px;font-weight:700;color:var(--text);margin-bottom:4px;}
+  .ps-col-h small{color:var(--text-faint);font-weight:500;}
+  .ps-line{font-size:11.5px;color:var(--text-dim);line-height:1.35;margin-bottom:4px;}
+  .ps-line.dim{color:var(--text-faint);}
+  .ps-raid{margin-top:12px;}
+  .ps-raid-h{display:flex;justify-content:space-between;gap:8px;font-size:12px;color:var(--text-dim);margin-bottom:5px;}
+  .ps-raid-h span:first-child{color:var(--text);font-weight:700;}
+  .ps-bar{display:flex;height:9px;border-radius:5px;overflow:hidden;background:rgba(255,255,255,.05);gap:1px;}
+  .ps-bar i{display:block;}
+  .ps-bar-left{display:block;background:rgba(255,77,103,.35);}
+  .ps-raid-k{display:flex;flex-wrap:wrap;gap:4px 12px;margin-top:6px;font-size:11px;color:var(--text-dim);}
+  .ps-raid-k i{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:4px;}
   /* plan editor: week strip, weekly volume, folding workout cards */
   .pe-top{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:10px;}
   .pe-title{display:flex;flex-direction:column;min-width:0;}
@@ -1980,6 +2039,11 @@
   .pe-fact{flex:1 1 90px;background:rgba(0,0,0,0.25);border:1px solid rgba(91,168,255,0.12);border-radius:10px;padding:7px 9px;display:flex;flex-direction:column;}
   .pe-fact span{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--text-faint);}
   .pe-fact b{font-size:13px;}
+  .party-rival{font-size:11.5px;color:var(--text-dim);margin:2px 0 6px;}
+  .party-rival.hidden{display:none;}
+  .party-rival.me{color:var(--growing);}
+  .pe-rival{font-size:12px;margin-bottom:10px;padding:7px 10px;border-radius:8px;background:rgba(231,178,74,0.08);border:1px solid rgba(231,178,74,0.25);color:var(--text);}
+  .pe-rival.me{background:rgba(79,209,161,0.08);border-color:rgba(79,209,161,0.3);}
   .pe-bigspark{margin-bottom:10px;display:flex;flex-direction:column;gap:2px;}
   .pe-bigspark svg{width:100%;height:44px;}
   .pe-bigspark small{font-size:10.5px;color:var(--text-faint);}
@@ -4446,16 +4510,19 @@
            the card lives in the More panel, opened by the More tile: nothing was removed. ── -->
       <div id="hunt-top"></div>
       <div class="hunt-hero" id="hunt-hero"></div>
+      <div id="hunt-goal" class="hunt-block"></div>
       <div id="program-card-wrap" class="hunt-block"></div>
       <div class="hunt-tiles hunt-block" id="hunt-tiles"></div>
 
+      <div id="party-strip" style="padding:var(--fluid-pad) var(--fluid-pad) 0;"></div>
       <div id="hunt-more" hidden>
         <div class="hunt-more-body">
+          <div id="coach-chat"></div>
           <div id="hunt-plan-head"></div>
           <div id="hunt-next"></div>
           <div id="hunt-dmg"></div>
           <div id="goal-plan-entry"></div>
-          <div id="plan-optimiser"></div>
+          <!-- The plan optimiser card used to sit here (renderPlanOptimiser, optimiser.js): the AI coach replaced it. The code is kept; with no host element it renders nothing. -->
           <div id="program-editor-wrap"></div>
           <div id="directives-strip"></div>
           <div id="objectives-strip"></div>
@@ -4974,6 +5041,8 @@ import { optimisePlan, applySuggestion, activeDismissals, GOALS, GOAL_LABELS, MU
 import { QUESTIONS as FB_QUESTIONS, classify as classifyFeedback, volumeNudges, pendingFeedback, staleFeedbackDates } from "./session-feedback.js";
 import { blockState, blockWeeks } from "./mesocycle.js";
 import { volumeRows, exerciseInsight, dayStats, suggestionsByDay } from "./plan-insights.js";
+import { partyPulse, pulseSummary, agoLabel as partyAgo } from "./party-pulse.js";
+import { compareHunters, describeEdges, liftRival, rivalryMoments } from "./comparisons.js";
 import { cleanSuggestion, suggestionDoc, canSend as canSendSuggestion, sortSuggestions, countNew as countNewSuggestions,
          claudePrompt, claudeUrl, toMillis as suggestionMillis, bugContext, contextLines, STATUS_LABELS as SUGGESTION_STATUS, SUGGESTION_MAX, DAILY_LIMIT as SUGGESTION_DAILY } from "./suggestions.js";
 import {
@@ -9051,6 +9120,7 @@ function switchView(name) {
   if (name === 'quest') {
     try { renderHuntChrome(); } catch (_) {}
     renderObjectivesStrip();
+    try { renderPartyStrip(); } catch (_) {}
   try { renderDirectivesStrip(); } catch (_) {}
   try { renderHabitCard(); } catch (_) {}
     if (myProgram && myProgram.days && myProgram.days.length) {
@@ -9130,6 +9200,7 @@ async function loadAllData() {
   populateExerciseSelects();
   renderQuestFeed();
   renderObjectivesStrip();
+  try { renderPartyStrip(); } catch (_) {}
   try { renderDirectivesStrip(); } catch (_) {}
   try { renderHabitCard(); } catch (_) {}
   maybeSpawnWeaknessTrial().catch(console.warn);
@@ -9224,7 +9295,8 @@ document.getElementById('workout-time').value = nowTimeStr();
 function renderQuestFeed() {
   const wrap = document.getElementById('program-card-wrap');
   const editorWrap = document.getElementById('program-editor-wrap');
-  const clearHunt = () => ['hunt-plan-head', 'hunt-next', 'goal-plan-entry', 'plan-optimiser'].forEach(id => { const e = document.getElementById(id); if (e) e.innerHTML = ''; });
+  const clearHunt = () => ['hunt-plan-head', 'hunt-next', 'goal-plan-entry', 'coach-chat', 'plan-optimiser'].forEach(id => { const e = document.getElementById(id); if (e) e.innerHTML = ''; });
+  if (!editingProgram) { try { renderCoachChat(); } catch (_) {} }
   if (editingProgram) {
     wrap.innerHTML = '';
     clearHunt();
@@ -9612,9 +9684,43 @@ function renderHuntDmg() {
   host.innerHTML = `<div class="ui-window ui-window-pad" style="padding-bottom:0;"><div class="ui-row"><span class="ui-glyph" style="--tint:var(--legendary)">${HI.bolt}</span><span class="ui-row-name">Dungeon damage</span><span class="ui-row-k" title="Estimated from your last-time sets">~${dmg.toLocaleString()}</span></div></div>`;
 }
 
+/** The physique goal, on the Hunt screen itself: the look, how far along, the date, and what the coach was told.
+    Tap opens the goal sheet (look, date, coach). Reads state, writes nothing. */
+function renderHuntGoal() {
+  const host = document.getElementById('hunt-goal');
+  if (!host) return;
+  if (!currentUser || !profile || editingProgram) { host.innerHTML = ''; return; }
+  const g = profile.physiqueGoal;
+  const coach = profile.coachProfile?.goals || [];
+  const coachLine = coach.length ? `<div class="hg-coach">Coach: ${escapeHtml(coach[0])}${coach.length > 1 ? ` +${coach.length - 1}` : ''}</div>` : '';
+  const coachBtn = '<button type="button" class="hg-ask" id="hg-ask">Message the coach</button>';
+  if (!g || !g.preset || !g.deadline) {
+    host.innerHTML = `<div class="hunt-goal empty"><button type="button" class="hg-main" id="hg-open">
+        <span class="hg-eyebrow">◈ MY GOAL</span><span class="hg-look">${coach.length ? 'Set the look and a date' : 'Set your physique goal'}</span>
+        <span class="hg-sub">Pick a look and a date and the app plans the rest, and re-plans at every check-in.</span>${coachLine}</button>${coachBtn}</div>`;
+  } else {
+    const sex = profile.bodyType || 'male';
+    const look = g.preset === 'custom' ? (g.custom?.label || 'Custom look') : (presetsFor(sex)[g.preset]?.label || 'My look');
+    const weeks = Math.max(0, Math.ceil(daysBetween(todayStr(), g.deadline) / 7));
+    const dateTxt = new Date(g.deadline + 'T00:00:00').toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
+    let plan = null, prog = null;
+    try { plan = currentPhysiquePlan(); if (plan && !plan.error) prog = goalProgress({ ...g, start: g.start || {} }, plan, todayStr()); } catch (_) {}
+    const [vLabel, vColor] = plan && !plan.error ? (PG_VERDICT[plan.verdict] || PG_VERDICT.on_schedule) : ['', ''];
+    const pct = prog ? prog.overall : null;
+    host.innerHTML = `<div class="hunt-goal"><button type="button" class="hg-main" id="hg-open">
+        <span class="hg-top"><span class="hg-eyebrow">◈ MY GOAL</span>${vLabel ? `<span class="ui-chip" style="color:${vColor};background:rgba(255,255,255,.05);">${vLabel}</span>` : ''}</span>
+        <span class="hg-look">${escapeHtml(look)}</span>
+        ${pct != null ? `<span class="hg-bar"><i style="width:${pct}%"></i></span>` : ''}
+        <span class="hg-sub">${pct != null ? `${pct}% there · ` : ''}${weeks} week${weeks === 1 ? '' : 's'} left · by ${dateTxt}${plan && plan.error ? ' · do a check-in to start tracking' : ''}</span>${coachLine}</button>${coachBtn}</div>`;
+  }
+  host.querySelector('#hg-open')?.addEventListener('click', () => window.openPhysiqueGoalSheet());
+  host.querySelector('#hg-ask')?.addEventListener('click', () => window.openCoachChatNow());
+}
+
 function renderHuntChrome() {
   try { renderHuntTop(); } catch (e) { console.warn('Hunt top failed:', e); }
   try { renderHuntHero(); } catch (e) { console.warn('Hunt hero failed:', e); }
+  try { renderHuntGoal(); } catch (e) { console.warn('Hunt goal failed:', e); }
   try { renderHuntTiles(); } catch (e) { console.warn('Hunt tiles failed:', e); }
   try { renderHuntNext(); } catch (e) { console.warn('Hunt next failed:', e); }
   try { renderHuntDmg(); } catch (e) { console.warn('Hunt dmg failed:', e); }
@@ -10553,7 +10659,7 @@ function writePlanOptDismissed(record) {
   try { localStorage.setItem(planOptDismissKey(), JSON.stringify(record)); } catch (_) { /* private mode */ }
 }
 function planOptIsOpen() {
-  try { return localStorage.getItem(PLAN_OPT_OPEN_KEY) !== 'closed'; } catch (_) { return true; }
+  try { return localStorage.getItem(PLAN_OPT_OPEN_KEY) === 'open'; } catch (_) { return false; } // folded until the Hunter opens it: the goal card above it is the main thing
 }
 
 function renderPlanOptimiser() {
@@ -10654,6 +10760,128 @@ function renderPlanOptimiser() {
     }
     renderQuestFeed();
   }));
+}
+
+
+/* =========================================================================
+   COACH CHAT
+   The coach (designPlan, mode "chat") in the Hunt "more" area, above the plan optimiser (whose
+   suggestions stay one tap away, collapsed). The conversation is kept in this browser only
+   (localStorage, last 20 messages): nothing new is stored in Firestore for it. A reply can carry a full
+   adjusted plan; nothing changes until the Hunter taps, and replacing a plan takes a second tap.
+   ========================================================================= */
+let coachChat = null;
+const coachChatKey = () => 'aura_coach_chat_' + (currentUser?.uid || '');
+function coachChatLoad() {
+  if (coachChat) return coachChat;
+  let msgs = [];
+  try { const v = JSON.parse(localStorage.getItem(coachChatKey()) || '[]'); if (Array.isArray(v)) msgs = v.filter(m => m && (m.role === 'user' || m.role === 'assistant') && typeof m.content === 'string'); } catch (_) {}
+  coachChat = { msgs, busy: false, error: '' };
+  return coachChat;
+}
+function coachChatSave() {
+  try { localStorage.setItem(coachChatKey(), JSON.stringify(coachChat.msgs.slice(-20))); } catch (_) { /* private mode */ }
+}
+
+function coachChatLogHtml() {
+  const c = coachChatLoad();
+  const last = c.msgs[c.msgs.length - 1];
+  const bubbles = c.msgs.map((m, i) => {
+    const plan = m.days ? `<div class="cc-plan">${m.days.map(d => `<div class="co-day"><b>${escapeHtml(d.name)}</b><span>${d.exercises.map(e => `${escapeHtml(e.name)} ${e.sets}×${e.reps}`).join(' · ')}</span></div>`).join('')}
+      <button type="button" class="ui-btn-outline cc-apply" data-i="${i}" ${m.applied ? 'disabled' : ''}>${m.applied ? '✓ Plan applied' : myProgram?.days?.length ? 'Replace my plan' : 'Use this plan'}</button></div>` : '';
+    return `<div class="cc-m ${m.role === 'user' ? 'me' : 'coach'}">${escapeHtml(m.content)}${plan}</div>`;
+  }).join('');
+  const chips = last && last.role === 'assistant' && last.suggestions?.length ? last.suggestions
+    : !c.msgs.length ? ['How am I doing?', 'Make my plan harder', "I'm really sore"] : [];
+  return `${bubbles}${c.busy ? '<div class="cc-m coach cc-typing">Thinking…</div>' : ''}${c.error ? `<div class="ci-msg" style="color:#FF4D67;">${escapeHtml(c.error)}</div>` : ''}
+    ${chips.length && !c.busy ? `<div class="cc-chips">${chips.map(t => `<button type="button" class="ui-chip dim" data-chip="${escapeHtml(t)}">${escapeHtml(t)}</button>`).join('')}</div>` : ''}`;
+}
+
+async function coachChatSend(text) {
+  const c = coachChatLoad();
+  text = String(text || '').trim().slice(0, 800);
+  if (!text || c.busy) return;
+  c.msgs.push({ role: 'user', content: text });
+  c.busy = true; c.error = '';
+  coachChatSave();
+  paintCoachChatLog(true);
+  try {
+    const res = await callCoach('chat', '', null, { messages: c.msgs.slice(-12).map(m => ({ role: m.role, content: m.role === 'assistant' && m.days && !m.applied ? `${m.content}\n[Plan I proposed, not applied yet: ${m.days.map(d => `${d.name}: ${d.exercises.map(e => `${e.name} ${e.sets}x${e.reps}`).join(', ')}`).join(' | ')}]` : m.content })) });
+    c.msgs.push({ role: 'assistant', content: res.reply, days: res.days || null, goal: res.goal || null, suggestions: res.suggestions || [] });
+  } catch (err) { c.error = coachErrorText(err); }
+  c.busy = false;
+  coachChatSave();
+  paintCoachChatLog(true);
+}
+
+function paintCoachChatLog(scroll) {
+  const log = document.getElementById('cc-log');
+  if (!log) return;
+  log.innerHTML = coachChatLogHtml();
+  if (scroll) {
+    const bubbles = log.querySelectorAll('.cc-m');
+    const lastEl = bubbles[bubbles.length - 1];
+    // a fresh reply is read from its top; otherwise follow the end of the conversation
+    log.scrollTop = lastEl && lastEl.classList.contains('coach') && !lastEl.classList.contains('cc-typing') ? lastEl.offsetTop - log.offsetTop - 4 : log.scrollHeight;
+  }
+  const inp = document.getElementById('cc-input');
+  if (inp) inp.disabled = coachChatLoad().busy;
+  log.querySelectorAll('[data-chip]').forEach(b => b.addEventListener('click', () => coachChatSend(b.dataset.chip)));
+  log.querySelectorAll('.cc-apply').forEach(b => b.addEventListener('click', async () => {
+    const m = coachChatLoad().msgs[Number(b.dataset.i)];
+    if (!m?.days || m.applied) return;
+    if (myProgram?.days?.length && b.dataset.sure !== '1') { b.dataset.sure = '1'; b.textContent = 'Tap again to replace'; return; }
+    b.disabled = true;
+    const before = myProgram;
+    try {
+      myProgram = programFromCoach({ goal: m.goal || myProgram?.goal || 'general', days: m.days });
+      await setDoc(doc(db, 'programs', currentUser.uid), myProgram);
+      m.applied = true; coachChatSave();
+      try { renderQuestFeed(); renderPlanOptimiser(); } catch (_) {}
+      showToast('Plan updated from the coach.', 'success');
+      paintCoachChatLog(false);
+    } catch (e) {
+      myProgram = before; b.disabled = false; b.dataset.sure = ''; b.textContent = 'Use this plan';
+      coachChatLoad().error = 'Could not save the plan: ' + (e?.message || e);
+      paintCoachChatLog(false);
+    }
+  }));
+}
+
+/** Open the More panel at the coach chat and put the cursor in the message box. */
+window.openCoachChatNow = () => {
+  if (document.getElementById('hunt-more')?.hidden) { try { setHuntMore(true); } catch (_) {} }
+  renderCoachChat(false);
+  const host = document.getElementById('coach-chat');
+  if (host) host.scrollIntoView({ block: 'start', behavior: 'smooth' });
+  setTimeout(() => document.getElementById('cc-input')?.focus({ preventScroll: true }), 300);
+};
+
+function renderCoachChat(force) {
+  const host = document.getElementById('coach-chat');
+  if (!host || !currentUser || !profile) return;
+  if (!force && host.querySelector('.cchat')) return;
+  const hasGoals = !!profile.coachProfile?.goals?.length;
+  host.innerHTML = `<div class="cchat">
+    <div class="cc-head"><span class="plan-opt-eyebrow">◈ COACH</span>
+      <span class="cc-tools">${hasGoals ? '<button type="button" class="cc-link" id="cc-goals">My goals</button>' : ''}<button type="button" class="cc-link" id="cc-clear">Clear</button></span></div>
+    ${hasGoals ? `<div class="cc-goal-line">${escapeHtml(profile.coachProfile.goals[0])}${profile.coachProfile.goals.length > 1 ? ` +${profile.coachProfile.goals.length - 1}` : ''}</div>
+      <div class="cc-log" id="cc-log"></div>
+      <form class="cc-in" id="cc-form"><input type="text" id="cc-input" maxlength="800" placeholder="Ask your coach anything…" autocomplete="off" /><button type="submit" class="ui-btn-primary" id="cc-send">Send</button></form>
+      <div class="ci-foot">Written by an AI from your own data. It can be wrong.</div>`
+    : `<div class="cc-goal-line">Tell your coach what you want to achieve and it will build and adjust your plan around it.</div>
+      <button type="button" class="ui-btn-primary" id="cc-start" style="width:100%;margin-top:8px;">Tell the coach my goal</button>`}
+  </div>`;
+  document.getElementById('cc-start')?.addEventListener('click', () => window.openCoachIntake(() => renderCoachChat(true)));
+  document.getElementById('cc-goals')?.addEventListener('click', () => window.openCoachIntake(() => renderCoachChat(true), { reset: true }));
+  document.getElementById('cc-clear')?.addEventListener('click', () => { coachChatLoad().msgs = []; coachChat.error = ''; coachChatSave(); renderCoachChat(true); });
+  document.getElementById('cc-form')?.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const inp = document.getElementById('cc-input');
+    const v = inp.value; inp.value = '';
+    coachChatSend(v);
+  });
+  if (hasGoals) paintCoachChatLog(true);
 }
 
 /* =========================================================================
@@ -11565,6 +11793,82 @@ document.getElementById('rest-timer-more')?.addEventListener('click', () => { SF
 document.getElementById('rest-timer-skip')?.addEventListener('click', () => { SFX.restTap(); if (restTimerInterval) finishRest(true); });
 
 /* =========================================================================
+   PARTY STRIP
+   On the Hunt screen: who in the party has trained today, this week's raid
+   boss with each Hunter's slice of the damage, and a tap-through "you vs
+   them" that says who leads on what. Read-only on workouts, PRs and stats
+   (logic: party-pulse.js, comparisons.js). The raid numbers come from the
+   snapshot renderRaidBoss leaves in localStorage.
+   ========================================================================= */
+const PARTY_COLORS = ['#d4a017', '#7c3aed', '#0ea5e9', '#ff6b9d', '#4fd1a1', '#f97316'];
+let partySel = null, partyPRsAsked = false, partyRaidAsked = false;
+function partyColor(uid) {
+  const i = [...allUsers].map(u => u.uid).sort().indexOf(uid);
+  return PARTY_COLORS[(i < 0 ? 0 : i) % PARTY_COLORS.length];
+}
+function readRaidSnap() {
+  try {
+    const s = JSON.parse(localStorage.getItem('aura.raidSnap') || 'null');
+    return s && s.wk === dStr(startOfWeek(new Date())) ? s : null;
+  } catch (_) { return null; }
+}
+function partyCompare(uid) {
+  const me = allUsers.find(u => u.uid === currentUser?.uid), them = allUsers.find(u => u.uid === uid);
+  if (!me || !them) return null;
+  const weekStart = todayStr(startOfWeek(new Date()));
+  const week = u => allWorkouts.filter(w => w.uid === u && w.date >= weekStart).length;
+  return describeEdges(compareHunters(me, them, {
+    myStreak: computeStreak(me.uid), theirStreak: computeStreak(them.uid),
+    myWeek: week(me.uid), theirWeek: week(them.uid),
+    myPRs: myPRs || {}, theirPRs: allUserPRs[uid] || {}, statDefs: STAT_DEFS,
+  }));
+}
+function renderPartyStrip() {
+  const el = document.getElementById('party-strip');
+  if (!el) return;
+  if (!currentUser || allUsers.length < 2) { el.innerHTML = ''; return; }
+  if (!partyPRsAsked) { partyPRsAsked = true; loadAllUserPRs().then(renderPartyStrip).catch(() => {}); }
+  // Once a session, bring the raid numbers up to date without needing a visit to the Rank tab.
+  if (!partyRaidAsked && allWorkouts.length) { partyRaidAsked = true; Promise.resolve(renderRaidBoss({ keyOnly: true })).then(renderPartyStrip).catch(() => {}); }
+  const today = todayStr();
+  const rows = partyPulse(allUsers, allWorkouts, today, currentUser.uid, todayStr(startOfWeek(new Date())));
+  const snap = readRaidSnap();
+  const total = snap ? snap.hunters.reduce((a, h) => a + h.dmg, 0) : 0;
+  const slices = snap && total ? snap.hunters.filter(h => h.dmg > 0).sort((a, b) => b.dmg - a.dmg)
+    .map(h => `<i style="flex:${h.dmg};background:${partyColor(h.uid)}" title="${escapeHtml(h.name)}: ${h.dmg}"></i>`).join('') : '';
+  const people = rows.map(r => `
+    <button type="button" class="ps-p ${r.trainedToday ? 'done' : ''} ${partySel === r.uid ? 'sel' : ''}" data-uid="${r.uid}" ${r.isMe ? 'disabled' : ''} aria-label="${escapeHtml(r.name)}: ${r.trainedToday ? 'trained today' : 'last trained ' + partyAgo(r.daysAgo)}">
+      <span class="ps-av" style="--c:${partyColor(r.uid)}">${escapeHtml(initials(r.name))}${r.trainedToday ? '<b>✓</b>' : ''}</span>
+      <span class="ps-n">${r.isMe ? 'You' : escapeHtml(r.name.split(' ')[0])}</span>
+      <span class="ps-s">${r.trainedToday ? 'today' : partyAgo(r.daysAgo)}</span>
+    </button>`).join('');
+  let panel = '';
+  if (partySel) {
+    const d = partyCompare(partySel);
+    if (d) {
+      const col = (title, list, n, empty) => `<div class="ps-col"><div class="ps-col-h">${title}${n > list.length ? ` <small>+${n - list.length} more</small>` : ''}</div>${list.length ? list.map(t => `<div class="ps-line">${escapeHtml(t)}</div>`).join('') : `<div class="ps-line dim">${empty}</div>`}</div>`;
+      panel = `<div class="ps-vs"><div class="ps-vs-h">YOU vs ${escapeHtml(d.name.toUpperCase())}</div><div class="ps-cols">${col(`${escapeHtml(d.name)} leads`, d.theyLead, d.theyLeadCount, 'Nothing yet')}${col('You lead', d.youLead, d.youLeadCount, 'Nothing yet')}</div><button type="button" class="btn btn-sm ps-open" data-uid="${partySel}" style="margin-top:8px;">Full head-to-head</button></div>`;
+    }
+  }
+  el.innerHTML = `
+    <div class="card ps">
+      <div class="ps-head"><span class="ps-eyebrow">◈ PARTY</span><span class="ps-sum">${escapeHtml(pulseSummary(rows))}</span></div>
+      <div class="ps-row">${people}</div>
+      ${panel}
+      ${snap ? `<div class="ps-raid">
+        <div class="ps-raid-h"><span>⚔ ${escapeHtml(snap.boss)}</span><span>${snap.cleared ? 'Cleared' : `${snap.hpPct}% HP left · ${snap.daysLeft}d`}</span></div>
+        <div class="ps-bar">${slices || ''}<span class="ps-bar-left" style="flex:${Math.max(snap.hpPct, 0.5)}"></span></div>
+        <div class="ps-raid-k">${snap.hunters.filter(h => h.dmg > 0).sort((a, b) => b.dmg - a.dmg).map(h => `<span><i style="background:${partyColor(h.uid)}"></i>${escapeHtml(h.name.split(' ')[0])} ${h.dmg}</span>`).join('') || 'No damage dealt yet this week.'}</div>
+      </div>` : ''}
+    </div>`;
+  el.querySelector('.ps-open')?.addEventListener('click', e => { try { openHunterProfile(e.currentTarget.dataset.uid); } catch (_) {} });
+  el.querySelectorAll('.ps-p:not([disabled])').forEach(b => b.addEventListener('click', () => {
+    partySel = partySel === b.dataset.uid ? null : b.dataset.uid;
+    renderPartyStrip();
+  }));
+}
+
+/* =========================================================================
    PLAN EDITOR
    The week on top (tap a day to open its workout, tap a rest day to give it
    one), weekly sets per muscle group planned against what was actually
@@ -11874,6 +12178,7 @@ function peOpenExercise(di, ei, workouts, today, repaint) {
   const info = exerciseInsight(ex.name, workouts, today);
   const [stLabel, stColor] = PE_STATUS[info.status] || PE_STATUS.tracking;
   const repsOf = () => ex.reps ?? (ex.repRange ? Number(String(ex.repRange).match(/(\d+)/)?.[1]) : 10) ?? 10;
+  const rival = liftRival(ex.name, myPRs || {}, allUsers.filter(u => u.uid !== currentUser?.uid).map(u => [u.displayName || 'Hunter', allUserPRs[u.uid] || {}]));
   const trend = info.rate == null ? '' : `<div class="pe-fact"><span>Trend</span><b>${info.rate >= 0 ? '+' : ''}${info.rate} kg/wk</b></div>`;
   const overlay = document.createElement('div');
   overlay.className = 'modal-overlay';
@@ -11885,6 +12190,7 @@ function peOpenExercise(di, ei, workouts, today, repaint) {
       ${info.best ? `<div class="pe-fact"><span>Best e1RM</span><b>${Math.round(info.best)} kg</b></div>` : ''}
       ${trend}
     </div>
+    ${rival ? `<div class="pe-rival ${rival.lead}">${rival.lead === 'them' ? '⚔' : '🏆'} ${escapeHtml(rival.text)}</div>` : ''}
     ${info.series.length > 1 ? `<div class="pe-bigspark" style="color:${stColor}">${peSpark(info.series, 280, 44)}<small>Estimated 1RM per session, last 8 weeks</small></div>` : ''}
     <div class="pe-step"><span>Sets</span><button type="button" class="btn" data-k="sets" data-d="-1" aria-label="Fewer sets">−</button><b id="pe-s">${ex.sets}</b><button type="button" class="btn" data-k="sets" data-d="1" aria-label="More sets">+</button></div>
     <div class="pe-step"><span>Reps</span><button type="button" class="btn" data-k="reps" data-d="-1" aria-label="Fewer reps">−</button><b id="pe-r">${repsOf()}</b><button type="button" class="btn" data-k="reps" data-d="1" aria-label="More reps">+</button></div>
@@ -12452,6 +12758,7 @@ function addExerciseRow(presetName, targetSets, targetReps, prefillSets) {
       <button type="button" class="remove-x">×</button>
     </div>
     <div class="muscle-tags"></div>
+    <div class="party-rival hidden"></div>
     <div class="load-choice hidden"><span>Load</span><select class="load-select" aria-label="Load type"></select><select class="band-select hidden" aria-label="Band strength">${BAND_LEVELS.map(b => `<option value="${b}">${bandLabel(b)}</option>`).join('')}</select></div>
     <div class="set-table-head hidden" id="set-table-head-${Date.now()}"><span>#</span><span class="reps-header">Reps</span><span class="weight-header">Weight (kg)</span><span></span></div>
     <div class="sets-list"></div>
@@ -12916,6 +13223,15 @@ function addExerciseRow(presetName, targetSets, targetReps, prefillSets) {
     const def = EXERCISES_ALL[row.dataset.exName] || {};
     const map = def.muscles || {};
     tagsEl.innerHTML = Object.keys(map).map(m => `<span class="tag">${m}</span>`).join('');
+    // Who in the party leads you on this lift (their PRs load once, in the background).
+    const rivalEl = row.querySelector('.party-rival');
+    if (rivalEl) {
+      if (!partyPRsAsked && allUsers.length > 1) { partyPRsAsked = true; loadAllUserPRs().then(refreshTags).catch(() => {}); }
+      const rival = row.dataset.exName ? liftRival(row.dataset.exName, myPRs || {}, allUsers.filter(u => u.uid !== currentUser?.uid).map(u => [u.displayName || 'Hunter', allUserPRs[u.uid] || {}])) : null;
+      rivalEl.classList.toggle('hidden', !rival);
+      rivalEl.className = 'party-rival' + (rival ? ' ' + rival.lead : ' hidden');
+      rivalEl.textContent = rival ? (rival.lead === 'them' ? '⚔ ' : '🏆 ') + rival.text : '';
+    }
     const head = row.querySelector('.set-table-head');
     if (head) {
       const [first, second] = setInputHeaders(currentKind());
@@ -17898,7 +18214,7 @@ window.openPhysiqueGoalSheet = () => {
       await writeUserFields({ physiqueGoal: deleteField() });
       delete profile.physiqueGoal;
       overlay.remove();
-      try { renderPlanOptimiser(); } catch (_) {}
+      try { renderPlanOptimiser(); renderHuntGoal(); } catch (_) {}
       showToast('Physique goal removed.', 'info');
     } catch (e) { document.getElementById('pg-msg').textContent = 'Could not remove: ' + (e?.message || e); }
   });
@@ -17922,7 +18238,7 @@ window.openPhysiqueGoalSheet = () => {
       await writeUserFields({ physiqueGoal: goal });
       profile.physiqueGoal = goal;
       overlay.remove();
-      try { renderPlanOptimiser(); } catch (_) {}
+      try { renderPlanOptimiser(); renderHuntGoal(); } catch (_) {}
       showToast('Physique goal set. It re-works itself at every check-in.', 'success');
       // refresh whatever screen shows the goal
       if (typeof renderTrends === 'function' && document.getElementById('view-trends')?.classList.contains('active')) renderTrends();
@@ -18167,7 +18483,13 @@ window.openCheckinHub = (view = 'home', reward = null) => {
 
 /** Names the coach may use: every resistance exercise the app knows (no timed or run moves). */
 function coachExercises() {
-  return Object.entries(EXERCISES_ALL).filter(([, d]) => d && !d.timed && !isRunDef(d)).map(([n]) => n).slice(0, 400);
+  return Object.entries(EXERCISES_ALL).filter(([, d]) => d && !isCardioTimed(d)).map(([n]) => n).slice(0, 400);
+}
+/** Timed holds (front lever, L-sit...): reps are seconds. Minutes-based timed work and runs stay out of the coach's list. */
+const isCoachHold = (d) => !!(d && d.timed && d.timedUnit !== 'mins' && !isRunDef(d));
+const isCardioTimed = (d) => !!(d.timed ? !isCoachHold(d) : isRunDef(d));
+function coachHolds() {
+  return Object.entries(EXERCISES_ALL).filter(([, d]) => isCoachHold(d)).map(([n]) => n).slice(0, 150);
 }
 
 /** The Hunter's data as the coach sees it. */
@@ -18206,6 +18528,7 @@ function coachInput(mode, request, image, extra = {}) {
     feedback: feedbackEntries().sort((a, b) => b.date.localeCompare(a.date)).slice(0, 6),
     block: st ? { week: st.week, phase: st.phase, targetRir: st.targetRir } : null,
     exercises: coachExercises(),
+    holds: coachHolds(),
   };
 }
 
@@ -18265,14 +18588,15 @@ function programFromCoach(res) {
   const kept = {};
   (old.days || []).forEach(d => (d.exercises || []).forEach(e => { kept[e.name] = e; }));
   const SCHEDULES = { 1: ['Mon'], 2: ['Mon', 'Thu'], 3: ['Mon', 'Wed', 'Fri'], 4: ['Mon', 'Tue', 'Thu', 'Fri'], 5: ['Mon', 'Tue', 'Wed', 'Fri', 'Sat'], 6: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] };
+  // same number of sessions as the old plan: it is an edit, so keep the Hunter's own training days and each day's settings
+  const sameShape = !!(old.days && old.days.length === res.days.length && old.schedule);
+  const days = res.days.map((d, i) => ({ ...(sameShape ? old.days[i] : {}), name: d.name, exercises: d.exercises.map(e => ({ ...(kept[e.name] || {}), name: e.name, sets: e.sets, reps: e.reps })) }));
   return {
     ...old,
     name: old.name || 'Coach plan',
     goal: res.goal,
-    scheduleMode: 'rotation',
-    schedule: SCHEDULES[Math.min(6, res.days.length)] || SCHEDULES[3],
-    currentDayIndex: 0,
-    days: res.days.map(d => ({ name: d.name, exercises: d.exercises.map(e => ({ ...(kept[e.name] || {}), name: e.name, sets: e.sets, reps: e.reps })) })),
+    ...(sameShape ? {} : { scheduleMode: 'rotation', schedule: SCHEDULES[Math.min(6, res.days.length)] || SCHEDULES[3], currentDayIndex: 0 }),
+    days,
   };
 }
 
@@ -18421,6 +18745,7 @@ window.openCoachIntake = (onDone, opts = {}) => {
         profile.coachProfile = coachProfile;
         overlay.remove();
         showToast('The coach has your goals.', 'success');
+        try { renderHuntGoal(); } catch (_) {}
         if (onDone) onDone(); else window.openCoachPlan();
       } catch (er) { e.target.disabled = false; const m = document.getElementById('ci2-msg'); m.style.color = '#FF4D67'; m.textContent = 'Could not save: ' + (er?.message || er); }
     });
@@ -21994,6 +22319,13 @@ async function renderRaidBoss(opts) {
   const projectedDamage = daysPassed > 0 ? (totalDamage / daysPassed) * 7 : 0;
   const onTrack = projectedDamage >= bossDisplayHP;
   const closeCall = projectedDamage >= bossDisplayHP * 0.85;
+  // Left for the Hunt screen's party strip, which reads it without re-running the raid.
+  try {
+    localStorage.setItem('aura.raidSnap', JSON.stringify({
+      day: todayStr(), wk: dStr(weekStart), boss: boss.name, rank: boss.rank, hpPct: Math.round(bossHPpct), cleared, daysLeft,
+      hunters: allUsers.map(u => ({ uid: u.uid, name: u.displayName || 'Hunter', dmg: Math.round(hunterDamage[u.uid] || 0) })),
+    }));
+  } catch (e) { /* private mode */ }
 
   // ── Reward pool scales with boss tier ──
   const RAID_REWARD_POOL = { E:40, D:100, C:300, B:800, A:2000, S:5000 };
@@ -27251,6 +27583,8 @@ function renderGuildFeed() {
       date: w.date,
       time: w.time || '00:00',
       uid: w.uid,
+      type: 'workout',
+      key: 'w_' + w.id,
       name: user.displayName || 'Hunter',
       icon: isRun ? '🏃' : '⚔',
       text: isMe
@@ -27270,6 +27604,8 @@ function renderGuildFeed() {
         date: pr.date,
         time: '00:01',
         uid: u.uid,
+        type: 'pr',
+        key: `pr_${u.uid}_${pr.date}_${ex.replace(/[^A-Za-z0-9]/g, '')}`,
         name: u.displayName || 'Hunter',
         icon: '🏆',
         text: `set a PR — ${escapeHtml(ex)} ${pr.e1rm?.toFixed(1)||''}kg e1RM`,
@@ -27278,6 +27614,20 @@ function renderGuildFeed() {
       });
     });
   });
+
+  // Moments between Hunters: PRs that pass each other, training side by side
+  try {
+    const me = allUsers.find(u => u.uid === currentUser.uid);
+    if (me) {
+      if (!partyPRsAsked && allUsers.length > 1) { partyPRsAsked = true; loadAllUserPRs().then(renderGuildFeed).catch(() => {}); }
+      const todayS = todayStr();
+      const trained = uid => allWorkouts.some(w => w.uid === uid && w.date === todayS);
+      const others = allUsers.filter(u => u.uid !== currentUser.uid).map(u => ({ uid: u.uid, name: u.displayName || 'Hunter', prs: allUserPRs[u.uid] || {}, streak: computeStreak(u.uid), trainedToday: trained(u.uid) }));
+      const ICONS = { ahead: '⚔', behind: '🏆', together: '🤝', streaks: '🔥' };
+      rivalryMoments({ uid: me.uid, trainedToday: trained(me.uid), streak: computeStreak(me.uid) }, others, myPRs || {}, todayS, cutoffStr)
+        .forEach(m => events.push({ date: m.date, time: '00:02', uid: m.uid, name: '', icon: ICONS[m.kind] || '⚔', text: m.text, moment: true, sub: '', colour: 'var(--brass)' }));
+    }
+  } catch (e) { /* moments are extra; never block the feed */ }
 
   // Sort newest first
   events.sort((a,b) => (b.date+b.time).localeCompare(a.date+a.time));
@@ -27308,16 +27658,58 @@ function renderGuildFeed() {
             ? `${escapeHtml(e.name)} — HUNT CLEARED`
             : `${escapeHtml(e.name)} — ${e.text.toUpperCase()}`;
         const systemSub = e.sub || '';
+        if (e.moment) return `<div style="display:flex;align-items:flex-start;gap:8px;padding:7px 0;border-bottom:1px solid rgba(91,168,255,0.05);">
+          <div style="width:6px;height:6px;border-radius:50%;background:var(--brass);margin-top:5px;flex-shrink:0;"></div>
+          <div style="flex:1;min-width:0;font-size:12px;color:var(--text);line-height:1.35;">${e.icon} ${escapeHtml(e.text)}</div>
+          <div style="font-size:8px;font-family:var(--font-mono);color:rgba(91,168,255,0.78);flex-shrink:0;margin-top:3px;white-space:nowrap;">${dateLabel}</div>
+        </div>`;
         return `<div style="display:flex;align-items:flex-start;gap:8px;padding:7px 0;border-bottom:1px solid rgba(91,168,255,0.05);">
           <div style="width:6px;height:6px;border-radius:50%;background:${nameColor};margin-top:5px;flex-shrink:0;"></div>
           <div style="flex:1;min-width:0;">
             <div style="font-size:11px;font-family:var(--font-mono);color:var(--text-dim);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;letter-spacing:.03em;"><span style="color:${readableInk(nameColor)};">${escapeHtml(e.name)}</span> · ${e.icon} ${e.type === 'pr' ? 'NEW RECORD' : 'HUNT CLEARED'}</div>
             ${systemSub ? `<div style="font-size:9px;color:var(--text-faint);margin-top:1px;">${systemSub}</div>` : ''}
           </div>
+          ${cheerControl(e)}
           <div style="font-size:8px;font-family:var(--font-mono);color:rgba(91,168,255,0.78);flex-shrink:0;margin-top:3px;white-space:nowrap;">${dateLabel}</div>
         </div>`;
       }).join('')}
     </div>`;
+  el.querySelectorAll('.cheer-btn[data-key]').forEach(btn => btn.addEventListener('click', () => giveCheer(btn.dataset.key)));
+}
+
+/* Cheers: a Hunter taps 👏 on someone's hunt or PR in the feed. It is stored on the
+   cheerer's own user document as cheers.{key} = time (key: w_<workoutId> or
+   pr_<uid>_<date>_<exercise>); everyone reads the party's user documents, so a cheer
+   shows on the original post for all. Nothing else reads it: no XP, AP or rank. */
+function cheerersFor(key) {
+  return allUsers.filter(u => u.cheers && u.cheers[key]).map(u => u.uid);
+}
+function cheerControl(e) {
+  if (!e.key || e.moment) return '';
+  const uids = cheerersFor(e.key);
+  const names = uids.map(id => (allUsers.find(u => u.uid === id)?.displayName || 'Hunter').split(' ')[0]);
+  const title = names.length ? `Cheered by ${names.join(', ')}` : 'Cheer';
+  const mine = uids.includes(currentUser?.uid);
+  const own = e.uid === currentUser?.uid;
+  if (own) return uids.length ? `<span class="cheer-btn on" title="${escapeHtml(title)}" aria-label="${escapeHtml(title)}">👏 ${uids.length}</span>` : '';
+  return `<button type="button" class="cheer-btn ${mine ? 'on' : ''}" ${mine ? 'disabled' : `data-key="${escapeHtml(e.key)}"`} title="${escapeHtml(title)}" aria-label="${escapeHtml(mine ? 'You cheered this' : 'Cheer ' + e.name)}">👏${uids.length ? ' ' + uids.length : ''}</button>`;
+}
+async function giveCheer(key) {
+  if (!currentUser || !key) return;
+  const me = allUsers.find(u => u.uid === currentUser.uid);
+  const prev = me?.cheers?.[key];
+  if (prev) return;
+  if (me) { me.cheers = { ...(me.cheers || {}), [key]: Date.now() }; }
+  renderGuildFeed();
+  try {
+    await writeUserFields({ ['cheers.' + key]: Date.now() });
+    SFX.chipSelect();
+  } catch (e) {
+    console.error('Cheer failed:', e);
+    if (me && me.cheers) delete me.cheers[key];
+    renderGuildFeed();
+    showToast('Could not send the cheer. Try again.', 'error');
+  }
 }
 
 // ── MONTHLY REPORT ──
