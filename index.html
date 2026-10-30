@@ -4338,6 +4338,28 @@
   .wp-legend{display:flex;gap:14px;font-size:11px;color:var(--text-faint);margin-top:4px;}
   .wp-legend i{display:inline-block;width:14px;height:0;border-top:2px solid var(--violet);vertical-align:middle;margin-right:5px;}
   .wp-legend i.g{border-top:2px dotted var(--legendary);}
+  /* ── Weekly weight goal (weight-rate.js) ── */
+  .wr{margin-bottom:24px;}
+  .wr-goal{font-family:var(--font-mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--ui-gold);margin-bottom:3px;}
+  .wr-gap{display:block;font-family:var(--font-mono);font-size:12px;font-weight:400;letter-spacing:0;text-transform:none;margin-top:3px;}
+  .wr-edit{min-height:40px;padding:0 6px;color:var(--brass);flex:none;}
+  .wr-set{margin:4px 0 20px;}
+  .wr-set em{font-style:normal;font-size:22px;color:var(--ui-gold);}
+  .wr-list{margin-top:14px;}
+  .wr-row{display:grid;grid-template-columns:62px 48px 1fr auto;gap:8px;align-items:baseline;padding:8px 0;border-top:1px solid rgba(91,168,255,.1);font-family:var(--font-mono);font-size:13px;color:var(--text);}
+  .wr-row.wr-h{border-top:0;padding-bottom:2px;font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--text-faint);}
+  .wr-d{font-family:var(--font-body);font-weight:700;font-size:13px;color:var(--text-dim);}
+  .wr-a small{color:var(--text-faint);font-size:11px;}
+  .wr-c{text-align:right;font-size:12px;font-weight:700;white-space:nowrap;}
+  .wr-preview{margin-top:4px;font-size:13px;}
+  .wr-preview:empty{display:none;}
+  .wr-opts{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+  .wr-opt{min-height:60px;padding:8px 10px;text-align:left;cursor:pointer;color:var(--text);background:rgba(14,20,38,.9);border:1px solid rgba(91,168,255,.22);}
+  .wr-opt b{display:block;font-family:var(--font-display);font-size:18px;}
+  .wr-opt span{display:block;font-size:12px;color:var(--text-faint);margin-top:2px;}
+  .wr-opt.on{border-color:var(--ui-gold);box-shadow:0 0 0 1px var(--ui-gold) inset,0 0 14px rgba(255,214,107,.25);}
+  .wr-other{display:flex;align-items:center;gap:8px;margin-top:12px;font-size:14px;color:var(--text-dim);}
+  .wr-other input{width:5.5ch;font-size:16px;padding:6px 8px;text-align:center;color:var(--text);background:rgba(10,14,26,.9);border:1px solid rgba(91,168,255,.25);border-radius:0;}
   .ci-v small{font-family:var(--font-mono);font-size:11px;font-weight:400;color:var(--text-faint);margin-left:3px;}
   .ci-verdict{font-size:15px;line-height:1.35;color:var(--text-dim);margin-top:6px;}
   .ci-deltas{margin-bottom:12px;}
@@ -5067,7 +5089,8 @@ import { detectReEntry, reEntryPlan, directiveProgress, formatMeasure, DIRECTIVE
 import { analyseHabit, sampleCurve, describeReturns,
          HABIT_TARGET_DAYS, MISS_GRACE } from "./habit.js";
 import { muscleDevelopment, bodyBuild, bodyFrame } from "./physique.js";
-import { weeklyChange, pathStatus, pathSvg, parseGoal as parseWeightGoal } from "./weight-path.js";
+import { weeklyChange, pathStatus, pathSvg, parseGoal as parseWeightGoal, KCAL_PER_KG } from "./weight-path.js";
+import { RATE_OPTIONS, MAX_LOSS, parseRateGoal, rateGoalField, safeLoss, rateExpected, rateTrack, rateLine, averageLine, signed, signedRate } from "./weight-rate.js";
 import { solveGoal, customLook, presetsFor, DEFAULT_PRESET, targetRows, goalProgress, goalPriorities, goalFocus, weightGoalFromPlan, verdictLine } from "./physique-goal.js";
 import { progressCheck } from "./progress-check.js";
 import { fitnessScore } from "./fitness-score.js";
@@ -18361,6 +18384,131 @@ function weightPathHtml() {
 }
 
 
+// ── WEEKLY WEIGHT GOAL (weight-rate.js) ───────────────────────────────────
+// profile.weightRateGoal = { kgPerWeek, since } (additive, optional; kgPerWeek negative to lose). A line falls at
+// that rate from the 7-day average on the day it was set, and every weigh-in's 7-day average is held against it.
+// Presentation only: nothing here feeds XP or progression.
+
+/** The card: the goal, how the latest weigh-in sits on the line, the averages, and each recent weigh-in. */
+function weightRateHtml() {
+  const today = todayStr();
+  const t = rateTrack(myWeights, profile?.weightRateGoal, today);
+  if (!t) {
+    if (!myWeights.length) return '';
+    return `<div class="wr-slot"><button type="button" class="rh-row wr-set" data-wr-edit><div><b>Set a weekly goal</b><br><span>Pick how much to lose a week; every weigh-in is checked against it</span></div><em>›</em></button></div>`;
+  }
+  const date = (d) => new Date(d + 'T12:00:00').toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
+  const tile = (k, v, s, color) => `<div class="ci-tile"><div class="ci-k">${k}</div><div class="ci-v">${v}</div>${s ? `<div class="ci-s" style="color:${color || 'var(--text-faint)'};">${s}</div>` : ''}</div>`;
+  const STATE = { ahead: ['Ahead of pace', 'var(--growing)'], on: ['On pace', 'var(--growing)'], behind: ['Behind pace', 'var(--excess)'] };
+  const [label, color] = STATE[t.status];
+  const dir = Math.sign(t.kgPerWeek);
+  const good = (n) => n === null ? '' : Math.sign(n) === dir ? 'var(--growing)' : n === 0 ? '' : 'var(--excess)';
+  // the line from where it starts (or six weeks back) to two weeks ahead, against the 7-day average
+  const from = t.base.date > shiftDay(today, -41) ? t.base.date : shiftDay(today, -41);
+  const ahead = shiftDay(today, 14);
+  const lineGoal = parseWeightGoal({ waypoints: [
+    { date: from, kg: rateExpected(t, t.base, from) }, { date: ahead, kg: rateExpected(t, t.base, ahead) }] });
+  const svg = lineGoal ? pathSvg(myWeights.filter(w => w.date >= shiftDay(from, -6)), lineGoal, { today }) : '';
+  const tiles = [
+    tile('Line today', `${t.expected.toFixed(1)}<small>kg</small>`, `You ${t.current.toFixed(1)} kg · 7-day avg`, ''),
+    tile('Your average', t.avgPerWeek === null ? '—' : `${signedRate(t.avgPerWeek)}<small>kg/wk</small>`,
+      t.avgPerWeek === null ? 'Shows after a week' : `Since ${date(t.since)}`, t.avgPerWeek === null ? '' : good(t.avgPerWeek - t.kgPerWeek) || 'var(--growing)'),
+    t.week ? tile('This week', `${signed(t.week.diff)}<small>kg</small>`, `avg ${t.week.thisAvg.toFixed(1)} vs ${t.week.lastAvg.toFixed(1)}`, good(t.week.diff)) : '',
+    tile('Since start', `${signed(t.changed)}<small>kg</small>`, `from ${t.base.kg.toFixed(1)} · ${date(t.base.date)}`, good(t.changed)),
+  ].join('');
+  const CHIP = { ahead: 'var(--growing)', on: 'var(--growing)', behind: 'var(--excess)' };
+  const rows = t.entries.map(e => `<div class="wr-row">
+      <span class="wr-d">${e.date === today ? 'Today' : date(e.date)}</span>
+      <span class="wr-w">${e.weight.toFixed(1)}</span>
+      <span class="wr-a">${e.avg.toFixed(1)}<small> / ${e.expected.toFixed(1)}</small></span>
+      <span class="wr-c" style="color:${CHIP[e.status]};">${e.status === 'on' ? 'on pace' : `${Math.abs(e.ahead).toFixed(1)} ${e.status}`}</span>
+    </div>`).join('');
+  return `<div class="wr-slot"><div class="wr">
+    <div class="wp-head">
+      <div><div class="wr-goal">Goal ${signedRate(t.kgPerWeek)} kg a week</div><div class="wp-state" style="color:${color};">${label}${t.status === 'on' ? '' : `<small class="wr-gap">${Math.abs(t.ahead).toFixed(1)} kg ${t.status}</small>`}</div></div>
+      <button type="button" class="ci-skip wr-edit" data-wr-edit>Change</button>
+    </div>
+    <div class="ci-verdict">${escapeHtml(rateLine(t))}${averageLine(t) ? ` ${escapeHtml(averageLine(t))}` : ''}</div>
+    ${svg ? `<div class="wp-chart">${svg}<div class="wp-legend"><span><i class="g"></i>${signedRate(t.kgPerWeek)} kg a week</span><span><i class="a"></i>7-day average</span></div></div>` : ''}
+    <div class="ci-tiles">${tiles}</div>
+    ${rows ? `<div class="wr-list"><div class="wr-row wr-h"><span>Weigh-in</span><span>kg</span><span>avg / line</span><span></span></div>${rows}</div>` : ''}
+  </div></div>`;
+}
+
+/** What today's typed weight does to the line, for the weigh-in input. '' without a goal. */
+function weightRatePreview(kg) {
+  const today = todayStr();
+  if (!parseRateGoal(profile?.weightRateGoal)) return '';
+  const t = rateTrack([...myWeights.filter(w => w.date !== today), { date: today, weight: kg }], profile.weightRateGoal, today);
+  if (!t) return '';
+  const color = t.status === 'behind' ? 'var(--excess)' : 'var(--growing)';
+  return `7-day avg <b>${t.current.toFixed(1)}</b> · line <b>${t.expected.toFixed(1)}</b> · <b style="color:${color};">${t.status === 'on' ? 'on pace' : `${Math.abs(t.ahead).toFixed(1)} kg ${t.status}`}</b>`;
+}
+
+/** Pick the weekly goal: a few losses, or type one; Turn off clears it. A new pick starts a new line today. */
+window.openWeightRateSheet = () => {
+  document.getElementById('weight-rate-overlay')?.remove();
+  const today = todayStr();
+  const cur = parseRateGoal(profile?.weightRateGoal);
+  const kg = latestBodyweightKg() || Number(profile?.bodyweightKg) || null;
+  const safe = safeLoss(kg);
+  // start on the current goal, else the pace the weight path needs, else half a kilo
+  let pathNeed = null;
+  try { const g = weightPathGoal(); const st = g && pathStatus(myWeights, g, today); if (st?.neededPerWeek < 0) pathNeed = Math.round(-st.neededPerWeek * 20) / 20; } catch (_) {}
+  let pick = cur && cur.kgPerWeek < 0 ? -cur.kgPerWeek : pathNeed && pathNeed <= MAX_LOSS ? pathNeed : 0.5;
+  const NAMES = { 0.25: 'Gentle', 0.5: 'Steady', 0.75: 'Firm', 1: 'Fast' };
+  const overlay = document.createElement('div');
+  overlay.id = 'weight-rate-overlay';
+  overlay.className = 'ci-overlay';
+  overlay.innerHTML = `<div class="ui-window gold ci-win"><div class="ci-scroll">
+    <div class="ci-hero" style="padding-bottom:14px;"><div class="ci-hero-top"><div><div class="ui-banner gold">◈ Weekly goal</div><div class="ci-title">Lose per week</div></div><button class="ci-close" aria-label="Close" data-close>✕</button></div>
+      <div class="ci-sub" style="margin:8px 0 0;">An average, not a daily number. Each weigh-in's 7-day average is checked against a line falling at this rate from today.</div></div>
+    <div class="wr-opts">${RATE_OPTIONS.map(r => `<button type="button" class="wr-opt" data-r="${r}"><b>${r} kg</b><span>${NAMES[r] || ''}${safe && r > safe ? ' · over 1% for you' : ''}</span></button>`).join('')}</div>
+    <label class="wr-other">Other <input id="wr-val" type="text" inputmode="decimal" autocomplete="off" /> kg a week</label>
+    <div class="rh-note" id="wr-note"></div>
+    <button class="ui-btn-primary ci-save" id="wr-save">◈ Set goal</button>
+    ${cur ? '<button class="ci-skip" id="wr-off" style="width:100%;margin-top:6px;">Turn off</button>' : ''}
+    <div id="wr-msg" class="ci-msg"></div>
+  </div></div>`;
+  getOverlayHost().appendChild(overlay);
+  const val = document.getElementById('wr-val');
+  const note = document.getElementById('wr-note');
+  const paint = () => {
+    overlay.querySelectorAll('.wr-opt').forEach(b => b.classList.toggle('on', Number(b.dataset.r) === pick));
+    const parts = [];
+    if (kg) parts.push(`About ${Math.round(pick * KCAL_PER_KG / 7 / 10) * 10} kcal a day under maintenance.`);
+    if (safe) parts.push(pick > safe ? `Faster than 1% of your bodyweight a week (${safe} kg): expect to lose some muscle with it.` : `Under 1% of your bodyweight a week (${safe} kg), so muscle is kept.`);
+    if (pathNeed && pathNeed !== pick) parts.push(`Your weight goal's date needs about ${pathNeed} kg a week.`);
+    if (cur) parts.push(`Changing it starts a new line from today.`);
+    note.textContent = parts.join(' ');
+  };
+  paint();
+  overlay.querySelectorAll('.wr-opt').forEach(b => b.addEventListener('click', () => { pick = Number(b.dataset.r); val.value = ''; paint(); }));
+  val.addEventListener('input', () => { const v = Number(val.value.replace(',', '.')); if (v > 0 && v <= MAX_LOSS) { pick = Math.round(v * 100) / 100; paint(); } });
+  overlay.querySelectorAll('[data-close]').forEach(b => b.addEventListener('click', () => overlay.remove()));
+  const msg = document.getElementById('wr-msg');
+  const done = (text) => { overlay.remove(); refreshWeightRate(); showToast(text, 'success'); };
+  document.getElementById('wr-save').addEventListener('click', async (e) => {
+    const field = rateGoalField(-pick, today);
+    if (!field) { msg.style.color = '#FF4D67'; msg.textContent = `Pick between 0.1 and ${MAX_LOSS} kg a week.`; return; }
+    e.target.disabled = true;
+    try { await writeUserFields({ weightRateGoal: field }); done(`Goal set: lose ${pick} kg a week.`); }
+    catch (err) { e.target.disabled = false; msg.style.color = '#FF4D67'; msg.textContent = 'Could not save: ' + (err?.message || err); }
+  });
+  document.getElementById('wr-off')?.addEventListener('click', async (e) => {
+    e.target.disabled = true;
+    try { await writeUserFields({ weightRateGoal: deleteField() }); delete profile.weightRateGoal; done('Weekly goal turned off.'); }
+    catch (err) { e.target.disabled = false; msg.style.color = '#FF4D67'; msg.textContent = 'Could not save: ' + (err?.message || err); }
+  });
+};
+
+/** Redraw every weekly goal card on screen after the goal changes. */
+function refreshWeightRate() {
+  document.querySelectorAll('.wr-slot').forEach(el => { el.outerHTML = weightRateHtml() || '<div class="wr-slot"></div>'; });
+}
+document.addEventListener('click', (e) => { if (e.target.closest?.('[data-wr-edit]')) window.openWeightRateSheet(); });
+
+
 // ── PHYSIQUE GOAL ─────────────────────────────────────────────────────────
 // profile.physiqueGoal = { preset, deadline, startDate, start: { waist, shoulders, chest, arms, bodyFat, weight } }
 // (physique-goal.js, pure). The Hunter picks a look and a date; the plan is re-solved from the
@@ -18748,6 +18896,7 @@ window.openCheckinHub = (view = 'home', reward = null) => {
         <input id="rh-val" type="text" inputmode="decimal" autocomplete="off" aria-describedby="wi-vs" /><span class="wi-unit">kg</span></label>
       <div class="wi-steps">${STEPS.map(s => `<button type="button" class="wi-step" data-step="${s}" aria-label="${s > 0 ? 'Up' : 'Down'} ${Math.abs(s)} kg">${s > 0 ? '+' : '−'}${Math.abs(s)}</button>`).join('')}</div>
       <p class="wi-vs" id="wi-vs" aria-live="polite"></p>
+      <p class="wi-vs wr-preview" id="wr-preview"></p>
       <button class="ui-btn-primary ci-save" id="rh-save">◈ Log weight</button>
       <div id="rh-msg" class="ci-msg"></div>`;
   } else if (view === 'done' && reward) {
@@ -18758,6 +18907,7 @@ window.openCheckinHub = (view = 'home', reward = null) => {
         ${reward.note ? `<div class="rh-note">${escapeHtml(reward.note)}</div>` : ''}</div>
       <div class="ui-banner ci-section">◈ This week · ${st.weighCount}/7</div>
       ${rhythmDotsHtml(st.week)}
+      ${weightRateHtml() ? `<div class="ui-banner ci-section" style="margin-top:20px;">◈ Weekly goal</div>${weightRateHtml()}` : ''}
       ${weightPathHtml()}
       ${next ? `<div class="ui-banner gold ci-section" style="margin-top:20px;">◈ When you're ready</div>
         <button type="button" class="rh-row due" data-tier="${next.key}"><div><b>${next.title}</b><br><span>${next.what} · ${next.time}</span></div><em>${dueText(next)}</em></button>` : '<div class="rh-note" style="margin-top:14px;">That is everything for today. See you tomorrow.</div>'}
@@ -18788,10 +18938,12 @@ window.openCheckinHub = (view = 'home', reward = null) => {
       const d = Math.round((kg - Number(prev.weight)) * 10) / 10;
       vs.innerHTML = `Last: <b>${Number(prev.weight).toFixed(1)} kg</b> · ${agoLabel(prev.date, today0).toLowerCase()} · <b class="${d < 0 ? 'down' : d > 0 ? 'up' : ''}">${signedKg(d)}</b>`;
     };
-    const paint = () => { val.value = kg.toFixed(1); paintVs(); };
+    const rateEl = document.getElementById('wr-preview');
+    const paintRate = () => { rateEl.innerHTML = weightRatePreview(kg); };
+    const paint = () => { val.value = kg.toFixed(1); paintVs(); paintRate(); };
     paint();
     val.addEventListener('focus', () => val.select());
-    val.addEventListener('input', () => { const v = parseWeight(val.value); if (v !== null) { kg = v; paintVs(); } });
+    val.addEventListener('input', () => { const v = parseWeight(val.value); if (v !== null) { kg = v; paintVs(); paintRate(); } });
     val.addEventListener('blur', paint);
     val.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); document.getElementById('rh-save').click(); } });
     overlay.querySelectorAll('[data-step]').forEach(b => b.addEventListener('click', () => { kg = stepWeight(kg, Number(b.dataset.step)); paint(); }));
@@ -23824,6 +23976,7 @@ function renderTrends() {
     <div class="card">
       <div class="card-title"><h3>◐ Weight</h3></div>
       ${physiquePlanHtml()}
+      ${weightRateHtml()}
       ${weightPathHtml()}
       ${/* with a weight goal the path above is the chart; without one, the 7-day trend is */
         weightPathGoal() ? '' : myWeights.length > 1 ? weightOnTrackHtml() : weightLineChart(myWeights)}
