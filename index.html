@@ -4555,7 +4555,6 @@
           <div id="hunt-plan-head"></div>
           <div id="hunt-next"></div>
           <div id="hunt-dmg"></div>
-          <div id="goal-plan-entry"></div>
           <!-- The plan optimiser card used to sit here (renderPlanOptimiser, optimiser.js): the AI coach replaced it. The code is kept; with no host element it renders nothing. -->
           <div id="program-editor-wrap"></div>
           <div id="directives-strip"></div>
@@ -10482,20 +10481,20 @@ function gpPlanScore(program, extra = {}) {
   });
 }
 function renderGoalPlanEntry() {
-  const host = document.getElementById('goal-plan-entry');
+  const host = document.getElementById('cc-trainer');
   if (!host) return;
   const has = !!myProgram?.days?.length;
   let sc = null, tr = null;
   try { tr = gpTrainerRead(); } catch (e) { console.warn('Trainer read failed:', e); }
   if (has) { try { sc = gpPlanScore(myProgram); } catch (e) { console.warn('Plan score failed:', e); } }
   const open = tr ? tr.flags.filter(f => f.tone !== 'good').length : 0;
-  const line = tr && tr.flags.length ? tr.headline : (has ? 'Your trainer is ready when you are.' : 'Tell your trainer your goal and it builds your first plan.');
+  const line = tr && tr.flags.length ? tr.headline : (has ? 'Your coach is ready when you are.' : 'Tell your coach your goal and it builds your first plan.');
   host.innerHTML = `
     <div class="gp-card gp-f-${tr ? tr.tone : 'none'}">
       <button type="button" class="gp-card-main" id="gp-read-open">
         ${sc ? gpRing(sc.score, 52) : '<span class="gp-card-icon">✦</span>'}
         <span class="gp-card-body">
-          <span class="gp-card-eyebrow">YOUR TRAINER</span>
+          <span class="gp-card-eyebrow">TRAINER READ</span>
           <span class="gp-card-line">${escapeHtml(line)}</span>
           ${open ? `<span class="gp-card-sub">${open} thing${open === 1 ? '' : 's'} to look at</span>` : ''}
         </span>
@@ -10506,7 +10505,7 @@ function renderGoalPlanEntry() {
       </div>
     </div>`;
   host.querySelector('#gp-open').addEventListener('click', () => openGoalPlan('new'));
-  host.querySelector('#gp-adjust-open').addEventListener('click', () => openGoalPlan('chat'));
+  host.querySelector('#gp-adjust-open').addEventListener('click', () => window.openCoachChatNow());
   host.querySelector('#gp-read-open').addEventListener('click', () => openGoalPlan(tr && tr.flags.length ? 'read' : has ? 'score' : 'new'));
 }
 function gpRing(score, size = 52) {
@@ -10558,7 +10557,7 @@ function gpLoadSummary() {
 const GP_OUTLOOK = { on_track: ['On track', 'good'], slow: ['Slower than it could be', 'ok'], off_track: ['Not working yet', 'low'], not_enough_data: ['Too early to say', 'none'] };
 function gpSummaryHtml() {
   const sm = gpLoadSummary();
-  if (GP.sumBusy) return '<div class="gp-sum"><div class="gp-dim">Your trainer is reading your last eight weeks…</div></div>';
+  if (GP.sumBusy) return '<div class="gp-sum"><div class="gp-dim">Your coach is reading your whole history…</div></div>';
   if (!sm) return `<div class="gp-sum"><button type="button" class="gp-go gp-sum-go" id="gp-sum-btn">Get my progress update</button><div class="gp-dim">A short written read of how you are doing, whether you are progressing, and what to change next.</div></div>`;
   const [label, tone] = GP_OUTLOOK[sm.outlook] || GP_OUTLOOK.not_enough_data;
   return `<div class="gp-sum"><div class="gp-sum-head"><span class="gp-chip gp-t-${tone}">${escapeHtml(label)}</span><span class="gp-dim">${escapeHtml(sm.date || '')}${sm.local ? ' · computed' : ''}</span></div>
@@ -10602,9 +10601,9 @@ function gpChatHtml() {
   return `<div class="gp-chat">
     ${msgs || `<div class="gp-dim">Ask anything about your training, recovery, food or body metrics. It answers from your own sessions and numbers, and offers a plan change when one would help.</div>
     <div class="gp-prompts">${GP_PROMPTS.map(t => `<button type="button" class="gp-prompt" data-q="${escapeHtml(t)}">${escapeHtml(t)}</button>`).join('')}</div>`}
-    ${GP.chatBusy ? '<div class="gp-msg gp-tr gp-typing">Your trainer is reading your data…</div>' : ''}
+    ${GP.chatBusy ? '<div class="gp-msg gp-tr gp-typing">Your coach is reading your data…</div>' : ''}
   </div>
-  <div class="gp-revise"><input id="gp-chat-in" class="gp-input" placeholder="Ask your trainer anything" maxlength="600" ${GP.chatBusy ? 'disabled' : ''}><button type="button" id="gp-chat-send" ${GP.chatBusy ? 'disabled' : ''}>Ask</button></div>
+  <div class="gp-revise"><input id="gp-chat-in" class="gp-input" placeholder="Ask your coach anything" maxlength="600" ${GP.chatBusy ? 'disabled' : ''}><button type="button" id="gp-chat-send" ${GP.chatBusy ? 'disabled' : ''}>Ask</button></div>
   <div class="gp-dim">General training guidance, not medical advice. For pain or injury see a qualified professional.</div>`;
 }
 async function gpAsk(text) {
@@ -10624,7 +10623,7 @@ async function gpAsk(text) {
   } catch (e) {
     console.warn('Ask trainer failed:', e);
     GP.chat.pop();
-    GP.error = (e && e.message && !/internal|functions\//.test(e.message)) ? e.message : 'The trainer could not answer just now. Try again in a minute.';
+    GP.error = (e && e.message && !/internal|functions\//.test(e.message)) ? e.message : 'The coach could not answer just now. Try again in a minute.';
   }
   GP.chatBusy = false;
   renderGoalPlan();
@@ -10730,9 +10729,9 @@ function renderGoalPlan() {
     <label class="gp-label" for="gp-goal">What should change?</label>
     <textarea id="gp-goal" class="gp-text" rows="3" maxlength="1200" placeholder="Any sentence. For example: my left knee hurts, only 30 minutes a session this week, more arms, swap barbell for dumbbells, I want to add a run on Sundays.">${escapeHtml(GP.goal)}</textarea>
     ${standing.length ? `<div class="gp-standing">Always respected: ${standing.map(s => `<span class="gp-tag">${escapeHtml(s)} <button type="button" class="gp-x" data-s="${escapeHtml(s)}" aria-label="Forget ${escapeHtml(s)}">×</button></span>`).join(' ')}</div>` : ''}
-    <button type="button" class="gp-go" id="gp-build" ${GP.busy ? 'disabled' : ''}>${GP.busy ? 'Your trainer is working…' : 'Adjust my plan'}</button>
+    <button type="button" class="gp-go" id="gp-build" ${GP.busy ? 'disabled' : ''}>${GP.busy ? 'Your coach is working…' : 'Adjust my plan'}</button>
     ${curScore ? `<div class="gp-sub">YOUR PLAN TODAY</div>${gpScoreHtml(curScore)}` : ''}`;
-  const scoreOnly = curScore ? `${gpScoreHtml(curScore)}<button type="button" class="gp-go" id="gp-to-adjust">Ask your trainer to fix it</button>` : '<div class="gp-dim">No plan yet.</div>';
+  const scoreOnly = curScore ? `${gpScoreHtml(curScore)}<button type="button" class="gp-go" id="gp-to-adjust">Ask the coach to fix it</button>` : '<div class="gp-dim">No plan yet.</div>';
   const input = chatMode ? gpChatHtml() : readMode ? gpReadHtml(gpTrainerRead()) : adjust ? adjustInput : scoreMode ? scoreOnly : `
     <label class="gp-label" for="gp-goal">What do you want?</label>
     <textarea id="gp-goal" class="gp-text" rows="4" maxlength="1200" placeholder="Say it your way: the look you want, a race, what you hate training, an injury, the days you have. For example: lean and defined by January, 3 days a week, no legs, I want to run a half marathon.">${escapeHtml(GP.goal)}</textarea>
@@ -10789,8 +10788,8 @@ function renderGoalPlan() {
       </div>`;
   }
   el.innerHTML = `<div class="hunter-modal-inner gp-inner">
-    <div class="hunter-modal-header"><div class="gp-title">${adjust ? 'Adjust your plan' : 'Your trainer'}</div><button type="button" class="gp-close" id="gp-close" aria-label="Close">✕</button></div>
-    ${r && r.program ? '' : `<div class="gp-tabs" role="tablist">${[['read', 'Read'], ['score', 'Plan'], ['chat', 'Ask'], ['new', 'Build']].map(([k, t]) => `<button type="button" role="tab" class="gp-tab ${GP.mode === k ? 'on' : ''}" data-mode="${k}" aria-selected="${GP.mode === k}">${t}</button>`).join('')}</div>`}
+    <div class="hunter-modal-header"><div class="gp-title">${adjust ? 'Adjust your plan' : 'Your coach'}</div><button type="button" class="gp-close" id="gp-close" aria-label="Close">✕</button></div>
+    ${r && r.program ? '' : `<div class="gp-tabs" role="tablist">${[['read', 'Read'], ['score', 'Plan'], ['new', 'Build']].map(([k, t]) => `<button type="button" role="tab" class="gp-tab ${GP.mode === k ? 'on' : ''}" data-mode="${k}" aria-selected="${GP.mode === k}">${t}</button>`).join('')}</div>`}
     ${GP.question ? `<div class="gp-ask"><b>The System asks</b><div>${escapeHtml(GP.question)}</div><div class="gp-dim">Add the answer to what you wrote, then build again.</div></div>` : ''}
     ${GP.error ? `<div class="gp-error" role="alert">${escapeHtml(GP.error)}</div>` : ''}
     ${r && r.program ? '' : input}
@@ -11087,7 +11086,7 @@ async function coachChatSend(text) {
   coachChatSave();
   paintCoachChatLog(true);
   try {
-    const res = await callCoach('chat', '', null, { messages: c.msgs.slice(-12).map(m => ({ role: m.role, content: m.role === 'assistant' && m.goals && !m.goalsSaved ? `${m.content}\n[Goals I proposed, not saved yet: ${m.goals.goals.join(' | ')}]` : m.role === 'assistant' && m.days && !m.applied ? `${m.content}\n[Plan I proposed, not applied yet: ${m.days.map(d => `${d.name}: ${d.exercises.map(e => `${e.name} ${e.sets}x${e.reps}`).join(', ')}`).join(' | ')}]` : m.content })) });
+    const res = await callCoach('chat', '', null, { trainer: (() => { try { return gpTrainerContext(); } catch (_) { return null; } })(), messages: c.msgs.slice(-12).map(m => ({ role: m.role, content: m.role === 'assistant' && m.goals && !m.goalsSaved ? `${m.content}\n[Goals I proposed, not saved yet: ${m.goals.goals.join(' | ')}]` : m.role === 'assistant' && m.days && !m.applied ? `${m.content}\n[Plan I proposed, not applied yet: ${m.days.map(d => `${d.name}: ${d.exercises.map(e => `${e.name} ${e.sets}x${e.reps}`).join(', ')}`).join(' | ')}]` : m.content })) });
     c.msgs.push({ role: 'assistant', content: res.reply, days: res.days || null, goal: res.goal || null, goals: res.goals || null, suggestions: res.suggestions || [] });
   } catch (err) { c.error = coachErrorText(err); }
   c.busy = false;
@@ -11165,6 +11164,7 @@ function renderCoachChat(force) {
   host.innerHTML = `<div class="cchat">
     <div class="cc-head"><span class="plan-opt-eyebrow">◈ COACH</span>
       <span class="cc-tools">${hasGoals ? '<button type="button" class="cc-link" id="cc-goals">My goals</button>' : ''}<button type="button" class="cc-link" id="cc-clear">Clear</button></span></div>
+    <div id="cc-trainer"></div>
     ${hasGoals ? `<div class="cc-goal-line">${escapeHtml(profile.coachProfile.goals[0])}${profile.coachProfile.goals.length > 1 ? ` +${profile.coachProfile.goals.length - 1}` : ''}</div>
       <div class="cc-log" id="cc-log"></div>
       <form class="cc-in" id="cc-form"><input type="text" id="cc-input" maxlength="800" placeholder="Ask your coach anything…" autocomplete="off" /><button type="submit" class="ui-btn-primary" id="cc-send">Send</button></form>
@@ -11181,6 +11181,7 @@ function renderCoachChat(force) {
     const v = inp.value; inp.value = '';
     coachChatSend(v);
   });
+  try { renderGoalPlanEntry(); } catch (e) { console.warn('Trainer strip failed:', e); }
   if (hasGoals) paintCoachChatLog(true);
 }
 
