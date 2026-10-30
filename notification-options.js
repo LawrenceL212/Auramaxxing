@@ -7,7 +7,8 @@
    The sender ships a data-only push { type, title, body, tag, icon, badge }.
    The service worker turns it into showNotification() arguments here, and
    turns a click (on the notification or on one of its Android buttons) into
-   a deep link the app understands: index.html?go=hunt or ?go=quick.
+   a deep link the app understands: index.html?go=hunt, ?go=quick, or ?go=weigh
+   for the morning weigh-in note (its body and its one button open the weigh-in).
 
    All URLs are RELATIVE to the service worker scope, so the app works under a
    GitHub Pages project path (/Auramaxxing/) as well as at a domain root.
@@ -21,6 +22,7 @@
     { action: 'hunt', title: 'Begin Hunt' },
     { action: 'quick', title: 'Quick 15' },
   ];
+  var WEIGH_ACTIONS = [{ action: 'weigh', title: 'Log weight' }];
 
   /** Resolve a path against the SW scope; never produces a root-absolute URL. */
   function scoped(rel, scope) {
@@ -38,18 +40,23 @@
       tag: d.tag || 'aura-reminder',   // same tag replaces instead of stacking
       renotify: true,                  // ...and still buzzes when it replaces
       requireInteraction: false,
-      actions: d.type === 'test' ? [] : ACTIONS.map(function (a) { return { action: a.action, title: a.title }; }),
+      actions: d.type === 'test' ? [] : (d.type === 'weighin' ? WEIGH_ACTIONS : ACTIONS).map(function (a) { return { action: a.action, title: a.title }; }),
       data: { type: d.type || '', local: !!d.local },
     };
     return { title: String(d.title || '[SYSTEM] Notice'), options: opts };
   }
 
-  /** 'quick' for the Quick 15 button, otherwise 'hunt' (the notification body, the Begin Hunt button, iOS). */
-  function goFor(action) { return action === 'quick' ? 'quick' : 'hunt'; }
+  /** 'quick' for the Quick 15 button, 'weigh' for the weigh-in note (body or button), otherwise 'hunt'
+      (the notification body, the Begin Hunt button, iOS). */
+  function goFor(action, type) {
+    if (action === 'quick') return 'quick';
+    if (action === 'weigh' || (!action && type === 'weighin')) return 'weigh';
+    return 'hunt';
+  }
 
   /** The app URL a click should open, relative to the SW scope. */
-  function targetUrl(action, scope) {
-    return scoped('index.html?go=' + goFor(action), scope);
+  function targetUrl(action, scope, type) {
+    return scoped('index.html?go=' + goFor(action, type), scope);
   }
 
   var api = { buildNotification: buildNotification, goFor: goFor, targetUrl: targetUrl, ICON: ICON, BADGE: BADGE, ACTIONS: ACTIONS };

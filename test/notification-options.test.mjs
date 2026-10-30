@@ -20,6 +20,11 @@ check('Quick 15 button goes to quick', N.goFor('quick'), 'quick');
 check('target URLs are relative to the scope', [N.targetUrl('', SCOPE), N.targetUrl('quick', SCOPE), N.targetUrl('hunt')], [SCOPE + 'index.html?go=hunt', SCOPE + 'index.html?go=quick', 'index.html?go=hunt']);
 check('target URL works at a domain root too', N.targetUrl('quick', 'https://x.app/'), 'https://x.app/index.html?go=quick');
 
+const wn = N.buildNotification({ type: 'weighin', title: '[SYSTEM] Morning weigh-in', body: 'b', tag: 'weighin-2026-10-21' }, SCOPE);
+check('weigh-in note has one button: Log weight', wn.options.actions, [{ action: 'weigh', title: 'Log weight' }]);
+check('weigh-in body and button open the weigh-in; other types are unchanged', [N.goFor('', 'weighin'), N.goFor('weigh'), N.goFor('', 'planned'), N.goFor('quick', 'weighin')], ['weigh', 'weigh', 'hunt', 'quick']);
+check('weigh-in target URL', N.targetUrl('', SCOPE, 'weighin'), SCOPE + 'index.html?go=weigh');
+
 // the files the payload names exist and are the right size
 const png = (f) => { const b = fs.readFileSync(new URL('../' + f, import.meta.url)); return [b.readUInt32BE(16), b.readUInt32BE(20)]; };
 check('notify-192.png is 192x192', png(N.ICON), [192, 192]);

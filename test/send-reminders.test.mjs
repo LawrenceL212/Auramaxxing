@@ -11,7 +11,7 @@ const NOW = Date.parse('2026-10-21T20:00:00Z');       // Wednesday 20:00 UTC
 const today = localParts(NOW, 'UTC').date;
 const days = (n) => Array.from({ length: n }, (_, i) => ({ uid: 'u1', date: shiftDay(today, -(i + 1)), time: '18:00' }));
 
-function fakes({ users, workouts = [], programs = {}, sendResult }) {
+function fakes({ users, workouts = [], weights = [], programs = {}, sendResult }) {
   const log = { reads: [], updates: [], sends: [] };
   const db = {
     collection(name) {
@@ -20,6 +20,7 @@ function fakes({ users, workouts = [], programs = {}, sendResult }) {
           const q = { select() { return q; }, async get() {
             log.reads.push(name);
             if (name === 'users') return { docs: users };
+            if (name === 'bodyweight') return { docs: weights.filter(w => w[f] === v).map((w, i) => ({ id: 'b' + i, data: () => w })) };
             return { docs: workouts.filter(w => w[f] === v).map((w, i) => ({ id: 'w' + i, data: () => w })) };
           } };
           return q;
@@ -71,6 +72,36 @@ const deps = (f) => ({ ...f, now: NOW, deleteField: () => 'DEL', fieldPath: (...
   const f = fakes({ users: [user()], workouts: days(5), sendResult: () => ({ successCount: 0, responses: [{ success: false, error: { code: 'messaging/internal-error' } }, { success: false, error: { code: 'messaging/internal-error' } }] }) });
   const s = await runReminders(deps(f));
   check('transient errors keep the tokens', [f.log.updates.length, s.pruned], [0, 0]);
+}
+{
+  const MORNING = Date.parse('2026-10-21T08:00:00Z');
+  const f = fakes({ users: [user()], workouts: days(5), weights: [{ uid: 'u1', date: shiftDay(today, -1) }], programs: { u1: { schedule: [] } } });
+  await runReminders({ ...deps(f), now: MORNING });
+  check('08:00 with no weigh-in today sends the weigh-in note', [f.log.reads.includes('bodyweight'), f.log.sends.length, f.log.sends[0]?.data.type, f.log.sends[0]?.data.tag], [true, 1, 'weighin', 'weighin-' + today]);
+}
+{
+  const MORNING = Date.parse('2026-10-21T08:00:00Z');
+  const f = fakes({ users: [user()], workouts: days(5), weights: [{ uid: 'u1', date: today }], programs: { u1: { schedule: [] } } });
+  await runReminders({ ...deps(f), now: MORNING });
+  check('already weighed in today: nothing', f.log.sends.length, 0);
+}
+{
+  const MORNING = Date.parse('2026-10-21T08:00:00Z');
+  const f = fakes({ users: [user({ pushPrefs: { enabled: true, tz: 'UTC', weighin: false } })], workouts: days(5), programs: { u1: { schedule: [] } } });
+  await runReminders({ ...deps(f), now: MORNING });
+  check('weigh-in switched off: bodyweight never read', [f.log.reads.includes('bodyweight'), f.log.sends.length], [false, 0]);
+}
+{
+  const f = fakes({ users: [user()], workouts: days(5), programs: { u1: { schedule: [] } } });
+  await runReminders(deps(f));
+  check('outside 08:00 bodyweight is never read', f.log.reads.includes('bodyweight'), false);
+}
+{
+  // early riser: the planned nudge is clamped to 08:00, so it takes that hour and the weigh-in steps aside
+  const MORNING = Date.parse('2026-10-21T08:00:00Z');
+  const f = fakes({ users: [user({ pushPrefs: { enabled: true, tz: 'UTC', usualTime: '07:30' } })], workouts: days(5), programs: { u1: { schedule: ['Wed'] } } });
+  await runReminders({ ...deps(f), now: MORNING });
+  check('one note an hour: a training nudge at 08:00 wins', [f.log.sends.length, f.log.sends[0]?.data.type], [1, 'planned']);
 }
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

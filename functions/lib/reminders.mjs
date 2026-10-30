@@ -15,6 +15,13 @@
      evening   "Streak is at N" - sent at 20:00 local, only when a
                streak of 2+ days would break if today ends with no session.
 
+   AND ONE THAT IS NOT ABOUT TRAINING (decideWeighIn)
+     weighin   "Step on the scale" - sent at 08:00 local when the Hunter has not
+               weighed in yet today (pushPrefs.weighin, on unless switched off).
+               Rest days, trained days and the training cap do not apply: it is
+               its own daily note. Not sent while a streak freeze is active, and
+               not in an hour where a training reminder already goes out.
+
    RULES THAT ALWAYS HOLD
      - never when the Hunter already trained today (their local date)
      - never during quiet hours, 22:00-07:00 in their own timezone
@@ -44,6 +51,7 @@ export const LEARN_MIN_SESSIONS = 3;
 export const MIN_STREAK_TO_WARN = 2;
 export const PLANNED_SLOT_MIN = 8;  // clamp so the slot never lands in quiet hours
 export const PLANNED_SLOT_MAX = 21;
+export const WEIGHIN_HOUR = 8;      // morning, before breakfast
 
 export const isQuietHour = (h) => h >= QUIET_START || h < QUIET_END;
 
@@ -124,6 +132,7 @@ function planFacts(c) {
   if (c.dayName) return `${c.dayName}.`;
   return tail ? `${tail[0].toUpperCase()}${tail.slice(1)}.` : '';
 }
+const runBit = (c) => (c.run >= 2 ? ` ${c.run} mornings in a row so far.` : '');
 const streakBit = (c) => (c.streak >= 2 ? ` Your streak is at ${c.streak}.` : '');
 
 const POOLS = {
@@ -141,6 +150,12 @@ const POOLS = {
     (c) => ({ title: '[SYSTEM] Evening gate available', body: `${plural(c.streak, 'day')} in a row so far. Fifteen minutes is enough to extend it.` }),
     (c) => ({ title: '[SYSTEM] A short clear is available', body: `Streak at ${c.streak}. Quick 15 is one tap away.` }),
     (c) => ({ title: '[SYSTEM] Streak update', body: `${plural(c.streak, 'day')} running, nicely done. Add one more with a short session tonight.` }),
+  ],
+  weighin: [
+    (c) => ({ title: '[SYSTEM] Morning weigh-in', body: `Step on the scale before breakfast. 10 seconds.${runBit(c)}` }),
+    (c) => ({ title: '[SYSTEM] Status check: bodyweight', body: `One reading a morning keeps your 7-day average honest.${runBit(c)}` }),
+    (c) => ({ title: '[SYSTEM] Scale is ready', body: `Same time each day, ideally right after waking.${runBit(c)}` }),
+    (c) => ({ title: '[SYSTEM] Daily measurement', body: `A quick weigh-in feeds your trend line.${runBit(c)}` }),
   ],
   test: [
     () => ({ title: '[SYSTEM] Test signal received', body: 'This is what a reminder looks like. Real ones come from the hourly sender.' }),
@@ -221,4 +236,34 @@ export function decideReminder({ now, prefs, workouts = [], schedule = [], freez
     if (t.hour === plannedSlotHour(usual)) return { send: true, type: 'planned', tag: 'planned-' + t.date, ...reminderCopy('planned', { streak, uid, date: t.date, ...(planDayFor(program, t.date) || {}) }) };
   }
   return no('not-due');
+}
+
+/** Consecutive days weighed in, ending yesterday (today has not happened yet when this runs). */
+export function weighRun(weightDates, today) {
+  const set = new Set(weightDates || []);
+  let n = 0;
+  for (let d = shiftDay(today, -1); set.has(d); d = shiftDay(d, -1)) n++;
+  return n;
+}
+
+/**
+ * The morning weigh-in note.
+ * @param in.now          ms since epoch
+ * @param in.prefs        pushPrefs { enabled, weighin, tz }
+ * @param in.weightDates  ['YYYY-MM-DD', ...] the Hunter's bodyweight dates
+ * @param in.freeze       users/{uid}.streakFreeze
+ * @param in.uid          seeds which message of the pool is used; optional
+ * @returns { send:false, reason } | { send:true, type:'weighin', title, body, tag }
+ */
+export function decideWeighIn({ now, prefs, weightDates = [], freeze = null, uid = '' } = {}) {
+  const no = (reason) => ({ send: false, reason });
+  if (!prefs || !prefs.enabled) return no('disabled');
+  if (prefs.weighin === false) return no('switched-off');
+  if (!prefs.tz) return no('no-timezone');
+  const t = localParts(now, prefs.tz);
+  if (!t) return no('bad-timezone');
+  if (t.hour !== WEIGHIN_HOUR) return no('not-due');
+  if (freeze && freeze.active) return no('frozen');
+  if ((weightDates || []).includes(t.date)) return no('weighed-today');
+  return { send: true, type: 'weighin', tag: 'weighin-' + t.date, ...reminderCopy('weighin', { run: weighRun(weightDates, t.date), uid, date: t.date }) };
 }
